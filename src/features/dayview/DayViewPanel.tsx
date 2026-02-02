@@ -32,7 +32,8 @@ const MONTHS_PT = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "
 
 export function DayViewPanel() {
   const [active, setActive] = useState<"magic" | "agenda">("magic");
-  const [autoRotate, setAutoRotate] = useState(false);
+  const [autoRotate, setAutoRotate] = useState(true); // Auto-rotação ativada por padrão
+  const [isHovering, setIsHovering] = useState(false); // Pausa quando hover
   const now = useNow({ intervalMs: 30_000 });
   const queryClient = useQueryClient();
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -134,20 +135,24 @@ export function DayViewPanel() {
     toast.success("Dados atualizados!");
   };
 
-  // Auto-alternância a cada 10 segundos
+  // Auto-alternância a cada 10 segundos (pausa quando hover)
   useEffect(() => {
-    if (!autoRotate) return;
+    if (!autoRotate || isHovering) return;
     const interval = setInterval(() => {
       setActive(v => v === "magic" ? "agenda" : "magic");
     }, 10_000);
     return () => clearInterval(interval);
-  }, [autoRotate]);
+  }, [autoRotate, isHovering]);
 
   // Parar auto-rotate quando clicar manualmente
   const handleManualTabChange = (tab: "magic" | "agenda") => {
     setAutoRotate(false);
     setActive(tab);
   };
+
+  // Handlers de hover para pausar a rotação
+  const handleMouseEnter = () => setIsHovering(true);
+  const handleMouseLeave = () => setIsHovering(false);
 
   const years = useMemo(() => {
     const y = now.getFullYear();
@@ -207,8 +212,12 @@ export function DayViewPanel() {
         )}
       </div>
 
-      {/* Tabs de navegação com Auto-Rotate */}
-      <div className="flex flex-wrap items-center gap-2">
+      {/* Tabs de navegação - indicador de rotação automática */}
+      <div 
+        className="flex flex-wrap items-center gap-2"
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
         <Button
           variant={active === "magic" ? "default" : "outline"}
           size="sm"
@@ -225,15 +234,15 @@ export function DayViewPanel() {
           <Calendar className="h-4 w-4 mr-2" />
           {isCurrentMonth ? "Agenda de Hoje" : "Agenda do Mês"}
         </Button>
-        <Button
-          variant={autoRotate ? "default" : "outline"}
-          size="sm"
-          onClick={() => setAutoRotate(v => !v)}
-          className={cn(autoRotate && "animate-pulse")}
-        >
-          <RotateCcw className={cn("h-4 w-4 mr-2", autoRotate && "animate-spin")} />
-          Auto {autoRotate ? "(10s)" : ""}
-        </Button>
+        {autoRotate && (
+          <span className={cn(
+            "text-xs text-muted-foreground px-2 py-1 rounded-md bg-muted/50",
+            isHovering ? "opacity-60" : "animate-pulse"
+          )}>
+            <RotateCcw className={cn("inline h-3 w-3 mr-1", !isHovering && "animate-spin")} />
+            {isHovering ? "Pausado" : "Auto 10s"}
+          </span>
+        )}
       </div>
 
       {/* Conteúdo */}
