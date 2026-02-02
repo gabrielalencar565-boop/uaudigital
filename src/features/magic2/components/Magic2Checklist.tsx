@@ -1,11 +1,9 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { MAGIC2_STAGES, type Magic2StageKey } from "@/features/magic2/magic2-stages";
 import type { Magic2CycleRow, Magic2StageRow } from "@/features/magic2/hooks/use-magic2";
-import { Magic2ClientActions } from "@/features/magic2/components/Magic2ClientActions";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -165,10 +163,6 @@ export function Magic2Checklist({ year, month, cycles, stages, isBusy, onToggleS
           </table>
         </div>
         )}
-
-        <Separator />
-
-        <Magic2ClientActions year={year} month={month} cycles={cycles} />
       </CardContent>
     </Card>
   );
