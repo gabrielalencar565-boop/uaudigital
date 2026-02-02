@@ -1,0 +1,1022 @@
+import { useEffect, useMemo, useState } from "react";
+import { addDays, addMonths, subMonths, endOfMonth, format, startOfMonth, startOfWeek } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { CheckCircle2, Filter, TriangleAlert, Calendar } from "lucide-react";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { DndContext, DragEndEvent, DragOverlay, closestCenter } from "@dnd-kit/core";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
+import { STAGES, STAGE_COLOR, type StageKey } from "@/lib/uau";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useClients, useCreateTask, useDeleteTask, useProfiles, useSetTaskStatus, useTasks, useTeamMembers, useUpdateTask, type TaskRow } from "@/features/data/queries";
+import { AgendaTaskCard } from "@/features/agenda/components/AgendaTaskCard";
+import { AgendaWeekTaskItem } from "@/features/agenda/components/AgendaWeekTaskItem";
+import { EditTaskDialog } from "@/features/agenda/components/EditTaskDialog";
+import { MemberMultiSelect } from "@/features/agenda/components/MemberMultiSelect";
+import { DraggableTaskCard } from "@/features/agenda/components/DraggableTaskCard";
+import { DayDropZone } from "@/features/agenda/components/DayDropZone";
+import { useAddTaskAssignees, useTaskAssigneesByMonth } from "@/features/data/task-assignees-queries";
+import { useMagic2InactiveAgendaClients } from "@/features/magic2/hooks/use-magic2";
+import { useRole } from "@/hooks/use-role";
+import { useSession } from "@/hooks/use-session";
+import { useIsMobile } from "@/hooks/use-mobile";
+function initials(name: string) {
+  return name.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]!.toUpperCase()).join("");
+}
+function monthKey(d: Date) {
+  return format(d, "yyyy-MM");
+}
+
+function ymdToLocalDate(ymd: string) {
+  // Evita UTC shifting (00:00Z) em alguns dispositivos
+  return new Date(`${ymd}T00:00:00`);
+}
+function formatDueTime(dueAt: string | null): string | undefined {
+  if (!dueAt) return undefined;
+  try {
+    const d = new Date(dueAt);
+    if (isNaN(d.getTime())) return undefined;
+    const hours = String(d.getHours()).padStart(2, "0");
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+    return `${hours}:${minutes}`;
+  } catch {
+    return undefined;
+  }
+}
+const createTaskSchema = z.object({
+  client_id: z.string().uuid("Selecione um cliente"),
+  stage: z.string().min(1),
+  assigned_user_ids: z.array(z.string().uuid()).min(1, "Selecione ao menos um membro"),
+  due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  due_time: z.string().regex(/^\d{2}:\d{2}$/).optional().or(z.literal("")),
+  description: z.string().trim().max(300).optional()
+});
+type CreateTaskValues = z.infer<typeof createTaskSchema>;
+const AGENDA_STAGES = STAGES.filter(s => s.key !== "revisao" && s.key !== "entrega");
+export function AgendaPanel() {
+  const {
+    user
+  } = useSession();
+  const {
+    isAdmin, canManageTasks
+  } = useRole(user?.id);
+  const isMobile = useIsMobile();
+  const normalizeName = useMemo(() => (v: string) => v.trim().toLocaleLowerCase("pt-BR").normalize("NFD").replace(/\p{Diacritic}+/gu, "").replace(/\s+/g, " "), []);
+  const [cursor, setCursor] = useState(() => startOfMonth(new Date()));
+  const [view, setView] = useState<"month" | "week">("month");
+  const [filterClientId, setFilterClientId] = useState<string | "all">("all");
+  const [filterUserId, setFilterUserId] = useState<string | "all">("all");
+  const [selectedWeekDayKey, setSelectedWeekDayKey] = useState<string | null>(null);
+  const mk = monthKey(cursor);
+  const clientsQ = useClients();
+  const teamQ = useTeamMembers();
+  const profilesQ = useProfiles({ enabled: !!canManageTasks });
+
+  const weekStart = useMemo(() => startOfWeek(cursor, {
+    weekStartsOn: 0
+  }), [cursor]);
+  const weekStartKey = useMemo(() => format(weekStart, "yyyy-MM-dd"), [weekStart]);
+  const weekEndKey = useMemo(() => format(addDays(weekStart, 6), "yyyy-MM-dd"), [weekStart]);
+
+  const weekOptions = useMemo(() => {
+    const baseMonth = startOfMonth(cursor);
+    const first = startOfWeek(baseMonth, { weekStartsOn: 0 });
+    const lastDay = endOfMonth(baseMonth);
+
+    const out: { key: string; label: string }[] = [];
+    let i = 0;
+    for (let ws = first; ws <= lastDay || i === 0; ws = addDays(ws, 7)) {
+      const we = addDays(ws, 6);
+      const key = format(ws, "yyyy-MM-dd");
+      const label = `Semana ${i + 1} (${format(ws, "dd/MM")}–${format(we, "dd/MM")})`;
+      out.push({ key, label });
+      i += 1;
+      if (i > 6) break; // segurança
+      // se já passou do mês e já tem pelo menos 1 semana, pode parar
+      if (ws > lastDay) break;
+    }
+    return out;
+  }, [cursor]);
+
+  const tasksQ = useTasks(view === "week" ? {
+    start: weekStartKey,
+    end: weekEndKey,
+    assignedUserId: !isAdmin ? user?.id : filterUserId !== "all" ? filterUserId : undefined,
+    clientId: filterClientId !== "all" ? filterClientId : undefined
+  } : {
+    month: mk,
+    assignedUserId: !isAdmin ? user?.id : filterUserId !== "all" ? filterUserId : undefined,
+    clientId: filterClientId !== "all" ? filterClientId : undefined
+  });
+  const inactiveQ = useMagic2InactiveAgendaClients(cursor.getFullYear(), cursor.getMonth() + 1);
+  const tasks = useMemo(() => {
+    const list = tasksQ.data ?? [];
+    const inactiveAgendaIds = inactiveQ.data?.inactiveAgendaIds;
+    const inactiveNames = inactiveQ.data?.inactiveNames;
+    if ((!inactiveAgendaIds || inactiveAgendaIds.size === 0) && (!inactiveNames || inactiveNames.size === 0)) return list;
+    const clientNameById = new Map((clientsQ.data ?? []).map(c => [c.id, c.name] as const));
+
+    // Esconde tarefas de clientes removidos do Magic v2 no mês atual
+    return list.filter(t => {
+      if (inactiveAgendaIds?.has(t.client_id)) return false;
+      const name = clientNameById.get(t.client_id);
+      if (name && inactiveNames?.has(normalizeName(name))) return false;
+      return true;
+    });
+  }, [clientsQ.data, inactiveQ.data, normalizeName, tasksQ.data]);
+  const clients = useMemo(() => {
+    const list = clientsQ.data ?? [];
+    const inactiveAgendaIds = inactiveQ.data?.inactiveAgendaIds;
+    const inactiveNames = inactiveQ.data?.inactiveNames;
+    if ((!inactiveAgendaIds || inactiveAgendaIds.size === 0) && (!inactiveNames || inactiveNames.size === 0)) return list;
+    return list.filter(c => {
+      if (inactiveAgendaIds?.has(c.id)) return false;
+      if (c.name && inactiveNames?.has(normalizeName(c.name))) return false;
+      return true;
+    });
+  }, [clientsQ.data, inactiveQ.data, normalizeName]);
+  const clientNameById = useMemo(() => new Map(clients.map(c => [c.id, c.name] as const)), [clients]);
+  const team = teamQ.data ?? [];
+  const teamById = useMemo(() => new Map(team.map(m => [m.user_id, m] as const)), [team]);
+
+  // Admin vê apenas responsáveis com perfil + ativos.
+  const profiles = profilesQ.data ?? [];
+  const activeProfiles = useMemo(() => profiles.filter((p) => teamById.has(p.user_id)), [profiles, teamById]);
+  useEffect(() => {
+    // Se o cliente selecionado no filtro foi removido no Magic v2, volta para "Todos"
+    if (filterClientId === "all") return;
+    const inactiveAgendaIds = inactiveQ.data?.inactiveAgendaIds;
+    const inactiveNames = inactiveQ.data?.inactiveNames;
+    const rawClients = clientsQ.data ?? [];
+    const selected = rawClients.find(c => c.id === filterClientId);
+    if (!selected) return;
+    const removed = (inactiveAgendaIds?.has(selected.id) ?? false) || (selected.name ? inactiveNames?.has(normalizeName(selected.name)) ?? false : false);
+    if (removed) setFilterClientId("all");
+  }, [clientsQ.data, filterClientId, inactiveQ.data, normalizeName]);
+  const profilesById = useMemo(() => new Map(profiles.map(p => [p.user_id, p] as const)), [profiles]);
+
+  // Busca múltiplos assignees por tarefa
+  const assigneesQ = useTaskAssigneesByMonth(mk);
+  const assigneesByTaskId = useMemo(() => {
+    const map = new Map<string, { user_id: string; display_name: string; avatar_url?: string | null }[]>();
+    for (const a of assigneesQ.data ?? []) {
+      const member = teamById.get(a.user_id);
+      if (!member) continue;
+      const prev = map.get(a.task_id) ?? [];
+      prev.push({
+        user_id: a.user_id,
+        display_name: member.display_name,
+        avatar_url: member.avatar_url,
+      });
+      map.set(a.task_id, prev);
+    }
+    return map;
+  }, [assigneesQ.data, teamById]);
+  const createTask = useCreateTask();
+  const addTaskAssignees = useAddTaskAssignees();
+  const deleteTask = useDeleteTask();
+  const setTaskStatus = useSetTaskStatus();
+  const updateTask = useUpdateTask();
+  const [open, setOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteDayKey, setDeleteDayKey] = useState<string | null>(null);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [moreDayKey, setMoreDayKey] = useState<string | null>(null);
+  const [editTask, setEditTask] = useState<TaskRow | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const form = useForm<CreateTaskValues>({
+    resolver: zodResolver(createTaskSchema),
+    defaultValues: {
+      client_id: "",
+      stage: "",
+      assigned_user_ids: [],
+      due_date: format(new Date(), "yyyy-MM-dd"),
+      due_time: "",
+      description: ""
+    }
+  });
+  const days = useMemo(() => {
+    const start = startOfWeek(startOfMonth(cursor), {
+      weekStartsOn: 0
+    });
+    const end = endOfMonth(cursor);
+    const out: Date[] = [];
+    let d = start;
+    while (d <= end || out.length % 7 !== 0) {
+      out.push(d);
+      d = addDays(d, 1);
+      if (out.length >= 42) break;
+    }
+    return out;
+  }, [cursor]);
+  const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
+  const tasksByDay = useMemo(() => {
+    const map = new Map<string, typeof tasks>();
+    for (const t of tasks) {
+      const key = t.due_date;
+      const prev = map.get(key) ?? [];
+      map.set(key, [...prev, t]);
+    }
+    return map;
+  }, [tasks]);
+  const todayKey = format(new Date(), "yyyy-MM-dd");
+
+  useEffect(() => {
+    if (view !== "week") return;
+    const keys = weekDays.map((d) => format(d, "yyyy-MM-dd"));
+    const next = keys.includes(todayKey) ? todayKey : keys[0] ?? null;
+    setSelectedWeekDayKey(next);
+  }, [todayKey, view, weekDays]);
+
+  const overdueCount = tasks.filter(t => t.status !== "concluido" && t.due_date < todayKey).length;
+  const dueTodayCount = tasks.filter(t => t.status !== "concluido" && t.due_date === todayKey).length;
+  const onCreateTask = async (v: CreateTaskValues) => {
+    if (!user) return;
+    try {
+      // Bloqueia criação se o cliente estiver removido do Magic v2 no mês/ano da tarefa
+      const [yy, mm] = String(v.due_date).split("-");
+      const y = Number(yy);
+      const m = Number(mm);
+      if (y && m) {
+        let inactiveData = inactiveQ.data;
+        if (y !== cursor.getFullYear() || m !== cursor.getMonth() + 1) {
+          const res = await supabase.from("magic2_cycles").select("is_active, magic2_clients ( id, name, magic2_client_links ( agenda_client_id ) )").eq("year", y).eq("month", m);
+          if (res.error) throw res.error;
+          const inactiveAgendaIds = new Set<string>();
+          const inactiveNames = new Set<string>();
+          for (const row of res.data ?? []) {
+            if ((row as any).is_active !== false) continue;
+            const name = String((row as any).magic2_clients?.name ?? "").trim();
+            if (name) inactiveNames.add(normalizeName(name));
+            const linksRaw = (row as any).magic2_clients?.magic2_client_links;
+            if (Array.isArray(linksRaw)) {
+              for (const l of linksRaw) {
+                const agendaId = l?.agenda_client_id as string | undefined;
+                if (agendaId) inactiveAgendaIds.add(agendaId);
+              }
+            } else {
+              const agendaId = linksRaw?.agenda_client_id as string | undefined;
+              if (agendaId) inactiveAgendaIds.add(agendaId);
+            }
+          }
+          inactiveData = {
+            inactiveAgendaIds,
+            inactiveNames
+          };
+        }
+        const clientName = (clientsQ.data ?? []).find(c => c.id === v.client_id)?.name;
+        if (inactiveData?.inactiveAgendaIds?.has(v.client_id) || clientName && inactiveData?.inactiveNames?.has(normalizeName(clientName))) {
+          toast.error("Cliente removido do Magic v2 neste mês — não é possível criar tarefas na Agenda.");
+          return;
+        }
+      }
+      // Calcula due_at se horário foi fornecido
+      let due_at: string | null = null;
+      if (v.due_time && v.due_time.match(/^\d{2}:\d{2}$/)) {
+        // Combina data + hora no timezone local
+        due_at = new Date(`${v.due_date}T${v.due_time}:00`).toISOString();
+      }
+      // Usa o primeiro membro como assigned_user_id (compatibilidade)
+      const primaryUserId = v.assigned_user_ids[0];
+      const result = await createTask.mutateAsync({
+        client_id: v.client_id,
+        stage: v.stage as StageKey,
+        assigned_user_id: primaryUserId,
+        due_date: v.due_date,
+        due_at,
+        title: null,
+        description: v.description ?? null,
+        created_by: user.id
+      } as any);
+      
+      // Adiciona todos os membros na tabela task_assignees
+      if (result?.id && v.assigned_user_ids.length > 0) {
+        await addTaskAssignees.mutateAsync({
+          taskId: result.id,
+          userIds: v.assigned_user_ids,
+          addedBy: user.id,
+        });
+      }
+      
+      toast.success("Tarefa criada. Ritmo mantido! ✨");
+      setOpen(false);
+      form.reset();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao criar tarefa");
+    }
+  };
+  const toggleComplete = async (taskId: string, next: "pendente" | "em_andamento" | "concluido") => {
+    if (!user) return;
+    try {
+      await setTaskStatus.mutateAsync({
+        taskId,
+        status: next,
+        userId: user.id
+      });
+      if (next === "concluido") toast.success("Concluída! ✔ Atualizamos o cliente automaticamente.");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao atualizar tarefa");
+    }
+  };
+  const openCreateForDay = (day: string) => {
+    form.setValue("due_date", day);
+    setOpen(true);
+  };
+  const openDeleteForDay = (day: string) => {
+    setDeleteDayKey(day);
+    setDeleteOpen(true);
+  };
+  const openMoreForDay = (day: string) => {
+    setMoreDayKey(day);
+    setMoreOpen(true);
+  };
+  const onDeleteTask = async (taskId: string) => {
+    try {
+      await deleteTask.mutateAsync({
+        taskId
+      });
+      toast.success("Tarefa removida");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao remover tarefa");
+    }
+  };
+  const openEditTask = (task: TaskRow) => {
+    setEditTask(task);
+    setEditOpen(true);
+  };
+  const handleUpdateTask = async (taskId: string, updates: any) => {
+    await updateTask.mutateAsync({ taskId, updates });
+  };
+
+  // Drag and drop handler
+  const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+  const activeTask = useMemo(() => {
+    if (!activeTaskId) return null;
+    return tasks.find(t => t.id === activeTaskId) ?? null;
+  }, [activeTaskId, tasks]);
+
+  const handleDragStart = (event: { active: { id: string | number } }) => {
+    setActiveTaskId(String(event.active.id));
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    setActiveTaskId(null);
+    const { active, over } = event;
+    if (!over) return;
+    
+    const taskId = String(active.id);
+    const newDate = String(over.id);
+    
+    // Se o dia é o mesmo, não faz nada
+    const task = tasks.find(t => t.id === taskId);
+    if (!task || task.due_date === newDate) return;
+    
+    try {
+      await updateTask.mutateAsync({
+        taskId,
+        updates: { due_date: newDate },
+      });
+      toast.success("Tarefa movida!");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao mover tarefa");
+    }
+  };
+
+  return <DndContext
+    collisionDetection={closestCenter}
+    onDragStart={handleDragStart}
+    onDragEnd={handleDragEnd}
+  >
+    <div className="space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="text-2xl font-semibold tracking-tight">Agenda mensal</h2>
+          
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant={overdueCount ? "destructive" : "success"} className="gap-2">
+            <TriangleAlert className="h-3.5 w-3.5" />
+            {overdueCount ? `${overdueCount} atrasada(s)` : "Sem atrasos"}
+          </Badge>
+          <Badge variant={dueTodayCount ? "warning" : "secondary"}>
+            {dueTodayCount ? `⏰ ${dueTodayCount} vence(m) hoje` : "Hoje ok"}
+          </Badge>
+        </div>
+      </div>
+
+      {/* Dialog de criar tarefa (abrirá via botão + no dia) */}
+      {canManageTasks && <Dialog open={open} onOpenChange={setOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Criar tarefa</DialogTitle>
+            </DialogHeader>
+            <form className="space-y-4" onSubmit={form.handleSubmit(onCreateTask)}>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Cliente</Label>
+                  <Select onValueChange={v => form.setValue("client_id", v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover z-50">
+                      {clients.map(c => <SelectItem key={c.id} value={c.id}>
+                          {c.name}
+                        </SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  {form.formState.errors.client_id && <p className="text-sm text-danger">{form.formState.errors.client_id.message}</p>}
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Etapa</Label>
+                  <Select onValueChange={v => form.setValue("stage", v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover z-50">
+                      {AGENDA_STAGES.map(s => <SelectItem key={s.key} value={s.key}>
+                          {s.label}
+                        </SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  {form.formState.errors.stage && <p className="text-sm text-danger">Selecione uma etapa</p>}
+                </div>
+              </div>
+
+              {/* Múltiplos membros */}
+              <MemberMultiSelect
+                profiles={activeProfiles}
+                selectedIds={form.watch("assigned_user_ids")}
+                onChange={(ids) => form.setValue("assigned_user_ids", ids)}
+                disabled={!canManageTasks}
+                label="Membros da tarefa"
+              />
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Data</Label>
+                  <Input type="date" {...form.register("due_date")} />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Horário (opcional)</Label>
+                  <Input type="time" {...form.register("due_time")} placeholder="HH:MM" />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Descrição (opcional)</Label>
+                <Textarea 
+                  placeholder="Ex.: Captação de vídeos para o carrossel de Instagram" 
+                  {...form.register("description")}
+                  rows={2}
+                />
+              </div>
+
+              <DialogFooter>
+                <Button type="submit" variant="brand" disabled={createTask.isPending}>
+                  {createTask.isPending ? "Criando..." : "Criar"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>}
+
+      {/* Dialog de remover tarefa (abrirá via botão - no dia) */}
+      {isAdmin && <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Remover tarefa</DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-2">
+              {(deleteDayKey ? tasksByDay.get(deleteDayKey) ?? [] : []).length ? (deleteDayKey ? tasksByDay.get(deleteDayKey) ?? [] : []).map(t => <div key={t.id} className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-card/20 px-3 py-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{t.title ?? STAGES.find(s => s.key === t.stage)?.label}</p>
+                      <p className="truncate text-xs text-muted-foreground">{t.assigned_user_id}</p>
+                    </div>
+                    <Button type="button" variant="destructive" size="sm" disabled={deleteTask.isPending} onClick={() => onDeleteTask(t.id)}>
+                      Remover
+                    </Button>
+                  </div>) : <p className="text-sm text-muted-foreground">Nenhuma tarefa nesse dia.</p>}
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="secondary" onClick={() => setDeleteOpen(false)}>
+                Fechar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>}
+
+      {/* Dialog de ver mais tarefas (no grid mensal) */}
+      <Dialog open={moreOpen} onOpenChange={setMoreOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {moreDayKey ? format(new Date(`${moreDayKey}T00:00:00`), "dd/MM · EEEE", {
+                locale: ptBR,
+              }) : "Tarefas"}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-2">
+            {(moreDayKey ? tasksByDay.get(moreDayKey) ?? [] : []).length ? (moreDayKey ? tasksByDay.get(moreDayKey) ?? [] : []).map(t => {
+              const stageLabel = STAGES.find(s => s.key === t.stage)?.label ?? "Etapa";
+              const assignee = teamById.get(t.assigned_user_id);
+              const assigneeName = assignee?.display_name ?? "—";
+              const clientName = clientNameById.get(t.client_id) ?? "—";
+              const canInteract = !!(canManageTasks || t.assigned_user_id === user?.id);
+              const members = assigneesByTaskId.get(t.id) ?? [];
+
+              return <AgendaWeekTaskItem key={t.id} stageLabel={stageLabel} stage={t.stage} done={t.status === "concluido"} assigneeName={assigneeName} assigneeAvatarUrl={assignee?.avatar_url ?? undefined} members={members} clientName={clientName} dueTime={formatDueTime(t.due_at)} density="default" canInteract={canInteract} canDelete={!!isAdmin} onToggle={() => {
+                const next = t.status === "concluido" ? "pendente" : "concluido";
+                toggleComplete(t.id, next);
+              }} onDelete={() => onDeleteTask(t.id)} onClick={() => canManageTasks && openEditTask(t)} />;
+            }) : <p className="text-sm text-muted-foreground">Nenhuma tarefa nesse dia.</p>}
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="secondary" onClick={() => setMoreOpen(false)}>
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de edição de tarefa */}
+      <EditTaskDialog
+        task={editTask}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        clients={clients}
+        profiles={activeProfiles}
+        teamMembers={team}
+        isAdmin={!!isAdmin}
+        canManageTasks={!!canManageTasks}
+        onUpdate={handleUpdateTask}
+        onDelete={onDeleteTask}
+        isPending={updateTask.isPending || deleteTask.isPending}
+      />
+
+      {isMobile ?
+    // Modo lista para mobile (versão ampla/reduzida)
+    <Card>
+          <CardHeader className="space-y-3">
+            <div>
+              <CardTitle className="text-base">{format(cursor, "MMMM 'de' yyyy", {
+              locale: ptBR
+            })}</CardTitle>
+              <CardDescription className="flex items-center gap-2">
+                <Filter className="h-3.5 w-3.5" />
+                Filtros
+              </CardDescription>
+            </div>
+
+            <Tabs value={view} onValueChange={v => setView(v as any)}>
+              <TabsList className="w-full">
+                <TabsTrigger value="month" className="flex-1">Mês</TabsTrigger>
+                <TabsTrigger value="week" className="flex-1">Semana</TabsTrigger>
+              </TabsList>
+            </Tabs>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Button size="sm" variant="ghost" onClick={() => setCursor(d => startOfMonth(subMonths(d, 1)))}>
+                ←
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setCursor(d => startOfMonth(addMonths(d, 1)))}>
+                →
+              </Button>
+
+              {view === "week" ? (
+                <Select
+                  value={weekStartKey}
+                  onValueChange={(v) => {
+                    setCursor(ymdToLocalDate(v));
+                  }}
+                >
+                  <SelectTrigger className="h-9 text-xs">
+                    <SelectValue placeholder="Semana" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover z-50">
+                    {weekOptions.map((w) => (
+                      <SelectItem key={w.key} value={w.key}>
+                        {w.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : null}
+
+              <Select value={filterClientId} onValueChange={v => setFilterClientId(v as any)}>
+                <SelectTrigger className="h-9 text-xs">
+                  <SelectValue placeholder="Cliente" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover z-50">
+                  <SelectItem value="all">Todos</SelectItem>
+                  {clients.map(c => <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>)}
+                </SelectContent>
+              </Select>
+
+              {isAdmin ? <Select value={filterUserId} onValueChange={v => setFilterUserId(v as any)}>
+                  <SelectTrigger className="h-9 text-xs">
+                    <SelectValue placeholder="Responsável" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover z-50">
+                    <SelectItem value="all">Todos</SelectItem>
+                    {activeProfiles.map(p => <SelectItem key={p.user_id} value={p.user_id}>
+                        {p.full_name}
+                      </SelectItem>)}
+                  </SelectContent>
+                </Select> : null}
+            </div>
+          </CardHeader>
+
+          <CardContent className="space-y-3">
+            {view === "week" ? <div className="-mx-6 overflow-x-auto px-6">
+                <div className="flex gap-3">
+                  {weekDays.map(d => {
+              const key = format(d, "yyyy-MM-dd");
+              const dayTasks = tasksByDay.get(key) ?? [];
+              const selected = selectedWeekDayKey ? key === selectedWeekDayKey : key === todayKey;
+              const dow = format(d, "EEEE", {
+                locale: ptBR
+              });
+              const dowTitle = dow ? dow.charAt(0).toUpperCase() + dow.slice(1) : "";
+              return <button key={key} type="button" onClick={() => setSelectedWeekDayKey(key)} className={cn("min-w-[240px] max-w-[260px] flex-1 rounded-xl border border-border/60 bg-card/10 p-4 text-left shadow-sm transition", selected && "border-primary ring-2 ring-primary/40")}> 
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium">{dowTitle}</p>
+                            <p className={cn("mt-1 text-4xl font-semibold leading-none tracking-tight", selected && "text-primary")}>{format(d, "dd")}</p>
+                          </div>
+                          {canManageTasks ? <span className="flex items-center gap-2">
+                              <button type="button" className="grid h-7 w-7 place-items-center rounded-md border border-border/60 bg-background/70 text-base leading-none text-foreground shadow-sm transition hover:bg-accent" onClick={e => {
+                      e.stopPropagation();
+                      openCreateForDay(key);
+                    }} aria-label="Adicionar tarefa" title="Adicionar">
+                                +
+                              </button>
+                            </span> : null}
+                        </div>
+
+                        <div className="mt-4 space-y-2">
+                          {dayTasks.length ? dayTasks.map(t => {
+                    const stageLabel = STAGES.find(s => s.key === t.stage)?.label ?? "Etapa";
+                    const assignee = teamById.get(t.assigned_user_id);
+                    const assigneeName = assignee?.display_name ?? "—";
+                    const clientName = clientNameById.get(t.client_id) ?? "—";
+                    const canInteract = !!(canManageTasks || t.assigned_user_id === user?.id);
+                    const members = assigneesByTaskId.get(t.id) ?? [];
+                    return <AgendaWeekTaskItem key={t.id} stageLabel={stageLabel} stage={t.stage} done={t.status === "concluido"} assigneeName={assigneeName} assigneeAvatarUrl={assignee?.avatar_url ?? undefined} members={members} clientName={clientName} dueTime={formatDueTime(t.due_at)} canInteract={canInteract} canDelete={!!isAdmin} onToggle={() => {
+                      const next = t.status === "concluido" ? "pendente" : "concluido";
+                      toggleComplete(t.id, next);
+                    }} onDelete={() => {
+                      onDeleteTask(t.id);
+                    }} onClick={() => canManageTasks && openEditTask(t)} />;
+                  }) : <div className="grid min-h-[140px] place-items-center rounded-lg border border-border/60 bg-card/10 p-6">
+                              <p className="text-sm text-muted-foreground">Sem tarefas</p>
+                            </div>}
+                        </div>
+                      </button>;
+            })}
+                </div>
+              </div> : (days.filter(d => d.getMonth() === cursor.getMonth())).map(d => {
+          const key = format(d, "yyyy-MM-dd");
+          const dayTasks = tasksByDay.get(key) ?? [];
+          const hasOverdue = key < todayKey && dayTasks.some(t => t.status !== "concluido");
+          if (!dayTasks.length) return null;
+          return <div key={key} className={cn("space-y-2 rounded-lg border border-border/60 bg-card/10 p-3", hasOverdue && "ring-1 ring-danger/40")}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <p className="text-sm font-medium">
+                          {format(d, "dd/MM")} · {format(d, "EEEE", {
+                    locale: ptBR
+                  })}
+                        </p>
+                      </div>
+                      <Badge variant={hasOverdue ? "destructive" : "secondary"} className="text-xs">
+                        {dayTasks.length}
+                      </Badge>
+                    </div>
+
+                    <div className="space-y-2">
+                      {dayTasks.map(t => {
+                        const stageLabel = STAGES.find(s => s.key === t.stage)?.label ?? "Etapa";
+                        const assignee = teamById.get(t.assigned_user_id);
+                        const assigneeName = assignee?.display_name ?? "—";
+                        const clientName = clientNameById.get(t.client_id) ?? "—";
+                        const canInteract = !!(canManageTasks || t.assigned_user_id === user?.id);
+                        const members = assigneesByTaskId.get(t.id) ?? [];
+
+                        return <AgendaWeekTaskItem key={t.id} stageLabel={stageLabel} stage={t.stage} done={t.status === "concluido"} assigneeName={assigneeName} assigneeAvatarUrl={assignee?.avatar_url ?? undefined} members={members} clientName={clientName} dueTime={formatDueTime(t.due_at)} density="default" canInteract={canInteract} canDelete={!!isAdmin} onToggle={() => {
+                          const next = t.status === "concluido" ? "pendente" : "concluido";
+                          toggleComplete(t.id, next);
+                        }} onDelete={() => onDeleteTask(t.id)} onClick={() => canManageTasks && openEditTask(t)} />;
+                      })}
+                    </div>
+
+                    {canManageTasks ? <div className="flex gap-2 pt-1">
+                        <Button size="sm" variant="outline" className="flex-1" onClick={() => openCreateForDay(key)}>
+                          + Adicionar
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => openDeleteForDay(key)}>
+                          Remover
+                        </Button>
+                      </div> : null}
+                  </div>;
+        })}
+
+            {view !== "week" && tasks.length === 0 ? <div className="rounded-lg border border-border/60 bg-card/10 p-6 text-center">
+                <p className="text-sm text-muted-foreground">Nenhuma tarefa neste mês.</p>
+              </div> : null}
+          </CardContent>
+        </Card> :
+    // Desktop: grid de calendário (versão compacta original)
+    <Card>
+        <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <CardTitle>{format(cursor, "MMMM 'de' yyyy", {
+              locale: ptBR
+            })}</CardTitle>
+            <CardDescription className="flex items-center gap-2">
+              <Filter className="h-4 w-4" />
+              Filtros
+            </CardDescription>
+          </div>
+
+          <Tabs value={view} onValueChange={v => setView(v as any)}>
+            <TabsList>
+              <TabsTrigger value="month">Mês</TabsTrigger>
+              <TabsTrigger value="week">Semana</TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="ghost" onClick={() => setCursor(d => startOfMonth(subMonths(d, 1)))}>
+              ←
+            </Button>
+            <Button variant="ghost" onClick={() => setCursor(d => startOfMonth(addMonths(d, 1)))}>
+              →
+            </Button>
+
+            {view === "week" ? (
+              <Select
+                value={weekStartKey}
+                onValueChange={(v) => {
+                  setCursor(ymdToLocalDate(v));
+                }}
+              >
+                <SelectTrigger className="w-[220px]">
+                  <SelectValue placeholder="Semana" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover z-50">
+                  {weekOptions.map((w) => (
+                    <SelectItem key={w.key} value={w.key}>
+                      {w.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : null}
+
+            <Select value={filterClientId} onValueChange={v => setFilterClientId(v as any)}>
+              <SelectTrigger className="w-[220px]">
+                <SelectValue placeholder="Cliente" />
+              </SelectTrigger>
+              <SelectContent className="bg-popover z-50">
+                <SelectItem value="all">Todos os clientes</SelectItem>
+                {clients.map(c => <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            {isAdmin ? <Select value={filterUserId} onValueChange={v => setFilterUserId(v as any)}>
+                <SelectTrigger className="w-[220px]">
+                  <SelectValue placeholder="Responsável" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover z-50">
+                  <SelectItem value="all">Toda a equipe</SelectItem>
+                  {activeProfiles.map(p => <SelectItem key={p.user_id} value={p.user_id}>
+                      {p.full_name}
+                    </SelectItem>)}
+                </SelectContent>
+              </Select> : null}
+          </div>
+        </CardHeader>
+
+        <CardContent>
+          {view === "week" ? <div className="overflow-x-auto pb-4">
+              {/* Grid horizontal com colunas mais largas */}
+              <div className="flex gap-4 min-w-max">
+                {weekDays.map(d => {
+            const key = format(d, "yyyy-MM-dd");
+            const dayTasks = tasksByDay.get(key) ?? [];
+            const selected = selectedWeekDayKey ? key === selectedWeekDayKey : key === todayKey;
+            const dow = format(d, "EEEE", {
+              locale: ptBR
+            });
+            const dowTitle = dow ? dow.charAt(0).toUpperCase() + dow.slice(1) : "";
+            const isToday = key === todayKey;
+            
+            return <div 
+              key={key} 
+              className={cn(
+                "w-[280px] flex-shrink-0 rounded-xl border bg-card/10 p-4 transition",
+                selected && "border-primary ring-2 ring-primary/40",
+                !selected && "border-border/60",
+                isToday && !selected && "border-primary/50"
+              )}
+            > 
+              <div className="flex items-start justify-between gap-2 mb-4">
+                <div className="min-w-0">
+                  <p className={cn("text-sm font-medium", isToday && "text-primary")}>{dowTitle}</p>
+                  <p className={cn(
+                    "mt-1 text-3xl font-semibold leading-none tracking-tight",
+                    selected && "text-primary",
+                    isToday && !selected && "text-primary/80"
+                  )}>
+                    {format(d, "dd")}
+                  </p>
+                  {dayTasks.length > 0 && (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {dayTasks.filter(t => t.status === "concluido").length}/{dayTasks.length} concluída(s)
+                    </p>
+                  )}
+                </div>
+                {canManageTasks ? <span className="flex items-center gap-2">
+                    <button type="button" className="grid h-8 w-8 place-items-center rounded-md border border-border/60 bg-background/70 text-lg leading-none text-foreground shadow-sm transition hover:bg-accent" onClick={e => {
+                    e.stopPropagation();
+                    openCreateForDay(key);
+                  }} aria-label="Adicionar tarefa" title="Adicionar">
+                      +
+                    </button>
+                  </span> : null}
+              </div>
+
+              {/* Lista de tarefas com mais espaço */}
+              <div className="space-y-3 max-h-[500px] overflow-y-auto">
+                {dayTasks.length ? dayTasks.map(t => {
+                  const stageLabel = STAGES.find(s => s.key === t.stage)?.label ?? "Etapa";
+                  const assignee = teamById.get(t.assigned_user_id);
+                  const assigneeName = assignee?.display_name ?? "—";
+                  const clientName = clientNameById.get(t.client_id) ?? "—";
+                  const canInteract = !!(canManageTasks || t.assigned_user_id === user?.id);
+                  const members = assigneesByTaskId.get(t.id) ?? [];
+                  
+                  return <AgendaWeekTaskItem 
+                    key={t.id} 
+                    stageLabel={stageLabel} 
+                    stage={t.stage} 
+                    done={t.status === "concluido"} 
+                    assigneeName={assigneeName} 
+                    assigneeAvatarUrl={assignee?.avatar_url ?? undefined} 
+                    members={members}
+                    clientName={clientName} 
+                    dueTime={formatDueTime(t.due_at)} 
+                    density="default"
+                    canInteract={canInteract} 
+                    canDelete={!!isAdmin} 
+                    onToggle={() => {
+                      const next = t.status === "concluido" ? "pendente" : "concluido";
+                      toggleComplete(t.id, next);
+                    }} 
+                    onDelete={() => onDeleteTask(t.id)} 
+                    onClick={() => canManageTasks && openEditTask(t)} 
+                  />;
+                }) : (
+                  <div className="grid min-h-[120px] place-items-center rounded-lg border border-dashed border-border/60 bg-card/5 p-4">
+                    <p className="text-sm text-muted-foreground">Sem tarefas</p>
+                  </div>
+                )}
+              </div>
+            </div>;
+          })}
+              </div>
+            </div> : <>
+              <div className="grid grid-cols-7 gap-2 text-xs text-muted-foreground">
+                {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map(d => <div key={d} className="px-2 py-1">
+                    {d}
+                  </div>)}
+              </div>
+
+              <div className="mt-2 grid grid-cols-7 gap-2">
+                {days.map(d => {
+                  const key = format(d, "yyyy-MM-dd");
+                  const inMonth = d.getMonth() === cursor.getMonth();
+                  const dayTasks = tasksByDay.get(key) ?? [];
+                  const hasOverdue = key < todayKey && dayTasks.some(t => t.status !== "concluido");
+                  
+                  return (
+                    <DayDropZone key={key} dayKey={key} isToday={key === todayKey} disabled={!canManageTasks}>
+                      <div className={cn(
+                        "relative min-h-28 rounded-xl border border-border/60 bg-card/20 p-2 transition",
+                        inMonth ? "opacity-100" : "opacity-50",
+                        hasOverdue && "ring-1 ring-danger/40"
+                      )}>
+                        <div className="flex items-center justify-between">
+                          <div className={cn(
+                            "relative grid h-8 w-8 place-items-center rounded-full border border-border/60 bg-background/60 text-xs",
+                            key === todayKey ? "text-primary" : "text-muted-foreground"
+                          )} aria-label={`Dia ${format(d, "d")}`}>
+                            <span>{format(d, "d")}</span>
+                          </div>
+                          {dayTasks.length ? (
+                            <Badge variant={hasOverdue ? "destructive" : "secondary"} className="px-2">
+                              {dayTasks.length}
+                            </Badge>
+                          ) : null}
+                        </div>
+
+                        {canManageTasks && (
+                          <div className="absolute right-2 top-2 z-10 flex items-center gap-1">
+                            <button
+                              type="button"
+                              className="grid h-6 w-6 place-items-center rounded-md border border-border/60 bg-background/80 text-xs leading-none text-foreground shadow-sm transition hover:bg-accent"
+                              onClick={() => openCreateForDay(key)}
+                              title="Adicionar tarefa"
+                              aria-label="Adicionar tarefa"
+                            >
+                              +
+                            </button>
+                            <button
+                              type="button"
+                              className="grid h-6 w-6 place-items-center rounded-md border border-border/60 bg-background/80 text-xs leading-none text-foreground shadow-sm transition hover:bg-accent"
+                              onClick={() => openDeleteForDay(key)}
+                              title="Remover tarefa"
+                              aria-label="Remover tarefa"
+                            >
+                              -
+                            </button>
+                          </div>
+                        )}
+
+                        <div className="mt-2 space-y-2">
+                          {dayTasks.slice(0, 4).map(t => {
+                            const stageLabel = t.stage === "planejamento" ? "Planej." : STAGES.find(s => s.key === t.stage)?.label ?? "Etapa";
+                            const assignee = teamById.get(t.assigned_user_id);
+                            const assigneeName = assignee?.display_name ?? "—";
+                            const clientName = clientNameById.get(t.client_id) ?? "—";
+                            const canInteract = !!(canManageTasks || t.assigned_user_id === user?.id);
+                            const members = assigneesByTaskId.get(t.id) ?? [];
+
+                            return (
+                              <DraggableTaskCard
+                                key={t.id}
+                                task={t}
+                                stageLabel={stageLabel}
+                                done={t.status === "concluido"}
+                                assigneeName={assigneeName}
+                                assigneeAvatarUrl={assignee?.avatar_url ?? undefined}
+                                members={members}
+                                clientName={clientName}
+                                dueTime={formatDueTime(t.due_at)}
+                                canInteract={canInteract}
+                                canDelete={!!isAdmin}
+                                canDrag={!!canManageTasks}
+                                onToggle={() => {
+                                  const next = t.status === "concluido" ? "pendente" : "concluido";
+                                  toggleComplete(t.id, next);
+                                }}
+                                onDelete={() => onDeleteTask(t.id)}
+                                onClick={() => canManageTasks && openEditTask(t)}
+                              />
+                            );
+                          })}
+                          {dayTasks.length > 4 && (
+                            <button
+                              type="button"
+                              className="w-full rounded-md border border-border/60 bg-background/50 px-2 py-1 text-left text-[10px] text-muted-foreground transition hover:bg-accent"
+                              onClick={() => openMoreForDay(key)}
+                            >
+                              +{dayTasks.length - 4} mais
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </DayDropZone>
+                  );
+                })}
+              </div>
+            </>}
+        </CardContent>
+      </Card>}
+    </div>
+  </DndContext>;
+}
