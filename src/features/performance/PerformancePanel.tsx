@@ -486,6 +486,63 @@ const TOTAL_POINTS = 8;
           </TabsContent>
         ) : null}
        </Tabs>
+
+       {/* Dialog de edição de pontuação */}
+       <Dialog open={!!editUserId} onOpenChange={(open) => !open && setEditUserId(null)}>
+         <DialogContent className="max-w-md">
+           <DialogHeader>
+             <DialogTitle>Editar Pontuação</DialogTitle>
+             <DialogDescription>
+               Ajuste os pontos de cada critério para{" "}
+               <strong>{teamById.get(editUserId ?? "")?.display_name ?? "—"}</strong> em {MONTHS[month - 1]}/{year}
+             </DialogDescription>
+           </DialogHeader>
+           <div className="space-y-4 py-4">
+             {CRITERIA.filter((c) => c.key !== "metas_prazos").map((c) => (
+               <div key={c.key} className="flex items-center justify-between gap-4">
+                 <div className="min-w-0 flex-1">
+                   <Label className="font-medium">{c.label}</Label>
+                   <p className="text-xs text-muted-foreground">{c.desc}</p>
+                 </div>
+                 <Input
+                   type="number"
+                   min={0}
+                   max={c.max}
+                   value={editValues[c.key] ?? 0}
+                   onChange={(e) =>
+                     setEditValues((v) => ({
+                       ...v,
+                       [c.key]: Math.min(c.max, Math.max(0, Number(e.target.value) || 0)),
+                     }))
+                   }
+                   className="w-20 text-center tabular-nums"
+                 />
+               </div>
+             ))}
+             <div className="flex items-center justify-between gap-4 rounded-lg border border-dashed border-border/60 p-3 bg-muted/20">
+               <div className="min-w-0 flex-1">
+                 <Label className="font-medium">Metas/Prazos</Label>
+                 <p className="text-xs text-muted-foreground">Calculado automaticamente</p>
+               </div>
+               <Badge variant="secondary" className="tabular-nums">
+                 {editValues.metas_prazos ?? 0}
+               </Badge>
+             </div>
+           </div>
+           <DialogFooter>
+             <Button variant="outline" onClick={() => setEditUserId(null)}>
+               Cancelar
+             </Button>
+             <Button
+               variant="brand"
+               onClick={onSave}
+               disabled={saveMut.isPending}
+             >
+               {saveMut.isPending ? "Salvando..." : "Salvar"}
+             </Button>
+           </DialogFooter>
+         </DialogContent>
+       </Dialog>
      </div>
    );
  }

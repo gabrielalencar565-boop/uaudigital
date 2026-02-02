@@ -3,10 +3,11 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Target } from "lucide-react";
 import { useToggleMagic2Stage } from "@/features/magic2/hooks/use-magic2";
 import { useMagic2Dashboard } from "@/features/magic2/hooks/use-magic2-dashboard";
 import { useSession } from "@/hooks/use-session";
-import { CreateMagic2ClientCard } from "@/features/magic2/components/CreateMagic2ClientCard";
 import { MonthYearNav } from "@/features/magic2/components/MonthYearNav";
 import { Magic2Checklist } from "@/features/magic2/components/Magic2Checklist";
 import { Magic2Dashboard } from "@/features/magic2/components/Magic2Dashboard";
@@ -69,7 +70,20 @@ export function Magic2Panel() {
         </div>
       </div>
 
-      {!hasAny ? <CreateMagic2ClientCard year={year} month={month} /> : <Tabs value={tab} onValueChange={v => setTab(v as any)}>
+      {!hasAny ? (
+        <Card className="border-dashed">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-3 h-12 w-12 rounded-full bg-muted/50 grid place-items-center">
+              <Target className="h-6 w-6 text-muted-foreground" />
+            </div>
+            <CardTitle className="text-lg">Nenhum cliente ativo neste mês</CardTitle>
+            <CardDescription>
+              Vá até <strong>Admin → Clientes</strong> para cadastrar clientes e definir os meses de contrato.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      ) : (
+        <Tabs value={tab} onValueChange={v => setTab(v as any)}>
           <TabsList className="bg-card/40">
             <TabsTrigger value="checklist">Checklist</TabsTrigger>
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
@@ -82,6 +96,7 @@ export function Magic2Panel() {
           <TabsContent value="dashboard" className="mt-4">
             <Magic2Dashboard dashboard={dashboard} year={year} month={month} />
           </TabsContent>
-        </Tabs>}
+        </Tabs>
+      )}
     </div>;
 }
