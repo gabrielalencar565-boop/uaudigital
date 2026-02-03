@@ -38,7 +38,7 @@ import { STAGES, type StageKey } from "@/lib/uau";
 import { MemberMultiSelect } from "./MemberMultiSelect";
 import { useTaskAssignees, useSetTaskAssignees } from "@/features/data/task-assignees-queries";
 import { useSession } from "@/hooks/use-session";
-import type { TaskRow, TaskStatus, ProfileRow, ClientRow, TeamMemberRow } from "@/features/data/queries";
+import type { TaskRow, TaskStatus, ClientRow, TeamMemberRow } from "@/features/data/queries";
 
 const AGENDA_STAGES = STAGES.filter((s) => s.key !== "revisao" && s.key !== "entrega");
 
@@ -59,7 +59,6 @@ interface EditTaskDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   clients: ClientRow[];
-  profiles: ProfileRow[];
   teamMembers?: TeamMemberRow[];
   isAdmin: boolean;
   canManageTasks: boolean;
@@ -83,7 +82,6 @@ export function EditTaskDialog({
   open,
   onOpenChange,
   clients,
-  profiles,
   teamMembers,
   isAdmin,
   canManageTasks,
@@ -98,13 +96,6 @@ export function EditTaskDialog({
   // Busca assignees existentes da tarefa
   const assigneesQ = useTaskAssignees(task ? [task.id] : undefined);
   const setAssignees = useSetTaskAssignees();
-
-  // Filtra apenas profiles que têm team_member ativo
-  const activeProfiles = useMemo(() => {
-    if (!teamMembers) return profiles;
-    const activeUserIds = new Set(teamMembers.map((m) => m.user_id));
-    return profiles.filter((p) => activeUserIds.has(p.user_id));
-  }, [profiles, teamMembers]);
 
   // Extrai horário do due_at se existir
   const extractTime = (dueAt: string | null): string => {
@@ -277,7 +268,7 @@ export function EditTaskDialog({
 
             {/* Múltiplos membros */}
             <MemberMultiSelect
-              profiles={activeProfiles}
+              members={teamMembers ?? []}
               selectedIds={selectedMembers}
               onChange={setSelectedMembers}
               disabled={!canManageTasks}
