@@ -27,8 +27,9 @@ function statusTone(status: string, dueDate: string, todayKey: string) {
 }
 export function DayViewPanel() {
   const [active, setActive] = useState<"magic" | "agenda">("magic");
-  const [autoRotate, setAutoRotate] = useState(true); // Auto-rotação ativada por padrão
-  const [isHovering, setIsHovering] = useState(false); // Pausa quando hover
+  const [autoRotate, setAutoRotate] = useState(true);
+  const [isHoveringRotateBtn, setIsHoveringRotateBtn] = useState(false);
+  const [rotateInterval, setRotateInterval] = useState(10_000); // 10s padrão
   const now = useNow({
     intervalMs: 30_000
   });
@@ -129,27 +130,22 @@ export function DayViewPanel() {
     toast.success("Dados atualizados!");
   };
 
-  // Auto-alternância a cada 10 segundos (pausa quando hover)
+  // Auto-alternância com intervalo configurável
   useEffect(() => {
-    if (!autoRotate || isHovering) return;
+    if (!autoRotate) return;
     const interval = setInterval(() => {
       setActive(v => v === "magic" ? "agenda" : "magic");
-    }, 10_000);
+    }, rotateInterval);
     return () => clearInterval(interval);
-  }, [autoRotate, isHovering]);
+  }, [autoRotate, rotateInterval]);
 
   // Parar auto-rotate quando clicar manualmente
-  const handleManualTabChange = (tab: "magic" | "agenda") => {
-    setAutoRotate(false);
-    setActive(tab);
+  const handleManualTabChange = () => {
+    setActive(v => v === "magic" ? "agenda" : "magic");
   };
-
-  // Handlers de hover para pausar a rotação
-  const handleMouseEnter = () => setIsHovering(true);
-  const handleMouseLeave = () => setIsHovering(false);
   return <div className="space-y-6">
       {/* Header em uma única linha */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Visão do Dia</h2>
           <p className="text-sm text-muted-foreground">
@@ -159,16 +155,47 @@ export function DayViewPanel() {
         
         {/* Controles à direita */}
         <div className="flex items-center gap-2">
-          {autoRotate ? <Button variant="outline" size="sm" onClick={() => setAutoRotate(false)} className="h-9">
-              {isHovering ? "Pausado" : "Auto"}
-            </Button> : <Button variant="outline" size="sm" onClick={() => setAutoRotate(true)} className="h-9">
-              Pausado
-            </Button>}
+          {/* Botão Rodando/Pausado */}
+          <Button 
+            variant={autoRotate ? "default" : "outline"}
+            size="sm" 
+            onClick={() => setAutoRotate(!autoRotate)}
+            onMouseEnter={() => setIsHoveringRotateBtn(true)}
+            onMouseLeave={() => setIsHoveringRotateBtn(false)}
+            className={cn(
+              "h-9 min-w-[90px]",
+              autoRotate && "bg-success hover:bg-success/90 text-success-foreground"
+            )}
+          >
+            {autoRotate 
+              ? (isHoveringRotateBtn ? "Pausado" : "Rodando") 
+              : (isHoveringRotateBtn ? "Rodando" : "Pausado")
+            }
+          </Button>
           
-          <Button variant={active === "magic" ? "default" : "outline"} size="sm" onClick={() => handleManualTabChange(active === "magic" ? "agenda" : "magic")} className="h-9">
+          {/* Botão de troca de tela */}
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleManualTabChange} 
+            className="h-9"
+          >
             {active === "magic" ? "Ir para agenda" : "Ir para Magic"}
           </Button>
 
+          {/* Dropdown de intervalo */}
+          <select 
+            value={String(rotateInterval)} 
+            onChange={e => setRotateInterval(Number(e.target.value))} 
+            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+          >
+            <option value="5000">5s</option>
+            <option value="10000">10s</option>
+            <option value="15000">15s</option>
+            <option value="30000">30s</option>
+          </select>
+
+          {/* Seletores de mês/ano */}
           <select value={String(selectedMonth)} onChange={e => setSelectedMonth(Number(e.target.value))} className="h-9 rounded-md border border-input bg-background px-3 text-sm">
             {Array.from({
             length: 12
