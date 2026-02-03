@@ -657,7 +657,9 @@ export function useSetTaskStatus() {
         } else {
           // Desmarcando tarefa: verificar se ainda há outras tarefas concluídas para a mesma etapa/cliente/mês
           const startOfMonth = `${year}-${String(month).padStart(2, "0")}-01`;
-          const endOfMonth = `${year}-${String(month).padStart(2, "0")}-31`;
+          // Calcular último dia do mês corretamente (usando Date para obter o último dia)
+          const lastDay = new Date(year, month, 0).getDate();
+          const endOfMonth = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
           
           const { data: otherCompleted, error: ocErr } = await supabase
             .from("tasks")
