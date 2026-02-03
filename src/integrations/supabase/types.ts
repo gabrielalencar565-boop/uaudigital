@@ -510,6 +510,7 @@ export type Database = {
           due_at: string | null
           due_date: string
           id: string
+          is_extra_demand: boolean
           stage: Database["public"]["Enums"]["stage_type"]
           status: Database["public"]["Enums"]["task_status"]
           title: string | null
@@ -527,6 +528,7 @@ export type Database = {
           due_at?: string | null
           due_date: string
           id?: string
+          is_extra_demand?: boolean
           stage: Database["public"]["Enums"]["stage_type"]
           status?: Database["public"]["Enums"]["task_status"]
           title?: string | null
@@ -544,6 +546,7 @@ export type Database = {
           due_at?: string | null
           due_date?: string
           id?: string
+          is_extra_demand?: boolean
           stage?: Database["public"]["Enums"]["stage_type"]
           status?: Database["public"]["Enums"]["task_status"]
           title?: string | null
