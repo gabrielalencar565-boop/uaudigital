@@ -65,16 +65,28 @@ export function useRealtimeSync(tables: RealtimeTable[] = []) {
       channel.on(
         "postgres_changes",
         { event: "*", schema: "public", table },
-        () => {
+        (payload) => {
+          console.log(`[Realtime] ${table} changed:`, payload.eventType);
+          
           const queryKeys = TABLE_TO_QUERY_KEYS[table] ?? [[table]];
           queryKeys.forEach((key) => {
-            queryClient.invalidateQueries({ queryKey: key });
+            // Usa predicate para invalidar todas as queries que começam com a key
+            queryClient.invalidateQueries({
+              predicate: (query) => {
+                const qk = query.queryKey;
+                if (!Array.isArray(qk)) return false;
+                // Verifica se a query key começa com os mesmos elementos
+                return key.every((k, i) => qk[i] === k);
+              },
+            });
           });
         }
       );
     });
 
-    channel.subscribe();
+    channel.subscribe((status) => {
+      console.log(`[Realtime] Channel status: ${status}`);
+    });
 
     return () => {
       supabase.removeChannel(channel);
