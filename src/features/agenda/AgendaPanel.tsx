@@ -678,17 +678,17 @@ export function AgendaPanel() {
                 </SelectContent>
               </Select>
 
-              {isAdmin ? <Select value={filterUserId} onValueChange={v => setFilterUserId(v as any)}>
-                  <SelectTrigger className="h-9 text-xs">
-                    <SelectValue placeholder="Responsável" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-popover z-50">
-                    <SelectItem value="all">Todos</SelectItem>
-                    {activeProfiles.map(p => <SelectItem key={p.user_id} value={p.user_id}>
-                        {p.full_name}
-                      </SelectItem>)}
-                  </SelectContent>
-                </Select> : null}
+              <Select value={filterUserId} onValueChange={v => setFilterUserId(v as any)}>
+                <SelectTrigger className="h-9 text-xs">
+                  <SelectValue placeholder="Responsável" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover z-50">
+                  <SelectItem value="all">Todos</SelectItem>
+                  {activeProfiles.map(p => <SelectItem key={p.user_id} value={p.user_id}>
+                      {p.full_name}
+                    </SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
           </CardHeader>
 
@@ -852,17 +852,17 @@ export function AgendaPanel() {
               </SelectContent>
             </Select>
 
-            {isAdmin ? <Select value={filterUserId} onValueChange={v => setFilterUserId(v as any)}>
-                <SelectTrigger className="w-[220px]">
-                  <SelectValue placeholder="Responsável" />
-                </SelectTrigger>
-                <SelectContent className="bg-popover z-50">
-                  <SelectItem value="all">Toda a equipe</SelectItem>
-                  {activeProfiles.map(p => <SelectItem key={p.user_id} value={p.user_id}>
-                      {p.full_name}
-                    </SelectItem>)}
-                </SelectContent>
-              </Select> : null}
+            <Select value={filterUserId} onValueChange={v => setFilterUserId(v as any)}>
+              <SelectTrigger className="w-[220px]">
+                <SelectValue placeholder="Responsável" />
+              </SelectTrigger>
+              <SelectContent className="bg-popover z-50">
+                <SelectItem value="all">Toda a equipe</SelectItem>
+                {activeProfiles.map(p => <SelectItem key={p.user_id} value={p.user_id}>
+                    {p.full_name}
+                  </SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
         </CardHeader>
 
