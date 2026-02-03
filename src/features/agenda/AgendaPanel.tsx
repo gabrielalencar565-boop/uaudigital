@@ -487,7 +487,7 @@ export function AgendaPanel() {
 
               {/* Múltiplos membros */}
               <MemberMultiSelect
-                profiles={activeProfiles}
+                members={team}
                 selectedIds={form.watch("assigned_user_ids")}
                 onChange={(ids) => form.setValue("assigned_user_ids", ids)}
                 disabled={!canManageTasks}
@@ -608,7 +608,6 @@ export function AgendaPanel() {
         open={editOpen}
         onOpenChange={setEditOpen}
         clients={clients}
-        profiles={activeProfiles}
         teamMembers={team}
         isAdmin={!!isAdmin}
         canManageTasks={!!canManageTasks}

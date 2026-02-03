@@ -1,7 +1,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import type { ProfileRow } from "@/features/data/queries";
+import type { TeamMemberRow } from "@/features/data/queries";
 
 function initials(name: string) {
   return name
@@ -13,7 +13,7 @@ function initials(name: string) {
 }
 
 interface MemberMultiSelectProps {
-  profiles: ProfileRow[];
+  members: TeamMemberRow[];
   selectedIds: string[];
   onChange: (ids: string[]) => void;
   disabled?: boolean;
@@ -21,7 +21,7 @@ interface MemberMultiSelectProps {
 }
 
 export function MemberMultiSelect({
-  profiles,
+  members,
   selectedIds,
   onChange,
   disabled,
@@ -40,13 +40,13 @@ export function MemberMultiSelect({
     <div className="space-y-2">
       <Label>{label}</Label>
       <div className="flex flex-wrap gap-2">
-        {profiles.map((p) => {
-          const selected = selectedIds.includes(p.user_id);
+        {members.map((m) => {
+          const selected = selectedIds.includes(m.user_id);
           return (
             <button
-              key={p.user_id}
+              key={m.user_id}
               type="button"
-              onClick={() => toggle(p.user_id)}
+              onClick={() => toggle(m.user_id)}
               disabled={disabled}
               className={cn(
                 "flex items-center gap-2 rounded-full border px-3 py-1.5 transition",
@@ -57,12 +57,12 @@ export function MemberMultiSelect({
               )}
             >
               <Avatar className="h-6 w-6">
-                <AvatarImage src={p.avatar_url ?? undefined} />
+                <AvatarImage src={m.avatar_url ?? undefined} />
                 <AvatarFallback className="text-[10px]">
-                  {initials(p.full_name)}
+                  {initials(m.display_name)}
                 </AvatarFallback>
               </Avatar>
-              <span className="text-sm">{p.full_name}</span>
+              <span className="text-sm">{m.display_name}</span>
             </button>
           );
         })}
