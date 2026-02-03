@@ -113,14 +113,15 @@ export function AgendaPanel() {
     return out;
   }, [cursor]);
 
+  // Todos os usuários veem todas as tarefas da agenda (colaboradores, planejadores e admins)
   const tasksQ = useTasks(view === "week" ? {
     start: weekStartKey,
     end: weekEndKey,
-    assignedUserId: !isAdmin ? user?.id : filterUserId !== "all" ? filterUserId : undefined,
+    assignedUserId: filterUserId !== "all" ? filterUserId : undefined,
     clientId: filterClientId !== "all" ? filterClientId : undefined
   } : {
     month: mk,
-    assignedUserId: !isAdmin ? user?.id : filterUserId !== "all" ? filterUserId : undefined,
+    assignedUserId: filterUserId !== "all" ? filterUserId : undefined,
     clientId: filterClientId !== "all" ? filterClientId : undefined
   });
   const inactiveQ = useMagic2InactiveAgendaClients(cursor.getFullYear(), cursor.getMonth() + 1);
