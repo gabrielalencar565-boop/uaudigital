@@ -65,6 +65,7 @@ export function AdminDeadlineReport({
       const { data, error } = await supabase
         .from("tasks")
         .select("id,title,due_date,status,completed_at,assigned_user_id,client_id,client:clients(name)")
+        .is("deleted_at", null)
         .gte("due_date", start)
         .lte("due_date", end)
         .order("due_date", { ascending: true });

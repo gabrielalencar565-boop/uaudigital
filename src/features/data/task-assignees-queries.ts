@@ -51,6 +51,7 @@ export function useTaskAssigneesByMonth(month?: string) {
       const { data: tasks, error: tErr } = await supabase
         .from("tasks")
         .select("id")
+        .is("deleted_at", null)
         .gte("due_date", startStr)
         .lte("due_date", endStr);
       if (tErr) throw tErr;
