@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { addDays, addMonths, subMonths, endOfMonth, format, startOfMonth, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CheckCircle2, Filter, TriangleAlert, Calendar } from "lucide-react";
+import { CheckCircle2, Filter, TriangleAlert, Calendar, Trash2 } from "lucide-react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -27,6 +27,7 @@ import { EditTaskDialog } from "@/features/agenda/components/EditTaskDialog";
 import { MemberMultiSelect } from "@/features/agenda/components/MemberMultiSelect";
 import { DraggableTaskCard } from "@/features/agenda/components/DraggableTaskCard";
 import { DayDropZone } from "@/features/agenda/components/DayDropZone";
+import { TaskTrashPanel } from "@/features/agenda/components/TaskTrashPanel";
 import { useAddTaskAssignees, useTaskAssigneesByMonth } from "@/features/data/task-assignees-queries";
 import { useMagic2InactiveAgendaClients } from "@/features/magic2/hooks/use-magic2";
 import { useRole } from "@/hooks/use-role";
@@ -196,6 +197,7 @@ export function AgendaPanel() {
   const [moreDayKey, setMoreDayKey] = useState<string | null>(null);
   const [editTask, setEditTask] = useState<TaskRow | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [trashOpen, setTrashOpen] = useState(false);
   const form = useForm<CreateTaskValues>({
     resolver: zodResolver(createTaskSchema),
     defaultValues: {
@@ -343,11 +345,16 @@ export function AgendaPanel() {
     setMoreOpen(true);
   };
   const onDeleteTask = async (taskId: string) => {
+    if (!user?.id) {
+      toast.error("Usuário não autenticado");
+      return;
+    }
     try {
       await deleteTask.mutateAsync({
-        taskId
+        taskId,
+        userId: user.id
       });
-      toast.success("Tarefa removida");
+      toast.success("Tarefa movida para lixeira");
     } catch (e: any) {
       toast.error(e?.message ?? "Erro ao remover tarefa");
     }
@@ -414,8 +421,26 @@ export function AgendaPanel() {
           <Badge variant={dueTodayCount ? "warning" : "secondary"}>
             {dueTodayCount ? `⏰ ${dueTodayCount} vence(m) hoje` : "Hoje ok"}
           </Badge>
+          {canManageTasks && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setTrashOpen(true)}
+              className="gap-2"
+            >
+              <Trash2 className="h-4 w-4" />
+              Lixeira
+            </Button>
+          )}
         </div>
       </div>
+
+      {/* Dialog da lixeira */}
+      <Dialog open={trashOpen} onOpenChange={setTrashOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] p-0 overflow-hidden">
+          <TaskTrashPanel onClose={() => setTrashOpen(false)} />
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog de criar tarefa (abrirá via botão + no dia) */}
       {canManageTasks && <Dialog open={open} onOpenChange={setOpen}>
