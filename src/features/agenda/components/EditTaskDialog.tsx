@@ -341,7 +341,7 @@ export function EditTaskDialog({
             </div>
 
             <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
-              {isAdmin && (
+              {canManageTasks && (
                 <Button
                   type="button"
                   variant="destructive"
