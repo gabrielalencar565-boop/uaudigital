@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
- import { Trophy, Edit } from "lucide-react";
+ import { Trophy, Edit, RefreshCw } from "lucide-react";
  
  import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
  import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -217,18 +217,33 @@ const TOTAL_POINTS = 8;
    return (
      <div className="space-y-6">
       <Tabs value={tab} onValueChange={(v) => setTab(v as "mensal" | "anual" | "relatorio")}>
-         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-           <div>
-             <h2 className="text-2xl font-semibold tracking-tight">Ranking Mensal</h2>
-             <p className="text-sm text-muted-foreground">Acompanhe o desempenho da equipe mês a mês</p>
-           </div>
- 
-           <TabsList className="bg-card/40">
-             <TabsTrigger value="mensal">Mensal</TabsTrigger>
-             <TabsTrigger value="anual">Anual</TabsTrigger>
-            {isAdmin ? <TabsTrigger value="relatorio">Relatório</TabsTrigger> : null}
-           </TabsList>
-         </div>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 className="text-2xl font-semibold tracking-tight">Ranking Mensal</h2>
+              <p className="text-sm text-muted-foreground">Acompanhe o desempenho da equipe mês a mês</p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => {
+                  queryClient.invalidateQueries({ queryKey: ["performance_scores"] });
+                  queryClient.invalidateQueries({ queryKey: ["performance_scores_annual"] });
+                  toast.success("Atualizado!");
+                }}
+                disabled={scoresQ.isFetching || annualQ.isFetching}
+                title="Atualizar dados"
+              >
+                <RefreshCw className={`h-4 w-4 ${scoresQ.isFetching || annualQ.isFetching ? "animate-spin" : ""}`} />
+              </Button>
+              <TabsList className="bg-card/40">
+                <TabsTrigger value="mensal">Mensal</TabsTrigger>
+                <TabsTrigger value="anual">Anual</TabsTrigger>
+                {isAdmin ? <TabsTrigger value="relatorio">Relatório</TabsTrigger> : null}
+              </TabsList>
+            </div>
+          </div>
  
          <TabsContent value="mensal" className="mt-6 space-y-6">
            <div className="flex flex-wrap gap-2">
