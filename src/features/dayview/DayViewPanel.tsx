@@ -150,16 +150,21 @@ export function DayViewPanel() {
   return <div className="space-y-6">
       {/* Header em uma única linha */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+        <div className="flex items-center gap-3">
           <h2 className="text-2xl font-semibold tracking-tight">Visão do Dia</h2>
-          <p className="text-sm text-muted-foreground">
+          <span className={cn(
+            "inline-flex items-center rounded-full px-4 py-1.5 text-sm font-semibold text-white",
+            daysUntilDeadline > 0 && "bg-success",
+            daysUntilDeadline === 0 && "bg-warning text-warning-foreground",
+            daysUntilDeadline < 0 && "bg-destructive"
+          )}>
             {daysUntilDeadline > 0 
-              ? `Faltam ${daysUntilDeadline} ${daysUntilDeadline === 1 ? "dia" : "dias"} para o prazo final`
+              ? `Faltam ${daysUntilDeadline} ${daysUntilDeadline === 1 ? "dia" : "dias"}`
               : daysUntilDeadline === 0 
-                ? "Hoje é o prazo final!"
-                : `Prazo encerrado há ${Math.abs(daysUntilDeadline)} ${Math.abs(daysUntilDeadline) === 1 ? "dia" : "dias"}`
+                ? "É hoje!"
+                : `Atrasado ${Math.abs(daysUntilDeadline)} ${Math.abs(daysUntilDeadline) === 1 ? "dia" : "dias"}`
             }
-          </p>
+          </span>
         </div>
         
         {/* Controles à direita */}
