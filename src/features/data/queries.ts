@@ -624,7 +624,7 @@ export function useSetTaskStatus() {
     mutationFn: async (input: { taskId: string; status: TaskStatus; userId: string }) => {
       const { data: task, error: tErr } = await supabase
         .from("tasks")
-        .select("client_id, stage, due_date")
+        .select("client_id, stage, due_date, is_extra_demand")
         .eq("id", input.taskId)
         .maybeSingle();
       if (tErr) throw tErr;
@@ -632,6 +632,15 @@ export function useSetTaskStatus() {
 
       const { error } = await supabase.from("tasks").update({ status: input.status }).eq("id", input.taskId);
       if (error) throw error;
+
+      // Demanda extra: não sincroniza com Magic Number (v1/v2). Ela só pontua no desempenho.
+      // Importante: os triggers do backend também fazem esse filtro, mas aqui garantimos que
+      // nenhuma sincronização client-side rode por engano.
+      if ((task as any).is_extra_demand === true) {
+        const [y, _m] = String(task.due_date).split("-");
+        const year = Number(y);
+        return { year: Number.isFinite(year) ? year : null };
+      }
 
       // Magic Number v2 (magic2): somente estágios suportados pela tabela magic2_cycle_stages
       const MAGIC2_STAGE_KEYS = new Set([
@@ -753,6 +762,7 @@ export function useSetTaskStatus() {
             .eq("client_id", task.client_id)
             .eq("stage", task.stage)
             .eq("status", "concluido")
+             .eq("is_extra_demand", false)
             .neq("id", input.taskId)
             .gte("due_date", startOfMonth)
             .lte("due_date", endOfMonth)
