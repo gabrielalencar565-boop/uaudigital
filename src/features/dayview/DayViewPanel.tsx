@@ -75,12 +75,29 @@ export function DayViewPanel() {
   // Se estamos visualizando o mês atual, mostrar tarefas de hoje
   const isCurrentMonth = selectedYear === now.getFullYear() && selectedMonth === now.getMonth() + 1;
   
-  const todayTasks = useMemo(() => {
-    const tasks = (tasksQ.data ?? []).filter(t => isCurrentMonth ? t.due_date === todayKey : true);
+  // Tarefas de hoje (exceto concluídas - elas vão separadas)
+  const todayPendingTasks = useMemo(() => {
+    const tasks = (tasksQ.data ?? []).filter(t => {
+      if (!isCurrentMonth) return t.status !== "concluido";
+      return t.due_date === todayKey && t.status !== "concluido";
+    });
     return tasks.sort((a, b) => {
-      const w = (s: string) => s === "concluido" ? 2 : s === "em_andamento" ? 1 : 0;
+      const w = (s: string) => s === "em_andamento" ? 0 : 1;
       const dw = w(a.status) - w(b.status);
       if (dw !== 0) return dw;
+      const na = teamByUserId.get(a.assigned_user_id)?.display_name ?? "";
+      const nb = teamByUserId.get(b.assigned_user_id)?.display_name ?? "";
+      return na.localeCompare(nb);
+    });
+  }, [tasksQ.data, todayKey, teamByUserId, isCurrentMonth]);
+
+  // Tarefas concluídas de hoje
+  const todayCompletedTasks = useMemo(() => {
+    const tasks = (tasksQ.data ?? []).filter(t => {
+      if (!isCurrentMonth) return t.status === "concluido";
+      return t.due_date === todayKey && t.status === "concluido";
+    });
+    return tasks.sort((a, b) => {
       const na = teamByUserId.get(a.assigned_user_id)?.display_name ?? "";
       const nb = teamByUserId.get(b.assigned_user_id)?.display_name ?? "";
       return na.localeCompare(nb);
@@ -93,7 +110,7 @@ export function DayViewPanel() {
       .sort((a, b) => a.due_date.localeCompare(b.due_date));
   }, [tasksQ.data, todayKey]);
 
-  const completedTasks = useMemo(() => 
+  const completedTasksCount = useMemo(() => 
     (tasksQ.data ?? []).filter(t => t.status === "concluido").length
   , [tasksQ.data]);
 
@@ -284,13 +301,14 @@ export function DayViewPanel() {
             </CardTitle>
             <CardDescription>
               {overdueTasks.length ? `${overdueTasks.length} atrasada(s) • ` : ""}
-              {completedTasks}/{totalTasks} concluída(s)
+              {completedTasksCount}/{totalTasks} concluída(s)
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-4">
+            {/* Tarefas Atrasadas - Widget Vermelho */}
             {overdueTasks.length > 0 && (
-              <div className="mb-4">
-                <p className="mb-2 text-xs font-medium text-destructive">Atrasadas</p>
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-destructive uppercase tracking-wide">Atrasadas</p>
                 {overdueTasks.map(t => {
                   const members = assigneesByTaskId.get(t.id) ?? [];
                   const person = teamByUserId.get(t.assigned_user_id);
@@ -300,7 +318,76 @@ export function DayViewPanel() {
                   const displayMembers = members.length > 0 ? members : person ? [{ user_id: person.user_id, display_name: person.display_name, avatar_url: person.avatar_url }] : [];
                   
                   return (
-                    <div key={t.id} className="flex items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 mb-2">
+                    <div key={t.id} className="flex items-center gap-3 rounded-lg border-2 border-destructive bg-destructive/20 px-3 py-2">
+                      {displayMembers.length > 1 ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="flex -space-x-2 shrink-0">
+                              {displayMembers.slice(0, 3).map((m) => (
+                                <Avatar key={m.user_id} className="h-8 w-8 border-2 border-destructive">
+                                  <AvatarImage src={m.avatar_url ?? undefined} />
+                                  <AvatarFallback className="text-[10px] bg-destructive/30">{initials(m.display_name)}</AvatarFallback>
+                                </Avatar>
+                              ))}
+                              {displayMembers.length > 3 && (
+                                <div className="h-8 w-8 flex items-center justify-center rounded-full border-2 border-destructive bg-destructive/30 text-destructive-foreground text-xs">
+                                  +{displayMembers.length - 3}
+                                </div>
+                              )}
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-[200px]">
+                            <div className="space-y-1">
+                              {displayMembers.map((m) => (
+                                <div key={m.user_id} className="flex items-center gap-2">
+                                  <Avatar className="h-5 w-5">
+                                    <AvatarImage src={m.avatar_url ?? undefined} />
+                                    <AvatarFallback className="text-[8px]">{initials(m.display_name)}</AvatarFallback>
+                                  </Avatar>
+                                  <span className="text-xs">{m.display_name}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        <Avatar className="h-8 w-8 border-2 border-destructive">
+                          <AvatarImage src={person?.avatar_url ?? undefined} />
+                          <AvatarFallback className="bg-destructive/30">{initials(person?.display_name ?? "?")}</AvatarFallback>
+                        </Avatar>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold truncate text-destructive-foreground">
+                          {displayMembers.length > 1 
+                            ? displayMembers.map(m => m.display_name).join(", ")
+                            : person?.display_name}
+                        </p>
+                        <p className="text-xs text-destructive-foreground/70 truncate">{client?.name} • {stageLabel}</p>
+                      </div>
+                      <Badge variant="destructive" className="text-xs font-bold shrink-0">
+                        {daysLate} {daysLate === 1 ? "dia" : "dias"}
+                      </Badge>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Tarefas de Hoje (Pendentes/Em Andamento) - Widget Branco */}
+            {todayPendingTasks.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  {isCurrentMonth ? "Hoje" : "Pendentes"}
+                </p>
+                {todayPendingTasks.map(t => {
+                  const members = assigneesByTaskId.get(t.id) ?? [];
+                  const person = teamByUserId.get(t.assigned_user_id);
+                  const client = clientsById.get(t.client_id);
+                  const stageLabel = STAGES.find(s => s.key === t.stage)?.label ?? t.stage;
+                  const displayMembers = members.length > 0 ? members : person ? [{ user_id: person.user_id, display_name: person.display_name, avatar_url: person.avatar_url }] : [];
+                  
+                  return (
+                    <div key={t.id} className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2">
                       {displayMembers.length > 1 ? (
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -346,80 +433,87 @@ export function DayViewPanel() {
                         </p>
                         <p className="text-xs text-muted-foreground truncate">{client?.name} • {stageLabel}</p>
                       </div>
-                      <Badge variant="destructive" className="text-xs">{daysLate}d</Badge>
+                      <Badge variant={t.status === "em_andamento" ? "warning" : "secondary"} className="text-xs shrink-0">
+                        {t.status === "em_andamento" ? "Em andamento" : "Pendente"}
+                      </Badge>
                     </div>
                   );
                 })}
               </div>
             )}
 
-            {todayTasks.length === 0 ? (
+            {/* Tarefas Concluídas - Widget Verde */}
+            {todayCompletedTasks.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-green-600 dark:text-green-400 uppercase tracking-wide">Concluídas</p>
+                {todayCompletedTasks.map(t => {
+                  const members = assigneesByTaskId.get(t.id) ?? [];
+                  const person = teamByUserId.get(t.assigned_user_id);
+                  const client = clientsById.get(t.client_id);
+                  const stageLabel = STAGES.find(s => s.key === t.stage)?.label ?? t.stage;
+                  const displayMembers = members.length > 0 ? members : person ? [{ user_id: person.user_id, display_name: person.display_name, avatar_url: person.avatar_url }] : [];
+                  
+                  return (
+                    <div key={t.id} className="flex items-center gap-3 rounded-lg border-2 border-green-500 bg-green-500/20 px-3 py-2">
+                      {displayMembers.length > 1 ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="flex -space-x-2 shrink-0">
+                              {displayMembers.slice(0, 3).map((m) => (
+                                <Avatar key={m.user_id} className="h-8 w-8 border-2 border-green-500">
+                                  <AvatarImage src={m.avatar_url ?? undefined} />
+                                  <AvatarFallback className="text-[10px] bg-green-500/30">{initials(m.display_name)}</AvatarFallback>
+                                </Avatar>
+                              ))}
+                              {displayMembers.length > 3 && (
+                                <div className="h-8 w-8 flex items-center justify-center rounded-full border-2 border-green-500 bg-green-500/30 text-green-900 dark:text-green-100 text-xs">
+                                  +{displayMembers.length - 3}
+                                </div>
+                              )}
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-[200px]">
+                            <div className="space-y-1">
+                              {displayMembers.map((m) => (
+                                <div key={m.user_id} className="flex items-center gap-2">
+                                  <Avatar className="h-5 w-5">
+                                    <AvatarImage src={m.avatar_url ?? undefined} />
+                                    <AvatarFallback className="text-[8px]">{initials(m.display_name)}</AvatarFallback>
+                                  </Avatar>
+                                  <span className="text-xs">{m.display_name}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        <Avatar className="h-8 w-8 border-2 border-green-500">
+                          <AvatarImage src={person?.avatar_url ?? undefined} />
+                          <AvatarFallback className="bg-green-500/30">{initials(person?.display_name ?? "?")}</AvatarFallback>
+                        </Avatar>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold truncate text-green-900 dark:text-green-100">
+                          {displayMembers.length > 1 
+                            ? displayMembers.map(m => m.display_name).join(", ")
+                            : person?.display_name}
+                        </p>
+                        <p className="text-xs text-green-700 dark:text-green-300 truncate">{client?.name} • {stageLabel}</p>
+                      </div>
+                      <Badge className="text-xs font-bold shrink-0 bg-green-600 text-white hover:bg-green-700">
+                        ✓ Concluída
+                      </Badge>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Mensagem quando não há tarefas */}
+            {todayPendingTasks.length === 0 && todayCompletedTasks.length === 0 && overdueTasks.length === 0 && (
               <p className="text-muted-foreground text-center py-4">
                 {isCurrentMonth ? "Nenhuma tarefa para hoje 🎉" : "Nenhuma tarefa neste mês"}
               </p>
-            ) : (
-              todayTasks.map(t => {
-                const members = assigneesByTaskId.get(t.id) ?? [];
-                const person = teamByUserId.get(t.assigned_user_id);
-                const client = clientsById.get(t.client_id);
-                const stageLabel = STAGES.find(s => s.key === t.stage)?.label ?? t.stage;
-                const tone = statusTone(t.status, t.due_date, todayKey);
-                const displayMembers = members.length > 0 ? members : person ? [{ user_id: person.user_id, display_name: person.display_name, avatar_url: person.avatar_url }] : [];
-                
-                return (
-                  <div key={t.id} className={cn(
-                    "flex items-center gap-3 rounded-lg border border-border/60 bg-card/20 px-3 py-2",
-                    t.status === "concluido" && "opacity-60"
-                  )}>
-                    {displayMembers.length > 1 ? (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div className="flex -space-x-2 shrink-0">
-                            {displayMembers.slice(0, 3).map((m) => (
-                              <Avatar key={m.user_id} className="h-8 w-8 border-2 border-background">
-                                <AvatarImage src={m.avatar_url ?? undefined} />
-                                <AvatarFallback className="text-[10px]">{initials(m.display_name)}</AvatarFallback>
-                              </Avatar>
-                            ))}
-                            {displayMembers.length > 3 && (
-                              <div className="h-8 w-8 flex items-center justify-center rounded-full border-2 border-background bg-muted text-muted-foreground text-xs">
-                                +{displayMembers.length - 3}
-                              </div>
-                            )}
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="max-w-[200px]">
-                          <div className="space-y-1">
-                            {displayMembers.map((m) => (
-                              <div key={m.user_id} className="flex items-center gap-2">
-                                <Avatar className="h-5 w-5">
-                                  <AvatarImage src={m.avatar_url ?? undefined} />
-                                  <AvatarFallback className="text-[8px]">{initials(m.display_name)}</AvatarFallback>
-                                </Avatar>
-                                <span className="text-xs">{m.display_name}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </TooltipContent>
-                      </Tooltip>
-                    ) : (
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={person?.avatar_url ?? undefined} />
-                        <AvatarFallback>{initials(person?.display_name ?? "?")}</AvatarFallback>
-                      </Avatar>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold truncate">
-                        {displayMembers.length > 1 
-                          ? displayMembers.map(m => m.display_name).join(", ")
-                          : person?.display_name}
-                      </p>
-                      <p className="text-xs text-muted-foreground truncate">{client?.name} • {stageLabel}</p>
-                    </div>
-                    <Badge variant={tone} className="h-3 w-3 rounded-full p-0" />
-                  </div>
-                );
-              })
             )}
           </CardContent>
         </Card>
