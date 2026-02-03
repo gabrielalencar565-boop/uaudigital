@@ -143,13 +143,22 @@ export function DayViewPanel() {
   const handleManualTabChange = () => {
     setActive(v => v === "magic" ? "agenda" : "magic");
   };
+  // Calcular dias restantes até o prazo final (dia 27 do mês selecionado)
+  const deadlineDate = new Date(selectedYear, selectedMonth - 1, 27);
+  const daysUntilDeadline = differenceInCalendarDays(deadlineDate, today);
+
   return <div className="space-y-6">
       {/* Header em uma única linha */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Visão do Dia</h2>
           <p className="text-sm text-muted-foreground">
-            {String(selectedMonth).padStart(2, "0")}/{selectedYear}
+            {daysUntilDeadline > 0 
+              ? `Faltam ${daysUntilDeadline} ${daysUntilDeadline === 1 ? "dia" : "dias"} para o prazo final`
+              : daysUntilDeadline === 0 
+                ? "Hoje é o prazo final!"
+                : `Prazo encerrado há ${Math.abs(daysUntilDeadline)} ${Math.abs(daysUntilDeadline) === 1 ? "dia" : "dias"}`
+            }
           </p>
         </div>
         
