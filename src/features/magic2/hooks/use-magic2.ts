@@ -176,6 +176,75 @@ export function useToggleMagic2Stage() {
   });
 }
 
+// Hook para criar stage on-demand (quando não existe) e já marcar como concluído
+export function useCreateAndToggleMagic2Stage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      cycleId,
+      stage,
+      completed,
+      userId,
+    }: {
+      cycleId: string;
+      stage: Magic2StageKey;
+      completed: boolean;
+      userId: string;
+    }) => {
+      const payload = {
+        cycle_id: cycleId,
+        stage,
+        completed,
+        completed_at: completed ? new Date().toISOString() : null,
+        completed_by: completed ? userId : null,
+      };
+
+      const res = await supabase.from("magic2_cycle_stages").insert(payload).select("id").single();
+      if (res.error) throw res.error;
+      return { stageId: res.data.id, cycleId, stage, completed, userId };
+    },
+    onMutate: async (vars) => {
+      await qc.cancelQueries({ queryKey: ["magic2"] });
+      const previousData = qc.getQueriesData({ queryKey: ["magic2", "month"] });
+
+      // Adiciona otimisticamente a nova stage
+      qc.setQueriesData<{ cycles: Magic2CycleRow[]; stages: Magic2StageRow[] } | undefined>(
+        { queryKey: ["magic2", "month"] },
+        (old) => {
+          if (!old) return old;
+          const tempId = `temp-${vars.cycleId}-${vars.stage}`;
+          return {
+            ...old,
+            stages: [
+              ...old.stages,
+              {
+                id: tempId,
+                cycle_id: vars.cycleId,
+                stage: vars.stage,
+                completed: vars.completed,
+                completed_at: vars.completed ? new Date().toISOString() : null,
+                completed_by: vars.completed ? vars.userId : null,
+              },
+            ],
+          };
+        }
+      );
+
+      return { previousData };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousData) {
+        for (const [queryKey, data] of context.previousData) {
+          qc.setQueryData(queryKey, data);
+        }
+      }
+    },
+    onSettled: async () => {
+      await qc.invalidateQueries({ queryKey: ["magic2"] });
+    },
+  });
+}
+
 export function useDeactivateMagic2ClientFromMonth() {
   const qc = useQueryClient();
   return useMutation({

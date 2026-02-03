@@ -14,9 +14,10 @@ type Props = {
   stages: Magic2StageRow[];
   isBusy?: boolean;
   onToggleStage: (stageId: string, current: boolean) => void;
+  onCreateStage?: (cycleId: string, stage: Magic2StageKey) => void;
 };
 
-export function Magic2Checklist({ year, month, cycles, stages, isBusy, onToggleStage }: Props) {
+export function Magic2Checklist({ year, month, cycles, stages, isBusy, onToggleStage, onCreateStage }: Props) {
   const isMobile = useIsMobile();
 
   const sortedCycles = useMemo(() => {
@@ -74,12 +75,20 @@ export function Magic2Checklist({ year, month, cycles, stages, isBusy, onToggleS
                     {MAGIC2_STAGES.map((st) => {
                       const cell = stageMap.get(st.key);
                       const completed = !!cell?.completed;
+                      const handleClick = () => {
+                        if (cell) {
+                          onToggleStage(cell.id, completed);
+                        } else if (onCreateStage) {
+                          // Cria a stage on-demand e marca como concluído
+                          onCreateStage(c.id, st.key);
+                        }
+                      };
                       return (
                         <button
                           key={st.key}
                           type="button"
-                          onClick={() => cell && onToggleStage(cell.id, completed)}
-                          disabled={!cell || isBusy}
+                          onClick={handleClick}
+                          disabled={isBusy}
                           className={cn(
                             "flex items-center gap-2 rounded-md border border-border/60 bg-card/20 px-3 py-2.5 text-left transition disabled:cursor-not-allowed disabled:opacity-60",
                             "hover:bg-card/30",
@@ -129,12 +138,20 @@ export function Magic2Checklist({ year, month, cycles, stages, isBusy, onToggleS
                   {MAGIC2_STAGES.map((st) => {
                     const cell = byCycleStage.get(c.id)?.get(st.key);
                     const completed = !!cell?.completed;
+                    const handleClick = () => {
+                      if (cell) {
+                        onToggleStage(cell.id, completed);
+                      } else if (onCreateStage) {
+                        // Cria a stage on-demand e marca como concluído
+                        onCreateStage(c.id, st.key);
+                      }
+                    };
                     return (
                       <td key={st.key} className="px-3 py-2">
                         <button
                           type="button"
-                          onClick={() => cell && onToggleStage(cell.id, completed)}
-                          disabled={!cell || isBusy}
+                          onClick={handleClick}
+                          disabled={isBusy}
                           className={cn(
                             "flex w-full items-center justify-center rounded-md border px-3 py-2 transition disabled:cursor-not-allowed disabled:opacity-60",
                             "border-border/60 bg-card/20 hover:bg-card/30",
