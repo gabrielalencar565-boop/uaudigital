@@ -599,59 +599,106 @@ export function useSetTaskStatus() {
       // Regras de sincronização (Magic Number):
       // - Checklist (client_cycle_stages) é a fonte do Dashboard.
       // - Ao concluir UMA tarefa da etapa no mês -> marca a etapa como concluída.
-      // - Ao reabrir tarefa -> NÃO desmarca (manual prevalece).
+      // - Ao desmarcar tarefa -> verifica se ainda há outras concluídas; se não, desmarca a etapa.
       const [y, m] = String(task.due_date).split("-");
       const year = Number(y);
       const month = Number(m);
       if (year && month) {
-        if (input.status !== "concluido") return;
+        const isCompleting = input.status === "concluido";
 
-        // Legado (client_stages): só marca (não desmarca)
-        const { error: stErr } = await supabase
-          .from("client_stages")
-          .update({ completed: true, completed_at: new Date().toISOString(), completed_by: input.userId })
-          .eq("client_id", task.client_id)
-          .eq("stage", task.stage);
-        if (stErr) throw stErr;
+        if (isCompleting) {
+          // Legado (client_stages): só marca (não desmarca)
+          const { error: stErr } = await supabase
+            .from("client_stages")
+            .update({ completed: true, completed_at: new Date().toISOString(), completed_by: input.userId })
+            .eq("client_id", task.client_id)
+            .eq("stage", task.stage);
+          if (stErr) throw stErr;
 
-        // Magic Number mensal: upsert do ciclo + etapa (só marca)
-        const due_date = `${year}-${String(month).padStart(2, "0")}-27`;
-        const { data: existingCycle, error: cErr } = await supabase
-          .from("client_cycles")
-          .select("id")
-          .eq("client_id", task.client_id)
-          .eq("year", year)
-          .eq("month", month)
-          .maybeSingle();
-        if (cErr) throw cErr;
-
-        let cycleId = existingCycle?.id as string | undefined;
-        if (!cycleId) {
-          const { data: newCycle, error: insErr } = await supabase
+          // Magic Number mensal: upsert do ciclo + etapa (marca)
+          const due_date = `${year}-${String(month).padStart(2, "0")}-27`;
+          const { data: existingCycle, error: cErr } = await supabase
             .from("client_cycles")
-            .insert({ client_id: task.client_id, year, month, due_date })
             .select("id")
-            .single();
-          if (insErr) throw insErr;
-          cycleId = newCycle.id as string;
-        }
+            .eq("client_id", task.client_id)
+            .eq("year", year)
+            .eq("month", month)
+            .maybeSingle();
+          if (cErr) throw cErr;
 
-        const patch = { completed: true, completed_at: new Date().toISOString(), completed_by: input.userId };
+          let cycleId = existingCycle?.id as string | undefined;
+          if (!cycleId) {
+            const { data: newCycle, error: insErr } = await supabase
+              .from("client_cycles")
+              .insert({ client_id: task.client_id, year, month, due_date })
+              .select("id")
+              .single();
+            if (insErr) throw insErr;
+            cycleId = newCycle.id as string;
+          }
 
-        const { data: stageRow, error: sSelErr } = await supabase
-          .from("client_cycle_stages")
-          .select("id")
-          .eq("cycle_id", cycleId)
-          .eq("stage", task.stage)
-          .maybeSingle();
-        if (sSelErr) throw sSelErr;
+          const patch = { completed: true, completed_at: new Date().toISOString(), completed_by: input.userId };
 
-        if (!stageRow?.id) {
-          const { error: sInsErr } = await supabase.from("client_cycle_stages").insert({ cycle_id: cycleId, stage: task.stage, ...patch });
-          if (sInsErr) throw sInsErr;
+          const { data: stageRow, error: sSelErr } = await supabase
+            .from("client_cycle_stages")
+            .select("id")
+            .eq("cycle_id", cycleId)
+            .eq("stage", task.stage)
+            .maybeSingle();
+          if (sSelErr) throw sSelErr;
+
+          if (!stageRow?.id) {
+            const { error: sInsErr } = await supabase.from("client_cycle_stages").insert({ cycle_id: cycleId, stage: task.stage, ...patch });
+            if (sInsErr) throw sInsErr;
+          } else {
+            const { error: sUpdErr } = await supabase.from("client_cycle_stages").update(patch).eq("id", stageRow.id);
+            if (sUpdErr) throw sUpdErr;
+          }
         } else {
-          const { error: sUpdErr } = await supabase.from("client_cycle_stages").update(patch).eq("id", stageRow.id);
-          if (sUpdErr) throw sUpdErr;
+          // Desmarcando tarefa: verificar se ainda há outras tarefas concluídas para a mesma etapa/cliente/mês
+          const startOfMonth = `${year}-${String(month).padStart(2, "0")}-01`;
+          const endOfMonth = `${year}-${String(month).padStart(2, "0")}-31`;
+          
+          const { data: otherCompleted, error: ocErr } = await supabase
+            .from("tasks")
+            .select("id")
+            .eq("client_id", task.client_id)
+            .eq("stage", task.stage)
+            .eq("status", "concluido")
+            .neq("id", input.taskId)
+            .gte("due_date", startOfMonth)
+            .lte("due_date", endOfMonth)
+            .limit(1);
+          if (ocErr) throw ocErr;
+
+          // Se não há outras tarefas concluídas, desmarcar a etapa no Magic Number
+          if (!otherCompleted || otherCompleted.length === 0) {
+            const { data: existingCycle, error: cErr } = await supabase
+              .from("client_cycles")
+              .select("id")
+              .eq("client_id", task.client_id)
+              .eq("year", year)
+              .eq("month", month)
+              .maybeSingle();
+            if (cErr) throw cErr;
+
+            if (existingCycle?.id) {
+              const { error: sUpdErr } = await supabase
+                .from("client_cycle_stages")
+                .update({ completed: false, completed_at: null, completed_by: null })
+                .eq("cycle_id", existingCycle.id)
+                .eq("stage", task.stage);
+              if (sUpdErr) throw sUpdErr;
+            }
+
+            // Legado (client_stages): também desmarcar
+            const { error: stErr } = await supabase
+              .from("client_stages")
+              .update({ completed: false, completed_at: null, completed_by: null })
+              .eq("client_id", task.client_id)
+              .eq("stage", task.stage);
+            if (stErr) throw stErr;
+          }
         }
       }
 
