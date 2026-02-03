@@ -57,6 +57,21 @@ function formatDueTime(dueAt: string | null): string | undefined {
     return undefined;
   }
 }
+
+/** Verifica se o usuário pode interagir com a tarefa (marcar/desmarcar) */
+function canUserInteractWithTask(
+  task: { assigned_user_id: string; id: string },
+  userId: string | undefined,
+  canManage: boolean,
+  membersByTaskId: Map<string, { user_id: string }[]>
+): boolean {
+  if (!userId) return false;
+  if (canManage) return true;
+  if (task.assigned_user_id === userId) return true;
+  // Verifica se é um membro adicional da tarefa
+  const members = membersByTaskId.get(task.id) ?? [];
+  return members.some(m => m.user_id === userId);
+}
 const createTaskSchema = z.object({
   client_id: z.string().uuid("Selecione um cliente"),
   stage: z.string().min(1),
@@ -585,7 +600,7 @@ export function AgendaPanel() {
               const assignee = teamById.get(t.assigned_user_id);
               const assigneeName = assignee?.display_name ?? "—";
               const clientName = clientNameById.get(t.client_id) ?? "—";
-              const canInteract = !!(canManageTasks || t.assigned_user_id === user?.id);
+              const canInteract = canUserInteractWithTask(t, user?.id, !!canManageTasks, assigneesByTaskId);
               const members = assigneesByTaskId.get(t.id) ?? [];
 
               return <AgendaWeekTaskItem key={t.id} stageLabel={stageLabel} stage={t.stage} done={t.status === "concluido"} assigneeName={assigneeName} assigneeAvatarUrl={assignee?.avatar_url ?? undefined} members={members} clientName={clientName} dueTime={formatDueTime(t.due_at)} density="default" isExtraDemand={t.is_extra_demand} canInteract={canInteract} canDelete={!!canManageTasks} onToggle={() => {
@@ -725,7 +740,7 @@ export function AgendaPanel() {
                     const assignee = teamById.get(t.assigned_user_id);
                     const assigneeName = assignee?.display_name ?? "—";
                     const clientName = clientNameById.get(t.client_id) ?? "—";
-                    const canInteract = !!(canManageTasks || t.assigned_user_id === user?.id);
+                    const canInteract = canUserInteractWithTask(t, user?.id, !!canManageTasks, assigneesByTaskId);
                     const members = assigneesByTaskId.get(t.id) ?? [];
                     return <AgendaWeekTaskItem key={t.id} stageLabel={stageLabel} stage={t.stage} done={t.status === "concluido"} assigneeName={assigneeName} assigneeAvatarUrl={assignee?.avatar_url ?? undefined} members={members} clientName={clientName} dueTime={formatDueTime(t.due_at)} isExtraDemand={t.is_extra_demand} canInteract={canInteract} canDelete={!!canManageTasks} onToggle={() => {
                       const next = t.status === "concluido" ? "pendente" : "concluido";
@@ -766,7 +781,7 @@ export function AgendaPanel() {
                         const assignee = teamById.get(t.assigned_user_id);
                         const assigneeName = assignee?.display_name ?? "—";
                         const clientName = clientNameById.get(t.client_id) ?? "—";
-                        const canInteract = !!(canManageTasks || t.assigned_user_id === user?.id);
+                        const canInteract = canUserInteractWithTask(t, user?.id, !!canManageTasks, assigneesByTaskId);
                         const members = assigneesByTaskId.get(t.id) ?? [];
 
                         return <AgendaWeekTaskItem key={t.id} stageLabel={stageLabel} stage={t.stage} done={t.status === "concluido"} assigneeName={assigneeName} assigneeAvatarUrl={assignee?.avatar_url ?? undefined} members={members} clientName={clientName} dueTime={formatDueTime(t.due_at)} density="default" isExtraDemand={t.is_extra_demand} canInteract={canInteract} canDelete={!!canManageTasks} onToggle={() => {
@@ -922,7 +937,7 @@ export function AgendaPanel() {
                   const assignee = teamById.get(t.assigned_user_id);
                   const assigneeName = assignee?.display_name ?? "—";
                   const clientName = clientNameById.get(t.client_id) ?? "—";
-                  const canInteract = !!(canManageTasks || t.assigned_user_id === user?.id);
+                  const canInteract = canUserInteractWithTask(t, user?.id, !!canManageTasks, assigneesByTaskId);
                   const members = assigneesByTaskId.get(t.id) ?? [];
                   
                   return <AgendaWeekTaskItem 
@@ -1019,7 +1034,7 @@ export function AgendaPanel() {
                             const assignee = teamById.get(t.assigned_user_id);
                             const assigneeName = assignee?.display_name ?? "—";
                             const clientName = clientNameById.get(t.client_id) ?? "—";
-                            const canInteract = !!(canManageTasks || t.assigned_user_id === user?.id);
+                            const canInteract = canUserInteractWithTask(t, user?.id, !!canManageTasks, assigneesByTaskId);
                             const members = assigneesByTaskId.get(t.id) ?? [];
 
                             return (
