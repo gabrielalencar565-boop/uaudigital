@@ -40,6 +40,7 @@ export type TaskRow = {
   completed_at: string | null;
   deleted_at: string | null;
   deleted_by: string | null;
+  is_extra_demand: boolean;
 };
 
 export type ProfileRow = {
@@ -229,7 +230,7 @@ export function useTasks(params?: {
     queryFn: async (): Promise<TaskRow[]> => {
       let q = supabase
         .from("tasks")
-        .select("id, client_id, stage, assigned_user_id, due_date, due_at, status, title, description, created_by, completed_at, deleted_at, deleted_by")
+        .select("id, client_id, stage, assigned_user_id, due_date, due_at, status, title, description, created_by, completed_at, deleted_at, deleted_by, is_extra_demand")
         .is("deleted_at", null); // Filtra apenas tarefas ativas
       if (assignedUserId) q = q.eq("assigned_user_id", assignedUserId);
       if (clientId) q = q.eq("client_id", clientId);
@@ -402,6 +403,7 @@ export function useCreateTask() {
         title: input.title ?? null,
         description: input.description ?? null,
         created_by: input.created_by,
+        is_extra_demand: input.is_extra_demand ?? false,
       }).select("id").single();
       if (error) throw error;
       return { id: data.id };
@@ -453,7 +455,7 @@ export function useDeletedTasks() {
     queryFn: async (): Promise<DeletedTaskRow[]> => {
       const { data, error } = await supabase
         .from("tasks")
-        .select("id, client_id, stage, assigned_user_id, due_date, due_at, status, title, description, created_by, completed_at, deleted_at, deleted_by")
+        .select("id, client_id, stage, assigned_user_id, due_date, due_at, status, title, description, created_by, completed_at, deleted_at, deleted_by, is_extra_demand")
         .not("deleted_at", "is", null)
         .order("deleted_at", { ascending: false });
       if (error) throw error;
