@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -48,6 +49,7 @@ const editTaskSchema = z.object({
   due_time: z.string().regex(/^\d{2}:\d{2}$/).optional().or(z.literal("")),
   description: z.string().trim().max(300).optional().or(z.literal("")),
   status: z.enum(["pendente", "em_andamento", "concluido"]),
+  is_extra_demand: z.boolean().optional(),
 });
 
 type EditTaskValues = z.infer<typeof editTaskSchema>;
@@ -70,6 +72,7 @@ interface EditTaskDialogProps {
     description?: string | null;
     title?: string | null;
     status?: TaskStatus;
+    is_extra_demand?: boolean;
   }) => Promise<void>;
   onDelete: (taskId: string) => Promise<void>;
   isPending?: boolean;
@@ -125,6 +128,7 @@ export function EditTaskDialog({
       due_time: "",
       description: "",
       status: "pendente",
+      is_extra_demand: false,
     },
   });
 
@@ -138,6 +142,7 @@ export function EditTaskDialog({
         due_time: extractTime(task.due_at),
         description: task.description ?? "",
         status: task.status,
+        is_extra_demand: task.is_extra_demand ?? false,
       });
     }
   }, [task, form]);
@@ -178,6 +183,7 @@ export function EditTaskDialog({
         description: values.description || null,
         title: null, // Limpa title já que usamos description agora
         status: values.status,
+        is_extra_demand: values.is_extra_demand ?? false,
       });
 
       // Atualiza os assignees
@@ -324,6 +330,23 @@ export function EditTaskDialog({
                 disabled={!canManageTasks}
                 rows={3}
               />
+            </div>
+
+            <div className="flex items-center gap-3 rounded-lg border border-border/60 bg-muted/30 p-3">
+              <Checkbox
+                id="edit_is_extra_demand"
+                checked={form.watch("is_extra_demand") ?? false}
+                onCheckedChange={(checked) => form.setValue("is_extra_demand", !!checked)}
+                disabled={!canManageTasks}
+              />
+              <div className="space-y-0.5">
+                <Label htmlFor="edit_is_extra_demand" className="cursor-pointer font-medium">
+                  Demanda Extra
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Não marca no Magic Number, apenas no desempenho
+                </p>
+              </div>
             </div>
 
             <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between">

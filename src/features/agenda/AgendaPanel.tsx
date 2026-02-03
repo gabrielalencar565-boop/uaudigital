@@ -9,6 +9,7 @@ import { DndContext, DragEndEvent, DragOverlay, closestCenter } from "@dnd-kit/c
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -62,7 +63,8 @@ const createTaskSchema = z.object({
   assigned_user_ids: z.array(z.string().uuid()).min(1, "Selecione ao menos um membro"),
   due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   due_time: z.string().regex(/^\d{2}:\d{2}$/).optional().or(z.literal("")),
-  description: z.string().trim().max(300).optional()
+  description: z.string().trim().max(300).optional(),
+  is_extra_demand: z.boolean().optional()
 });
 type CreateTaskValues = z.infer<typeof createTaskSchema>;
 const AGENDA_STAGES = STAGES.filter(s => s.key !== "revisao" && s.key !== "entrega");
@@ -206,7 +208,8 @@ export function AgendaPanel() {
       assigned_user_ids: [],
       due_date: format(new Date(), "yyyy-MM-dd"),
       due_time: "",
-      description: ""
+      description: "",
+      is_extra_demand: false
     }
   });
   const days = useMemo(() => {
@@ -300,7 +303,8 @@ export function AgendaPanel() {
         due_at,
         title: null,
         description: v.description ?? null,
-        created_by: user.id
+        created_by: user.id,
+        is_extra_demand: v.is_extra_demand ?? false
       } as any);
       
       // Adiciona todos os membros na tabela task_assignees
@@ -511,6 +515,22 @@ export function AgendaPanel() {
                 />
               </div>
 
+              <div className="flex items-center gap-3 rounded-lg border border-border/60 bg-muted/30 p-3">
+                <Checkbox
+                  id="is_extra_demand"
+                  checked={form.watch("is_extra_demand") ?? false}
+                  onCheckedChange={(checked) => form.setValue("is_extra_demand", !!checked)}
+                />
+                <div className="space-y-0.5">
+                  <Label htmlFor="is_extra_demand" className="cursor-pointer font-medium">
+                    Demanda Extra
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Não marca no Magic Number, apenas no desempenho
+                  </p>
+                </div>
+              </div>
+
               <DialogFooter>
                 <Button type="submit" variant="brand" disabled={createTask.isPending}>
                   {createTask.isPending ? "Criando..." : "Criar"}
@@ -567,7 +587,7 @@ export function AgendaPanel() {
               const canInteract = !!(canManageTasks || t.assigned_user_id === user?.id);
               const members = assigneesByTaskId.get(t.id) ?? [];
 
-              return <AgendaWeekTaskItem key={t.id} stageLabel={stageLabel} stage={t.stage} done={t.status === "concluido"} assigneeName={assigneeName} assigneeAvatarUrl={assignee?.avatar_url ?? undefined} members={members} clientName={clientName} dueTime={formatDueTime(t.due_at)} density="default" canInteract={canInteract} canDelete={!!isAdmin} onToggle={() => {
+              return <AgendaWeekTaskItem key={t.id} stageLabel={stageLabel} stage={t.stage} done={t.status === "concluido"} assigneeName={assigneeName} assigneeAvatarUrl={assignee?.avatar_url ?? undefined} members={members} clientName={clientName} dueTime={formatDueTime(t.due_at)} density="default" isExtraDemand={t.is_extra_demand} canInteract={canInteract} canDelete={!!isAdmin} onToggle={() => {
                 const next = t.status === "concluido" ? "pendente" : "concluido";
                 toggleComplete(t.id, next);
               }} onDelete={() => onDeleteTask(t.id)} onClick={() => canManageTasks && openEditTask(t)} />;
@@ -707,7 +727,7 @@ export function AgendaPanel() {
                     const clientName = clientNameById.get(t.client_id) ?? "—";
                     const canInteract = !!(canManageTasks || t.assigned_user_id === user?.id);
                     const members = assigneesByTaskId.get(t.id) ?? [];
-                    return <AgendaWeekTaskItem key={t.id} stageLabel={stageLabel} stage={t.stage} done={t.status === "concluido"} assigneeName={assigneeName} assigneeAvatarUrl={assignee?.avatar_url ?? undefined} members={members} clientName={clientName} dueTime={formatDueTime(t.due_at)} canInteract={canInteract} canDelete={!!isAdmin} onToggle={() => {
+                    return <AgendaWeekTaskItem key={t.id} stageLabel={stageLabel} stage={t.stage} done={t.status === "concluido"} assigneeName={assigneeName} assigneeAvatarUrl={assignee?.avatar_url ?? undefined} members={members} clientName={clientName} dueTime={formatDueTime(t.due_at)} isExtraDemand={t.is_extra_demand} canInteract={canInteract} canDelete={!!isAdmin} onToggle={() => {
                       const next = t.status === "concluido" ? "pendente" : "concluido";
                       toggleComplete(t.id, next);
                     }} onDelete={() => {
@@ -749,7 +769,7 @@ export function AgendaPanel() {
                         const canInteract = !!(canManageTasks || t.assigned_user_id === user?.id);
                         const members = assigneesByTaskId.get(t.id) ?? [];
 
-                        return <AgendaWeekTaskItem key={t.id} stageLabel={stageLabel} stage={t.stage} done={t.status === "concluido"} assigneeName={assigneeName} assigneeAvatarUrl={assignee?.avatar_url ?? undefined} members={members} clientName={clientName} dueTime={formatDueTime(t.due_at)} density="default" canInteract={canInteract} canDelete={!!isAdmin} onToggle={() => {
+                        return <AgendaWeekTaskItem key={t.id} stageLabel={stageLabel} stage={t.stage} done={t.status === "concluido"} assigneeName={assigneeName} assigneeAvatarUrl={assignee?.avatar_url ?? undefined} members={members} clientName={clientName} dueTime={formatDueTime(t.due_at)} density="default" isExtraDemand={t.is_extra_demand} canInteract={canInteract} canDelete={!!isAdmin} onToggle={() => {
                           const next = t.status === "concluido" ? "pendente" : "concluido";
                           toggleComplete(t.id, next);
                         }} onDelete={() => onDeleteTask(t.id)} onClick={() => canManageTasks && openEditTask(t)} />;
@@ -916,6 +936,7 @@ export function AgendaPanel() {
                     clientName={clientName} 
                     dueTime={formatDueTime(t.due_at)} 
                     density="default"
+                    isExtraDemand={t.is_extra_demand}
                     canInteract={canInteract} 
                     canDelete={!!isAdmin} 
                     onToggle={() => {

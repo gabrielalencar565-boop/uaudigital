@@ -47,6 +47,7 @@ export function AgendaWeekTaskItem({
   dueTime,
   density = "default",
   stagePillWidth = "full",
+  isExtraDemand,
   canInteract,
   canDelete,
   onToggle,
@@ -65,6 +66,8 @@ export function AgendaWeekTaskItem({
   dueTime?: string;
   density?: "default" | "compact";
   stagePillWidth?: "full" | "fit";
+  /** Whether this is an extra demand task */
+  isExtraDemand?: boolean;
   canInteract: boolean;
   canDelete: boolean;
   onToggle: () => void;
@@ -215,6 +218,16 @@ export function AgendaWeekTaskItem({
             >
               ⏰ {dueTime}
             </p>
+          )}
+          {isExtraDemand && (
+            <span
+              className={cn(
+                "mt-1 inline-flex items-center rounded-full bg-amber-500/20 px-2 py-0.5 font-medium text-amber-600 dark:text-amber-400",
+                isCompact ? "text-[9px]" : "text-[10px]",
+              )}
+            >
+              ★ Demanda Extra
+            </span>
           )}
         </div>
       </div>

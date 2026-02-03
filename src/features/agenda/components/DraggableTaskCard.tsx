@@ -93,6 +93,7 @@ export function DraggableTaskCard({
         members={members}
         clientName={clientName}
         dueTime={dueTime}
+        isExtraDemand={task.is_extra_demand}
         canInteract={canInteract}
         canDelete={canDelete}
         onToggle={onToggle}
