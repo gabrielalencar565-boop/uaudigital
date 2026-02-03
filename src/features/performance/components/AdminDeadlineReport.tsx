@@ -31,6 +31,11 @@ function yyyymm(year: number, month: number) {
   return `${year}-${String(month).padStart(2, "0")}`;
 }
 
+function getLastDayOfMonth(year: number, month: number) {
+  // Cria uma data no dia 0 do próximo mês, que é o último dia do mês atual
+  return new Date(year, month, 0).getDate();
+}
+
 function isOnTime(task: TaskForReport) {
   if (task.status !== "concluido" || !task.completed_at) return null;
   // compara por dia
@@ -61,7 +66,8 @@ export function AdminDeadlineReport({
     queryKey: ["deadline_report_tasks", year, month],
     queryFn: async (): Promise<TaskForReport[]> => {
       const start = `${yyyymm(year, month)}-01`;
-      const end = `${yyyymm(year, month)}-31`;
+      const lastDay = getLastDayOfMonth(year, month);
+      const end = `${yyyymm(year, month)}-${String(lastDay).padStart(2, "0")}`;
       const { data, error } = await supabase
         .from("tasks")
         .select("id,title,due_date,status,completed_at,assigned_user_id,client_id,client:clients(name)")
