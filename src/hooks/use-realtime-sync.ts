@@ -21,10 +21,11 @@ type RealtimeTable =
 const TABLE_TO_QUERY_KEYS: Record<RealtimeTable, string[][]> = {
   client_cycle_stages: [["client_cycle_stages"], ["magic2"]],
   client_stages: [["client_stages"]],
-  // Quando tasks muda, invalida também performance, dashboard e relatórios
+  // Quando tasks muda, invalida também magic2, performance, dashboard e relatórios
   tasks: [
     ["tasks"],
     ["deleted_tasks"],
+    ["magic2"], // <-- Magic Number precisa atualizar quando tarefas mudam
     ["performance_scores"],
     ["performance_scores_annual"],
     ["deadline_report_tasks"],
