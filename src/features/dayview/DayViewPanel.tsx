@@ -17,47 +17,47 @@ import { RefreshCw, Calendar, Target, RotateCcw } from "lucide-react";
 import { useNow } from "@/hooks/use-now";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-
 function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]!.toUpperCase()).join("");
 }
-
 function statusTone(status: string, dueDate: string, todayKey: string) {
   if (status === "concluido") return "success" as const;
   if (dueDate < todayKey) return "destructive" as const;
   return "warning" as const;
 }
-
-
-
 export function DayViewPanel() {
   const [active, setActive] = useState<"magic" | "agenda">("magic");
   const [autoRotate, setAutoRotate] = useState(true); // Auto-rotação ativada por padrão
   const [isHovering, setIsHovering] = useState(false); // Pausa quando hover
-  const now = useNow({ intervalMs: 30_000 });
+  const now = useNow({
+    intervalMs: 30_000
+  });
   const queryClient = useQueryClient();
   const [isRefreshing, setIsRefreshing] = useState(false);
-  
+
   // Navegador de mês/ano
   const [selectedYear, setSelectedYear] = useState(() => now.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(() => now.getMonth() + 1);
-  
   const today = now;
   const todayKey = format(today, "yyyy-MM-dd");
   const monthKey = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}`;
-  
   const clientsQ = useClients();
   const teamQ = useTeamMembers();
-  const tasksQ = useTasks({ month: monthKey });
+  const tasksQ = useTasks({
+    month: monthKey
+  });
   const magic2 = useMagic2Dashboard(selectedYear, selectedMonth);
   const assigneesQ = useTaskAssigneesByMonth(monthKey);
-  
   const clientsById = useMemo(() => new Map((clientsQ.data ?? []).map(c => [c.id, c] as const)), [clientsQ.data]);
   const teamByUserId = useMemo(() => new Map((teamQ.data ?? []).map(m => [m.user_id, m] as const)), [teamQ.data]);
 
   // Mapa de múltiplos assignees por tarefa
   const assigneesByTaskId = useMemo(() => {
-    const map = new Map<string, { user_id: string; display_name: string; avatar_url?: string | null }[]>();
+    const map = new Map<string, {
+      user_id: string;
+      display_name: string;
+      avatar_url?: string | null;
+    }[]>();
     for (const a of assigneesQ.data ?? []) {
       const member = teamByUserId.get(a.user_id);
       if (!member) continue;
@@ -65,16 +65,16 @@ export function DayViewPanel() {
       prev.push({
         user_id: a.user_id,
         display_name: member.display_name,
-        avatar_url: member.avatar_url,
+        avatar_url: member.avatar_url
       });
       map.set(a.task_id, prev);
     }
     return map;
   }, [assigneesQ.data, teamByUserId]);
-  
+
   // Se estamos visualizando o mês atual, mostrar tarefas de hoje
   const isCurrentMonth = selectedYear === now.getFullYear() && selectedMonth === now.getMonth() + 1;
-  
+
   // Tarefas de hoje (exceto concluídas - elas vão separadas)
   const todayPendingTasks = useMemo(() => {
     const tasks = (tasksQ.data ?? []).filter(t => {
@@ -103,17 +103,10 @@ export function DayViewPanel() {
       return na.localeCompare(nb);
     });
   }, [tasksQ.data, todayKey, teamByUserId, isCurrentMonth]);
-
   const overdueTasks = useMemo(() => {
-    return (tasksQ.data ?? [])
-      .filter(t => t.status !== "concluido" && t.due_date < todayKey)
-      .sort((a, b) => a.due_date.localeCompare(b.due_date));
+    return (tasksQ.data ?? []).filter(t => t.status !== "concluido" && t.due_date < todayKey).sort((a, b) => a.due_date.localeCompare(b.due_date));
   }, [tasksQ.data, todayKey]);
-
-  const completedTasksCount = useMemo(() => 
-    (tasksQ.data ?? []).filter(t => t.status === "concluido").length
-  , [tasksQ.data]);
-
+  const completedTasksCount = useMemo(() => (tasksQ.data ?? []).filter(t => t.status === "concluido").length, [tasksQ.data]);
   const totalTasks = tasksQ.data?.length ?? 0;
 
   // Navegação rápida para hoje
@@ -121,15 +114,17 @@ export function DayViewPanel() {
     setSelectedYear(now.getFullYear());
     setSelectedMonth(now.getMonth() + 1);
   };
-
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ["magic2"] }),
-      queryClient.invalidateQueries({ queryKey: ["tasks"] }),
-      queryClient.invalidateQueries({ queryKey: ["clients"] }),
-      queryClient.invalidateQueries({ queryKey: ["team_members"] }),
-    ]);
+    await Promise.all([queryClient.invalidateQueries({
+      queryKey: ["magic2"]
+    }), queryClient.invalidateQueries({
+      queryKey: ["tasks"]
+    }), queryClient.invalidateQueries({
+      queryKey: ["clients"]
+    }), queryClient.invalidateQueries({
+      queryKey: ["team_members"]
+    })]);
     setIsRefreshing(false);
     toast.success("Dados atualizados!");
   };
@@ -152,16 +147,9 @@ export function DayViewPanel() {
   // Handlers de hover para pausar a rotação
   const handleMouseEnter = () => setIsHovering(true);
   const handleMouseLeave = () => setIsHovering(false);
-
-
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6">
       {/* Header em uma única linha */}
-      <div 
-        className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-      >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Visão do Dia</h2>
           <p className="text-sm text-muted-foreground">
@@ -171,55 +159,28 @@ export function DayViewPanel() {
         
         {/* Controles à direita */}
         <div className="flex items-center gap-2">
-          {autoRotate ? (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => setAutoRotate(false)}
-              className="h-9"
-            >
+          {autoRotate ? <Button variant="outline" size="sm" onClick={() => setAutoRotate(false)} className="h-9">
               {isHovering ? "Pausado" : "Auto"}
-            </Button>
-          ) : (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => setAutoRotate(true)}
-              className="h-9"
-            >
+            </Button> : <Button variant="outline" size="sm" onClick={() => setAutoRotate(true)} className="h-9">
               Pausado
-            </Button>
-          )}
+            </Button>}
           
-          <Button
-            variant={active === "magic" ? "default" : "outline"}
-            size="sm"
-            onClick={() => handleManualTabChange(active === "magic" ? "agenda" : "magic")}
-            className="h-9"
-          >
+          <Button variant={active === "magic" ? "default" : "outline"} size="sm" onClick={() => handleManualTabChange(active === "magic" ? "agenda" : "magic")} className="h-9">
             {active === "magic" ? "Ir para agenda" : "Ir para Magic"}
           </Button>
 
-          <select
-            value={String(selectedMonth)}
-            onChange={e => setSelectedMonth(Number(e.target.value))}
-            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-          >
-            {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
-              <option key={m} value={m}>
-                {format(new Date(selectedYear, m - 1, 1), "MMMM", { locale: ptBR })}
-              </option>
-            ))}
+          <select value={String(selectedMonth)} onChange={e => setSelectedMonth(Number(e.target.value))} className="h-9 rounded-md border border-input bg-background px-3 text-sm">
+            {Array.from({
+            length: 12
+          }, (_, i) => i + 1).map(m => <option key={m} value={m}>
+                {format(new Date(selectedYear, m - 1, 1), "MMMM", {
+              locale: ptBR
+            })}
+              </option>)}
           </select>
 
-          <select
-            value={String(selectedYear)}
-            onChange={e => setSelectedYear(Number(e.target.value))}
-            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-          >
-            {[now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1].map(y => (
-              <option key={y} value={y}>{y}</option>
-            ))}
+          <select value={String(selectedYear)} onChange={e => setSelectedYear(Number(e.target.value))} className="h-9 rounded-md border border-input bg-background px-3 text-sm">
+            {[now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1].map(y => <option key={y} value={y}>{y}</option>)}
           </select>
 
           <Button variant="outline" size="icon" onClick={handleRefresh} disabled={isRefreshing} className="h-9 w-9">
@@ -229,22 +190,14 @@ export function DayViewPanel() {
       </div>
 
       {/* Conteúdo */}
-      {active === "magic" ? (
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Ciclo: {String(selectedMonth).padStart(2, "0")}/{selectedYear}
-          </p>
-          {magic2.query.isLoading ? (
-            <Card>
+      {active === "magic" ? <div className="space-y-4">
+          
+          {magic2.query.isLoading ? <Card>
               <CardHeader>
                 <CardTitle>Carregando…</CardTitle>
                 <CardDescription>Buscando dados do mês selecionado.</CardDescription>
               </CardHeader>
-            </Card>
-          ) : magic2.cycles.length ? (
-            <Magic2Dashboard dashboard={magic2.dashboard} year={selectedYear} month={selectedMonth} />
-          ) : (
-            <Card className="border-dashed">
+            </Card> : magic2.cycles.length ? <Magic2Dashboard dashboard={magic2.dashboard} year={selectedYear} month={selectedMonth} /> : <Card className="border-dashed">
               <CardHeader className="text-center">
                 <div className="mx-auto mb-3 h-12 w-12 rounded-full bg-muted/50 grid place-items-center">
                   <Target className="h-6 w-6 text-muted-foreground" />
@@ -256,14 +209,13 @@ export function DayViewPanel() {
                   Vá até o <strong>Magic Number</strong> para adicionar clientes ao ciclo.
                 </CardDescription>
               </CardHeader>
-            </Card>
-          )}
-        </div>
-      ) : (
-        <Card>
+            </Card>}
+        </div> : <Card>
           <CardHeader>
             <CardTitle>
-              {isCurrentMonth ? "Agenda de Hoje" : `Agenda de ${format(new Date(selectedYear, selectedMonth - 1, 1), "MMMM", { locale: ptBR })}`}
+              {isCurrentMonth ? "Agenda de Hoje" : `Agenda de ${format(new Date(selectedYear, selectedMonth - 1, 1), "MMMM", {
+            locale: ptBR
+          })}`}
             </CardTitle>
             <CardDescription>
               {overdueTasks.length ? `${overdueTasks.length} atrasada(s) • ` : ""}
@@ -272,218 +224,175 @@ export function DayViewPanel() {
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Tarefas Atrasadas - Widget Vermelho */}
-            {overdueTasks.length > 0 && (
-              <div className="space-y-2">
+            {overdueTasks.length > 0 && <div className="space-y-2">
                 <p className="text-xs font-medium text-destructive uppercase tracking-wide">Atrasadas</p>
                 {overdueTasks.map(t => {
-                  const members = assigneesByTaskId.get(t.id) ?? [];
-                  const person = teamByUserId.get(t.assigned_user_id);
-                  const client = clientsById.get(t.client_id);
-                  const stageLabel = STAGES.find(s => s.key === t.stage)?.label ?? t.stage;
-                  const daysLate = differenceInCalendarDays(today, new Date(`${t.due_date}T00:00:00`));
-                  const displayMembers = members.length > 0 ? members : person ? [{ user_id: person.user_id, display_name: person.display_name, avatar_url: person.avatar_url }] : [];
-                  
-                  return (
-                    <div key={t.id} className="flex items-center gap-3 rounded-lg bg-destructive px-3 py-2">
-                      {displayMembers.length > 1 ? (
-                        <Tooltip>
+            const members = assigneesByTaskId.get(t.id) ?? [];
+            const person = teamByUserId.get(t.assigned_user_id);
+            const client = clientsById.get(t.client_id);
+            const stageLabel = STAGES.find(s => s.key === t.stage)?.label ?? t.stage;
+            const daysLate = differenceInCalendarDays(today, new Date(`${t.due_date}T00:00:00`));
+            const displayMembers = members.length > 0 ? members : person ? [{
+              user_id: person.user_id,
+              display_name: person.display_name,
+              avatar_url: person.avatar_url
+            }] : [];
+            return <div key={t.id} className="flex items-center gap-3 rounded-lg bg-destructive px-3 py-2">
+                      {displayMembers.length > 1 ? <Tooltip>
                           <TooltipTrigger asChild>
                             <div className="flex -space-x-2 shrink-0">
-                              {displayMembers.slice(0, 3).map((m) => (
-                                <Avatar key={m.user_id} className="h-8 w-8 border-2 border-destructive-foreground/30">
+                              {displayMembers.slice(0, 3).map(m => <Avatar key={m.user_id} className="h-8 w-8 border-2 border-destructive-foreground/30">
                                   <AvatarImage src={m.avatar_url ?? undefined} />
                                   <AvatarFallback className="text-[10px] bg-destructive-foreground/20 text-destructive-foreground">{initials(m.display_name)}</AvatarFallback>
-                                </Avatar>
-                              ))}
-                              {displayMembers.length > 3 && (
-                                <div className="h-8 w-8 flex items-center justify-center rounded-full border-2 border-destructive-foreground/30 bg-destructive-foreground/20 text-destructive-foreground text-xs">
+                                </Avatar>)}
+                              {displayMembers.length > 3 && <div className="h-8 w-8 flex items-center justify-center rounded-full border-2 border-destructive-foreground/30 bg-destructive-foreground/20 text-destructive-foreground text-xs">
                                   +{displayMembers.length - 3}
-                                </div>
-                              )}
+                                </div>}
                             </div>
                           </TooltipTrigger>
                           <TooltipContent side="top" className="max-w-[200px]">
                             <div className="space-y-1">
-                              {displayMembers.map((m) => (
-                                <div key={m.user_id} className="flex items-center gap-2">
+                              {displayMembers.map(m => <div key={m.user_id} className="flex items-center gap-2">
                                   <Avatar className="h-5 w-5">
                                     <AvatarImage src={m.avatar_url ?? undefined} />
                                     <AvatarFallback className="text-[8px]">{initials(m.display_name)}</AvatarFallback>
                                   </Avatar>
                                   <span className="text-xs">{m.display_name}</span>
-                                </div>
-                              ))}
+                                </div>)}
                             </div>
                           </TooltipContent>
-                        </Tooltip>
-                      ) : (
-                        <Avatar className="h-8 w-8 border-2 border-destructive-foreground/30">
+                        </Tooltip> : <Avatar className="h-8 w-8 border-2 border-destructive-foreground/30">
                           <AvatarImage src={person?.avatar_url ?? undefined} />
                           <AvatarFallback className="bg-destructive-foreground/20 text-destructive-foreground">{initials(person?.display_name ?? "?")}</AvatarFallback>
-                        </Avatar>
-                      )}
+                        </Avatar>}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold truncate text-destructive-foreground">
-                          {displayMembers.length > 1 
-                            ? displayMembers.map(m => m.display_name).join(", ")
-                            : person?.display_name}
+                          {displayMembers.length > 1 ? displayMembers.map(m => m.display_name).join(", ") : person?.display_name}
                           {" "}•{" "}({client?.name}) • {stageLabel}
                         </p>
                       </div>
                       <span className="text-sm font-bold text-destructive-foreground shrink-0">
                         {daysLate} {daysLate === 1 ? "dia" : "dias"}
                       </span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                    </div>;
+          })}
+              </div>}
 
             {/* Tarefas de Hoje (Pendentes/Em Andamento) - Widget Branco */}
-            {todayPendingTasks.length > 0 && (
-              <div className="space-y-2">
+            {todayPendingTasks.length > 0 && <div className="space-y-2">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                   {isCurrentMonth ? "Hoje" : "Pendentes"}
                 </p>
                 {todayPendingTasks.map(t => {
-                  const members = assigneesByTaskId.get(t.id) ?? [];
-                  const person = teamByUserId.get(t.assigned_user_id);
-                  const client = clientsById.get(t.client_id);
-                  const stageLabel = STAGES.find(s => s.key === t.stage)?.label ?? t.stage;
-                  const displayMembers = members.length > 0 ? members : person ? [{ user_id: person.user_id, display_name: person.display_name, avatar_url: person.avatar_url }] : [];
-                  
-                  return (
-                    <div key={t.id} className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2">
-                      {displayMembers.length > 1 ? (
-                        <Tooltip>
+            const members = assigneesByTaskId.get(t.id) ?? [];
+            const person = teamByUserId.get(t.assigned_user_id);
+            const client = clientsById.get(t.client_id);
+            const stageLabel = STAGES.find(s => s.key === t.stage)?.label ?? t.stage;
+            const displayMembers = members.length > 0 ? members : person ? [{
+              user_id: person.user_id,
+              display_name: person.display_name,
+              avatar_url: person.avatar_url
+            }] : [];
+            return <div key={t.id} className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2">
+                      {displayMembers.length > 1 ? <Tooltip>
                           <TooltipTrigger asChild>
                             <div className="flex -space-x-2 shrink-0">
-                              {displayMembers.slice(0, 3).map((m) => (
-                                <Avatar key={m.user_id} className="h-8 w-8 border-2 border-background">
+                              {displayMembers.slice(0, 3).map(m => <Avatar key={m.user_id} className="h-8 w-8 border-2 border-background">
                                   <AvatarImage src={m.avatar_url ?? undefined} />
                                   <AvatarFallback className="text-[10px]">{initials(m.display_name)}</AvatarFallback>
-                                </Avatar>
-                              ))}
-                              {displayMembers.length > 3 && (
-                                <div className="h-8 w-8 flex items-center justify-center rounded-full border-2 border-background bg-muted text-muted-foreground text-xs">
+                                </Avatar>)}
+                              {displayMembers.length > 3 && <div className="h-8 w-8 flex items-center justify-center rounded-full border-2 border-background bg-muted text-muted-foreground text-xs">
                                   +{displayMembers.length - 3}
-                                </div>
-                              )}
+                                </div>}
                             </div>
                           </TooltipTrigger>
                           <TooltipContent side="top" className="max-w-[200px]">
                             <div className="space-y-1">
-                              {displayMembers.map((m) => (
-                                <div key={m.user_id} className="flex items-center gap-2">
+                              {displayMembers.map(m => <div key={m.user_id} className="flex items-center gap-2">
                                   <Avatar className="h-5 w-5">
                                     <AvatarImage src={m.avatar_url ?? undefined} />
                                     <AvatarFallback className="text-[8px]">{initials(m.display_name)}</AvatarFallback>
                                   </Avatar>
                                   <span className="text-xs">{m.display_name}</span>
-                                </div>
-                              ))}
+                                </div>)}
                             </div>
                           </TooltipContent>
-                        </Tooltip>
-                      ) : (
-                        <Avatar className="h-8 w-8">
+                        </Tooltip> : <Avatar className="h-8 w-8">
                           <AvatarImage src={person?.avatar_url ?? undefined} />
                           <AvatarFallback>{initials(person?.display_name ?? "?")}</AvatarFallback>
-                        </Avatar>
-                      )}
+                        </Avatar>}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold truncate">
-                          {displayMembers.length > 1 
-                            ? displayMembers.map(m => m.display_name).join(", ")
-                            : person?.display_name}
+                          {displayMembers.length > 1 ? displayMembers.map(m => m.display_name).join(", ") : person?.display_name}
                           {" "}•{" "}({client?.name}) • {stageLabel}
                         </p>
                       </div>
                       <Badge variant={t.status === "em_andamento" ? "warning" : "secondary"} className="text-xs shrink-0">
                         {t.status === "em_andamento" ? "Em andamento" : "Pendente"}
                       </Badge>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                    </div>;
+          })}
+              </div>}
 
             {/* Tarefas Concluídas - Widget Verde */}
-            {todayCompletedTasks.length > 0 && (
-              <div className="space-y-2">
+            {todayCompletedTasks.length > 0 && <div className="space-y-2">
                 <p className="text-xs font-medium text-green-600 dark:text-green-400 uppercase tracking-wide">Concluídas</p>
                 {todayCompletedTasks.map(t => {
-                  const members = assigneesByTaskId.get(t.id) ?? [];
-                  const person = teamByUserId.get(t.assigned_user_id);
-                  const client = clientsById.get(t.client_id);
-                  const stageLabel = STAGES.find(s => s.key === t.stage)?.label ?? t.stage;
-                  const displayMembers = members.length > 0 ? members : person ? [{ user_id: person.user_id, display_name: person.display_name, avatar_url: person.avatar_url }] : [];
-                  
-                  return (
-                    <div key={t.id} className="flex items-center gap-3 rounded-lg bg-success px-3 py-2">
-                      {displayMembers.length > 1 ? (
-                        <Tooltip>
+            const members = assigneesByTaskId.get(t.id) ?? [];
+            const person = teamByUserId.get(t.assigned_user_id);
+            const client = clientsById.get(t.client_id);
+            const stageLabel = STAGES.find(s => s.key === t.stage)?.label ?? t.stage;
+            const displayMembers = members.length > 0 ? members : person ? [{
+              user_id: person.user_id,
+              display_name: person.display_name,
+              avatar_url: person.avatar_url
+            }] : [];
+            return <div key={t.id} className="flex items-center gap-3 rounded-lg bg-success px-3 py-2">
+                      {displayMembers.length > 1 ? <Tooltip>
                           <TooltipTrigger asChild>
                             <div className="flex -space-x-2 shrink-0">
-                              {displayMembers.slice(0, 3).map((m) => (
-                                <Avatar key={m.user_id} className="h-8 w-8 border-2 border-success-foreground/30">
+                              {displayMembers.slice(0, 3).map(m => <Avatar key={m.user_id} className="h-8 w-8 border-2 border-success-foreground/30">
                                   <AvatarImage src={m.avatar_url ?? undefined} />
                                   <AvatarFallback className="text-[10px] bg-success-foreground/20 text-success-foreground">{initials(m.display_name)}</AvatarFallback>
-                                </Avatar>
-                              ))}
-                              {displayMembers.length > 3 && (
-                                <div className="h-8 w-8 flex items-center justify-center rounded-full border-2 border-success-foreground/30 bg-success-foreground/20 text-success-foreground text-xs">
+                                </Avatar>)}
+                              {displayMembers.length > 3 && <div className="h-8 w-8 flex items-center justify-center rounded-full border-2 border-success-foreground/30 bg-success-foreground/20 text-success-foreground text-xs">
                                   +{displayMembers.length - 3}
-                                </div>
-                              )}
+                                </div>}
                             </div>
                           </TooltipTrigger>
                           <TooltipContent side="top" className="max-w-[200px]">
                             <div className="space-y-1">
-                              {displayMembers.map((m) => (
-                                <div key={m.user_id} className="flex items-center gap-2">
+                              {displayMembers.map(m => <div key={m.user_id} className="flex items-center gap-2">
                                   <Avatar className="h-5 w-5">
                                     <AvatarImage src={m.avatar_url ?? undefined} />
                                     <AvatarFallback className="text-[8px]">{initials(m.display_name)}</AvatarFallback>
                                   </Avatar>
                                   <span className="text-xs">{m.display_name}</span>
-                                </div>
-                              ))}
+                                </div>)}
                             </div>
                           </TooltipContent>
-                        </Tooltip>
-                      ) : (
-                        <Avatar className="h-8 w-8 border-2 border-success-foreground/30">
+                        </Tooltip> : <Avatar className="h-8 w-8 border-2 border-success-foreground/30">
                           <AvatarImage src={person?.avatar_url ?? undefined} />
                           <AvatarFallback className="bg-success-foreground/20 text-success-foreground">{initials(person?.display_name ?? "?")}</AvatarFallback>
-                        </Avatar>
-                      )}
+                        </Avatar>}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold truncate text-success-foreground">
-                          {displayMembers.length > 1 
-                            ? displayMembers.map(m => m.display_name).join(", ")
-                            : person?.display_name}
+                          {displayMembers.length > 1 ? displayMembers.map(m => m.display_name).join(", ") : person?.display_name}
                           {" "}•{" "}({client?.name}) • {stageLabel}
                         </p>
                       </div>
                       <span className="text-sm font-bold text-success-foreground shrink-0">
                         ✓
                       </span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                    </div>;
+          })}
+              </div>}
 
             {/* Mensagem quando não há tarefas */}
-            {todayPendingTasks.length === 0 && todayCompletedTasks.length === 0 && overdueTasks.length === 0 && (
-              <p className="text-muted-foreground text-center py-4">
+            {todayPendingTasks.length === 0 && todayCompletedTasks.length === 0 && overdueTasks.length === 0 && <p className="text-muted-foreground text-center py-4">
                 {isCurrentMonth ? "Nenhuma tarefa para hoje 🎉" : "Nenhuma tarefa neste mês"}
-              </p>
-            )}
+              </p>}
           </CardContent>
-        </Card>
-      )}
-    </div>
-  );
+        </Card>}
+    </div>;
 }
