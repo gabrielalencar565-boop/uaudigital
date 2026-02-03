@@ -430,8 +430,8 @@ export function DayViewPanel() {
                           {displayMembers.length > 1 
                             ? displayMembers.map(m => m.display_name).join(", ")
                             : person?.display_name}
+                          {" "}•{" "}({client?.name}) • {stageLabel}
                         </p>
-                        <p className="text-xs text-muted-foreground truncate">{client?.name} • {stageLabel}</p>
                       </div>
                       <Badge variant={t.status === "em_andamento" ? "warning" : "secondary"} className="text-xs shrink-0">
                         {t.status === "em_andamento" ? "Em andamento" : "Pendente"}
