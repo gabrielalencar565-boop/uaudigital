@@ -596,6 +596,18 @@ export function useSetTaskStatus() {
       const { error } = await supabase.from("tasks").update({ status: input.status }).eq("id", input.taskId);
       if (error) throw error;
 
+      // Magic Number v2 (magic2): somente estágios suportados pela tabela magic2_cycle_stages
+      const MAGIC2_STAGE_KEYS = new Set([
+        "captacao",
+        "edicao_videos",
+        "planejamento",
+        "design",
+        "pdf",
+        "alteracoes",
+        "agendamento",
+      ]);
+      const taskStage = String(task.stage);
+
       // Regras de sincronização (Magic Number):
       // - Checklist (client_cycle_stages) é a fonte do Dashboard.
       // - Ao concluir UMA tarefa da etapa no mês -> marca a etapa como concluída.
@@ -605,6 +617,40 @@ export function useSetTaskStatus() {
       const month = Number(m);
       if (year && month) {
         const isCompleting = input.status === "concluido";
+
+        const syncMagic2 = async (nextCompleted: boolean) => {
+          if (!MAGIC2_STAGE_KEYS.has(taskStage)) return;
+
+          // Garante o link (agenda_client_id -> magic2_client_id)
+          const { data: magic2ClientId, error: linkErr } = await supabase.rpc("magic2_ensure_client_link", {
+            _agenda_client_id: task.client_id,
+          });
+          if (linkErr) throw linkErr;
+          if (!magic2ClientId) return;
+
+          const { data: cycleRow, error: cycErr } = await supabase
+            .from("magic2_cycles")
+            .select("id")
+            .eq("client_id", magic2ClientId)
+            .eq("year", year)
+            .eq("month", month)
+            .maybeSingle();
+          if (cycErr) throw cycErr;
+          if (!cycleRow?.id) return;
+
+          // Atualiza a etapa do ciclo
+          const payload = nextCompleted
+            ? { completed: true, completed_at: new Date().toISOString(), completed_by: input.userId }
+            : { completed: false, completed_at: null, completed_by: null };
+
+          const { error: stErr } = await supabase
+            .from("magic2_cycle_stages")
+            .update(payload)
+            .eq("cycle_id", cycleRow.id)
+            // Tipagem do client exige o enum magic2_stage_type; aqui garantimos via whitelist acima.
+            .eq("stage", taskStage as any);
+          if (stErr) throw stErr;
+        };
 
         if (isCompleting) {
           // Legado (client_stages): só marca (não desmarca)
@@ -654,6 +700,9 @@ export function useSetTaskStatus() {
             const { error: sUpdErr } = await supabase.from("client_cycle_stages").update(patch).eq("id", stageRow.id);
             if (sUpdErr) throw sUpdErr;
           }
+
+          // Magic Number v2
+          await syncMagic2(true);
         } else {
           // Desmarcando tarefa: verificar se ainda há outras tarefas concluídas para a mesma etapa/cliente/mês
           const startOfMonth = `${year}-${String(month).padStart(2, "0")}-01`;
@@ -700,6 +749,9 @@ export function useSetTaskStatus() {
               .eq("client_id", task.client_id)
               .eq("stage", task.stage);
             if (stErr) throw stErr;
+
+            // Magic Number v2
+            await syncMagic2(false);
           }
         }
       }
