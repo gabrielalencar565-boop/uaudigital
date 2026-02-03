@@ -156,67 +156,76 @@ export function DayViewPanel() {
 
   return (
     <div className="space-y-6">
-      {/* Header com navegador de mês/ano à direita */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Visão do Dia</h2>
-          <p className="text-sm text-muted-foreground">
-            {format(today, "EEEE, d 'de' MMMM", { locale: ptBR })}
-          </p>
-        </div>
-        
-        {/* Navegador de mês/ano alinhado à direita - mesmo formato do Magic Number */}
-        <div className="flex items-start gap-3">
-          <MonthYearNav 
-            month={selectedMonth} 
-            year={selectedYear} 
-            onMonthChange={setSelectedMonth} 
-            onYearChange={setSelectedYear} 
-          />
-          <div className="flex flex-col gap-2">
-            {!isCurrentMonth && (
-              <Button variant="outline" size="sm" onClick={goToToday} className="h-9">
-                Hoje
-              </Button>
-            )}
-            <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing} className="h-9">
-              <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Tabs de navegação - indicador de rotação automática */}
+      {/* Header em uma única linha */}
       <div 
-        className="flex flex-wrap items-center gap-2"
+        className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
-        <Button
-          variant={active === "magic" ? "default" : "outline"}
-          size="sm"
-          onClick={() => handleManualTabChange("magic")}
-        >
-          <Target className="h-4 w-4 mr-2" />
-          Magic Number
-        </Button>
-        <Button
-          variant={active === "agenda" ? "default" : "outline"}
-          size="sm"
-          onClick={() => handleManualTabChange("agenda")}
-        >
-          <Calendar className="h-4 w-4 mr-2" />
-          {isCurrentMonth ? "Agenda de Hoje" : "Agenda do Mês"}
-        </Button>
-        {autoRotate && (
-          <span className={cn(
-            "text-xs text-muted-foreground px-2 py-1 rounded-md bg-muted/50",
-            isHovering ? "opacity-60" : "animate-pulse"
-          )}>
-            <RotateCcw className={cn("inline h-3 w-3 mr-1", !isHovering && "animate-spin")} />
-            {isHovering ? "Pausado" : "Auto 10s"}
-          </span>
-        )}
+        <div>
+          <h2 className="text-2xl font-semibold tracking-tight">Visão do Dia</h2>
+          <p className="text-sm text-muted-foreground">
+            {String(selectedMonth).padStart(2, "0")}/{selectedYear}
+          </p>
+        </div>
+        
+        {/* Controles à direita */}
+        <div className="flex items-center gap-2">
+          {autoRotate ? (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setAutoRotate(false)}
+              className="h-9"
+            >
+              {isHovering ? "Pausado" : "Auto"}
+            </Button>
+          ) : (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setAutoRotate(true)}
+              className="h-9"
+            >
+              Pausado
+            </Button>
+          )}
+          
+          <Button
+            variant={active === "magic" ? "default" : "outline"}
+            size="sm"
+            onClick={() => handleManualTabChange(active === "magic" ? "agenda" : "magic")}
+            className="h-9"
+          >
+            {active === "magic" ? "Ir para agenda" : "Ir para Magic"}
+          </Button>
+
+          <select
+            value={String(selectedMonth)}
+            onChange={e => setSelectedMonth(Number(e.target.value))}
+            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+          >
+            {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+              <option key={m} value={m}>
+                {format(new Date(selectedYear, m - 1, 1), "MMMM", { locale: ptBR })}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={String(selectedYear)}
+            onChange={e => setSelectedYear(Number(e.target.value))}
+            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+          >
+            {[now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1].map(y => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+
+          <Button variant="outline" size="icon" onClick={handleRefresh} disabled={isRefreshing} className="h-9 w-9">
+            <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
+          </Button>
+        </div>
       </div>
 
       {/* Conteúdo */}
