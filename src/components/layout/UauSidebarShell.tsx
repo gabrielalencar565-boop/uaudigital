@@ -1,7 +1,7 @@
 import { PropsWithChildren, useMemo, useState } from "react";
 import { CalendarDays, ChevronLeft, Eye, LogOut, Shield, Target, Trophy, UserRound } from "lucide-react";
-import { useAppSettings } from "@/features/data/queries";
 import { supabase } from "@/integrations/supabase/client";
+import logoHorizontal from "@/assets/logo-horizontal.png";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -41,11 +41,7 @@ export function UauSidebarShell({
 }>) {
   const isMobile = useIsMobile();
   const [collapsed, setCollapsed] = useState(false);
-  const appSettingsQ = useAppSettings();
   const myProfileQ = useMyProfile();
-  const logoUrl = appSettingsQ.data?.logo_url;
-  const logoShape = appSettingsQ.data?.logo_shape ?? "square";
-  const logoClass = logoShape === "circle" ? "rounded-full" : "rounded-md";
 
   // Dados do usuário logado
   const userName = myProfileQ.data?.full_name ?? "Usuário";
@@ -159,10 +155,10 @@ export function UauSidebarShell({
           </SidebarContent>
 
           <SidebarFooter>
-            {/* Logo pequena da empresa no footer */}
-            {logoUrl && (!collapsed || isMobile) ? (
+            {/* Logo horizontal da Uau no footer */}
+            {(!collapsed || isMobile) ? (
               <div className="flex items-center gap-2 px-3 pb-2">
-                <img src={logoUrl} alt="Uau Digital" className={cn("h-6 w-6 object-cover", logoClass)} />
+                <img src={logoHorizontal} alt="Uau Digital" className="h-6 object-contain" />
                 <span className="text-[10px] text-sidebar-foreground/50">v1.0</span>
               </div>
             ) : null}
