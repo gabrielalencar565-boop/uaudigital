@@ -5,15 +5,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useClients, useTasks, useTeamMembers } from "@/features/data/queries";
 import { useTaskAssigneesByMonth } from "@/features/data/task-assignees-queries";
 import { Magic2Dashboard } from "@/features/magic2/components/Magic2Dashboard";
 import { useMagic2Dashboard } from "@/features/magic2/hooks/use-magic2-dashboard";
+import { MonthYearNav } from "@/features/magic2/components/MonthYearNav";
 import { STAGES } from "@/lib/uau";
 import { cn } from "@/lib/utils";
-import { RefreshCw, Calendar, Target, ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
+import { RefreshCw, Calendar, Target, RotateCcw } from "lucide-react";
 import { useNow } from "@/hooks/use-now";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -28,7 +28,7 @@ function statusTone(status: string, dueDate: string, todayKey: string) {
   return "warning" as const;
 }
 
-const MONTHS_PT = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+
 
 export function DayViewPanel() {
   const [active, setActive] = useState<"magic" | "agenda">("magic");
@@ -116,25 +116,7 @@ export function DayViewPanel() {
 
   const totalTasks = tasksQ.data?.length ?? 0;
 
-  // Navegação de mês
-  const goToPrevMonth = () => {
-    if (selectedMonth === 1) {
-      setSelectedMonth(12);
-      setSelectedYear(y => y - 1);
-    } else {
-      setSelectedMonth(m => m - 1);
-    }
-  };
-
-  const goToNextMonth = () => {
-    if (selectedMonth === 12) {
-      setSelectedMonth(1);
-      setSelectedYear(y => y + 1);
-    } else {
-      setSelectedMonth(m => m + 1);
-    }
-  };
-
+  // Navegação rápida para hoje
   const goToToday = () => {
     setSelectedYear(now.getFullYear());
     setSelectedMonth(now.getMonth() + 1);
@@ -171,15 +153,11 @@ export function DayViewPanel() {
   const handleMouseEnter = () => setIsHovering(true);
   const handleMouseLeave = () => setIsHovering(false);
 
-  const years = useMemo(() => {
-    const y = now.getFullYear();
-    return [y - 1, y, y + 1];
-  }, [now]);
 
   return (
     <div className="space-y-6">
       {/* Header com navegador de mês/ano à direita */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Visão do Dia</h2>
           <p className="text-sm text-muted-foreground">
@@ -187,42 +165,24 @@ export function DayViewPanel() {
           </p>
         </div>
         
-        {/* Navegador de mês/ano alinhado à direita */}
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={goToPrevMonth} className="h-9 w-9">
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Select value={String(selectedMonth)} onValueChange={v => setSelectedMonth(Number(v))}>
-            <SelectTrigger className="w-[130px] h-9">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="bg-popover z-50">
-              {MONTHS_PT.map((m, i) => (
-                <SelectItem key={i + 1} value={String(i + 1)}>{m}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(Number(v))}>
-            <SelectTrigger className="w-[90px] h-9">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="bg-popover z-50">
-              {years.map(y => (
-                <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button variant="outline" size="icon" onClick={goToNextMonth} className="h-9 w-9">
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-          {!isCurrentMonth && (
-            <Button variant="outline" size="sm" onClick={goToToday} className="h-9">
-              Hoje
+        {/* Navegador de mês/ano alinhado à direita - mesmo formato do Magic Number */}
+        <div className="flex items-start gap-3">
+          <MonthYearNav 
+            month={selectedMonth} 
+            year={selectedYear} 
+            onMonthChange={setSelectedMonth} 
+            onYearChange={setSelectedYear} 
+          />
+          <div className="flex flex-col gap-2">
+            {!isCurrentMonth && (
+              <Button variant="outline" size="sm" onClick={goToToday} className="h-9">
+                Hoje
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing} className="h-9">
+              <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
             </Button>
-          )}
-          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing} className="h-9">
-            <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
-          </Button>
+          </div>
         </div>
       </div>
 
@@ -294,7 +254,7 @@ export function DayViewPanel() {
         <Card>
           <CardHeader>
             <CardTitle>
-              {isCurrentMonth ? "Agenda de Hoje" : `Agenda de ${MONTHS_PT[selectedMonth - 1]}`}
+              {isCurrentMonth ? "Agenda de Hoje" : `Agenda de ${format(new Date(selectedYear, selectedMonth - 1, 1), "MMMM", { locale: ptBR })}`}
             </CardTitle>
             <CardDescription>
               {overdueTasks.length ? `${overdueTasks.length} atrasada(s) • ` : ""}
