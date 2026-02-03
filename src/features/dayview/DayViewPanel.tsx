@@ -318,19 +318,19 @@ export function DayViewPanel() {
                   const displayMembers = members.length > 0 ? members : person ? [{ user_id: person.user_id, display_name: person.display_name, avatar_url: person.avatar_url }] : [];
                   
                   return (
-                    <div key={t.id} className="flex items-center gap-3 rounded-lg border-2 border-destructive bg-destructive/20 px-3 py-2">
+                    <div key={t.id} className="flex items-center gap-3 rounded-lg bg-destructive px-3 py-2">
                       {displayMembers.length > 1 ? (
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <div className="flex -space-x-2 shrink-0">
                               {displayMembers.slice(0, 3).map((m) => (
-                                <Avatar key={m.user_id} className="h-8 w-8 border-2 border-destructive">
+                                <Avatar key={m.user_id} className="h-8 w-8 border-2 border-destructive-foreground/30">
                                   <AvatarImage src={m.avatar_url ?? undefined} />
-                                  <AvatarFallback className="text-[10px] bg-destructive/30">{initials(m.display_name)}</AvatarFallback>
+                                  <AvatarFallback className="text-[10px] bg-destructive-foreground/20 text-destructive-foreground">{initials(m.display_name)}</AvatarFallback>
                                 </Avatar>
                               ))}
                               {displayMembers.length > 3 && (
-                                <div className="h-8 w-8 flex items-center justify-center rounded-full border-2 border-destructive bg-destructive/30 text-destructive-foreground text-xs">
+                                <div className="h-8 w-8 flex items-center justify-center rounded-full border-2 border-destructive-foreground/30 bg-destructive-foreground/20 text-destructive-foreground text-xs">
                                   +{displayMembers.length - 3}
                                 </div>
                               )}
@@ -351,9 +351,9 @@ export function DayViewPanel() {
                           </TooltipContent>
                         </Tooltip>
                       ) : (
-                        <Avatar className="h-8 w-8 border-2 border-destructive">
+                        <Avatar className="h-8 w-8 border-2 border-destructive-foreground/30">
                           <AvatarImage src={person?.avatar_url ?? undefined} />
-                          <AvatarFallback className="bg-destructive/30">{initials(person?.display_name ?? "?")}</AvatarFallback>
+                          <AvatarFallback className="bg-destructive-foreground/20 text-destructive-foreground">{initials(person?.display_name ?? "?")}</AvatarFallback>
                         </Avatar>
                       )}
                       <div className="flex-1 min-w-0">
@@ -361,12 +361,12 @@ export function DayViewPanel() {
                           {displayMembers.length > 1 
                             ? displayMembers.map(m => m.display_name).join(", ")
                             : person?.display_name}
+                          {" "}•{" "}({client?.name}) • {stageLabel}
                         </p>
-                        <p className="text-xs text-destructive-foreground/70 truncate">{client?.name} • {stageLabel}</p>
                       </div>
-                      <Badge variant="destructive" className="text-xs font-bold shrink-0">
+                      <span className="text-sm font-bold text-destructive-foreground shrink-0">
                         {daysLate} {daysLate === 1 ? "dia" : "dias"}
-                      </Badge>
+                      </span>
                     </div>
                   );
                 })}
@@ -454,19 +454,19 @@ export function DayViewPanel() {
                   const displayMembers = members.length > 0 ? members : person ? [{ user_id: person.user_id, display_name: person.display_name, avatar_url: person.avatar_url }] : [];
                   
                   return (
-                    <div key={t.id} className="flex items-center gap-3 rounded-lg border-2 border-green-500 bg-green-500/20 px-3 py-2">
+                    <div key={t.id} className="flex items-center gap-3 rounded-lg bg-success px-3 py-2">
                       {displayMembers.length > 1 ? (
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <div className="flex -space-x-2 shrink-0">
                               {displayMembers.slice(0, 3).map((m) => (
-                                <Avatar key={m.user_id} className="h-8 w-8 border-2 border-green-500">
+                                <Avatar key={m.user_id} className="h-8 w-8 border-2 border-success-foreground/30">
                                   <AvatarImage src={m.avatar_url ?? undefined} />
-                                  <AvatarFallback className="text-[10px] bg-green-500/30">{initials(m.display_name)}</AvatarFallback>
+                                  <AvatarFallback className="text-[10px] bg-success-foreground/20 text-success-foreground">{initials(m.display_name)}</AvatarFallback>
                                 </Avatar>
                               ))}
                               {displayMembers.length > 3 && (
-                                <div className="h-8 w-8 flex items-center justify-center rounded-full border-2 border-green-500 bg-green-500/30 text-green-900 dark:text-green-100 text-xs">
+                                <div className="h-8 w-8 flex items-center justify-center rounded-full border-2 border-success-foreground/30 bg-success-foreground/20 text-success-foreground text-xs">
                                   +{displayMembers.length - 3}
                                 </div>
                               )}
@@ -487,22 +487,22 @@ export function DayViewPanel() {
                           </TooltipContent>
                         </Tooltip>
                       ) : (
-                        <Avatar className="h-8 w-8 border-2 border-green-500">
+                        <Avatar className="h-8 w-8 border-2 border-success-foreground/30">
                           <AvatarImage src={person?.avatar_url ?? undefined} />
-                          <AvatarFallback className="bg-green-500/30">{initials(person?.display_name ?? "?")}</AvatarFallback>
+                          <AvatarFallback className="bg-success-foreground/20 text-success-foreground">{initials(person?.display_name ?? "?")}</AvatarFallback>
                         </Avatar>
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold truncate text-green-900 dark:text-green-100">
+                        <p className="text-sm font-semibold truncate text-success-foreground">
                           {displayMembers.length > 1 
                             ? displayMembers.map(m => m.display_name).join(", ")
                             : person?.display_name}
+                          {" "}•{" "}({client?.name}) • {stageLabel}
                         </p>
-                        <p className="text-xs text-green-700 dark:text-green-300 truncate">{client?.name} • {stageLabel}</p>
                       </div>
-                      <Badge className="text-xs font-bold shrink-0 bg-green-600 text-white hover:bg-green-700">
-                        ✓ Concluída
-                      </Badge>
+                      <span className="text-sm font-bold text-success-foreground shrink-0">
+                        ✓
+                      </span>
                     </div>
                   );
                 })}
