@@ -584,6 +584,41 @@ export function useDeleteClient() {
 export function useSetTaskStatus() {
   const qc = useQueryClient();
   return useMutation({
+    // Optimistic update: atualiza a UI instantaneamente antes da resposta do servidor
+    onMutate: async (input) => {
+      // Cancela queries em andamento para não sobrescrever o optimistic update
+      await qc.cancelQueries({ queryKey: ["tasks"] });
+
+      // Snapshot do estado anterior
+      const previousTasks = qc.getQueriesData({ queryKey: ["tasks"] });
+
+      // Atualiza otimisticamente todas as queries de tasks
+      qc.setQueriesData<TaskRow[] | undefined>(
+        { queryKey: ["tasks"] },
+        (old) => {
+          if (!old) return old;
+          return old.map((t) =>
+            t.id === input.taskId
+              ? {
+                  ...t,
+                  status: input.status,
+                  completed_at: input.status === "concluido" ? new Date().toISOString() : null,
+                }
+              : t
+          );
+        }
+      );
+
+      return { previousTasks };
+    },
+    onError: (_err, _vars, context) => {
+      // Rollback em caso de erro
+      if (context?.previousTasks) {
+        for (const [queryKey, data] of context.previousTasks) {
+          qc.setQueryData(queryKey, data);
+        }
+      }
+    },
     mutationFn: async (input: { taskId: string; status: TaskStatus; userId: string }) => {
       const { data: task, error: tErr } = await supabase
         .from("tasks")
@@ -761,15 +796,16 @@ export function useSetTaskStatus() {
         year: Number.isFinite(year) ? year : null,
       };
     },
-    onSuccess: async (result) => {
+    onSettled: async (result) => {
+      // Revalida após a mutação (sucesso ou erro) para garantir consistência
       const year = result?.year ?? null;
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["tasks"] }),
         qc.invalidateQueries({ queryKey: ["client_stages"] }),
-        // mantém invalidação ampla
         qc.invalidateQueries({ queryKey: ["client_cycles"] }),
         qc.invalidateQueries({ queryKey: ["client_cycle_stages"] }),
-        // e também invalida as chaves exatas usadas no MagicPanel/MagicChecklistTable
+        // Magic Number v2
+        qc.invalidateQueries({ queryKey: ["magic2"] }),
         ...(year
           ? [
               qc.invalidateQueries({ queryKey: ["client_cycles", year] }),

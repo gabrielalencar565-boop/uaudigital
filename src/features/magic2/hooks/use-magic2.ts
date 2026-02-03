@@ -128,17 +128,50 @@ export function useToggleMagic2Stage() {
 
       const res = await supabase.from("magic2_cycle_stages").update(payload).eq("id", stageId);
       if (res.error) throw res.error;
-      return { stageId, nextCompleted };
+      return { stageId, nextCompleted, userId };
     },
-    onSuccess: async (_data, vars) => {
-      // Mantém simples: refetch do mês
-      const qk = qc
-        .getQueryCache()
-        .findAll({ queryKey: ["magic2", "month"] })
-        .map((q) => q.queryKey);
-      await Promise.all(qk.map((key) => qc.invalidateQueries({ queryKey: key })));
+    // Optimistic update: atualiza a UI instantaneamente antes da resposta do servidor
+    onMutate: async (vars) => {
+      // Cancela queries em andamento para não sobrescrever o optimistic update
+      await qc.cancelQueries({ queryKey: ["magic2"] });
+
+      // Snapshot do estado anterior
+      const previousData = qc.getQueriesData({ queryKey: ["magic2", "month"] });
+
+      // Atualiza otimisticamente todas as queries do mês
+      qc.setQueriesData<{ cycles: Magic2CycleRow[]; stages: Magic2StageRow[] } | undefined>(
+        { queryKey: ["magic2", "month"] },
+        (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            stages: old.stages.map((s) =>
+              s.id === vars.stageId
+                ? {
+                    ...s,
+                    completed: vars.nextCompleted,
+                    completed_at: vars.nextCompleted ? new Date().toISOString() : null,
+                    completed_by: vars.nextCompleted ? vars.userId : null,
+                  }
+                : s
+            ),
+          };
+        }
+      );
+
+      return { previousData };
+    },
+    onError: (_err, _vars, context) => {
+      // Rollback em caso de erro
+      if (context?.previousData) {
+        for (const [queryKey, data] of context.previousData) {
+          qc.setQueryData(queryKey, data);
+        }
+      }
+    },
+    onSettled: async () => {
+      // Revalida após a mutação (sucesso ou erro) para garantir consistência
       await qc.invalidateQueries({ queryKey: ["magic2"] });
-      return vars;
     },
   });
 }
