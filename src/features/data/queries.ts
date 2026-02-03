@@ -38,6 +38,8 @@ export type TaskRow = {
   description: string | null;
   created_by: string;
   completed_at: string | null;
+  deleted_at: string | null;
+  deleted_by: string | null;
 };
 
 export type ProfileRow = {
@@ -227,7 +229,8 @@ export function useTasks(params?: {
     queryFn: async (): Promise<TaskRow[]> => {
       let q = supabase
         .from("tasks")
-        .select("id, client_id, stage, assigned_user_id, due_date, due_at, status, title, description, created_by, completed_at");
+        .select("id, client_id, stage, assigned_user_id, due_date, due_at, status, title, description, created_by, completed_at, deleted_at, deleted_by")
+        .is("deleted_at", null); // Filtra apenas tarefas ativas
       if (assignedUserId) q = q.eq("assigned_user_id", assignedUserId);
       if (clientId) q = q.eq("client_id", clientId);
       if (start && end) {
@@ -412,40 +415,127 @@ export function useCreateTask() {
 export function useDeleteTask() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { taskId: string }) => {
-      // Precisamos dos dados da tarefa para recalcular Metas/Prazos no mês correto.
-      const { data: task, error: tErr } = await supabase
+    mutationFn: async (input: { taskId: string; userId: string }) => {
+      // Soft delete: apenas marca deleted_at
+      const { error } = await supabase
         .from("tasks")
-        .select("assigned_user_id, due_date")
-        .eq("id", input.taskId)
-        .maybeSingle();
-      if (tErr) throw tErr;
+        .update({ 
+          deleted_at: new Date().toISOString(),
+          deleted_by: input.userId
+        })
+        .eq("id", input.taskId);
+      if (error) throw error;
+      // O trigger task_soft_delete_uncheck_magic cuidará de desmarcar as etapas do Magic Number
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["tasks"] }),
+        qc.invalidateQueries({ queryKey: ["deleted_tasks"] }),
+        qc.invalidateQueries({ queryKey: ["performance_scores"] }),
+        qc.invalidateQueries({ queryKey: ["client_cycle_stages"] }),
+        qc.invalidateQueries({ queryKey: ["magic2"] }),
+      ]);
+    },
+  });
+}
 
-      // Remove overrides (se existirem) para evitar dados órfãos impactando recomputes.
+// =====================================================
+// LIXEIRA DE TAREFAS
+// =====================================================
+
+export type DeletedTaskRow = TaskRow & {
+  client_name?: string;
+};
+
+export function useDeletedTasks() {
+  return useQuery({
+    queryKey: ["deleted_tasks"],
+    queryFn: async (): Promise<DeletedTaskRow[]> => {
+      const { data, error } = await supabase
+        .from("tasks")
+        .select("id, client_id, stage, assigned_user_id, due_date, due_at, status, title, description, created_by, completed_at, deleted_at, deleted_by")
+        .not("deleted_at", "is", null)
+        .order("deleted_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as DeletedTaskRow[];
+    },
+  });
+}
+
+export function useRestoreTask() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { taskId: string }) => {
+      const { error } = await supabase
+        .from("tasks")
+        .update({ 
+          deleted_at: null,
+          deleted_by: null
+        })
+        .eq("id", input.taskId);
+      if (error) throw error;
+      // O trigger task_restore_check_magic cuidará de remarcar as etapas do Magic Number (se concluída)
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["tasks"] }),
+        qc.invalidateQueries({ queryKey: ["deleted_tasks"] }),
+        qc.invalidateQueries({ queryKey: ["client_cycle_stages"] }),
+        qc.invalidateQueries({ queryKey: ["magic2"] }),
+      ]);
+    },
+  });
+}
+
+export function usePermanentlyDeleteTask() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { taskId: string }) => {
+      // Remove overrides antes
       const { error: ovErr } = await supabase.from("task_deadline_overrides").delete().eq("task_id", input.taskId);
       if (ovErr) throw ovErr;
 
+      // Remove assignees antes
+      const { error: asErr } = await supabase.from("task_assignees").delete().eq("task_id", input.taskId);
+      if (asErr) throw asErr;
+
       const { error } = await supabase.from("tasks").delete().eq("id", input.taskId);
       if (error) throw error;
-
-      // Se a tarefa foi removida da Agenda, ela não deve pontuar (nem positivamente, nem negativamente).
-      // Recalcula a pontuação automática do mês/usuário relacionado à tarefa removida.
-      const [y, m] = String(task?.due_date ?? "").split("-");
-      const year = Number(y);
-      const month = Number(m);
-      const userId = task?.assigned_user_id;
-      if (userId && Number.isFinite(year) && Number.isFinite(month) && year > 1970 && month >= 1 && month <= 12) {
-        const { error: rErr } = await supabase.rpc("recompute_metas_prazos", {
-          _year: year,
-          _month: month,
-          _user_id: userId,
-        });
-        if (rErr) throw rErr;
-      }
     },
     onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ["tasks"] });
-      await qc.invalidateQueries({ queryKey: ["performance_scores"] });
+      await qc.invalidateQueries({ queryKey: ["deleted_tasks"] });
+    },
+  });
+}
+
+export function useEmptyTrash() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      // Busca todas as tarefas deletadas
+      const { data: deletedTasks, error: fetchErr } = await supabase
+        .from("tasks")
+        .select("id")
+        .not("deleted_at", "is", null);
+      if (fetchErr) throw fetchErr;
+
+      const taskIds = (deletedTasks ?? []).map((t: any) => t.id);
+      if (taskIds.length === 0) return;
+
+      // Remove overrides
+      const { error: ovErr } = await supabase.from("task_deadline_overrides").delete().in("task_id", taskIds);
+      if (ovErr) throw ovErr;
+
+      // Remove assignees
+      const { error: asErr } = await supabase.from("task_assignees").delete().in("task_id", taskIds);
+      if (asErr) throw asErr;
+
+      // Remove todas as tarefas na lixeira
+      const { error } = await supabase.from("tasks").delete().not("deleted_at", "is", null);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ["deleted_tasks"] });
     },
   });
 }
