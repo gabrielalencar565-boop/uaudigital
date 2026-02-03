@@ -178,7 +178,7 @@ export function DayViewPanel() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header com navegador de mês/ano à direita */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Visão do Dia</h2>
@@ -186,47 +186,44 @@ export function DayViewPanel() {
             {format(today, "EEEE, d 'de' MMMM", { locale: ptBR })}
           </p>
         </div>
+        
+        {/* Navegador de mês/ano alinhado à direita */}
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing}>
-            <RefreshCw className={cn("mr-2 h-4 w-4", isRefreshing && "animate-spin")} />
-            Atualizar
+          <Button variant="outline" size="icon" onClick={goToPrevMonth} className="h-9 w-9">
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Select value={String(selectedMonth)} onValueChange={v => setSelectedMonth(Number(v))}>
+            <SelectTrigger className="w-[130px] h-9">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-popover z-50">
+              {MONTHS_PT.map((m, i) => (
+                <SelectItem key={i + 1} value={String(i + 1)}>{m}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(Number(v))}>
+            <SelectTrigger className="w-[90px] h-9">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-popover z-50">
+              {years.map(y => (
+                <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button variant="outline" size="icon" onClick={goToNextMonth} className="h-9 w-9">
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          {!isCurrentMonth && (
+            <Button variant="outline" size="sm" onClick={goToToday} className="h-9">
+              Hoje
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing} className="h-9">
+            <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
           </Button>
         </div>
-      </div>
-
-      {/* Navegador de mês/ano */}
-      <div className="flex flex-wrap items-center gap-2">
-        <Button variant="outline" size="icon" onClick={goToPrevMonth}>
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        <Select value={String(selectedMonth)} onValueChange={v => setSelectedMonth(Number(v))}>
-          <SelectTrigger className="w-[140px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="bg-popover z-50">
-            {MONTHS_PT.map((m, i) => (
-              <SelectItem key={i + 1} value={String(i + 1)}>{m}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(Number(v))}>
-          <SelectTrigger className="w-[100px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="bg-popover z-50">
-            {years.map(y => (
-              <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Button variant="outline" size="icon" onClick={goToNextMonth}>
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-        {!isCurrentMonth && (
-          <Button variant="outline" size="sm" onClick={goToToday}>
-            Hoje
-          </Button>
-        )}
       </div>
 
       {/* Tabs de navegação - indicador de rotação automática */}
