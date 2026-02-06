@@ -587,7 +587,7 @@ export function AgendaPanel() {
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-2">
+          <div className="max-h-[60vh] space-y-2 overflow-y-auto">
             {(moreDayKey ? tasksByDay.get(moreDayKey) ?? [] : []).length ? (moreDayKey ? tasksByDay.get(moreDayKey) ?? [] : []).map(t => {
               const stageLabel = STAGES.find(s => s.key === t.stage)?.label ?? "Etapa";
               const assignee = teamById.get(t.assigned_user_id);
