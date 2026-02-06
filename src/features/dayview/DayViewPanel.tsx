@@ -535,30 +535,37 @@ export function DayViewPanel() {
                   const member = teamByUserId.get(row.user_id);
                   const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx + 1}º`;
                   const remaining = row.taskTotal - row.taskCompleted;
+                  // Tamanhos progressivos: 1º maior, 2º/3º médios, restante compacto
+                  const barH = idx === 0 ? "h-10" : idx <= 2 ? "h-8" : "h-6";
+                  const avatarSize = idx === 0 ? "h-11 w-11" : idx <= 2 ? "h-9 w-9" : "h-7 w-7";
+                  const medalSize = idx === 0 ? "text-lg" : idx <= 2 ? "text-base" : "text-sm";
+                  const nameSize = idx === 0 ? "text-base" : idx <= 2 ? "text-sm" : "text-xs";
+                  const pctSize = idx === 0 ? "text-sm" : "text-xs";
+                  const remainSize = idx <= 2 ? "text-xs" : "text-[11px]";
                   return (
-                    <div key={row.user_id} className="flex items-center gap-3">
-                      <span className="w-8 text-center text-sm font-semibold shrink-0">{medal}</span>
-                      <Avatar className="h-8 w-8 shrink-0">
+                    <div key={row.user_id} className={cn("flex items-center gap-3", idx <= 2 ? "py-1" : "py-0")}>
+                      <span className={cn("w-8 text-center font-semibold shrink-0", medalSize)}>{medal}</span>
+                      <Avatar className={cn(avatarSize, "shrink-0")}>
                         <AvatarImage src={member?.avatar_url ?? undefined} />
                         <AvatarFallback className="text-[10px]">{initials(member?.display_name ?? "?")}</AvatarFallback>
                       </Avatar>
-                      <span className="w-24 truncate text-sm font-medium shrink-0">
+                      <span className={cn("w-24 truncate font-medium shrink-0", nameSize)}>
                         {member?.display_name?.split(" ")[0] ?? "—"}
                       </span>
                       <div className="flex-1 min-w-0">
-                        <div className="relative h-7 w-full rounded-full bg-muted/50 overflow-hidden">
+                        <div className={cn("relative w-full rounded-full bg-muted/50 overflow-hidden", barH)}>
                           <div
                             className="absolute inset-y-0 left-0 rounded-full bg-success transition-all duration-500"
                             style={{ width: `${row.completionPct}%` }}
                           />
                           <div className="absolute inset-0 flex items-center justify-end pr-3">
-                            <span className="text-xs font-bold tabular-nums text-foreground">
+                            <span className={cn("font-bold tabular-nums text-foreground", pctSize)}>
                               {row.completionPct}%
                             </span>
                           </div>
                         </div>
                       </div>
-                      <span className="text-xs text-muted-foreground shrink-0 w-20 text-right">
+                      <span className={cn("text-muted-foreground shrink-0 w-20 text-right", remainSize)}>
                         {remaining > 0 ? `Faltam ${remaining}` : "✓ Tudo feito"}
                       </span>
                     </div>
