@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { differenceInCalendarDays, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,7 +14,7 @@ import { useMagic2Dashboard } from "@/features/magic2/hooks/use-magic2-dashboard
 import { MonthYearNav } from "@/features/magic2/components/MonthYearNav";
 import { STAGES } from "@/lib/uau";
 import { cn } from "@/lib/utils";
-import { RefreshCw, Calendar, Target, RotateCcw, Trophy } from "lucide-react";
+import { RefreshCw, Calendar, Target, RotateCcw, Trophy, ArrowUp, ArrowDown } from "lucide-react";
 import { useNow } from "@/hooks/use-now";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -124,6 +124,25 @@ export function DayViewPanel() {
     base.sort((a, b) => b.total - a.total);
     return base;
   }, [scoresQ.data, teamQ.data, taskStatsByUser]);
+  // Ranking filtrado (oculta Gabriel e Ayrton apenas aqui)
+  const HIDDEN_IDS = useMemo(() => [
+    "e674c34f-b268-4dfd-82c5-9aea9cba853e",
+    "132c71a9-846b-48ec-abcb-10f50286fdd1",
+  ], []);
+  const filteredRank = useMemo(() => monthlyRank.filter(r => !HIDDEN_IDS.includes(r.user_id)), [monthlyRank, HIDDEN_IDS]);
+
+  // Rastreia posição anterior para mostrar setas de subida/descida
+  const prevRankMap = useRef(new Map<string, number>());
+  useEffect(() => {
+    // Atualiza o mapa anterior após a renderização
+    const timer = setTimeout(() => {
+      const map = new Map<string, number>();
+      filteredRank.forEach((r, i) => map.set(r.user_id, i));
+      prevRankMap.current = map;
+    }, 2000); // Delay para permitir visualização das setas
+    return () => clearTimeout(timer);
+  }, [filteredRank]);
+
   const clientsById = useMemo(() => new Map((clientsQ.data ?? []).map(c => [c.id, c] as const)), [clientsQ.data]);
   const teamByUserId = useMemo(() => new Map((teamQ.data ?? []).map(m => [m.user_id, m] as const)), [teamQ.data]);
 
@@ -522,16 +541,7 @@ export function DayViewPanel() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              {monthlyRank
-                .filter((row) => {
-                  // Oculta Gabriel Alencar e Ayrton Lemos apenas nesta visão
-                  const HIDDEN_IDS = [
-                    "e674c34f-b268-4dfd-82c5-9aea9cba853e",
-                    "132c71a9-846b-48ec-abcb-10f50286fdd1",
-                  ];
-                  return !HIDDEN_IDS.includes(row.user_id);
-                })
-                .map((row, idx) => {
+              {filteredRank.map((row, idx) => {
                   const member = teamByUserId.get(row.user_id);
                   const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx + 1}º`;
                   const remaining = row.taskTotal - row.taskCompleted;
@@ -542,6 +552,9 @@ export function DayViewPanel() {
                   const nameSize = idx <= 1 ? "text-base" : "text-xs";
                   const pctSize = idx <= 1 ? "text-sm" : "text-xs";
                   const remainSize = idx <= 1 ? "text-xs" : "text-[11px]";
+                  // Mudança de posição
+                  const prevPos = prevRankMap.current.get(row.user_id);
+                  const posChange = prevPos !== undefined ? prevPos - idx : 0; // positivo = subiu
                   return (
                     <div key={row.user_id} className={cn("flex items-center gap-3", idx <= 2 ? "py-1" : "py-0")}>
                       <span className={cn("w-8 text-center font-semibold shrink-0", medalSize)}>{medal}</span>
@@ -565,9 +578,13 @@ export function DayViewPanel() {
                           </div>
                         </div>
                       </div>
-                      <span className={cn("text-muted-foreground shrink-0 w-20 text-right", remainSize)}>
-                        {remaining > 0 ? `Faltam ${remaining}` : "✓ Tudo feito"}
-                      </span>
+                      <div className={cn("shrink-0 w-24 flex items-center justify-end gap-1", remainSize)}>
+                        <span className="text-muted-foreground">
+                          {remaining > 0 ? `Faltam ${remaining}` : "✓ Tudo feito"}
+                        </span>
+                        {posChange > 0 && <ArrowUp className="h-3.5 w-3.5 text-success shrink-0" />}
+                        {posChange < 0 && <ArrowDown className="h-3.5 w-3.5 text-destructive shrink-0" />}
+                      </div>
                     </div>
                   );
                 })}
