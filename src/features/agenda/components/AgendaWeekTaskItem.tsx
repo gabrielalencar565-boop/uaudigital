@@ -121,7 +121,7 @@ export function AgendaWeekTaskItem({
             )}
             title={stageLabel}
           >
-            <span className="truncate">{STAGE_SHORT[stage] ?? stageLabel}</span>
+            <span className="whitespace-nowrap">{STAGE_SHORT[stage] ?? stageLabel}</span>
           </div>
         </div>
 
