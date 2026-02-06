@@ -77,6 +77,34 @@ export function DayViewPanel() {
     },
   });
 
+  // Task completion stats per user (total assigned vs completed)
+  const taskStatsByUser = useMemo(() => {
+    const tasks = tasksQ.data ?? [];
+    const assignees = assigneesQ.data ?? [];
+    const stats = new Map<string, { total: number; completed: number }>();
+
+    const addTask = (userId: string, isCompleted: boolean) => {
+      const prev = stats.get(userId) ?? { total: 0, completed: 0 };
+      prev.total += 1;
+      if (isCompleted) prev.completed += 1;
+      stats.set(userId, prev);
+    };
+
+    for (const t of tasks) {
+      // Check if task has assignees
+      const taskAssignees = assignees.filter(a => a.task_id === t.id);
+      if (taskAssignees.length > 0) {
+        for (const a of taskAssignees) {
+          addTask(a.user_id, t.status === "concluido");
+        }
+      } else {
+        addTask(t.assigned_user_id, t.status === "concluido");
+      }
+    }
+
+    return stats;
+  }, [tasksQ.data, assigneesQ.data]);
+
   const monthlyRank = useMemo(() => {
     const scores = scoresQ.data ?? [];
     const byUser = new Map(scores.map((s) => [s.user_id, s]));
@@ -89,11 +117,13 @@ export function DayViewPanel() {
         (s?.metas_prazos ?? 0) +
         (s?.ambiente_organizado ?? 0) +
         (s?.comprometimento ?? 0);
-      return { user_id: m.user_id, total };
+      const taskStats = taskStatsByUser.get(m.user_id) ?? { total: 0, completed: 0 };
+      const completionPct = taskStats.total > 0 ? Math.round((taskStats.completed / taskStats.total) * 100) : 0;
+      return { user_id: m.user_id, total, taskTotal: taskStats.total, taskCompleted: taskStats.completed, completionPct };
     });
     base.sort((a, b) => b.total - a.total);
     return base;
-  }, [scoresQ.data, teamQ.data]);
+  }, [scoresQ.data, teamQ.data, taskStatsByUser]);
   const clientsById = useMemo(() => new Map((clientsQ.data ?? []).map(c => [c.id, c] as const)), [clientsQ.data]);
   const teamByUserId = useMemo(() => new Map((teamQ.data ?? []).map(m => [m.user_id, m] as const)), [teamQ.data]);
 
@@ -481,80 +511,98 @@ export function DayViewPanel() {
            </CardContent>
          </Card> : (
           /* ─── Pódio ─── */
-         /* ─── Pódio ─── */
-         <Card>
-           <CardHeader>
-             <CardTitle className="flex items-center gap-2">
-               <Trophy className="h-5 w-5" />
-               Ranking de Performance
-             </CardTitle>
-             <CardDescription>
-               {format(new Date(selectedYear, selectedMonth - 1, 1), "MMMM yyyy", { locale: ptBR })}
-             </CardDescription>
-           </CardHeader>
-           <CardContent className="space-y-4">
-             {/* Top 3 podium cards */}
-             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-               {monthlyRank.slice(0, 3).map((row, idx) => {
-                 const member = teamByUserId.get(row.user_id);
-                 const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : "🥉";
-                 return (
-                   <Card
-                     key={row.user_id}
-                     className={cn(
-                       "overflow-hidden border",
-                       idx === 0 && "bg-primary/5 border-primary/25 shadow-sm",
-                       idx === 1 && "bg-muted/20 border-border/60 md:mt-4",
-                       idx === 2 && "bg-secondary/20 border-border/60 md:mt-8",
-                     )}
-                   >
-                     <CardContent className={cn("flex flex-col items-center text-center", idx === 0 ? "p-6" : "p-4")}>
-                       <span className={cn("leading-none", idx === 0 ? "text-4xl" : "text-3xl")}>{medal}</span>
-                       <Avatar className={cn("mt-3 shadow-sm", idx === 0 ? "h-20 w-20" : "h-16 w-16")}>
-                         <AvatarImage src={member?.avatar_url ?? undefined} />
-                         <AvatarFallback className="text-lg">{initials(member?.display_name ?? "?")}</AvatarFallback>
-                       </Avatar>
-                       <p className={cn("mt-3 font-semibold", idx === 0 ? "text-xl" : "text-lg")}>
-                         {member?.display_name ?? "—"}
-                       </p>
-                       <div className="flex items-baseline gap-1 mt-1">
-                         <span className={cn("font-bold text-primary tabular-nums", idx === 0 ? "text-4xl" : "text-3xl")}>
-                           {row.total}
-                         </span>
-                         <span className="text-sm text-muted-foreground">pts</span>
-                       </div>
-                     </CardContent>
-                   </Card>
-                 );
-               })}
-             </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Trophy className="h-5 w-5" />
+                Ranking de Performance
+              </CardTitle>
+              <CardDescription>
+                {format(new Date(selectedYear, selectedMonth - 1, 1), "MMMM yyyy", { locale: ptBR })}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Top 3 podium cards */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                {monthlyRank.slice(0, 3).map((row, idx) => {
+                  const member = teamByUserId.get(row.user_id);
+                  const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : "🥉";
+                  return (
+                    <Card
+                      key={row.user_id}
+                      className={cn(
+                        "overflow-hidden border",
+                        idx === 0 && "bg-primary/5 border-primary/25 shadow-sm",
+                        idx === 1 && "bg-muted/20 border-border/60 md:mt-4",
+                        idx === 2 && "bg-secondary/20 border-border/60 md:mt-8",
+                      )}
+                    >
+                      <CardContent className={cn("flex flex-col items-center text-center", idx === 0 ? "p-6" : "p-4")}>
+                        <span className={cn("leading-none", idx === 0 ? "text-4xl" : "text-3xl")}>{medal}</span>
+                        <Avatar className={cn("mt-3 shadow-sm", idx === 0 ? "h-20 w-20" : "h-16 w-16")}>
+                          <AvatarImage src={member?.avatar_url ?? undefined} />
+                          <AvatarFallback className="text-lg">{initials(member?.display_name ?? "?")}</AvatarFallback>
+                        </Avatar>
+                        <p className={cn("mt-3 font-semibold", idx === 0 ? "text-xl" : "text-lg")}>
+                          {member?.display_name ?? "—"}
+                        </p>
+                        <div className="flex items-baseline gap-1 mt-1">
+                          <span className={cn("font-bold text-primary tabular-nums", idx === 0 ? "text-4xl" : "text-3xl")}>
+                            {row.total}
+                          </span>
+                          <span className="text-sm text-muted-foreground">pts</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
 
-             {/* Restante do ranking */}
-             {monthlyRank.length > 3 && (
-               <div className="space-y-2">
-                 {monthlyRank.slice(3).map((row, idx) => {
-                   const member = teamByUserId.get(row.user_id);
-                   return (
-                     <div key={row.user_id} className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
-                       <span className="text-lg font-semibold text-muted-foreground w-8 text-center">{idx + 4}º</span>
-                       <Avatar className="h-10 w-10">
-                         <AvatarImage src={member?.avatar_url ?? undefined} />
-                         <AvatarFallback>{initials(member?.display_name ?? "?")}</AvatarFallback>
-                       </Avatar>
-                       <span className="flex-1 font-medium">{member?.display_name ?? "—"}</span>
-                       <span className="text-xl font-bold text-primary tabular-nums">{row.total}</span>
-                       <span className="text-sm text-muted-foreground">pts</span>
-                     </div>
-                   );
-                 })}
-               </div>
-             )}
+              {/* Gráfico de barras horizontal - conclusão de tarefas */}
+              <div className="space-y-3">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Conclusão de Tarefas
+                </p>
+                {monthlyRank.map((row, idx) => {
+                  const member = teamByUserId.get(row.user_id);
+                  const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx + 1}º`;
+                  const remaining = row.taskTotal - row.taskCompleted;
+                  return (
+                    <div key={row.user_id} className="flex items-center gap-3">
+                      <span className="w-8 text-center text-sm font-semibold shrink-0">{medal}</span>
+                      <Avatar className="h-8 w-8 shrink-0">
+                        <AvatarImage src={member?.avatar_url ?? undefined} />
+                        <AvatarFallback className="text-[10px]">{initials(member?.display_name ?? "?")}</AvatarFallback>
+                      </Avatar>
+                      <span className="w-24 truncate text-sm font-medium shrink-0">
+                        {member?.display_name?.split(" ")[0] ?? "—"}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="relative h-7 w-full rounded-full bg-muted/50 overflow-hidden">
+                          <div
+                            className="absolute inset-y-0 left-0 rounded-full bg-primary transition-all duration-500"
+                            style={{ width: `${row.completionPct}%` }}
+                          />
+                          <div className="absolute inset-0 flex items-center justify-end pr-3">
+                            <span className="text-xs font-bold tabular-nums text-foreground">
+                              {row.completionPct}%
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <span className="text-xs text-muted-foreground shrink-0 w-20 text-right">
+                        {remaining > 0 ? `Faltam ${remaining}` : "✓ Tudo feito"}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
 
-             {monthlyRank.length === 0 && (
-               <p className="text-muted-foreground text-center py-4">Nenhum dado de performance para este mês</p>
-             )}
-           </CardContent>
-         </Card>
-       )}
+              {monthlyRank.length === 0 && (
+                <p className="text-muted-foreground text-center py-4">Nenhum dado de performance para este mês</p>
+              )}
+            </CardContent>
+          </Card>
+        )}
     </div>;
 }
