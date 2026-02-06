@@ -7,15 +7,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useClients, useTasks, useTeamMembers } from "@/features/data/queries";
+import { supabase } from "@/integrations/supabase/client";
 import { useTaskAssigneesByMonth } from "@/features/data/task-assignees-queries";
 import { Magic2Dashboard } from "@/features/magic2/components/Magic2Dashboard";
 import { useMagic2Dashboard } from "@/features/magic2/hooks/use-magic2-dashboard";
 import { MonthYearNav } from "@/features/magic2/components/MonthYearNav";
 import { STAGES } from "@/lib/uau";
 import { cn } from "@/lib/utils";
-import { RefreshCw, Calendar, Target, RotateCcw } from "lucide-react";
+import { RefreshCw, Calendar, Target, RotateCcw, Trophy } from "lucide-react";
 import { useNow } from "@/hooks/use-now";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]!.toUpperCase()).join("");
@@ -26,7 +27,7 @@ function statusTone(status: string, dueDate: string, todayKey: string) {
   return "warning" as const;
 }
 export function DayViewPanel() {
-  const [active, setActive] = useState<"magic" | "agenda">("magic");
+  const [active, setActive] = useState<"magic" | "agenda" | "podio">("magic");
   const [autoRotate, setAutoRotate] = useState(true);
   const [isHoveringRotateBtn, setIsHoveringRotateBtn] = useState(false);
   const [rotateInterval, setRotateInterval] = useState(10_000); // 10s padrão
@@ -49,6 +50,50 @@ export function DayViewPanel() {
   });
   const magic2 = useMagic2Dashboard(selectedYear, selectedMonth);
   const assigneesQ = useTaskAssigneesByMonth(monthKey);
+
+  // Performance scores for podium
+  type ScoreRow = {
+    user_id: string;
+    year: number;
+    month: number;
+    aprendizado_continuo: number;
+    padrao_qualidade_uau: number;
+    metas_prazos: number;
+    ambiente_organizado: number;
+    comprometimento: number;
+  };
+
+  const scoresQ = useQuery({
+    queryKey: ["performance_scores", selectedYear, selectedMonth],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("performance_scores")
+        .select("*")
+        .eq("year", selectedYear)
+        .eq("month", selectedMonth)
+        .order("user_id");
+      if (error) throw error;
+      return (data ?? []) as ScoreRow[];
+    },
+  });
+
+  const monthlyRank = useMemo(() => {
+    const scores = scoresQ.data ?? [];
+    const byUser = new Map(scores.map((s) => [s.user_id, s]));
+    const members = teamQ.data ?? [];
+    const base = members.map((m) => {
+      const s = byUser.get(m.user_id);
+      const total =
+        (s?.aprendizado_continuo ?? 0) +
+        (s?.padrao_qualidade_uau ?? 0) +
+        (s?.metas_prazos ?? 0) +
+        (s?.ambiente_organizado ?? 0) +
+        (s?.comprometimento ?? 0);
+      return { user_id: m.user_id, total };
+    });
+    base.sort((a, b) => b.total - a.total);
+    return base;
+  }, [scoresQ.data, teamQ.data]);
   const clientsById = useMemo(() => new Map((clientsQ.data ?? []).map(c => [c.id, c] as const)), [clientsQ.data]);
   const teamByUserId = useMemo(() => new Map((teamQ.data ?? []).map(m => [m.user_id, m] as const)), [teamQ.data]);
 
@@ -134,14 +179,14 @@ export function DayViewPanel() {
   useEffect(() => {
     if (!autoRotate) return;
     const interval = setInterval(() => {
-      setActive(v => v === "magic" ? "agenda" : "magic");
+      setActive(v => v === "magic" ? "agenda" : v === "agenda" ? "podio" : "magic");
     }, rotateInterval);
     return () => clearInterval(interval);
   }, [autoRotate, rotateInterval]);
 
   // Parar auto-rotate quando clicar manualmente
   const handleManualTabChange = () => {
-    setActive(v => v === "magic" ? "agenda" : "magic");
+    setActive(v => v === "magic" ? "agenda" : v === "agenda" ? "podio" : "magic");
   };
   // Calcular dias restantes até o prazo final (dia 27 do mês selecionado)
   const deadlineDate = new Date(selectedYear, selectedMonth - 1, 27);
@@ -194,7 +239,7 @@ export function DayViewPanel() {
             onClick={handleManualTabChange} 
             className="h-9"
           >
-            {active === "magic" ? "Ir para agenda" : "Ir para Magic"}
+            {active === "magic" ? "Ir para Agenda" : active === "agenda" ? "Ir para Pódio" : "Ir para Magic"}
           </Button>
 
           {/* Dropdown de intervalo */}
@@ -251,7 +296,7 @@ export function DayViewPanel() {
                 </CardDescription>
               </CardHeader>
             </Card>}
-        </div> : <Card>
+        </div> : active === "agenda" ? <Card>
           <CardHeader>
             <CardTitle>
               {isCurrentMonth ? "Agenda de Hoje" : `Agenda de ${format(new Date(selectedYear, selectedMonth - 1, 1), "MMMM", {
@@ -433,7 +478,83 @@ export function DayViewPanel() {
             {todayPendingTasks.length === 0 && todayCompletedTasks.length === 0 && overdueTasks.length === 0 && <p className="text-muted-foreground text-center py-4">
                 {isCurrentMonth ? "Nenhuma tarefa para hoje 🎉" : "Nenhuma tarefa neste mês"}
               </p>}
-          </CardContent>
-        </Card>}
+           </CardContent>
+         </Card> : (
+          /* ─── Pódio ─── */
+         /* ─── Pódio ─── */
+         <Card>
+           <CardHeader>
+             <CardTitle className="flex items-center gap-2">
+               <Trophy className="h-5 w-5" />
+               Ranking de Performance
+             </CardTitle>
+             <CardDescription>
+               {format(new Date(selectedYear, selectedMonth - 1, 1), "MMMM yyyy", { locale: ptBR })}
+             </CardDescription>
+           </CardHeader>
+           <CardContent className="space-y-4">
+             {/* Top 3 podium cards */}
+             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+               {monthlyRank.slice(0, 3).map((row, idx) => {
+                 const member = teamByUserId.get(row.user_id);
+                 const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : "🥉";
+                 return (
+                   <Card
+                     key={row.user_id}
+                     className={cn(
+                       "overflow-hidden border",
+                       idx === 0 && "bg-primary/5 border-primary/25 shadow-sm",
+                       idx === 1 && "bg-muted/20 border-border/60 md:mt-4",
+                       idx === 2 && "bg-secondary/20 border-border/60 md:mt-8",
+                     )}
+                   >
+                     <CardContent className={cn("flex flex-col items-center text-center", idx === 0 ? "p-6" : "p-4")}>
+                       <span className={cn("leading-none", idx === 0 ? "text-4xl" : "text-3xl")}>{medal}</span>
+                       <Avatar className={cn("mt-3 shadow-sm", idx === 0 ? "h-20 w-20" : "h-16 w-16")}>
+                         <AvatarImage src={member?.avatar_url ?? undefined} />
+                         <AvatarFallback className="text-lg">{initials(member?.display_name ?? "?")}</AvatarFallback>
+                       </Avatar>
+                       <p className={cn("mt-3 font-semibold", idx === 0 ? "text-xl" : "text-lg")}>
+                         {member?.display_name ?? "—"}
+                       </p>
+                       <div className="flex items-baseline gap-1 mt-1">
+                         <span className={cn("font-bold text-primary tabular-nums", idx === 0 ? "text-4xl" : "text-3xl")}>
+                           {row.total}
+                         </span>
+                         <span className="text-sm text-muted-foreground">pts</span>
+                       </div>
+                     </CardContent>
+                   </Card>
+                 );
+               })}
+             </div>
+
+             {/* Restante do ranking */}
+             {monthlyRank.length > 3 && (
+               <div className="space-y-2">
+                 {monthlyRank.slice(3).map((row, idx) => {
+                   const member = teamByUserId.get(row.user_id);
+                   return (
+                     <div key={row.user_id} className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
+                       <span className="text-lg font-semibold text-muted-foreground w-8 text-center">{idx + 4}º</span>
+                       <Avatar className="h-10 w-10">
+                         <AvatarImage src={member?.avatar_url ?? undefined} />
+                         <AvatarFallback>{initials(member?.display_name ?? "?")}</AvatarFallback>
+                       </Avatar>
+                       <span className="flex-1 font-medium">{member?.display_name ?? "—"}</span>
+                       <span className="text-xl font-bold text-primary tabular-nums">{row.total}</span>
+                       <span className="text-sm text-muted-foreground">pts</span>
+                     </div>
+                   );
+                 })}
+               </div>
+             )}
+
+             {monthlyRank.length === 0 && (
+               <p className="text-muted-foreground text-center py-4">Nenhum dado de performance para este mês</p>
+             )}
+           </CardContent>
+         </Card>
+       )}
     </div>;
 }
