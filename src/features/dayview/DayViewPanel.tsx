@@ -510,60 +510,28 @@ export function DayViewPanel() {
               </p>}
            </CardContent>
          </Card> : (
-          /* ─── Pódio ─── */
+          /* ─── Conclusão de Tarefas ─── */
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Trophy className="h-5 w-5" />
-                Ranking de Performance
+                Conclusão de Tarefas
               </CardTitle>
               <CardDescription>
                 {format(new Date(selectedYear, selectedMonth - 1, 1), "MMMM yyyy", { locale: ptBR })}
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Top 3 podium cards */}
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                {monthlyRank.slice(0, 3).map((row, idx) => {
-                  const member = teamByUserId.get(row.user_id);
-                  const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : "🥉";
-                  return (
-                    <Card
-                      key={row.user_id}
-                      className={cn(
-                        "overflow-hidden border",
-                        idx === 0 && "bg-primary/5 border-primary/25 shadow-sm",
-                        idx === 1 && "bg-muted/20 border-border/60 md:mt-4",
-                        idx === 2 && "bg-secondary/20 border-border/60 md:mt-8",
-                      )}
-                    >
-                      <CardContent className={cn("flex flex-col items-center text-center", idx === 0 ? "p-6" : "p-4")}>
-                        <span className={cn("leading-none", idx === 0 ? "text-4xl" : "text-3xl")}>{medal}</span>
-                        <Avatar className={cn("mt-3 shadow-sm", idx === 0 ? "h-20 w-20" : "h-16 w-16")}>
-                          <AvatarImage src={member?.avatar_url ?? undefined} />
-                          <AvatarFallback className="text-lg">{initials(member?.display_name ?? "?")}</AvatarFallback>
-                        </Avatar>
-                        <p className={cn("mt-3 font-semibold", idx === 0 ? "text-xl" : "text-lg")}>
-                          {member?.display_name ?? "—"}
-                        </p>
-                        <div className="flex items-baseline gap-1 mt-1">
-                          <span className={cn("font-bold text-primary tabular-nums", idx === 0 ? "text-4xl" : "text-3xl")}>
-                            {row.total}
-                          </span>
-                          <span className="text-sm text-muted-foreground">pts</span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-
-              {/* Gráfico de barras horizontal - conclusão de tarefas */}
-              <div className="space-y-3">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  Conclusão de Tarefas
-                </p>
-                {monthlyRank.map((row, idx) => {
+            <CardContent className="space-y-3">
+              {monthlyRank
+                .filter((row) => {
+                  // Oculta Gabriel Alencar e Ayrton Lemos apenas nesta visão
+                  const HIDDEN_IDS = [
+                    "e674c34f-b268-4dfd-82c5-9aea9cba853e",
+                    "132c71a9-846b-48ec-abcb-10f50286fdd1",
+                  ];
+                  return !HIDDEN_IDS.includes(row.user_id);
+                })
+                .map((row, idx) => {
                   const member = teamByUserId.get(row.user_id);
                   const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx + 1}º`;
                   const remaining = row.taskTotal - row.taskCompleted;
@@ -580,7 +548,7 @@ export function DayViewPanel() {
                       <div className="flex-1 min-w-0">
                         <div className="relative h-7 w-full rounded-full bg-muted/50 overflow-hidden">
                           <div
-                            className="absolute inset-y-0 left-0 rounded-full bg-primary transition-all duration-500"
+                            className="absolute inset-y-0 left-0 rounded-full bg-success transition-all duration-500"
                             style={{ width: `${row.completionPct}%` }}
                           />
                           <div className="absolute inset-0 flex items-center justify-end pr-3">
@@ -596,7 +564,6 @@ export function DayViewPanel() {
                     </div>
                   );
                 })}
-              </div>
 
               {monthlyRank.length === 0 && (
                 <p className="text-muted-foreground text-center py-4">Nenhum dado de performance para este mês</p>
