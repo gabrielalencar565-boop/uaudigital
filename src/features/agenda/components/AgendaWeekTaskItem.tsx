@@ -165,7 +165,7 @@ export function AgendaWeekTaskItem({
         {members && members.length > 0 ? (
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="flex -space-x-2 shrink-0">
+              <div className="flex flex-col -space-y-2 shrink-0">
                 {members.slice(0, 3).map((m) => (
                   <Avatar key={m.user_id} className={cn(isCompact ? "h-5 w-5" : "h-6 w-6", "border-2 border-background")}>
                     <AvatarImage src={m.avatar_url ?? undefined} alt={m.display_name} />
