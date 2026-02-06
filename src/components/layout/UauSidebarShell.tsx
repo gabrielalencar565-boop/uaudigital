@@ -40,7 +40,7 @@ export function UauSidebarShell({
   isAdmin?: boolean;
 }>) {
   const isMobile = useIsMobile();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const appSettingsQ = useAppSettings();
   const myProfileQ = useMyProfile();
   const logoUrl = appSettingsQ.data?.logo_url;
