@@ -9,6 +9,19 @@ import {
 import { cn } from "@/lib/utils";
 import type { StageKey } from "@/lib/uau";
 
+/** Abreviações curtas para pills da agenda */
+const STAGE_SHORT: Record<StageKey, string> = {
+  planejamento: "PLAN",
+  captacao: "CAP",
+  edicao_videos: "VDO",
+  design: "DSG",
+  revisao: "REV",
+  pdf: "PDF",
+  entrega: "ENT",
+  alteracoes: "ALT",
+  agendamento: "AGN",
+};
+
 function initials(name: string) {
   return name
     .split(" ")
@@ -108,7 +121,7 @@ export function AgendaWeekTaskItem({
             )}
             title={stageLabel}
           >
-            <span className="truncate">{isCompact ? stageLabel.slice(0, 4) : stageLabel}</span>
+            <span className="truncate">{STAGE_SHORT[stage] ?? stageLabel}</span>
           </div>
         </div>
 
