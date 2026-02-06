@@ -535,13 +535,13 @@ export function DayViewPanel() {
                   const member = teamByUserId.get(row.user_id);
                   const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx + 1}º`;
                   const remaining = row.taskTotal - row.taskCompleted;
-                  // Tamanhos progressivos: 1º maior, 2º/3º médios, restante compacto
-                  const barH = idx === 0 ? "h-10" : idx <= 2 ? "h-8" : "h-6";
-                  const avatarSize = idx === 0 ? "h-11 w-11" : idx <= 2 ? "h-9 w-9" : "h-7 w-7";
-                  const medalSize = idx === 0 ? "text-lg" : idx <= 2 ? "text-base" : "text-sm";
-                  const nameSize = idx === 0 ? "text-base" : idx <= 2 ? "text-sm" : "text-xs";
-                  const pctSize = idx === 0 ? "text-sm" : "text-xs";
-                  const remainSize = idx <= 2 ? "text-xs" : "text-[11px]";
+                  // Tamanhos: 1º e 2º maiores, restante compacto
+                  const barH = idx <= 1 ? "h-10" : "h-6";
+                  const avatarSize = idx <= 1 ? "h-11 w-11" : "h-7 w-7";
+                  const medalSize = idx <= 1 ? "text-lg" : "text-sm";
+                  const nameSize = idx <= 1 ? "text-base" : "text-xs";
+                  const pctSize = idx <= 1 ? "text-sm" : "text-xs";
+                  const remainSize = idx <= 1 ? "text-xs" : "text-[11px]";
                   return (
                     <div key={row.user_id} className={cn("flex items-center gap-3", idx <= 2 ? "py-1" : "py-0")}>
                       <span className={cn("w-8 text-center font-semibold shrink-0", medalSize)}>{medal}</span>
