@@ -101,14 +101,14 @@ export function AgendaWeekTaskItem({
           <div
             className={cn(
               "inline-flex items-start rounded-full font-semibold",
-              // sem altura fixa para permitir 1–2 linhas sem cortar (ex.: "Edição de vídeo")
               isCompact ? "px-2 py-1 text-[10px] leading-snug" : "px-2.5 py-1 text-xs leading-snug",
               stagePillWidth === "fit" ? "w-auto" : "w-full",
               stageTone.bg,
               stageTone.fg,
             )}
+            title={stageLabel}
           >
-            <span className={cn("whitespace-normal break-words")}>{stageLabel}</span>
+            <span className="truncate">{isCompact ? stageLabel.slice(0, 4) : stageLabel}</span>
           </div>
         </div>
 
@@ -191,19 +191,20 @@ export function AgendaWeekTaskItem({
         )}
         
         <div className="min-w-0 flex-1">
-          <p
-            className={cn(
-              "truncate font-semibold",
-              isCompact ? "text-[12px] leading-4" : "text-sm leading-5",
-            )}
-            title={members && members.length > 0 ? members.map(m => m.display_name).join(", ") : assigneeName}
-          >
-            {members && members.length > 1
-              ? `${members[0].display_name.split(" ")[0]} +${members.length - 1}`
-              : members && members.length === 1
-                ? members[0].display_name
-                : (assigneeName || "—")}
-          </p>
+          {/* Show name only for single member or no-member tasks */}
+          {members && members.length > 1 ? null : (
+            <p
+              className={cn(
+                "truncate font-semibold",
+                isCompact ? "text-[12px] leading-4" : "text-sm leading-5",
+              )}
+              title={members && members.length === 1 ? members[0].display_name : assigneeName}
+            >
+              {members && members.length === 1
+                ? members[0].display_name.split(" ")[0]
+                : (assigneeName ? assigneeName.split(" ")[0] : "—")}
+            </p>
+          )}
           <p
             className={cn(
               "mt-1 whitespace-normal break-words text-muted-foreground",
