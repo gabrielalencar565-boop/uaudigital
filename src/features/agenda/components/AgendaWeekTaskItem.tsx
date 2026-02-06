@@ -243,7 +243,7 @@ export function AgendaWeekTaskItem({
                 isCompact ? "text-[9px]" : "text-[10px]",
               )}
             >
-              ★ Demanda Extra
+              ★ Extra
             </span>
           )}
         </div>
