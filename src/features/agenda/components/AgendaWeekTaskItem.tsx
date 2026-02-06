@@ -193,13 +193,16 @@ export function AgendaWeekTaskItem({
         <div className="min-w-0 flex-1">
           <p
             className={cn(
-              "whitespace-normal break-words font-semibold",
+              "truncate font-semibold",
               isCompact ? "text-[12px] leading-4" : "text-sm leading-5",
             )}
+            title={members && members.length > 0 ? members.map(m => m.display_name).join(", ") : assigneeName}
           >
-            {members && members.length > 0 
-              ? members.map(m => m.display_name).join(", ")
-              : (assigneeName || "—")}
+            {members && members.length > 1
+              ? `${members[0].display_name.split(" ")[0]} +${members.length - 1}`
+              : members && members.length === 1
+                ? members[0].display_name
+                : (assigneeName || "—")}
           </p>
           <p
             className={cn(
