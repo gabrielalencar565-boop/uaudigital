@@ -545,16 +545,16 @@ export function DayViewPanel() {
                   const member = teamByUserId.get(row.user_id);
                   const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx + 1}º`;
                   const remaining = row.taskTotal - row.taskCompleted;
-                  // Tamanhos: 1º e 2º maiores, restante compacto
-                  const barH = idx <= 1 ? "h-10" : "h-6";
-                  const avatarSize = idx <= 1 ? "h-11 w-11" : "h-7 w-7";
-                  const medalSize = idx <= 1 ? "text-lg" : "text-sm";
-                  const nameSize = idx <= 1 ? "text-base" : "text-xs";
-                  const pctSize = idx <= 1 ? "text-sm" : "text-xs";
-                  const remainSize = idx <= 1 ? "text-xs" : "text-[11px]";
-                  // Mudança de posição
-                  const prevPos = prevRankMap.current.get(row.user_id);
-                  const posChange = prevPos !== undefined ? prevPos - idx : 0; // positivo = subiu
+                   // Tamanhos: 1º e 2º maiores, restante compacto
+                   const barH = idx <= 1 ? "h-10" : "h-6";
+                   const avatarSize = idx <= 1 ? "h-11 w-11" : "h-7 w-7";
+                   const medalSize = idx <= 1 ? "text-lg" : "text-sm";
+                   const nameSize = idx <= 1 ? "text-base" : "text-xs";
+                   const pctSize = idx <= 1 ? "text-sm" : "text-xs";
+                   const remainSize = idx <= 1 ? "text-xs" : "text-[11px]";
+                   // Mudança de posição (sempre visível: neutro = traço cinza)
+                   const prevPos = prevRankMap.current.get(row.user_id);
+                   const posChange = prevPos !== undefined ? prevPos - idx : 0;
                   return (
                     <div key={row.user_id} className={cn("flex items-center gap-3", idx <= 2 ? "py-1" : "py-0")}>
                       <span className={cn("w-8 text-center font-semibold shrink-0", medalSize)}>{medal}</span>
@@ -566,7 +566,7 @@ export function DayViewPanel() {
                         {member?.display_name?.split(" ")[0] ?? "—"}
                       </span>
                       <div className="flex-1 min-w-0">
-                        <div className={cn("relative w-full rounded-full bg-muted/50 overflow-hidden", barH)}>
+                        <div className={cn("relative w-full rounded-full bg-muted/50 overflow-hidden h-6")}>
                           <div
                             className="absolute inset-y-0 left-0 rounded-full bg-success transition-all duration-500"
                             style={{ width: `${row.completionPct}%` }}
@@ -578,12 +578,13 @@ export function DayViewPanel() {
                           </div>
                         </div>
                       </div>
-                      <div className={cn("shrink-0 w-24 flex items-center justify-end gap-1", remainSize)}>
+                      <div className={cn("shrink-0 w-28 flex items-center justify-end gap-1", remainSize)}>
                         <span className="text-muted-foreground">
                           {remaining > 0 ? `Faltam ${remaining}` : "✓ Tudo feito"}
                         </span>
-                        {posChange > 0 && <ArrowUp className="h-3.5 w-3.5 text-success shrink-0" />}
-                        {posChange < 0 && <ArrowDown className="h-3.5 w-3.5 text-destructive shrink-0" />}
+                        {posChange > 0 ? <ArrowUp className="h-3.5 w-3.5 text-success shrink-0" /> :
+                         posChange < 0 ? <ArrowDown className="h-3.5 w-3.5 text-destructive shrink-0" /> :
+                         <span className="h-3.5 w-3.5 shrink-0 inline-flex items-center justify-center text-muted-foreground text-[10px]">–</span>}
                       </div>
                     </div>
                   );
