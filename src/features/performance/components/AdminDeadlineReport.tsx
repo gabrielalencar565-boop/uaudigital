@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { supabase } from "@/integrations/supabase/client";
+import type { TaskAssigneeRow } from "@/features/data/task-assignees-queries";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -85,6 +86,38 @@ export function AdminDeadlineReport({
     },
   });
 
+  const assigneesQ = useQuery({
+    enabled: (tasksQ.data?.length ?? 0) > 0,
+    queryKey: ["deadline_report_assignees", year, month],
+    queryFn: async (): Promise<TaskAssigneeRow[]> => {
+      const ids = (tasksQ.data ?? []).map((t) => t.id);
+      const { data, error } = await supabase
+        .from("task_assignees")
+        .select("id, task_id, user_id, added_by, created_at")
+        .in("task_id", ids);
+      if (error) throw error;
+      return (data ?? []) as TaskAssigneeRow[];
+    },
+  });
+
+  // Map task_id -> list of user_ids assigned
+  const assigneesByTask = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const a of assigneesQ.data ?? []) {
+      const list = map.get(a.task_id) ?? [];
+      list.push(a.user_id);
+      map.set(a.task_id, list);
+    }
+    return map;
+  }, [assigneesQ.data]);
+
+  // Returns all user_ids associated with a task (assignees if any, else assigned_user_id)
+  function getTaskUserIds(task: TaskForReport): string[] {
+    const assignees = assigneesByTask.get(task.id);
+    if (assignees && assignees.length > 0) return assignees;
+    return [task.assigned_user_id];
+  }
+
   const overridesQ = useQuery({
     enabled: (tasksQ.data?.length ?? 0) > 0,
     queryKey: ["deadline_report_overrides", year, month],
@@ -119,26 +152,31 @@ export function AdminDeadlineReport({
     for (const t of tasksQ.data ?? []) {
       if (t.status !== "concluido") continue;
       if (NON_SCORING_STAGES.includes(t.stage as StageKey)) continue;
-      const s = byUser.get(t.assigned_user_id);
-      if (!s) continue;
 
+      const userIds = getTaskUserIds(t);
       const override = overrideByTaskId.get(t.id);
       const pts = override ? override.override_points : basePoints(t);
       const onTime = isOnTime(t);
 
-      // status real (no prazo/atrasada) é baseado no cálculo automático, não na exceção
-      if (onTime === true) s.onTime += 1;
-      if (onTime === false) s.late += 1;
-      s.total += pts;
+      for (const uid of userIds) {
+        const s = byUser.get(uid);
+        if (!s) continue;
+        if (onTime === true) s.onTime += 1;
+        if (onTime === false) s.late += 1;
+        s.total += pts;
+      }
     }
 
     return Array.from(byUser.values()).sort((a, b) => b.total - a.total);
-  }, [team, tasksQ.data, overrideByTaskId]);
+  }, [team, tasksQ.data, overrideByTaskId, assigneesByTask]);
 
   const userTasks = useMemo(() => {
-    const list = (tasksQ.data ?? []).filter((t) => t.assigned_user_id === selectedUserId && t.status === "concluido");
-    return list;
-  }, [tasksQ.data, selectedUserId]);
+    return (tasksQ.data ?? []).filter((t) => {
+      if (t.status !== "concluido") return false;
+      const userIds = getTaskUserIds(t);
+      return userIds.includes(selectedUserId);
+    });
+  }, [tasksQ.data, selectedUserId, assigneesByTask]);
 
   const setOverrideMut = useMutation({
     mutationFn: async (input: { taskId: string; value: "auto" | "1" | "0" | "-1" }) => {
@@ -162,14 +200,19 @@ export function AdminDeadlineReport({
         if (error) throw error;
       }
 
-      // Recompute metas_prazos for the task's assigned user
+      // Recompute metas_prazos for all assigned users
       const task = (tasksQ.data ?? []).find((t) => t.id === input.taskId);
       if (task) {
-        await supabase.rpc("recompute_metas_prazos", {
-          _user_id: task.assigned_user_id,
-          _year: year,
-          _month: month,
-        });
+        const userIds = getTaskUserIds(task);
+        await Promise.all(
+          userIds.map((uid) =>
+            supabase.rpc("recompute_metas_prazos", {
+              _user_id: uid,
+              _year: year,
+              _month: month,
+            }),
+          ),
+        );
       }
     },
     onSuccess: async () => {
