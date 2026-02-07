@@ -38,6 +38,8 @@ function getLastDayOfMonth(year: number, month: number) {
   return new Date(year, month, 0).getDate();
 }
 
+const NON_SCORING_STAGES: StageKey[] = ["pdf", "alteracoes", "agendamento"];
+
 function isOnTime(task: TaskForReport) {
   if (task.status !== "concluido" || !task.completed_at) return null;
   // compara por dia
@@ -45,6 +47,7 @@ function isOnTime(task: TaskForReport) {
 }
 
 function basePoints(task: TaskForReport) {
+  if (NON_SCORING_STAGES.includes(task.stage as StageKey)) return 0;
   const onTime = isOnTime(task);
   if (onTime === null) return 0;
   return onTime ? 1 : -1;
@@ -115,6 +118,7 @@ export function AdminDeadlineReport({
 
     for (const t of tasksQ.data ?? []) {
       if (t.status !== "concluido") continue;
+      if (NON_SCORING_STAGES.includes(t.stage as StageKey)) continue;
       const s = byUser.get(t.assigned_user_id);
       if (!s) continue;
 
@@ -141,23 +145,32 @@ export function AdminDeadlineReport({
       if (input.value === "auto") {
         const { error } = await supabase.from("task_deadline_overrides").delete().eq("task_id", input.taskId);
         if (error) throw error;
-        return;
+      } else {
+        const override_points = Number(input.value);
+        if (![1, 0, -1].includes(override_points)) throw new Error("Valor inválido");
+
+        const { error } = await supabase
+          .from("task_deadline_overrides")
+          .upsert(
+            {
+              task_id: input.taskId,
+              override_points,
+              created_by: currentUserId,
+            },
+            { onConflict: "task_id" },
+          );
+        if (error) throw error;
       }
 
-      const override_points = Number(input.value);
-      if (![1, 0, -1].includes(override_points)) throw new Error("Valor inválido");
-
-      const { error } = await supabase
-        .from("task_deadline_overrides")
-        .upsert(
-          {
-            task_id: input.taskId,
-            override_points,
-            created_by: currentUserId,
-          },
-          { onConflict: "task_id" },
-        );
-      if (error) throw error;
+      // Recompute metas_prazos for the task's assigned user
+      const task = (tasksQ.data ?? []).find((t) => t.id === input.taskId);
+      if (task) {
+        await supabase.rpc("recompute_metas_prazos", {
+          _user_id: task.assigned_user_id,
+          _year: year,
+          _month: month,
+        });
+      }
     },
     onSuccess: async () => {
       await Promise.all([
