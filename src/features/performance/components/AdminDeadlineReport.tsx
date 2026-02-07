@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import type { TeamMemberRow } from "@/features/data/queries";
+import { STAGES, type StageKey } from "@/lib/uau";
 
 type TaskForReport = {
   id: string;
@@ -18,6 +19,7 @@ type TaskForReport = {
   completed_at: string | null;
   assigned_user_id: string;
   client_id: string;
+  stage: StageKey;
   client?: { name: string } | null;
 };
 
@@ -70,7 +72,7 @@ export function AdminDeadlineReport({
       const end = `${yyyymm(year, month)}-${String(lastDay).padStart(2, "0")}`;
       const { data, error } = await supabase
         .from("tasks")
-        .select("id,title,due_date,status,completed_at,assigned_user_id,client_id,client:clients(name)")
+        .select("id,title,due_date,status,completed_at,assigned_user_id,client_id,stage,client:clients(name)")
         .is("deleted_at", null)
         .gte("due_date", start)
         .lte("due_date", end)
@@ -169,7 +171,7 @@ export function AdminDeadlineReport({
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className="space-y-4">
         <Card>
           <CardHeader>
             <CardTitle>Relatório — Entregas no prazo x atrasadas</CardTitle>
@@ -248,11 +250,12 @@ export function AdminDeadlineReport({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Tarefa</TableHead>
-                    <TableHead className="text-center">Prazo</TableHead>
-                    <TableHead className="text-center">Concluiu</TableHead>
-                    <TableHead className="text-center">Auto</TableHead>
-                    <TableHead className="text-center">Exceção</TableHead>
+                     <TableHead>Tarefa</TableHead>
+                     <TableHead className="text-center">Etapa</TableHead>
+                     <TableHead className="text-center">Prazo</TableHead>
+                     <TableHead className="text-center">Concluiu</TableHead>
+                     <TableHead className="text-center">Auto</TableHead>
+                     <TableHead className="text-center">Exceção</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -268,6 +271,11 @@ export function AdminDeadlineReport({
                             <p className="truncate font-medium">{t.title ?? (t.client?.name ? `Cliente: ${t.client.name}` : "Tarefa")}</p>
                             <p className="truncate text-xs text-muted-foreground">{teamById.get(t.assigned_user_id)?.role_title}</p>
                           </div>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="outline" className="text-xs">
+                            {STAGES.find((s) => s.key === t.stage)?.label ?? t.stage}
+                          </Badge>
                         </TableCell>
                         <TableCell className="text-center tabular-nums">{t.due_date}</TableCell>
                         <TableCell className="text-center tabular-nums">{t.completed_at ? t.completed_at.slice(0, 10) : "—"}</TableCell>
@@ -297,7 +305,7 @@ export function AdminDeadlineReport({
                   })}
                   {userTasks.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
+                      <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
                         Nenhuma tarefa concluída para este colaborador no mês.
                       </TableCell>
                     </TableRow>
