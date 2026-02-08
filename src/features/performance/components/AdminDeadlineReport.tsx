@@ -43,8 +43,9 @@ const NON_SCORING_STAGES: StageKey[] = ["pdf", "alteracoes", "agendamento"];
 
 function isOnTime(task: TaskForReport) {
   if (task.status !== "concluido" || !task.completed_at) return null;
-  // compara por dia
-  return new Date(task.completed_at).toISOString().slice(0, 10) <= task.due_date;
+  // Converte completed_at para horário de São Paulo e compara apenas a data
+  const completedSP = new Date(task.completed_at).toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+  return completedSP <= task.due_date;
 }
 
 function basePoints(task: TaskForReport) {
