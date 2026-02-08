@@ -40,13 +40,13 @@ import { useNow } from "@/hooks/use-now";
  
 const CRITERIA = [
   { key: "metas_prazos" as const, label: "Metas/Prazos", max: 3, desc: "Entregas no prazo vs atrasos" },
-  { key: "aprendizado_continuo" as const, label: "Aprendizado", max: 2, desc: "Variedade de etapas" },
-  { key: "padrao_qualidade_uau" as const, label: "Qualidade", max: 1, desc: "≥80% tarefas concluídas" },
-  { key: "ambiente_organizado" as const, label: "Organização", max: 1, desc: "≥30% entregas antecipadas" },
-  { key: "comprometimento" as const, label: "Responsabilidade", max: 1, desc: "≥5 tarefas concluídas" },
+  { key: "padrao_qualidade_uau" as const, label: "Qualidade", max: 4, desc: "Nível das entregas, atenção aos detalhes e retrabalho" },
+  { key: "comprometimento" as const, label: "Responsabilidade", max: 4, desc: "Comprometimento, postura profissional e confiabilidade" },
+  { key: "ambiente_organizado" as const, label: "Organização", max: 3, desc: "Organização das tarefas, arquivos e do espaço de trabalho" },
+  { key: "aprendizado_continuo" as const, label: "Aprendizado", max: 3, desc: "Evolução, busca ativa por novos conhecimentos e habilidades" },
 ];
 
-const TOTAL_POINTS = 8;
+const TOTAL_POINTS = 17;
  const MONTHS = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
  
  export function PerformancePanel() {
