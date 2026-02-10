@@ -544,8 +544,9 @@ export function DayViewPanel() {
               {/* Header das colunas */}
               <div className="flex items-center gap-3 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
                 <span className="w-8 text-center shrink-0">#</span>
-                <span className="w-10 shrink-0" />
-                <span className="w-24 shrink-0">Total</span>
+                <span className="w-8 shrink-0" />
+                <span className="w-20 shrink-0">Nome</span>
+                <span className="w-14 text-center shrink-0">Total</span>
                 <span className="w-14 text-center shrink-0">Feitos</span>
                 <span className="w-14 text-center shrink-0">Pend.</span>
                 <div className="flex-1 min-w-0 text-center">% Conclusão</div>
@@ -556,9 +557,6 @@ export function DayViewPanel() {
                   const member = teamByUserId.get(row.user_id);
                   const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx + 1}º`;
                   const pending = row.taskTotal - row.taskCompleted;
-                  const isFirst = idx === 0;
-                  const avatarSize = isFirst ? "h-10 w-10" : "h-8 w-8";
-                  const nameSize = isFirst ? "text-sm font-bold" : "text-sm font-medium";
                   const prevPos = prevRankMap.current.get(row.user_id);
                   const posChange = prevPos !== undefined ? prevPos - idx : 0;
                   return (
@@ -566,12 +564,16 @@ export function DayViewPanel() {
                       {/* Posição */}
                       <span className="w-8 text-center font-semibold shrink-0 text-sm">{medal}</span>
                       {/* Foto */}
-                      <Avatar className={cn(avatarSize, "shrink-0")}>
+                      <Avatar className="h-8 w-8 shrink-0">
                         <AvatarImage src={member?.avatar_url ?? undefined} />
                         <AvatarFallback className="text-[10px]">{initials(member?.display_name ?? "?")}</AvatarFallback>
                       </Avatar>
+                      {/* Nome */}
+                      <span className="w-20 truncate shrink-0 text-sm font-medium">
+                        {member?.display_name?.split(" ")[0] ?? "—"}
+                      </span>
                       {/* Total de tarefas */}
-                      <span className={cn("w-24 shrink-0", nameSize)}>
+                      <span className="w-14 text-center shrink-0 text-sm font-medium">
                         {row.taskTotal}
                       </span>
                       {/* Feitos */}
