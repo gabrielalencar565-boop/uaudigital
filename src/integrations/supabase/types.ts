@@ -300,6 +300,7 @@ export type Database = {
           created_at: string
           credit_card_id: string | null
           description: string
+          due_day: number | null
           id: string
           installment_current: number | null
           installment_total: number | null
@@ -317,6 +318,7 @@ export type Database = {
           created_at?: string
           credit_card_id?: string | null
           description: string
+          due_day?: number | null
           id?: string
           installment_current?: number | null
           installment_total?: number | null
@@ -334,6 +336,7 @@ export type Database = {
           created_at?: string
           credit_card_id?: string | null
           description?: string
+          due_day?: number | null
           id?: string
           installment_current?: number | null
           installment_total?: number | null

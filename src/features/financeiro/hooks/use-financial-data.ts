@@ -40,6 +40,7 @@ export type FinExpense = {
   credit_card_id: string | null;
   paid_at: string | null;
   notes: string | null;
+  due_day: number | null;
 };
 
 export type FinCreditCard = {

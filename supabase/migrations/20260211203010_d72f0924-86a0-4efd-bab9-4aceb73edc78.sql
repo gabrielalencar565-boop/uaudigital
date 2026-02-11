@@ -1,0 +1,1 @@
+ALTER TABLE public.financial_expenses ADD COLUMN due_day integer DEFAULT 10;
