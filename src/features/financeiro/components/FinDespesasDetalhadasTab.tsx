@@ -109,6 +109,42 @@ export function FinDespesasDetalhadasTab() {
         </div>
       </div>
 
+      {/* Credit Cards at top */}
+      {cards.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {cards.map((card) => {
+            const cardExpenses = expenses.filter((e) => e.credit_card_id === card.id);
+            const cardTotal = cardExpenses.reduce((s, e) => s + Number(e.amount), 0);
+            const cardPaid = cardExpenses.filter((e) => e.status === "pago").length;
+            return (
+              <Card key={card.id}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="h-5 w-5 text-primary" />
+                    <CardTitle className="text-sm">{card.name}</CardTitle>
+                    {card.last_digits && <span className="text-xs text-muted-foreground">****{card.last_digits}</span>}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-xl font-bold">R$ {cardTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{cardPaid}/{cardExpenses.length} pagas • Fecha dia {card.closing_day} • Vence dia {card.due_day}</p>
+                  {cardExpenses.length > 0 && (
+                    <div className="mt-3 space-y-1 border-t pt-2">
+                      {cardExpenses.map((e) => (
+                        <div key={e.id} className="flex items-center justify-between text-sm">
+                          <span className="truncate">{e.description}</span>
+                          <span className="text-muted-foreground shrink-0">R$ {Number(e.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
       {CATEGORIES.map((cat) => {
         const items = grouped.get(cat.value) ?? [];
         const total = items.reduce((s, e) => s + Number(e.amount), 0);
@@ -162,41 +198,6 @@ export function FinDespesasDetalhadasTab() {
           </Card>
         );
       })}
-
-      {/* Cartões drill-down */}
-      {cards.length > 0 && (
-        <Card>
-          <CardHeader><CardTitle className="text-base">Cartões de Crédito</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            {cards.map((card) => {
-              const cardExpenses = expenses.filter((e) => e.credit_card_id === card.id);
-              const cardTotal = cardExpenses.reduce((s, e) => s + Number(e.amount), 0);
-              return (
-                <Collapsible key={card.id}>
-                  <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border px-4 py-3 hover:bg-accent/50">
-                    <div className="flex items-center gap-2">
-                      <CreditCard className="h-4 w-4" />
-                      <span className="font-medium">{card.name}</span>
-                      {card.last_digits && <span className="text-xs text-muted-foreground">****{card.last_digits}</span>}
-                    </div>
-                    <span className="text-sm font-semibold">R$ {cardTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="pl-6 pt-2 space-y-1">
-                    {cardExpenses.map((e) => (
-                      <div key={e.id} className="flex items-center justify-between text-sm py-1">
-                        <span>{e.description}</span>
-                        <span className="text-muted-foreground">R$ {Number(e.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
-                      </div>
-                    ))}
-                    {cardExpenses.length === 0 && <p className="text-xs text-muted-foreground py-1">Sem despesas neste cartão</p>}
-                  </CollapsibleContent>
-                </Collapsible>
-              );
-            })}
-          </CardContent>
-        </Card>
-      )}
-
       {/* Expense dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>

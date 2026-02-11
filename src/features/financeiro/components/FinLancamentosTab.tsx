@@ -33,6 +33,21 @@ export function FinLancamentosTab() {
   const [csvRows, setCsvRows] = useState<CSVRow[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const TRANSACTION_CATEGORIES = [
+    { value: "receita_recorrente", label: "Receita Recorrente" },
+    { value: "receita_variavel", label: "Receita Variável" },
+    { value: "receita_outros", label: "Receita Outros" },
+    { value: "impostos", label: "Impostos" },
+    { value: "despesa_operacional", label: "Despesas Operacional" },
+    { value: "despesa_administrativa", label: "Despesas Administrativas" },
+    { value: "despesa_financeira", label: "Despesas Financeiras" },
+    { value: "despesa_comercial", label: "Despesas Comerciais" },
+    { value: "despesa_outros", label: "Despesas Outros" },
+    { value: "despesa_variavel", label: "Despesas Variáveis" },
+    { value: "investimentos", label: "Investimentos" },
+    { value: "caixa", label: "Caixa" },
+  ];
+
   const emptyForm = { description: "", amount: "", date: format(new Date(), "yyyy-MM-dd"), type: "entrada", category: "", status: "confirmado", notes: "" };
   const [form, setForm] = useState(emptyForm);
 
@@ -212,7 +227,17 @@ export function FinLancamentosTab() {
             <div className="space-y-2"><Label>Descrição *</Label><Input value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} /></div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2"><Label>Valor (R$)</Label><Input type="number" step="0.01" value={form.amount} onChange={(e) => setForm((p) => ({ ...p, amount: e.target.value }))} /></div>
-              <div className="space-y-2"><Label>Categoria</Label><Input value={form.category} onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))} placeholder="Opcional" /></div>
+              <div className="space-y-2">
+                <Label>Categoria</Label>
+                <Select value={form.category} onValueChange={(v) => setForm((p) => ({ ...p, category: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    {TRANSACTION_CATEGORIES.map((c) => (
+                      <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
           <DialogFooter>

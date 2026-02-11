@@ -29,6 +29,12 @@ export function FinClientesTab() {
     return differenceInMonths(end, new Date()) <= 2 && !isBefore(end, new Date());
   }).length;
 
+  const expiredClients = clients.filter((c) => {
+    const end = addMonths(new Date(c.contract_start), c.contract_months);
+    return isBefore(end, new Date());
+  });
+  const churnRate = clients.length > 0 ? ((expiredClients.length / clients.length) * 100).toFixed(1) : "0.0";
+
   const openNew = () => {
     setEditing(null);
     setForm({ name: "", cnpj: "", monthly_value: "", contract_months: "12", contract_start: format(new Date(), "yyyy-MM-dd"), notes: "" });
@@ -66,7 +72,7 @@ export function FinClientesTab() {
   return (
     <div className="space-y-6">
       {/* KPIs */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">MRR</CardTitle>
@@ -92,6 +98,16 @@ export function FinClientesTab() {
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{expiringCount}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Churn Rate</CardTitle>
+            <TrendingUp className="h-4 w-4 text-destructive" />
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">{churnRate}%</p>
+            <p className="text-xs text-muted-foreground">{expiredClients.length} contrato(s) expirado(s)</p>
           </CardContent>
         </Card>
       </div>
