@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo } from "react";
-import { Plus, Upload, ArrowUpCircle, ArrowDownCircle, Eye } from "lucide-react";
+import { Plus, Upload, ArrowUpCircle, ArrowDownCircle, Eye, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,32 @@ import { format } from "date-fns";
 import { FinMonthYearSelector } from "./FinMonthYearSelector";
 
 type CSVRow = { date: string; description: string; amount: number; type: "entrada" | "saida" };
+
+const TRANSACTION_CATEGORIES = [
+  { value: "receita_recorrente", label: "Receita Recorrente" },
+  { value: "receita_variavel", label: "Receita Variável" },
+  { value: "receita_outros", label: "Receita Outros" },
+  { value: "impostos", label: "Impostos" },
+  { value: "despesa_operacional", label: "Despesas Operacional" },
+  { value: "despesa_administrativa", label: "Despesas Administrativas" },
+  { value: "despesa_financeira", label: "Despesas Financeiras" },
+  { value: "despesa_comercial", label: "Despesas Comerciais" },
+  { value: "despesa_outros", label: "Despesas Outros" },
+  { value: "despesa_variavel", label: "Despesas Variáveis" },
+  { value: "investimentos", label: "Investimentos" },
+  { value: "caixa", label: "Caixa" },
+];
+
+const getTypeFromCategory = (cat: string): string => {
+  if (cat.startsWith("receita")) return "entrada";
+  return "saida";
+};
+
+const formatDayMonth = (dateStr: string) => {
+  const parts = dateStr.split("-");
+  if (parts.length === 3) return `${parts[2]}/${parts[1]}`;
+  return dateStr;
+};
 
 export function FinLancamentosTab() {
   const now = new Date();
@@ -28,33 +54,13 @@ export function FinLancamentosTab() {
   const transactions = txQ.data ?? [];
 
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingTx, setEditingTx] = useState<FinTransaction | null>(null);
   const [csvDialogOpen, setCsvDialogOpen] = useState(false);
   const [csvRows, setCsvRows] = useState<CSVRow[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const TRANSACTION_CATEGORIES = [
-    { value: "receita_recorrente", label: "Receita Recorrente" },
-    { value: "receita_variavel", label: "Receita Variável" },
-    { value: "receita_outros", label: "Receita Outros" },
-    { value: "impostos", label: "Impostos" },
-    { value: "despesa_operacional", label: "Despesas Operacional" },
-    { value: "despesa_administrativa", label: "Despesas Administrativas" },
-    { value: "despesa_financeira", label: "Despesas Financeiras" },
-    { value: "despesa_comercial", label: "Despesas Comerciais" },
-    { value: "despesa_outros", label: "Despesas Outros" },
-    { value: "despesa_variavel", label: "Despesas Variáveis" },
-    { value: "investimentos", label: "Investimentos" },
-    { value: "caixa", label: "Caixa" },
-  ];
-
   const emptyForm = { description: "", amount: "", date: format(new Date(), "yyyy-MM-dd"), category: "", notes: "" };
   const [form, setForm] = useState(emptyForm);
-
-  const getTypeFromCategory = (cat: string): string => {
-    if (cat.startsWith("receita")) return "entrada";
-    return "saida";
-  };
-
 
   const filtered = useMemo(() => {
     return transactions.filter((t) => {
@@ -67,15 +73,42 @@ export function FinLancamentosTab() {
   const totalEntradas = filtered.filter((t) => t.type === "entrada").reduce((s, t) => s + Number(t.amount), 0);
   const totalSaidas = filtered.filter((t) => t.type === "saida").reduce((s, t) => s + Number(t.amount), 0);
 
+  const openNew = () => {
+    setEditingTx(null);
+    setForm(emptyForm);
+    setDialogOpen(true);
+  };
+
+  const openEdit = (tx: FinTransaction) => {
+    setEditingTx(tx);
+    setForm({
+      description: tx.description,
+      amount: String(tx.amount),
+      date: tx.date,
+      category: tx.category ?? "",
+      notes: tx.notes ?? "",
+    });
+    setDialogOpen(true);
+  };
+
   const save = () => {
     const type = getTypeFromCategory(form.category);
     upsertTx.mutate(
-      { description: form.description, amount: parseFloat(form.amount) || 0, date: form.date, type, category: form.category || null, status: "confirmado", notes: form.notes || null } as any,
-      { onSuccess: () => { setDialogOpen(false); setForm(emptyForm); } },
+      {
+        ...(editingTx ? { id: editingTx.id } : {}),
+        description: form.description,
+        amount: parseFloat(form.amount) || 0,
+        date: form.date,
+        type,
+        category: form.category || null,
+        status: "confirmado",
+        notes: form.notes || null,
+      } as any,
+      { onSuccess: () => { setDialogOpen(false); setForm(emptyForm); setEditingTx(null); } },
     );
   };
 
-  // CSV Import (Sicoob pattern: date;description;doc;value;balance)
+  // CSV Import
   const handleCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -84,7 +117,6 @@ export function FinLancamentosTab() {
       const text = ev.target?.result as string;
       const lines = text.split("\n").filter(Boolean);
       const rows: CSVRow[] = [];
-      // Skip header
       for (let i = 1; i < lines.length; i++) {
         const cols = lines[i].split(";");
         if (cols.length < 4) continue;
@@ -93,7 +125,6 @@ export function FinLancamentosTab() {
         const valStr = cols[3].replace(/\./g, "").replace(",", ".").trim();
         const val = parseFloat(valStr);
         if (isNaN(val) || !desc) continue;
-        // Parse DD/MM/YYYY to YYYY-MM-DD
         const parts = dateStr.split("/");
         const isoDate = parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : dateStr;
         rows.push({ date: isoDate, description: desc, amount: Math.abs(val), type: val >= 0 ? "entrada" : "saida" });
@@ -127,7 +158,7 @@ export function FinLancamentosTab() {
           </Select>
           <input ref={fileRef} type="file" accept=".csv" onChange={handleCSV} className="hidden" />
           <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}><Upload className="mr-1 h-4 w-4" /> Importar CSV</Button>
-          <Button size="sm" onClick={() => { setForm(emptyForm); setDialogOpen(true); }}><Plus className="mr-1 h-4 w-4" /> Novo</Button>
+          <Button size="sm" onClick={openNew}><Plus className="mr-1 h-4 w-4" /> Novo</Button>
         </div>
       </div>
 
@@ -138,7 +169,7 @@ export function FinLancamentosTab() {
             <ArrowUpCircle className="h-8 w-8 text-success" />
             <div>
               <p className="text-xs text-muted-foreground">Entradas</p>
-              <p className="text-lg font-bold">R$ {totalEntradas.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+              <p className="text-xl font-bold">R$ {totalEntradas.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
             </div>
           </CardContent>
         </Card>
@@ -147,7 +178,7 @@ export function FinLancamentosTab() {
             <ArrowDownCircle className="h-8 w-8 text-destructive" />
             <div>
               <p className="text-xs text-muted-foreground">Saídas</p>
-              <p className="text-lg font-bold">R$ {totalSaidas.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+              <p className="text-xl font-bold">R$ {totalSaidas.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
             </div>
           </CardContent>
         </Card>
@@ -158,7 +189,7 @@ export function FinLancamentosTab() {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Saldo</p>
-              <p className="text-lg font-bold">R$ {Math.abs(totalEntradas - totalSaidas).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+              <p className="text-xl font-bold">R$ {Math.abs(totalEntradas - totalSaidas).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
             </div>
           </CardContent>
         </Card>
@@ -175,32 +206,34 @@ export function FinLancamentosTab() {
               <TableHead className="text-right">Valor</TableHead>
               <TableHead className="text-center">Categoria</TableHead>
               <TableHead className="text-center">Origem</TableHead>
+              <TableHead className="w-10" />
             </TableRow>
           </TableHeader>
           <TableBody>
             {filtered.map((t) => (
-              <TableRow key={t.id}>
+              <TableRow key={t.id} className="cursor-pointer hover:bg-accent/30" onClick={() => openEdit(t)}>
                 <TableCell>{t.type === "entrada" ? <ArrowUpCircle className="h-4 w-4 text-success" /> : <ArrowDownCircle className="h-4 w-4 text-destructive" />}</TableCell>
-                <TableCell className="text-sm">{t.date}</TableCell>
+                <TableCell className="text-sm">{formatDayMonth(t.date)}</TableCell>
                 <TableCell className="font-medium">{t.description}</TableCell>
                 <TableCell className={`text-right font-medium ${t.type === "entrada" ? "text-success" : "text-destructive"}`}>
                   {t.type === "entrada" ? "+" : "−"} R$ {Number(t.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                 </TableCell>
                 <TableCell className="text-center text-xs text-muted-foreground">{TRANSACTION_CATEGORIES.find(c => c.value === t.category)?.label ?? t.category ?? "—"}</TableCell>
                 <TableCell className="text-center text-xs text-muted-foreground">{t.source === "csv_import" ? "CSV" : "Manual"}</TableCell>
+                <TableCell><Pencil className="h-4 w-4 text-muted-foreground" /></TableCell>
               </TableRow>
             ))}
             {filtered.length === 0 && (
-              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Sem lançamentos neste período</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Sem lançamentos neste período</TableCell></TableRow>
             )}
           </TableBody>
         </Table>
       </div>
 
-      {/* New transaction dialog */}
+      {/* New/Edit transaction dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Novo Lançamento</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editingTx ? "Editar Lançamento" : "Novo Lançamento"}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2"><Label>Data</Label><Input type="date" value={form.date} onChange={(e) => setForm((p) => ({ ...p, date: e.target.value }))} /></div>
             <div className="space-y-2"><Label>Descrição *</Label><Input value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} /></div>
@@ -245,7 +278,7 @@ export function FinLancamentosTab() {
               <TableBody>
                 {csvRows.slice(0, 50).map((r, i) => (
                   <TableRow key={i}>
-                    <TableCell className="text-sm">{r.date}</TableCell>
+                    <TableCell className="text-sm">{formatDayMonth(r.date)}</TableCell>
                     <TableCell className="text-sm">{r.description}</TableCell>
                     <TableCell className="text-right text-sm">R$ {r.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</TableCell>
                     <TableCell className="text-center"><Badge variant={r.type === "entrada" ? "default" : "secondary"}>{r.type}</Badge></TableCell>
