@@ -1,12 +1,14 @@
 import { useState, useMemo } from "react";
-import { ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Activity, Heart } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { useFinAllRevenues, useFinAllExpenses } from "../hooks/use-financial-data";
-import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Line, ComposedChart } from "recharts";
+import { Progress } from "@/components/ui/progress";
+import { ProgressRing } from "@/components/metrics/ProgressRing";
+import { useFinAllRevenues, useFinAllExpenses, useFinClients, useFinGoals, useFinAllTransactions } from "../hooks/use-financial-data";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
-const MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+const MONTH_LABELS = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+const MONTH_SHORT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
 export function FinVisaoAnualTab() {
   const now = new Date();
@@ -14,127 +16,224 @@ export function FinVisaoAnualTab() {
 
   const revenuesQ = useFinAllRevenues(year);
   const expensesQ = useFinAllExpenses(year);
+  const clientsQ = useFinClients();
+  const goalsQ = useFinGoals(year);
+  const transactionsQ = useFinAllTransactions(year);
 
   const revenues = revenuesQ.data ?? [];
   const expenses = expensesQ.data ?? [];
+  const clients = clientsQ.data?.filter((c) => c.is_active) ?? [];
+  const goals = goalsQ.data ?? [];
+  const transactions = transactionsQ.data ?? [];
 
   const monthlyData = useMemo(() => {
+    let cumCaixa = 0;
     return Array.from({ length: 12 }, (_, i) => {
       const m = i + 1;
       const rev = revenues.filter((r) => r.month === m && r.status === "pago").reduce((s, r) => s + Number(r.amount), 0);
       const exp = expenses.filter((e) => e.month === m && e.status === "pago").reduce((s, e) => s + Number(e.amount), 0);
-      return { month: MONTHS[i], receita: rev, despesa: exp, lucro: rev - exp };
+      const lucro = rev - exp;
+      cumCaixa += lucro;
+      return { month: MONTH_LABELS[i], short: MONTH_SHORT[i], receita: rev, despesa: exp, lucro, caixa: cumCaixa };
     });
   }, [revenues, expenses]);
 
   const totalReceita = monthlyData.reduce((s, d) => s + d.receita, 0);
   const totalDespesa = monthlyData.reduce((s, d) => s + d.despesa, 0);
   const lucroAnual = totalReceita - totalDespesa;
-  const avgMensal = totalReceita / 12;
+  const caixaAnual = monthlyData[11]?.caixa ?? 0;
+  const margemLucro = totalReceita > 0 ? (lucroAnual / totalReceita) * 100 : 0;
+  const ticketMedio = clients.length > 0 ? totalReceita / 12 / clients.length : 0;
+  const avgClients = clients.length;
 
+  // Health score
   const healthScore = useMemo(() => {
     let score = 0;
     if (lucroAnual > 0) score += 30;
     const positiveMonths = monthlyData.filter((d) => d.lucro > 0).length;
     score += (positiveMonths / 12) * 40;
-    const margem = totalReceita > 0 ? (lucroAnual / totalReceita) * 100 : 0;
-    if (margem > 20) score += 30;
-    else if (margem > 10) score += 20;
-    else if (margem > 0) score += 10;
+    if (margemLucro > 20) score += 30;
+    else if (margemLucro > 10) score += 20;
+    else if (margemLucro > 0) score += 10;
     return Math.round(score);
-  }, [monthlyData, lucroAnual, totalReceita]);
+  }, [monthlyData, lucroAnual, margemLucro]);
 
-  const healthColor = healthScore >= 70 ? "text-success" : healthScore >= 40 ? "text-warning" : "text-destructive";
-  const healthLabel = healthScore >= 70 ? "Saudável" : healthScore >= 40 ? "Atenção" : "Crítico";
+  // Quarterly data
+  const quarterlyData = useMemo(() => {
+    return [0, 1, 2, 3].map((q) => {
+      const months = monthlyData.slice(q * 3, q * 3 + 3);
+      const rec = months.reduce((s, m) => s + m.receita, 0);
+      const desp = months.reduce((s, m) => s + m.despesa, 0);
+      const luc = rec - desp;
+      const caixa = months[2]?.caixa ?? 0;
+      return { label: `${q + 1}º TRI`, receita: rec, despesa: desp, lucro: luc, caixa };
+    });
+  }, [monthlyData]);
 
-  const insights = useMemo(() => {
-    const arr: string[] = [];
-    const bestMonth = [...monthlyData].sort((a, b) => b.lucro - a.lucro)[0];
-    const worstMonth = [...monthlyData].sort((a, b) => a.lucro - b.lucro)[0];
-    if (bestMonth) arr.push(`🏆 Melhor mês: ${bestMonth.month} (Lucro: R$ ${bestMonth.lucro.toLocaleString("pt-BR")})`);
-    if (worstMonth && worstMonth.lucro < 0) arr.push(`⚠️ Pior mês: ${worstMonth.month} (Prejuízo: R$ ${Math.abs(worstMonth.lucro).toLocaleString("pt-BR")})`);
-    const growthMonths = monthlyData.filter((d, i) => i > 0 && d.receita > monthlyData[i - 1].receita).length;
-    arr.push(`📈 Crescimento de receita em ${growthMonths} meses`);
-    arr.push(`💰 Receita média mensal: R$ ${avgMensal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`);
-    return arr;
-  }, [monthlyData, avgMensal]);
+  // Annual goal
+  const annualGoal = goals.find((g) => g.month === null);
+  const metaReceita = annualGoal ? Number(annualGoal.revenue_goal) : 0;
+  const progressoMeta = metaReceita > 0 ? (totalReceita / metaReceita) * 100 : 0;
+
+  const fmt = (v: number) => `R$ ${Math.abs(v).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
+  const fmtSign = (v: number) => `${v < 0 ? "-" : ""}R$ ${Math.abs(v).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
 
   return (
     <div className="space-y-6">
+      {/* Year nav */}
       <div className="flex items-center justify-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => setYear((y) => y - 1)}><ChevronLeft className="h-4 w-4" /></Button>
         <span className="text-lg font-semibold">{year}</span>
         <Button variant="ghost" size="icon" onClick={() => setYear((y) => y + 1)}><ChevronRight className="h-4 w-4" /></Button>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm">Receita Anual</CardTitle><TrendingUp className="h-4 w-4 text-success" /></CardHeader>
-          <CardContent><p className="text-xl font-bold">R$ {totalReceita.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p></CardContent>
+      {/* Annual summary header */}
+      <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <Card className="text-center">
+          <CardHeader className="pb-1"><CardTitle className="text-xs uppercase">Ano</CardTitle></CardHeader>
+          <CardContent><p className="text-2xl font-bold">{year}</p></CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm">Despesa Anual</CardTitle><TrendingDown className="h-4 w-4 text-destructive" /></CardHeader>
-          <CardContent><p className="text-xl font-bold">R$ {totalDespesa.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p></CardContent>
+        <Card className="text-center">
+          <CardHeader className="pb-1"><CardTitle className="text-xs uppercase">Receita Anual</CardTitle></CardHeader>
+          <CardContent><p className="text-lg font-bold">{fmt(totalReceita)}</p></CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm">Lucro Anual</CardTitle><Activity className="h-4 w-4" /></CardHeader>
-          <CardContent><p className={`text-xl font-bold ${lucroAnual >= 0 ? "text-success" : "text-destructive"}`}>R$ {Math.abs(lucroAnual).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p></CardContent>
+        <Card className="text-center">
+          <CardHeader className="pb-1"><CardTitle className="text-xs uppercase">Despesa Anual</CardTitle></CardHeader>
+          <CardContent><p className="text-lg font-bold">{fmt(totalDespesa)}</p></CardContent>
         </Card>
+        <Card className="text-center">
+          <CardHeader className="pb-1"><CardTitle className="text-xs uppercase">Lucro Anual</CardTitle></CardHeader>
+          <CardContent><p className={`text-lg font-bold ${lucroAnual >= 0 ? "text-success" : "text-destructive"}`}>{fmtSign(lucroAnual)}</p></CardContent>
+        </Card>
+        <Card className="text-center">
+          <CardHeader className="pb-1"><CardTitle className="text-xs uppercase">Caixa</CardTitle></CardHeader>
+          <CardContent><p className={`text-lg font-bold ${caixaAnual >= 0 ? "text-success" : "text-destructive"}`}>{fmtSign(caixaAnual)}</p></CardContent>
+        </Card>
+        <Card className="text-center">
+          <CardHeader className="pb-1"><CardTitle className="text-xs uppercase">Saúde do Caixa</CardTitle></CardHeader>
+          <CardContent><p className="text-lg font-bold">{(healthScore / 10).toFixed(1)}</p></CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Monthly table */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm">Saúde Financeira</CardTitle><Heart className="h-4 w-4" /></CardHeader>
-          <CardContent>
-            <p className={`text-xl font-bold ${healthColor}`}>{healthScore}%</p>
-            <Badge variant="outline" className="mt-1">{healthLabel}</Badge>
+          <CardContent className="p-0">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/50">
+                  <th className="px-3 py-2 text-left font-bold">Mês</th>
+                  <th className="px-3 py-2 text-right font-bold">Receita</th>
+                  <th className="px-3 py-2 text-right font-bold">Despesa</th>
+                  <th className="px-3 py-2 text-right font-bold">Lucro</th>
+                  <th className="px-3 py-2 text-right font-bold">Caixa</th>
+                </tr>
+              </thead>
+              <tbody>
+                {monthlyData.map((d, i) => (
+                  <tr key={i} className="border-b last:border-0 hover:bg-accent/30">
+                    <td className="px-3 py-2 font-semibold uppercase text-xs">{d.month}</td>
+                    <td className="px-3 py-2 text-right">{fmt(d.receita)}</td>
+                    <td className="px-3 py-2 text-right">{fmt(d.despesa)}</td>
+                    <td className={`px-3 py-2 text-right ${d.lucro >= 0 ? "text-success" : "text-destructive"}`}>{fmtSign(d.lucro)}</td>
+                    <td className={`px-3 py-2 text-right ${d.caixa >= 0 ? "text-success" : "text-destructive"}`}>{fmtSign(d.caixa)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+
+        {/* Quarterly table */}
+        <Card>
+          <CardContent className="p-0">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/50">
+                  <th className="px-3 py-2 text-left font-bold">Trimestre</th>
+                  <th className="px-3 py-2 text-right font-bold">Receita</th>
+                  <th className="px-3 py-2 text-right font-bold">Despesa</th>
+                  <th className="px-3 py-2 text-right font-bold">Lucro</th>
+                  <th className="px-3 py-2 text-right font-bold">Caixa</th>
+                </tr>
+              </thead>
+              <tbody>
+                {quarterlyData.map((q, i) => (
+                  <tr key={i} className="border-b last:border-0 hover:bg-accent/30">
+                    <td className="px-3 py-2 font-bold text-lg">{q.label}</td>
+                    <td className="px-3 py-2 text-right">{fmt(q.receita)}</td>
+                    <td className="px-3 py-2 text-right">{fmt(q.despesa)}</td>
+                    <td className={`px-3 py-2 text-right ${q.lucro >= 0 ? "text-success" : "text-destructive"}`}>{fmtSign(q.lucro)}</td>
+                    <td className={`px-3 py-2 text-right ${q.caixa >= 0 ? "text-success" : "text-destructive"}`}>{fmtSign(q.caixa)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </CardContent>
         </Card>
       </div>
 
-      {/* Trend chart */}
-      <Card>
-        <CardHeader><CardTitle className="text-base">Tendência Mensal</CardTitle></CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <ComposedChart data={monthlyData}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-              <XAxis dataKey="month" className="text-xs" />
-              <YAxis className="text-xs" />
-              <Tooltip formatter={(v: number) => `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`} />
-              <Legend />
-              <Bar dataKey="receita" name="Receita" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="despesa" name="Despesa" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
-              <Line type="monotone" dataKey="lucro" name="Lucro" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3 }} />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Monthly bar chart */}
+        <Card>
+          <CardHeader><CardTitle className="text-base uppercase text-center">Gráfico de Acompanhamento Mensal</CardTitle></CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={monthlyData}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                <XAxis dataKey="short" className="text-xs" />
+                <YAxis className="text-xs" tickFormatter={(v: number) => `R$ ${(v / 1000).toFixed(0)}k`} />
+                <Tooltip formatter={(v: number) => fmt(v)} />
+                <Legend />
+                <Bar dataKey="receita" name="Receita" fill="hsl(var(--primary) / 0.4)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="despesa" name="Despesa" fill="hsl(var(--primary) / 0.7)" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
 
-      {/* Comparativo */}
-      <Card>
-        <CardHeader><CardTitle className="text-base">Comparativo Mês a Mês</CardTitle></CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
-            {monthlyData.map((d) => (
-              <div key={d.month} className="rounded-lg border p-3 text-center">
-                <p className="text-xs font-medium text-muted-foreground">{d.month}</p>
-                <p className="text-xs text-success">+{d.receita.toLocaleString("pt-BR")}</p>
-                <p className="text-xs text-destructive">-{d.despesa.toLocaleString("pt-BR")}</p>
-                <p className={`text-sm font-bold ${d.lucro >= 0 ? "text-success" : "text-destructive"}`}>
-                  {d.lucro >= 0 ? "+" : ""}
-                  {d.lucro.toLocaleString("pt-BR")}
-                </p>
-              </div>
-            ))}
+        {/* Right side KPIs */}
+        <div className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-3">
+            {/* Margem Ring */}
+            <Card className="flex flex-col items-center justify-center py-4">
+              <CardTitle className="text-xs font-medium uppercase mb-2">Margem de Lucro</CardTitle>
+              <ProgressRing
+                value={Math.min(Math.abs(margemLucro), 100)}
+                size={110}
+                stroke={12}
+                tone={margemLucro >= 20 ? "success" : margemLucro >= 0 ? "warning" : "danger"}
+                label={<span className={`text-lg font-bold ${margemLucro >= 0 ? "" : "text-destructive"}`}>{margemLucro.toFixed(1)}%</span>}
+              />
+            </Card>
+            <Card className="text-center">
+              <CardHeader className="pb-1"><CardTitle className="text-xs uppercase">Clientes</CardTitle></CardHeader>
+              <CardContent><p className="text-3xl font-bold">{avgClients}</p></CardContent>
+            </Card>
+            <Card className="text-center">
+              <CardHeader className="pb-1"><CardTitle className="text-xs uppercase">Ticket Médio</CardTitle></CardHeader>
+              <CardContent><p className="text-lg font-bold">{fmt(ticketMedio)}</p></CardContent>
+            </Card>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Insights */}
-      <Card>
-        <CardHeader><CardTitle className="text-base">Insights</CardTitle></CardHeader>
-        <CardContent className="space-y-2">
-          {insights.map((insight, i) => <p key={i} className="text-sm">{insight}</p>)}
-        </CardContent>
-      </Card>
+          {/* Meta */}
+          {metaReceita > 0 && (
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-xs uppercase text-center">Meta de Receita Anual</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-2xl font-bold text-center">{fmt(metaReceita)}</p>
+                <div>
+                  <div className="flex items-center justify-between text-sm mb-1">
+                    <span className="uppercase font-medium text-xs">Progresso</span>
+                    <span className="font-bold">{progressoMeta.toFixed(1)}%</span>
+                  </div>
+                  <Progress value={Math.min(progressoMeta, 100)} className="h-3" />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
