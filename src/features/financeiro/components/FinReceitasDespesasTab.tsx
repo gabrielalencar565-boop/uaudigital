@@ -27,8 +27,8 @@ export function FinReceitasDespesasTab() {
     return map;
   }, [revenues]);
 
-  const totalFaturamento = revenues.filter((r) => r.status === "pago").reduce((s, r) => s + Number(r.amount), 0);
-  const totalDespesas = expenses.filter((e) => e.status === "pago").reduce((s, e) => s + Number(e.amount), 0);
+  const totalFaturamento = clients.reduce((s, c) => s + Number(c.monthly_value), 0);
+  const totalDespesas = expenses.reduce((s, e) => s + Number(e.amount), 0);
   const lucro = totalFaturamento - totalDespesas;
   const ticketMedio = clients.length > 0 ? totalFaturamento / clients.length : 0;
   const margemLucro = totalFaturamento > 0 ? (lucro / totalFaturamento) * 100 : 0;
