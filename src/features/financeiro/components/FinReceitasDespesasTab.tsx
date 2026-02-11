@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { ChevronLeft, ChevronRight, CheckCircle2, Circle } from "lucide-react";
+import { ChevronLeft, ChevronRight, CheckCircle2, Circle, DollarSign, TrendingDown, TrendingUp, Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -33,6 +33,12 @@ export function FinReceitasDespesasTab() {
     const map = new Map(revenues.map((r) => [r.client_id, r]));
     return map;
   }, [revenues]);
+
+  // Dashboard metrics
+  const totalFaturamento = revenues.filter((r) => r.status === "pago").reduce((s, r) => s + Number(r.amount), 0);
+  const totalDespesas = expenses.filter((e) => e.status === "pago").reduce((s, e) => s + Number(e.amount), 0);
+  const lucro = totalFaturamento - totalDespesas;
+  const ticketMedio = clients.length > 0 ? totalFaturamento / clients.length : 0;
 
   const revPaid = revenues.filter((r) => r.status === "pago").length;
   const revTotal = clients.length;
@@ -70,6 +76,20 @@ export function FinReceitasDespesasTab() {
     }
   };
 
+  const toggleExpStatus = (exp: typeof expenses[0]) => {
+    const newStatus = exp.status === "pago" ? "pendente" : "pago";
+    upsertExp.mutate({
+      id: exp.id,
+      description: exp.description,
+      category: exp.category,
+      year,
+      month,
+      amount: Number(exp.amount),
+      status: newStatus,
+      paid_at: newStatus === "pago" ? new Date().toISOString() : null,
+    } as any);
+  };
+
   const prev = () => { if (month === 1) { setMonth(12); setYear((y) => y - 1); } else setMonth((m) => m - 1); };
   const next = () => { if (month === 12) { setMonth(1); setYear((y) => y + 1); } else setMonth((m) => m + 1); };
 
@@ -80,6 +100,46 @@ export function FinReceitasDespesasTab() {
         <Button variant="ghost" size="icon" onClick={prev}><ChevronLeft className="h-4 w-4" /></Button>
         <span className="text-lg font-semibold">{MONTHS[month - 1]} {year}</span>
         <Button variant="ghost" size="icon" onClick={next}><ChevronRight className="h-4 w-4" /></Button>
+      </div>
+
+      {/* Dashboard KPIs */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Faturamento</CardTitle>
+            <DollarSign className="h-4 w-4 text-success" />
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold text-success">R$ {totalFaturamento.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Despesas</CardTitle>
+            <TrendingDown className="h-4 w-4 text-destructive" />
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold text-destructive">R$ {totalDespesas.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Lucro</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <p className={`text-2xl font-bold ${lucro >= 0 ? "text-success" : "text-destructive"}`}>R$ {Math.abs(lucro).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Ticket Médio</CardTitle>
+            <Receipt className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">R$ {ticketMedio.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -104,7 +164,8 @@ export function FinReceitasDespesasTab() {
                 >
                   {paid ? <CheckCircle2 className="h-5 w-5 text-success shrink-0" /> : <Circle className="h-5 w-5 text-muted-foreground shrink-0" />}
                   <span className="flex-1 text-sm font-medium truncate">{c.name}</span>
-                  <span className="text-sm text-muted-foreground">R$ {Number(c.monthly_value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                  <span className="text-xs text-muted-foreground shrink-0">Venc. dia 10</span>
+                  <span className="text-sm text-muted-foreground shrink-0">R$ {Number(c.monthly_value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
                 </button>
               );
             })}
@@ -124,19 +185,29 @@ export function FinReceitasDespesasTab() {
           <CardContent className="space-y-4">
             {EXPENSE_CATEGORIES.map((cat) => {
               const catExpenses = expenses.filter((e) => e.category === cat.key);
-              const catPaid = catExpenses.filter((e) => e.status === "pago").length;
-              const catTotal = catExpenses.reduce((s, e) => s + Number(e.amount), 0);
-              return (
+              if (catExpenses.length === 0) return (
                 <div key={cat.key} className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">{cat.label}</span>
-                    <span className="text-xs text-muted-foreground">{catPaid}/{catExpenses.length} • R$ {catTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
-                  </div>
-                  {catExpenses.length > 0 ? (
-                    <Progress value={catExpenses.length > 0 ? (catPaid / catExpenses.length) * 100 : 0} className="h-1.5" />
-                  ) : (
-                    <p className="text-xs text-muted-foreground">Nenhuma despesa</p>
-                  )}
+                  <span className="text-sm font-medium">{cat.label}</span>
+                  <p className="text-xs text-muted-foreground">Nenhuma despesa</p>
+                </div>
+              );
+              return (
+                <div key={cat.key} className="space-y-2">
+                  <span className="text-sm font-medium">{cat.label}</span>
+                  {catExpenses.map((exp) => (
+                    <button
+                      key={exp.id}
+                      onClick={() => toggleExpStatus(exp)}
+                      className="flex w-full items-center gap-3 rounded-lg border px-3 py-2 text-left transition hover:bg-accent/50"
+                    >
+                      {exp.status === "pago"
+                        ? <CheckCircle2 className="h-5 w-5 text-success shrink-0" />
+                        : <Circle className="h-5 w-5 text-muted-foreground shrink-0" />}
+                      <span className="flex-1 text-sm truncate">{exp.description}</span>
+                      <span className="text-xs text-muted-foreground shrink-0">Venc. dia {String(month).padStart(2, "0")}/10</span>
+                      <span className="text-sm text-muted-foreground shrink-0">R$ {Number(exp.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                    </button>
+                  ))}
                 </div>
               );
             })}
