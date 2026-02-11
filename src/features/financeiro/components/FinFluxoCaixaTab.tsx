@@ -1,12 +1,9 @@
 import { useState, useMemo } from "react";
-import { ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Wallet, Users, Receipt } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProgressRing } from "@/components/metrics/ProgressRing";
 import { useFinAllRevenues, useFinAllExpenses, useFinClients, useFinRevenues, useFinExpenses, useFinAllTransactions } from "../hooks/use-financial-data";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-
-const MONTHS = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+import { FinMonthYearSelector } from "./FinMonthYearSelector";
 
 export function FinFluxoCaixaTab() {
   const now = new Date();
@@ -73,17 +70,9 @@ export function FinFluxoCaixaTab() {
       .sort((a, b) => b.value - a.value);
   }, [revenues, expenses, caixaInicial]);
 
-  const prev = () => { if (month === 1) { setMonth(12); setYear((y) => y - 1); } else setMonth((m) => m - 1); };
-  const next = () => { if (month === 12) { setMonth(1); setYear((y) => y + 1); } else setMonth((m) => m + 1); };
-
   return (
     <div className="space-y-6">
-      {/* Month nav */}
-      <div className="flex items-center justify-center gap-4">
-        <Button variant="ghost" size="icon" onClick={prev}><ChevronLeft className="h-4 w-4" /></Button>
-        <span className="text-lg font-semibold">{MONTHS[month - 1]} {year}</span>
-        <Button variant="ghost" size="icon" onClick={next}><ChevronRight className="h-4 w-4" /></Button>
-      </div>
+      <FinMonthYearSelector month={month} year={year} onMonthChange={setMonth} onYearChange={setYear} />
 
       {/* KPIs Row 1 */}
       <div className="grid gap-4 sm:grid-cols-2">

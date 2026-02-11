@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo } from "react";
-import { Plus, Upload, ChevronLeft, ChevronRight, ArrowUpCircle, ArrowDownCircle, Eye } from "lucide-react";
+import { Plus, Upload, ArrowUpCircle, ArrowDownCircle, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,8 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogC
 import { Badge } from "@/components/ui/badge";
 import { useFinTransactions, useUpsertFinTransaction, useBulkInsertTransactions, type FinTransaction } from "../hooks/use-financial-data";
 import { format } from "date-fns";
-
-const MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+import { FinMonthYearSelector } from "./FinMonthYearSelector";
 
 type CSVRow = { date: string; description: string; amount: number; type: "entrada" | "saida" };
 
@@ -51,8 +50,6 @@ export function FinLancamentosTab() {
   const emptyForm = { description: "", amount: "", date: format(new Date(), "yyyy-MM-dd"), type: "entrada", category: "", status: "confirmado", notes: "" };
   const [form, setForm] = useState(emptyForm);
 
-  const prev = () => { if (month === 1) { setMonth(12); setYear((y) => y - 1); } else setMonth((m) => m - 1); };
-  const next = () => { if (month === 12) { setMonth(1); setYear((y) => y + 1); } else setMonth((m) => m + 1); };
 
   const filtered = useMemo(() => {
     return transactions.filter((t) => {
@@ -112,11 +109,7 @@ export function FinLancamentosTab() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={prev}><ChevronLeft className="h-4 w-4" /></Button>
-          <span className="text-lg font-semibold">{MONTHS[month - 1]} {year}</span>
-          <Button variant="ghost" size="icon" onClick={next}><ChevronRight className="h-4 w-4" /></Button>
-        </div>
+        <FinMonthYearSelector month={month} year={year} onMonthChange={setMonth} onYearChange={setYear} />
         <div className="flex gap-2">
           <Select value={typeFilter} onValueChange={setTypeFilter}>
             <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
