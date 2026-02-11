@@ -15,6 +15,7 @@ import {
   useFinCreditCards, useUpsertFinCreditCard,
   type FinExpense, type FinCreditCard
 } from "../hooks/use-financial-data";
+import { FinMonthYearSelector } from "./FinMonthYearSelector";
 
 const CATEGORIES = [
   { value: "administrativa", label: "Administrativa" },
@@ -47,8 +48,6 @@ export function FinDespesasDetalhadasTab() {
   const [form, setForm] = useState(emptyForm);
   const [cardForm, setCardForm] = useState({ name: "", last_digits: "", closing_day: "1", due_day: "10" });
 
-  const prev = () => { if (month === 1) { setMonth(12); setYear((y) => y - 1); } else setMonth((m) => m - 1); };
-  const next = () => { if (month === 12) { setMonth(1); setYear((y) => y + 1); } else setMonth((m) => m + 1); };
 
   const openNew = () => { setEditing(null); setForm(emptyForm); setDialogOpen(true); };
   const openEdit = (e: FinExpense) => {
@@ -73,7 +72,7 @@ export function FinDespesasDetalhadasTab() {
         is_recurring: form.is_recurring,
         installment_total: form.installment_total ? parseInt(form.installment_total) : null,
         installment_current: form.installment_current ? parseInt(form.installment_current) : null,
-        credit_card_id: form.credit_card_id || null,
+        credit_card_id: form.credit_card_id && form.credit_card_id !== "none" ? form.credit_card_id : null,
         notes: form.notes || null,
         paid_at: form.status === "pago" ? new Date().toISOString() : null,
       } as any,
@@ -98,11 +97,7 @@ export function FinDespesasDetalhadasTab() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={prev}><ChevronLeft className="h-4 w-4" /></Button>
-          <span className="text-lg font-semibold">{MONTHS[month - 1]} {year}</span>
-          <Button variant="ghost" size="icon" onClick={next}><ChevronRight className="h-4 w-4" /></Button>
-        </div>
+        <FinMonthYearSelector month={month} year={year} onMonthChange={setMonth} onYearChange={setYear} />
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={() => setCardDialogOpen(true)}><CreditCard className="mr-1 h-4 w-4" /> Cartões</Button>
           <Button size="sm" onClick={openNew}><Plus className="mr-1 h-4 w-4" /> Nova Despesa</Button>
@@ -230,7 +225,7 @@ export function FinDespesasDetalhadasTab() {
                 <Select value={form.credit_card_id} onValueChange={(v) => setForm((p) => ({ ...p, credit_card_id: v }))}>
                   <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Nenhum</SelectItem>
+                    <SelectItem value="none">Nenhum</SelectItem>
                     {cards.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                   </SelectContent>
                 </Select>

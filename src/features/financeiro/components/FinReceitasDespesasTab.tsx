@@ -1,13 +1,11 @@
 import { useState, useMemo } from "react";
-import { ChevronLeft, ChevronRight, CheckCircle2, Circle, DollarSign, TrendingDown, TrendingUp, Receipt } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { CheckCircle2, Circle, DollarSign, TrendingDown, TrendingUp, Receipt } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { ProgressRing } from "@/components/metrics/ProgressRing";
 import { useFinClients, useFinRevenues, useUpsertFinRevenue, useFinExpenses, useUpsertFinExpense } from "../hooks/use-financial-data";
-
-const MONTHS = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+import { FinMonthYearSelector } from "./FinMonthYearSelector";
 
 export function FinReceitasDespesasTab() {
   const now = new Date();
@@ -51,21 +49,14 @@ export function FinReceitasDespesasTab() {
     if (existing) {
       const newStatus = existing.status === "pago" ? "pendente" : "pago";
       upsertRev.mutate({
-        id: existing.id,
-        client_id: clientId,
-        year,
-        month,
-        amount: Number(client.monthly_value),
-        status: newStatus,
+        id: existing.id, client_id: clientId, year, month,
+        amount: Number(client.monthly_value), status: newStatus,
         paid_at: newStatus === "pago" ? new Date().toISOString() : null,
       });
     } else {
       upsertRev.mutate({
-        client_id: clientId,
-        year,
-        month,
-        amount: Number(client.monthly_value),
-        status: "pago",
+        client_id: clientId, year, month,
+        amount: Number(client.monthly_value), status: "pago",
         paid_at: new Date().toISOString(),
       });
     }
@@ -74,93 +65,76 @@ export function FinReceitasDespesasTab() {
   const toggleExpStatus = (exp: typeof expenses[0]) => {
     const newStatus = exp.status === "pago" ? "pendente" : "pago";
     upsertExp.mutate({
-      id: exp.id,
-      description: exp.description,
-      category: exp.category,
-      year,
-      month,
-      amount: Number(exp.amount),
-      status: newStatus,
+      id: exp.id, description: exp.description, category: exp.category,
+      year, month, amount: Number(exp.amount), status: newStatus,
       paid_at: newStatus === "pago" ? new Date().toISOString() : null,
     } as any);
   };
 
-  const prev = () => { if (month === 1) { setMonth(12); setYear((y) => y - 1); } else setMonth((m) => m - 1); };
-  const next = () => { if (month === 12) { setMonth(1); setYear((y) => y + 1); } else setMonth((m) => m + 1); };
-
   return (
     <div className="space-y-6">
-      {/* Month nav */}
-      <div className="flex items-center justify-center gap-4">
-        <Button variant="ghost" size="icon" onClick={prev}><ChevronLeft className="h-4 w-4" /></Button>
-        <span className="text-lg font-semibold">{MONTHS[month - 1]} {year}</span>
-        <Button variant="ghost" size="icon" onClick={next}><ChevronRight className="h-4 w-4" /></Button>
-      </div>
+      <FinMonthYearSelector month={month} year={year} onMonthChange={setMonth} onYearChange={setYear} />
 
-      {/* Dashboard KPIs + Rings */}
-      <div className="grid gap-4 lg:grid-cols-[1fr_auto]">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Faturamento</CardTitle>
-              <DollarSign className="h-4 w-4 text-success" />
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-success">R$ {totalFaturamento.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Despesas</CardTitle>
-              <TrendingDown className="h-4 w-4 text-destructive" />
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-destructive">R$ {totalDespesas.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Lucro</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <p className={`text-2xl font-bold ${lucro >= 0 ? "text-success" : "text-destructive"}`}>R$ {Math.abs(lucro).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Ticket Médio</CardTitle>
-              <Receipt className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">R$ {ticketMedio.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Ring indicators */}
-        <div className="flex items-center gap-6">
-          <div className="flex flex-col items-center gap-2">
-            <ProgressRing
-              value={Math.abs(margemLucro)}
-              size={120}
-              stroke={12}
-              tone={margemLucro >= 20 ? "success" : margemLucro >= 0 ? "warning" : "danger"}
-              label={<span className={`text-xl font-bold ${margemLucro >= 0 ? "text-success" : "text-destructive"}`}>{margemLucro.toFixed(0)}%</span>}
-            />
-            <span className="text-sm font-medium text-muted-foreground">Margem de lucro</span>
-          </div>
-          <div className="flex flex-col items-center gap-2">
-            <ProgressRing
-              value={Math.min(clients.length * 5, 100)}
-              size={120}
-              stroke={12}
-              tone="primary"
-              label={<span className="text-2xl font-bold">{clients.length}</span>}
-            />
-            <span className="text-sm font-medium text-muted-foreground">Clientes ativos</span>
-          </div>
-        </div>
+      {/* Dashboard KPIs - 3 columns */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Faturamento</CardTitle>
+            <DollarSign className="h-4 w-4 text-success" />
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold text-success">R$ {totalFaturamento.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Despesas</CardTitle>
+            <TrendingDown className="h-4 w-4 text-destructive" />
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold text-destructive">R$ {totalDespesas.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Lucro</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <p className={`text-2xl font-bold ${lucro >= 0 ? "text-success" : "text-destructive"}`}>
+              {lucro < 0 ? "-" : ""}R$ {Math.abs(lucro).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Ticket Médio</CardTitle>
+            <Receipt className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">R$ {ticketMedio.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+          </CardContent>
+        </Card>
+        <Card className="flex flex-col items-center justify-center py-4">
+          <span className="text-sm font-medium text-muted-foreground mb-2">Clientes Ativos</span>
+          <ProgressRing
+            value={Math.min(clients.length * 5, 100)}
+            size={100}
+            stroke={10}
+            tone="primary"
+            label={<span className="text-2xl font-bold">{clients.length}</span>}
+          />
+        </Card>
+        <Card className="flex flex-col items-center justify-center py-4">
+          <span className="text-sm font-medium text-muted-foreground mb-2">Margem de Lucro</span>
+          <ProgressRing
+            value={Math.min(Math.abs(margemLucro), 100)}
+            size={100}
+            stroke={10}
+            tone={margemLucro >= 20 ? "success" : margemLucro >= 0 ? "warning" : "danger"}
+            label={<span className={`text-xl font-bold ${margemLucro >= 0 ? "text-success" : "text-destructive"}`}>{margemLucro.toFixed(0)}%</span>}
+          />
+        </Card>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">

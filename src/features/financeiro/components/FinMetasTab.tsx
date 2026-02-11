@@ -1,14 +1,14 @@
 import { useState, useMemo } from "react";
-import { ChevronLeft, ChevronRight, Target, Plus, Pencil } from "lucide-react";
+import { Target, Plus, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
 import { useFinGoals, useUpsertFinGoal, useFinAllRevenues, useFinAllExpenses, type FinGoal } from "../hooks/use-financial-data";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { FinMonthYearSelector } from "./FinMonthYearSelector";
 
 const MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
@@ -75,11 +75,7 @@ export function FinMetasTab() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => setYear((y) => y - 1)}><ChevronLeft className="h-4 w-4" /></Button>
-        <span className="text-lg font-semibold">{year}</span>
-        <Button variant="ghost" size="icon" onClick={() => setYear((y) => y + 1)}><ChevronRight className="h-4 w-4" /></Button>
-      </div>
+      <FinMonthYearSelector month={1} year={year} onMonthChange={() => {}} onYearChange={setYear} yearOnly />
 
       {/* Annual goal */}
       <Card>
