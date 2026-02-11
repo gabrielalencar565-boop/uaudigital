@@ -1,0 +1,1 @@
+ALTER TABLE public.financial_clients ADD COLUMN IF NOT EXISTS due_day integer DEFAULT 10;

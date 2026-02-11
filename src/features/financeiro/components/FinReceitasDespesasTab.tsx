@@ -161,8 +161,7 @@ export function FinReceitasDespesasTab() {
                 {clients.map((c) => {
                   const rev = revByClient.get(c.id);
                   const paid = rev?.status === "pago";
-                  const contractStart = new Date(c.contract_start);
-                  const dueDay = contractStart.getDate();
+                  const dueDay = c.due_day ?? 10;
                   return (
                     <tr key={c.id} className="border-b last:border-0 hover:bg-accent/30 transition-colors">
                       <td className="px-4 py-2.5 font-medium">{c.name}</td>

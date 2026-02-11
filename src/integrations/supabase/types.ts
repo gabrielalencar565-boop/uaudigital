@@ -227,6 +227,7 @@ export type Database = {
           contract_months: number
           contract_start: string
           created_at: string
+          due_day: number | null
           id: string
           is_active: boolean
           monthly_value: number
@@ -239,6 +240,7 @@ export type Database = {
           contract_months?: number
           contract_start?: string
           created_at?: string
+          due_day?: number | null
           id?: string
           is_active?: boolean
           monthly_value?: number
@@ -251,6 +253,7 @@ export type Database = {
           contract_months?: number
           contract_start?: string
           created_at?: string
+          due_day?: number | null
           id?: string
           is_active?: boolean
           monthly_value?: number
