@@ -44,7 +44,7 @@ export function FinDespesasDetalhadasTab() {
   const [cardDialogOpen, setCardDialogOpen] = useState(false);
   const [editing, setEditing] = useState<FinExpense | null>(null);
 
-  const emptyForm = { description: "", category: "administrativa", amount: "", status: "pendente", is_recurring: false, installment_total: "", installment_current: "", credit_card_id: "", notes: "" };
+  const emptyForm = { description: "", category: "administrativa", amount: "", is_recurring: false, installment_total: "", installment_current: "", credit_card_id: "", notes: "" };
   const [form, setForm] = useState(emptyForm);
   const [cardForm, setCardForm] = useState({ name: "", last_digits: "", closing_day: "1", due_day: "10" });
 
@@ -53,7 +53,7 @@ export function FinDespesasDetalhadasTab() {
   const openEdit = (e: FinExpense) => {
     setEditing(e);
     setForm({
-      description: e.description, category: e.category, amount: String(e.amount), status: e.status,
+      description: e.description, category: e.category, amount: String(e.amount),
       is_recurring: e.is_recurring, installment_total: e.installment_total ? String(e.installment_total) : "",
       installment_current: e.installment_current ? String(e.installment_current) : "",
       credit_card_id: e.credit_card_id ?? "", notes: e.notes ?? "",
@@ -68,13 +68,13 @@ export function FinDespesasDetalhadasTab() {
         description: form.description,
         category: form.category,
         amount: parseFloat(form.amount) || 0,
-        year, month, status: form.status,
+        year, month, status: "pendente",
         is_recurring: form.is_recurring,
         installment_total: form.installment_total ? parseInt(form.installment_total) : null,
         installment_current: form.installment_current ? parseInt(form.installment_current) : null,
         credit_card_id: form.credit_card_id && form.credit_card_id !== "none" ? form.credit_card_id : null,
         notes: form.notes || null,
-        paid_at: form.status === "pago" ? new Date().toISOString() : null,
+        paid_at: null,
       } as any,
       { onSuccess: () => setDialogOpen(false) },
     );
@@ -161,7 +161,6 @@ export function FinDespesasDetalhadasTab() {
                       <TableRow>
                         <TableHead>Descrição</TableHead>
                         <TableHead className="text-right">Valor</TableHead>
-                        <TableHead className="text-center">Status</TableHead>
                         <TableHead className="text-center">Parcela</TableHead>
                         <TableHead className="w-20" />
                       </TableRow>
@@ -171,9 +170,6 @@ export function FinDespesasDetalhadasTab() {
                         <TableRow key={e.id}>
                           <TableCell className="font-medium">{e.description}</TableCell>
                           <TableCell className="text-right">R$ {Number(e.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</TableCell>
-                          <TableCell className="text-center">
-                            <Badge variant={e.status === "pago" ? "default" : "secondary"}>{e.status === "pago" ? "Pago" : "Pendente"}</Badge>
-                          </TableCell>
                           <TableCell className="text-center text-sm text-muted-foreground">
                             {e.installment_total ? `${e.installment_current}/${e.installment_total}` : "—"}
                           </TableCell>
@@ -210,16 +206,6 @@ export function FinDespesasDetalhadasTab() {
               <div className="space-y-2"><Label>Valor (R$)</Label><Input type="number" step="0.01" value={form.amount} onChange={(e) => setForm((p) => ({ ...p, amount: e.target.value }))} /></div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Status</Label>
-                <Select value={form.status} onValueChange={(v) => setForm((p) => ({ ...p, status: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pendente">Pendente</SelectItem>
-                    <SelectItem value="pago">Pago</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
               <div className="space-y-2">
                 <Label>Cartão</Label>
                 <Select value={form.credit_card_id} onValueChange={(v) => setForm((p) => ({ ...p, credit_card_id: v }))}>
