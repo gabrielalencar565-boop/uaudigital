@@ -75,7 +75,7 @@ export function FinReceitasDespesasTab() {
     <div className="space-y-6">
       <FinMonthYearSelector month={month} year={year} onMonthChange={setMonth} onYearChange={setYear} />
 
-      {/* Dashboard KPIs - 3 columns */}
+      {/* Dashboard KPIs - reordered: Faturamento, Despesas, Lucro, Ticket Médio, Clientes Ativos, Margem */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -83,7 +83,7 @@ export function FinReceitasDespesasTab() {
             <DollarSign className="h-4 w-4 text-success" />
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-success">R$ {totalFaturamento.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+            <p className="text-3xl font-bold text-success">R$ {totalFaturamento.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
           </CardContent>
         </Card>
         <Card>
@@ -92,7 +92,7 @@ export function FinReceitasDespesasTab() {
             <TrendingDown className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-destructive">R$ {totalDespesas.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+            <p className="text-3xl font-bold text-destructive">R$ {totalDespesas.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
           </CardContent>
         </Card>
         <Card>
@@ -101,7 +101,7 @@ export function FinReceitasDespesasTab() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <p className={`text-2xl font-bold ${lucro >= 0 ? "text-success" : "text-destructive"}`}>
+            <p className={`text-3xl font-bold ${lucro >= 0 ? "text-success" : "text-destructive"}`}>
               {lucro < 0 ? "-" : ""}R$ {Math.abs(lucro).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
             </p>
           </CardContent>
@@ -112,7 +112,7 @@ export function FinReceitasDespesasTab() {
             <Receipt className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">R$ {ticketMedio.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+            <p className="text-3xl font-bold">R$ {ticketMedio.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
           </CardContent>
         </Card>
         <Card className="flex flex-col items-center justify-center py-4">
@@ -122,7 +122,7 @@ export function FinReceitasDespesasTab() {
             size={100}
             stroke={10}
             tone="primary"
-            label={<span className="text-2xl font-bold">{clients.length}</span>}
+            label={<span className="text-3xl font-bold">{clients.length}</span>}
           />
         </Card>
         <Card className="flex flex-col items-center justify-center py-4">
@@ -132,7 +132,7 @@ export function FinReceitasDespesasTab() {
             size={100}
             stroke={10}
             tone={margemLucro >= 20 ? "success" : margemLucro >= 0 ? "warning" : "danger"}
-            label={<span className={`text-xl font-bold ${margemLucro >= 0 ? "text-success" : "text-destructive"}`}>{margemLucro.toFixed(0)}%</span>}
+            label={<span className={`text-2xl font-bold ${margemLucro >= 0 ? "text-success" : "text-destructive"}`}>{margemLucro.toFixed(0)}%</span>}
           />
         </Card>
       </div>

@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { ProgressRing } from "@/components/metrics/ProgressRing";
-import { useFinAllRevenues, useFinAllExpenses, useFinClients, useFinGoals, useFinAllTransactions } from "../hooks/use-financial-data";
+import { useFinClients, useFinGoals, useFinAllTransactions } from "../hooks/use-financial-data";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { FinMonthYearSelector } from "./FinMonthYearSelector";
 
@@ -13,14 +13,10 @@ export function FinVisaoAnualTab() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
 
-  const revenuesQ = useFinAllRevenues(year);
-  const expensesQ = useFinAllExpenses(year);
   const clientsQ = useFinClients();
   const goalsQ = useFinGoals(year);
   const transactionsQ = useFinAllTransactions(year);
 
-  const revenues = revenuesQ.data ?? [];
-  const expenses = expensesQ.data ?? [];
   const clients = clientsQ.data?.filter((c) => c.is_active) ?? [];
   const goals = goalsQ.data ?? [];
   const transactions = transactionsQ.data ?? [];
@@ -29,13 +25,17 @@ export function FinVisaoAnualTab() {
     let cumCaixa = 0;
     return Array.from({ length: 12 }, (_, i) => {
       const m = i + 1;
-      const rev = revenues.filter((r) => r.month === m && r.status === "pago").reduce((s, r) => s + Number(r.amount), 0);
-      const exp = expenses.filter((e) => e.month === m && e.status === "pago").reduce((s, e) => s + Number(e.amount), 0);
+      const monthTxs = transactions.filter((t) => {
+        const d = new Date(t.date);
+        return d.getMonth() + 1 === m;
+      });
+      const rev = monthTxs.filter((t) => t.type === "entrada").reduce((s, t) => s + Number(t.amount), 0);
+      const exp = monthTxs.filter((t) => t.type === "saida").reduce((s, t) => s + Number(t.amount), 0);
       const lucro = rev - exp;
       cumCaixa += lucro;
       return { month: MONTH_LABELS[i], short: MONTH_SHORT[i], receita: rev, despesa: exp, lucro, caixa: cumCaixa };
     });
-  }, [revenues, expenses]);
+  }, [transactions]);
 
   const totalReceita = monthlyData.reduce((s, d) => s + d.receita, 0);
   const totalDespesa = monthlyData.reduce((s, d) => s + d.despesa, 0);
@@ -81,31 +81,27 @@ export function FinVisaoAnualTab() {
     <div className="space-y-6">
       <FinMonthYearSelector month={1} year={year} onMonthChange={() => {}} onYearChange={setYear} yearOnly />
 
-      {/* Annual summary header */}
-      <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        <Card className="text-center">
-          <CardHeader className="pb-1"><CardTitle className="text-xs uppercase">Ano</CardTitle></CardHeader>
-          <CardContent><p className="text-2xl font-bold">{year}</p></CardContent>
-        </Card>
+      {/* Annual summary header - removed Ano widget, 5 cols */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <Card className="text-center">
           <CardHeader className="pb-1"><CardTitle className="text-xs uppercase">Receita Anual</CardTitle></CardHeader>
-          <CardContent><p className="text-lg font-bold">{fmt(totalReceita)}</p></CardContent>
+          <CardContent><p className="text-2xl font-bold">{fmt(totalReceita)}</p></CardContent>
         </Card>
         <Card className="text-center">
           <CardHeader className="pb-1"><CardTitle className="text-xs uppercase">Despesa Anual</CardTitle></CardHeader>
-          <CardContent><p className="text-lg font-bold">{fmt(totalDespesa)}</p></CardContent>
+          <CardContent><p className="text-2xl font-bold">{fmt(totalDespesa)}</p></CardContent>
         </Card>
         <Card className="text-center">
           <CardHeader className="pb-1"><CardTitle className="text-xs uppercase">Lucro Anual</CardTitle></CardHeader>
-          <CardContent><p className={`text-lg font-bold ${lucroAnual >= 0 ? "text-success" : "text-destructive"}`}>{fmtSign(lucroAnual)}</p></CardContent>
+          <CardContent><p className={`text-2xl font-bold ${lucroAnual >= 0 ? "text-success" : "text-destructive"}`}>{fmtSign(lucroAnual)}</p></CardContent>
         </Card>
         <Card className="text-center">
           <CardHeader className="pb-1"><CardTitle className="text-xs uppercase">Caixa</CardTitle></CardHeader>
-          <CardContent><p className={`text-lg font-bold ${caixaAnual >= 0 ? "text-success" : "text-destructive"}`}>{fmtSign(caixaAnual)}</p></CardContent>
+          <CardContent><p className={`text-2xl font-bold ${caixaAnual >= 0 ? "text-success" : "text-destructive"}`}>{fmtSign(caixaAnual)}</p></CardContent>
         </Card>
         <Card className="text-center">
           <CardHeader className="pb-1"><CardTitle className="text-xs uppercase">Saúde do Caixa</CardTitle></CardHeader>
-          <CardContent><p className="text-lg font-bold">{(healthScore / 10).toFixed(1)}</p></CardContent>
+          <CardContent><p className="text-2xl font-bold">{(healthScore / 10).toFixed(1)}</p></CardContent>
         </Card>
       </div>
 
@@ -197,16 +193,16 @@ export function FinVisaoAnualTab() {
                 size={110}
                 stroke={12}
                 tone={margemLucro >= 20 ? "success" : margemLucro >= 0 ? "warning" : "danger"}
-                label={<span className={`text-lg font-bold ${margemLucro >= 0 ? "" : "text-destructive"}`}>{margemLucro.toFixed(1)}%</span>}
+                label={<span className={`text-2xl font-bold ${margemLucro >= 0 ? "" : "text-destructive"}`}>{margemLucro.toFixed(1)}%</span>}
               />
             </Card>
             <Card className="text-center">
               <CardHeader className="pb-1"><CardTitle className="text-xs uppercase">Clientes</CardTitle></CardHeader>
-              <CardContent><p className="text-3xl font-bold">{avgClients}</p></CardContent>
+              <CardContent><p className="text-4xl font-bold">{avgClients}</p></CardContent>
             </Card>
             <Card className="text-center">
               <CardHeader className="pb-1"><CardTitle className="text-xs uppercase">Ticket Médio</CardTitle></CardHeader>
-              <CardContent><p className="text-lg font-bold">{fmt(ticketMedio)}</p></CardContent>
+              <CardContent><p className="text-2xl font-bold">{fmt(ticketMedio)}</p></CardContent>
             </Card>
           </div>
 
@@ -215,7 +211,7 @@ export function FinVisaoAnualTab() {
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-xs uppercase text-center">Meta de Receita Anual</CardTitle></CardHeader>
               <CardContent className="space-y-3">
-                <p className="text-2xl font-bold text-center">{fmt(metaReceita)}</p>
+                <p className="text-3xl font-bold text-center">{fmt(metaReceita)}</p>
                 <div>
                   <div className="flex items-center justify-between text-sm mb-1">
                     <span className="uppercase font-medium text-xs">Progresso</span>
