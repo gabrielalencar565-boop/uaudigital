@@ -305,6 +305,21 @@ export function useUpsertFinTransaction() {
   });
 }
 
+export function useDeleteFinTransaction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("financial_transactions" as any).delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["fin-transactions"] });
+      toast.success("Lançamento excluído");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+}
+
 export function useBulkInsertTransactions() {
   const qc = useQueryClient();
   return useMutation({
