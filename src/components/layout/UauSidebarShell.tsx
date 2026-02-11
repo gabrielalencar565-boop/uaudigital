@@ -1,5 +1,5 @@
 import { PropsWithChildren, useMemo, useState } from "react";
-import { CalendarDays, ChevronLeft, Eye, LogOut, Shield, Target, Trophy, UserRound } from "lucide-react";
+import { CalendarDays, ChevronLeft, DollarSign, Eye, LogOut, Shield, Target, Trophy, UserRound } from "lucide-react";
 import { useAppSettings } from "@/features/data/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -22,7 +22,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-export type MainTab = "visao_do_dia" | "meu_painel" | "configuracoes" | "desempenho" | "magic2" | "agenda" | "admin";
+export type MainTab = "visao_do_dia" | "meu_painel" | "configuracoes" | "desempenho" | "magic2" | "agenda" | "admin" | "financeiro";
 
 type NavItem = {
   key: MainTab;
@@ -73,7 +73,10 @@ export function UauSidebarShell({
       { key: "configuracoes", label: "Meu Perfil", icon: UserRound },
     ];
 
-    if (isAdmin) base.push({ key: "admin", label: "Admin", icon: Shield });
+    if (isAdmin) {
+      base.push({ key: "financeiro", label: "Financeiro", icon: DollarSign });
+      base.push({ key: "admin", label: "Admin", icon: Shield });
+    }
     return base;
   }, [isAdmin]);
 
