@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo } from "react";
-import { Plus, Upload, ArrowUpCircle, ArrowDownCircle, Eye, Pencil } from "lucide-react";
+import { Plus, Upload, ArrowUpCircle, ArrowDownCircle, Eye, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,8 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { useFinTransactions, useUpsertFinTransaction, useBulkInsertTransactions, type FinTransaction } from "../hooks/use-financial-data";
+import { useFinTransactions, useUpsertFinTransaction, useDeleteFinTransaction, useBulkInsertTransactions, type FinTransaction } from "../hooks/use-financial-data";
 import { format } from "date-fns";
 import { FinMonthYearSelector } from "./FinMonthYearSelector";
 
@@ -49,6 +50,7 @@ export function FinLancamentosTab() {
 
   const txQ = useFinTransactions(year, month);
   const upsertTx = useUpsertFinTransaction();
+  const deleteTx = useDeleteFinTransaction();
   const bulkInsert = useBulkInsertTransactions();
 
   const transactions = txQ.data ?? [];
@@ -106,6 +108,10 @@ export function FinLancamentosTab() {
       } as any,
       { onSuccess: () => { setDialogOpen(false); setForm(emptyForm); setEditingTx(null); } },
     );
+  };
+
+  const handleDelete = (e: React.MouseEvent, txId: string) => {
+    e.stopPropagation();
   };
 
   // CSV Import
@@ -206,7 +212,7 @@ export function FinLancamentosTab() {
               <TableHead className="text-right">Valor</TableHead>
               <TableHead className="text-center">Categoria</TableHead>
               <TableHead className="text-center">Origem</TableHead>
-              <TableHead className="w-10" />
+              <TableHead className="w-20" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -220,7 +226,26 @@ export function FinLancamentosTab() {
                 </TableCell>
                 <TableCell className="text-center text-xs text-muted-foreground">{TRANSACTION_CATEGORIES.find(c => c.value === t.category)?.label ?? t.category ?? "—"}</TableCell>
                 <TableCell className="text-center text-xs text-muted-foreground">{t.source === "csv_import" ? "CSV" : "Manual"}</TableCell>
-                <TableCell><Pencil className="h-4 w-4 text-muted-foreground" /></TableCell>
+                <TableCell>
+                  <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                    <Button size="icon" variant="ghost" onClick={() => openEdit(t)}><Pencil className="h-4 w-4 text-muted-foreground" /></Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button size="icon" variant="ghost"><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Excluir lançamento?</AlertDialogTitle>
+                          <AlertDialogDescription>"{t.description}" será removido permanentemente.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => deleteTx.mutate(t.id)}>Excluir</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </TableCell>
               </TableRow>
             ))}
             {filtered.length === 0 && (

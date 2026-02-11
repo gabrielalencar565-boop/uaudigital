@@ -1,16 +1,16 @@
 import { useState } from "react";
-import { Plus, Pencil, Trash2, Building2, TrendingUp, Users, AlertTriangle } from "lucide-react";
+import { Plus, Pencil, Trash2, Building2, TrendingUp, Users, AlertTriangle, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { useFinClients, useUpsertFinClient, useDeleteFinClient, type FinClient } from "../hooks/use-financial-data";
 import { addMonths, format, differenceInMonths, isBefore } from "date-fns";
-import { ptBR } from "date-fns/locale";
 
 export function FinClientesTab() {
   const clientsQ = useFinClients();
@@ -18,9 +18,23 @@ export function FinClientesTab() {
   const deleteMut = useDeleteFinClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<FinClient | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [form, setForm] = useState({ name: "", cnpj: "", monthly_value: "", contract_months: "12", contract_start: format(new Date(), "yyyy-MM-dd"), due_day: "10", notes: "" });
 
   const clients = clientsQ.data ?? [];
+
+  const getClientStatus = (c: FinClient) => {
+    if (!c.is_active) return "encerrado";
+    const end = addMonths(new Date(c.contract_start), c.contract_months);
+    if (isBefore(end, new Date())) return "expirado";
+    return "ativo";
+  };
+
+  const filteredClients = clients.filter((c) => {
+    if (statusFilter === "all") return true;
+    return getClientStatus(c) === statusFilter;
+  });
+
   const activeClients = clients.filter((c) => c.is_active);
   const mrr = activeClients.reduce((s, c) => s + Number(c.monthly_value), 0);
 
@@ -33,7 +47,8 @@ export function FinClientesTab() {
     const end = addMonths(new Date(c.contract_start), c.contract_months);
     return isBefore(end, new Date());
   });
-  const churnRate = clients.length > 0 ? ((expiredClients.length / clients.length) * 100).toFixed(1) : "0.0";
+  const encerradoCount = clients.filter((c) => !c.is_active).length;
+  const churnRate = clients.length > 0 ? (((expiredClients.length + encerradoCount) / clients.length) * 100).toFixed(1) : "0.0";
 
   const openNew = () => {
     setEditing(null);
@@ -69,6 +84,14 @@ export function FinClientesTab() {
       } as any,
       { onSuccess: () => setDialogOpen(false) },
     );
+  };
+
+  const toggleEncerrado = (c: FinClient) => {
+    upsertMut.mutate({
+      id: c.id,
+      name: c.name,
+      is_active: !c.is_active,
+    } as any);
   };
 
   return (
@@ -109,15 +132,26 @@ export function FinClientesTab() {
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{churnRate}%</p>
-            <p className="text-xs text-muted-foreground">{expiredClients.length} contrato(s) expirado(s)</p>
+            <p className="text-xs text-muted-foreground">{expiredClients.length + encerradoCount} encerrado(s)/expirado(s)</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Table */}
+      {/* Table header with filter */}
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Clientes Financeiros</h3>
-        <Button size="sm" onClick={openNew}><Plus className="mr-1 h-4 w-4" /> Novo</Button>
+        <div className="flex gap-2">
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-40"><Filter className="mr-1 h-4 w-4" /><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="ativo">Ativos</SelectItem>
+              <SelectItem value="expirado">Expirados</SelectItem>
+              <SelectItem value="encerrado">Encerrados</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button size="sm" onClick={openNew}><Plus className="mr-1 h-4 w-4" /> Novo</Button>
+        </div>
       </div>
       <div className="rounded-md border">
         <Table>
@@ -129,26 +163,39 @@ export function FinClientesTab() {
               <TableHead className="text-center">Vencimento</TableHead>
               <TableHead className="text-center">Contrato</TableHead>
               <TableHead className="text-center">Status</TableHead>
-              <TableHead className="w-24" />
+              <TableHead className="w-28" />
             </TableRow>
           </TableHeader>
           <TableBody>
-            {clients.map((c) => {
-              const end = addMonths(new Date(c.contract_start), c.contract_months);
-              const expired = isBefore(end, new Date());
+            {filteredClients.map((c) => {
+              const status = getClientStatus(c);
               return (
-                <TableRow key={c.id}>
+                <TableRow key={c.id} className={!c.is_active ? "opacity-60" : ""}>
                   <TableCell className="font-medium">{c.name}</TableCell>
                   <TableCell className="text-muted-foreground text-sm">{c.cnpj || "—"}</TableCell>
                   <TableCell className="text-right">R$ {Number(c.monthly_value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</TableCell>
                   <TableCell className="text-center text-sm">Dia {(c as any).due_day ?? 10}</TableCell>
                   <TableCell className="text-center text-sm">{c.contract_months} meses</TableCell>
                   <TableCell className="text-center">
-                    {expired ? <Badge variant="destructive">Expirado</Badge> : c.is_active ? <Badge variant="default">Ativo</Badge> : <Badge variant="secondary">Inativo</Badge>}
+                    {status === "encerrado" ? (
+                      <Badge variant="secondary">Encerrado</Badge>
+                    ) : status === "expirado" ? (
+                      <Badge variant="destructive">Expirado</Badge>
+                    ) : (
+                      <Badge variant="default">Ativo</Badge>
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1 justify-end">
                       <Button size="icon" variant="ghost" onClick={() => openEdit(c)}><Pencil className="h-4 w-4" /></Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-xs"
+                        onClick={() => toggleEncerrado(c)}
+                      >
+                        {c.is_active ? "Encerrar" : "Reativar"}
+                      </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button size="icon" variant="ghost"><Trash2 className="h-4 w-4 text-destructive" /></Button>
@@ -169,8 +216,8 @@ export function FinClientesTab() {
                 </TableRow>
               );
             })}
-            {clients.length === 0 && (
-              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum cliente cadastrado</TableCell></TableRow>
+            {filteredClients.length === 0 && (
+              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum cliente encontrado</TableCell></TableRow>
             )}
           </TableBody>
         </Table>
