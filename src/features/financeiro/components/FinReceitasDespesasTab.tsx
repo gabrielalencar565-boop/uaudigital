@@ -209,7 +209,7 @@ export function FinReceitasDespesasTab() {
                 {expenses.map((exp) => (
                   <tr key={exp.id} className="border-b last:border-0 hover:bg-accent/30 transition-colors">
                     <td className="px-4 py-2.5 font-medium">{exp.description}</td>
-                    <td className="px-4 py-2.5 text-center text-muted-foreground">{exp.installment_current ?? "-"}</td>
+                    <td className="px-4 py-2.5 text-center text-muted-foreground">Dia {(exp as any).due_day ?? 10}</td>
                     <td className="px-4 py-2.5 text-right text-muted-foreground">R$ {Number(exp.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
                     <td className="px-4 py-2.5 text-center">
                       <button onClick={() => toggleExpStatus(exp)} className="inline-flex items-center justify-center">

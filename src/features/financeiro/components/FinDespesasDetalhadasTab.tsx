@@ -44,7 +44,7 @@ export function FinDespesasDetalhadasTab() {
   const [cardDialogOpen, setCardDialogOpen] = useState(false);
   const [editing, setEditing] = useState<FinExpense | null>(null);
 
-  const emptyForm = { description: "", category: "administrativa", amount: "", is_recurring: false, installment_total: "", installment_current: "", credit_card_id: "", notes: "" };
+  const emptyForm = { description: "", category: "administrativa", amount: "", is_recurring: false, installment_total: "", installment_current: "", credit_card_id: "", notes: "", due_day: "10" };
   const [form, setForm] = useState(emptyForm);
   const [cardForm, setCardForm] = useState({ name: "", last_digits: "", closing_day: "1", due_day: "10" });
 
@@ -57,6 +57,7 @@ export function FinDespesasDetalhadasTab() {
       is_recurring: e.is_recurring, installment_total: e.installment_total ? String(e.installment_total) : "",
       installment_current: e.installment_current ? String(e.installment_current) : "",
       credit_card_id: e.credit_card_id ?? "", notes: e.notes ?? "",
+      due_day: e.due_day ? String(e.due_day) : "10",
     });
     setDialogOpen(true);
   };
@@ -74,6 +75,7 @@ export function FinDespesasDetalhadasTab() {
         installment_current: form.installment_current ? parseInt(form.installment_current) : null,
         credit_card_id: form.credit_card_id && form.credit_card_id !== "none" ? form.credit_card_id : null,
         notes: form.notes || null,
+        due_day: parseInt(form.due_day) || 10,
         paid_at: null,
       } as any,
       { onSuccess: () => setDialogOpen(false) },
@@ -160,6 +162,7 @@ export function FinDespesasDetalhadasTab() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Descrição</TableHead>
+                        <TableHead className="text-center">Vencimento</TableHead>
                         <TableHead className="text-right">Valor</TableHead>
                         <TableHead className="text-center">Parcela</TableHead>
                         <TableHead className="w-20" />
@@ -169,6 +172,7 @@ export function FinDespesasDetalhadasTab() {
                       {items.map((e) => (
                         <TableRow key={e.id}>
                           <TableCell className="font-medium">{e.description}</TableCell>
+                          <TableCell className="text-center text-muted-foreground">Dia {e.due_day ?? 10}</TableCell>
                           <TableCell className="text-right">R$ {Number(e.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</TableCell>
                           <TableCell className="text-center text-sm text-muted-foreground">
                             {e.installment_total ? `${e.installment_current}/${e.installment_total}` : "—"}
@@ -216,6 +220,7 @@ export function FinDespesasDetalhadasTab() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-2"><Label>Dia vencimento</Label><Input type="number" min={1} max={31} value={form.due_day} onChange={(e) => setForm((p) => ({ ...p, due_day: e.target.value }))} placeholder="Ex: 10" /></div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2"><Label>Parcela atual</Label><Input type="number" value={form.installment_current} onChange={(e) => setForm((p) => ({ ...p, installment_current: e.target.value }))} placeholder="Ex: 3" /></div>
