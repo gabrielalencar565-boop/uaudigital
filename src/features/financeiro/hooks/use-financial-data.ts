@@ -10,6 +10,7 @@ export type FinClient = {
   monthly_value: number;
   contract_months: number;
   contract_start: string;
+  due_day: number;
   is_active: boolean;
   notes: string | null;
   created_at: string;
