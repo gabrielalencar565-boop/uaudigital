@@ -18,7 +18,7 @@ export function FinClientesTab() {
   const deleteMut = useDeleteFinClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<FinClient | null>(null);
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("ativo");
   const [form, setForm] = useState({ name: "", cnpj: "", monthly_value: "", contract_months: "12", contract_start: format(new Date(), "yyyy-MM-dd"), due_day: "10", notes: "" });
 
   const clients = clientsQ.data ?? [];

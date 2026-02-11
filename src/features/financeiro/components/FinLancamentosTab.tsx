@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo } from "react";
-import { Plus, Upload, ArrowUpCircle, ArrowDownCircle, Eye, Pencil, Trash2 } from "lucide-react";
+import { Plus, Upload, ArrowUpCircle, ArrowDownCircle, Eye, Pencil, Trash2, FileSpreadsheet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,8 @@ import { Badge } from "@/components/ui/badge";
 import { useFinTransactions, useUpsertFinTransaction, useDeleteFinTransaction, useBulkInsertTransactions, type FinTransaction } from "../hooks/use-financial-data";
 import { format } from "date-fns";
 import { FinMonthYearSelector } from "./FinMonthYearSelector";
+import * as XLSX from "xlsx";
+import { toast } from "sonner";
 
 type CSVRow = { date: string; description: string; amount: number; type: "entrada" | "saida" };
 
@@ -114,40 +116,112 @@ export function FinLancamentosTab() {
     e.stopPropagation();
   };
 
-  // CSV Import
-  const handleCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // ── Sicoob XLSX parser ──
+  const parseSicoobXlsx = (data: ArrayBuffer): CSVRow[] => {
+    const wb = XLSX.read(data, { type: "array" });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const raw: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+
+    const rows: CSVRow[] = [];
+    let currentDate = "";
+
+    for (let i = 0; i < raw.length; i++) {
+      const cells = raw[i].map((c: any) => String(c).trim());
+      // Skip header & empty rows
+      if (!cells[0] && !cells[2] && !cells[3]) continue;
+      if (cells[0] === "DATA" || cells[0] === "EXTRATO CONTA CORRENTE") continue;
+
+      // If column 0 has a date (DD/MM/YYYY), update currentDate
+      if (cells[0] && /^\d{2}\/\d{2}\/\d{4}$/.test(cells[0])) {
+        currentDate = cells[0];
+      }
+
+      const historico = cells[2] || "";
+      const valorStr = cells[3] || "";
+
+      // Skip balance rows & continuation lines (no value)
+      if (!valorStr || historico.includes("SALDO DO DIA")) continue;
+      // Skip sub-lines (like "Pagamento Pix", CPF/CNPJ, etc.) — they have no date and no value
+      if (!cells[0] && !valorStr) continue;
+
+      // Parse value: "- 237,04 D" or "1.080,00 C"
+      const cleanVal = valorStr.replace(/[D|C]/g, "").replace(/\s/g, "").replace("-", "");
+      const numVal = parseFloat(cleanVal.replace(/\./g, "").replace(",", "."));
+      if (isNaN(numVal) || numVal === 0) continue;
+
+      const isCredit = valorStr.includes("C");
+      const type = isCredit ? "entrada" : "saida";
+
+      // Convert DD/MM/YYYY to YYYY-MM-DD
+      const parts = currentDate.split("/");
+      const isoDate = parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : currentDate;
+
+      rows.push({
+        date: isoDate,
+        description: historico,
+        amount: numVal,
+        type,
+      });
+    }
+
+    return rows;
+  };
+
+  // File import handler (CSV + XLSX)
+  const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const text = ev.target?.result as string;
-      const lines = text.split("\n").filter(Boolean);
-      const rows: CSVRow[] = [];
-      for (let i = 1; i < lines.length; i++) {
-        const cols = lines[i].split(";");
-        if (cols.length < 4) continue;
-        const dateStr = cols[0].trim();
-        const desc = cols[1].trim();
-        const valStr = cols[3].replace(/\./g, "").replace(",", ".").trim();
-        const val = parseFloat(valStr);
-        if (isNaN(val) || !desc) continue;
-        const parts = dateStr.split("/");
-        const isoDate = parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : dateStr;
-        rows.push({ date: isoDate, description: desc, amount: Math.abs(val), type: val >= 0 ? "entrada" : "saida" });
-      }
-      setCsvRows(rows);
-      setCsvDialogOpen(true);
-    };
-    reader.readAsText(file, "utf-8");
+
+    const isXlsx = file.name.endsWith(".xlsx") || file.name.endsWith(".xls");
+
+    if (isXlsx) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const data = ev.target?.result as ArrayBuffer;
+        const parsed = parseSicoobXlsx(data);
+        if (parsed.length === 0) {
+          toast.error("Nenhum lançamento encontrado no arquivo.");
+          return;
+        }
+        setCsvRows(parsed);
+        setCsvDialogOpen(true);
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      // CSV fallback
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const text = ev.target?.result as string;
+        const lines = text.split("\n").filter(Boolean);
+        const rows: CSVRow[] = [];
+        for (let i = 1; i < lines.length; i++) {
+          const cols = lines[i].split(";");
+          if (cols.length < 4) continue;
+          const dateStr = cols[0].trim();
+          const desc = cols[1].trim();
+          const valStr = cols[3].replace(/\./g, "").replace(",", ".").trim();
+          const val = parseFloat(valStr);
+          if (isNaN(val) || !desc) continue;
+          const parts = dateStr.split("/");
+          const isoDate = parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : dateStr;
+          rows.push({ date: isoDate, description: desc, amount: Math.abs(val), type: val >= 0 ? "entrada" : "saida" });
+        }
+        setCsvRows(rows);
+        setCsvDialogOpen(true);
+      };
+      reader.readAsText(file, "utf-8");
+    }
     e.target.value = "";
   };
 
   const importCSV = () => {
     bulkInsert.mutate(
-      csvRows.map((r) => ({ ...r, source: "csv_import" })),
+      csvRows.map((r) => ({ ...r, source: isXlsxImport ? "xlsx_import" : "csv_import" })),
       { onSuccess: () => { setCsvDialogOpen(false); setCsvRows([]); } },
     );
   };
+
+  const isXlsxImport = csvRows.length > 0 && csvRows[0]?.description !== undefined;
 
   return (
     <div className="space-y-6">
@@ -162,8 +236,8 @@ export function FinLancamentosTab() {
               <SelectItem value="saida">Saídas</SelectItem>
             </SelectContent>
           </Select>
-          <input ref={fileRef} type="file" accept=".csv" onChange={handleCSV} className="hidden" />
-          <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}><Upload className="mr-1 h-4 w-4" /> Importar CSV</Button>
+          <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" onChange={handleFileImport} className="hidden" />
+          <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}><FileSpreadsheet className="mr-1 h-4 w-4" /> Importar</Button>
           <Button size="sm" onClick={openNew}><Plus className="mr-1 h-4 w-4" /> Novo</Button>
         </div>
       </div>
