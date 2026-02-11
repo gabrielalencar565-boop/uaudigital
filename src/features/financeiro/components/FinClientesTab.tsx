@@ -18,7 +18,7 @@ export function FinClientesTab() {
   const deleteMut = useDeleteFinClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<FinClient | null>(null);
-  const [form, setForm] = useState({ name: "", cnpj: "", monthly_value: "", contract_months: "12", contract_start: format(new Date(), "yyyy-MM-dd"), notes: "" });
+  const [form, setForm] = useState({ name: "", cnpj: "", monthly_value: "", contract_months: "12", contract_start: format(new Date(), "yyyy-MM-dd"), due_day: "10", notes: "" });
 
   const clients = clientsQ.data ?? [];
   const activeClients = clients.filter((c) => c.is_active);
@@ -37,7 +37,7 @@ export function FinClientesTab() {
 
   const openNew = () => {
     setEditing(null);
-    setForm({ name: "", cnpj: "", monthly_value: "", contract_months: "12", contract_start: format(new Date(), "yyyy-MM-dd"), notes: "" });
+    setForm({ name: "", cnpj: "", monthly_value: "", contract_months: "12", contract_start: format(new Date(), "yyyy-MM-dd"), due_day: "10", notes: "" });
     setDialogOpen(true);
   };
 
@@ -49,6 +49,7 @@ export function FinClientesTab() {
       monthly_value: String(c.monthly_value),
       contract_months: String(c.contract_months),
       contract_start: c.contract_start,
+      due_day: String((c as any).due_day ?? 10),
       notes: c.notes ?? "",
     });
     setDialogOpen(true);
@@ -63,6 +64,7 @@ export function FinClientesTab() {
         monthly_value: parseFloat(form.monthly_value) || 0,
         contract_months: parseInt(form.contract_months) || 12,
         contract_start: form.contract_start,
+        due_day: parseInt(form.due_day) || 10,
         notes: form.notes || null,
       } as any,
       { onSuccess: () => setDialogOpen(false) },
@@ -124,6 +126,7 @@ export function FinClientesTab() {
               <TableHead>Nome</TableHead>
               <TableHead>CNPJ</TableHead>
               <TableHead className="text-right">Valor Mensal</TableHead>
+              <TableHead className="text-center">Vencimento</TableHead>
               <TableHead className="text-center">Contrato</TableHead>
               <TableHead className="text-center">Status</TableHead>
               <TableHead className="w-24" />
@@ -138,6 +141,7 @@ export function FinClientesTab() {
                   <TableCell className="font-medium">{c.name}</TableCell>
                   <TableCell className="text-muted-foreground text-sm">{c.cnpj || "—"}</TableCell>
                   <TableCell className="text-right">R$ {Number(c.monthly_value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</TableCell>
+                  <TableCell className="text-center text-sm">Dia {(c as any).due_day ?? 10}</TableCell>
                   <TableCell className="text-center text-sm">{c.contract_months} meses</TableCell>
                   <TableCell className="text-center">
                     {expired ? <Badge variant="destructive">Expirado</Badge> : c.is_active ? <Badge variant="default">Ativo</Badge> : <Badge variant="secondary">Inativo</Badge>}
@@ -166,7 +170,7 @@ export function FinClientesTab() {
               );
             })}
             {clients.length === 0 && (
-              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhum cliente cadastrado</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum cliente cadastrado</TableCell></TableRow>
             )}
           </TableBody>
         </Table>
@@ -195,9 +199,15 @@ export function FinClientesTab() {
                 <Input type="number" value={form.contract_months} onChange={(e) => setForm((p) => ({ ...p, contract_months: e.target.value }))} />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label>Início do contrato</Label>
-              <Input type="date" value={form.contract_start} onChange={(e) => setForm((p) => ({ ...p, contract_start: e.target.value }))} />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Início do contrato</Label>
+                <Input type="date" value={form.contract_start} onChange={(e) => setForm((p) => ({ ...p, contract_start: e.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                <Label>Dia de vencimento</Label>
+                <Input type="number" min={1} max={31} value={form.due_day} onChange={(e) => setForm((p) => ({ ...p, due_day: e.target.value }))} />
+              </div>
             </div>
           </div>
           <DialogFooter>

@@ -47,8 +47,13 @@ export function FinLancamentosTab() {
     { value: "caixa", label: "Caixa" },
   ];
 
-  const emptyForm = { description: "", amount: "", date: format(new Date(), "yyyy-MM-dd"), type: "entrada", category: "", status: "confirmado", notes: "" };
+  const emptyForm = { description: "", amount: "", date: format(new Date(), "yyyy-MM-dd"), category: "", notes: "" };
   const [form, setForm] = useState(emptyForm);
+
+  const getTypeFromCategory = (cat: string): string => {
+    if (cat.startsWith("receita")) return "entrada";
+    return "saida";
+  };
 
 
   const filtered = useMemo(() => {
@@ -63,8 +68,9 @@ export function FinLancamentosTab() {
   const totalSaidas = filtered.filter((t) => t.type === "saida").reduce((s, t) => s + Number(t.amount), 0);
 
   const save = () => {
+    const type = getTypeFromCategory(form.category);
     upsertTx.mutate(
-      { description: form.description, amount: parseFloat(form.amount) || 0, date: form.date, type: form.type, category: form.category || null, status: form.status, notes: form.notes || null } as any,
+      { description: form.description, amount: parseFloat(form.amount) || 0, date: form.date, type, category: form.category || null, status: "confirmado", notes: form.notes || null } as any,
       { onSuccess: () => { setDialogOpen(false); setForm(emptyForm); } },
     );
   };
@@ -119,14 +125,6 @@ export function FinLancamentosTab() {
               <SelectItem value="saida">Saídas</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos status</SelectItem>
-              <SelectItem value="confirmado">Confirmado</SelectItem>
-              <SelectItem value="pendente">Pendente</SelectItem>
-            </SelectContent>
-          </Select>
           <input ref={fileRef} type="file" accept=".csv" onChange={handleCSV} className="hidden" />
           <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}><Upload className="mr-1 h-4 w-4" /> Importar CSV</Button>
           <Button size="sm" onClick={() => { setForm(emptyForm); setDialogOpen(true); }}><Plus className="mr-1 h-4 w-4" /> Novo</Button>
@@ -175,7 +173,7 @@ export function FinLancamentosTab() {
               <TableHead>Data</TableHead>
               <TableHead>Descrição</TableHead>
               <TableHead className="text-right">Valor</TableHead>
-              <TableHead className="text-center">Status</TableHead>
+              <TableHead className="text-center">Categoria</TableHead>
               <TableHead className="text-center">Origem</TableHead>
             </TableRow>
           </TableHeader>
@@ -188,7 +186,7 @@ export function FinLancamentosTab() {
                 <TableCell className={`text-right font-medium ${t.type === "entrada" ? "text-success" : "text-destructive"}`}>
                   {t.type === "entrada" ? "+" : "−"} R$ {Number(t.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                 </TableCell>
-                <TableCell className="text-center"><Badge variant={t.status === "confirmado" ? "default" : "secondary"}>{t.status}</Badge></TableCell>
+                <TableCell className="text-center text-xs text-muted-foreground">{TRANSACTION_CATEGORIES.find(c => c.value === t.category)?.label ?? t.category ?? "—"}</TableCell>
                 <TableCell className="text-center text-xs text-muted-foreground">{t.source === "csv_import" ? "CSV" : "Manual"}</TableCell>
               </TableRow>
             ))}
@@ -204,24 +202,12 @@ export function FinLancamentosTab() {
         <DialogContent>
           <DialogHeader><DialogTitle>Novo Lançamento</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Tipo</Label>
-                <Select value={form.type} onValueChange={(v) => setForm((p) => ({ ...p, type: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="entrada">Entrada</SelectItem>
-                    <SelectItem value="saida">Saída</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2"><Label>Data</Label><Input type="date" value={form.date} onChange={(e) => setForm((p) => ({ ...p, date: e.target.value }))} /></div>
-            </div>
+            <div className="space-y-2"><Label>Data</Label><Input type="date" value={form.date} onChange={(e) => setForm((p) => ({ ...p, date: e.target.value }))} /></div>
             <div className="space-y-2"><Label>Descrição *</Label><Input value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} /></div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2"><Label>Valor (R$)</Label><Input type="number" step="0.01" value={form.amount} onChange={(e) => setForm((p) => ({ ...p, amount: e.target.value }))} /></div>
               <div className="space-y-2">
-                <Label>Categoria</Label>
+                <Label>Categoria *</Label>
                 <Select value={form.category} onValueChange={(v) => setForm((p) => ({ ...p, category: v }))}>
                   <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>
@@ -235,7 +221,7 @@ export function FinLancamentosTab() {
           </div>
           <DialogFooter>
             <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
-            <Button onClick={save} disabled={!form.description || upsertTx.isPending}>Salvar</Button>
+            <Button onClick={save} disabled={!form.description || !form.category || upsertTx.isPending}>Salvar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
