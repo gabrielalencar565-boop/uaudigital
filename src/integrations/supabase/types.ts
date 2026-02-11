@@ -221,6 +221,262 @@ export type Database = {
         }
         Relationships: []
       }
+      financial_clients: {
+        Row: {
+          cnpj: string | null
+          contract_months: number
+          contract_start: string
+          created_at: string
+          id: string
+          is_active: boolean
+          monthly_value: number
+          name: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          cnpj?: string | null
+          contract_months?: number
+          contract_start?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          monthly_value?: number
+          name: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cnpj?: string | null
+          contract_months?: number
+          contract_start?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          monthly_value?: number
+          name?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      financial_credit_cards: {
+        Row: {
+          closing_day: number
+          created_at: string
+          due_day: number
+          id: string
+          is_active: boolean
+          last_digits: string | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          closing_day?: number
+          created_at?: string
+          due_day?: number
+          id?: string
+          is_active?: boolean
+          last_digits?: string | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          closing_day?: number
+          created_at?: string
+          due_day?: number
+          id?: string
+          is_active?: boolean
+          last_digits?: string | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      financial_expenses: {
+        Row: {
+          amount: number
+          category: Database["public"]["Enums"]["expense_category"]
+          created_at: string
+          credit_card_id: string | null
+          description: string
+          id: string
+          installment_current: number | null
+          installment_total: number | null
+          is_recurring: boolean
+          month: number
+          notes: string | null
+          paid_at: string | null
+          status: string
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          amount?: number
+          category: Database["public"]["Enums"]["expense_category"]
+          created_at?: string
+          credit_card_id?: string | null
+          description: string
+          id?: string
+          installment_current?: number | null
+          installment_total?: number | null
+          is_recurring?: boolean
+          month: number
+          notes?: string | null
+          paid_at?: string | null
+          status?: string
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          amount?: number
+          category?: Database["public"]["Enums"]["expense_category"]
+          created_at?: string
+          credit_card_id?: string | null
+          description?: string
+          id?: string
+          installment_current?: number | null
+          installment_total?: number | null
+          is_recurring?: boolean
+          month?: number
+          notes?: string | null
+          paid_at?: string | null
+          status?: string
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_expenses_credit_card_id_fkey"
+            columns: ["credit_card_id"]
+            isOneToOne: false
+            referencedRelation: "financial_credit_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financial_goals: {
+        Row: {
+          created_at: string
+          expense_limit: number
+          id: string
+          month: number | null
+          notes: string | null
+          revenue_goal: number
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          expense_limit?: number
+          id?: string
+          month?: number | null
+          notes?: string | null
+          revenue_goal?: number
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          expense_limit?: number
+          id?: string
+          month?: number | null
+          notes?: string | null
+          revenue_goal?: number
+          updated_at?: string
+          year?: number
+        }
+        Relationships: []
+      }
+      financial_revenues: {
+        Row: {
+          amount: number
+          client_id: string
+          created_at: string
+          id: string
+          month: number
+          notes: string | null
+          paid_at: string | null
+          status: string
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          amount?: number
+          client_id: string
+          created_at?: string
+          id?: string
+          month: number
+          notes?: string | null
+          paid_at?: string | null
+          status?: string
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          amount?: number
+          client_id?: string
+          created_at?: string
+          id?: string
+          month?: number
+          notes?: string | null
+          paid_at?: string | null
+          status?: string
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_revenues_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "financial_clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financial_transactions: {
+        Row: {
+          amount: number
+          category: string | null
+          created_at: string
+          date: string
+          description: string
+          id: string
+          notes: string | null
+          source: string
+          status: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          category?: string | null
+          created_at?: string
+          date?: string
+          description: string
+          id?: string
+          notes?: string | null
+          source?: string
+          status?: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          category?: string | null
+          created_at?: string
+          date?: string
+          description?: string
+          id?: string
+          notes?: string | null
+          source?: string
+          status?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       magic2_client_links: {
         Row: {
           agenda_client_id: string
@@ -690,6 +946,11 @@ export type Database = {
     Enums: {
       access_request_status: "pending" | "approved" | "rejected"
       app_role: "admin" | "collaborator" | "planner"
+      expense_category:
+        | "administrativa"
+        | "operacional"
+        | "financeira"
+        | "comercial"
       logo_shape_type: "circle" | "square"
       magic2_stage_type:
         | "captacao"
@@ -839,6 +1100,12 @@ export const Constants = {
     Enums: {
       access_request_status: ["pending", "approved", "rejected"],
       app_role: ["admin", "collaborator", "planner"],
+      expense_category: [
+        "administrativa",
+        "operacional",
+        "financeira",
+        "comercial",
+      ],
       logo_shape_type: ["circle", "square"],
       magic2_stage_type: [
         "captacao",
