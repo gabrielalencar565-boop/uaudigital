@@ -18,9 +18,9 @@ export function FinReceitasDespesasTab() {
   const upsertRev = useUpsertFinRevenue();
   const upsertExp = useUpsertFinExpense();
 
-  const clients = clientsQ.data?.filter((c) => c.is_active) ?? [];
+  const clients = (clientsQ.data?.filter((c) => c.is_active) ?? []).sort((a, b) => (a.due_day ?? 10) - (b.due_day ?? 10));
   const revenues = revenuesQ.data ?? [];
-  const expenses = expensesQ.data ?? [];
+  const expenses = (expensesQ.data ?? []).sort((a, b) => (a.due_day ?? 10) - (b.due_day ?? 10));
 
   const revByClient = useMemo(() => {
     const map = new Map(revenues.map((r) => [r.client_id, r]));
