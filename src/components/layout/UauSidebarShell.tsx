@@ -22,7 +22,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-export type MainTab = "visao_do_dia" | "meu_painel" | "configuracoes" | "desempenho" | "magic2" | "agenda" | "admin" | "financeiro";
+export type MainTab = "visao_do_dia" | "meu_painel" | "configuracoes" | "desempenho" | "magic2" | "agenda" | "admin" | "financeiro" | "metas";
 
 type NavItem = {
   key: MainTab;
@@ -75,6 +75,7 @@ export function UauSidebarShell({
 
     if (isAdmin) {
       base.push({ key: "financeiro", label: "Financeiro", icon: DollarSign });
+      base.push({ key: "metas", label: "Metas", icon: Target });
       base.push({ key: "admin", label: "Admin", icon: Shield });
     }
     return base;
