@@ -12,6 +12,7 @@ import { MeuPainelPanel } from "@/features/meu-painel/MeuPainelPanel";
 import { ConfiguracoesPanel } from "@/features/configuracoes/ConfiguracoesPanel";
 import { AdminContainer } from "@/features/admin/AdminContainer";
 import { FinanceiroPanel } from "@/features/financeiro/FinanceiroPanel";
+import { FinMetasTab } from "@/features/financeiro/components/FinMetasTab";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -224,6 +225,8 @@ const Index = () => {
         <AdminContainer />
       ) : tab === "financeiro" && isAdmin ? (
         <FinanceiroPanel />
+      ) : tab === "metas" && isAdmin ? (
+        <FinMetasTab />
       ) : tab === "visao_do_dia" ? (
         <DayViewPanel />
       ) : tab === "meu_painel" ? (

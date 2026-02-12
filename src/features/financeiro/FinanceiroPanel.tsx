@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Users, Receipt, FileSpreadsheet, ArrowRightLeft, BarChart3, CalendarRange, Target } from "lucide-react";
+import { Users, Receipt, FileSpreadsheet, ArrowRightLeft, BarChart3, CalendarRange } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { FinClientesTab } from "./components/FinClientesTab";
 import { FinReceitasDespesasTab } from "./components/FinReceitasDespesasTab";
@@ -7,10 +7,9 @@ import { FinDespesasDetalhadasTab } from "./components/FinDespesasDetalhadasTab"
 import { FinLancamentosTab } from "./components/FinLancamentosTab";
 import { FinFluxoCaixaTab } from "./components/FinFluxoCaixaTab";
 import { FinVisaoAnualTab } from "./components/FinVisaoAnualTab";
-import { FinMetasTab } from "./components/FinMetasTab";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
-type FinSubTab = "clientes" | "receitas_despesas" | "despesas_detalhadas" | "lancamentos" | "fluxo_caixa" | "visao_anual" | "metas";
+type FinSubTab = "clientes" | "receitas_despesas" | "despesas_detalhadas" | "lancamentos" | "fluxo_caixa" | "visao_anual";
 
 const TABS: { key: FinSubTab; label: string; icon: React.ComponentType<any> }[] = [
   { key: "clientes", label: "Clientes", icon: Users },
@@ -19,7 +18,6 @@ const TABS: { key: FinSubTab; label: string; icon: React.ComponentType<any> }[] 
   { key: "lancamentos", label: "Lançamentos", icon: ArrowRightLeft },
   { key: "fluxo_caixa", label: "Fluxo de Caixa", icon: BarChart3 },
   { key: "visao_anual", label: "Visão Anual", icon: CalendarRange },
-  { key: "metas", label: "Metas", icon: Target },
 ];
 
 export function FinanceiroPanel() {
@@ -51,7 +49,6 @@ export function FinanceiroPanel() {
         <TabsContent value="lancamentos" className="mt-6"><FinLancamentosTab /></TabsContent>
         <TabsContent value="fluxo_caixa" className="mt-6"><FinFluxoCaixaTab /></TabsContent>
         <TabsContent value="visao_anual" className="mt-6"><FinVisaoAnualTab /></TabsContent>
-        <TabsContent value="metas" className="mt-6"><FinMetasTab /></TabsContent>
       </Tabs>
     </div>
   );
