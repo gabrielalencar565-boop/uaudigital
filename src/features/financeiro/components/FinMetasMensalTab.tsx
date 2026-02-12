@@ -23,7 +23,7 @@ function parseMeta(goal: FinGoal | undefined) {
 
 export function FinMetasMensalTab() {
   const now = new Date();
-  const year = now.getFullYear();
+  const [year, setYear] = useState(now.getFullYear());
   const currentMonth = now.getMonth() + 1;
 
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
@@ -127,19 +127,36 @@ export function FinMetasMensalTab() {
 
   return (
     <div className="space-y-6">
-      {/* Month navigator */}
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedMonth((p) => Math.max(p - 1, 1))} disabled={selectedMonth <= 1}>
+      {/* Month and Year navigator */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
+          if (selectedMonth <= 1) { setSelectedMonth(12); setYear((y) => y - 1); }
+          else setSelectedMonth((p) => p - 1);
+        }}>
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <h3 className="text-lg font-semibold">
-          {MONTHS_FULL[selectedMonth - 1]} {year}
+          {MONTHS_FULL[selectedMonth - 1]}
         </h3>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedMonth((p) => Math.min(p + 1, 12))} disabled={selectedMonth >= 12}>
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
+          if (selectedMonth >= 12) { setSelectedMonth(1); setYear((y) => y + 1); }
+          else setSelectedMonth((p) => p + 1);
+        }}>
           <ChevronRight className="h-4 w-4" />
         </Button>
-        {selectedMonth !== currentMonth && (
-          <Button variant="outline" size="sm" className="ml-2 text-xs" onClick={() => setSelectedMonth(currentMonth)}>
+
+        <span className="text-muted-foreground">|</span>
+
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setYear((y) => y - 1)}>
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <span className="text-lg font-semibold">{year}</span>
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setYear((y) => y + 1)}>
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+
+        {(selectedMonth !== currentMonth || year !== now.getFullYear()) && (
+          <Button variant="outline" size="sm" className="ml-2 text-xs" onClick={() => { setSelectedMonth(currentMonth); setYear(now.getFullYear()); }}>
             Mês atual
           </Button>
         )}
