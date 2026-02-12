@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Plus, Pencil, Trash2, ChevronLeft, ChevronRight, CreditCard } from "lucide-react";
+import { Plus, Pencil, Trash2, CreditCard, ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   useFinExpenses, useUpsertFinExpense, useDeleteFinExpense,
   useFinCreditCards, useUpsertFinCreditCard,
@@ -23,8 +22,6 @@ const CATEGORIES = [
   { value: "financeira", label: "Financeira" },
   { value: "comercial", label: "Comercial" },
 ];
-
-const MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
 export function FinDespesasDetalhadasTab() {
   const now = new Date();
@@ -43,13 +40,20 @@ export function FinDespesasDetalhadasTab() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [cardDialogOpen, setCardDialogOpen] = useState(false);
   const [editing, setEditing] = useState<FinExpense | null>(null);
+  const [preselectedCardId, setPreselectedCardId] = useState<string | null>(null);
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
 
   const emptyForm = { description: "", category: "administrativa", amount: "", is_recurring: false, installment_total: "", installment_current: "", credit_card_id: "", notes: "", due_day: "10" };
   const [form, setForm] = useState(emptyForm);
   const [cardForm, setCardForm] = useState({ name: "", last_digits: "", closing_day: "1", due_day: "10" });
 
+  const openNew = (cardId?: string) => {
+    setEditing(null);
+    setForm({ ...emptyForm, credit_card_id: cardId ?? "" });
+    setPreselectedCardId(cardId ?? null);
+    setDialogOpen(true);
+  };
 
-  const openNew = () => { setEditing(null); setForm(emptyForm); setDialogOpen(true); };
   const openEdit = (e: FinExpense) => {
     setEditing(e);
     setForm({
@@ -59,6 +63,7 @@ export function FinDespesasDetalhadasTab() {
       credit_card_id: e.credit_card_id ?? "", notes: e.notes ?? "",
       due_day: e.due_day ? String(e.due_day) : "10",
     });
+    setPreselectedCardId(null);
     setDialogOpen(true);
   };
 
@@ -89,62 +94,107 @@ export function FinDespesasDetalhadasTab() {
     );
   };
 
+  const toggleCardExpanded = (cardId: string) => {
+    setExpandedCards(prev => {
+      const next = new Set(prev);
+      if (next.has(cardId)) next.delete(cardId);
+      else next.add(cardId);
+      return next;
+    });
+  };
+
+  // Non-card expenses grouped by category
+  const nonCardExpenses = useMemo(() => expenses.filter(e => !e.credit_card_id), [expenses]);
   const grouped = useMemo(() => {
     const map = new Map<string, FinExpense[]>();
     CATEGORIES.forEach((c) => map.set(c.value, []));
-    expenses.forEach((e) => map.get(e.category)?.push(e));
+    nonCardExpenses.forEach((e) => map.get(e.category)?.push(e));
     return map;
-  }, [expenses]);
+  }, [nonCardExpenses]);
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <FinMonthYearSelector month={month} year={year} onMonthChange={setMonth} onYearChange={setYear} />
         <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => setCardDialogOpen(true)}><CreditCard className="mr-1 h-4 w-4" /> Cartões</Button>
-          <Button size="sm" onClick={openNew}><Plus className="mr-1 h-4 w-4" /> Nova Despesa</Button>
+          <Button size="sm" variant="outline" onClick={() => setCardDialogOpen(true)}><CreditCard className="mr-1 h-4 w-4" /> Novo Cartão</Button>
+          <Button size="sm" onClick={() => openNew()}><Plus className="mr-1 h-4 w-4" /> Nova Despesa</Button>
         </div>
       </div>
 
-      {/* Credit Cards at top */}
-      {cards.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {cards.map((card) => {
-            const cardExpenses = expenses.filter((e) => e.credit_card_id === card.id);
-            const cardTotal = cardExpenses.reduce((s, e) => s + Number(e.amount), 0);
-            const cardPaid = cardExpenses.filter((e) => e.status === "pago").length;
-            return (
-              <Card key={card.id}>
-                <CardHeader className="pb-2">
-                  <div className="flex items-center gap-2">
-                    <CreditCard className="h-5 w-5 text-primary" />
-                    <CardTitle className="text-sm">{card.name}</CardTitle>
-                    {card.last_digits && <span className="text-xs text-muted-foreground">****{card.last_digits}</span>}
+      {/* Credit Cards */}
+      {cards.map((card) => {
+        const cardExpenses = expenses.filter((e) => e.credit_card_id === card.id);
+        const cardTotal = cardExpenses.reduce((s, e) => s + Number(e.amount), 0);
+        const isExpanded = expandedCards.has(card.id);
+        return (
+          <Card key={card.id}>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <button onClick={() => toggleCardExpanded(card.id)} className="flex items-center gap-2 text-left">
+                  {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                  <CreditCard className="h-5 w-5 text-primary" />
+                  <CardTitle className="text-base">{card.name}</CardTitle>
+                  {card.last_digits && <span className="text-xs text-muted-foreground">****{card.last_digits}</span>}
+                </button>
+                <div className="flex items-center gap-3">
+                  <span className="text-lg font-bold">R$ {cardTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                  <Button size="sm" variant="outline" onClick={() => openNew(card.id)}>
+                    <Plus className="mr-1 h-3.5 w-3.5" /> Adicionar
+                  </Button>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">{cardExpenses.length} itens • Fecha dia {card.closing_day} • Vence dia {card.due_day}</p>
+            </CardHeader>
+            {isExpanded && (
+              <CardContent className="pt-0">
+                {cardExpenses.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-2">Nenhum item neste cartão</p>
+                ) : (
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Descrição</TableHead>
+                          <TableHead className="text-center">Parcela</TableHead>
+                          <TableHead className="text-right">Valor</TableHead>
+                          <TableHead className="w-20" />
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {cardExpenses.map((e) => (
+                          <TableRow key={e.id}>
+                            <TableCell className="font-medium">
+                              {e.description}
+                              {e.is_recurring && <Badge variant="secondary" className="ml-2 text-xs">Recorrente</Badge>}
+                            </TableCell>
+                            <TableCell className="text-center text-sm text-muted-foreground">
+                              {e.installment_total ? `${e.installment_current}/${e.installment_total}` : "—"}
+                            </TableCell>
+                            <TableCell className="text-right">R$ {Number(e.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</TableCell>
+                            <TableCell>
+                              <div className="flex gap-1 justify-end">
+                                <Button size="icon" variant="ghost" onClick={() => openEdit(e)}><Pencil className="h-3.5 w-3.5" /></Button>
+                                <Button size="icon" variant="ghost" onClick={() => deleteExp.mutate({ id: e.id, year, month })}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-xl font-bold">R$ {cardTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{cardPaid}/{cardExpenses.length} pagas • Fecha dia {card.closing_day} • Vence dia {card.due_day}</p>
-                  {cardExpenses.length > 0 && (
-                    <div className="mt-3 space-y-1 border-t pt-2">
-                      {cardExpenses.map((e) => (
-                        <div key={e.id} className="flex items-center justify-between text-sm">
-                          <span className="truncate">{e.description}</span>
-                          <span className="text-muted-foreground shrink-0">R$ {Number(e.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
+                )}
+              </CardContent>
+            )}
+          </Card>
+        );
+      })}
 
+      {/* Non-card expenses by category */}
       {CATEGORIES.map((cat) => {
         const items = grouped.get(cat.value) ?? [];
         const total = items.reduce((s, e) => s + Number(e.amount), 0);
+        if (items.length === 0) return null;
         return (
           <Card key={cat.value}>
             <CardHeader className="pb-3">
@@ -154,45 +204,42 @@ export function FinDespesasDetalhadasTab() {
               </div>
             </CardHeader>
             <CardContent>
-              {items.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-2">Nenhuma despesa nesta categoria</p>
-              ) : (
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Descrição</TableHead>
-                        <TableHead className="text-center">Vencimento</TableHead>
-                        <TableHead className="text-right">Valor</TableHead>
-                        <TableHead className="text-center">Parcela</TableHead>
-                        <TableHead className="w-20" />
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Descrição</TableHead>
+                      <TableHead className="text-center">Vencimento</TableHead>
+                      <TableHead className="text-right">Valor</TableHead>
+                      <TableHead className="text-center">Parcela</TableHead>
+                      <TableHead className="w-20" />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {items.map((e) => (
+                      <TableRow key={e.id}>
+                        <TableCell className="font-medium">{e.description}</TableCell>
+                        <TableCell className="text-center text-muted-foreground">Dia {e.due_day ?? 10}</TableCell>
+                        <TableCell className="text-right">R$ {Number(e.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</TableCell>
+                        <TableCell className="text-center text-sm text-muted-foreground">
+                          {e.installment_total ? `${e.installment_current}/${e.installment_total}` : "—"}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1 justify-end">
+                            <Button size="icon" variant="ghost" onClick={() => openEdit(e)}><Pencil className="h-3.5 w-3.5" /></Button>
+                            <Button size="icon" variant="ghost" onClick={() => deleteExp.mutate({ id: e.id, year, month })}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+                          </div>
+                        </TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {items.map((e) => (
-                        <TableRow key={e.id}>
-                          <TableCell className="font-medium">{e.description}</TableCell>
-                          <TableCell className="text-center text-muted-foreground">Dia {e.due_day ?? 10}</TableCell>
-                          <TableCell className="text-right">R$ {Number(e.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</TableCell>
-                          <TableCell className="text-center text-sm text-muted-foreground">
-                            {e.installment_total ? `${e.installment_current}/${e.installment_total}` : "—"}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-1 justify-end">
-                              <Button size="icon" variant="ghost" onClick={() => openEdit(e)}><Pencil className="h-3.5 w-3.5" /></Button>
-                              <Button size="icon" variant="ghost" onClick={() => deleteExp.mutate({ id: e.id, year, month })}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         );
       })}
+
       {/* Expense dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
@@ -228,7 +275,7 @@ export function FinDespesasDetalhadasTab() {
             </div>
             <div className="flex items-center gap-2">
               <Switch checked={form.is_recurring} onCheckedChange={(v) => setForm((p) => ({ ...p, is_recurring: v }))} />
-              <Label>Despesa recorrente</Label>
+              <Label>Despesa recorrente (assinatura)</Label>
             </div>
           </div>
           <DialogFooter>
