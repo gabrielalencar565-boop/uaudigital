@@ -81,6 +81,10 @@ export function FinReceitasDespesasTab() {
   const expOverdue = isCurrentMonth ? allExpenseItems.filter(i => !i.paid && today > i.dueDay).length : 0;
   const expProgress = expTotal > 0 ? (expPaid / expTotal) * 100 : 0;
 
+  // Remaining expenses to pay
+  const totalPaidExpenses = allExpenseItems.filter(i => i.paid).reduce((s, i) => s + i.amount, 0);
+  const remainingToPay = totalDespesas - totalPaidExpenses;
+
   const getRowStatus = (dueDay: number, paid: boolean) => {
     if (paid) return "paid";
     if (!isCurrentMonth) return "normal";
@@ -288,6 +292,9 @@ export function FinReceitasDespesasTab() {
                   <AlertCircle className="h-3 w-3" /> Atrasadas: {expOverdue}
                 </span>
               )}
+              <span className="text-xs font-semibold">
+                Falta: R$ {remainingToPay.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+              </span>
             </div>
             <Progress value={expProgress} className="h-2 mt-2" />
           </CardHeader>
