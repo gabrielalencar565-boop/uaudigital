@@ -33,7 +33,7 @@ export function FinClientesTab() {
   const filteredClients = clients.filter((c) => {
     if (statusFilter === "all") return true;
     return getClientStatus(c) === statusFilter;
-  });
+  }).sort((a, b) => (a.due_day ?? 10) - (b.due_day ?? 10));
 
   const activeClients = clients.filter((c) => c.is_active);
   const mrr = activeClients.reduce((s, c) => s + Number(c.monthly_value), 0);

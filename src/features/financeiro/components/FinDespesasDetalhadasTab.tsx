@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import {
   useFinExpenses, useUpsertFinExpense, useDeleteFinExpense,
-  useFinCreditCards, useUpsertFinCreditCard,
+  useFinCreditCards, useUpsertFinCreditCard, useFinAllExpenses,
   type FinExpense, type FinCreditCard
 } from "../hooks/use-financial-data";
 import { FinMonthYearSelector } from "./FinMonthYearSelector";
@@ -29,13 +29,35 @@ export function FinDespesasDetalhadasTab() {
   const [month, setMonth] = useState(now.getMonth() + 1);
 
   const expensesQ = useFinExpenses(year, month);
+  const allYearExpensesQ = useFinAllExpenses(year);
   const cardsQ = useFinCreditCards();
   const upsertExp = useUpsertFinExpense();
   const deleteExp = useDeleteFinExpense();
   const upsertCard = useUpsertFinCreditCard();
 
-  const expenses = expensesQ.data ?? [];
+  const storedExpenses = expensesQ.data ?? [];
+  const allYearExpenses = allYearExpensesQ.data ?? [];
   const cards = cardsQ.data ?? [];
+
+  // Build effective expenses for this month:
+  // 1. Recurring (non-installment) expenses from ANY month of this year should appear
+  // 2. Installment expenses only appear if their installment range covers this month
+  // 3. Direct expenses for this month
+  const expenses = useMemo(() => {
+    const directIds = new Set(storedExpenses.map(e => e.id));
+    const result = [...storedExpenses];
+    
+    // Add recurring expenses from other months that should carry over
+    allYearExpenses.forEach(e => {
+      if (directIds.has(e.id)) return; // already included
+      // Recurring non-installment expenses appear in all months
+      if (e.is_recurring && !e.installment_total) {
+        result.push({ ...e, month, year } as FinExpense);
+      }
+    });
+
+    return result;
+  }, [storedExpenses, allYearExpenses, month, year]);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [cardDialogOpen, setCardDialogOpen] = useState(false);
@@ -166,7 +188,7 @@ export function FinDespesasDetalhadasTab() {
                           <TableRow key={e.id}>
                             <TableCell className="font-medium">
                               {e.description}
-                              {e.is_recurring && <Badge variant="secondary" className="ml-2 text-xs">Recorrente</Badge>}
+                              {e.is_recurring && !e.installment_total && <Badge variant="secondary" className="ml-2 text-xs">Recorrente</Badge>}
                             </TableCell>
                             <TableCell className="text-center text-sm text-muted-foreground">
                               {e.installment_total ? `${e.installment_current}/${e.installment_total}` : "—"}
@@ -218,7 +240,10 @@ export function FinDespesasDetalhadasTab() {
                   <TableBody>
                     {items.map((e) => (
                       <TableRow key={e.id}>
-                        <TableCell className="font-medium">{e.description}</TableCell>
+                        <TableCell className="font-medium">
+                          {e.description}
+                          {e.is_recurring && !e.installment_total && <Badge variant="secondary" className="ml-2 text-xs">Recorrente</Badge>}
+                        </TableCell>
                         <TableCell className="text-center text-muted-foreground">Dia {e.due_day ?? 10}</TableCell>
                         <TableCell className="text-right">R$ {Number(e.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</TableCell>
                         <TableCell className="text-center text-sm text-muted-foreground">

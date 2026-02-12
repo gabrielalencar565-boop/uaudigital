@@ -31,7 +31,7 @@ interface Props {
 
 export function FinMonthYearSelector({ month, year, onMonthChange, onYearChange, yearOnly }: Props) {
   return (
-    <div className="flex items-center justify-center gap-3">
+    <div className="flex items-center gap-3">
       {!yearOnly && (
         <Select value={String(month)} onValueChange={(v) => onMonthChange(Number(v))}>
           <SelectTrigger className="w-[140px]">
