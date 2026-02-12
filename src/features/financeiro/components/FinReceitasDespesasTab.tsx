@@ -67,11 +67,11 @@ export function FinReceitasDespesasTab() {
   const remainingToReceive = totalFaturamento - totalPaidRevenue;
 
   // Build combined expense display items for counting
-  type ExpenseDisplayItem = { dueDay: number; paid: boolean; isCard: boolean; cardId?: string; expId?: string };
+  type ExpenseDisplayItem = { dueDay: number; paid: boolean; isCard: boolean; cardId?: string; expId?: string; description: string; amount: number };
   const allExpenseItems = useMemo<ExpenseDisplayItem[]>(() => {
     const items: ExpenseDisplayItem[] = [];
-    cardSummaries.forEach(cs => items.push({ dueDay: cs.card.due_day, paid: cs.allPaid, isCard: true, cardId: cs.card.id }));
-    nonCardExpenses.forEach(e => items.push({ dueDay: e.due_day ?? 10, paid: e.status === "pago", isCard: false, expId: e.id }));
+    cardSummaries.forEach(cs => items.push({ dueDay: cs.card.due_day, paid: cs.allPaid, isCard: true, cardId: cs.card.id, description: cs.card.name, amount: cs.total }));
+    nonCardExpenses.forEach(e => items.push({ dueDay: e.due_day ?? 10, paid: e.status === "pago", isCard: false, expId: e.id, description: e.description, amount: Number(e.amount) }));
     return items.sort((a, b) => a.dueDay - b.dueDay);
   }, [cardSummaries, nonCardExpenses]);
 
@@ -201,7 +201,7 @@ export function FinReceitasDespesasTab() {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-bold uppercase">Falta Receber</CardTitle>
+              <CardTitle className="text-base font-bold uppercase">Receita Fixa Mensal</CardTitle>
               <Badge variant="outline">{revPaid}/{revTotal}</Badge>
             </div>
             <div className="flex gap-3 mt-1">
@@ -289,42 +289,41 @@ export function FinReceitasDespesasTab() {
                 </tr>
               </thead>
               <tbody>
-                {/* Card summaries */}
-                {cardSummaries.sort((a, b) => a.card.due_day - b.card.due_day).map((cs) => {
-                  const status = getRowStatus(cs.card.due_day, cs.allPaid);
+                {/* All expense items sorted by due day */}
+                {allExpenseItems.map((item) => {
+                  const status = getRowStatus(item.dueDay, item.paid);
                   const rowClasses = getRowClasses(status);
-                  return (
-                    <tr key={cs.card.id} className="border-b last:border-0 hover:bg-accent/30 transition-colors">
-                      <td className={`px-4 py-2.5 font-medium flex items-center gap-2 ${rowClasses}`}>
-                        <CreditCard className="h-4 w-4 text-primary shrink-0" />
-                        {cs.card.name}
-                        {cs.card.last_digits && <span className="text-xs text-muted-foreground">****{cs.card.last_digits}</span>}
-                        <Badge variant="secondary" className="text-xs ml-1">{cs.count} itens</Badge>
-                      </td>
-                      <td className={`px-4 py-2.5 text-center ${rowClasses}`}>Dia {cs.card.due_day}</td>
-                      <td className={`px-4 py-2.5 text-right ${rowClasses}`}>R$ {cs.total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
-                      <td className="px-4 py-2.5 text-center">
-                        {cs.allPaid
-                          ? <CheckCircle2 className="h-5 w-5 text-success mx-auto" />
-                          : <Circle className="h-5 w-5 text-destructive mx-auto" />}
-                      </td>
-                    </tr>
-                  );
-                })}
-                {/* Non-card expenses */}
-                {nonCardExpenses.map((exp) => {
-                  const dueDay = exp.due_day ?? 10;
-                  const paid = exp.status === "pago";
-                  const status = getRowStatus(dueDay, paid);
-                  const rowClasses = getRowClasses(status);
+
+                  if (item.isCard) {
+                    const cs = cardSummaries.find(c => c.card.id === item.cardId)!;
+                    return (
+                      <tr key={`card-${cs.card.id}`} className="border-b last:border-0 hover:bg-accent/30 transition-colors">
+                        <td className={`px-4 py-2.5 font-medium flex items-center gap-2 ${rowClasses}`}>
+                          <CreditCard className="h-4 w-4 text-primary shrink-0" />
+                          {cs.card.name}
+                          {cs.card.last_digits && <span className="text-xs text-muted-foreground">****{cs.card.last_digits}</span>}
+                          <Badge variant="secondary" className="text-xs ml-1">{cs.count} itens</Badge>
+                        </td>
+                        <td className={`px-4 py-2.5 text-center ${rowClasses}`}>Dia {cs.card.due_day}</td>
+                        <td className={`px-4 py-2.5 text-right ${rowClasses}`}>R$ {cs.total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
+                        <td className="px-4 py-2.5 text-center">
+                          {cs.allPaid
+                            ? <CheckCircle2 className="h-5 w-5 text-success mx-auto" />
+                            : <Circle className="h-5 w-5 text-destructive mx-auto" />}
+                        </td>
+                      </tr>
+                    );
+                  }
+
+                  const exp = nonCardExpenses.find(e => e.id === item.expId)!;
                   return (
                     <tr key={exp.id} className="border-b last:border-0 hover:bg-accent/30 transition-colors">
                       <td className={`px-4 py-2.5 font-medium ${rowClasses}`}>{exp.description}</td>
-                      <td className={`px-4 py-2.5 text-center ${rowClasses}`}>Dia {dueDay}</td>
+                      <td className={`px-4 py-2.5 text-center ${rowClasses}`}>Dia {exp.due_day ?? 10}</td>
                       <td className={`px-4 py-2.5 text-right ${rowClasses}`}>R$ {Number(exp.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
                       <td className="px-4 py-2.5 text-center">
                         <button onClick={() => toggleExpStatus(exp)} className="inline-flex items-center justify-center">
-                          {paid
+                          {exp.status === "pago"
                             ? <CheckCircle2 className="h-5 w-5 text-success" />
                             : <Circle className="h-5 w-5 text-destructive hover:text-primary transition-colors" />}
                         </button>
@@ -332,7 +331,7 @@ export function FinReceitasDespesasTab() {
                     </tr>
                   );
                 })}
-                {nonCardExpenses.length === 0 && cardSummaries.length === 0 && (
+                {allExpenseItems.length === 0 && (
                   <tr><td colSpan={4} className="px-4 py-6 text-center text-muted-foreground">Nenhuma despesa cadastrada</td></tr>
                 )}
               </tbody>

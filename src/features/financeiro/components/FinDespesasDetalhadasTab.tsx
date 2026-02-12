@@ -131,6 +131,8 @@ export function FinDespesasDetalhadasTab() {
     const map = new Map<string, FinExpense[]>();
     CATEGORIES.forEach((c) => map.set(c.value, []));
     nonCardExpenses.forEach((e) => map.get(e.category)?.push(e));
+    // Sort each category by due_day
+    map.forEach((items, key) => map.set(key, items.sort((a, b) => (a.due_day ?? 10) - (b.due_day ?? 10))));
     return map;
   }, [nonCardExpenses]);
 
