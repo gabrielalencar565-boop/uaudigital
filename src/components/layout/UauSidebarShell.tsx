@@ -22,7 +22,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-export type MainTab = "visao_do_dia" | "meu_painel" | "configuracoes" | "desempenho" | "magic2" | "agenda" | "admin" | "financeiro" | "metas";
+export type MainTab = "visao_do_dia" | "meu_painel" | "desempenho" | "magic2" | "agenda" | "admin" | "financeiro" | "metas";
 
 type NavItem = {
   key: MainTab;
@@ -70,7 +70,6 @@ export function UauSidebarShell({
       { key: "magic2", label: "Magic Number", icon: Target },
       { key: "agenda", label: "Agenda", icon: CalendarDays },
       { key: "desempenho", label: "Desempenho", icon: Trophy },
-      { key: "configuracoes", label: "Meu Perfil", icon: UserRound },
     ];
 
     if (isAdmin) {

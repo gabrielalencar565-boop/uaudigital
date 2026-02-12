@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
-import { AlertTriangle, CheckCircle2, Clock } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock, Pencil } from "lucide-react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 import { useClients, useSetTaskStatus, useTasks } from "@/features/data/queries";
@@ -17,6 +18,7 @@ import { MeuPainelPerformanceRankCard } from "@/features/meu-painel/components/M
 import { useMyAnnualPerformanceRank } from "@/features/meu-painel/hooks/use-my-annual-performance-rank";
 import { useNow } from "@/hooks/use-now";
 import { MonthYearNav } from "@/features/magic2/components/MonthYearNav";
+import { EditProfileDialog } from "@/features/meu-painel/components/EditProfileDialog";
 
 function getMagicSyncedMonthYear(now: Date) {
   // Regra do Magic Number: a partir do dia 28, o "mês vigente" vira o próximo.
@@ -84,7 +86,8 @@ export function MeuPainelPanel() {
   const { user } = useSession();
 
   const [myProfile, setMyProfile] = useState<{ full_name: string; avatar_url: string | null } | null>(null);
-
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
+  const [profileVersion, setProfileVersion] = useState(0);
   const today = useNow();
   const todayKey = format(today, "yyyy-MM-dd");
 
@@ -158,7 +161,7 @@ export function MeuPainelPanel() {
     return () => {
       cancelled = true;
     };
-  }, [user?.id]);
+  }, [user?.id, profileVersion]);
 
   const headerGreeting = useMemo(() => {
     const g = greetingForHour(today.getHours());
@@ -228,6 +231,9 @@ export function MeuPainelPanel() {
             </div>
 
             <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditProfileOpen(true)}>
+                <Pencil className="h-3.5 w-3.5" /> Editar perfil
+              </Button>
               <Badge variant="secondary" className="tabular-nums">
                 {format(today, "dd/MM")}
               </Badge>
@@ -321,6 +327,11 @@ export function MeuPainelPanel() {
         isUpdating={setTaskStatus.isPending}
         onStart={onStart}
         onToggleComplete={onToggleComplete}
+      />
+      <EditProfileDialog
+        open={editProfileOpen}
+        onOpenChange={setEditProfileOpen}
+        onSaved={() => setProfileVersion((v) => v + 1)}
       />
     </div>
   );

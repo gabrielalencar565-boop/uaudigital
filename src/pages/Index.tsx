@@ -9,7 +9,6 @@ import { Magic2Panel } from "@/features/magic2/Magic2Panel";
 import { AgendaPanel } from "@/features/agenda/AgendaPanel";
 import { DayViewPanel } from "@/features/dayview/DayViewPanel";
 import { MeuPainelPanel } from "@/features/meu-painel/MeuPainelPanel";
-import { ConfiguracoesPanel } from "@/features/configuracoes/ConfiguracoesPanel";
 import { AdminContainer } from "@/features/admin/AdminContainer";
 import { FinanceiroPanel } from "@/features/financeiro/FinanceiroPanel";
 import { FinMetasTab } from "@/features/financeiro/components/FinMetasTab";
@@ -231,8 +230,6 @@ const Index = () => {
         <DayViewPanel />
       ) : tab === "meu_painel" ? (
         <MeuPainelPanel />
-      ) : tab === "configuracoes" ? (
-        <ConfiguracoesPanel />
       ) : tab === "desempenho" ? (
         <PerformancePanel />
       ) : tab === "magic2" ? (
