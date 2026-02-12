@@ -128,6 +128,19 @@ export function FinReceitasDespesasTab() {
     } as any);
   };
 
+  const toggleCardStatus = (cardId: string) => {
+    const cs = cardSummaries.find(c => c.card.id === cardId);
+    if (!cs) return;
+    const newStatus = cs.allPaid ? "pendente" : "pago";
+    cs.expenses.forEach(exp => {
+      upsertExp.mutate({
+        id: exp.id, description: exp.description, category: exp.category,
+        year, month, amount: Number(exp.amount), status: newStatus,
+        paid_at: newStatus === "pago" ? new Date().toISOString() : null,
+      } as any);
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -307,9 +320,11 @@ export function FinReceitasDespesasTab() {
                         <td className={`px-4 py-2.5 text-center ${rowClasses}`}>Dia {cs.card.due_day}</td>
                         <td className={`px-4 py-2.5 text-right ${rowClasses}`}>R$ {cs.total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
                         <td className="px-4 py-2.5 text-center">
-                          {cs.allPaid
-                            ? <CheckCircle2 className="h-5 w-5 text-success mx-auto" />
-                            : <Circle className="h-5 w-5 text-destructive mx-auto" />}
+                          <button onClick={() => toggleCardStatus(cs.card.id)} className="inline-flex items-center justify-center">
+                            {cs.allPaid
+                              ? <CheckCircle2 className="h-5 w-5 text-success" />
+                              : <Circle className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors" />}
+                          </button>
                         </td>
                       </tr>
                     );
