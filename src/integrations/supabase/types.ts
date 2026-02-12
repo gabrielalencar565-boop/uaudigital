@@ -622,6 +622,39 @@ export type Database = {
           },
         ]
       }
+      mrr_movements: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string | null
+          id: string
+          month: number
+          type: string
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          month: number
+          type: string
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          month?: number
+          type?: string
+          updated_at?: string
+          year?: number
+        }
+        Relationships: []
+      }
       performance_scores: {
         Row: {
           ambiente_organizado: number

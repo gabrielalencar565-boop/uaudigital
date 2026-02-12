@@ -1,100 +1,125 @@
 import { useState, useMemo } from "react";
-import { Target, TrendingUp, Pencil, CalendarRange } from "lucide-react";
+import { Target, TrendingUp, TrendingDown, Pencil, Plus, Trash2, ArrowUpCircle, ArrowDownCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
-import { useFinGoals, useUpsertFinGoal, type FinGoal } from "../hooks/use-financial-data";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine } from "recharts";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useFinGoals, useUpsertFinGoal, useMrrMovements, useUpsertMrrMovement, useDeleteMrrMovement, type FinGoal, type MrrMovement } from "../hooks/use-financial-data";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Cell } from "recharts";
+import { Badge } from "@/components/ui/badge";
 
 const MONTHS_SHORT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
-// We store MRR data in the annual goal row (month=null):
-// revenue_goal = MRR Atual
-// expense_limit = Meta Julho
-// notes = Meta Dezembro (as string number)
-
-function parseMrrGoal(goal: FinGoal | undefined) {
+function parseMeta(goal: FinGoal | undefined) {
   return {
-    mrrAtual: goal ? Number(goal.revenue_goal) : 0,
-    metaJulho: goal ? Number(goal.expense_limit) : 0,
-    metaDezembro: goal?.notes ? Number(goal.notes) : 0,
+    metaFinal: goal ? Number(goal.revenue_goal) : 0,
+    mrrInicial: goal ? Number(goal.expense_limit) : 0,
   };
 }
 
 export function FinMetasTab() {
   const now = new Date();
   const year = now.getFullYear();
-  const currentMonth = now.getMonth() + 1; // 1-12
+  const currentMonth = now.getMonth() + 1;
 
   const goalsQ = useFinGoals(year);
   const upsertGoal = useUpsertFinGoal();
+  const movQ = useMrrMovements(year);
+  const upsertMov = useUpsertMrrMovement();
+  const deleteMov = useDeleteMrrMovement();
+
   const goals = goalsQ.data ?? [];
+  const movements = movQ.data ?? [];
   const annualGoal = goals.find((g) => g.month === null);
+  const { metaFinal, mrrInicial } = parseMeta(annualGoal);
 
-  const { mrrAtual, metaJulho, metaDezembro } = parseMrrGoal(annualGoal);
+  // ── Meta dialog ──
+  const [metaOpen, setMetaOpen] = useState(false);
+  const [metaForm, setMetaForm] = useState({ meta_final: "", mrr_inicial: "" });
 
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState({ mrr_atual: "", meta_julho: "", meta_dezembro: "" });
-
-  const openDialog = () => {
-    setForm({
-      mrr_atual: mrrAtual ? String(mrrAtual) : "",
-      meta_julho: metaJulho ? String(metaJulho) : "",
-      meta_dezembro: metaDezembro ? String(metaDezembro) : "",
+  const openMetaDialog = () => {
+    setMetaForm({
+      meta_final: metaFinal ? String(metaFinal) : "",
+      mrr_inicial: mrrInicial ? String(mrrInicial) : "",
     });
-    setDialogOpen(true);
+    setMetaOpen(true);
   };
 
-  const saveGoal = () => {
+  const saveMeta = () => {
     upsertGoal.mutate(
       {
         ...(annualGoal ? { id: annualGoal.id } : {}),
         year,
         month: null,
-        revenue_goal: parseFloat(form.mrr_atual) || 0,
-        expense_limit: parseFloat(form.meta_julho) || 0,
-        notes: String(parseFloat(form.meta_dezembro) || 0),
+        revenue_goal: parseFloat(metaForm.meta_final) || 0,
+        expense_limit: parseFloat(metaForm.mrr_inicial) || 0,
       } as any,
-      { onSuccess: () => setDialogOpen(false) },
+      { onSuccess: () => setMetaOpen(false) },
     );
   };
 
-  // Calculations
-  const mesesAteJulho = Math.max(7 - currentMonth, 1);
-  const crescMensalJulho = metaJulho > 0 ? (metaJulho - mrrAtual) / mesesAteJulho : 0;
-  const crescMensalDezembro = metaDezembro > 0 && metaJulho > 0 ? (metaDezembro - metaJulho) / 5 : 0;
-  const progressoJulho = metaJulho > 0 ? Math.min((mrrAtual / metaJulho) * 100, 100) : 0;
-  const progressoDezembro = metaDezembro > 0 ? Math.min((mrrAtual / metaDezembro) * 100, 100) : 0;
+  // ── Movement dialog ──
+  const [movOpen, setMovOpen] = useState(false);
+  const [movForm, setMovForm] = useState({ month: String(currentMonth), type: "entrada", amount: "", description: "" });
 
-  // Timeline data: ideal MRR per month
+  const openMovDialog = () => {
+    setMovForm({ month: String(currentMonth), type: "entrada", amount: "", description: "" });
+    setMovOpen(true);
+  };
+
+  const saveMov = () => {
+    upsertMov.mutate(
+      {
+        year,
+        month: parseInt(movForm.month),
+        type: movForm.type,
+        amount: parseFloat(movForm.amount) || 0,
+        description: movForm.description || null,
+      } as any,
+      { onSuccess: () => setMovOpen(false) },
+    );
+  };
+
+  // ── Calculations ──
+  const totalEntradas = movements.filter((m) => m.type === "entrada").reduce((s, m) => s + Number(m.amount), 0);
+  const totalSaidas = movements.filter((m) => m.type === "saida").reduce((s, m) => s + Number(m.amount), 0);
+  const mrrAtual = mrrInicial + totalEntradas - totalSaidas;
+
+  const faltante = Math.max(metaFinal - mrrAtual, 0);
+  const mesesRestantes = Math.max(12 - currentMonth + 1, 1);
+  const metaMensal = metaFinal > 0 ? faltante / mesesRestantes : 0;
+
+  const entradasMes = movements.filter((m) => m.type === "entrada" && m.month === currentMonth).reduce((s, m) => s + Number(m.amount), 0);
+  const saidasMes = movements.filter((m) => m.type === "saida" && m.month === currentMonth).reduce((s, m) => s + Number(m.amount), 0);
+  const variacaoMes = entradasMes - saidasMes;
+
+  const progresso = metaFinal > 0 ? Math.min((mrrAtual / metaFinal) * 100, 100) : 0;
+
+  // ── Timeline data ──
   const timelineData = useMemo(() => {
+    let acumulado = mrrInicial;
     return Array.from({ length: 12 }, (_, i) => {
       const m = i + 1;
-      let idealMrr = 0;
-      if (metaJulho > 0 && m <= 7) {
-        // Linear interpolation from current to July
-        const startMonth = currentMonth;
-        if (m < startMonth) {
-          idealMrr = 0;
-        } else {
-          const progress = (m - startMonth) / Math.max(7 - startMonth, 1);
-          idealMrr = mrrAtual + (metaJulho - mrrAtual) * progress;
-        }
-      } else if (metaDezembro > 0 && m > 7) {
-        // Linear interpolation from July to December
-        const progress = (m - 7) / 5;
-        idealMrr = metaJulho + (metaDezembro - metaJulho) * progress;
-      }
+      const entM = movements.filter((mv) => mv.type === "entrada" && mv.month === m).reduce((s, mv) => s + Number(mv.amount), 0);
+      const saiM = movements.filter((mv) => mv.type === "saida" && mv.month === m).reduce((s, mv) => s + Number(mv.amount), 0);
+      acumulado += entM - saiM;
+
+      const idealMrr = metaFinal > 0 ? mrrInicial + ((metaFinal - mrrInicial) / 12) * m : 0;
+      const diff = acumulado - idealMrr;
+
       return {
         month: MONTHS_SHORT[i],
-        mrrIdeal: Math.round(idealMrr),
-        isCurrent: m === currentMonth,
+        mrrReal: m <= currentMonth ? Math.round(acumulado) : null,
+        metaIdeal: Math.round(idealMrr),
+        diff: m <= currentMonth ? Math.round(diff) : null,
+        isAbove: m <= currentMonth ? acumulado >= idealMrr : null,
       };
     });
-  }, [mrrAtual, metaJulho, metaDezembro, currentMonth]);
+  }, [movements, mrrInicial, metaFinal, currentMonth]);
 
   const fmt = (v: number) => `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
 
@@ -105,13 +130,18 @@ export function FinMetasTab() {
         <h3 className="text-lg font-semibold flex items-center gap-2">
           <Target className="h-5 w-5" /> Metas MRR — {year}
         </h3>
-        <Button size="sm" variant="outline" onClick={openDialog}>
-          <Pencil className="mr-1 h-3.5 w-3.5" /> Editar Metas
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={openMetaDialog}>
+            <Pencil className="mr-1 h-3.5 w-3.5" /> Editar Meta
+          </Button>
+          <Button size="sm" onClick={openMovDialog}>
+            <Plus className="mr-1 h-3.5 w-3.5" /> Nova Movimentação
+          </Button>
+        </div>
       </div>
 
-      {/* Editable values summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* Dashboard Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <Card>
           <CardContent className="pt-4 pb-3 px-4 text-center">
             <p className="text-xs text-muted-foreground mb-1">MRR Atual</p>
@@ -120,117 +150,238 @@ export function FinMetasTab() {
         </Card>
         <Card>
           <CardContent className="pt-4 pb-3 px-4 text-center">
-            <p className="text-xs text-muted-foreground mb-1">Meta Julho</p>
-            <p className="text-xl font-bold">{fmt(metaJulho)}</p>
+            <p className="text-xs text-muted-foreground mb-1">Meta Final</p>
+            <p className="text-xl font-bold">{fmt(metaFinal)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4 pb-3 px-4 text-center">
-            <p className="text-xs text-muted-foreground mb-1">Meta Dezembro</p>
-            <p className="text-xl font-bold">{fmt(metaDezembro)}</p>
+            <p className="text-xs text-muted-foreground mb-1">Falta para a Meta</p>
+            <p className="text-xl font-bold">{fmt(faltante)}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-3 px-4 text-center">
+            <p className="text-xs text-muted-foreground mb-1">Crescer/mês</p>
+            <p className="text-xl font-bold">{fmt(metaMensal)}</p>
+            <p className="text-[10px] text-muted-foreground">{mesesRestantes} meses restantes</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-3 px-4 text-center">
+            <p className="text-xs text-muted-foreground mb-1 flex items-center justify-center gap-1">
+              <ArrowUpCircle className="h-3 w-3 text-green-500" /> Ganho no mês
+            </p>
+            <p className="text-xl font-bold text-green-600">{fmt(entradasMes)}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-3 px-4 text-center">
+            <p className="text-xs text-muted-foreground mb-1 flex items-center justify-center gap-1">
+              <ArrowDownCircle className="h-3 w-3 text-red-500" /> Perdido no mês
+            </p>
+            <p className="text-xl font-bold text-red-600">{fmt(saidasMes)}</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Calculated KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* Progress bar */}
+      {metaFinal > 0 && (
         <Card>
-          <CardContent className="pt-4 pb-3 px-4">
-            <div className="flex items-center gap-2 mb-2">
-              <TrendingUp className="h-4 w-4 text-primary" />
-              <p className="text-sm font-medium">Crescimento mensal até Julho</p>
+          <CardContent className="pt-4 pb-3 px-4 space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="font-medium">Progresso até a Meta Final</span>
+              <span className="font-bold">{progresso.toFixed(1)}%</span>
             </div>
-            <p className="text-2xl font-bold">{fmt(crescMensalJulho)}</p>
-            <p className="text-xs text-muted-foreground">{mesesAteJulho} meses restantes</p>
+            <Progress value={progresso} className="h-3" />
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>{fmt(mrrAtual)}</span>
+              <span>{fmt(metaFinal)}</span>
+            </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-4 pb-3 px-4">
-            <div className="flex items-center gap-2 mb-2">
-              <TrendingUp className="h-4 w-4 text-primary" />
-              <p className="text-sm font-medium">Crescimento mensal Jul → Dez</p>
-            </div>
-            <p className="text-2xl font-bold">{fmt(crescMensalDezembro)}</p>
-            <p className="text-xs text-muted-foreground">5 meses (Ago–Dez)</p>
-          </CardContent>
-        </Card>
-      </div>
+      )}
 
-      {/* Progress bars */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Card>
-          <CardContent className="pt-4 pb-3 px-4 space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="font-medium">Progresso → Julho</span>
-              <span className="font-bold">{progressoJulho.toFixed(1)}%</span>
-            </div>
-            <Progress value={progressoJulho} className="h-3" />
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>{fmt(mrrAtual)}</span>
-              <span>{fmt(metaJulho)}</span>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-3 px-4 space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="font-medium">Progresso → Dezembro</span>
-              <span className="font-bold">{progressoDezembro.toFixed(1)}%</span>
-            </div>
-            <Progress value={progressoDezembro} className="h-3" />
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>{fmt(mrrAtual)}</span>
-              <span>{fmt(metaDezembro)}</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Monthly timeline table */}
+      <Card>
+        <CardContent className="pt-4 pb-3 px-2">
+          <h4 className="text-sm font-semibold mb-3 px-2">Evolução Mensal</h4>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Mês</TableHead>
+                <TableHead className="text-right">MRR Real</TableHead>
+                <TableHead className="text-right">Meta Ideal</TableHead>
+                <TableHead className="text-right">Diferença</TableHead>
+                <TableHead className="text-center">Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {timelineData.map((row, i) => (
+                <TableRow key={i} className={i + 1 === currentMonth ? "bg-accent/30" : ""}>
+                  <TableCell className="font-medium">{row.month}</TableCell>
+                  <TableCell className="text-right">{row.mrrReal !== null ? fmt(row.mrrReal) : "—"}</TableCell>
+                  <TableCell className="text-right">{fmt(row.metaIdeal)}</TableCell>
+                  <TableCell className="text-right">
+                    {row.diff !== null ? (
+                      <span className={row.diff >= 0 ? "text-green-600" : "text-red-600"}>
+                        {row.diff >= 0 ? "+" : ""}{fmt(row.diff)}
+                      </span>
+                    ) : "—"}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {row.isAbove !== null ? (
+                      <Badge variant={row.isAbove ? "default" : "destructive"} className="text-[10px]">
+                        {row.isAbove ? "OK" : "Abaixo"}
+                      </Badge>
+                    ) : "—"}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       {/* Timeline chart */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <CalendarRange className="h-4 w-4" /> Linha do Tempo — MRR Ideal por Mês
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
+        <CardContent className="pt-4 pb-3 px-4">
+          <h4 className="text-sm font-semibold mb-3">MRR Real vs Meta Ideal</h4>
+          <ResponsiveContainer width="100%" height={280}>
             <BarChart data={timelineData}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
               <XAxis dataKey="month" className="text-xs" />
               <YAxis className="text-xs" tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
               <Tooltip formatter={(v: number) => fmt(v)} />
-              <Legend />
-              <Bar dataKey="mrrIdeal" name="MRR Ideal" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-              {mrrAtual > 0 && <ReferenceLine y={mrrAtual} stroke="hsl(var(--destructive))" strokeDasharray="4 4" label={{ value: "MRR Atual", position: "insideTopRight", fontSize: 11 }} />}
+              <Bar dataKey="metaIdeal" name="Meta Ideal" fill="hsl(var(--muted-foreground))" opacity={0.3} radius={[4, 4, 0, 0]} />
+              <Bar dataKey="mrrReal" name="MRR Real" radius={[4, 4, 0, 0]}>
+                {timelineData.map((entry, i) => (
+                  <Cell key={i} fill={entry.isAbove === false ? "hsl(var(--destructive))" : "hsl(var(--primary))"} />
+                ))}
+              </Bar>
+              {metaFinal > 0 && <ReferenceLine y={metaFinal} stroke="hsl(var(--destructive))" strokeDasharray="4 4" label={{ value: "Meta Final", position: "insideTopRight", fontSize: 11 }} />}
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
       </Card>
 
-      {/* Edit dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      {/* Movements table */}
+      <Card>
+        <CardContent className="pt-4 pb-3 px-2">
+          <div className="flex items-center justify-between px-2 mb-3">
+            <h4 className="text-sm font-semibold">Movimentações de MRR</h4>
+          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Mês</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead>Descrição</TableHead>
+                <TableHead className="text-right">Valor</TableHead>
+                <TableHead className="w-10"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {movements.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center text-muted-foreground py-6">
+                    Nenhuma movimentação registrada
+                  </TableCell>
+                </TableRow>
+              ) : (
+                movements.map((m) => (
+                  <TableRow key={m.id}>
+                    <TableCell>{MONTHS_SHORT[m.month - 1]}/{year}</TableCell>
+                    <TableCell>
+                      <Badge variant={m.type === "entrada" ? "default" : "destructive"} className="text-[10px]">
+                        {m.type === "entrada" ? "Entrada" : "Saída"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{m.description ?? "—"}</TableCell>
+                    <TableCell className="text-right font-medium">{fmt(Number(m.amount))}</TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => deleteMov.mutate({ id: m.id, year })}
+                      >
+                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Edit meta dialog */}
+      <Dialog open={metaOpen} onOpenChange={setMetaOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Editar Metas MRR — {year}</DialogTitle>
+            <DialogTitle>Editar Meta MRR — {year}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>MRR Atual (R$)</Label>
-              <Input type="number" step="0.01" value={form.mrr_atual} onChange={(e) => setForm((p) => ({ ...p, mrr_atual: e.target.value }))} />
+              <Label>Meta Final de MRR (R$)</Label>
+              <Input type="number" step="0.01" value={metaForm.meta_final} onChange={(e) => setMetaForm((p) => ({ ...p, meta_final: e.target.value }))} />
             </div>
             <div className="space-y-2">
-              <Label>Meta de MRR para Julho (R$)</Label>
-              <Input type="number" step="0.01" value={form.meta_julho} onChange={(e) => setForm((p) => ({ ...p, meta_julho: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>Meta de MRR para Dezembro (R$)</Label>
-              <Input type="number" step="0.01" value={form.meta_dezembro} onChange={(e) => setForm((p) => ({ ...p, meta_dezembro: e.target.value }))} />
+              <Label>MRR Inicial (R$) <span className="text-muted-foreground text-xs">(opcional)</span></Label>
+              <Input type="number" step="0.01" value={metaForm.mrr_inicial} onChange={(e) => setMetaForm((p) => ({ ...p, mrr_inicial: e.target.value }))} />
             </div>
           </div>
           <DialogFooter>
             <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
-            <Button onClick={saveGoal} disabled={upsertGoal.isPending}>Salvar</Button>
+            <Button onClick={saveMeta} disabled={upsertGoal.isPending}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* New movement dialog */}
+      <Dialog open={movOpen} onOpenChange={setMovOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nova Movimentação de MRR</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Mês</Label>
+                <Select value={movForm.month} onValueChange={(v) => setMovForm((p) => ({ ...p, month: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {MONTHS_SHORT.map((m, i) => (
+                      <SelectItem key={i} value={String(i + 1)}>{m}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Tipo</Label>
+                <Select value={movForm.type} onValueChange={(v) => setMovForm((p) => ({ ...p, type: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="entrada">Entrada</SelectItem>
+                    <SelectItem value="saida">Saída</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Valor (R$)</Label>
+              <Input type="number" step="0.01" value={movForm.amount} onChange={(e) => setMovForm((p) => ({ ...p, amount: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label>Descrição <span className="text-muted-foreground text-xs">(opcional)</span></Label>
+              <Input value={movForm.description} onChange={(e) => setMovForm((p) => ({ ...p, description: e.target.value }))} />
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
+            <Button onClick={saveMov} disabled={upsertMov.isPending}>Salvar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
