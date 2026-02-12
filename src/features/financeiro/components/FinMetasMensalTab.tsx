@@ -224,24 +224,8 @@ export function FinMetasMensalTab() {
         </Card>
       </div>
 
-      {/* Progress bar */}
-      {metaCrescimentoMes > 0 && (
-        <Card>
-          <CardContent className="pt-4 pb-3 px-4 space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="font-medium">Crescimento em {MONTHS_FULL[selectedMonth - 1]}</span>
-              <Badge variant={atingiuMeta ? "default" : "secondary"} className="text-xs">
-                {progressoMes.toFixed(1)}%
-              </Badge>
-            </div>
-            <Progress value={progressoMes} className="h-3" />
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>{variacaoMes >= 0 ? "+" : ""}{fmt(variacaoMes)}</span>
-              <span>Meta: +{fmt(metaCrescimentoMes)}</span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+
+
 
       {/* Month movements */}
       <Card>
