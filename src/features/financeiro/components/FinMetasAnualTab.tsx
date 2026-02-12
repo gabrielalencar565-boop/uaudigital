@@ -4,11 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { ProgressRing } from "@/components/metrics/ProgressRing";
 import { useFinGoals, useUpsertFinGoal, useMrrMovements, useUpsertMrrMovement, useDeleteMrrMovement, type FinGoal } from "../hooks/use-financial-data";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Cell } from "recharts";
 
@@ -135,8 +135,35 @@ export function FinMetasAnualTab() {
         </div>
       </div>
 
-      {/* Dashboard Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {/* Big ring dashboards */}
+      <div className="grid grid-cols-2 gap-4">
+        <Card>
+          <CardContent className="pt-5 pb-4 px-4 flex flex-col items-center">
+            <p className="text-sm font-medium text-muted-foreground mb-3">Falta p/ Meta Final</p>
+            <ProgressRing value={progresso} size={130} stroke={14} tone="auto" label={
+              <div className="text-center">
+                <p className="text-lg font-bold">{progresso.toFixed(0)}%</p>
+              </div>
+            } />
+            <p className="text-base font-semibold mt-2">{faltante > 0 ? fmt(faltante) : "✓ Atingida"}</p>
+            <p className="text-xs text-muted-foreground">Meta: {fmt(metaFinal)}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-5 pb-4 px-4 flex flex-col items-center">
+            <p className="text-sm font-medium text-muted-foreground mb-3">Crescer/mês</p>
+            <ProgressRing value={metaFinal > 0 ? Math.min(((mrrAtual - mrrInicial) / (metaFinal - mrrInicial)) * 100, 100) : 0} size={130} stroke={14} tone="auto" label={
+              <div className="text-center">
+                <p className="text-lg font-bold">{fmt(metaMensal)}</p>
+              </div>
+            } />
+            <p className="text-base font-semibold mt-2">{mesesRestantes} meses restantes</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Small KPI Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-2 gap-3">
         <Card>
           <CardContent className="pt-4 pb-3 px-4 text-center">
             <p className="text-xs text-muted-foreground mb-1">MRR Atual</p>
@@ -149,37 +176,7 @@ export function FinMetasAnualTab() {
             <p className="text-xl font-bold">{fmt(metaFinal)}</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-4 pb-3 px-4 text-center">
-            <p className="text-xs text-muted-foreground mb-1">Falta para a Meta</p>
-            <p className="text-xl font-bold">{fmt(faltante)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-3 px-4 text-center">
-            <p className="text-xs text-muted-foreground mb-1">Crescer/mês</p>
-            <p className="text-xl font-bold">{fmt(metaMensal)}</p>
-            <p className="text-[10px] text-muted-foreground">{mesesRestantes} meses restantes</p>
-          </CardContent>
-        </Card>
       </div>
-
-      {/* Progress bar */}
-      {metaFinal > 0 && (
-        <Card>
-          <CardContent className="pt-4 pb-3 px-4 space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="font-medium">Progresso até a Meta Final</span>
-              <span className="font-bold">{progresso.toFixed(1)}%</span>
-            </div>
-            <Progress value={progresso} className="h-3" />
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>{fmt(mrrAtual)}</span>
-              <span>{fmt(metaFinal)}</span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Monthly timeline table */}
       <Card>
