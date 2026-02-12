@@ -1,5 +1,5 @@
 import { PropsWithChildren, useMemo, useState } from "react";
-import { CalendarDays, ChevronLeft, DollarSign, Eye, LogOut, Shield, Target, Trophy, UserRound } from "lucide-react";
+import { CalendarDays, ChevronLeft, DollarSign, Eye, LogOut, Shield, Target, TrendingUp, Trophy, UserRound } from "lucide-react";
 import { useAppSettings } from "@/features/data/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -74,7 +74,7 @@ export function UauSidebarShell({
 
     if (isAdmin) {
       base.push({ key: "financeiro", label: "Financeiro", icon: DollarSign });
-      base.push({ key: "metas", label: "Metas", icon: Target });
+      base.push({ key: "metas", label: "Metas", icon: TrendingUp });
       base.push({ key: "admin", label: "Admin", icon: Shield });
     }
     return base;
