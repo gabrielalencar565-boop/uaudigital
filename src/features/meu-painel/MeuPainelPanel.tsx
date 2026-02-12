@@ -231,9 +231,6 @@ export function MeuPainelPanel() {
             </div>
 
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditProfileOpen(true)}>
-                <Pencil className="h-3.5 w-3.5" /> Editar perfil
-              </Button>
               <Badge variant="secondary" className="tabular-nums">
                 {format(today, "dd/MM")}
               </Badge>
@@ -257,13 +254,16 @@ export function MeuPainelPanel() {
               medal={perfYear.medal}
               isLoading={perfYear.isLoading}
             />
-            <div className="flex items-center justify-start md:justify-end">
+            <div className="flex items-center gap-2 justify-start md:justify-end">
               <MonthYearNav
                 month={selected.month}
                 year={selected.year}
                 onMonthChange={(m) => setSelected((s) => ({ ...s, month: m }))}
                 onYearChange={(y) => setSelected((s) => ({ ...s, year: y }))}
               />
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditProfileOpen(true)}>
+                <Pencil className="h-3.5 w-3.5" /> Editar perfil
+              </Button>
             </div>
           </div>
         </div>
