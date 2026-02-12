@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Target, Pencil, Plus, Trash2 } from "lucide-react";
+import { Target, Pencil, Plus, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -23,7 +23,7 @@ function parseMeta(goal: FinGoal | undefined) {
 
 export function FinMetasAnualTab() {
   const now = new Date();
-  const year = now.getFullYear();
+  const [year, setYear] = useState(now.getFullYear());
   const currentMonth = now.getMonth() + 1;
 
   const goalsQ = useFinGoals(year);
@@ -121,10 +121,23 @@ export function FinMetasAnualTab() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold flex items-center gap-2">
-          <Target className="h-5 w-5" /> Meta Anual — {year}
-        </h3>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setYear((y) => y - 1)}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <Target className="h-5 w-5" /> Meta Anual — {year}
+          </h3>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setYear((y) => y + 1)}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          {year !== now.getFullYear() && (
+            <Button variant="outline" size="sm" className="text-xs" onClick={() => setYear(now.getFullYear())}>
+              Ano atual
+            </Button>
+          )}
+        </div>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={openMetaDialog}>
             <Pencil className="mr-1 h-3.5 w-3.5" /> Editar Meta
