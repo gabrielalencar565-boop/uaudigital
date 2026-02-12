@@ -371,6 +371,68 @@ export function useUpsertFinGoal() {
   });
 }
 
+// ── MRR Movements ──
+export type MrrMovement = {
+  id: string;
+  year: number;
+  month: number;
+  type: string;
+  amount: number;
+  description: string | null;
+  created_at: string;
+};
+
+export function useMrrMovements(year: number) {
+  return useQuery({
+    queryKey: ["mrr-movements", year],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("mrr_movements" as any)
+        .select("*")
+        .eq("year", year)
+        .order("month")
+        .order("created_at");
+      if (error) throw error;
+      return (data ?? []) as unknown as MrrMovement[];
+    },
+  });
+}
+
+export function useUpsertMrrMovement() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (mov: Partial<MrrMovement> & { year: number; month: number; type: string; amount: number }) => {
+      if (mov.id) {
+        const { error } = await supabase.from("mrr_movements" as any).update(mov as any).eq("id", mov.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("mrr_movements" as any).insert(mov as any);
+        if (error) throw error;
+      }
+    },
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ["mrr-movements", v.year] });
+      toast.success("Movimentação salva");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+}
+
+export function useDeleteMrrMovement() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, year }: { id: string; year: number }) => {
+      const { error } = await supabase.from("mrr_movements" as any).delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ["mrr-movements", v.year] });
+      toast.success("Movimentação excluída");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+}
+
 // ── Aggregation helpers ──
 export function useFinAllRevenues(year: number) {
   return useQuery({
