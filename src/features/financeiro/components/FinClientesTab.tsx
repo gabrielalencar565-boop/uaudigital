@@ -160,7 +160,7 @@ export function FinClientesTab() {
               <TableHead>Nome</TableHead>
               <TableHead>CNPJ</TableHead>
               <TableHead className="text-right">Valor Mensal</TableHead>
-              <TableHead className="text-center">Vencimento</TableHead>
+              <TableHead className="text-center">Dia Vencimento</TableHead>
               <TableHead className="text-center">Contrato</TableHead>
               <TableHead className="text-center">Status</TableHead>
               <TableHead className="w-28" />
