@@ -38,13 +38,10 @@ export function FinMetasMensalTab() {
   const annualGoal = goals.find((g) => g.month === null);
   const { metaFinal, mrrInicial } = parseMeta(annualGoal);
 
-  // Monthly ideal target (linear from initial to final over 12 months)
-  const metaMes = metaFinal > 0 ? mrrInicial + ((metaFinal - mrrInicial) / 12) * selectedMonth : 0;
-
-  // MRR accumulated up to selected month
-  const mrrAcumulado = useMemo(() => {
+  // MRR accumulated up to END of previous month (starting point for this month)
+  const mrrInicioMes = useMemo(() => {
     let acc = mrrInicial;
-    for (let m = 1; m <= selectedMonth; m++) {
+    for (let m = 1; m < selectedMonth; m++) {
       const ent = movements.filter((mv) => mv.type === "entrada" && mv.month === m).reduce((s, mv) => s + Number(mv.amount), 0);
       const sai = movements.filter((mv) => mv.type === "saida" && mv.month === m).reduce((s, mv) => s + Number(mv.amount), 0);
       acc += ent - sai;
@@ -58,9 +55,18 @@ export function FinMetasMensalTab() {
   const saidasMes = monthMovements.filter((m) => m.type === "saida").reduce((s, m) => s + Number(m.amount), 0);
   const variacaoMes = entradasMes - saidasMes;
 
-  const faltaParaMeta = Math.max(metaMes - mrrAcumulado, 0);
-  const progressoMes = metaMes > 0 ? Math.min((mrrAcumulado / metaMes) * 100, 100) : 0;
-  const atingiuMeta = mrrAcumulado >= metaMes && metaMes > 0;
+  // MRR accumulated up to selected month (including this month's movements)
+  const mrrAtual = mrrInicioMes + entradasMes - saidasMes;
+
+  // How much NET growth is needed THIS month: distribute remaining gap across remaining months
+  const mesesRestantes = 12 - selectedMonth + 1;
+  const faltaTotal = Math.max(metaFinal - mrrInicioMes, 0);
+  const metaCrescimentoMes = metaFinal > 0 && mesesRestantes > 0 ? faltaTotal / mesesRestantes : 0;
+
+  // Progress of this month's growth target
+  const progressoMes = metaCrescimentoMes > 0 ? Math.min((variacaoMes / metaCrescimentoMes) * 100, 100) : 0;
+  const atingiuMeta = variacaoMes >= metaCrescimentoMes && metaCrescimentoMes > 0;
+  const faltaParaMetaFinal = Math.max(metaFinal - mrrAtual, 0);
 
   // ── Movement dialog ──
   const [movOpen, setMovOpen] = useState(false);
@@ -110,20 +116,21 @@ export function FinMetasMensalTab() {
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <Card>
           <CardContent className="pt-4 pb-3 px-4 text-center">
-            <p className="text-xs text-muted-foreground mb-1">MRR Acumulado</p>
-            <p className="text-xl font-bold">{fmt(mrrAcumulado)}</p>
+            <p className="text-xs text-muted-foreground mb-1">MRR Atual</p>
+            <p className="text-xl font-bold">{fmt(mrrAtual)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4 pb-3 px-4 text-center">
             <p className="text-xs text-muted-foreground mb-1">Meta do Mês</p>
-            <p className="text-xl font-bold">{fmt(metaMes)}</p>
+            <p className="text-lg font-bold">{fmt(metaCrescimentoMes)}</p>
+            <p className="text-[10px] text-muted-foreground">crescimento necessário</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4 pb-3 px-4 text-center">
-            <p className="text-xs text-muted-foreground mb-1">Falta para a Meta</p>
-            <p className="text-xl font-bold">{faltaParaMeta > 0 ? fmt(faltaParaMeta) : "✓ Atingida"}</p>
+            <p className="text-xs text-muted-foreground mb-1">Falta p/ Meta Final</p>
+            <p className="text-xl font-bold">{faltaParaMetaFinal > 0 ? fmt(faltaParaMetaFinal) : "✓ Atingida"}</p>
           </CardContent>
         </Card>
         <Card>
@@ -153,19 +160,19 @@ export function FinMetasMensalTab() {
       </div>
 
       {/* Progress bar */}
-      {metaMes > 0 && (
+      {metaCrescimentoMes > 0 && (
         <Card>
           <CardContent className="pt-4 pb-3 px-4 space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="font-medium">Progresso até a Meta de {MONTHS_FULL[selectedMonth - 1]}</span>
+              <span className="font-medium">Crescimento em {MONTHS_FULL[selectedMonth - 1]}</span>
               <Badge variant={atingiuMeta ? "default" : "secondary"} className="text-xs">
                 {progressoMes.toFixed(1)}%
               </Badge>
             </div>
             <Progress value={progressoMes} className="h-3" />
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>{fmt(mrrAcumulado)}</span>
-              <span>{fmt(metaMes)}</span>
+              <span>{variacaoMes >= 0 ? "+" : ""}{fmt(variacaoMes)}</span>
+              <span>Meta: +{fmt(metaCrescimentoMes)}</span>
             </div>
           </CardContent>
         </Card>
