@@ -88,6 +88,7 @@ export function FinMetasMensalTab() {
 
   const progressoMes = metaCrescimentoMes > 0 ? Math.min((variacaoMes / metaCrescimentoMes) * 100, 100) : 0;
   const atingiuMeta = variacaoMes >= metaCrescimentoMes && metaCrescimentoMes > 0;
+  const faltaParaMetaMes = Math.max(metaCrescimentoMes - variacaoMes, 0);
   const faltaParaMetaFinal = Math.max(metaFinal - mrrAtual, 0);
   const progressoMetaFinal = metaFinal > 0 ? Math.min((mrrAtual / metaFinal) * 100, 100) : 0;
 
@@ -159,35 +160,42 @@ export function FinMetasMensalTab() {
         </Card>
       )}
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      {/* Big ring dashboards */}
+      <div className="grid grid-cols-2 gap-4">
+        <Card>
+          <CardContent className="pt-5 pb-4 px-4 flex flex-col items-center">
+            <p className="text-sm font-medium text-muted-foreground mb-3">Meta do Mês</p>
+            <ProgressRing value={progressoMes} size={130} stroke={14} tone="auto" label={
+              <div className="text-center">
+                <p className="text-lg font-bold">{progressoMes.toFixed(0)}%</p>
+              </div>
+            } />
+            <p className="text-base font-semibold mt-2">
+              {faltaParaMetaMes > 0 ? `Falta ${fmt(faltaParaMetaMes)}` : "✓ Atingida"}
+            </p>
+            <p className="text-xs text-muted-foreground">Meta: +{fmt(metaCrescimentoMes)}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-5 pb-4 px-4 flex flex-col items-center">
+            <p className="text-sm font-medium text-muted-foreground mb-3">Falta p/ Meta Final</p>
+            <ProgressRing value={progressoMetaFinal} size={130} stroke={14} tone="auto" label={
+              <div className="text-center">
+                <p className="text-lg font-bold">{progressoMetaFinal.toFixed(0)}%</p>
+              </div>
+            } />
+            <p className="text-base font-semibold mt-2">{faltaParaMetaFinal > 0 ? fmt(faltaParaMetaFinal) : "✓ Atingida"}</p>
+            <p className="text-xs text-muted-foreground">Meta Final: {fmt(metaFinal)}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Small KPI Cards row */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Card>
           <CardContent className="pt-4 pb-3 px-4 text-center">
             <p className="text-xs text-muted-foreground mb-1">MRR Atual</p>
-            <p className="text-xl font-bold">{fmt(mrrAtual)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-3 px-4 flex flex-col items-center">
-            <p className="text-xs text-muted-foreground mb-2">Meta do Mês</p>
-            <ProgressRing value={progressoMes} size={90} stroke={10} tone="auto" label={
-              <div className="text-center">
-                <p className="text-sm font-bold">{progressoMes.toFixed(0)}%</p>
-              </div>
-            } />
-            <p className="text-sm font-semibold mt-1">{fmt(metaCrescimentoMes)}</p>
-            <p className="text-[10px] text-muted-foreground">crescimento necessário</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-3 px-4 flex flex-col items-center">
-            <p className="text-xs text-muted-foreground mb-2">Falta p/ Meta Final</p>
-            <ProgressRing value={progressoMetaFinal} size={90} stroke={10} tone="auto" label={
-              <div className="text-center">
-                <p className="text-sm font-bold">{progressoMetaFinal.toFixed(0)}%</p>
-              </div>
-            } />
-            <p className="text-sm font-semibold mt-1">{faltaParaMetaFinal > 0 ? fmt(faltaParaMetaFinal) : "✓ Atingida"}</p>
+            <p className="text-lg font-bold">{fmt(mrrAtual)}</p>
           </CardContent>
         </Card>
         <Card>
@@ -195,7 +203,7 @@ export function FinMetasMensalTab() {
             <p className="text-xs text-muted-foreground mb-1 flex items-center justify-center gap-1">
               <ArrowUpCircle className="h-3 w-3 text-green-500" /> Ganho no mês
             </p>
-            <p className="text-xl font-bold text-green-600">{fmt(entradasMes)}</p>
+            <p className="text-lg font-bold text-green-600">{fmt(entradasMes)}</p>
           </CardContent>
         </Card>
         <Card>
@@ -203,13 +211,13 @@ export function FinMetasMensalTab() {
             <p className="text-xs text-muted-foreground mb-1 flex items-center justify-center gap-1">
               <ArrowDownCircle className="h-3 w-3 text-red-500" /> Perdido no mês
             </p>
-            <p className="text-xl font-bold text-red-600">{fmt(saidasMes)}</p>
+            <p className="text-lg font-bold text-red-600">{fmt(saidasMes)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4 pb-3 px-4 text-center">
             <p className="text-xs text-muted-foreground mb-1">Variação Líquida</p>
-            <p className={`text-xl font-bold ${variacaoMes >= 0 ? "text-green-600" : "text-red-600"}`}>
+            <p className={`text-lg font-bold ${variacaoMes >= 0 ? "text-green-600" : "text-red-600"}`}>
               {variacaoMes >= 0 ? "+" : ""}{fmt(variacaoMes)}
             </p>
           </CardContent>
