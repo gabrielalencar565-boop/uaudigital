@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { CheckCircle2, Circle, DollarSign, TrendingDown, TrendingUp, Receipt, CreditCard } from "lucide-react";
+import { CheckCircle2, Circle, DollarSign, TrendingDown, TrendingUp, Receipt, CreditCard, AlertCircle, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +24,9 @@ export function FinReceitasDespesasTab() {
   const allExpenses = expensesQ.data ?? [];
   const cards = cardsQ.data ?? [];
 
+  const today = now.getDate();
+  const isCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1;
+
   // Separate: non-card expenses shown individually, card expenses grouped per card
   const nonCardExpenses = useMemo(() => allExpenses.filter(e => !e.credit_card_id).sort((a, b) => (a.due_day ?? 10) - (b.due_day ?? 10)), [allExpenses]);
   const cardSummaries = useMemo(() => {
@@ -35,8 +38,6 @@ export function FinReceitasDespesasTab() {
     }).filter(cs => cs.count > 0);
   }, [cards, allExpenses]);
 
-  // Combined expense list for display: non-card + card summaries
-  const displayExpenses = nonCardExpenses;
   const totalDespesas = allExpenses.reduce((s, e) => s + Number(e.amount), 0);
 
   const revByClient = useMemo(() => {
@@ -49,13 +50,53 @@ export function FinReceitasDespesasTab() {
   const ticketMedio = clients.length > 0 ? totalFaturamento / clients.length : 0;
   const margemLucro = totalFaturamento > 0 ? (lucro / totalFaturamento) * 100 : 0;
 
-  const revPaid = revenues.filter((r) => r.status === "pago").length;
+  // Revenue stats
+  const revPaid = clients.filter(c => revByClient.get(c.id)?.status === "pago").length;
   const revTotal = clients.length;
+  const revPending = revTotal - revPaid;
+  const revOverdue = isCurrentMonth ? clients.filter(c => {
+    const rev = revByClient.get(c.id);
+    const paid = rev?.status === "pago";
+    const dueDay = c.due_day ?? 10;
+    return !paid && today > dueDay;
+  }).length : 0;
   const revProgress = revTotal > 0 ? (revPaid / revTotal) * 100 : 0;
 
-  const expPaid = allExpenses.filter((e) => e.status === "pago").length;
-  const expTotal = allExpenses.length;
+  // Remaining to receive
+  const totalPaidRevenue = clients.filter(c => revByClient.get(c.id)?.status === "pago").reduce((s, c) => s + Number(c.monthly_value), 0);
+  const remainingToReceive = totalFaturamento - totalPaidRevenue;
+
+  // Build combined expense display items for counting
+  type ExpenseDisplayItem = { dueDay: number; paid: boolean; isCard: boolean; cardId?: string; expId?: string };
+  const allExpenseItems = useMemo<ExpenseDisplayItem[]>(() => {
+    const items: ExpenseDisplayItem[] = [];
+    cardSummaries.forEach(cs => items.push({ dueDay: cs.card.due_day, paid: cs.allPaid, isCard: true, cardId: cs.card.id }));
+    nonCardExpenses.forEach(e => items.push({ dueDay: e.due_day ?? 10, paid: e.status === "pago", isCard: false, expId: e.id }));
+    return items.sort((a, b) => a.dueDay - b.dueDay);
+  }, [cardSummaries, nonCardExpenses]);
+
+  const expPaid = allExpenseItems.filter(i => i.paid).length;
+  const expTotal = allExpenseItems.length;
+  const expPending = expTotal - expPaid;
+  const expOverdue = isCurrentMonth ? allExpenseItems.filter(i => !i.paid && today > i.dueDay).length : 0;
   const expProgress = expTotal > 0 ? (expPaid / expTotal) * 100 : 0;
+
+  const getRowStatus = (dueDay: number, paid: boolean) => {
+    if (paid) return "paid";
+    if (!isCurrentMonth) return "normal";
+    if (today > dueDay) return "overdue";
+    if (today === dueDay) return "due-today";
+    return "normal";
+  };
+
+  const getRowClasses = (status: string) => {
+    switch (status) {
+      case "paid": return "line-through opacity-60";
+      case "overdue": return "text-destructive font-semibold";
+      case "due-today": return "text-yellow-600 dark:text-yellow-400 font-semibold";
+      default: return "";
+    }
+  };
 
   const toggleRevStatus = (clientId: string) => {
     const existing = revByClient.get(clientId);
@@ -89,9 +130,11 @@ export function FinReceitasDespesasTab() {
 
   return (
     <div className="space-y-6">
-      <FinMonthYearSelector month={month} year={year} onMonthChange={setMonth} onYearChange={setYear} />
+      <div className="flex items-center justify-between">
+        <FinMonthYearSelector month={month} year={year} onMonthChange={setMonth} onYearChange={setYear} />
+      </div>
 
-      {/* Dashboard KPIs - reordered: Faturamento, Despesas, Lucro, Ticket Médio, Clientes Ativos, Margem */}
+      {/* Dashboard KPIs */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -154,12 +197,25 @@ export function FinReceitasDespesasTab() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Faturamento Fixo Mensal */}
+        {/* Receitas */}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-bold uppercase">Faturamento Fixo Mensal</CardTitle>
+              <CardTitle className="text-base font-bold uppercase">Falta Receber</CardTitle>
               <Badge variant="outline">{revPaid}/{revTotal}</Badge>
+            </div>
+            <div className="flex gap-3 mt-1">
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <Clock className="h-3 w-3" /> Pendentes: {revPending}
+              </span>
+              {revOverdue > 0 && (
+                <span className="text-xs text-destructive flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" /> Atrasadas: {revOverdue}
+                </span>
+              )}
+              <span className="text-xs font-semibold">
+                Falta: R$ {remainingToReceive.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+              </span>
             </div>
             <Progress value={revProgress} className="h-2 mt-2" />
           </CardHeader>
@@ -178,11 +234,13 @@ export function FinReceitasDespesasTab() {
                   const rev = revByClient.get(c.id);
                   const paid = rev?.status === "pago";
                   const dueDay = c.due_day ?? 10;
+                  const status = getRowStatus(dueDay, paid);
+                  const rowClasses = getRowClasses(status);
                   return (
                     <tr key={c.id} className="border-b last:border-0 hover:bg-accent/30 transition-colors">
-                      <td className="px-4 py-2.5 font-medium">{c.name}</td>
-                      <td className="px-4 py-2.5 text-center text-muted-foreground">Dia {dueDay}</td>
-                      <td className="px-4 py-2.5 text-right text-muted-foreground">R$ {Number(c.monthly_value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
+                      <td className={`px-4 py-2.5 font-medium ${rowClasses}`}>{c.name}</td>
+                      <td className={`px-4 py-2.5 text-center ${rowClasses}`}>Dia {dueDay}</td>
+                      <td className={`px-4 py-2.5 text-right ${rowClasses}`}>R$ {Number(c.monthly_value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
                       <td className="px-4 py-2.5 text-center">
                         <button onClick={() => toggleRevStatus(c.id)} className="inline-flex items-center justify-center">
                           {paid
@@ -201,12 +259,22 @@ export function FinReceitasDespesasTab() {
           </CardContent>
         </Card>
 
-        {/* Despesa Fixa Mensal */}
+        {/* Despesas */}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-base font-bold uppercase">Despesa Fixa Mensal</CardTitle>
               <Badge variant="outline">{expPaid}/{expTotal}</Badge>
+            </div>
+            <div className="flex gap-3 mt-1">
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <Clock className="h-3 w-3" /> Pendentes: {expPending}
+              </span>
+              {expOverdue > 0 && (
+                <span className="text-xs text-destructive flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" /> Atrasadas: {expOverdue}
+                </span>
+              )}
             </div>
             <Progress value={expProgress} className="h-2 mt-2" />
           </CardHeader>
@@ -221,40 +289,50 @@ export function FinReceitasDespesasTab() {
                 </tr>
               </thead>
               <tbody>
-                {/* Card summaries - one line per card */}
-                {cardSummaries.map((cs) => (
-                  <tr key={cs.card.id} className="border-b last:border-0 hover:bg-accent/30 transition-colors">
-                    <td className="px-4 py-2.5 font-medium flex items-center gap-2">
-                      <CreditCard className="h-4 w-4 text-primary shrink-0" />
-                      {cs.card.name}
-                      {cs.card.last_digits && <span className="text-xs text-muted-foreground">****{cs.card.last_digits}</span>}
-                      <Badge variant="secondary" className="text-xs ml-1">{cs.count} itens</Badge>
-                    </td>
-                    <td className="px-4 py-2.5 text-center text-muted-foreground">Dia {cs.card.due_day}</td>
-                    <td className="px-4 py-2.5 text-right text-muted-foreground">R$ {cs.total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
-                    <td className="px-4 py-2.5 text-center">
-                      {cs.allPaid
-                        ? <CheckCircle2 className="h-5 w-5 text-success mx-auto" />
-                        : <Circle className="h-5 w-5 text-destructive mx-auto" />}
-                    </td>
-                  </tr>
-                ))}
+                {/* Card summaries */}
+                {cardSummaries.sort((a, b) => a.card.due_day - b.card.due_day).map((cs) => {
+                  const status = getRowStatus(cs.card.due_day, cs.allPaid);
+                  const rowClasses = getRowClasses(status);
+                  return (
+                    <tr key={cs.card.id} className="border-b last:border-0 hover:bg-accent/30 transition-colors">
+                      <td className={`px-4 py-2.5 font-medium flex items-center gap-2 ${rowClasses}`}>
+                        <CreditCard className="h-4 w-4 text-primary shrink-0" />
+                        {cs.card.name}
+                        {cs.card.last_digits && <span className="text-xs text-muted-foreground">****{cs.card.last_digits}</span>}
+                        <Badge variant="secondary" className="text-xs ml-1">{cs.count} itens</Badge>
+                      </td>
+                      <td className={`px-4 py-2.5 text-center ${rowClasses}`}>Dia {cs.card.due_day}</td>
+                      <td className={`px-4 py-2.5 text-right ${rowClasses}`}>R$ {cs.total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
+                      <td className="px-4 py-2.5 text-center">
+                        {cs.allPaid
+                          ? <CheckCircle2 className="h-5 w-5 text-success mx-auto" />
+                          : <Circle className="h-5 w-5 text-destructive mx-auto" />}
+                      </td>
+                    </tr>
+                  );
+                })}
                 {/* Non-card expenses */}
-                {displayExpenses.map((exp) => (
-                  <tr key={exp.id} className="border-b last:border-0 hover:bg-accent/30 transition-colors">
-                    <td className="px-4 py-2.5 font-medium">{exp.description}</td>
-                    <td className="px-4 py-2.5 text-center text-muted-foreground">Dia {(exp as any).due_day ?? 10}</td>
-                    <td className="px-4 py-2.5 text-right text-muted-foreground">R$ {Number(exp.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
-                    <td className="px-4 py-2.5 text-center">
-                      <button onClick={() => toggleExpStatus(exp)} className="inline-flex items-center justify-center">
-                        {exp.status === "pago"
-                          ? <CheckCircle2 className="h-5 w-5 text-success" />
-                          : <Circle className="h-5 w-5 text-destructive hover:text-primary transition-colors" />}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {displayExpenses.length === 0 && cardSummaries.length === 0 && (
+                {nonCardExpenses.map((exp) => {
+                  const dueDay = exp.due_day ?? 10;
+                  const paid = exp.status === "pago";
+                  const status = getRowStatus(dueDay, paid);
+                  const rowClasses = getRowClasses(status);
+                  return (
+                    <tr key={exp.id} className="border-b last:border-0 hover:bg-accent/30 transition-colors">
+                      <td className={`px-4 py-2.5 font-medium ${rowClasses}`}>{exp.description}</td>
+                      <td className={`px-4 py-2.5 text-center ${rowClasses}`}>Dia {dueDay}</td>
+                      <td className={`px-4 py-2.5 text-right ${rowClasses}`}>R$ {Number(exp.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
+                      <td className="px-4 py-2.5 text-center">
+                        <button onClick={() => toggleExpStatus(exp)} className="inline-flex items-center justify-center">
+                          {paid
+                            ? <CheckCircle2 className="h-5 w-5 text-success" />
+                            : <Circle className="h-5 w-5 text-destructive hover:text-primary transition-colors" />}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {nonCardExpenses.length === 0 && cardSummaries.length === 0 && (
                   <tr><td colSpan={4} className="px-4 py-6 text-center text-muted-foreground">Nenhuma despesa cadastrada</td></tr>
                 )}
               </tbody>
