@@ -1,153 +1,232 @@
 import { useState, useMemo } from "react";
-import { Target, Plus, Pencil } from "lucide-react";
+import { Target, TrendingUp, Pencil, CalendarRange } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
-import { useFinGoals, useUpsertFinGoal, useFinAllRevenues, useFinAllExpenses, type FinGoal } from "../hooks/use-financial-data";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { FinMonthYearSelector } from "./FinMonthYearSelector";
+import { useFinGoals, useUpsertFinGoal, type FinGoal } from "../hooks/use-financial-data";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine } from "recharts";
 
-const MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+const MONTHS_SHORT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+
+// We store MRR data in the annual goal row (month=null):
+// revenue_goal = MRR Atual
+// expense_limit = Meta Julho
+// notes = Meta Dezembro (as string number)
+
+function parseMrrGoal(goal: FinGoal | undefined) {
+  return {
+    mrrAtual: goal ? Number(goal.revenue_goal) : 0,
+    metaJulho: goal ? Number(goal.expense_limit) : 0,
+    metaDezembro: goal?.notes ? Number(goal.notes) : 0,
+  };
+}
 
 export function FinMetasTab() {
   const now = new Date();
-  const [year, setYear] = useState(now.getFullYear());
+  const year = now.getFullYear();
+  const currentMonth = now.getMonth() + 1; // 1-12
 
   const goalsQ = useFinGoals(year);
-  const revenuesQ = useFinAllRevenues(year);
-  const expensesQ = useFinAllExpenses(year);
   const upsertGoal = useUpsertFinGoal();
-
   const goals = goalsQ.data ?? [];
-  const revenues = revenuesQ.data ?? [];
-  const expenses = expensesQ.data ?? [];
+  const annualGoal = goals.find((g) => g.month === null);
+
+  const { mrrAtual, metaJulho, metaDezembro } = parseMrrGoal(annualGoal);
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingMonth, setEditingMonth] = useState<number | null>(null);
-  const [form, setForm] = useState({ revenue_goal: "", expense_limit: "" });
+  const [form, setForm] = useState({ mrr_atual: "", meta_julho: "", meta_dezembro: "" });
 
-  const annualGoal = goals.find((g) => g.month === null);
-  const monthlyGoals = useMemo(() => {
-    const map = new Map<number, FinGoal>();
-    goals.filter((g) => g.month !== null).forEach((g) => map.set(g.month!, g));
-    return map;
-  }, [goals]);
-
-  const chartData = useMemo(() => {
-    return Array.from({ length: 12 }, (_, i) => {
-      const m = i + 1;
-      const rev = revenues.filter((r) => r.month === m && r.status === "pago").reduce((s, r) => s + Number(r.amount), 0);
-      const goal = monthlyGoals.get(m);
-      return { month: MONTHS[i], realizado: rev, meta: goal ? Number(goal.revenue_goal) : 0 };
-    });
-  }, [revenues, monthlyGoals]);
-
-  const totalRealizado = chartData.reduce((s, d) => s + d.realizado, 0);
-  const totalMeta = annualGoal ? Number(annualGoal.revenue_goal) : chartData.reduce((s, d) => s + d.meta, 0);
-  const progressPct = totalMeta > 0 ? Math.min((totalRealizado / totalMeta) * 100, 100) : 0;
-
-  const openGoalDialog = (month: number | null) => {
-    const existing = month === null ? annualGoal : monthlyGoals.get(month);
-    setEditingMonth(month);
+  const openDialog = () => {
     setForm({
-      revenue_goal: existing ? String(existing.revenue_goal) : "",
-      expense_limit: existing ? String(existing.expense_limit) : "",
+      mrr_atual: mrrAtual ? String(mrrAtual) : "",
+      meta_julho: metaJulho ? String(metaJulho) : "",
+      meta_dezembro: metaDezembro ? String(metaDezembro) : "",
     });
     setDialogOpen(true);
   };
 
   const saveGoal = () => {
-    const existing = editingMonth === null ? annualGoal : monthlyGoals.get(editingMonth!);
     upsertGoal.mutate(
       {
-        ...(existing ? { id: existing.id } : {}),
+        ...(annualGoal ? { id: annualGoal.id } : {}),
         year,
-        month: editingMonth,
-        revenue_goal: parseFloat(form.revenue_goal) || 0,
-        expense_limit: parseFloat(form.expense_limit) || 0,
+        month: null,
+        revenue_goal: parseFloat(form.mrr_atual) || 0,
+        expense_limit: parseFloat(form.meta_julho) || 0,
+        notes: String(parseFloat(form.meta_dezembro) || 0),
       } as any,
       { onSuccess: () => setDialogOpen(false) },
     );
   };
 
+  // Calculations
+  const mesesAteJulho = Math.max(7 - currentMonth, 1);
+  const crescMensalJulho = metaJulho > 0 ? (metaJulho - mrrAtual) / mesesAteJulho : 0;
+  const crescMensalDezembro = metaDezembro > 0 && metaJulho > 0 ? (metaDezembro - metaJulho) / 5 : 0;
+  const progressoJulho = metaJulho > 0 ? Math.min((mrrAtual / metaJulho) * 100, 100) : 0;
+  const progressoDezembro = metaDezembro > 0 ? Math.min((mrrAtual / metaDezembro) * 100, 100) : 0;
+
+  // Timeline data: ideal MRR per month
+  const timelineData = useMemo(() => {
+    return Array.from({ length: 12 }, (_, i) => {
+      const m = i + 1;
+      let idealMrr = 0;
+      if (metaJulho > 0 && m <= 7) {
+        // Linear interpolation from current to July
+        const startMonth = currentMonth;
+        if (m < startMonth) {
+          idealMrr = 0;
+        } else {
+          const progress = (m - startMonth) / Math.max(7 - startMonth, 1);
+          idealMrr = mrrAtual + (metaJulho - mrrAtual) * progress;
+        }
+      } else if (metaDezembro > 0 && m > 7) {
+        // Linear interpolation from July to December
+        const progress = (m - 7) / 5;
+        idealMrr = metaJulho + (metaDezembro - metaJulho) * progress;
+      }
+      return {
+        month: MONTHS_SHORT[i],
+        mrrIdeal: Math.round(idealMrr),
+        isCurrent: m === currentMonth,
+      };
+    });
+  }, [mrrAtual, metaJulho, metaDezembro, currentMonth]);
+
+  const fmt = (v: number) => `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
+
   return (
     <div className="space-y-6">
-      <FinMonthYearSelector month={1} year={year} onMonthChange={() => {}} onYearChange={setYear} yearOnly />
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold flex items-center gap-2">
+          <Target className="h-5 w-5" /> Metas MRR — {year}
+        </h3>
+        <Button size="sm" variant="outline" onClick={openDialog}>
+          <Pencil className="mr-1 h-3.5 w-3.5" /> Editar Metas
+        </Button>
+      </div>
 
-      {/* Annual goal */}
+      {/* Editable values summary */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="pt-4 pb-3 px-4 text-center">
+            <p className="text-xs text-muted-foreground mb-1">MRR Atual</p>
+            <p className="text-xl font-bold">{fmt(mrrAtual)}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-3 px-4 text-center">
+            <p className="text-xs text-muted-foreground mb-1">Meta Julho</p>
+            <p className="text-xl font-bold">{fmt(metaJulho)}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-3 px-4 text-center">
+            <p className="text-xs text-muted-foreground mb-1">Meta Dezembro</p>
+            <p className="text-xl font-bold">{fmt(metaDezembro)}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Calculated KPIs */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Card>
+          <CardContent className="pt-4 pb-3 px-4">
+            <div className="flex items-center gap-2 mb-2">
+              <TrendingUp className="h-4 w-4 text-primary" />
+              <p className="text-sm font-medium">Crescimento mensal até Julho</p>
+            </div>
+            <p className="text-2xl font-bold">{fmt(crescMensalJulho)}</p>
+            <p className="text-xs text-muted-foreground">{mesesAteJulho} meses restantes</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-3 px-4">
+            <div className="flex items-center gap-2 mb-2">
+              <TrendingUp className="h-4 w-4 text-primary" />
+              <p className="text-sm font-medium">Crescimento mensal Jul → Dez</p>
+            </div>
+            <p className="text-2xl font-bold">{fmt(crescMensalDezembro)}</p>
+            <p className="text-xs text-muted-foreground">5 meses (Ago–Dez)</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Progress bars */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Card>
+          <CardContent className="pt-4 pb-3 px-4 space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="font-medium">Progresso → Julho</span>
+              <span className="font-bold">{progressoJulho.toFixed(1)}%</span>
+            </div>
+            <Progress value={progressoJulho} className="h-3" />
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>{fmt(mrrAtual)}</span>
+              <span>{fmt(metaJulho)}</span>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-3 px-4 space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="font-medium">Progresso → Dezembro</span>
+              <span className="font-bold">{progressoDezembro.toFixed(1)}%</span>
+            </div>
+            <Progress value={progressoDezembro} className="h-3" />
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>{fmt(mrrAtual)}</span>
+              <span>{fmt(metaDezembro)}</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Timeline chart */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2"><Target className="h-5 w-5" /> Meta Anual</CardTitle>
-            <Button size="sm" variant="outline" onClick={() => openGoalDialog(null)}>
-              {annualGoal ? <><Pencil className="mr-1 h-3.5 w-3.5" /> Editar</> : <><Plus className="mr-1 h-3.5 w-3.5" /> Definir</>}
-            </Button>
-          </div>
+          <CardTitle className="text-base flex items-center gap-2">
+            <CalendarRange className="h-4 w-4" /> Linha do Tempo — MRR Ideal por Mês
+          </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center justify-between text-sm">
-            <span>Realizado: R$ {totalRealizado.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
-            <span>Meta: R$ {totalMeta.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
-          </div>
-          <Progress value={progressPct} className="h-3" />
-          <p className="text-center text-sm font-medium">{progressPct.toFixed(1)}% da meta</p>
-        </CardContent>
-      </Card>
-
-      {/* Chart */}
-      <Card>
-        <CardHeader><CardTitle className="text-base">Meta vs Realizado</CardTitle></CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={chartData}>
+            <BarChart data={timelineData}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
               <XAxis dataKey="month" className="text-xs" />
-              <YAxis className="text-xs" />
-              <Tooltip formatter={(v: number) => `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`} />
+              <YAxis className="text-xs" tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+              <Tooltip formatter={(v: number) => fmt(v)} />
               <Legend />
-              <Bar dataKey="meta" name="Meta" fill="hsl(var(--muted-foreground) / 0.3)" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="realizado" name="Realizado" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="mrrIdeal" name="MRR Ideal" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+              {mrrAtual > 0 && <ReferenceLine y={mrrAtual} stroke="hsl(var(--destructive))" strokeDasharray="4 4" label={{ value: "MRR Atual", position: "insideTopRight", fontSize: 11 }} />}
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
       </Card>
 
-      {/* Monthly progress */}
-      <Card>
-        <CardHeader><CardTitle className="text-base">Progresso Mensal</CardTitle></CardHeader>
-        <CardContent className="space-y-3">
-          {Array.from({ length: 12 }, (_, i) => {
-            const m = i + 1;
-            const goal = monthlyGoals.get(m);
-            const rev = revenues.filter((r) => r.month === m && r.status === "pago").reduce((s, r) => s + Number(r.amount), 0);
-            const metaVal = goal ? Number(goal.revenue_goal) : 0;
-            const pct = metaVal > 0 ? Math.min((rev / metaVal) * 100, 100) : 0;
-            return (
-              <div key={m} className="flex items-center gap-3">
-                <span className="w-8 text-sm font-medium text-muted-foreground">{MONTHS[i]}</span>
-                <div className="flex-1">
-                  <Progress value={pct} className="h-2" />
-                </div>
-                <span className="w-16 text-right text-xs text-muted-foreground">{pct.toFixed(0)}%</span>
-                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => openGoalDialog(m)}>
-                  {goal ? <Pencil className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
-                </Button>
-              </div>
-            );
-          })}
-        </CardContent>
-      </Card>
-
-      {/* Goal dialog */}
+      {/* Edit dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>{editingMonth === null ? "Meta Anual" : `Meta — ${MONTHS[(editingMonth ?? 1) - 1]}`}</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Editar Metas MRR — {year}</DialogTitle>
+          </DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2"><Label>Meta de Receita (R$)</Label><Input type="number" step="0.01" value={form.revenue_goal} onChange={(e) => setForm((p) => ({ ...p, revenue_goal: e.target.value }))} /></div>
-            <div className="space-y-2"><Label>Limite de Despesas (R$)</Label><Input type="number" step="0.01" value={form.expense_limit} onChange={(e) => setForm((p) => ({ ...p, expense_limit: e.target.value }))} /></div>
+            <div className="space-y-2">
+              <Label>MRR Atual (R$)</Label>
+              <Input type="number" step="0.01" value={form.mrr_atual} onChange={(e) => setForm((p) => ({ ...p, mrr_atual: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label>Meta de MRR para Julho (R$)</Label>
+              <Input type="number" step="0.01" value={form.meta_julho} onChange={(e) => setForm((p) => ({ ...p, meta_julho: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label>Meta de MRR para Dezembro (R$)</Label>
+              <Input type="number" step="0.01" value={form.meta_dezembro} onChange={(e) => setForm((p) => ({ ...p, meta_dezembro: e.target.value }))} />
+            </div>
           </div>
           <DialogFooter>
             <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
