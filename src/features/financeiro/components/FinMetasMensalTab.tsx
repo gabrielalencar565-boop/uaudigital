@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Target, Plus, Trash2, ArrowUpCircle, ArrowDownCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Trash2, ArrowUpCircle, ArrowDownCircle, ChevronLeft, ChevronRight, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,10 +9,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogC
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { useFinGoals, useMrrMovements, useUpsertMrrMovement, useDeleteMrrMovement, type FinGoal } from "../hooks/use-financial-data";
+import { ProgressRing } from "@/components/metrics/ProgressRing";
+import { useFinGoals, useMrrMovements, useUpsertMrrMovement, useDeleteMrrMovement, useUpsertFinGoal, type FinGoal } from "../hooks/use-financial-data";
 
 const MONTHS_FULL = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-const MONTHS_SHORT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
 function parseMeta(goal: FinGoal | undefined) {
   return {
@@ -32,13 +32,38 @@ export function FinMetasMensalTab() {
   const movQ = useMrrMovements(year);
   const upsertMov = useUpsertMrrMovement();
   const deleteMov = useDeleteMrrMovement();
+  const upsertGoal = useUpsertFinGoal();
 
   const goals = goalsQ.data ?? [];
   const movements = movQ.data ?? [];
   const annualGoal = goals.find((g) => g.month === null);
   const { metaFinal, mrrInicial } = parseMeta(annualGoal);
 
-  // MRR accumulated up to END of previous month (starting point for this month)
+  // ── Edit MRR Inicial (January) ──
+  const [editInicialOpen, setEditInicialOpen] = useState(false);
+  const [editInicialValue, setEditInicialValue] = useState("");
+
+  const openEditInicial = () => {
+    setEditInicialValue(String(mrrInicial));
+    setEditInicialOpen(true);
+  };
+
+  const saveInicial = () => {
+    const newVal = parseFloat(editInicialValue) || 0;
+    upsertGoal.mutate(
+      {
+        id: annualGoal?.id,
+        year,
+        month: null,
+        revenue_goal: metaFinal,
+        expense_limit: newVal,
+        notes: annualGoal?.notes ?? null,
+      } as any,
+      { onSuccess: () => setEditInicialOpen(false) },
+    );
+  };
+
+  // MRR accumulated up to END of previous month
   const mrrInicioMes = useMemo(() => {
     let acc = mrrInicial;
     for (let m = 1; m < selectedMonth; m++) {
@@ -55,31 +80,38 @@ export function FinMetasMensalTab() {
   const saidasMes = monthMovements.filter((m) => m.type === "saida").reduce((s, m) => s + Number(m.amount), 0);
   const variacaoMes = entradasMes - saidasMes;
 
-  // MRR accumulated up to selected month (including this month's movements)
   const mrrAtual = mrrInicioMes + entradasMes - saidasMes;
 
-  // How much NET growth is needed THIS month: distribute remaining gap across remaining months
   const mesesRestantes = 12 - selectedMonth + 1;
   const faltaTotal = Math.max(metaFinal - mrrInicioMes, 0);
   const metaCrescimentoMes = metaFinal > 0 && mesesRestantes > 0 ? faltaTotal / mesesRestantes : 0;
 
-  // Progress of this month's growth target
   const progressoMes = metaCrescimentoMes > 0 ? Math.min((variacaoMes / metaCrescimentoMes) * 100, 100) : 0;
   const atingiuMeta = variacaoMes >= metaCrescimentoMes && metaCrescimentoMes > 0;
   const faltaParaMetaFinal = Math.max(metaFinal - mrrAtual, 0);
+  const progressoMetaFinal = metaFinal > 0 ? Math.min((mrrAtual / metaFinal) * 100, 100) : 0;
 
-  // ── Movement dialog ──
+  // ── Movement dialog (create + edit) ──
   const [movOpen, setMovOpen] = useState(false);
+  const [editingMovId, setEditingMovId] = useState<string | null>(null);
   const [movForm, setMovForm] = useState({ type: "entrada", amount: "", description: "" });
 
   const openMovDialog = () => {
+    setEditingMovId(null);
     setMovForm({ type: "entrada", amount: "", description: "" });
+    setMovOpen(true);
+  };
+
+  const openEditMov = (m: any) => {
+    setEditingMovId(m.id);
+    setMovForm({ type: m.type, amount: String(m.amount), description: m.description ?? "" });
     setMovOpen(true);
   };
 
   const saveMov = () => {
     upsertMov.mutate(
       {
+        ...(editingMovId ? { id: editingMovId } : {}),
         year,
         month: selectedMonth,
         type: movForm.type,
@@ -112,6 +144,21 @@ export function FinMetasMensalTab() {
         )}
       </div>
 
+      {/* January: editable MRR Inicial */}
+      {selectedMonth === 1 && (
+        <Card>
+          <CardContent className="pt-4 pb-3 px-4 flex items-center justify-between">
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">MRR Inicial (base Janeiro)</p>
+              <p className="text-xl font-bold">{fmt(mrrInicial)}</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={openEditInicial}>
+              <Pencil className="mr-1 h-3.5 w-3.5" /> Editar
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {/* KPI Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <Card>
@@ -121,16 +168,26 @@ export function FinMetasMensalTab() {
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-4 pb-3 px-4 text-center">
-            <p className="text-xs text-muted-foreground mb-1">Meta do Mês</p>
-            <p className="text-lg font-bold">{fmt(metaCrescimentoMes)}</p>
+          <CardContent className="pt-4 pb-3 px-4 flex flex-col items-center">
+            <p className="text-xs text-muted-foreground mb-2">Meta do Mês</p>
+            <ProgressRing value={progressoMes} size={90} stroke={10} tone="auto" label={
+              <div className="text-center">
+                <p className="text-sm font-bold">{progressoMes.toFixed(0)}%</p>
+              </div>
+            } />
+            <p className="text-sm font-semibold mt-1">{fmt(metaCrescimentoMes)}</p>
             <p className="text-[10px] text-muted-foreground">crescimento necessário</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-4 pb-3 px-4 text-center">
-            <p className="text-xs text-muted-foreground mb-1">Falta p/ Meta Final</p>
-            <p className="text-xl font-bold">{faltaParaMetaFinal > 0 ? fmt(faltaParaMetaFinal) : "✓ Atingida"}</p>
+          <CardContent className="pt-4 pb-3 px-4 flex flex-col items-center">
+            <p className="text-xs text-muted-foreground mb-2">Falta p/ Meta Final</p>
+            <ProgressRing value={progressoMetaFinal} size={90} stroke={10} tone="auto" label={
+              <div className="text-center">
+                <p className="text-sm font-bold">{progressoMetaFinal.toFixed(0)}%</p>
+              </div>
+            } />
+            <p className="text-sm font-semibold mt-1">{faltaParaMetaFinal > 0 ? fmt(faltaParaMetaFinal) : "✓ Atingida"}</p>
           </CardContent>
         </Card>
         <Card>
@@ -193,7 +250,7 @@ export function FinMetasMensalTab() {
                 <TableHead>Tipo</TableHead>
                 <TableHead>Descrição</TableHead>
                 <TableHead className="text-right">Valor</TableHead>
-                <TableHead className="w-10"></TableHead>
+                <TableHead className="w-20"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -207,16 +264,24 @@ export function FinMetasMensalTab() {
                 monthMovements.map((m) => (
                   <TableRow key={m.id}>
                     <TableCell>
-                      <Badge variant={m.type === "entrada" ? "default" : "destructive"} className="text-[10px]">
+                      <Badge
+                        variant="outline"
+                        className={`text-[10px] ${m.type === "entrada" ? "border-green-500 text-green-600 bg-green-500/10" : "border-red-500 text-red-600 bg-red-500/10"}`}
+                      >
                         {m.type === "entrada" ? "Entrada" : "Saída"}
                       </Badge>
                     </TableCell>
                     <TableCell>{m.description ?? "—"}</TableCell>
                     <TableCell className="text-right font-medium">{fmt(Number(m.amount))}</TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deleteMov.mutate({ id: m.id, year })}>
-                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditMov(m)}>
+                          <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deleteMov.mutate({ id: m.id, year })}>
+                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -226,11 +291,11 @@ export function FinMetasMensalTab() {
         </CardContent>
       </Card>
 
-      {/* New movement dialog */}
+      {/* Movement dialog (create + edit) */}
       <Dialog open={movOpen} onOpenChange={setMovOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Nova Movimentação — {MONTHS_FULL[selectedMonth - 1]}</DialogTitle>
+            <DialogTitle>{editingMovId ? "Editar" : "Nova"} Movimentação — {MONTHS_FULL[selectedMonth - 1]}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -255,6 +320,24 @@ export function FinMetasMensalTab() {
           <DialogFooter>
             <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
             <Button onClick={saveMov} disabled={upsertMov.isPending}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit MRR Inicial dialog */}
+      <Dialog open={editInicialOpen} onOpenChange={setEditInicialOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar MRR Inicial</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>MRR Inicial (R$)</Label>
+            <Input type="number" step="0.01" value={editInicialValue} onChange={(e) => setEditInicialValue(e.target.value)} />
+            <p className="text-xs text-muted-foreground">Esse valor será a base para o cálculo de todos os meses.</p>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
+            <Button onClick={saveInicial} disabled={upsertGoal.isPending}>Salvar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
