@@ -154,10 +154,11 @@ export function FinMetasAnualTab() {
             <p className="text-sm font-medium text-muted-foreground mb-3">Crescer/mês</p>
             <ProgressRing value={metaFinal > 0 ? Math.min(((mrrAtual - mrrInicial) / (metaFinal - mrrInicial)) * 100, 100) : 0} size={130} stroke={14} tone="auto" label={
               <div className="text-center">
-                <p className="text-lg font-bold">{fmt(metaMensal)}</p>
+                <p className="text-lg font-bold">{(metaFinal > 0 ? Math.min(((mrrAtual - mrrInicial) / (metaFinal - mrrInicial)) * 100, 100) : 0).toFixed(0)}%</p>
               </div>
             } />
-            <p className="text-base font-semibold mt-2">{mesesRestantes} meses restantes</p>
+            <p className="text-base font-semibold mt-2">{fmt(metaMensal)}</p>
+            <p className="text-xs text-muted-foreground">{mesesRestantes} meses restantes</p>
           </CardContent>
         </Card>
       </div>
