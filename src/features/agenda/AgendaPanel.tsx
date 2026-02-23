@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 import { STAGES, STAGE_COLOR, type StageKey } from "@/lib/uau";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useClients, useCreateTask, useDeleteTask, useProfiles, useSetTaskStatus, useTasks, useTeamMembers, useUpdateTask, type TaskRow } from "@/features/data/queries";
+import { useClients, useCreateTask, useDeleteTask, useFreelancerClient, useProfiles, useSetTaskStatus, useTasks, useTeamMembers, useUpdateTask, type TaskRow } from "@/features/data/queries";
 import { AgendaTaskCard } from "@/features/agenda/components/AgendaTaskCard";
 import { AgendaWeekTaskItem } from "@/features/agenda/components/AgendaWeekTaskItem";
 import { EditTaskDialog } from "@/features/agenda/components/EditTaskDialog";
@@ -72,7 +72,9 @@ const createTaskSchema = z.object({
   due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   due_time: z.string().regex(/^\d{2}:\d{2}$/).optional().or(z.literal("")),
   description: z.string().trim().max(300).optional(),
-  is_extra_demand: z.boolean().optional()
+  is_extra_demand: z.boolean().optional(),
+  is_freelancer: z.boolean().optional(),
+  freelancer_name: z.string().trim().max(120).optional(),
 });
 type CreateTaskValues = z.infer<typeof createTaskSchema>;
 const AGENDA_STAGES = STAGES.filter(s => s.key !== "revisao" && s.key !== "entrega");
@@ -91,6 +93,8 @@ export function AgendaPanel() {
   const [filterUserId, setFilterUserId] = useState<string | "all">("all");
   const [selectedWeekDayKey, setSelectedWeekDayKey] = useState<string | null>(null);
   const mk = monthKey(cursor);
+  const freelancerClientQ = useFreelancerClient();
+  const freelancerClientId = freelancerClientQ.data?.id ?? null;
   const clientsQ = useClients();
   const teamQ = useTeamMembers();
   const profilesQ = useProfiles({ enabled: !!canManageTasks });
@@ -160,6 +164,14 @@ export function AgendaPanel() {
     });
   }, [clientsQ.data, inactiveQ.data, normalizeName]);
   const clientNameById = useMemo(() => new Map(clients.map(c => [c.id, c.name] as const)), [clients]);
+
+  /** Resolve client name: for freelancer tasks, show title (freelancer name) instead */
+  const resolveClientName = (task: TaskRow) => {
+    if (freelancerClientId && task.client_id === freelancerClientId && task.title) {
+      return `🎯 ${task.title}`;
+    }
+    return clientNameById.get(task.client_id) ?? "—";
+  };
   const team = teamQ.data ?? [];
   const teamById = useMemo(() => new Map(team.map(m => [m.user_id, m] as const)), [team]);
 
@@ -218,7 +230,9 @@ export function AgendaPanel() {
       due_date: format(new Date(), "yyyy-MM-dd"),
       due_time: "",
       description: "",
-      is_extra_demand: false
+      is_extra_demand: false,
+      is_freelancer: false,
+      freelancer_name: "",
     }
   });
   const days = useMemo(() => {
@@ -259,58 +273,69 @@ export function AgendaPanel() {
   const onCreateTask = async (v: CreateTaskValues) => {
     if (!user) return;
     try {
+      // Handle freelancer: override client_id and set title
+      const isFreela = v.is_freelancer && freelancerClientId;
+      const effectiveClientId = isFreela ? freelancerClientId : v.client_id;
+      const freelancerTitle = isFreela ? (v.freelancer_name || "Freelancer") : null;
+
+      if (!isFreela && !v.client_id) {
+        toast.error("Selecione um cliente");
+        return;
+      }
+
       // Bloqueia criação se o cliente estiver removido do Magic v2 no mês/ano da tarefa
-      const [yy, mm] = String(v.due_date).split("-");
-      const y = Number(yy);
-      const m = Number(mm);
-      if (y && m) {
-        let inactiveData = inactiveQ.data;
-        if (y !== cursor.getFullYear() || m !== cursor.getMonth() + 1) {
-          const res = await supabase.from("magic2_cycles").select("is_active, magic2_clients ( id, name, magic2_client_links ( agenda_client_id ) )").eq("year", y).eq("month", m);
-          if (res.error) throw res.error;
-          const inactiveAgendaIds = new Set<string>();
-          const inactiveNames = new Set<string>();
-          for (const row of res.data ?? []) {
-            if ((row as any).is_active !== false) continue;
-            const name = String((row as any).magic2_clients?.name ?? "").trim();
-            if (name) inactiveNames.add(normalizeName(name));
-            const linksRaw = (row as any).magic2_clients?.magic2_client_links;
-            if (Array.isArray(linksRaw)) {
-              for (const l of linksRaw) {
-                const agendaId = l?.agenda_client_id as string | undefined;
+      if (!isFreela) {
+        const [yy, mm] = String(v.due_date).split("-");
+        const y = Number(yy);
+        const m = Number(mm);
+        if (y && m) {
+          let inactiveData = inactiveQ.data;
+          if (y !== cursor.getFullYear() || m !== cursor.getMonth() + 1) {
+            const res = await supabase.from("magic2_cycles").select("is_active, magic2_clients ( id, name, magic2_client_links ( agenda_client_id ) )").eq("year", y).eq("month", m);
+            if (res.error) throw res.error;
+            const inactiveAgendaIds = new Set<string>();
+            const inactiveNames = new Set<string>();
+            for (const row of res.data ?? []) {
+              if ((row as any).is_active !== false) continue;
+              const name = String((row as any).magic2_clients?.name ?? "").trim();
+              if (name) inactiveNames.add(normalizeName(name));
+              const linksRaw = (row as any).magic2_clients?.magic2_client_links;
+              if (Array.isArray(linksRaw)) {
+                for (const l of linksRaw) {
+                  const agendaId = l?.agenda_client_id as string | undefined;
+                  if (agendaId) inactiveAgendaIds.add(agendaId);
+                }
+              } else {
+                const agendaId = linksRaw?.agenda_client_id as string | undefined;
                 if (agendaId) inactiveAgendaIds.add(agendaId);
               }
-            } else {
-              const agendaId = linksRaw?.agenda_client_id as string | undefined;
-              if (agendaId) inactiveAgendaIds.add(agendaId);
             }
+            inactiveData = {
+              inactiveAgendaIds,
+              inactiveNames
+            };
           }
-          inactiveData = {
-            inactiveAgendaIds,
-            inactiveNames
-          };
-        }
-        const clientName = (clientsQ.data ?? []).find(c => c.id === v.client_id)?.name;
-        if (inactiveData?.inactiveAgendaIds?.has(v.client_id) || clientName && inactiveData?.inactiveNames?.has(normalizeName(clientName))) {
-          toast.error("Cliente removido do Magic v2 neste mês — não é possível criar tarefas na Agenda.");
-          return;
+          const clientName = (clientsQ.data ?? []).find(c => c.id === v.client_id)?.name;
+          if (inactiveData?.inactiveAgendaIds?.has(v.client_id) || clientName && inactiveData?.inactiveNames?.has(normalizeName(clientName))) {
+            toast.error("Cliente removido do Magic v2 neste mês — não é possível criar tarefas na Agenda.");
+            return;
+          }
         }
       }
       // Calcula due_at se horário foi fornecido
       let due_at: string | null = null;
       if (v.due_time && v.due_time.match(/^\d{2}:\d{2}$/)) {
-        // Combina data + hora no timezone local
         due_at = new Date(`${v.due_date}T${v.due_time}:00`).toISOString();
       }
       // Usa o primeiro membro como assigned_user_id (compatibilidade)
       const primaryUserId = v.assigned_user_ids[0];
       const result = await createTask.mutateAsync({
-        client_id: v.client_id,
+        client_id: effectiveClientId,
         stage: v.stage as StageKey,
         assigned_user_id: primaryUserId,
         due_date: v.due_date,
         due_at,
-        title: null,
+        title: freelancerTitle,
         description: v.description ?? null,
         created_by: user.id,
         is_extra_demand: v.is_extra_demand ?? false
@@ -462,20 +487,55 @@ export function AgendaPanel() {
               <DialogTitle>Criar tarefa</DialogTitle>
             </DialogHeader>
             <form className="space-y-4" onSubmit={form.handleSubmit(onCreateTask)}>
+              {/* Freelancer toggle */}
+              {freelancerClientId && (
+                <div className="flex items-center gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+                  <Checkbox
+                    id="is_freelancer"
+                    checked={form.watch("is_freelancer") ?? false}
+                    onCheckedChange={(checked) => {
+                      form.setValue("is_freelancer", !!checked);
+                      if (checked) {
+                        form.setValue("client_id", freelancerClientId);
+                      } else {
+                        form.setValue("client_id", "");
+                        form.setValue("freelancer_name", "");
+                      }
+                    }}
+                  />
+                  <div className="space-y-0.5">
+                    <Label htmlFor="is_freelancer" className="cursor-pointer font-medium">
+                      🎯 Cliente Freela
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Cliente freelancer que não está na lista geral
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>Cliente</Label>
-                  <Select onValueChange={v => form.setValue("client_id", v)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-popover z-50">
-                      {clients.map(c => <SelectItem key={c.id} value={c.id}>
-                          {c.name}
-                        </SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  {form.formState.errors.client_id && <p className="text-sm text-danger">{form.formState.errors.client_id.message}</p>}
+                  <Label>{form.watch("is_freelancer") ? "Nome do cliente freela" : "Cliente"}</Label>
+                  {form.watch("is_freelancer") ? (
+                    <Input
+                      placeholder="Ex.: João Silva Fotografia"
+                      {...form.register("freelancer_name")}
+                      autoFocus
+                    />
+                  ) : (
+                    <Select onValueChange={v => form.setValue("client_id", v)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-popover z-50">
+                        {clients.filter(c => !c.is_freelancer_sentinel).map(c => <SelectItem key={c.id} value={c.id}>
+                            {c.name}
+                          </SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  {!form.watch("is_freelancer") && form.formState.errors.client_id && <p className="text-sm text-danger">{form.formState.errors.client_id.message}</p>}
                 </div>
 
                 <div className="space-y-2">
@@ -592,7 +652,7 @@ export function AgendaPanel() {
               const stageLabel = STAGES.find(s => s.key === t.stage)?.label ?? "Etapa";
               const assignee = teamById.get(t.assigned_user_id);
               const assigneeName = assignee?.display_name ?? "—";
-              const clientName = clientNameById.get(t.client_id) ?? "—";
+              const clientName = resolveClientName(t);
               const canInteract = canUserInteractWithTask(user?.id);
               const members = assigneesByTaskId.get(t.id) ?? [];
 
@@ -732,7 +792,7 @@ export function AgendaPanel() {
                     const stageLabel = STAGES.find(s => s.key === t.stage)?.label ?? "Etapa";
                     const assignee = teamById.get(t.assigned_user_id);
                     const assigneeName = assignee?.display_name ?? "—";
-                    const clientName = clientNameById.get(t.client_id) ?? "—";
+                    const clientName = resolveClientName(t);
                     const canInteract = canUserInteractWithTask(user?.id);
                     const members = assigneesByTaskId.get(t.id) ?? [];
                     return <AgendaWeekTaskItem key={t.id} stageLabel={stageLabel} stage={t.stage} done={t.status === "concluido"} assigneeName={assigneeName} assigneeAvatarUrl={assignee?.avatar_url ?? undefined} members={members} clientName={clientName} dueTime={formatDueTime(t.due_at)} isExtraDemand={t.is_extra_demand} canInteract={canInteract} canDelete={!!canManageTasks} onToggle={() => {
@@ -773,7 +833,7 @@ export function AgendaPanel() {
                         const stageLabel = STAGES.find(s => s.key === t.stage)?.label ?? "Etapa";
                         const assignee = teamById.get(t.assigned_user_id);
                         const assigneeName = assignee?.display_name ?? "—";
-                        const clientName = clientNameById.get(t.client_id) ?? "—";
+                        const clientName = resolveClientName(t);
                         const canInteract = canUserInteractWithTask(user?.id);
                         const members = assigneesByTaskId.get(t.id) ?? [];
 
@@ -929,7 +989,7 @@ export function AgendaPanel() {
                   const stageLabel = STAGES.find(s => s.key === t.stage)?.label ?? "Etapa";
                   const assignee = teamById.get(t.assigned_user_id);
                   const assigneeName = assignee?.display_name ?? "—";
-                  const clientName = clientNameById.get(t.client_id) ?? "—";
+                  const clientName = resolveClientName(t);
                   const canInteract = canUserInteractWithTask(user?.id);
                   const members = assigneesByTaskId.get(t.id) ?? [];
                   
@@ -1026,7 +1086,7 @@ export function AgendaPanel() {
                             const stageLabel = t.stage === "planejamento" ? "Planej." : STAGES.find(s => s.key === t.stage)?.label ?? "Etapa";
                             const assignee = teamById.get(t.assigned_user_id);
                             const assigneeName = assignee?.display_name ?? "—";
-                            const clientName = clientNameById.get(t.client_id) ?? "—";
+                            const clientName = resolveClientName(t);
                             const canInteract = canUserInteractWithTask(user?.id);
                             const members = assigneesByTaskId.get(t.id) ?? [];
 
