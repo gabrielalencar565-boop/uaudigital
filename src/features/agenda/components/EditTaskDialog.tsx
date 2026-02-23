@@ -38,6 +38,7 @@ import { STAGES, type StageKey } from "@/lib/uau";
 import { MemberMultiSelect } from "./MemberMultiSelect";
 import { useTaskAssignees, useSetTaskAssignees } from "@/features/data/task-assignees-queries";
 import { useSession } from "@/hooks/use-session";
+import { useFreelancerClient } from "@/features/data/queries";
 import type { TaskRow, TaskStatus, ClientRow, TeamMemberRow } from "@/features/data/queries";
 
 const AGENDA_STAGES = STAGES.filter((s) => s.key !== "revisao" && s.key !== "entrega");
@@ -50,6 +51,8 @@ const editTaskSchema = z.object({
   description: z.string().trim().max(300).optional().or(z.literal("")),
   status: z.enum(["pendente", "em_andamento", "concluido"]),
   is_extra_demand: z.boolean().optional(),
+  is_freelancer: z.boolean().optional(),
+  freelancer_name: z.string().trim().max(120).optional().or(z.literal("")),
 });
 
 type EditTaskValues = z.infer<typeof editTaskSchema>;
@@ -93,6 +96,9 @@ export function EditTaskDialog({
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
 
+  const freelancerClientQ = useFreelancerClient();
+  const freelancerClientId = freelancerClientQ.data?.id ?? null;
+
   // Busca assignees existentes da tarefa
   const assigneesQ = useTaskAssignees(task ? [task.id] : undefined);
   const setAssignees = useSetTaskAssignees();
@@ -120,12 +126,15 @@ export function EditTaskDialog({
       description: "",
       status: "pendente",
       is_extra_demand: false,
+      is_freelancer: false,
+      freelancer_name: "",
     },
   });
 
   // Reset form when task changes
   useEffect(() => {
     if (task) {
+      const isFreela = freelancerClientId ? task.client_id === freelancerClientId : false;
       form.reset({
         client_id: task.client_id,
         stage: task.stage,
@@ -134,9 +143,11 @@ export function EditTaskDialog({
         description: task.description ?? "",
         status: task.status,
         is_extra_demand: task.is_extra_demand ?? false,
+        is_freelancer: isFreela,
+        freelancer_name: isFreela ? (task.title ?? "") : "",
       });
     }
-  }, [task, form]);
+  }, [task, form, freelancerClientId]);
 
   // Sincroniza membros selecionados quando assignees carregam
   useEffect(() => {
@@ -164,15 +175,19 @@ export function EditTaskDialog({
         due_at = new Date(`${values.due_date}T${values.due_time}:00`).toISOString();
       }
 
+      const isFreela = values.is_freelancer && freelancerClientId;
+      const effectiveClientId = isFreela ? freelancerClientId : values.client_id;
+      const freelancerTitle = isFreela ? (values.freelancer_name || "Freelancer") : null;
+
       // Atualiza a tarefa (assigned_user_id = primeiro membro para compatibilidade)
       await onUpdate(task.id, {
-        client_id: values.client_id,
+        client_id: effectiveClientId,
         stage: values.stage as StageKey,
         assigned_user_id: selectedMembers[0],
         due_date: values.due_date,
         due_at,
         description: values.description || null,
-        title: null, // Limpa title já que usamos description agora
+        title: freelancerTitle,
         status: values.status,
         is_extra_demand: values.is_extra_demand ?? false,
       });
@@ -216,26 +231,62 @@ export function EditTaskDialog({
           </DialogHeader>
 
           <form className="space-y-4" onSubmit={form.handleSubmit(handleSubmit)}>
+            {/* Freelancer toggle */}
+            {freelancerClientId && canManageTasks && (
+              <div className="flex items-center gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+                <Checkbox
+                  id="edit_is_freelancer"
+                  checked={form.watch("is_freelancer") ?? false}
+                  onCheckedChange={(checked) => {
+                    form.setValue("is_freelancer", !!checked);
+                    if (checked) {
+                      form.setValue("client_id", freelancerClientId);
+                    } else {
+                      form.setValue("client_id", "");
+                      form.setValue("freelancer_name", "");
+                    }
+                  }}
+                  disabled={!canManageTasks}
+                />
+                <div className="space-y-0.5">
+                  <Label htmlFor="edit_is_freelancer" className="cursor-pointer font-medium">
+                    🎯 Cliente Freela
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Cliente freelancer que não está na lista geral
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Cliente</Label>
-                <Select
-                  value={form.watch("client_id")}
-                  onValueChange={(v) => form.setValue("client_id", v)}
-                  disabled={!canManageTasks}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-popover z-50">
-                    {clients.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {form.formState.errors.client_id && (
+                <Label>{form.watch("is_freelancer") ? "Nome do cliente freela" : "Cliente"}</Label>
+                {form.watch("is_freelancer") ? (
+                  <Input
+                    placeholder="Ex.: João Silva Fotografia"
+                    {...form.register("freelancer_name")}
+                    disabled={!canManageTasks}
+                  />
+                ) : (
+                  <Select
+                    value={form.watch("client_id")}
+                    onValueChange={(v) => form.setValue("client_id", v)}
+                    disabled={!canManageTasks}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover z-50">
+                      {clients.filter(c => !(c as any).is_freelancer_sentinel).map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {!form.watch("is_freelancer") && form.formState.errors.client_id && (
                   <p className="text-sm text-destructive">
                     {form.formState.errors.client_id.message}
                   </p>

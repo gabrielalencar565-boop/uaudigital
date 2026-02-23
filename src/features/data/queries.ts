@@ -176,7 +176,7 @@ export function useClients() {
     queryFn: async (): Promise<ClientRow[]> => {
       const { data, error } = await supabase
         .from("clients")
-        .select("id, name, magic_due_date, notes, is_active")
+        .select("id, name, magic_due_date, notes, is_active, is_freelancer_sentinel")
         .eq("is_active", true)
         .order("magic_due_date", { ascending: true });
       if (error) throw error;

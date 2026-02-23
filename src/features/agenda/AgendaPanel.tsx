@@ -740,7 +740,7 @@ export function AgendaPanel() {
                 </SelectTrigger>
                 <SelectContent className="bg-popover z-50">
                   <SelectItem value="all">Todos</SelectItem>
-                  {clients.map(c => <SelectItem key={c.id} value={c.id}>
+                  {clients.filter(c => !c.is_freelancer_sentinel).map(c => <SelectItem key={c.id} value={c.id}>
                       {c.name}
                     </SelectItem>)}
                 </SelectContent>
@@ -914,7 +914,7 @@ export function AgendaPanel() {
               </SelectTrigger>
               <SelectContent className="bg-popover z-50">
                 <SelectItem value="all">Todos os clientes</SelectItem>
-                {clients.map(c => <SelectItem key={c.id} value={c.id}>
+                {clients.filter(c => !c.is_freelancer_sentinel).map(c => <SelectItem key={c.id} value={c.id}>
                     {c.name}
                   </SelectItem>)}
               </SelectContent>
