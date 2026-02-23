@@ -1,5 +1,5 @@
-import { useState, useRef, useMemo } from "react";
-import { Plus, Upload, ArrowUpCircle, ArrowDownCircle, Eye, Pencil, Trash2, FileSpreadsheet } from "lucide-react";
+import { useState, useRef, useMemo, useCallback } from "react";
+import { Plus, Upload, ArrowUpCircle, ArrowDownCircle, Eye, Pencil, Trash2, FileSpreadsheet, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -43,6 +43,90 @@ const formatDayMonth = (dateStr: string) => {
   return dateStr;
 };
 
+// ── Inline editable cell components ──
+
+type EditingCell = { txId: string; field: "date" | "description" | "amount" | "category" } | null;
+
+function InlineDateCell({ tx, isEditing, onStartEdit, onSave }: {
+  tx: FinTransaction; isEditing: boolean; onStartEdit: () => void; onSave: (val: string) => void;
+}) {
+  const [val, setVal] = useState(tx.date);
+  if (!isEditing) return (
+    <span className="cursor-pointer hover:underline decoration-dotted underline-offset-4" onClick={(e) => { e.stopPropagation(); onStartEdit(); }}>
+      {formatDayMonth(tx.date)}
+    </span>
+  );
+  return (
+    <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+      <Input type="date" value={val} onChange={e => setVal(e.target.value)} className="h-7 w-32 text-xs" autoFocus
+        onKeyDown={e => { if (e.key === "Enter") onSave(val); if (e.key === "Escape") onSave(tx.date); }}
+        onBlur={() => onSave(val)} />
+    </div>
+  );
+}
+
+function InlineTextCell({ tx, isEditing, onStartEdit, onSave }: {
+  tx: FinTransaction; isEditing: boolean; onStartEdit: () => void; onSave: (val: string) => void;
+}) {
+  const [val, setVal] = useState(tx.description);
+  if (!isEditing) return (
+    <span className="cursor-pointer hover:underline decoration-dotted underline-offset-4 font-medium" onClick={(e) => { e.stopPropagation(); onStartEdit(); }}>
+      {tx.description}
+    </span>
+  );
+  return (
+    <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+      <Input value={val} onChange={e => setVal(e.target.value)} className="h-7 text-xs" autoFocus
+        onKeyDown={e => { if (e.key === "Enter") onSave(val); if (e.key === "Escape") onSave(tx.description); }}
+        onBlur={() => onSave(val)} />
+    </div>
+  );
+}
+
+function InlineAmountCell({ tx, isEditing, onStartEdit, onSave }: {
+  tx: FinTransaction; isEditing: boolean; onStartEdit: () => void; onSave: (val: number) => void;
+}) {
+  const [val, setVal] = useState(String(tx.amount));
+  if (!isEditing) return (
+    <span className={`cursor-pointer hover:underline decoration-dotted underline-offset-4 font-medium ${tx.type === "entrada" ? "text-success" : "text-destructive"}`}
+      onClick={(e) => { e.stopPropagation(); onStartEdit(); }}>
+      {tx.type === "entrada" ? "+" : "−"} R$ {Number(tx.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+    </span>
+  );
+  return (
+    <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+      <Input type="number" step="0.01" value={val} onChange={e => setVal(e.target.value)} className="h-7 w-28 text-xs text-right" autoFocus
+        onKeyDown={e => { if (e.key === "Enter") onSave(parseFloat(val) || tx.amount); if (e.key === "Escape") onSave(tx.amount); }}
+        onBlur={() => onSave(parseFloat(val) || tx.amount)} />
+    </div>
+  );
+}
+
+function InlineCategoryCell({ tx, isEditing, onStartEdit, onSave }: {
+  tx: FinTransaction; isEditing: boolean; onStartEdit: () => void; onSave: (val: string) => void;
+}) {
+  const label = TRANSACTION_CATEGORIES.find(c => c.value === tx.category)?.label ?? tx.category ?? "—";
+  if (!isEditing) return (
+    <span className="cursor-pointer hover:underline decoration-dotted underline-offset-4 text-xs text-muted-foreground" onClick={(e) => { e.stopPropagation(); onStartEdit(); }}>
+      {label}
+    </span>
+  );
+  return (
+    <div onClick={e => e.stopPropagation()}>
+      <Select defaultValue={tx.category ?? ""} onValueChange={(v) => onSave(v)}>
+        <SelectTrigger className="h-7 text-xs w-40"><SelectValue placeholder="Selecione" /></SelectTrigger>
+        <SelectContent>
+          {TRANSACTION_CATEGORIES.map((c) => (
+            <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+// ── Main component ──
+
 export function FinLancamentosTab() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
@@ -62,6 +146,9 @@ export function FinLancamentosTab() {
   const [csvDialogOpen, setCsvDialogOpen] = useState(false);
   const [csvRows, setCsvRows] = useState<CSVRow[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Inline editing state
+  const [editingCell, setEditingCell] = useState<EditingCell>(null);
 
   const emptyForm = { description: "", amount: "", date: format(new Date(), "yyyy-MM-dd"), category: "", notes: "" };
   const [form, setForm] = useState(emptyForm);
@@ -84,6 +171,8 @@ export function FinLancamentosTab() {
   };
 
   const openEdit = (tx: FinTransaction) => {
+    // Don't open dialog if we're inline editing
+    if (editingCell) return;
     setEditingTx(tx);
     setForm({
       description: tx.description,
@@ -112,9 +201,32 @@ export function FinLancamentosTab() {
     );
   };
 
-  const handleDelete = (e: React.MouseEvent, txId: string) => {
-    e.stopPropagation();
-  };
+  // Inline save for individual fields
+  const inlineSave = useCallback((tx: FinTransaction, field: string, value: any) => {
+    setEditingCell(null);
+    const updates: any = {
+      id: tx.id,
+      description: tx.description,
+      amount: tx.amount,
+      date: tx.date,
+      type: tx.type,
+      category: tx.category,
+      status: tx.status,
+      notes: tx.notes,
+    };
+
+    if (field === "category") {
+      updates.category = value;
+      updates.type = getTypeFromCategory(value);
+    } else {
+      updates[field] = value;
+    }
+
+    // Skip if nothing changed
+    if (updates[field] === (tx as any)[field] && field !== "category") return;
+
+    upsertTx.mutate(updates);
+  }, [upsertTx]);
 
   // ── Sicoob XLSX parser ──
   const parseSicoobXlsx = (data: ArrayBuffer): CSVRow[] => {
@@ -127,11 +239,9 @@ export function FinLancamentosTab() {
 
     for (let i = 0; i < raw.length; i++) {
       const cells = raw[i].map((c: any) => String(c).trim());
-      // Skip header & empty rows
       if (!cells[0] && !cells[2] && !cells[3]) continue;
       if (cells[0] === "DATA" || cells[0] === "EXTRATO CONTA CORRENTE") continue;
 
-      // If column 0 has a date (DD/MM/YYYY), update currentDate
       if (cells[0] && /^\d{2}\/\d{2}\/\d{4}$/.test(cells[0])) {
         currentDate = cells[0];
       }
@@ -139,12 +249,9 @@ export function FinLancamentosTab() {
       const historico = cells[2] || "";
       const valorStr = cells[3] || "";
 
-      // Skip balance rows & continuation lines (no value)
       if (!valorStr || historico.includes("SALDO DO DIA")) continue;
-      // Skip sub-lines (like "Pagamento Pix", CPF/CNPJ, etc.) — they have no date and no value
       if (!cells[0] && !valorStr) continue;
 
-      // Parse value: "- 237,04 D" or "1.080,00 C"
       const cleanVal = valorStr.replace(/[D|C]/g, "").replace(/\s/g, "").replace("-", "");
       const numVal = parseFloat(cleanVal.replace(/\./g, "").replace(",", "."));
       if (isNaN(numVal) || numVal === 0) continue;
@@ -152,22 +259,15 @@ export function FinLancamentosTab() {
       const isCredit = valorStr.includes("C");
       const type = isCredit ? "entrada" : "saida";
 
-      // Convert DD/MM/YYYY to YYYY-MM-DD
       const parts = currentDate.split("/");
       const isoDate = parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : currentDate;
 
-      rows.push({
-        date: isoDate,
-        description: historico,
-        amount: numVal,
-        type,
-      });
+      rows.push({ date: isoDate, description: historico, amount: numVal, type });
     }
 
     return rows;
   };
 
-  // File import handler (CSV + XLSX)
   const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -188,7 +288,6 @@ export function FinLancamentosTab() {
       };
       reader.readAsArrayBuffer(file);
     } else {
-      // CSV fallback
       const reader = new FileReader();
       reader.onload = (ev) => {
         const text = ev.target?.result as string;
@@ -214,14 +313,14 @@ export function FinLancamentosTab() {
     e.target.value = "";
   };
 
+  const isXlsxImport = csvRows.length > 0 && csvRows[0]?.description !== undefined;
+
   const importCSV = () => {
     bulkInsert.mutate(
       csvRows.map((r) => ({ ...r, source: isXlsxImport ? "xlsx_import" : "csv_import" })),
       { onSuccess: () => { setCsvDialogOpen(false); setCsvRows([]); } },
     );
   };
-
-  const isXlsxImport = csvRows.length > 0 && csvRows[0]?.description !== undefined;
 
   return (
     <div className="space-y-6">
@@ -291,18 +390,35 @@ export function FinLancamentosTab() {
           </TableHeader>
           <TableBody>
             {filtered.map((t) => (
-              <TableRow key={t.id} className="cursor-pointer hover:bg-accent/30" onClick={() => openEdit(t)}>
+              <TableRow key={t.id} className="hover:bg-accent/30">
                 <TableCell>{t.type === "entrada" ? <ArrowUpCircle className="h-4 w-4 text-success" /> : <ArrowDownCircle className="h-4 w-4 text-destructive" />}</TableCell>
-                <TableCell className="text-sm">{formatDayMonth(t.date)}</TableCell>
-                <TableCell className="font-medium">{t.description}</TableCell>
-                <TableCell className={`text-right font-medium ${t.type === "entrada" ? "text-success" : "text-destructive"}`}>
-                  {t.type === "entrada" ? "+" : "−"} R$ {Number(t.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                <TableCell className="text-sm">
+                  <InlineDateCell tx={t}
+                    isEditing={editingCell?.txId === t.id && editingCell?.field === "date"}
+                    onStartEdit={() => setEditingCell({ txId: t.id, field: "date" })}
+                    onSave={(val) => inlineSave(t, "date", val)} />
                 </TableCell>
-                <TableCell className="text-center text-xs text-muted-foreground">{TRANSACTION_CATEGORIES.find(c => c.value === t.category)?.label ?? t.category ?? "—"}</TableCell>
-                <TableCell className="text-center text-xs text-muted-foreground">{t.source === "csv_import" ? "CSV" : "Manual"}</TableCell>
+                <TableCell>
+                  <InlineTextCell tx={t}
+                    isEditing={editingCell?.txId === t.id && editingCell?.field === "description"}
+                    onStartEdit={() => setEditingCell({ txId: t.id, field: "description" })}
+                    onSave={(val) => inlineSave(t, "description", val)} />
+                </TableCell>
+                <TableCell className="text-right">
+                  <InlineAmountCell tx={t}
+                    isEditing={editingCell?.txId === t.id && editingCell?.field === "amount"}
+                    onStartEdit={() => setEditingCell({ txId: t.id, field: "amount" })}
+                    onSave={(val) => inlineSave(t, "amount", val)} />
+                </TableCell>
+                <TableCell className="text-center">
+                  <InlineCategoryCell tx={t}
+                    isEditing={editingCell?.txId === t.id && editingCell?.field === "category"}
+                    onStartEdit={() => setEditingCell({ txId: t.id, field: "category" })}
+                    onSave={(val) => inlineSave(t, "category", val)} />
+                </TableCell>
+                <TableCell className="text-center text-xs text-muted-foreground">{t.source === "csv_import" ? "CSV" : t.source === "xlsx_import" ? "XLSX" : "Manual"}</TableCell>
                 <TableCell>
                   <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                    <Button size="icon" variant="ghost" onClick={() => openEdit(t)}><Pencil className="h-4 w-4 text-muted-foreground" /></Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button size="icon" variant="ghost"><Trash2 className="h-4 w-4 text-destructive" /></Button>
@@ -329,7 +445,7 @@ export function FinLancamentosTab() {
         </Table>
       </div>
 
-      {/* New/Edit transaction dialog */}
+      {/* New transaction dialog (kept for "Novo" button) */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>{editingTx ? "Editar Lançamento" : "Novo Lançamento"}</DialogTitle></DialogHeader>
