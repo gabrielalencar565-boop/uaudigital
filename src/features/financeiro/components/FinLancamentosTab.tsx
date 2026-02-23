@@ -228,15 +228,85 @@ export function FinLancamentosTab() {
     upsertTx.mutate(updates);
   }, [upsertTx]);
 
-  // ── Sicoob XLSX parser ──
-  const parseSicoobXlsx = (data: ArrayBuffer): CSVRow[] => {
+  // ── XLSX parser (supports multiple formats) ──
+  const parseXlsx = (data: ArrayBuffer): CSVRow[] => {
     const wb = XLSX.read(data, { type: "array" });
     const ws = wb.Sheets[wb.SheetNames[0]];
     const raw: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
 
     const rows: CSVRow[] = [];
-    let currentDate = "";
 
+    // Detect format by looking for header row
+    let headerIdx = -1;
+    let colDate = -1, colDesc = -1, colValor = -1;
+
+    for (let i = 0; i < Math.min(raw.length, 10); i++) {
+      const cells = raw[i].map((c: any) => String(c).trim().toUpperCase());
+      const dateCol = cells.findIndex(c => c === "DATA");
+      const descCol = cells.findIndex(c => c === "DESCRIÇÃO" || c === "DESCRICAO" || c === "HISTORICO" || c === "HISTÓRICO");
+      const valCol = cells.findIndex(c => c === "VALOR" || c === "QUANTIA" || c === "AMOUNT");
+      if (dateCol >= 0 && descCol >= 0 && valCol >= 0) {
+        headerIdx = i;
+        colDate = dateCol;
+        colDesc = descCol;
+        colValor = valCol;
+        break;
+      }
+    }
+
+    // Format A: 3-column (DATA, DESCRIÇÃO, VALOR) — simple numeric values
+    if (headerIdx >= 0) {
+      for (let i = headerIdx + 1; i < raw.length; i++) {
+        const cells = raw[i];
+        if (!cells || cells.length < Math.max(colDate, colDesc, colValor) + 1) continue;
+
+        let dateRaw = String(cells[colDate] ?? "").trim();
+        const desc = String(cells[colDesc] ?? "").trim();
+        let valorRaw = cells[colValor];
+
+        if (!desc || desc.toUpperCase().includes("SALDO")) continue;
+
+        // Parse value — can be number or string with comma
+        let numVal: number;
+        if (typeof valorRaw === "number") {
+          numVal = valorRaw;
+        } else {
+          const valStr = String(valorRaw).replace(/[D|C]/g, "").replace(/\s/g, "");
+          numVal = parseFloat(valStr.replace(/\./g, "").replace(",", "."));
+        }
+        if (isNaN(numVal) || numVal === 0) continue;
+
+        const type: "entrada" | "saida" = numVal > 0 ? "entrada" : "saida";
+        const amount = Math.abs(numVal);
+
+        // Parse date: dd/mm, dd/mm/yyyy, or Excel serial number
+        let isoDate = "";
+        if (typeof cells[colDate] === "number") {
+          // Excel serial date
+          const excelDate = XLSX.SSF.parse_date_code(cells[colDate]);
+          if (excelDate) {
+            isoDate = `${excelDate.y}-${String(excelDate.m).padStart(2, "0")}-${String(excelDate.d).padStart(2, "0")}`;
+          }
+        }
+        if (!isoDate) {
+          // Try dd/mm/yyyy or dd/mm
+          const parts = dateRaw.split("/");
+          if (parts.length === 3) {
+            isoDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+          } else if (parts.length === 2) {
+            // dd/mm — use selected year
+            isoDate = `${year}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+          }
+        }
+        if (!isoDate) continue;
+
+        rows.push({ date: isoDate, description: desc, amount, type });
+      }
+      return rows;
+    }
+
+    // Format B (legacy Sicoob): date in col 0 (dd/mm/yyyy), historico in col 2, value in col 3 with C/D suffix
+    let currentDate = "";
     for (let i = 0; i < raw.length; i++) {
       const cells = raw[i].map((c: any) => String(c).trim());
       if (!cells[0] && !cells[2] && !cells[3]) continue;
@@ -257,7 +327,7 @@ export function FinLancamentosTab() {
       if (isNaN(numVal) || numVal === 0) continue;
 
       const isCredit = valorStr.includes("C");
-      const type = isCredit ? "entrada" : "saida";
+      const type: "entrada" | "saida" = isCredit ? "entrada" : "saida";
 
       const parts = currentDate.split("/");
       const isoDate = parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : currentDate;
@@ -278,7 +348,7 @@ export function FinLancamentosTab() {
       const reader = new FileReader();
       reader.onload = (ev) => {
         const data = ev.target?.result as ArrayBuffer;
-        const parsed = parseSicoobXlsx(data);
+        const parsed = parseXlsx(data);
         if (parsed.length === 0) {
           toast.error("Nenhum lançamento encontrado no arquivo.");
           return;
