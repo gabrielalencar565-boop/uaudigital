@@ -13,7 +13,25 @@ export type ClientRow = {
   magic_due_date: string;
   notes: string | null;
   is_active: boolean;
+  is_freelancer_sentinel?: boolean;
 };
+
+/** Returns the freelancer sentinel client (if exists) */
+export function useFreelancerClient() {
+  return useQuery({
+    queryKey: ["freelancer_client"],
+    queryFn: async (): Promise<ClientRow | null> => {
+      const { data, error } = await supabase
+        .from("clients")
+        .select("id, name, magic_due_date, notes, is_active, is_freelancer_sentinel")
+        .eq("is_freelancer_sentinel", true)
+        .maybeSingle();
+      if (error) throw error;
+      return data as ClientRow | null;
+    },
+    staleTime: Infinity,
+  });
+}
 
 export type ClientStageRow = {
   id: string;

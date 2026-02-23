@@ -196,6 +196,7 @@ export type Database = {
           created_at: string
           id: string
           is_active: boolean
+          is_freelancer_sentinel: boolean
           magic_due_date: string
           name: string
           notes: string | null
@@ -205,6 +206,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          is_freelancer_sentinel?: boolean
           magic_due_date: string
           name: string
           notes?: string | null
@@ -214,6 +216,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          is_freelancer_sentinel?: boolean
           magic_due_date?: string
           name?: string
           notes?: string | null
