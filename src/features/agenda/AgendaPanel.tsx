@@ -487,33 +487,6 @@ export function AgendaPanel() {
               <DialogTitle>Criar tarefa</DialogTitle>
             </DialogHeader>
             <form className="space-y-4" onSubmit={form.handleSubmit(onCreateTask)}>
-              {/* Freelancer toggle */}
-              {freelancerClientId && (
-                <div className="flex items-center gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
-                  <Checkbox
-                    id="is_freelancer"
-                    checked={form.watch("is_freelancer") ?? false}
-                    onCheckedChange={(checked) => {
-                      form.setValue("is_freelancer", !!checked);
-                      if (checked) {
-                        form.setValue("client_id", freelancerClientId);
-                      } else {
-                        form.setValue("client_id", "");
-                        form.setValue("freelancer_name", "");
-                      }
-                    }}
-                  />
-                  <div className="space-y-0.5">
-                    <Label htmlFor="is_freelancer" className="cursor-pointer font-medium">
-                      🎯 Cliente Freela
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      Cliente freelancer que não está na lista geral
-                    </p>
-                  </div>
-                </div>
-              )}
-
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>{form.watch("is_freelancer") ? "Nome do cliente freela" : "Cliente"}</Label>
@@ -599,6 +572,33 @@ export function AgendaPanel() {
                   </p>
                 </div>
               </div>
+
+              {/* Cliente Freela - abaixo de Demanda Extra */}
+              {freelancerClientId && (
+                <div className="flex items-center gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+                  <Checkbox
+                    id="is_freelancer"
+                    checked={form.watch("is_freelancer") ?? false}
+                    onCheckedChange={(checked) => {
+                      form.setValue("is_freelancer", !!checked);
+                      if (checked) {
+                        form.setValue("client_id", freelancerClientId);
+                      } else {
+                        form.setValue("client_id", "");
+                        form.setValue("freelancer_name", "");
+                      }
+                    }}
+                  />
+                  <div className="space-y-0.5">
+                    <Label htmlFor="is_freelancer" className="cursor-pointer font-medium">
+                      🎯 Cliente Freela
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Cliente freelancer que não está na lista geral
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <DialogFooter>
                 <Button type="submit" variant="brand" disabled={createTask.isPending}>

@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { useClients, useTasks, useTeamMembers } from "@/features/data/queries";
+import { useClients, useFreelancerClient, useTasks, useTeamMembers } from "@/features/data/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { useTaskAssigneesByMonth } from "@/features/data/task-assignees-queries";
 import { Magic2Dashboard } from "@/features/magic2/components/Magic2Dashboard";
@@ -43,6 +43,8 @@ export function DayViewPanel() {
   const today = now;
   const todayKey = format(today, "yyyy-MM-dd");
   const monthKey = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}`;
+  const freelancerClientQ = useFreelancerClient();
+  const freelancerClientId = freelancerClientQ.data?.id ?? null;
   const clientsQ = useClients();
   const teamQ = useTeamMembers();
   const tasksQ = useTasks({
@@ -145,6 +147,14 @@ export function DayViewPanel() {
 
   const clientsById = useMemo(() => new Map((clientsQ.data ?? []).map(c => [c.id, c] as const)), [clientsQ.data]);
   const teamByUserId = useMemo(() => new Map((teamQ.data ?? []).map(m => [m.user_id, m] as const)), [teamQ.data]);
+
+  /** Resolve client name: freelancer tasks show title instead */
+  const resolveClientName = (t: { client_id: string; title: string | null }) => {
+    if (freelancerClientId && t.client_id === freelancerClientId && t.title) {
+      return `🎯 ${t.title}`;
+    }
+    return clientsById.get(t.client_id)?.name ?? "—";
+  };
 
   // Mapa de múltiplos assignees por tarefa
   const assigneesByTaskId = useMemo(() => {
@@ -403,7 +413,7 @@ export function DayViewPanel() {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold truncate text-destructive-foreground">
                           {displayMembers.length > 1 ? displayMembers.map(m => m.display_name).join(", ") : person?.display_name}
-                          {" "}•{" "}({client?.name}) • {stageLabel}
+                          {" "}•{" "}({resolveClientName(t)}) • {stageLabel}
                         </p>
                       </div>
                       <span className="text-sm font-bold text-destructive-foreground shrink-0">
@@ -459,7 +469,7 @@ export function DayViewPanel() {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold truncate">
                           {displayMembers.length > 1 ? displayMembers.map(m => m.display_name).join(", ") : person?.display_name}
-                          {" "}•{" "}({client?.name}) • {stageLabel}
+                          {" "}•{" "}({resolveClientName(t)}) • {stageLabel}
                         </p>
                       </div>
                       <Badge variant={t.status === "em_andamento" ? "warning" : "secondary"} className="text-xs shrink-0">
@@ -513,7 +523,7 @@ export function DayViewPanel() {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold truncate text-success-foreground">
                           {displayMembers.length > 1 ? displayMembers.map(m => m.display_name).join(", ") : person?.display_name}
-                          {" "}•{" "}({client?.name}) • {stageLabel}
+                          {" "}•{" "}({resolveClientName(t)}) • {stageLabel}
                         </p>
                       </div>
                       <span className="text-sm font-bold text-success-foreground shrink-0">
