@@ -178,6 +178,7 @@ export function useClients() {
         .from("clients")
         .select("id, name, magic_due_date, notes, is_active, is_freelancer_sentinel")
         .eq("is_active", true)
+        .eq("is_freelancer_sentinel", false)
         .order("magic_due_date", { ascending: true });
       if (error) throw error;
       return (data ?? []) as ClientRow[];
