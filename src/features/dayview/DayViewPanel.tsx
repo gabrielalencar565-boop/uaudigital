@@ -151,7 +151,7 @@ export function DayViewPanel() {
   /** Resolve client name: freelancer tasks show title instead */
   const resolveClientName = (t: { client_id: string; title: string | null }) => {
     if (freelancerClientId && t.client_id === freelancerClientId && t.title) {
-      return `🎯 ${t.title}`;
+      return t.title;
     }
     return clientsById.get(t.client_id)?.name ?? "—";
   };

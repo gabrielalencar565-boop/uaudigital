@@ -168,7 +168,7 @@ export function AgendaPanel() {
   /** Resolve client name: for freelancer tasks, show title (freelancer name) instead */
   const resolveClientName = (task: TaskRow) => {
     if (freelancerClientId && task.client_id === freelancerClientId && task.title) {
-      return `🎯 ${task.title}`;
+      return task.title;
     }
     return clientNameById.get(task.client_id) ?? "—";
   };
