@@ -186,14 +186,15 @@ export function useClients() {
   });
 }
 
-// Hook para admin ver TODOS os clientes (ativos e inativos)
+// Hook para admin ver TODOS os clientes (ativos e inativos), exceto sentinela freelancer
 export function useAllClients() {
   return useQuery({
     queryKey: ["clients_all"],
     queryFn: async (): Promise<ClientRow[]> => {
       const { data, error } = await supabase
         .from("clients")
-        .select("id, name, magic_due_date, notes, is_active")
+        .select("id, name, magic_due_date, notes, is_active, is_freelancer_sentinel")
+        .eq("is_freelancer_sentinel", false)
         .order("is_active", { ascending: false })
         .order("name", { ascending: true });
       if (error) throw error;
