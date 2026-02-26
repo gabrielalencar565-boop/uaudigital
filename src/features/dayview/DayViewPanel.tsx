@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { differenceInCalendarDays, format } from "date-fns";
+import { differenceInCalendarDays, format, getDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -14,10 +14,18 @@ import { useMagic2Dashboard } from "@/features/magic2/hooks/use-magic2-dashboard
 import { MonthYearNav } from "@/features/magic2/components/MonthYearNav";
 import { STAGES } from "@/lib/uau";
 import { cn } from "@/lib/utils";
-import { RefreshCw, Calendar, Target, RotateCcw, Trophy, ArrowUp, ArrowDown } from "lucide-react";
+import { RefreshCw, Calendar, Target, RotateCcw, Trophy, ArrowUp, ArrowDown, SprayCan, CheckCircle2 } from "lucide-react";
 import { useNow } from "@/hooks/use-now";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useSession } from "@/hooks/use-session";
+import {
+  useCleaningSchedules,
+  useCleaningCategories,
+  useCleaningCompletions,
+  useToggleCleaningCompletion,
+  DAYS_PT,
+} from "@/features/cleaning/hooks/use-cleaning";
 function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]!.toUpperCase()).join("");
 }
@@ -52,6 +60,15 @@ export function DayViewPanel() {
   });
   const magic2 = useMagic2Dashboard(selectedYear, selectedMonth);
   const assigneesQ = useTaskAssigneesByMonth(monthKey);
+  const { user: sessionUser } = useSession();
+
+  // ─── Cleaning ───
+  const cleaningSchedulesQ = useCleaningSchedules();
+  const cleaningCategoriesQ = useCleaningCategories();
+  const cleaningCompletionsQ = useCleaningCompletions(todayKey);
+  const toggleCleaning = useToggleCleaningCompletion();
+
+  const todayDow = getDay(today); // 0=dom, 6=sab
 
   // Performance scores for podium
   type ScoreRow = {
@@ -180,6 +197,23 @@ export function DayViewPanel() {
   // Se estamos visualizando o mês atual, mostrar tarefas de hoje
   const isCurrentMonth = selectedYear === now.getFullYear() && selectedMonth === now.getMonth() + 1;
 
+  // ─── Cleaning memos ───
+  const todayCleaningTasks = useMemo(() => {
+    if (!isCurrentMonth) return [];
+    const schedules = cleaningSchedulesQ.data ?? [];
+    return schedules.filter((s) => s.day_of_week === todayDow);
+  }, [cleaningSchedulesQ.data, todayDow, isCurrentMonth]);
+
+  const cleaningCategoryById = useMemo(
+    () => new Map((cleaningCategoriesQ.data ?? []).map((c) => [c.id, c])),
+    [cleaningCategoriesQ.data]
+  );
+
+  const completedScheduleIds = useMemo(
+    () => new Set((cleaningCompletionsQ.data ?? []).map((c) => c.schedule_id)),
+    [cleaningCompletionsQ.data]
+  );
+
   // Tarefas de hoje (exceto concluídas - elas vão separadas)
   const todayPendingTasks = useMemo(() => {
     const tasks = (tasksQ.data ?? []).filter(t => {
@@ -229,6 +263,12 @@ export function DayViewPanel() {
       queryKey: ["clients"]
     }), queryClient.invalidateQueries({
       queryKey: ["team_members"]
+    }), queryClient.invalidateQueries({
+      queryKey: ["cleaning_schedules"]
+    }), queryClient.invalidateQueries({
+      queryKey: ["cleaning_completions"]
+    }), queryClient.invalidateQueries({
+      queryKey: ["cleaning_categories"]
     })]);
     setIsRefreshing(false);
     toast.success("Dados atualizados!");
@@ -533,8 +573,65 @@ export function DayViewPanel() {
           })}
               </div>}
 
+            {/* ─── Tarefas de Limpeza ─── */}
+            {isCurrentMonth && todayCleaningTasks.length > 0 && <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                  <SprayCan className="h-3 w-3" /> Limpeza
+                </p>
+                {todayCleaningTasks.map(schedule => {
+                  const cat = cleaningCategoryById.get(schedule.category_id);
+                  const member = teamByUserId.get(schedule.user_id);
+                  const isDone = completedScheduleIds.has(schedule.id);
+                  return (
+                    <button
+                      key={schedule.id}
+                      type="button"
+                      className={cn(
+                        "flex items-center gap-3 rounded-lg px-3 py-2 w-full text-left transition",
+                        isDone
+                          ? "bg-success"
+                          : "border border-amber-500/40 bg-amber-500/5"
+                      )}
+                      disabled={toggleCleaning.isPending}
+                      onClick={() => {
+                        if (!sessionUser) return;
+                        toggleCleaning.mutate({
+                          scheduleId: schedule.id,
+                          date: todayKey,
+                          userId: sessionUser.id,
+                          isCompleted: isDone,
+                        });
+                      }}
+                    >
+                      <Avatar className={cn("h-8 w-8", isDone && "border-2 border-success-foreground/30")}>
+                        <AvatarImage src={member?.avatar_url ?? undefined} />
+                        <AvatarFallback className={cn(
+                          "text-[10px]",
+                          isDone && "bg-success-foreground/20 text-success-foreground"
+                        )}>
+                          {initials(member?.display_name ?? "?")}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className={cn(
+                          "text-sm font-semibold truncate",
+                          isDone && "text-success-foreground"
+                        )}>
+                          {member?.display_name ?? "—"} • {cat?.name ?? "—"}
+                        </p>
+                      </div>
+                      {isDone ? (
+                        <CheckCircle2 className="h-5 w-5 text-success-foreground shrink-0" />
+                      ) : (
+                        <Badge variant="secondary" className="text-xs shrink-0">Pendente</Badge>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>}
+
             {/* Mensagem quando não há tarefas */}
-            {todayPendingTasks.length === 0 && todayCompletedTasks.length === 0 && overdueTasks.length === 0 && <p className="text-muted-foreground text-center py-4">
+            {todayPendingTasks.length === 0 && todayCompletedTasks.length === 0 && overdueTasks.length === 0 && todayCleaningTasks.length === 0 && <p className="text-muted-foreground text-center py-4">
                 {isCurrentMonth ? "Nenhuma tarefa para hoje 🎉" : "Nenhuma tarefa neste mês"}
               </p>}
            </CardContent>
