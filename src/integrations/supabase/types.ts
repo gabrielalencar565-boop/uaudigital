@@ -68,6 +68,100 @@ export type Database = {
         }
         Relationships: []
       }
+      cleaning_categories: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      cleaning_completions: {
+        Row: {
+          completed_at: string
+          completed_by: string
+          completed_date: string
+          id: string
+          schedule_id: string
+        }
+        Insert: {
+          completed_at?: string
+          completed_by: string
+          completed_date: string
+          id?: string
+          schedule_id: string
+        }
+        Update: {
+          completed_at?: string
+          completed_by?: string
+          completed_date?: string
+          id?: string
+          schedule_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cleaning_completions_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "cleaning_schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cleaning_schedules: {
+        Row: {
+          category_id: string
+          created_at: string
+          day_of_week: number
+          id: string
+          is_active: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category_id: string
+          created_at?: string
+          day_of_week: number
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          day_of_week?: number
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cleaning_schedules_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "cleaning_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_cycle_stages: {
         Row: {
           completed: boolean
