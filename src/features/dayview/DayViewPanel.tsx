@@ -582,6 +582,9 @@ export function DayViewPanel() {
                   const cat = cleaningCategoryById.get(schedule.category_id);
                   const member = teamByUserId.get(schedule.user_id);
                   const isDone = completedScheduleIds.has(schedule.id);
+                  const dueTimeStr = schedule.due_time?.slice(0, 5) ?? "18:00";
+                  const [dueH, dueM] = dueTimeStr.split(":").map(Number);
+                  const isOverdue = !isDone && (now.getHours() > dueH || (now.getHours() === dueH && now.getMinutes() >= dueM));
                   return (
                     <button
                       key={schedule.id}
@@ -590,7 +593,9 @@ export function DayViewPanel() {
                         "flex items-center gap-3 rounded-lg px-3 py-2 w-full text-left transition",
                         isDone
                           ? "bg-success"
-                          : "border border-amber-500/40 bg-amber-500/5"
+                          : isOverdue
+                            ? "bg-destructive"
+                            : "border border-amber-500/40 bg-amber-500/5"
                       )}
                       disabled={toggleCleaning.isPending}
                       onClick={() => {
@@ -603,11 +608,12 @@ export function DayViewPanel() {
                         });
                       }}
                     >
-                      <Avatar className={cn("h-8 w-8", isDone && "border-2 border-success-foreground/30")}>
+                      <Avatar className={cn("h-8 w-8", (isDone || isOverdue) && "border-2", isDone && "border-success-foreground/30", isOverdue && "border-destructive-foreground/30")}>
                         <AvatarImage src={member?.avatar_url ?? undefined} />
                         <AvatarFallback className={cn(
                           "text-[10px]",
-                          isDone && "bg-success-foreground/20 text-success-foreground"
+                          isDone && "bg-success-foreground/20 text-success-foreground",
+                          isOverdue && "bg-destructive-foreground/20 text-destructive-foreground"
                         )}>
                           {initials(member?.display_name ?? "?")}
                         </AvatarFallback>
@@ -615,13 +621,19 @@ export function DayViewPanel() {
                       <div className="flex-1 min-w-0">
                         <p className={cn(
                           "text-sm font-semibold truncate",
-                          isDone && "text-success-foreground"
+                          isDone && "text-success-foreground",
+                          isOverdue && "text-destructive-foreground"
                         )}>
                           {member?.display_name ?? "—"} • {cat?.name ?? "—"}
                         </p>
                       </div>
+                      <span className={cn("text-xs font-medium shrink-0", isDone && "text-success-foreground", isOverdue && "text-destructive-foreground", !isDone && !isOverdue && "text-muted-foreground")}>
+                        {dueTimeStr}
+                      </span>
                       {isDone ? (
                         <CheckCircle2 className="h-5 w-5 text-success-foreground shrink-0" />
+                      ) : isOverdue ? (
+                        <Badge variant="destructive" className="text-xs shrink-0">Atrasada</Badge>
                       ) : (
                         <Badge variant="secondary" className="text-xs shrink-0">Pendente</Badge>
                       )}

@@ -129,6 +129,7 @@ export type Database = {
           category_id: string
           created_at: string
           day_of_week: number
+          due_time: string | null
           id: string
           is_active: boolean
           updated_at: string
@@ -138,6 +139,7 @@ export type Database = {
           category_id: string
           created_at?: string
           day_of_week: number
+          due_time?: string | null
           id?: string
           is_active?: boolean
           updated_at?: string
@@ -147,6 +149,7 @@ export type Database = {
           category_id?: string
           created_at?: string
           day_of_week?: number
+          due_time?: string | null
           id?: string
           is_active?: boolean
           updated_at?: string
