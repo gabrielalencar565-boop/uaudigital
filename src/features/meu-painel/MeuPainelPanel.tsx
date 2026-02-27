@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { format } from "date-fns";
-import { AlertTriangle, CheckCircle2, Clock, Pencil } from "lucide-react";
+import { format, getDay } from "date-fns";
+import { AlertTriangle, CheckCircle2, Clock, Pencil, SprayCan } from "lucide-react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +19,13 @@ import { useMyAnnualPerformanceRank } from "@/features/meu-painel/hooks/use-my-a
 import { useNow } from "@/hooks/use-now";
 import { MonthYearNav } from "@/features/magic2/components/MonthYearNav";
 import { EditProfileDialog } from "@/features/meu-painel/components/EditProfileDialog";
+import {
+  useCleaningSchedules,
+  useCleaningCategories,
+  useCleaningCompletions,
+  useToggleCleaningCompletion,
+} from "@/features/cleaning/hooks/use-cleaning";
+import { cn } from "@/lib/utils";
 
 function getMagicSyncedMonthYear(now: Date) {
   // Regra do Magic Number: a partir do dia 28, o "mês vigente" vira o próximo.
@@ -119,6 +126,30 @@ export function MeuPainelPanel() {
   const clientsById = useMemo(() => new Map((clientsQ.data ?? []).map((c) => [c.id, c] as const)), [clientsQ.data]);
 
   const myTasks = useMemo(() => tasksQ.data ?? [], [tasksQ.data]);
+
+  // ─── Cleaning ───
+  const cleaningSchedulesQ = useCleaningSchedules();
+  const cleaningCategoriesQ = useCleaningCategories();
+  const cleaningCompletionsQ = useCleaningCompletions(todayKey);
+  const toggleCleaning = useToggleCleaningCompletion();
+
+  const todayDow = getDay(today);
+
+  const myCleaningTasks = useMemo(() => {
+    if (!user) return [];
+    const schedules = cleaningSchedulesQ.data ?? [];
+    return schedules.filter((s) => s.day_of_week === todayDow && s.user_id === user.id);
+  }, [cleaningSchedulesQ.data, todayDow, user]);
+
+  const cleaningCategoryById = useMemo(
+    () => new Map((cleaningCategoriesQ.data ?? []).map((c) => [c.id, c])),
+    [cleaningCategoriesQ.data]
+  );
+
+  const completedScheduleIds = useMemo(
+    () => new Set((cleaningCompletionsQ.data ?? []).map((c) => c.schedule_id)),
+    [cleaningCompletionsQ.data]
+  );
 
   const todayTasks = useMemo(() => myTasks.filter((t) => t.due_date === todayKey), [myTasks, todayKey]);
   const overdueTasks = useMemo(
@@ -328,6 +359,63 @@ export function MeuPainelPanel() {
         onStart={onStart}
         onToggleComplete={onToggleComplete}
       />
+
+      {/* Limpeza do dia */}
+      {myCleaningTasks.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <SprayCan className="h-4 w-4" /> Limpeza de Hoje
+            </CardTitle>
+            <CardDescription>Suas tarefas de limpeza para hoje</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {myCleaningTasks.map((schedule) => {
+              const cat = cleaningCategoryById.get(schedule.category_id);
+              const isDone = completedScheduleIds.has(schedule.id);
+              const dueTimeStr = schedule.due_time?.slice(0, 5) ?? "18:00";
+              return (
+                <button
+                  key={schedule.id}
+                  type="button"
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2.5 w-full text-left transition",
+                    isDone
+                      ? "bg-success"
+                      : "border border-border/60 bg-card/20 hover:bg-accent"
+                  )}
+                  disabled={toggleCleaning.isPending}
+                  onClick={() => {
+                    if (!user) return;
+                    toggleCleaning.mutate({
+                      scheduleId: schedule.id,
+                      date: todayKey,
+                      userId: user.id,
+                      isCompleted: isDone,
+                    });
+                  }}
+                >
+                  <SprayCan className={cn("h-5 w-5 shrink-0", isDone ? "text-success-foreground" : "text-muted-foreground")} />
+                  <div className="flex-1 min-w-0">
+                    <p className={cn("text-sm font-semibold truncate", isDone && "text-success-foreground")}>
+                      {cat?.name ?? "—"}
+                    </p>
+                  </div>
+                  <span className={cn("text-xs shrink-0", isDone ? "text-success-foreground" : "text-muted-foreground")}>
+                    até {dueTimeStr}
+                  </span>
+                  {isDone ? (
+                    <CheckCircle2 className="h-5 w-5 text-success-foreground shrink-0" />
+                  ) : (
+                    <Badge variant="secondary" className="text-xs shrink-0">Pendente</Badge>
+                  )}
+                </button>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
+
       <EditProfileDialog
         open={editProfileOpen}
         onOpenChange={setEditProfileOpen}
