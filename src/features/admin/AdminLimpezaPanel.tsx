@@ -23,6 +23,7 @@ export function AdminLimpezaPanel() {
   const [selectedDay, setSelectedDay] = useState("1"); // segunda
   const [selectedUser, setSelectedUser] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedTime, setSelectedTime] = useState("18:00");
 
   const categoriesQ = useCleaningCategories();
   const createCategory = useCreateCleaningCategory();
@@ -68,6 +69,7 @@ export function AdminLimpezaPanel() {
         day_of_week: Number(selectedDay),
         user_id: selectedUser,
         category_id: selectedCategory,
+        due_time: selectedTime + ":00",
       });
       toast.success("Escala adicionada!");
     } catch (e: any) {
@@ -188,6 +190,15 @@ export function AdminLimpezaPanel() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Horário limite</Label>
+              <Input
+                type="time"
+                value={selectedTime}
+                onChange={(e) => setSelectedTime(e.target.value)}
+                className="w-28"
+              />
+            </div>
             <Button size="sm" variant="brand" onClick={handleAddSchedule} disabled={createSchedule.isPending}>
               <Plus className="h-4 w-4 mr-1" /> Adicionar
             </Button>
@@ -211,6 +222,8 @@ export function AdminLimpezaPanel() {
                             <span className="font-medium">{member?.display_name ?? "—"}</span>
                             {" → "}
                             <span className="text-muted-foreground">{cat?.name ?? "—"}</span>
+                            {" • "}
+                            <span className="text-muted-foreground">{s.due_time?.slice(0, 5) ?? "18:00"}</span>
                           </span>
                           <Button
                             size="sm"

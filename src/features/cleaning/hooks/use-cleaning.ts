@@ -14,6 +14,7 @@ export interface CleaningSchedule {
   user_id: string;
   category_id: string;
   is_active: boolean;
+  due_time: string; // e.g. "18:00:00"
 }
 
 export interface CleaningCompletion {
@@ -91,7 +92,7 @@ export function useCleaningSchedules() {
 export function useCreateCleaningSchedule() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (params: { day_of_week: number; user_id: string; category_id: string }) => {
+    mutationFn: async (params: { day_of_week: number; user_id: string; category_id: string; due_time?: string }) => {
       const { error } = await supabase
         .from("cleaning_schedules")
         .insert(params as any);
