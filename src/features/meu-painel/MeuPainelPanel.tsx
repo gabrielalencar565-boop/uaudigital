@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { format, getDay } from "date-fns";
-import { AlertTriangle, CheckCircle2, Clock, Pencil, SprayCan } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock, Pencil } from "lucide-react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -151,7 +151,28 @@ export function MeuPainelPanel() {
     [cleaningCompletionsQ.data]
   );
 
-  const todayTasks = useMemo(() => myTasks.filter((t) => t.due_date === todayKey), [myTasks, todayKey]);
+  // Cleaning task VMs merged as normal tasks
+  const cleaningVMs = useMemo((): MeuPainelTaskVM[] => {
+    return myCleaningTasks.map((schedule) => {
+      const cat = cleaningCategoryById.get(schedule.category_id);
+      const isDone = completedScheduleIds.has(schedule.id);
+      return {
+        id: `cleaning:${schedule.id}`,
+        clientName: cat?.name ?? "Limpeza",
+        stageLabel: "🧹 Limpeza",
+        stage: "captacao" as any,
+        title: null,
+        dueDate: todayKey,
+        status: isDone ? "concluido" : ("pendente" as const),
+        completedAt: null,
+      };
+    });
+  }, [myCleaningTasks, cleaningCategoryById, completedScheduleIds, todayKey]);
+
+  const todayTasks = useMemo(
+    () => [...myTasks.filter((t) => t.due_date === todayKey), ...cleaningVMs.filter((c) => c.status !== "concluido")],
+    [myTasks, todayKey, cleaningVMs],
+  );
   const overdueTasks = useMemo(
     () => myTasks.filter((t) => t.status !== "concluido" && t.due_date < todayKey),
     [myTasks, todayKey],
@@ -160,7 +181,10 @@ export function MeuPainelPanel() {
     () => myTasks.filter((t) => t.status !== "concluido" && t.due_date > todayKey),
     [myTasks, todayKey],
   );
-  const completedTasks = useMemo(() => myTasks.filter((t) => t.status === "concluido"), [myTasks]);
+  const completedTasks = useMemo(
+    () => [...myTasks.filter((t) => t.status === "concluido"), ...cleaningVMs.filter((c) => c.status === "concluido")],
+    [myTasks, cleaningVMs],
+  );
 
   const summary = useMemo(() => {
     const done = myTasks.filter((t) => t.status === "concluido").length;
@@ -221,6 +245,17 @@ export function MeuPainelPanel() {
 
   const onToggleComplete = async (taskId: string, current: "pendente" | "em_andamento" | "concluido") => {
     if (!user) return;
+    // Handle cleaning tasks
+    if (taskId.startsWith("cleaning:")) {
+      const scheduleId = taskId.replace("cleaning:", "");
+      toggleCleaning.mutate({
+        scheduleId,
+        date: todayKey,
+        userId: user.id,
+        isCompleted: current === "concluido",
+      });
+      return;
+    }
     const next = current === "concluido" ? "em_andamento" : "concluido";
     try {
       await setTaskStatus.mutateAsync({ taskId, status: next, userId: user.id });
@@ -230,7 +265,9 @@ export function MeuPainelPanel() {
     }
   };
 
-  const toVM = (t: (typeof myTasks)[number]): MeuPainelTaskVM => {
+  const toVM = (t: (typeof myTasks)[number] | MeuPainelTaskVM): MeuPainelTaskVM => {
+    // Already a VM (cleaning tasks)
+    if ("clientName" in t) return t;
     const client = clientsById.get(t.client_id);
     const stageLabel = STAGES.find((s) => s.key === t.stage)?.label ?? t.stage;
     return {
@@ -359,62 +396,6 @@ export function MeuPainelPanel() {
         onStart={onStart}
         onToggleComplete={onToggleComplete}
       />
-
-      {/* Limpeza do dia */}
-      {myCleaningTasks.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <SprayCan className="h-4 w-4" /> Limpeza de Hoje
-            </CardTitle>
-            <CardDescription>Suas tarefas de limpeza para hoje</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {myCleaningTasks.map((schedule) => {
-              const cat = cleaningCategoryById.get(schedule.category_id);
-              const isDone = completedScheduleIds.has(schedule.id);
-              const dueTimeStr = schedule.due_time?.slice(0, 5) ?? "18:00";
-              return (
-                <button
-                  key={schedule.id}
-                  type="button"
-                  className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2.5 w-full text-left transition",
-                    isDone
-                      ? "bg-success"
-                      : "border border-border/60 bg-card/20 hover:bg-accent"
-                  )}
-                  disabled={toggleCleaning.isPending}
-                  onClick={() => {
-                    if (!user) return;
-                    toggleCleaning.mutate({
-                      scheduleId: schedule.id,
-                      date: todayKey,
-                      userId: user.id,
-                      isCompleted: isDone,
-                    });
-                  }}
-                >
-                  <SprayCan className={cn("h-5 w-5 shrink-0", isDone ? "text-success-foreground" : "text-muted-foreground")} />
-                  <div className="flex-1 min-w-0">
-                    <p className={cn("text-sm font-semibold truncate", isDone && "text-success-foreground")}>
-                      {cat?.name ?? "—"}
-                    </p>
-                  </div>
-                  <span className={cn("text-xs shrink-0", isDone ? "text-success-foreground" : "text-muted-foreground")}>
-                    até {dueTimeStr}
-                  </span>
-                  {isDone ? (
-                    <CheckCircle2 className="h-5 w-5 text-success-foreground shrink-0" />
-                  ) : (
-                    <Badge variant="secondary" className="text-xs shrink-0">Pendente</Badge>
-                  )}
-                </button>
-              );
-            })}
-          </CardContent>
-        </Card>
-      )}
 
       <EditProfileDialog
         open={editProfileOpen}
