@@ -14,7 +14,7 @@ import { useMagic2Dashboard } from "@/features/magic2/hooks/use-magic2-dashboard
 import { MonthYearNav } from "@/features/magic2/components/MonthYearNav";
 import { STAGES } from "@/lib/uau";
 import { cn } from "@/lib/utils";
-import { RefreshCw, Calendar, Target, RotateCcw, Trophy, ArrowUp, ArrowDown, SprayCan, CheckCircle2 } from "lucide-react";
+import { RefreshCw, Calendar, Target, RotateCcw, Trophy, ArrowUp, ArrowDown, SprayCan, CheckCircle2, Brush, Droplets, Armchair, Bath } from "lucide-react";
 import { useNow } from "@/hooks/use-now";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -26,8 +26,18 @@ import {
   useToggleCleaningCompletion,
   DAYS_PT,
 } from "@/features/cleaning/hooks/use-cleaning";
+
 function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]!.toUpperCase()).join("");
+}
+
+function getCleaningIcon(categoryName: string) {
+  const name = categoryName.toLowerCase();
+  if (name.includes("varrer") || name.includes("vassoura") || name.includes("chão")) return Brush;
+  if (name.includes("pano") || name.includes("rodo")) return Droplets;
+  if (name.includes("móve") || name.includes("movel") || name.includes("moveis") || name.includes("móvel")) return Armchair;
+  if (name.includes("banheir") || name.includes("wc")) return Bath;
+  return SprayCan;
 }
 function statusTone(status: string, dueDate: string, todayKey: string) {
   if (status === "concluido") return "success" as const;
@@ -573,73 +583,59 @@ export function DayViewPanel() {
           })}
               </div>}
 
-            {/* ─── Tarefas de Limpeza ─── */}
+            {/* ─── Limpeza – Widget compacto horizontal ─── */}
             {isCurrentMonth && todayCleaningTasks.length > 0 && <div className="space-y-2">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1">
                   <SprayCan className="h-3 w-3" /> Limpeza
                 </p>
-                {todayCleaningTasks.map(schedule => {
-                  const cat = cleaningCategoryById.get(schedule.category_id);
-                  const member = teamByUserId.get(schedule.user_id);
-                  const isDone = completedScheduleIds.has(schedule.id);
-                  const dueTimeStr = schedule.due_time?.slice(0, 5) ?? "18:00";
-                  const [dueH, dueM] = dueTimeStr.split(":").map(Number);
-                  const isOverdue = !isDone && (now.getHours() > dueH || (now.getHours() === dueH && now.getMinutes() >= dueM));
-                  return (
-                    <button
-                      key={schedule.id}
-                      type="button"
-                      className={cn(
-                        "flex items-center gap-3 rounded-lg px-3 py-2 w-full text-left transition",
-                        isDone
-                          ? "bg-success"
-                          : isOverdue
-                            ? "bg-destructive"
-                            : "border border-amber-500/40 bg-amber-500/5"
-                      )}
-                      disabled={toggleCleaning.isPending}
-                      onClick={() => {
-                        if (!sessionUser) return;
-                        toggleCleaning.mutate({
-                          scheduleId: schedule.id,
-                          date: todayKey,
-                          userId: sessionUser.id,
-                          isCompleted: isDone,
-                        });
-                      }}
-                    >
-                      <Avatar className={cn("h-8 w-8", (isDone || isOverdue) && "border-2", isDone && "border-success-foreground/30", isOverdue && "border-destructive-foreground/30")}>
-                        <AvatarImage src={member?.avatar_url ?? undefined} />
-                        <AvatarFallback className={cn(
-                          "text-[10px]",
-                          isDone && "bg-success-foreground/20 text-success-foreground",
-                          isOverdue && "bg-destructive-foreground/20 text-destructive-foreground"
-                        )}>
-                          {initials(member?.display_name ?? "?")}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <p className={cn(
-                          "text-sm font-semibold truncate",
-                          isDone && "text-success-foreground",
-                          isOverdue && "text-destructive-foreground"
-                        )}>
-                          {member?.display_name ?? "—"} • {cat?.name ?? "—"}
-                        </p>
-                      </div>
-                      <span className={cn("text-xs font-medium shrink-0", isDone && "text-success-foreground", isOverdue && "text-destructive-foreground", !isDone && !isOverdue && "text-muted-foreground")}>
-                        {dueTimeStr}
-                      </span>
-                      {isDone ? (
-                        <CheckCircle2 className="h-5 w-5 text-success-foreground shrink-0" />
-                      ) : isOverdue ? (
-                        <Badge variant="destructive" className="text-xs shrink-0">Atrasada</Badge>
-                      ) : (
-                        <Badge variant="secondary" className="text-xs shrink-0">Pendente</Badge>
-                      )}
-                    </button>
-                  );
-                })}
+                <div className="flex flex-wrap items-center gap-2">
+                  {todayCleaningTasks.map(schedule => {
+                    const cat = cleaningCategoryById.get(schedule.category_id);
+                    const member = teamByUserId.get(schedule.user_id);
+                    const isDone = completedScheduleIds.has(schedule.id);
+                    const dueTimeStr = schedule.due_time?.slice(0, 5) ?? "18:00";
+                    const [dueH, dueM] = dueTimeStr.split(":").map(Number);
+                    const isOverdue = !isDone && (now.getHours() > dueH || (now.getHours() === dueH && now.getMinutes() >= dueM));
+                    const CleanIcon = getCleaningIcon(cat?.name ?? "");
+                    return (
+                      <Tooltip key={schedule.id}>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            disabled={toggleCleaning.isPending}
+                            onClick={() => {
+                              if (!sessionUser) return;
+                              toggleCleaning.mutate({
+                                scheduleId: schedule.id,
+                                date: todayKey,
+                                userId: sessionUser.id,
+                                isCompleted: isDone,
+                              });
+                            }}
+                            className={cn(
+                              "flex items-center gap-1.5 rounded-full border-2 px-2.5 py-1.5 transition",
+                              isDone && "border-success bg-success/10",
+                              isOverdue && "border-destructive bg-destructive/10",
+                              !isDone && !isOverdue && "border-border bg-card"
+                            )}
+                          >
+                            <Avatar className="h-6 w-6">
+                              <AvatarImage src={member?.avatar_url ?? undefined} />
+                              <AvatarFallback className="text-[8px]">{initials(member?.display_name ?? "?")}</AvatarFallback>
+                            </Avatar>
+                            <CleanIcon className={cn(
+                              "h-4 w-4",
+                              isDone && "text-success",
+                              isOverdue && "text-destructive",
+                              !isDone && !isOverdue && "text-muted-foreground"
+                            )} />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>{member?.display_name} • {cat?.name} • até {dueTimeStr}</TooltipContent>
+                      </Tooltip>
+                    );
+                  })}
+                </div>
               </div>}
 
             {/* Mensagem quando não há tarefas */}
