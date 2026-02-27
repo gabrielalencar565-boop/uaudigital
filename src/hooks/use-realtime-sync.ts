@@ -16,7 +16,10 @@ type RealtimeTable =
   | "team_members"
   | "profiles"
   | "performance_scores"
-  | "task_deadline_overrides";
+  | "task_deadline_overrides"
+  | "cleaning_categories"
+  | "cleaning_schedules"
+  | "cleaning_completions";
 
 const TABLE_TO_QUERY_KEYS: Record<RealtimeTable, string[][]> = {
   client_cycle_stages: [["client_cycle_stages"], ["magic2"]],
@@ -48,6 +51,9 @@ const TABLE_TO_QUERY_KEYS: Record<RealtimeTable, string[][]> = {
     ["my_annual_rank"],
   ],
   task_deadline_overrides: [["deadline_report_overrides"], ["performance_scores"]],
+  cleaning_categories: [["cleaning_categories"]],
+  cleaning_schedules: [["cleaning_schedules"]],
+  cleaning_completions: [["cleaning_completions"]],
 };
 
 /**
@@ -115,5 +121,8 @@ export function useRealtimeSyncAll() {
     "profiles",
     "performance_scores",
     "task_deadline_overrides",
+    "cleaning_categories",
+    "cleaning_schedules",
+    "cleaning_completions",
   ]);
 }
