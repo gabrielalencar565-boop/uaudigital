@@ -20,7 +20,8 @@ import { useEffect, useMemo, useState } from "react";
  import { useTeamMembers } from "@/features/data/queries";
  import { CategoryComparisonChart } from "@/features/performance/components/CategoryComparisonChart";
  import { Top3CompetencyRadar } from "@/features/performance/components/Top3CompetencyRadar";
- import { AdminDeadlineReport } from "@/features/performance/components/AdminDeadlineReport";
+import { AdminDeadlineReport } from "@/features/performance/components/AdminDeadlineReport";
+import { AnnualShowcasePanel } from "@/features/performance/components/AnnualShowcasePanel";
 import { useNow } from "@/hooks/use-now";
  
  function initials(name: string) {
@@ -422,8 +423,13 @@ const TOTAL_POINTS = 27;
             </div>
          </TabsContent>
  
-         <TabsContent value="anual" className="mt-6">
-           <Card>
+          <TabsContent value="anual" className="mt-6 space-y-6">
+            <AnnualShowcasePanel
+              scores={annualQ.data ?? []}
+              team={teamQ.data ?? []}
+              teamById={teamById}
+            />
+            <Card>
              <CardHeader>
                <CardTitle className="flex items-center gap-2">
                  <Trophy className="h-5 w-5" />
