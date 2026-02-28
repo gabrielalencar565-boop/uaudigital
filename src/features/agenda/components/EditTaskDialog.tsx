@@ -53,6 +53,8 @@ const editTaskSchema = z.object({
   is_extra_demand: z.boolean().optional(),
   is_freelancer: z.boolean().optional(),
   freelancer_name: z.string().trim().max(120).optional().or(z.literal("")),
+  quantity: z.coerce.number().int().min(1).default(1),
+  point_value: z.coerce.number().min(0).optional().or(z.literal("")).transform(v => v === "" ? undefined : v),
 });
 
 type EditTaskValues = z.infer<typeof editTaskSchema>;
@@ -75,6 +77,8 @@ interface EditTaskDialogProps {
     title?: string | null;
     status?: TaskStatus;
     is_extra_demand?: boolean;
+    quantity?: number;
+    point_value?: number | null;
   }) => Promise<void>;
   onDelete: (taskId: string) => Promise<void>;
   isPending?: boolean;
@@ -128,6 +132,8 @@ export function EditTaskDialog({
       is_extra_demand: false,
       is_freelancer: false,
       freelancer_name: "",
+      quantity: 1,
+      point_value: undefined,
     },
   });
 
@@ -145,6 +151,8 @@ export function EditTaskDialog({
         is_extra_demand: task.is_extra_demand ?? false,
         is_freelancer: isFreela,
         freelancer_name: isFreela ? (task.title ?? "") : "",
+        quantity: task.quantity ?? 1,
+        point_value: task.point_value ?? undefined,
       });
     }
   }, [task, form, freelancerClientId]);
@@ -190,6 +198,8 @@ export function EditTaskDialog({
         title: freelancerTitle,
         status: values.status,
         is_extra_demand: values.is_extra_demand ?? false,
+        quantity: values.quantity ?? 1,
+        point_value: values.point_value ?? null,
       });
 
       // Atualiza os assignees
@@ -346,6 +356,23 @@ export function EditTaskDialog({
               />
             </div>
 
+            {/* Quantidade - visível para Vídeo e Design */}
+            {(form.watch("stage") === "edicao_videos" || form.watch("stage") === "design") && (
+              <div className="space-y-2">
+                <Label>Quantidade</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  {...form.register("quantity", { valueAsNumber: true })}
+                  disabled={!canManageTasks}
+                  placeholder="Ex.: 6"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Pontuação: {form.watch("is_extra_demand") ? `${form.watch("quantity") || 1} × 1.5 = ${((form.watch("quantity") || 1) * 1.5).toFixed(1)} pts` : `${form.watch("quantity") || 1} × 1 = ${form.watch("quantity") || 1} pts`}
+                </p>
+              </div>
+            )}
+
             <div className="flex items-center gap-3 rounded-lg border border-border/60 bg-muted/30 p-3">
               <Checkbox
                 id="edit_is_extra_demand"
@@ -362,6 +389,26 @@ export function EditTaskDialog({
                 </p>
               </div>
             </div>
+
+            {/* Pontos manuais - para demandas extras em etapas de social */}
+            {form.watch("is_extra_demand") && !["edicao_videos", "design"].includes(form.watch("stage")) && (
+              <div className="space-y-2">
+                <Label>Pontos (Ajuste Estratégico)</Label>
+                <Select
+                  value={String(form.watch("point_value") ?? "")}
+                  onValueChange={(v) => form.setValue("point_value", Number(v) as any)}
+                  disabled={!canManageTasks}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover z-50">
+                    <SelectItem value="1">1 ponto</SelectItem>
+                    <SelectItem value="2">2 pontos</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             {/* Cliente Freela - abaixo de Demanda Extra */}
             {freelancerClientId && canManageTasks && (
