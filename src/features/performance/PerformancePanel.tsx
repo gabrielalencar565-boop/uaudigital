@@ -347,20 +347,20 @@ const TOTAL_POINTS = 27;
                               <span className="font-medium">{member?.display_name ?? row.user_id}</span>
                               {row.video_destaque > 0 && (
                                 <span
-                                  className="inline-flex h-7 w-7 items-center justify-center rounded-full shadow-sm"
+                                  className="inline-flex h-[22px] w-[22px] items-center justify-center rounded-full shadow-sm"
                                   style={{ background: "linear-gradient(145deg, #f5d020, #f5ab20, #c89b3c)" }}
                                   title="Vídeo Destaque do Mês"
                                 >
-                                  <Video className="h-3.5 w-3.5 text-white drop-shadow-sm" />
+                                  <Video className="h-3 w-3 text-white drop-shadow-sm" />
                                 </span>
                               )}
                               {row.squad_destaque > 0 && (
                                 <span
-                                  className="inline-flex h-7 w-7 items-center justify-center rounded-full shadow-sm"
+                                  className="inline-flex h-[22px] w-[22px] items-center justify-center rounded-full shadow-sm"
                                   style={{ background: "linear-gradient(145deg, #f5d020, #f5ab20, #c89b3c)" }}
                                   title="Squad Destaque"
                                 >
-                                  <Star className="h-3.5 w-3.5 text-white fill-white drop-shadow-sm" />
+                                  <Star className="h-3 w-3 text-white fill-white drop-shadow-sm" />
                                 </span>
                               )}
                             </div>
