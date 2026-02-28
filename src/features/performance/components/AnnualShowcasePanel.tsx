@@ -149,43 +149,36 @@ export function AnnualShowcasePanel({
             </div>
 
             {/* Badges row */}
-            <div className="flex items-center gap-1.5 flex-wrap justify-center">
-              {/* Position medals accumulated */}
-              {item.gold > 0 && (
-                <span className="inline-flex items-center gap-0.5 text-base leading-none" title={`1º lugar × ${item.gold}`}>
-                  🥇{item.gold > 1 && <span className="text-[10px] font-bold">×{item.gold}</span>}
-                </span>
-              )}
-              {item.silver > 0 && (
-                <span className="inline-flex items-center gap-0.5 text-base leading-none" title={`2º lugar × ${item.silver}`}>
-                  🥈{item.silver > 1 && <span className="text-[10px] font-bold">×{item.silver}</span>}
-                </span>
-              )}
-              {item.bronze > 0 && (
-                <span className="inline-flex items-center gap-0.5 text-base leading-none" title={`3º lugar × ${item.bronze}`}>
-                  🥉{item.bronze > 1 && <span className="text-[10px] font-bold">×{item.bronze}</span>}
-                </span>
-              )}
-              {item.videoCount > 0 && (
+            <div className="flex items-center gap-0.5 flex-wrap justify-center">
+              {Array.from({ length: item.gold }, (_, i) => (
+                <span key={`g${i}`} className="text-base leading-none">🥇</span>
+              ))}
+              {Array.from({ length: item.silver }, (_, i) => (
+                <span key={`s${i}`} className="text-base leading-none">🥈</span>
+              ))}
+              {Array.from({ length: item.bronze }, (_, i) => (
+                <span key={`b${i}`} className="text-base leading-none">🥉</span>
+              ))}
+              {Array.from({ length: item.videoCount }, (_, i) => (
                 <span
-                  className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold text-white shadow-sm"
+                  key={`v${i}`}
+                  className="inline-flex h-[22px] w-[22px] items-center justify-center rounded-full shadow-sm"
                   style={{ background: "linear-gradient(145deg, #f5d020, #f5ab20, #c89b3c)" }}
-                  title={`Vídeo Destaque × ${item.videoCount}`}
+                  title="Vídeo Destaque"
                 >
-                  <Video className="h-2.5 w-2.5" />
-                  {item.videoCount > 1 && <span>×{item.videoCount}</span>}
+                  <Video className="h-2.5 w-2.5 text-white" />
                 </span>
-              )}
-              {item.squadCount > 0 && (
+              ))}
+              {Array.from({ length: item.squadCount }, (_, i) => (
                 <span
-                  className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold text-white shadow-sm"
+                  key={`sq${i}`}
+                  className="inline-flex h-[22px] w-[22px] items-center justify-center rounded-full shadow-sm"
                   style={{ background: "linear-gradient(145deg, #f5d020, #f5ab20, #c89b3c)" }}
-                  title={`Squad Destaque × ${item.squadCount}`}
+                  title="Squad Destaque"
                 >
-                  <Star className="h-2.5 w-2.5 fill-white" />
-                  {item.squadCount > 1 && <span>×{item.squadCount}</span>}
+                  <Star className="h-2.5 w-2.5 text-white fill-white" />
                 </span>
-              )}
+              ))}
             </div>
           </div>
         );
