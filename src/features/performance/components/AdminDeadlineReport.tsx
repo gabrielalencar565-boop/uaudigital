@@ -33,6 +33,14 @@ type OverrideRow = {
   reason: string | null;
 };
 
+type ScoringConfigRow = {
+  stage: string;
+  base_points: number;
+  late_penalty: number;
+  uses_quantity: boolean;
+  extra_demand_multiplier: number;
+};
+
 function yyyymm(year: number, month: number) {
   return `${year}-${String(month).padStart(2, "0")}`;
 }
@@ -48,22 +56,22 @@ function isOnTime(task: TaskForReport) {
   return completedSP <= task.due_date;
 }
 
-function calcPoints(task: TaskForReport): number {
+function calcPoints(task: TaskForReport, configMap: Map<string, ScoringConfigRow>): number {
   const onTime = isOnTime(task);
   if (onTime === null) return 0;
-  if (!onTime) return -1; // Fixed penalty for late
+  const cfg = configMap.get(task.stage);
+  if (!onTime) return cfg?.late_penalty ?? -1;
 
   // On-time scoring
   if (task.point_value != null) return task.point_value;
-  switch (task.stage) {
-    case "planejamento": return 4;
-    case "pdf": return 2;
-    case "captacao": return 1.5;
-    case "edicao_videos":
-    case "design":
-      return (task.quantity ?? 1) * (task.is_extra_demand ? 1.5 : 1);
-    default: return 1;
+  if (!cfg) return 1;
+
+  let pts = cfg.base_points;
+  if (cfg.uses_quantity) {
+    pts *= (task.quantity ?? 1);
+    if (task.is_extra_demand) pts *= cfg.extra_demand_multiplier;
   }
+  return pts;
 }
 
 export function AdminDeadlineReport({
@@ -144,6 +152,22 @@ export function AdminDeadlineReport({
     },
   });
 
+  const scoringConfigQ = useQuery({
+    queryKey: ["scoring_config"],
+    queryFn: async (): Promise<ScoringConfigRow[]> => {
+      const { data, error } = await supabase
+        .from("scoring_config")
+        .select("stage, base_points, late_penalty, uses_quantity, extra_demand_multiplier");
+      if (error) throw error;
+      return (data ?? []) as ScoringConfigRow[];
+    },
+  });
+
+  const scoringConfigMap = useMemo(
+    () => new Map((scoringConfigQ.data ?? []).map((c) => [c.stage, c])),
+    [scoringConfigQ.data],
+  );
+
   const overrideByTaskId = useMemo(
     () => new Map((overridesQ.data ?? []).map((o) => [o.task_id, o])),
     [overridesQ.data],
@@ -166,7 +190,7 @@ export function AdminDeadlineReport({
 
       const userIds = getTaskUserIds(t);
       const override = overrideByTaskId.get(t.id);
-      const pts = override ? override.override_points : calcPoints(t);
+      const pts = override ? override.override_points : calcPoints(t, scoringConfigMap);
       const onTime = isOnTime(t);
 
       for (const uid of userIds) {
@@ -179,7 +203,7 @@ export function AdminDeadlineReport({
     }
 
     return Array.from(byUser.values()).sort((a, b) => b.total - a.total);
-  }, [team, tasksQ.data, overrideByTaskId, assigneesByTask]);
+  }, [team, tasksQ.data, overrideByTaskId, assigneesByTask, scoringConfigMap]);
 
   const userTasks = useMemo(() => {
     return (tasksQ.data ?? []).filter((t) => {
@@ -327,7 +351,7 @@ export function AdminDeadlineReport({
                 </TableHeader>
                 <TableBody>
                   {userTasks.map((t) => {
-                    const auto = calcPoints(t);
+                    const auto = calcPoints(t, scoringConfigMap);
                     const override = overrideByTaskId.get(t.id);
                     const current = override ? String(override.override_points) : "auto";
 
