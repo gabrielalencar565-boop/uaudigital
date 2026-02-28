@@ -38,8 +38,8 @@ export const STAGE_COLOR: Record<StageKey, "primary" | "brand" | "secondary" | "
 };
 
 export function levelFromScore(total: number) {
-  if (total <= 3) return { label: "Alerta", tone: "danger" as const, emoji: "🚨" };
-  if (total <= 6) return { label: "Regular", tone: "warning" as const, emoji: "⚠️" };
+  if (total <= 5) return { label: "Alerta", tone: "danger" as const, emoji: "🚨" };
+  if (total <= 12) return { label: "Regular", tone: "warning" as const, emoji: "⚠️" };
   return { label: "Alto Desempenho", tone: "success" as const, emoji: "🔥" };
 }
 

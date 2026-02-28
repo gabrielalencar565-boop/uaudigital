@@ -766,8 +766,10 @@ export type Database = {
           metas_prazos: number
           month: number
           padrao_qualidade_uau: number
+          squad_destaque: number
           updated_at: string
           user_id: string
+          video_destaque: number
           year: number
         }
         Insert: {
@@ -780,8 +782,10 @@ export type Database = {
           metas_prazos?: number
           month: number
           padrao_qualidade_uau?: number
+          squad_destaque?: number
           updated_at?: string
           user_id: string
+          video_destaque?: number
           year: number
         }
         Update: {
@@ -794,8 +798,10 @@ export type Database = {
           metas_prazos?: number
           month?: number
           padrao_qualidade_uau?: number
+          squad_destaque?: number
           updated_at?: string
           user_id?: string
+          video_destaque?: number
           year?: number
         }
         Relationships: []

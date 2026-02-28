@@ -13,13 +13,15 @@ type ScoreRow = {
   metas_prazos: number;
   ambiente_organizado: number;
   comprometimento: number;
+  video_destaque: number;
+  squad_destaque: number;
 };
 
 function totalPoints(s: Pick<
   ScoreRow,
-  "aprendizado_continuo" | "padrao_qualidade_uau" | "metas_prazos" | "ambiente_organizado" | "comprometimento"
+  "aprendizado_continuo" | "padrao_qualidade_uau" | "metas_prazos" | "ambiente_organizado" | "comprometimento" | "video_destaque" | "squad_destaque"
 >) {
-  return s.aprendizado_continuo + s.padrao_qualidade_uau + s.metas_prazos + s.ambiente_organizado + s.comprometimento;
+  return s.aprendizado_continuo + s.padrao_qualidade_uau + s.metas_prazos + s.ambiente_organizado + s.comprometimento + s.video_destaque + s.squad_destaque;
 }
 
 function medalForRank(rank: number) {

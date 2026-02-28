@@ -13,13 +13,15 @@ type ScoreRow = {
   metas_prazos: number;
   ambiente_organizado: number;
   comprometimento: number;
+  video_destaque: number;
+  squad_destaque: number;
 };
 
 function totalPoints(s: Pick<
   ScoreRow,
-  "aprendizado_continuo" | "padrao_qualidade_uau" | "metas_prazos" | "ambiente_organizado" | "comprometimento"
+  "aprendizado_continuo" | "padrao_qualidade_uau" | "metas_prazos" | "ambiente_organizado" | "comprometimento" | "video_destaque" | "squad_destaque"
 >) {
-  return s.aprendizado_continuo + s.padrao_qualidade_uau + s.metas_prazos + s.ambiente_organizado + s.comprometimento;
+  return s.aprendizado_continuo + s.padrao_qualidade_uau + s.metas_prazos + s.ambiente_organizado + s.comprometimento + s.video_destaque + s.squad_destaque;
 }
 
 function medalForRank(rank: number) {
@@ -40,7 +42,7 @@ export function useMyMonthlyPerformanceRank(params: { userId?: string; year: num
       const { data, error } = await supabase
         .from("performance_scores")
         .select(
-          "user_id, year, month, aprendizado_continuo, padrao_qualidade_uau, metas_prazos, ambiente_organizado, comprometimento",
+          "user_id, year, month, aprendizado_continuo, padrao_qualidade_uau, metas_prazos, ambiente_organizado, comprometimento, video_destaque, squad_destaque",
         )
         .eq("year", year)
         .eq("month", month)
@@ -71,6 +73,8 @@ export function useMyMonthlyPerformanceRank(params: { userId?: string; year: num
           metas_prazos: s?.metas_prazos ?? 0,
           ambiente_organizado: s?.ambiente_organizado ?? 0,
           comprometimento: s?.comprometimento ?? 0,
+          video_destaque: s?.video_destaque ?? 0,
+          squad_destaque: s?.squad_destaque ?? 0,
         };
         return { ...row, total: totalPoints(row) };
       })
