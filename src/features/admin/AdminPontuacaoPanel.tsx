@@ -75,8 +75,10 @@ export function AdminPontuacaoPanel() {
   }
 
   // Order stages nicely
-  const stageOrder = ["planejamento", "captacao", "edicao_videos", "design", "pdf", "revisao", "entrega", "alteracoes", "agendamento"];
-  const sorted = [...rows].sort((a, b) => stageOrder.indexOf(a.stage) - stageOrder.indexOf(b.stage));
+  const magicStages = ["planejamento", "captacao", "edicao_videos", "design", "pdf", "alteracoes", "agendamento"];
+  const sorted = [...rows]
+    .filter((r) => magicStages.includes(r.stage))
+    .sort((a, b) => magicStages.indexOf(a.stage) - magicStages.indexOf(b.stage));
 
   return (
     <div className="space-y-6">
