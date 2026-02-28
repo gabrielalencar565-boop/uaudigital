@@ -55,7 +55,6 @@ export function AnnualShowcasePanel({
   teamById: Map<string, TeamMember>;
 }) {
   const showcase = useMemo(() => {
-    // Compute totals + bonus counts per user
     const map = new Map<string, { total: number; videoCount: number; squadCount: number }>();
 
     for (const s of scores) {
@@ -66,10 +65,34 @@ export function AnnualShowcasePanel({
       map.set(s.user_id, prev);
     }
 
+    // Compute monthly rankings to count position medals per user
+    const months = new Set(scores.map((s) => s.month));
+    const positionCounts = new Map<string, { gold: number; silver: number; bronze: number }>();
+
+    for (const m of months) {
+      const monthScores = scores.filter((s) => s.month === m);
+      const ranked = team
+        .map((t) => {
+          const s = monthScores.find((sc) => sc.user_id === t.user_id);
+          return { user_id: t.user_id, pts: s ? totalPoints(s) : 0 };
+        })
+        .sort((a, b) => b.pts - a.pts);
+
+      ranked.forEach((r, idx) => {
+        if (r.pts === 0) return;
+        const prev = positionCounts.get(r.user_id) ?? { gold: 0, silver: 0, bronze: 0 };
+        if (idx === 0) prev.gold += 1;
+        else if (idx === 1) prev.silver += 1;
+        else if (idx === 2) prev.bronze += 1;
+        positionCounts.set(r.user_id, prev);
+      });
+    }
+
     return team
       .map((m) => {
         const v = map.get(m.user_id) ?? { total: 0, videoCount: 0, squadCount: 0 };
-        return { user_id: m.user_id, ...v };
+        const pos = positionCounts.get(m.user_id) ?? { gold: 0, silver: 0, bronze: 0 };
+        return { user_id: m.user_id, ...v, ...pos };
       })
       .sort((a, b) => b.total - a.total);
   }, [scores, team]);
@@ -127,12 +150,20 @@ export function AnnualShowcasePanel({
 
             {/* Badges row */}
             <div className="flex items-center gap-1.5 flex-wrap justify-center">
-              {/* Position badge */}
-              {medal ? (
-                <span className="text-lg leading-none">{medal}</span>
-              ) : (
-                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1 text-[10px] font-bold tabular-nums text-muted-foreground">
-                  {rank}º
+              {/* Position medals accumulated */}
+              {item.gold > 0 && (
+                <span className="inline-flex items-center gap-0.5 text-base leading-none" title={`1º lugar × ${item.gold}`}>
+                  🥇{item.gold > 1 && <span className="text-[10px] font-bold">×{item.gold}</span>}
+                </span>
+              )}
+              {item.silver > 0 && (
+                <span className="inline-flex items-center gap-0.5 text-base leading-none" title={`2º lugar × ${item.silver}`}>
+                  🥈{item.silver > 1 && <span className="text-[10px] font-bold">×{item.silver}</span>}
+                </span>
+              )}
+              {item.bronze > 0 && (
+                <span className="inline-flex items-center gap-0.5 text-base leading-none" title={`3º lugar × ${item.bronze}`}>
+                  🥉{item.bronze > 1 && <span className="text-[10px] font-bold">×{item.bronze}</span>}
                 </span>
               )}
               {item.videoCount > 0 && (
