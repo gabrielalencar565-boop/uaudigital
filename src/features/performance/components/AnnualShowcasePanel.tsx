@@ -125,31 +125,37 @@ export function AnnualShowcasePanel({
               <span className="text-[10px] text-muted-foreground">pts</span>
             </div>
 
-            {/* Bonus badges row */}
-            {(item.videoCount > 0 || item.squadCount > 0) && (
-              <div className="flex items-center gap-1.5 flex-wrap justify-center">
-                {item.videoCount > 0 && (
-                  <span
-                    className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold text-white shadow-sm"
-                    style={{ background: "linear-gradient(145deg, #f5d020, #f5ab20, #c89b3c)" }}
-                    title={`Vídeo Destaque × ${item.videoCount}`}
-                  >
-                    <Video className="h-2.5 w-2.5" />
-                    {item.videoCount > 1 && <span>×{item.videoCount}</span>}
-                  </span>
-                )}
-                {item.squadCount > 0 && (
-                  <span
-                    className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold text-white shadow-sm"
-                    style={{ background: "linear-gradient(145deg, #f5d020, #f5ab20, #c89b3c)" }}
-                    title={`Squad Destaque × ${item.squadCount}`}
-                  >
-                    <Star className="h-2.5 w-2.5 fill-white" />
-                    {item.squadCount > 1 && <span>×{item.squadCount}</span>}
-                  </span>
-                )}
-              </div>
-            )}
+            {/* Badges row */}
+            <div className="flex items-center gap-1.5 flex-wrap justify-center">
+              {/* Position badge */}
+              {medal ? (
+                <span className="text-lg leading-none">{medal}</span>
+              ) : (
+                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1 text-[10px] font-bold tabular-nums text-muted-foreground">
+                  {rank}º
+                </span>
+              )}
+              {item.videoCount > 0 && (
+                <span
+                  className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold text-white shadow-sm"
+                  style={{ background: "linear-gradient(145deg, #f5d020, #f5ab20, #c89b3c)" }}
+                  title={`Vídeo Destaque × ${item.videoCount}`}
+                >
+                  <Video className="h-2.5 w-2.5" />
+                  {item.videoCount > 1 && <span>×{item.videoCount}</span>}
+                </span>
+              )}
+              {item.squadCount > 0 && (
+                <span
+                  className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold text-white shadow-sm"
+                  style={{ background: "linear-gradient(145deg, #f5d020, #f5ab20, #c89b3c)" }}
+                  title={`Squad Destaque × ${item.squadCount}`}
+                >
+                  <Star className="h-2.5 w-2.5 fill-white" />
+                  {item.squadCount > 1 && <span>×{item.squadCount}</span>}
+                </span>
+              )}
+            </div>
           </div>
         );
       })}
