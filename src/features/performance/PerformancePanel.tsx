@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
- import { Trophy, Edit, RefreshCw, Video, Target } from "lucide-react";
+ import { Trophy, Edit, RefreshCw, Video, Star } from "lucide-react";
  
  import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
  import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -346,13 +346,21 @@ const TOTAL_POINTS = 27;
                               </Avatar>
                               <span className="font-medium">{member?.display_name ?? row.user_id}</span>
                               {row.video_destaque > 0 && (
-                                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-400/20 border border-amber-400/40" title="Vídeo Destaque do Mês">
-                                  <Video className="h-3.5 w-3.5 text-amber-500" />
+                                <span
+                                  className="inline-flex h-7 w-7 items-center justify-center rounded-full shadow-sm"
+                                  style={{ background: "linear-gradient(145deg, #f5d020, #f5ab20, #c89b3c)" }}
+                                  title="Vídeo Destaque do Mês"
+                                >
+                                  <Video className="h-3.5 w-3.5 text-white drop-shadow-sm" />
                                 </span>
                               )}
                               {row.squad_destaque > 0 && (
-                                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-400/20 border border-amber-400/40" title="Squad Destaque">
-                                  <Target className="h-3.5 w-3.5 text-amber-500" />
+                                <span
+                                  className="inline-flex h-7 w-7 items-center justify-center rounded-full shadow-sm"
+                                  style={{ background: "linear-gradient(145deg, #f5d020, #f5ab20, #c89b3c)" }}
+                                  title="Squad Destaque"
+                                >
+                                  <Star className="h-3.5 w-3.5 text-white fill-white drop-shadow-sm" />
                                 </span>
                               )}
                             </div>
@@ -566,10 +574,13 @@ const TOTAL_POINTS = 27;
               <div className="space-y-3 pt-2 border-t border-border/40">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Bônus do Mês</p>
                 <label className="flex cursor-pointer items-center justify-between gap-4 rounded-lg border border-border/60 p-3 hover:bg-muted/10 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-amber-400/20 border border-amber-400/40">
-                      <Video className="h-4 w-4 text-amber-500" />
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <span
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-full shadow-sm"
+                        style={{ background: "linear-gradient(145deg, #f5d020, #f5ab20, #c89b3c)" }}
+                      >
+                        <Video className="h-4 w-4 text-white drop-shadow-sm" />
+                      </span>
                     <div>
                       <span className="font-medium">Vídeo Destaque do Mês</span>
                       <p className="text-xs text-muted-foreground">+3 pontos</p>
@@ -585,10 +596,13 @@ const TOTAL_POINTS = 27;
                   />
                 </label>
                 <label className="flex cursor-pointer items-center justify-between gap-4 rounded-lg border border-border/60 p-3 hover:bg-muted/10 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-amber-400/20 border border-amber-400/40">
-                      <Target className="h-4 w-4 text-amber-500" />
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <span
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-full shadow-sm"
+                        style={{ background: "linear-gradient(145deg, #f5d020, #f5ab20, #c89b3c)" }}
+                      >
+                        <Star className="h-4 w-4 text-white fill-white drop-shadow-sm" />
+                      </span>
                     <div>
                       <span className="font-medium">Squad Destaque</span>
                       <p className="text-xs text-muted-foreground">+7 pontos</p>
