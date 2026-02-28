@@ -65,9 +65,10 @@ export function AnnualShowcasePanel({
       map.set(s.user_id, prev);
     }
 
-    // Compute monthly rankings to count position medals per user
+    // Compute monthly rankings to count positions per user
     const months = new Set(scores.map((s) => s.month));
-    const positionCounts = new Map<string, { gold: number; silver: number; bronze: number }>();
+    // positions: Map<user_id, number[]> — array of positions achieved
+    const positionsList = new Map<string, number[]>();
 
     for (const m of months) {
       const monthScores = scores.filter((s) => s.month === m);
@@ -80,19 +81,17 @@ export function AnnualShowcasePanel({
 
       ranked.forEach((r, idx) => {
         if (r.pts === 0) return;
-        const prev = positionCounts.get(r.user_id) ?? { gold: 0, silver: 0, bronze: 0 };
-        if (idx === 0) prev.gold += 1;
-        else if (idx === 1) prev.silver += 1;
-        else if (idx === 2) prev.bronze += 1;
-        positionCounts.set(r.user_id, prev);
+        const prev = positionsList.get(r.user_id) ?? [];
+        prev.push(idx + 1);
+        positionsList.set(r.user_id, prev);
       });
     }
 
     return team
       .map((m) => {
         const v = map.get(m.user_id) ?? { total: 0, videoCount: 0, squadCount: 0 };
-        const pos = positionCounts.get(m.user_id) ?? { gold: 0, silver: 0, bronze: 0 };
-        return { user_id: m.user_id, ...v, ...pos };
+        const positions = positionsList.get(m.user_id) ?? [];
+        return { user_id: m.user_id, ...v, positions };
       })
       .sort((a, b) => b.total - a.total);
   }, [scores, team]);
@@ -150,15 +149,17 @@ export function AnnualShowcasePanel({
 
             {/* Badges row */}
             <div className="flex items-center gap-0.5 flex-wrap justify-center">
-              {Array.from({ length: item.gold }, (_, i) => (
-                <span key={`g${i}`} className="text-base leading-none">🥇</span>
-              ))}
-              {Array.from({ length: item.silver }, (_, i) => (
-                <span key={`s${i}`} className="text-base leading-none">🥈</span>
-              ))}
-              {Array.from({ length: item.bronze }, (_, i) => (
-                <span key={`b${i}`} className="text-base leading-none">🥉</span>
-              ))}
+              {item.positions
+                .sort((a, b) => a - b)
+                .map((pos, i) => {
+                  const emoji = pos === 1 ? "🥇" : pos === 2 ? "🥈" : pos === 3 ? "🥉" : null;
+                  if (emoji) return <span key={`p${i}`} className="text-base leading-none">{emoji}</span>;
+                  return (
+                    <span key={`p${i}`} className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1 text-[10px] font-bold tabular-nums text-muted-foreground">
+                      {pos}º
+                    </span>
+                  );
+                })}
               {Array.from({ length: item.videoCount }, (_, i) => (
                 <span
                   key={`v${i}`}
