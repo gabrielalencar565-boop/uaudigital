@@ -27,16 +27,18 @@ import { useNow } from "@/hooks/use-now";
    return name.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join("");
  }
  
- type ScoreRow = {
-   user_id: string;
-   year: number;
-   month: number;
-   aprendizado_continuo: number;
-   padrao_qualidade_uau: number;
-   metas_prazos: number;
-   ambiente_organizado: number;
-   comprometimento: number;
- };
+type ScoreRow = {
+  user_id: string;
+  year: number;
+  month: number;
+  aprendizado_continuo: number;
+  padrao_qualidade_uau: number;
+  metas_prazos: number;
+  ambiente_organizado: number;
+  comprometimento: number;
+  video_destaque: number;
+  squad_destaque: number;
+};
  
 const CRITERIA = [
   { key: "metas_prazos" as const, label: "Metas/Prazos", max: 3, desc: "Entregas no prazo vs atrasos" },
@@ -44,9 +46,11 @@ const CRITERIA = [
   { key: "comprometimento" as const, label: "Responsabilidade", max: 4, desc: "Comprometimento, postura profissional e confiabilidade" },
   { key: "ambiente_organizado" as const, label: "Organização", max: 3, desc: "Organização das tarefas, arquivos e do espaço de trabalho" },
   { key: "aprendizado_continuo" as const, label: "Aprendizado", max: 3, desc: "Evolução, busca ativa por novos conhecimentos e habilidades" },
+  { key: "video_destaque" as const, label: "Vídeo Destaque", max: 3, desc: "Vídeo destaque do mês" },
+  { key: "squad_destaque" as const, label: "Squad Destaque", max: 7, desc: "Squad que mais obteve resultado" },
 ];
 
-const TOTAL_POINTS = 17;
+const TOTAL_POINTS = 27;
  const MONTHS = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
  
  export function PerformancePanel() {
@@ -135,13 +139,17 @@ const TOTAL_POINTS = 17;
         metas_prazos: s?.metas_prazos ?? 0,
         ambiente_organizado: s?.ambiente_organizado ?? 0,
         comprometimento: s?.comprometimento ?? 0,
+        video_destaque: s?.video_destaque ?? 0,
+        squad_destaque: s?.squad_destaque ?? 0,
       };
       const total =
         row.aprendizado_continuo +
         row.padrao_qualidade_uau +
         row.metas_prazos +
         row.ambiente_organizado +
-        row.comprometimento;
+        row.comprometimento +
+        row.video_destaque +
+        row.squad_destaque;
       return { ...row, total };
     });
 
@@ -158,7 +166,7 @@ const TOTAL_POINTS = 17;
       const totalsByUser = new Map<string, { totalYear: number; highMonths: number; monthCount: number }>();
 
       for (const s of scores) {
-        const pts = s.aprendizado_continuo + s.padrao_qualidade_uau + s.metas_prazos + s.ambiente_organizado + s.comprometimento;
+        const pts = s.aprendizado_continuo + s.padrao_qualidade_uau + s.metas_prazos + s.ambiente_organizado + s.comprometimento + (s.video_destaque ?? 0) + (s.squad_destaque ?? 0);
         const prev = totalsByUser.get(s.user_id) ?? { totalYear: 0, highMonths: 0, monthCount: 0 };
         prev.totalYear += pts;
         prev.monthCount += 1;
@@ -187,11 +195,13 @@ const TOTAL_POINTS = 17;
        user_id: userId,
        year,
        month,
-       aprendizado_continuo: existing?.aprendizado_continuo ?? 0,
-       padrao_qualidade_uau: existing?.padrao_qualidade_uau ?? 0,
-       metas_prazos: existing?.metas_prazos ?? 0,
-       ambiente_organizado: existing?.ambiente_organizado ?? 0,
-       comprometimento: existing?.comprometimento ?? 0,
+      aprendizado_continuo: existing?.aprendizado_continuo ?? 0,
+      padrao_qualidade_uau: existing?.padrao_qualidade_uau ?? 0,
+      metas_prazos: existing?.metas_prazos ?? 0,
+      ambiente_organizado: existing?.ambiente_organizado ?? 0,
+      comprometimento: existing?.comprometimento ?? 0,
+      video_destaque: existing?.video_destaque ?? 0,
+      squad_destaque: existing?.squad_destaque ?? 0,
      });
      setEditUserId(userId);
    };
@@ -513,7 +523,7 @@ const TOTAL_POINTS = 17;
              </DialogDescription>
            </DialogHeader>
            <div className="space-y-4 py-4">
-             {CRITERIA.filter((c) => c.key !== "metas_prazos").map((c) => (
+            {CRITERIA.filter((c) => c.key !== "metas_prazos").map((c) => (
                <div key={c.key} className="flex items-center justify-between gap-4">
                  <div className="min-w-0 flex-1">
                    <Label className="font-medium">{c.label}</Label>
