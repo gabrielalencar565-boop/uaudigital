@@ -421,14 +421,16 @@ const TOTAL_POINTS = 27;
                 </CardContent>
               </Card>
             </div>
-         </TabsContent>
- 
-          <TabsContent value="anual" className="mt-6 space-y-6">
+
+            {/* Painel Anual Acumulado */}
             <AnnualShowcasePanel
               scores={annualQ.data ?? []}
               team={teamQ.data ?? []}
               teamById={teamById}
             />
+         </TabsContent>
+ 
+          <TabsContent value="anual" className="mt-6">
             <Card>
              <CardHeader>
                <CardTitle className="flex items-center gap-2">
