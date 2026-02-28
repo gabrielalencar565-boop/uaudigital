@@ -99,7 +99,12 @@ export function AnnualShowcasePanel({
   if (showcase.length === 0) return null;
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+    <div className="space-y-3">
+      <div>
+        <h3 className="text-lg font-semibold tracking-tight">Painel Anual</h3>
+        <p className="text-sm text-muted-foreground">Acumulado de pontos e conquistas do ano</p>
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
       {showcase.map((item, idx) => {
         const member = teamById.get(item.user_id);
         const rank = idx + 1;
@@ -184,6 +189,7 @@ export function AnnualShowcasePanel({
           </div>
         );
       })}
+      </div>
     </div>
   );
 }
