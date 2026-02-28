@@ -59,6 +59,8 @@ export type TaskRow = {
   deleted_at: string | null;
   deleted_by: string | null;
   is_extra_demand: boolean;
+  quantity: number;
+  point_value: number | null;
 };
 
 export type ProfileRow = {
@@ -250,7 +252,7 @@ export function useTasks(params?: {
     queryFn: async (): Promise<TaskRow[]> => {
       let q = supabase
         .from("tasks")
-        .select("id, client_id, stage, assigned_user_id, due_date, due_at, status, title, description, created_by, completed_at, deleted_at, deleted_by, is_extra_demand")
+        .select("id, client_id, stage, assigned_user_id, due_date, due_at, status, title, description, created_by, completed_at, deleted_at, deleted_by, is_extra_demand, quantity, point_value")
         .is("deleted_at", null); // Filtra apenas tarefas ativas
       if (assignedUserId) q = q.eq("assigned_user_id", assignedUserId);
       if (clientId) q = q.eq("client_id", clientId);
@@ -275,7 +277,7 @@ export function useTasks(params?: {
       }
       const { data, error } = await q.order("due_date", { ascending: true });
       if (error) throw error;
-      return (data ?? []) as TaskRow[];
+      return (data ?? []) as unknown as TaskRow[];
     },
   });
 }
@@ -424,6 +426,8 @@ export function useCreateTask() {
         description: input.description ?? null,
         created_by: input.created_by,
         is_extra_demand: input.is_extra_demand ?? false,
+        quantity: input.quantity ?? 1,
+        point_value: input.point_value ?? null,
       }).select("id").single();
       if (error) throw error;
       return { id: data.id };
@@ -475,11 +479,11 @@ export function useDeletedTasks() {
     queryFn: async (): Promise<DeletedTaskRow[]> => {
       const { data, error } = await supabase
         .from("tasks")
-        .select("id, client_id, stage, assigned_user_id, due_date, due_at, status, title, description, created_by, completed_at, deleted_at, deleted_by, is_extra_demand")
+        .select("id, client_id, stage, assigned_user_id, due_date, due_at, status, title, description, created_by, completed_at, deleted_at, deleted_by, is_extra_demand, quantity, point_value")
         .not("deleted_at", "is", null)
         .order("deleted_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as DeletedTaskRow[];
+      return (data ?? []) as unknown as DeletedTaskRow[];
     },
   });
 }

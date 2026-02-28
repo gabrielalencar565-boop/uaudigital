@@ -75,6 +75,8 @@ const createTaskSchema = z.object({
   is_extra_demand: z.boolean().optional(),
   is_freelancer: z.boolean().optional(),
   freelancer_name: z.string().trim().max(120).optional(),
+  quantity: z.coerce.number().int().min(1).default(1),
+  point_value: z.coerce.number().min(0).optional().or(z.literal("")).transform(v => v === "" ? undefined : v),
 });
 type CreateTaskValues = z.infer<typeof createTaskSchema>;
 const AGENDA_STAGES = STAGES.filter(s => s.key !== "revisao" && s.key !== "entrega");
@@ -238,6 +240,8 @@ export function AgendaPanel() {
       is_extra_demand: false,
       is_freelancer: false,
       freelancer_name: "",
+      quantity: 1,
+      point_value: undefined,
     }
   });
   const days = useMemo(() => {
@@ -343,7 +347,9 @@ export function AgendaPanel() {
         title: freelancerTitle,
         description: v.description ?? null,
         created_by: user.id,
-        is_extra_demand: v.is_extra_demand ?? false
+        is_extra_demand: v.is_extra_demand ?? false,
+        quantity: v.quantity ?? 1,
+        point_value: v.point_value ?? null,
       } as any);
       
       // Adiciona todos os membros na tabela task_assignees
@@ -529,6 +535,11 @@ export function AgendaPanel() {
                     </SelectContent>
                   </Select>
                   {form.formState.errors.stage && <p className="text-sm text-danger">Selecione uma etapa</p>}
+                  {!form.watch("is_extra_demand") && (() => {
+                    const s = form.watch("stage");
+                    const pts = s === "planejamento" ? "4 pts" : s === "pdf" ? "2 pts" : s === "captacao" ? "1.5 pts" : s === "revisao" || s === "entrega" ? "1 pt" : null;
+                    return pts ? <p className="text-xs text-muted-foreground">Pontuação fixa: {pts}</p> : null;
+                  })()}
                 </div>
               </div>
 
@@ -562,6 +573,22 @@ export function AgendaPanel() {
                 />
               </div>
 
+              {/* Quantidade - visível para Vídeo e Design */}
+              {(form.watch("stage") === "edicao_videos" || form.watch("stage") === "design") && (
+                <div className="space-y-2">
+                  <Label>Quantidade</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    {...form.register("quantity", { valueAsNumber: true })}
+                    placeholder="Ex.: 6"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Pontuação: {form.watch("is_extra_demand") ? `${form.watch("quantity") || 1} × 1.5 = ${((form.watch("quantity") || 1) * 1.5).toFixed(1)} pts` : `${form.watch("quantity") || 1} × 1 = ${form.watch("quantity") || 1} pts`}
+                  </p>
+                </div>
+              )}
+
               <div className="flex items-center gap-3 rounded-lg border border-border/60 bg-muted/30 p-3">
                 <Checkbox
                   id="is_extra_demand"
@@ -577,6 +604,25 @@ export function AgendaPanel() {
                   </p>
                 </div>
               </div>
+
+              {/* Pontos manuais - visível para demandas extras em etapas de social */}
+              {form.watch("is_extra_demand") && !["edicao_videos", "design"].includes(form.watch("stage")) && (
+                <div className="space-y-2">
+                  <Label>Pontos (Ajuste Estratégico)</Label>
+                  <Select
+                    value={String(form.watch("point_value") ?? "")}
+                    onValueChange={(v) => form.setValue("point_value", Number(v) as any)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover z-50">
+                      <SelectItem value="1">1 ponto</SelectItem>
+                      <SelectItem value="2">2 pontos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               {/* Cliente Freela - abaixo de Demanda Extra */}
               {freelancerClientId && (
