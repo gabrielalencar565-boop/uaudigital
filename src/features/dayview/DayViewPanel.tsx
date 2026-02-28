@@ -507,10 +507,12 @@ export function DayViewPanel() {
                           <AvatarImage src={person?.avatar_url ?? undefined} />
                           <AvatarFallback className="bg-destructive-foreground/20 text-destructive-foreground">{initials(person?.display_name ?? "?")}</AvatarFallback>
                         </Avatar>}
+                      <span className="text-sm font-semibold text-destructive-foreground shrink-0">
+                        {displayMembers.length > 1 ? displayMembers.map(m => m.display_name.split(" ")[0]).join(", ") : person?.display_name?.split(" ")[0]}
+                      </span>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold truncate text-destructive-foreground">
-                          {displayMembers.length > 1 ? displayMembers.map(m => m.display_name).join(", ") : person?.display_name}
-                          {" "}•{" "}({resolveClientName(t)}) • {stageLabel}
+                          ({resolveClientName(t)}) • {stageLabel}
                         </p>
                       </div>
                       <span className="text-sm font-bold text-destructive-foreground shrink-0">
@@ -563,10 +565,12 @@ export function DayViewPanel() {
                           <AvatarImage src={person?.avatar_url ?? undefined} />
                           <AvatarFallback>{initials(person?.display_name ?? "?")}</AvatarFallback>
                         </Avatar>}
+                      <span className="text-sm font-semibold shrink-0">
+                        {displayMembers.length > 1 ? displayMembers.map(m => m.display_name.split(" ")[0]).join(", ") : person?.display_name?.split(" ")[0]}
+                      </span>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold truncate">
-                          {displayMembers.length > 1 ? displayMembers.map(m => m.display_name).join(", ") : person?.display_name}
-                          {" "}•{" "}({resolveClientName(t)}) • {stageLabel}
+                          ({resolveClientName(t)}) • {stageLabel}
                         </p>
                       </div>
                       <Badge variant={t.status === "em_andamento" ? "warning" : "secondary"} className="text-xs shrink-0">
@@ -617,10 +621,12 @@ export function DayViewPanel() {
                           <AvatarImage src={person?.avatar_url ?? undefined} />
                           <AvatarFallback className="bg-success-foreground/20 text-success-foreground">{initials(person?.display_name ?? "?")}</AvatarFallback>
                         </Avatar>}
+                      <span className="text-sm font-semibold text-success-foreground shrink-0">
+                        {displayMembers.length > 1 ? displayMembers.map(m => m.display_name.split(" ")[0]).join(", ") : person?.display_name?.split(" ")[0]}
+                      </span>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold truncate text-success-foreground">
-                          {displayMembers.length > 1 ? displayMembers.map(m => m.display_name).join(", ") : person?.display_name}
-                          {" "}•{" "}({resolveClientName(t)}) • {stageLabel}
+                          ({resolveClientName(t)}) • {stageLabel}
                         </p>
                       </div>
                       <span className="text-sm font-bold text-success-foreground shrink-0">
