@@ -21,6 +21,9 @@ type TaskForReport = {
   assigned_user_id: string;
   client_id: string;
   stage: StageKey;
+  is_extra_demand: boolean;
+  quantity: number;
+  point_value: number | null;
   client?: { name: string } | null;
 };
 
@@ -39,20 +42,28 @@ function getLastDayOfMonth(year: number, month: number) {
   return new Date(year, month, 0).getDate();
 }
 
-const NON_SCORING_STAGES: StageKey[] = ["pdf", "alteracoes", "agendamento"];
-
 function isOnTime(task: TaskForReport) {
   if (task.status !== "concluido" || !task.completed_at) return null;
-  // Converte completed_at para horário de São Paulo e compara apenas a data
   const completedSP = new Date(task.completed_at).toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
   return completedSP <= task.due_date;
 }
 
-function basePoints(task: TaskForReport) {
-  if (NON_SCORING_STAGES.includes(task.stage as StageKey)) return 0;
+function calcPoints(task: TaskForReport): number {
   const onTime = isOnTime(task);
   if (onTime === null) return 0;
-  return onTime ? 1 : -1;
+  if (!onTime) return -1; // Fixed penalty for late
+
+  // On-time scoring
+  if (task.point_value != null) return task.point_value;
+  switch (task.stage) {
+    case "planejamento": return 4;
+    case "pdf": return 2;
+    case "captacao": return 1.5;
+    case "edicao_videos":
+    case "design":
+      return (task.quantity ?? 1) * (task.is_extra_demand ? 1.5 : 1);
+    default: return 1;
+  }
 }
 
 export function AdminDeadlineReport({
@@ -77,7 +88,7 @@ export function AdminDeadlineReport({
       const end = `${yyyymm(year, month)}-${String(lastDay).padStart(2, "0")}`;
       const { data, error } = await supabase
         .from("tasks")
-        .select("id,title,due_date,status,completed_at,assigned_user_id,client_id,stage,client:clients(name)")
+        .select("id,title,due_date,status,completed_at,assigned_user_id,client_id,stage,is_extra_demand,quantity,point_value,client:clients(name)")
         .is("deleted_at", null)
         .gte("due_date", start)
         .lte("due_date", end)
@@ -152,11 +163,10 @@ export function AdminDeadlineReport({
 
     for (const t of tasksQ.data ?? []) {
       if (t.status !== "concluido") continue;
-      if (NON_SCORING_STAGES.includes(t.stage as StageKey)) continue;
 
       const userIds = getTaskUserIds(t);
       const override = overrideByTaskId.get(t.id);
-      const pts = override ? override.override_points : basePoints(t);
+      const pts = override ? override.override_points : calcPoints(t);
       const onTime = isOnTime(t);
 
       for (const uid of userIds) {
@@ -317,7 +327,7 @@ export function AdminDeadlineReport({
                 </TableHeader>
                 <TableBody>
                   {userTasks.map((t) => {
-                    const auto = basePoints(t);
+                    const auto = calcPoints(t);
                     const override = overrideByTaskId.get(t.id);
                     const current = override ? String(override.override_points) : "auto";
 
