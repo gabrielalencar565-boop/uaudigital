@@ -41,7 +41,7 @@ export function useMyAnnualPerformanceRank(params: { userId?: string; year: numb
     queryFn: async (): Promise<{ scope: "all" | "self"; rows: ScoreRow[] }> => {
       // Tenta buscar geral (precisa permissão). Se falhar, faz fallback para apenas o próprio usuário.
       const baseSelect =
-        "user_id, year, month, aprendizado_continuo, padrao_qualidade_uau, metas_prazos, ambiente_organizado, comprometimento";
+        "user_id, year, month, aprendizado_continuo, padrao_qualidade_uau, metas_prazos, ambiente_organizado, comprometimento, video_destaque, squad_destaque";
 
       const all = await supabase.from("performance_scores").select(baseSelect).eq("year", year).order("month");
       if (!all.error) {
