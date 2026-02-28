@@ -91,6 +91,7 @@ export function AgendaPanel() {
   const [view, setView] = useState<"month" | "week">("month");
   const [filterClientId, setFilterClientId] = useState<string | "all">("all");
   const [filterUserId, setFilterUserId] = useState<string | "all">("all");
+  const [filterStage, setFilterStage] = useState<string | "all">("all");
   const [selectedWeekDayKey, setSelectedWeekDayKey] = useState<string | null>(null);
   const mk = monthKey(cursor);
   const freelancerClientQ = useFreelancerClient();
@@ -138,20 +139,24 @@ export function AgendaPanel() {
   });
   const inactiveQ = useMagic2InactiveAgendaClients(cursor.getFullYear(), cursor.getMonth() + 1);
   const tasks = useMemo(() => {
-    const list = tasksQ.data ?? [];
+    let list = tasksQ.data ?? [];
     const inactiveAgendaIds = inactiveQ.data?.inactiveAgendaIds;
     const inactiveNames = inactiveQ.data?.inactiveNames;
-    if ((!inactiveAgendaIds || inactiveAgendaIds.size === 0) && (!inactiveNames || inactiveNames.size === 0)) return list;
-    const clientNameById = new Map((clientsQ.data ?? []).map(c => [c.id, c.name] as const));
-
-    // Esconde tarefas de clientes removidos do Magic v2 no mês atual
-    return list.filter(t => {
-      if (inactiveAgendaIds?.has(t.client_id)) return false;
-      const name = clientNameById.get(t.client_id);
-      if (name && inactiveNames?.has(normalizeName(name))) return false;
-      return true;
-    });
-  }, [clientsQ.data, inactiveQ.data, normalizeName, tasksQ.data]);
+    if ((inactiveAgendaIds && inactiveAgendaIds.size > 0) || (inactiveNames && inactiveNames.size > 0)) {
+      const clientNameById = new Map((clientsQ.data ?? []).map(c => [c.id, c.name] as const));
+      list = list.filter(t => {
+        if (inactiveAgendaIds?.has(t.client_id)) return false;
+        const name = clientNameById.get(t.client_id);
+        if (name && inactiveNames?.has(normalizeName(name))) return false;
+        return true;
+      });
+    }
+    // Filtro por etapa
+    if (filterStage !== "all") {
+      list = list.filter(t => t.stage === filterStage);
+    }
+    return list;
+  }, [clientsQ.data, inactiveQ.data, normalizeName, tasksQ.data, filterStage]);
   const clients = useMemo(() => {
     const list = clientsQ.data ?? [];
     const inactiveAgendaIds = inactiveQ.data?.inactiveAgendaIds;
@@ -757,6 +762,18 @@ export function AgendaPanel() {
                     </SelectItem>)}
                 </SelectContent>
               </Select>
+
+              <Select value={filterStage} onValueChange={v => setFilterStage(v as any)}>
+                <SelectTrigger className="h-9 text-xs">
+                  <SelectValue placeholder="Etapa" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover z-50">
+                  <SelectItem value="all">Todas etapas</SelectItem>
+                  {AGENDA_STAGES.map(s => <SelectItem key={s.key} value={s.key}>
+                      {s.label}
+                    </SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
           </CardHeader>
 
@@ -928,6 +945,18 @@ export function AgendaPanel() {
                 <SelectItem value="all">Toda a equipe</SelectItem>
                 {team.filter(m => m.is_active).map(m => <SelectItem key={m.user_id} value={m.user_id}>
                     {m.display_name}
+                  </SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            <Select value={filterStage} onValueChange={v => setFilterStage(v as any)}>
+              <SelectTrigger className="w-[220px]">
+                <SelectValue placeholder="Etapa" />
+              </SelectTrigger>
+              <SelectContent className="bg-popover z-50">
+                <SelectItem value="all">Todas as etapas</SelectItem>
+                {AGENDA_STAGES.map(s => <SelectItem key={s.key} value={s.key}>
+                    {s.label}
                   </SelectItem>)}
               </SelectContent>
             </Select>
