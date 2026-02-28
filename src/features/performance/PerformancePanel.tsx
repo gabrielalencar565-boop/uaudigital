@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
- import { Trophy, Edit, RefreshCw } from "lucide-react";
+ import { Trophy, Edit, RefreshCw, Video, Target } from "lucide-react";
  
  import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
  import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -46,8 +46,6 @@ const CRITERIA = [
   { key: "comprometimento" as const, label: "Responsabilidade", max: 4, desc: "Comprometimento, postura profissional e confiabilidade" },
   { key: "ambiente_organizado" as const, label: "Organização", max: 3, desc: "Organização das tarefas, arquivos e do espaço de trabalho" },
   { key: "aprendizado_continuo" as const, label: "Aprendizado", max: 3, desc: "Evolução, busca ativa por novos conhecimentos e habilidades" },
-  { key: "video_destaque" as const, label: "Vídeo Destaque", max: 3, desc: "Vídeo destaque do mês" },
-  { key: "squad_destaque" as const, label: "Squad Destaque", max: 7, desc: "Squad que mais obteve resultado" },
 ];
 
 const TOTAL_POINTS = 27;
@@ -340,15 +338,25 @@ const TOTAL_POINTS = 27;
                          <TableCell className="font-medium">
                            {medal ? <span className="text-xl">{medal}</span> : <span>{idx + 1}</span>}
                          </TableCell>
-                         <TableCell>
-                           <div className="flex items-center gap-2">
-                             <Avatar className="h-8 w-8">
-                               <AvatarImage src={member?.avatar_url ?? undefined} />
-                               <AvatarFallback>{initials(member?.display_name ?? "?")}</AvatarFallback>
-                             </Avatar>
-                             <span className="font-medium">{member?.display_name ?? row.user_id}</span>
-                           </div>
-                         </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-8 w-8">
+                                <AvatarImage src={member?.avatar_url ?? undefined} />
+                                <AvatarFallback>{initials(member?.display_name ?? "?")}</AvatarFallback>
+                              </Avatar>
+                              <span className="font-medium">{member?.display_name ?? row.user_id}</span>
+                              {row.video_destaque > 0 && (
+                                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-400/20 border border-amber-400/40" title="Vídeo Destaque do Mês">
+                                  <Video className="h-3.5 w-3.5 text-amber-500" />
+                                </span>
+                              )}
+                              {row.squad_destaque > 0 && (
+                                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-400/20 border border-amber-400/40" title="Squad Destaque">
+                                  <Target className="h-3.5 w-3.5 text-amber-500" />
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
                          {CRITERIA.map((c) => (
                            <TableCell key={c.key} className="text-center">
                              <Badge variant="secondary" className="rounded-full tabular-nums">{row[c.key]}</Badge>
@@ -523,37 +531,80 @@ const TOTAL_POINTS = 27;
              </DialogDescription>
            </DialogHeader>
            <div className="space-y-4 py-4">
-            {CRITERIA.filter((c) => c.key !== "metas_prazos").map((c) => (
-               <div key={c.key} className="flex items-center justify-between gap-4">
-                 <div className="min-w-0 flex-1">
-                   <Label className="font-medium">{c.label}</Label>
-                   <p className="text-xs text-muted-foreground">{c.desc}</p>
-                 </div>
-                 <Input
-                   type="number"
-                   min={0}
-                   max={c.max}
-                   value={editValues[c.key] ?? 0}
-                   onChange={(e) =>
-                     setEditValues((v) => ({
-                       ...v,
-                       [c.key]: Math.min(c.max, Math.max(0, Number(e.target.value) || 0)),
-                     }))
-                   }
-                   className="w-20 text-center tabular-nums"
-                 />
-               </div>
-             ))}
-             <div className="flex items-center justify-between gap-4 rounded-lg border border-dashed border-border/60 p-3 bg-muted/20">
-               <div className="min-w-0 flex-1">
-                 <Label className="font-medium">Metas/Prazos</Label>
-                 <p className="text-xs text-muted-foreground">Calculado automaticamente</p>
-               </div>
-               <Badge variant="secondary" className="tabular-nums">
-                 {editValues.metas_prazos ?? 0}
-               </Badge>
-             </div>
-           </div>
+             {CRITERIA.filter((c) => c.key !== "metas_prazos").map((c) => (
+                <div key={c.key} className="flex items-center justify-between gap-4">
+                  <div className="min-w-0 flex-1">
+                    <Label className="font-medium">{c.label}</Label>
+                    <p className="text-xs text-muted-foreground">{c.desc}</p>
+                  </div>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={c.max}
+                    value={editValues[c.key] ?? 0}
+                    onChange={(e) =>
+                      setEditValues((v) => ({
+                        ...v,
+                        [c.key]: Math.min(c.max, Math.max(0, Number(e.target.value) || 0)),
+                      }))
+                    }
+                    className="w-20 text-center tabular-nums"
+                  />
+                </div>
+              ))}
+              <div className="flex items-center justify-between gap-4 rounded-lg border border-dashed border-border/60 p-3 bg-muted/20">
+                <div className="min-w-0 flex-1">
+                  <Label className="font-medium">Metas/Prazos</Label>
+                  <p className="text-xs text-muted-foreground">Calculado automaticamente</p>
+                </div>
+                <Badge variant="secondary" className="tabular-nums">
+                  {editValues.metas_prazos ?? 0}
+                </Badge>
+              </div>
+
+              {/* Bônus fixos — checkbox */}
+              <div className="space-y-3 pt-2 border-t border-border/40">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Bônus do Mês</p>
+                <label className="flex cursor-pointer items-center justify-between gap-4 rounded-lg border border-border/60 p-3 hover:bg-muted/10 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-amber-400/20 border border-amber-400/40">
+                      <Video className="h-4 w-4 text-amber-500" />
+                    </span>
+                    <div>
+                      <span className="font-medium">Vídeo Destaque do Mês</span>
+                      <p className="text-xs text-muted-foreground">+3 pontos</p>
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={(editValues.video_destaque ?? 0) > 0}
+                    onChange={(e) =>
+                      setEditValues((v) => ({ ...v, video_destaque: e.target.checked ? 3 : 0 }))
+                    }
+                    className="h-5 w-5 rounded border-border accent-amber-500"
+                  />
+                </label>
+                <label className="flex cursor-pointer items-center justify-between gap-4 rounded-lg border border-border/60 p-3 hover:bg-muted/10 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-amber-400/20 border border-amber-400/40">
+                      <Target className="h-4 w-4 text-amber-500" />
+                    </span>
+                    <div>
+                      <span className="font-medium">Squad Destaque</span>
+                      <p className="text-xs text-muted-foreground">+7 pontos</p>
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={(editValues.squad_destaque ?? 0) > 0}
+                    onChange={(e) =>
+                      setEditValues((v) => ({ ...v, squad_destaque: e.target.checked ? 7 : 0 }))
+                    }
+                    className="h-5 w-5 rounded border-border accent-amber-500"
+                  />
+                </label>
+              </div>
+            </div>
            <DialogFooter>
              <Button variant="outline" onClick={() => setEditUserId(null)}>
                Cancelar

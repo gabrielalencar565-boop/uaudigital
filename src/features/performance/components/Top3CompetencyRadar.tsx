@@ -22,8 +22,6 @@ export type RadarRow = {
   metas_prazos: number;
   ambiente_organizado: number;
   comprometimento: number;
-  video_destaque: number;
-  squad_destaque: number;
 };
 
 export function Top3CompetencyRadar({
@@ -76,18 +74,6 @@ export function Top3CompetencyRadar({
         u1: r0?.comprometimento ?? 0,
         u2: r1?.comprometimento ?? 0,
         u3: r2?.comprometimento ?? 0,
-      },
-      {
-        subject: "Vídeo Destaque",
-        u1: r0?.video_destaque ?? 0,
-        u2: r1?.video_destaque ?? 0,
-        u3: r2?.video_destaque ?? 0,
-      },
-      {
-        subject: "Squad Destaque",
-        u1: r0?.squad_destaque ?? 0,
-        u2: r1?.squad_destaque ?? 0,
-        u3: r2?.squad_destaque ?? 0,
       },
     ];
   }, [series]);
