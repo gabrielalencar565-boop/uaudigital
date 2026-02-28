@@ -836,6 +836,42 @@ export type Database = {
         }
         Relationships: []
       }
+      scoring_config: {
+        Row: {
+          base_points: number
+          extra_demand_multiplier: number
+          id: string
+          label: string
+          late_penalty: number
+          stage: string
+          updated_at: string
+          updated_by: string | null
+          uses_quantity: boolean
+        }
+        Insert: {
+          base_points?: number
+          extra_demand_multiplier?: number
+          id?: string
+          label: string
+          late_penalty?: number
+          stage: string
+          updated_at?: string
+          updated_by?: string | null
+          uses_quantity?: boolean
+        }
+        Update: {
+          base_points?: number
+          extra_demand_multiplier?: number
+          id?: string
+          label?: string
+          late_penalty?: number
+          stage?: string
+          updated_at?: string
+          updated_by?: string | null
+          uses_quantity?: boolean
+        }
+        Relationships: []
+      }
       task_assignees: {
         Row: {
           added_by: string
