@@ -399,28 +399,8 @@ const TOTAL_POINTS = 27;
              </CardContent>
            </Card>
 
-            {/* Dashboard */}
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Comparativo por Categoria</CardTitle>
-                  <CardDescription>Comparação de pontos por critério (mês selecionado)</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <CategoryComparisonChart rows={monthlyRank} teamById={teamById} />
-                </CardContent>
-              </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Perfil de Competências — Top 3</CardTitle>
-                  <CardDescription>Radar com os 3 melhores do mês</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Top3CompetencyRadar top3={monthlyRank.slice(0, 3)} teamById={teamById} />
-                </CardContent>
-              </Card>
-            </div>
+
 
             {/* Painel Anual Acumulado */}
             <AnnualShowcasePanel
