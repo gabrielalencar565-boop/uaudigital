@@ -34,6 +34,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { STAGES, type StageKey } from "@/lib/uau";
 import { MemberMultiSelect } from "./MemberMultiSelect";
 import { useTaskAssignees, useSetTaskAssignees } from "@/features/data/task-assignees-queries";
@@ -235,12 +236,13 @@ export function EditTaskDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="max-w-lg max-h-[90vh] flex flex-col p-0">
+          <DialogHeader className="px-6 pt-6 pb-0">
             <DialogTitle>Editar tarefa</DialogTitle>
           </DialogHeader>
 
-          <form className="space-y-4" onSubmit={form.handleSubmit(handleSubmit)}>
+          <ScrollArea className="flex-1 px-6 pb-6">
+          <form className="space-y-4 pt-4" onSubmit={form.handleSubmit(handleSubmit)}>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>{form.watch("is_freelancer") ? "Nome do cliente freela" : "Cliente"}</Label>
@@ -464,6 +466,7 @@ export function EditTaskDialog({
               </div>
             </DialogFooter>
           </form>
+          </ScrollArea>
         </DialogContent>
       </Dialog>
 
