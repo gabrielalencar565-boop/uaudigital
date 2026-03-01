@@ -1,7 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { ChevronRight } from "lucide-react";
 import { MAGIC2_STAGES, type Magic2StageKey } from "@/features/magic2/magic2-stages";
 import type { Magic2CycleRow, Magic2StageRow } from "@/features/magic2/hooks/use-magic2";
 import { cn } from "@/lib/utils";
@@ -19,7 +20,7 @@ type Props = {
 
 export function Magic2Checklist({ year, month, cycles, stages, isBusy, onToggleStage, onCreateStage }: Props) {
   const isMobile = useIsMobile();
-
+  const [selectedCycleId, setSelectedCycleId] = useState<string | null>(null);
   const sortedCycles = useMemo(() => {
     const collator = new Intl.Collator("pt-BR", { sensitivity: "base", numeric: true });
     return [...(cycles ?? [])].sort((a, b) => {
@@ -63,13 +64,26 @@ export function Magic2Checklist({ year, month, cycles, stages, isBusy, onToggleS
               const stageMap = byCycleStage.get(c.id) ?? new Map();
               const progress = clientProgress.find((p) => p.cycleId === c.id);
               return (
-                <div key={c.id} className="space-y-3 rounded-lg border border-border/60 bg-card/10 p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-semibold">{c.magic2_clients?.name ?? "—"}</p>
-                    <Badge variant={progress?.pct === 100 ? "success" : "secondary"} className="text-xs">
-                      {progress?.done}/{progress?.total}
-                    </Badge>
-                  </div>
+                <div key={c.id} className={cn(
+                  "space-y-3 rounded-lg border bg-card/10 p-4 transition-colors",
+                  selectedCycleId === c.id ? "border-primary/60 bg-primary/5" : "border-border/60",
+                )}>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCycleId(selectedCycleId === c.id ? null : c.id)}
+                    className="flex w-full items-center justify-between gap-3"
+                  >
+                    <p className="text-sm font-semibold text-left">{c.magic2_clients?.name ?? "—"}</p>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={progress?.pct === 100 ? "success" : "secondary"} className="text-xs">
+                        {progress?.done}/{progress?.total}
+                      </Badge>
+                      <ChevronRight className={cn(
+                        "h-4 w-4 text-muted-foreground transition-transform",
+                        selectedCycleId === c.id && "rotate-90 text-primary",
+                      )} />
+                    </div>
+                  </button>
 
                   <div className="grid grid-cols-2 gap-2">
                     {MAGIC2_STAGES.map((st) => {
@@ -131,9 +145,29 @@ export function Magic2Checklist({ year, month, cycles, stages, isBusy, onToggleS
             </thead>
             <tbody>
               {sortedCycles.map((c) => (
-                <tr key={c.id} className="border-t border-border/60">
-                  <td className="sticky left-0 z-10 w-[220px] bg-background px-3 py-3 text-sm font-medium">
-                    {c.magic2_clients?.name ?? "—"}
+                <tr key={c.id} className={cn(
+                  "border-t border-border/60 transition-colors",
+                  selectedCycleId === c.id && "bg-primary/5",
+                )}>
+                  <td className={cn(
+                    "sticky left-0 z-10 w-[220px] bg-background px-3 py-3 text-sm font-medium",
+                    selectedCycleId === c.id && "bg-primary/5",
+                  )}>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCycleId(selectedCycleId === c.id ? null : c.id)}
+                      className="flex w-full items-center gap-2 text-left group"
+                    >
+                      <ChevronRight className={cn(
+                        "h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-hover:text-primary",
+                        selectedCycleId === c.id && "rotate-90 text-primary",
+                      )} />
+                      <span className={cn(
+                        selectedCycleId === c.id && "text-primary underline underline-offset-2",
+                      )}>
+                        {c.magic2_clients?.name ?? "—"}
+                      </span>
+                    </button>
                   </td>
                   {MAGIC2_STAGES.map((st) => {
                     const cell = byCycleStage.get(c.id)?.get(st.key);
@@ -154,7 +188,9 @@ export function Magic2Checklist({ year, month, cycles, stages, isBusy, onToggleS
                           disabled={isBusy}
                           className={cn(
                             "flex w-full items-center justify-center rounded-md border px-3 py-2 transition disabled:cursor-not-allowed disabled:opacity-60",
-                            "border-border/60 bg-card/20 hover:bg-card/30",
+                            selectedCycleId === c.id
+                              ? "border-primary/40 bg-primary/10 hover:bg-primary/20"
+                              : "border-border/60 bg-card/20 hover:bg-card/30",
                           )}
                           aria-label={`${c.magic2_clients?.name ?? "Cliente"} - ${st.label} - ${
                             completed ? "Concluído" : "Pendente"
