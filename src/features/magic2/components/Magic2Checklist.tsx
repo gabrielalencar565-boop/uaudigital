@@ -1,8 +1,7 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { ChevronRight } from "lucide-react";
 import { MAGIC2_STAGES, type Magic2StageKey } from "@/features/magic2/magic2-stages";
 import type { Magic2CycleRow, Magic2StageRow } from "@/features/magic2/hooks/use-magic2";
 import { cn } from "@/lib/utils";
@@ -21,6 +20,10 @@ type Props = {
 export function Magic2Checklist({ year, month, cycles, stages, isBusy, onToggleStage, onCreateStage }: Props) {
   const isMobile = useIsMobile();
   const [selectedCycleId, setSelectedCycleId] = useState<string | null>(null);
+  // Index of the currently focused stage within the selected row (-1 = on the client name)
+  const [selectedStageIdx, setSelectedStageIdx] = useState(-1);
+  const containerRef = useRef<HTMLDivElement>(null);
+
   const sortedCycles = useMemo(() => {
     const collator = new Intl.Collator("pt-BR", { sensitivity: "base", numeric: true });
     return [...(cycles ?? [])].sort((a, b) => {
@@ -49,52 +52,125 @@ export function Magic2Checklist({ year, month, cycles, stages, isBusy, onToggleS
     });
   }, [byCycleStage, sortedCycles]);
 
+  const selectCycle = useCallback((cycleId: string | null) => {
+    setSelectedCycleId(cycleId);
+    setSelectedStageIdx(-1);
+  }, []);
+
+  const toggleCurrentStage = useCallback(() => {
+    if (!selectedCycleId || selectedStageIdx < 0 || selectedStageIdx >= MAGIC2_STAGES.length) return;
+    const st = MAGIC2_STAGES[selectedStageIdx];
+    const cell = byCycleStage.get(selectedCycleId)?.get(st.key);
+    if (cell) {
+      onToggleStage(cell.id, cell.completed);
+    } else if (onCreateStage) {
+      onCreateStage(selectedCycleId, st.key);
+    }
+  }, [selectedCycleId, selectedStageIdx, byCycleStage, onToggleStage, onCreateStage]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!selectedCycleId) return;
+
+      const cycleIdx = sortedCycles.findIndex((c) => c.id === selectedCycleId);
+      if (cycleIdx === -1) return;
+
+      switch (e.key) {
+        case "ArrowRight":
+          e.preventDefault();
+          setSelectedStageIdx((prev) => Math.min(prev + 1, MAGIC2_STAGES.length - 1));
+          break;
+        case "ArrowLeft":
+          e.preventDefault();
+          setSelectedStageIdx((prev) => Math.max(prev - 1, -1));
+          break;
+        case "ArrowDown":
+          e.preventDefault();
+          if (cycleIdx < sortedCycles.length - 1) {
+            setSelectedCycleId(sortedCycles[cycleIdx + 1].id);
+          }
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          if (cycleIdx > 0) {
+            setSelectedCycleId(sortedCycles[cycleIdx - 1].id);
+          }
+          break;
+        case "Enter":
+        case " ":
+          e.preventDefault();
+          if (!isBusy) toggleCurrentStage();
+          break;
+        case "Escape":
+          e.preventDefault();
+          setSelectedCycleId(null);
+          setSelectedStageIdx(-1);
+          break;
+      }
+    };
+
+    el.addEventListener("keydown", handleKeyDown);
+    return () => el.removeEventListener("keydown", handleKeyDown);
+  }, [selectedCycleId, selectedStageIdx, sortedCycles, isBusy, toggleCurrentStage]);
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className={cn(isMobile ? "text-base" : "text-lg")}>Checklist</CardTitle>
-        <CardDescription>Clique para marcar/desmarcar a etapa do cliente no mês.</CardDescription>
+        <CardDescription>Clique no cliente e use ← → para navegar entre etapas. Enter para marcar/desmarcar.</CardDescription>
       </CardHeader>
 
       <CardContent className="space-y-4">
+        <div ref={containerRef} tabIndex={0} className="outline-none">
         {isMobile ? (
-          // Modo lista para mobile (versão ampla/reduzida)
           <div className="space-y-3">
             {sortedCycles.map((c) => {
               const stageMap = byCycleStage.get(c.id) ?? new Map();
               const progress = clientProgress.find((p) => p.cycleId === c.id);
+              const isSelected = selectedCycleId === c.id;
               return (
                 <div key={c.id} className={cn(
                   "space-y-3 rounded-lg border bg-card/10 p-4 transition-colors",
-                  selectedCycleId === c.id ? "border-primary/60 bg-primary/5" : "border-border/60",
+                  isSelected ? "border-primary/60 bg-primary/5" : "border-border/60",
                 )}>
                   <button
                     type="button"
-                    onClick={() => setSelectedCycleId(selectedCycleId === c.id ? null : c.id)}
+                    onClick={() => selectCycle(isSelected ? null : c.id)}
                     className="flex w-full items-center justify-between gap-3"
                   >
-                    <p className="text-sm font-semibold text-left">{c.magic2_clients?.name ?? "—"}</p>
-                    <div className="flex items-center gap-2">
-                      <Badge variant={progress?.pct === 100 ? "success" : "secondary"} className="text-xs">
-                        {progress?.done}/{progress?.total}
-                      </Badge>
-                      <ChevronRight className={cn(
-                        "h-4 w-4 text-muted-foreground transition-transform",
-                        selectedCycleId === c.id && "rotate-90 text-primary",
-                      )} />
-                    </div>
+                    <p className={cn(
+                      "text-sm font-semibold text-left",
+                      isSelected && "text-primary",
+                    )}>{c.magic2_clients?.name ?? "—"}</p>
+                    <Badge variant={progress?.pct === 100 ? "success" : "secondary"} className="text-xs">
+                      {progress?.done}/{progress?.total}
+                    </Badge>
                   </button>
 
                   <div className="grid grid-cols-2 gap-2">
-                    {MAGIC2_STAGES.map((st) => {
+                    {MAGIC2_STAGES.map((st, stIdx) => {
                       const cell = stageMap.get(st.key);
                       const completed = !!cell?.completed;
+                      const isFocused = isSelected && selectedStageIdx === stIdx;
                       const handleClick = () => {
-                        if (cell) {
-                          onToggleStage(cell.id, completed);
-                        } else if (onCreateStage) {
-                          // Cria a stage on-demand e marca como concluído
-                          onCreateStage(c.id, st.key);
+                        if (!isSelected) {
+                          selectCycle(c.id);
+                          setSelectedStageIdx(stIdx);
+                          return;
+                        }
+                        if (selectedStageIdx === stIdx) {
+                          // Already focused, toggle
+                          if (cell) {
+                            onToggleStage(cell.id, completed);
+                          } else if (onCreateStage) {
+                            onCreateStage(c.id, st.key);
+                          }
+                        } else {
+                          setSelectedStageIdx(stIdx);
                         }
                       };
                       return (
@@ -104,8 +180,12 @@ export function Magic2Checklist({ year, month, cycles, stages, isBusy, onToggleS
                           onClick={handleClick}
                           disabled={isBusy}
                           className={cn(
-                            "flex items-center gap-2 rounded-md border border-border/60 bg-card/20 px-3 py-2.5 text-left transition disabled:cursor-not-allowed disabled:opacity-60",
-                            "hover:bg-card/30",
+                            "flex items-center gap-2 rounded-md border px-3 py-2.5 text-left transition disabled:cursor-not-allowed disabled:opacity-60",
+                            isFocused
+                              ? "border-primary bg-primary/15 ring-2 ring-primary/30"
+                              : isSelected
+                                ? "border-primary/30 bg-primary/5 hover:bg-primary/10"
+                                : "border-border/60 bg-card/20 hover:bg-card/30",
                           )}
                         >
                           <Checkbox
@@ -118,7 +198,10 @@ export function Magic2Checklist({ year, month, cycles, stages, isBusy, onToggleS
                                 : undefined,
                             )}
                           />
-                          <span className="text-xs font-medium">{st.label}</span>
+                          <span className={cn(
+                            "text-xs font-medium",
+                            isFocused && "text-primary font-bold",
+                          )}>{st.label}</span>
                         </button>
                       );
                     })}
@@ -128,7 +211,6 @@ export function Magic2Checklist({ year, month, cycles, stages, isBusy, onToggleS
             })}
           </div>
         ) : (
-          // Desktop: tabela horizontal (versão compacta original)
           <div className="overflow-auto">
           <table className="w-full table-fixed border-separate border-spacing-0">
             <thead>
@@ -144,40 +226,48 @@ export function Magic2Checklist({ year, month, cycles, stages, isBusy, onToggleS
               </tr>
             </thead>
             <tbody>
-              {sortedCycles.map((c) => (
+              {sortedCycles.map((c) => {
+                const isSelected = selectedCycleId === c.id;
+                return (
                 <tr key={c.id} className={cn(
                   "border-t border-border/60 transition-colors",
-                  selectedCycleId === c.id && "bg-primary/5",
+                  isSelected && "bg-primary/5",
                 )}>
                   <td className={cn(
                     "sticky left-0 z-10 w-[220px] bg-background px-3 py-3 text-sm font-medium",
-                    selectedCycleId === c.id && "bg-primary/5",
+                    isSelected && "bg-primary/5",
                   )}>
                     <button
                       type="button"
-                      onClick={() => setSelectedCycleId(selectedCycleId === c.id ? null : c.id)}
+                      onClick={() => selectCycle(isSelected ? null : c.id)}
                       className="flex w-full items-center gap-2 text-left group"
                     >
-                      <ChevronRight className={cn(
-                        "h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-hover:text-primary",
-                        selectedCycleId === c.id && "rotate-90 text-primary",
-                      )} />
                       <span className={cn(
-                        selectedCycleId === c.id && "text-primary underline underline-offset-2",
+                        "transition-colors",
+                        isSelected && "text-primary underline underline-offset-2",
                       )}>
                         {c.magic2_clients?.name ?? "—"}
                       </span>
                     </button>
                   </td>
-                  {MAGIC2_STAGES.map((st) => {
+                  {MAGIC2_STAGES.map((st, stIdx) => {
                     const cell = byCycleStage.get(c.id)?.get(st.key);
                     const completed = !!cell?.completed;
+                    const isFocused = isSelected && selectedStageIdx === stIdx;
                     const handleClick = () => {
-                      if (cell) {
-                        onToggleStage(cell.id, completed);
-                      } else if (onCreateStage) {
-                        // Cria a stage on-demand e marca como concluído
-                        onCreateStage(c.id, st.key);
+                      if (!isSelected) {
+                        selectCycle(c.id);
+                        setSelectedStageIdx(stIdx);
+                        return;
+                      }
+                      if (selectedStageIdx === stIdx) {
+                        if (cell) {
+                          onToggleStage(cell.id, completed);
+                        } else if (onCreateStage) {
+                          onCreateStage(c.id, st.key);
+                        }
+                      } else {
+                        setSelectedStageIdx(stIdx);
                       }
                     };
                     return (
@@ -188,9 +278,11 @@ export function Magic2Checklist({ year, month, cycles, stages, isBusy, onToggleS
                           disabled={isBusy}
                           className={cn(
                             "flex w-full items-center justify-center rounded-md border px-3 py-2 transition disabled:cursor-not-allowed disabled:opacity-60",
-                            selectedCycleId === c.id
-                              ? "border-primary/40 bg-primary/10 hover:bg-primary/20"
-                              : "border-border/60 bg-card/20 hover:bg-card/30",
+                            isFocused
+                              ? "border-primary bg-primary/15 ring-2 ring-primary/30 scale-105"
+                              : isSelected
+                                ? "border-primary/40 bg-primary/10 hover:bg-primary/20"
+                                : "border-border/60 bg-card/20 hover:bg-card/30",
                           )}
                           aria-label={`${c.magic2_clients?.name ?? "Cliente"} - ${st.label} - ${
                             completed ? "Concluído" : "Pendente"
@@ -211,11 +303,13 @@ export function Magic2Checklist({ year, month, cycles, stages, isBusy, onToggleS
                     );
                   })}
                 </tr>
-              ))}
+              );
+              })}
             </tbody>
           </table>
         </div>
         )}
+        </div>
       </CardContent>
     </Card>
   );
