@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { addDays, addMonths, subMonths, endOfMonth, format, startOfMonth, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CheckCircle2, Filter, TriangleAlert, Calendar, Trash2 } from "lucide-react";
+import { CheckCircle2, ChevronDown, Filter, TriangleAlert, Calendar, Trash2 } from "lucide-react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -566,14 +567,19 @@ export function AgendaPanel() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>Descrição (opcional)</Label>
-                <Textarea 
-                  placeholder="Ex.: Captação de vídeos para o carrossel de Instagram" 
-                  {...form.register("description")}
-                  rows={2}
-                />
-              </div>
+              <Collapsible>
+                <CollapsibleTrigger className="flex items-center gap-2 w-full text-left">
+                  <ChevronDown className="h-4 w-4 transition-transform duration-200 data-[state=open]:rotate-180 [&[data-state=open]]:rotate-180" />
+                  <Label className="cursor-pointer">Descrição (opcional)</Label>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-2">
+                  <Textarea 
+                    placeholder="Ex.: Captação de vídeos para o carrossel de Instagram" 
+                    {...form.register("description")}
+                    rows={2}
+                  />
+                </CollapsibleContent>
+              </Collapsible>
 
               {/* Quantidade - visível para Vídeo e Design */}
               {(form.watch("stage") === "edicao_videos" || form.watch("stage") === "design") && (

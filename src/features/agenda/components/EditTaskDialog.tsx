@@ -3,7 +3,7 @@ import { format } from "date-fns";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Trash2 } from "lucide-react";
+import { ChevronDown, Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -348,15 +349,20 @@ export function EditTaskDialog({
               />
             </div>
 
-            <div className="space-y-2">
-              <Label>Descrição (opcional)</Label>
-              <Textarea
-                placeholder="Ex.: Captação de vídeos para o carrossel de Instagram"
-                {...form.register("description")}
-                disabled={!canManageTasks}
-                rows={3}
-              />
-            </div>
+            <Collapsible>
+              <CollapsibleTrigger className="flex items-center gap-2 w-full text-left">
+                <ChevronDown className="h-4 w-4 transition-transform duration-200 [&[data-state=open]]:rotate-180" />
+                <Label className="cursor-pointer">Descrição (opcional)</Label>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pt-2">
+                <Textarea
+                  placeholder="Ex.: Captação de vídeos para o carrossel de Instagram"
+                  {...form.register("description")}
+                  disabled={!canManageTasks}
+                  rows={3}
+                />
+              </CollapsibleContent>
+            </Collapsible>
 
             {/* Quantidade - visível para Vídeo e Design */}
             {(form.watch("stage") === "edicao_videos" || form.watch("stage") === "design") && (
