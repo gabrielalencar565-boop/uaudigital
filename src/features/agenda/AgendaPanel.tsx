@@ -1114,7 +1114,7 @@ export function AgendaPanel() {
                   </div>)}
               </div>
 
-              <div className="mt-2 grid grid-cols-7 gap-2">
+              <div className="mt-2 grid grid-cols-7 gap-1.5">
                 {days.map(d => {
                   const key = format(d, "yyyy-MM-dd");
                   const inMonth = d.getMonth() === cursor.getMonth();
@@ -1165,7 +1165,7 @@ export function AgendaPanel() {
                           </div>
                         )}
 
-                        <div className="mt-2 max-h-[520px] space-y-2 overflow-y-auto pr-2">
+                        <div className="mt-2 max-h-[520px] space-y-2 overflow-y-auto scrollbar-thin pr-1">
                           {dayTasks.map(t => {
                             const stageLabel = t.stage === "planejamento" ? "Planej." : STAGES.find(s => s.key === t.stage)?.label ?? "Etapa";
                             const assignee = teamById.get(t.assigned_user_id);
