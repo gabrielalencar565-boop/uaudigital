@@ -494,11 +494,11 @@ export function AgendaPanel() {
 
       {/* Dialog de criar tarefa (abrirá via botão + no dia) */}
       {canManageTasks && <Dialog open={open} onOpenChange={setOpen}>
-          <DialogContent className="max-w-lg max-h-[90vh] flex flex-col p-0">
-            <DialogHeader className="px-6 pt-6 pb-0">
+          <DialogContent className="max-w-lg max-h-[90vh] flex flex-col p-0 overflow-hidden">
+            <DialogHeader className="px-6 pt-6 pb-0 shrink-0">
               <DialogTitle>Criar tarefa</DialogTitle>
             </DialogHeader>
-            <ScrollArea className="flex-1 px-6 pb-6">
+            <ScrollArea className="flex-1 min-h-0 px-6 pb-6">
             <form className="space-y-4 pt-4" onSubmit={form.handleSubmit(onCreateTask)}>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
