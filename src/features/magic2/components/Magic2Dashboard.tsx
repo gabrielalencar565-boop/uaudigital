@@ -68,7 +68,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
   return (
     <section className={cn("grid gap-6", isMobile ? "grid-cols-1" : "lg:grid-cols-[460px_1fr]", fullscreen && "min-h-[calc(100vh-120px)]")}>
       {/* Coluna esquerda: anel grande */}
-      <Card className="overflow-hidden">
+      <Card className={cn("overflow-hidden", fullscreen && "flex flex-col")}>
         <CardHeader>
           <CardTitle className={cn(isMobile ? "text-base" : "text-lg")}>Visão Geral</CardTitle>
           <CardDescription>Percentual concluído no mês selecionado.</CardDescription>
@@ -77,7 +77,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
           <ProgressRing
             value={dashboard.overallPct}
             tone={dashboard.overallPct === 100 ? "success" : "warning"}
-            size={isMobile ? 280 : 390}
+            size={fullscreen ? 460 : isMobile ? 280 : 390}
             stroke={isMobile ? 20 : 26}
             label={
               <div className="text-center">
@@ -94,7 +94,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
       </Card>
 
       {/* Coluna direita: métricas (linha) + etapas (grade) */}
-      <div className="space-y-6">
+      <div className={cn("flex flex-col gap-6", fullscreen && "flex-1")}>
         <div className={cn("grid gap-3", isMobile ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-3 xl:grid-cols-4")}>
           <MetricCard value={deadlineLabel} label="MAGIC NUMBER" />
           <MetricCard value={String(dashboard.totalStages)} label="TOTAL" />
@@ -103,7 +103,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
         </div>
 
         {/* 1ª linha (4): Planejamento, Captação, Edição, Design | 2ª linha (4): Alterações, PDF, Agendamento, Clientes 100% */}
-        <div className={cn("grid gap-4", isMobile ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-3 xl:grid-cols-4")}>
+        <div className={cn("grid gap-4 content-start", isMobile ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-3 xl:grid-cols-4", fullscreen && "flex-1 content-center")}>
           {stagesForDashboard.map((st) => {
             const item = dashboard.byStage[st.key];
             return (
@@ -111,7 +111,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
                 <ProgressRing
                   value={item?.pct ?? 0}
                   tone={(item?.pct ?? 0) === 100 ? "success" : "warning"}
-                  size={isMobile ? 120 : 156}
+                  size={fullscreen ? 180 : isMobile ? 120 : 156}
                   stroke={isMobile ? 12 : 14}
                   className="animate-fade-in"
                   label={
@@ -137,7 +137,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
             <ProgressRing
               value={clients100Pct}
               tone={clients100Pct === 100 ? "success" : "warning"}
-              size={isMobile ? 120 : 156}
+              size={fullscreen ? 180 : isMobile ? 120 : 156}
               stroke={isMobile ? 12 : 14}
               className="animate-fade-in"
               label={
