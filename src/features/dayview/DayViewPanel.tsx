@@ -717,7 +717,7 @@ export function DayViewPanel() {
            </CardContent>
          </Card> : (
           /* ─── Conclusão de Tarefas ─── */
-           <Card>
+           <Card className={cn(isFullscreen && "flex flex-col flex-1 min-h-[calc(100vh-140px)]")}>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Trophy className="h-5 w-5" />
@@ -727,7 +727,7 @@ export function DayViewPanel() {
                 {format(new Date(selectedYear, selectedMonth - 1, 1), "MMMM yyyy", { locale: ptBR })}
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className={cn("space-y-3", isFullscreen && "flex-1")}>
               {/* Header das colunas */}
               <div className="flex items-center gap-3 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
                 <span className="w-8 text-center shrink-0">#</span>
@@ -747,9 +747,9 @@ export function DayViewPanel() {
                   const prevPos = prevRankMap.current.get(row.user_id);
                   const posChange = prevPos !== undefined ? prevPos - idx : 0;
                   return (
-                    <div key={row.user_id} className="flex items-center gap-3 py-1">
+                    <div key={row.user_id} className={cn("flex items-center gap-3", isFullscreen ? "py-3" : "py-1")}>
                       {/* Posição */}
-                      <span className="w-8 text-center font-semibold shrink-0 text-sm">{medal}</span>
+                      <span className={cn("w-8 text-center font-semibold shrink-0", isFullscreen ? "text-lg" : "text-sm")}>{medal}</span>
                       {/* Foto */}
                       <Avatar className="h-8 w-8 shrink-0">
                         <AvatarImage src={member?.avatar_url ?? undefined} />
