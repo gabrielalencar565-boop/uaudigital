@@ -192,22 +192,21 @@ export function DayViewPanel() {
     for (const [userId, days] of userDays) {
       const lateDays = userLateDays.get(userId) ?? new Set();
       let streak = 0;
-      const d = new Date(today);
+      const d = new Date(todayKey + "T12:00:00");
       for (let i = 0; i < 60; i++) {
         const key = format(d, "yyyy-MM-dd");
         if (days.has(key) && !lateDays.has(key)) {
           streak++;
         } else if (days.has(key) && lateDays.has(key)) {
-          break; // dia com atraso quebra a streak
+          break;
         }
-        // dia sem tarefas: não quebra nem conta
         d.setDate(d.getDate() - 1);
       }
       map.set(userId, streak);
     }
 
     return map;
-  }, [tasksQ.data, assigneesQ.data, today]);
+  }, [tasksQ.data, assigneesQ.data, todayKey]);
 
   // Ranking filtrado (oculta Gabriel e Ayrton apenas aqui)
   const HIDDEN_IDS = useMemo(() => [
