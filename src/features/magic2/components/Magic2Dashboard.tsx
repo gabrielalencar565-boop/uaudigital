@@ -111,7 +111,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
                 <ProgressRing
                   value={item?.pct ?? 0}
                   tone={(item?.pct ?? 0) === 100 ? "success" : "warning"}
-                  size={fullscreen ? 180 : isMobile ? 120 : 156}
+                  size={fullscreen ? 200 : isMobile ? 120 : 170}
                   stroke={isMobile ? 12 : 14}
                   className="animate-fade-in"
                   label={
@@ -137,7 +137,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
             <ProgressRing
               value={clients100Pct}
               tone={clients100Pct === 100 ? "success" : "warning"}
-              size={fullscreen ? 180 : isMobile ? 120 : 156}
+              size={fullscreen ? 200 : isMobile ? 120 : 170}
               stroke={isMobile ? 12 : 14}
               className="animate-fade-in"
               label={
