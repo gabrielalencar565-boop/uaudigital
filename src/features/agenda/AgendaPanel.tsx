@@ -1165,7 +1165,7 @@ export function AgendaPanel() {
                           </div>
                         )}
 
-                        <div className="mt-2 max-h-[520px] space-y-2 overflow-y-auto pr-0.5">
+                        <div className="mt-2 max-h-[520px] space-y-2 overflow-y-auto pr-2">
                           {dayTasks.map(t => {
                             const stageLabel = t.stage === "planejamento" ? "Planej." : STAGES.find(s => s.key === t.stage)?.label ?? "Etapa";
                             const assignee = teamById.get(t.assigned_user_id);
