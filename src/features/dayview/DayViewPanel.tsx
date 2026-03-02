@@ -373,7 +373,7 @@ export function DayViewPanel() {
   const deadlineDate = new Date(selectedYear, selectedMonth - 1, 27);
   const daysUntilDeadline = differenceInCalendarDays(deadlineDate, today);
 
-  return <div ref={containerRef} className={cn("space-y-6", isFullscreen && "bg-background p-6 overflow-auto h-screen")}>
+  return <div ref={containerRef} className={cn("space-y-6", isFullscreen && "bg-background p-6 overflow-auto min-h-screen flex flex-col")}>
       {/* Header em uma única linha */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
@@ -461,7 +461,7 @@ export function DayViewPanel() {
       </div>
 
       {/* Conteúdo */}
-      {active === "magic" ? <div className="space-y-4">
+      {active === "magic" ? <div className={cn("space-y-4", isFullscreen && "flex-1")}>
           
           {magic2.query.isLoading ? <Card>
               <CardHeader>
@@ -481,7 +481,7 @@ export function DayViewPanel() {
                 </CardDescription>
               </CardHeader>
             </Card>}
-        </div> : active === "agenda" ? <Card>
+        </div> : active === "agenda" ? <Card className={cn(isFullscreen && "flex-1")}>
           <CardHeader>
             <CardTitle>
               {isCurrentMonth ? "Agenda de Hoje" : `Agenda de ${format(new Date(selectedYear, selectedMonth - 1, 1), "MMMM", {
@@ -717,7 +717,7 @@ export function DayViewPanel() {
            </CardContent>
          </Card> : (
           /* ─── Conclusão de Tarefas ─── */
-          <Card>
+           <Card className={cn(isFullscreen && "flex-1")}>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Trophy className="h-5 w-5" />
