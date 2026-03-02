@@ -42,7 +42,7 @@ function MetricRingCard({ value, label }: { value: number; label: string }) {
   );
 }
 
-export function Magic2Dashboard({ dashboard, year, month }: { dashboard: Dashboard; year: number; month: number }) {
+export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashboard: Dashboard; year: number; month: number; fullscreen?: boolean }) {
   const isMobile = useIsMobile();
 
   const deadlineLabel = `27/${String(month).padStart(2, "0")}`;
@@ -66,14 +66,14 @@ export function Magic2Dashboard({ dashboard, year, month }: { dashboard: Dashboa
   })();
 
   return (
-    <section className={cn("grid gap-6", isMobile ? "grid-cols-1" : "lg:grid-cols-[460px_1fr]")}>
+    <section className={cn("grid gap-6", isMobile ? "grid-cols-1" : "lg:grid-cols-[460px_1fr]", fullscreen && "min-h-[calc(100vh-120px)]")}>
       {/* Coluna esquerda: anel grande */}
       <Card className="overflow-hidden">
         <CardHeader>
           <CardTitle className={cn(isMobile ? "text-base" : "text-lg")}>Visão Geral</CardTitle>
           <CardDescription>Percentual concluído no mês selecionado.</CardDescription>
         </CardHeader>
-        <CardContent className={cn("grid place-items-center", isMobile ? "pb-6" : "pb-10")}>
+        <CardContent className={cn("grid place-items-center flex-1", isMobile ? "pb-6" : "pb-10")}>
           <ProgressRing
             value={dashboard.overallPct}
             tone={dashboard.overallPct === 100 ? "success" : "warning"}

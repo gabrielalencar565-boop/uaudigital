@@ -373,7 +373,7 @@ export function DayViewPanel() {
   const deadlineDate = new Date(selectedYear, selectedMonth - 1, 27);
   const daysUntilDeadline = differenceInCalendarDays(deadlineDate, today);
 
-  return <div ref={containerRef} className={cn("space-y-6", isFullscreen && "bg-background p-6 overflow-auto min-h-screen flex flex-col")}>
+  return <div ref={containerRef} className={cn("space-y-6", isFullscreen && "bg-background p-6 overflow-auto min-h-screen")}>
       {/* Header em uma única linha */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
@@ -461,14 +461,14 @@ export function DayViewPanel() {
       </div>
 
       {/* Conteúdo */}
-      {active === "magic" ? <div className={cn("space-y-4", isFullscreen && "flex-1")}>
+      {active === "magic" ? <div className="space-y-4">
           
           {magic2.query.isLoading ? <Card>
               <CardHeader>
                 <CardTitle>Carregando…</CardTitle>
                 <CardDescription>Buscando dados do mês selecionado.</CardDescription>
               </CardHeader>
-            </Card> : magic2.cycles.length ? <Magic2Dashboard dashboard={magic2.dashboard} year={selectedYear} month={selectedMonth} /> : <Card className="border-dashed">
+            </Card> : magic2.cycles.length ? <Magic2Dashboard dashboard={magic2.dashboard} year={selectedYear} month={selectedMonth} fullscreen={isFullscreen} /> : <Card className="border-dashed">
               <CardHeader className="text-center">
                 <div className="mx-auto mb-3 h-12 w-12 rounded-full bg-muted/50 grid place-items-center">
                   <Target className="h-6 w-6 text-muted-foreground" />
@@ -481,7 +481,7 @@ export function DayViewPanel() {
                 </CardDescription>
               </CardHeader>
             </Card>}
-        </div> : active === "agenda" ? <Card className={cn(isFullscreen && "flex-1")}>
+        </div> : active === "agenda" ? <Card>
           <CardHeader>
             <CardTitle>
               {isCurrentMonth ? "Agenda de Hoje" : `Agenda de ${format(new Date(selectedYear, selectedMonth - 1, 1), "MMMM", {
@@ -717,7 +717,7 @@ export function DayViewPanel() {
            </CardContent>
          </Card> : (
           /* ─── Conclusão de Tarefas ─── */
-           <Card className={cn(isFullscreen && "flex-1")}>
+           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Trophy className="h-5 w-5" />
