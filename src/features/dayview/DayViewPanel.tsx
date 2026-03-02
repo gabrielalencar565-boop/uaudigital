@@ -14,7 +14,7 @@ import { useMagic2Dashboard } from "@/features/magic2/hooks/use-magic2-dashboard
 import { MonthYearNav } from "@/features/magic2/components/MonthYearNav";
 import { STAGES } from "@/lib/uau";
 import { cn } from "@/lib/utils";
-import { RefreshCw, Calendar, Target, RotateCcw, Trophy, ArrowUp, ArrowDown, SprayCan, CheckCircle2 } from "lucide-react";
+import { RefreshCw, Calendar, Target, RotateCcw, Trophy, ArrowUp, ArrowDown, SprayCan, CheckCircle2, Zap } from "lucide-react";
 import { useNow } from "@/hooks/use-now";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -153,6 +153,62 @@ export function DayViewPanel() {
     base.sort((a, b) => b.total - a.total);
     return base;
   }, [scoresQ.data, teamQ.data, taskStatsByUser]);
+
+  // ─── Streak: dias consecutivos concluindo tarefas dentro do prazo ───
+  const streakByUser = useMemo(() => {
+    const tasks = tasksQ.data ?? [];
+    const assignees = assigneesQ.data ?? [];
+    const map = new Map<string, number>();
+
+    // Agrupa tarefas concluídas por user+date
+    const userDays = new Map<string, Set<string>>();
+    // Agrupa tarefas atrasadas (concluídas após due_date) por user+date
+    const userLateDays = new Map<string, Set<string>>();
+
+    const addTaskForUser = (userId: string, t: typeof tasks[0]) => {
+      if (t.status !== "concluido") return;
+      const completedDate = t.completed_at ? format(new Date(t.completed_at), "yyyy-MM-dd") : t.due_date;
+      const isOnTime = completedDate <= t.due_date;
+
+      if (!userDays.has(userId)) userDays.set(userId, new Set());
+      userDays.get(userId)!.add(t.due_date);
+
+      if (!isOnTime) {
+        if (!userLateDays.has(userId)) userLateDays.set(userId, new Set());
+        userLateDays.get(userId)!.add(t.due_date);
+      }
+    };
+
+    for (const t of tasks) {
+      const taskAssignees = assignees.filter(a => a.task_id === t.id);
+      if (taskAssignees.length > 0) {
+        for (const a of taskAssignees) addTaskForUser(a.user_id, t);
+      } else {
+        addTaskForUser(t.assigned_user_id, t);
+      }
+    }
+
+    // Para cada user, conta dias consecutivos até hoje sem atraso
+    for (const [userId, days] of userDays) {
+      const lateDays = userLateDays.get(userId) ?? new Set();
+      let streak = 0;
+      const d = new Date(today);
+      for (let i = 0; i < 60; i++) {
+        const key = format(d, "yyyy-MM-dd");
+        if (days.has(key) && !lateDays.has(key)) {
+          streak++;
+        } else if (days.has(key) && lateDays.has(key)) {
+          break; // dia com atraso quebra a streak
+        }
+        // dia sem tarefas: não quebra nem conta
+        d.setDate(d.getDate() - 1);
+      }
+      map.set(userId, streak);
+    }
+
+    return map;
+  }, [tasksQ.data, assigneesQ.data, today]);
+
   // Ranking filtrado (oculta Gabriel e Ayrton apenas aqui)
   const HIDDEN_IDS = useMemo(() => [
     "e674c34f-b268-4dfd-82c5-9aea9cba853e",
@@ -709,9 +765,21 @@ export function DayViewPanel() {
                           </div>
                         </div>
                       </div>
-                      {/* Total de pontos */}
-                      <span className="w-14 text-center shrink-0 text-sm font-bold">
+                      {/* Total de pontos + streak */}
+                      <span className="w-14 text-center shrink-0 text-sm font-bold flex items-center justify-center gap-0.5">
                         {row.total}
+                        {(streakByUser.get(row.user_id) ?? 0) >= 2 && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex">
+                                <Zap className="h-3.5 w-3.5 text-warning fill-warning" />
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                              🔥 {streakByUser.get(row.user_id)} dias consecutivos no prazo!
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
                       </span>
                       {/* Seta de posição */}
                       <div className="w-5 shrink-0 flex items-center justify-center">
