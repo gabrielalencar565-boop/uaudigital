@@ -1198,6 +1198,15 @@ export function AgendaPanel() {
                             );
                           })}
                         </div>
+                        {dayTasks.length > 4 && (
+                          <button
+                            type="button"
+                            className="mt-1 w-full rounded-md border border-border/60 bg-background/50 px-2 py-1 text-left text-[10px] text-muted-foreground transition hover:bg-accent"
+                            onClick={() => openMoreForDay(key)}
+                          >
+                            Ver todas ({dayTasks.length})
+                          </button>
+                        )}
                       </div>
                     </DayDropZone>
                   );
