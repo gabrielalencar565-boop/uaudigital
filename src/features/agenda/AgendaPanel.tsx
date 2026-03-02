@@ -1114,7 +1114,7 @@ export function AgendaPanel() {
                   </div>)}
               </div>
 
-              <div className="mt-2 grid grid-cols-7 gap-1.5">
+              <div className="mt-2 grid grid-cols-7 gap-2">
                 {days.map(d => {
                   const key = format(d, "yyyy-MM-dd");
                   const inMonth = d.getMonth() === cursor.getMonth();
@@ -1165,8 +1165,8 @@ export function AgendaPanel() {
                           </div>
                         )}
 
-                        <div className="mt-2 max-h-[520px] space-y-2 overflow-y-auto scrollbar-thin pr-1">
-                          {dayTasks.map(t => {
+                        <div className="mt-2 space-y-2">
+                          {dayTasks.slice(0, 4).map(t => {
                             const stageLabel = t.stage === "planejamento" ? "Planej." : STAGES.find(s => s.key === t.stage)?.label ?? "Etapa";
                             const assignee = teamById.get(t.assigned_user_id);
                             const assigneeName = assignee?.display_name ?? "—";
@@ -1197,16 +1197,16 @@ export function AgendaPanel() {
                               />
                             );
                           })}
+                          {dayTasks.length > 4 && (
+                            <button
+                              type="button"
+                              className="w-full rounded-md border border-border/60 bg-background/50 px-2 py-1 text-left text-[10px] text-muted-foreground transition hover:bg-accent"
+                              onClick={() => openMoreForDay(key)}
+                            >
+                              +{dayTasks.length - 4} mais
+                            </button>
+                          )}
                         </div>
-                        {dayTasks.length > 5 && (
-                          <button
-                            type="button"
-                            className="mt-1 w-full rounded-md border border-border/60 bg-background/50 px-2 py-1 text-left text-[10px] text-muted-foreground transition hover:bg-accent"
-                            onClick={() => openMoreForDay(key)}
-                          >
-                            Ver todas ({dayTasks.length})
-                          </button>
-                        )}
                       </div>
                     </DayDropZone>
                   );
