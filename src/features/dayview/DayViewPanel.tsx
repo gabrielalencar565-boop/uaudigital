@@ -24,11 +24,11 @@ import {
   useCleaningCategories,
   useCleaningCompletions,
   useToggleCleaningCompletion,
-  DAYS_PT,
-} from "@/features/cleaning/hooks/use-cleaning";
+  DAYS_PT } from
+"@/features/cleaning/hooks/use-cleaning";
 
 function initials(name: string) {
-  return name.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]!.toUpperCase()).join("");
+  return name.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join("");
 }
 
 function getCleaningEmoji(categoryName: string) {
@@ -112,22 +112,22 @@ export function DayViewPanel() {
   const scoresQ = useQuery({
     queryKey: ["performance_scores", selectedYear, selectedMonth],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("performance_scores")
-        .select("*")
-        .eq("year", selectedYear)
-        .eq("month", selectedMonth)
-        .order("user_id");
+      const { data, error } = await supabase.
+      from("performance_scores").
+      select("*").
+      eq("year", selectedYear).
+      eq("month", selectedMonth).
+      order("user_id");
       if (error) throw error;
       return (data ?? []) as ScoreRow[];
-    },
+    }
   });
 
   // Task completion stats per user (total assigned vs completed)
   const taskStatsByUser = useMemo(() => {
     const tasks = tasksQ.data ?? [];
     const assignees = assigneesQ.data ?? [];
-    const stats = new Map<string, { total: number; completed: number }>();
+    const stats = new Map<string, {total: number;completed: number;}>();
 
     const addTask = (userId: string, isCompleted: boolean) => {
       const prev = stats.get(userId) ?? { total: 0, completed: 0 };
@@ -138,7 +138,7 @@ export function DayViewPanel() {
 
     for (const t of tasks) {
       // Check if task has assignees
-      const taskAssignees = assignees.filter(a => a.task_id === t.id);
+      const taskAssignees = assignees.filter((a) => a.task_id === t.id);
       if (taskAssignees.length > 0) {
         for (const a of taskAssignees) {
           addTask(a.user_id, t.status === "concluido");
@@ -158,13 +158,13 @@ export function DayViewPanel() {
     const base = members.map((m) => {
       const s = byUser.get(m.user_id);
       const total =
-        (s?.aprendizado_continuo ?? 0) +
-        (s?.padrao_qualidade_uau ?? 0) +
-        (s?.metas_prazos ?? 0) +
-        (s?.ambiente_organizado ?? 0) +
-        (s?.comprometimento ?? 0);
+      (s?.aprendizado_continuo ?? 0) + (
+      s?.padrao_qualidade_uau ?? 0) + (
+      s?.metas_prazos ?? 0) + (
+      s?.ambiente_organizado ?? 0) + (
+      s?.comprometimento ?? 0);
       const taskStats = taskStatsByUser.get(m.user_id) ?? { total: 0, completed: 0 };
-      const completionPct = taskStats.total > 0 ? Math.round((taskStats.completed / taskStats.total) * 100) : 0;
+      const completionPct = taskStats.total > 0 ? Math.round(taskStats.completed / taskStats.total * 100) : 0;
       return { user_id: m.user_id, total, taskTotal: taskStats.total, taskCompleted: taskStats.completed, completionPct };
     });
     base.sort((a, b) => b.total - a.total);
@@ -197,7 +197,7 @@ export function DayViewPanel() {
     };
 
     for (const t of tasks) {
-      const taskAssignees = assignees.filter(a => a.task_id === t.id);
+      const taskAssignees = assignees.filter((a) => a.task_id === t.id);
       if (taskAssignees.length > 0) {
         for (const a of taskAssignees) addTaskForUser(a.user_id, t);
       } else {
@@ -227,10 +227,10 @@ export function DayViewPanel() {
 
   // Ranking filtrado (oculta Gabriel e Ayrton apenas aqui)
   const HIDDEN_IDS = useMemo(() => [
-    "e674c34f-b268-4dfd-82c5-9aea9cba853e",
-    "132c71a9-846b-48ec-abcb-10f50286fdd1",
-  ], []);
-  const filteredRank = useMemo(() => monthlyRank.filter(r => !HIDDEN_IDS.includes(r.user_id)), [monthlyRank, HIDDEN_IDS]);
+  "e674c34f-b268-4dfd-82c5-9aea9cba853e",
+  "132c71a9-846b-48ec-abcb-10f50286fdd1"],
+  []);
+  const filteredRank = useMemo(() => monthlyRank.filter((r) => !HIDDEN_IDS.includes(r.user_id)), [monthlyRank, HIDDEN_IDS]);
 
   // Rastreia posição anterior para mostrar setas de subida/descida
   const prevRankMap = useRef(new Map<string, number>());
@@ -244,11 +244,11 @@ export function DayViewPanel() {
     return () => clearTimeout(timer);
   }, [filteredRank]);
 
-  const clientsById = useMemo(() => new Map((clientsQ.data ?? []).map(c => [c.id, c] as const)), [clientsQ.data]);
-  const teamByUserId = useMemo(() => new Map((teamQ.data ?? []).map(m => [m.user_id, m] as const)), [teamQ.data]);
+  const clientsById = useMemo(() => new Map((clientsQ.data ?? []).map((c) => [c.id, c] as const)), [clientsQ.data]);
+  const teamByUserId = useMemo(() => new Map((teamQ.data ?? []).map((m) => [m.user_id, m] as const)), [teamQ.data]);
 
   /** Resolve client name: freelancer tasks show title instead */
-  const resolveClientName = (t: { client_id: string; title: string | null }) => {
+  const resolveClientName = (t: {client_id: string;title: string | null;}) => {
     if (freelancerClientId && t.client_id === freelancerClientId && t.title) {
       return t.title;
     }
@@ -298,7 +298,7 @@ export function DayViewPanel() {
 
   // Tarefas de hoje (exceto concluídas - elas vão separadas)
   const todayPendingTasks = useMemo(() => {
-    const tasks = (tasksQ.data ?? []).filter(t => {
+    const tasks = (tasksQ.data ?? []).filter((t) => {
       if (!isCurrentMonth) return t.status !== "concluido";
       return t.due_date === todayKey && t.status !== "concluido";
     });
@@ -314,7 +314,7 @@ export function DayViewPanel() {
 
   // Tarefas concluídas de hoje
   const todayCompletedTasks = useMemo(() => {
-    const tasks = (tasksQ.data ?? []).filter(t => {
+    const tasks = (tasksQ.data ?? []).filter((t) => {
       if (!isCurrentMonth) return t.status === "concluido";
       return t.due_date === todayKey && t.status === "concluido";
     });
@@ -325,9 +325,9 @@ export function DayViewPanel() {
     });
   }, [tasksQ.data, todayKey, teamByUserId, isCurrentMonth]);
   const overdueTasks = useMemo(() => {
-    return (tasksQ.data ?? []).filter(t => t.status !== "concluido" && t.due_date < todayKey).sort((a, b) => a.due_date.localeCompare(b.due_date));
+    return (tasksQ.data ?? []).filter((t) => t.status !== "concluido" && t.due_date < todayKey).sort((a, b) => a.due_date.localeCompare(b.due_date));
   }, [tasksQ.data, todayKey]);
-  const completedTasksCount = useMemo(() => (tasksQ.data ?? []).filter(t => t.status === "concluido").length, [tasksQ.data]);
+  const completedTasksCount = useMemo(() => (tasksQ.data ?? []).filter((t) => t.status === "concluido").length, [tasksQ.data]);
   const totalTasks = tasksQ.data?.length ?? 0;
 
   // Navegação rápida para hoje
@@ -360,14 +360,14 @@ export function DayViewPanel() {
   useEffect(() => {
     if (!autoRotate) return;
     const interval = setInterval(() => {
-      setActive(v => v === "magic" ? "agenda" : v === "agenda" ? "podio" : "magic");
+      setActive((v) => v === "magic" ? "agenda" : v === "agenda" ? "podio" : "magic");
     }, rotateInterval);
     return () => clearInterval(interval);
   }, [autoRotate, rotateInterval]);
 
   // Parar auto-rotate quando clicar manualmente
   const handleManualTabChange = () => {
-    setActive(v => v === "magic" ? "agenda" : v === "agenda" ? "podio" : "magic");
+    setActive((v) => v === "magic" ? "agenda" : v === "agenda" ? "podio" : "magic");
   };
   // Calcular dias restantes até o prazo final (dia 27 do mês selecionado)
   const deadlineDate = new Date(selectedYear, selectedMonth - 1, 27);
@@ -379,38 +379,38 @@ export function DayViewPanel() {
         <div className="flex items-center gap-3">
           <h2 className="text-2xl font-semibold tracking-tight">Visão do Dia</h2>
           <span className={cn(
-            "inline-flex items-center rounded-full px-4 py-1.5 text-sm font-semibold text-white",
-            daysUntilDeadline > 0 && "bg-success",
-            daysUntilDeadline === 0 && "bg-warning text-warning-foreground",
-            daysUntilDeadline < 0 && "bg-destructive"
-          )}>
-            {daysUntilDeadline > 0 
-              ? `Faltam ${daysUntilDeadline} ${daysUntilDeadline === 1 ? "dia" : "dias"}`
-              : daysUntilDeadline === 0 
-                ? "É hoje!"
-                : `Atrasado ${Math.abs(daysUntilDeadline)} ${Math.abs(daysUntilDeadline) === 1 ? "dia" : "dias"}`
-            }
+          "inline-flex items-center rounded-full px-4 py-1.5 text-sm font-semibold text-white",
+          daysUntilDeadline > 0 && "bg-success",
+          daysUntilDeadline === 0 && "bg-warning text-warning-foreground",
+          daysUntilDeadline < 0 && "bg-destructive"
+        )}>
+            {daysUntilDeadline > 0 ?
+          `Faltam ${daysUntilDeadline} ${daysUntilDeadline === 1 ? "dia" : "dias"}` :
+          daysUntilDeadline === 0 ?
+          "É hoje!" :
+          `Atrasado ${Math.abs(daysUntilDeadline)} ${Math.abs(daysUntilDeadline) === 1 ? "dia" : "dias"}`
+          }
           </span>
         </div>
         
         {/* Controles à direita */}
         <div className="flex items-center gap-2">
           {/* Botão Rodando/Pausado */}
-          <Button 
-            variant={autoRotate ? "default" : "outline"}
-            size="sm" 
-            onClick={() => setAutoRotate(!autoRotate)}
-            onMouseEnter={() => setIsHoveringRotateBtn(true)}
-            onMouseLeave={() => setIsHoveringRotateBtn(false)}
-            className={cn(
-              "h-9 min-w-[90px]",
-              autoRotate && "bg-success hover:bg-success/90 text-success-foreground"
-            )}
-          >
-            {autoRotate 
-              ? (isHoveringRotateBtn ? "Pausado" : "Rodando") 
-              : (isHoveringRotateBtn ? "Rodando" : "Pausado")
-            }
+          <Button
+          variant={autoRotate ? "default" : "outline"}
+          size="sm"
+          onClick={() => setAutoRotate(!autoRotate)}
+          onMouseEnter={() => setIsHoveringRotateBtn(true)}
+          onMouseLeave={() => setIsHoveringRotateBtn(false)}
+          className={cn(
+            "h-9 min-w-[90px]",
+            autoRotate && "bg-success hover:bg-success/90 text-success-foreground"
+          )}>
+
+            {autoRotate ?
+          isHoveringRotateBtn ? "Pausado" : "Rodando" :
+          isHoveringRotateBtn ? "Rodando" : "Pausado"
+          }
           </Button>
 
           {/* Botão tela cheia */}
@@ -418,21 +418,21 @@ export function DayViewPanel() {
             {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
           </Button>
           
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleManualTabChange} 
-            className="h-9"
-          >
+          <Button
+          variant="outline"
+          size="sm"
+          onClick={handleManualTabChange}
+          className="h-9">
+
             {active === "magic" ? "Ir para Agenda" : active === "agenda" ? "Ir para Pódio" : "Ir para Magic"}
           </Button>
 
           {/* Dropdown de intervalo */}
-          <select 
-            value={String(rotateInterval)} 
-            onChange={e => setRotateInterval(Number(e.target.value))} 
-            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-          >
+          <select
+          value={String(rotateInterval)}
+          onChange={(e) => setRotateInterval(Number(e.target.value))}
+          className="h-9 rounded-md border border-input bg-background px-3 text-sm">
+
             <option value="5000">5s</option>
             <option value="10000">10s</option>
             <option value="15000">15s</option>
@@ -440,18 +440,18 @@ export function DayViewPanel() {
           </select>
 
           {/* Seletores de mês/ano */}
-          <select value={String(selectedMonth)} onChange={e => setSelectedMonth(Number(e.target.value))} className="h-9 rounded-md border border-input bg-background px-3 text-sm">
+          <select value={String(selectedMonth)} onChange={(e) => setSelectedMonth(Number(e.target.value))} className="h-9 rounded-md border border-input bg-background px-3 text-sm">
             {Array.from({
             length: 12
-          }, (_, i) => i + 1).map(m => <option key={m} value={m}>
+          }, (_, i) => i + 1).map((m) => <option key={m} value={m}>
                 {format(new Date(selectedYear, m - 1, 1), "MMMM", {
               locale: ptBR
             })}
               </option>)}
           </select>
 
-          <select value={String(selectedYear)} onChange={e => setSelectedYear(Number(e.target.value))} className="h-9 rounded-md border border-input bg-background px-3 text-sm">
-            {[now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1].map(y => <option key={y} value={y}>{y}</option>)}
+          <select value={String(selectedYear)} onChange={(e) => setSelectedYear(Number(e.target.value))} className="h-9 rounded-md border border-input bg-background px-3 text-sm">
+            {[now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1].map((y) => <option key={y} value={y}>{y}</option>)}
           </select>
 
           <Button variant="outline" size="icon" onClick={handleRefresh} disabled={isRefreshing} className="h-9 w-9">
@@ -495,38 +495,38 @@ export function DayViewPanel() {
           </CardHeader>
           <CardContent className="space-y-4">
             {/* ─── Limpeza – Widget compacto horizontal (TOPO) ─── */}
-            {isCurrentMonth && todayCleaningTasks.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2">
-                {todayCleaningTasks.map(schedule => {
-                  const cat = cleaningCategoryById.get(schedule.category_id);
-                  const member = teamByUserId.get(schedule.user_id);
-                  const isDone = completedScheduleIds.has(schedule.id);
-                  const dueTimeStr = schedule.due_time?.slice(0, 5) ?? "18:00";
-                  const [dueH, dueM] = dueTimeStr.split(":").map(Number);
-                  const isOverdue = !isDone && (now.getHours() > dueH || (now.getHours() === dueH && now.getMinutes() >= dueM));
-                  const emoji = getCleaningEmoji(cat?.name ?? "");
-                  return (
-                    <Tooltip key={schedule.id}>
+            {isCurrentMonth && todayCleaningTasks.length > 0 &&
+        <div className="flex flex-wrap items-center gap-2">
+                {todayCleaningTasks.map((schedule) => {
+            const cat = cleaningCategoryById.get(schedule.category_id);
+            const member = teamByUserId.get(schedule.user_id);
+            const isDone = completedScheduleIds.has(schedule.id);
+            const dueTimeStr = schedule.due_time?.slice(0, 5) ?? "18:00";
+            const [dueH, dueM] = dueTimeStr.split(":").map(Number);
+            const isOverdue = !isDone && (now.getHours() > dueH || now.getHours() === dueH && now.getMinutes() >= dueM);
+            const emoji = getCleaningEmoji(cat?.name ?? "");
+            return (
+              <Tooltip key={schedule.id}>
                       <TooltipTrigger asChild>
                         <button
-                          type="button"
-                          disabled={toggleCleaning.isPending}
-                          onClick={() => {
-                            if (!sessionUser) return;
-                            toggleCleaning.mutate({
-                              scheduleId: schedule.id,
-                              date: todayKey,
-                              userId: sessionUser.id,
-                              isCompleted: isDone,
-                            });
-                          }}
-                          className={cn(
-                            "flex items-center gap-1.5 rounded-full border-2 px-2.5 py-1.5 transition",
-                            isDone && "border-success bg-success/10",
-                            isOverdue && "border-destructive bg-destructive/10",
-                            !isDone && !isOverdue && "border-border bg-card"
-                          )}
-                        >
+                    type="button"
+                    disabled={toggleCleaning.isPending}
+                    onClick={() => {
+                      if (!sessionUser) return;
+                      toggleCleaning.mutate({
+                        scheduleId: schedule.id,
+                        date: todayKey,
+                        userId: sessionUser.id,
+                        isCompleted: isDone
+                      });
+                    }}
+                    className={cn("flex items-center gap-1.5 rounded-full px-2.5 py-1.5 transition border-4",
+
+                    isDone && "border-success bg-success/10",
+                    isOverdue && "border-destructive bg-destructive/10",
+                    !isDone && !isOverdue && "border-border bg-card"
+                    )}>
+
                           <Avatar className="h-6 w-6">
                             <AvatarImage src={member?.avatar_url ?? undefined} />
                             <AvatarFallback className="text-[8px]">{initials(member?.display_name ?? "?")}</AvatarFallback>
@@ -536,20 +536,20 @@ export function DayViewPanel() {
                         </button>
                       </TooltipTrigger>
                       <TooltipContent>{member?.display_name} • {cat?.name} • até {dueTimeStr}</TooltipContent>
-                    </Tooltip>
-                  );
-                })}
+                    </Tooltip>);
+
+          })}
               </div>
-            )}
+        }
 
             {/* Tarefas Atrasadas - Widget Vermelho */}
             {overdueTasks.length > 0 && <div className="space-y-2">
                 <p className="text-xs font-medium text-destructive uppercase tracking-wide">Atrasadas</p>
-                {overdueTasks.map(t => {
+                {overdueTasks.map((t) => {
             const members = assigneesByTaskId.get(t.id) ?? [];
             const person = teamByUserId.get(t.assigned_user_id);
             const client = clientsById.get(t.client_id);
-            const stageLabel = STAGES.find(s => s.key === t.stage)?.label ?? t.stage;
+            const stageLabel = STAGES.find((s) => s.key === t.stage)?.label ?? t.stage;
             const daysLate = differenceInCalendarDays(today, new Date(`${t.due_date}T00:00:00`));
             const displayMembers = members.length > 0 ? members : person ? [{
               user_id: person.user_id,
@@ -560,7 +560,7 @@ export function DayViewPanel() {
                       {displayMembers.length > 1 ? <Tooltip>
                           <TooltipTrigger asChild>
                             <div className="flex -space-x-2 shrink-0">
-                              {displayMembers.slice(0, 3).map(m => <Avatar key={m.user_id} className="h-8 w-8 border-2 border-destructive-foreground/30">
+                              {displayMembers.slice(0, 3).map((m) => <Avatar key={m.user_id} className="h-8 w-8 border-2 border-destructive-foreground/30">
                                   <AvatarImage src={m.avatar_url ?? undefined} />
                                   <AvatarFallback className="text-[10px] bg-destructive-foreground/20 text-destructive-foreground">{initials(m.display_name)}</AvatarFallback>
                                 </Avatar>)}
@@ -571,7 +571,7 @@ export function DayViewPanel() {
                           </TooltipTrigger>
                           <TooltipContent side="top" className="max-w-[200px]">
                             <div className="space-y-1">
-                              {displayMembers.map(m => <div key={m.user_id} className="flex items-center gap-2">
+                              {displayMembers.map((m) => <div key={m.user_id} className="flex items-center gap-2">
                                   <Avatar className="h-5 w-5">
                                     <AvatarImage src={m.avatar_url ?? undefined} />
                                     <AvatarFallback className="text-[8px]">{initials(m.display_name)}</AvatarFallback>
@@ -586,7 +586,7 @@ export function DayViewPanel() {
                         </Avatar>}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold truncate text-destructive-foreground">
-                          {displayMembers.length > 1 ? displayMembers.map(m => m.display_name).join(", ") : person?.display_name}
+                          {displayMembers.length > 1 ? displayMembers.map((m) => m.display_name).join(", ") : person?.display_name}
                           {" "}•{" "}({resolveClientName(t)}) • {stageLabel}
                         </p>
                       </div>
@@ -602,11 +602,11 @@ export function DayViewPanel() {
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                   {isCurrentMonth ? "Hoje" : "Pendentes"}
                 </p>
-                {todayPendingTasks.map(t => {
+                {todayPendingTasks.map((t) => {
             const members = assigneesByTaskId.get(t.id) ?? [];
             const person = teamByUserId.get(t.assigned_user_id);
             const client = clientsById.get(t.client_id);
-            const stageLabel = STAGES.find(s => s.key === t.stage)?.label ?? t.stage;
+            const stageLabel = STAGES.find((s) => s.key === t.stage)?.label ?? t.stage;
             const displayMembers = members.length > 0 ? members : person ? [{
               user_id: person.user_id,
               display_name: person.display_name,
@@ -616,7 +616,7 @@ export function DayViewPanel() {
                       {displayMembers.length > 1 ? <Tooltip>
                           <TooltipTrigger asChild>
                             <div className="flex -space-x-2 shrink-0">
-                              {displayMembers.slice(0, 3).map(m => <Avatar key={m.user_id} className="h-8 w-8 border-2 border-background">
+                              {displayMembers.slice(0, 3).map((m) => <Avatar key={m.user_id} className="h-8 w-8 border-2 border-background">
                                   <AvatarImage src={m.avatar_url ?? undefined} />
                                   <AvatarFallback className="text-[10px]">{initials(m.display_name)}</AvatarFallback>
                                 </Avatar>)}
@@ -627,7 +627,7 @@ export function DayViewPanel() {
                           </TooltipTrigger>
                           <TooltipContent side="top" className="max-w-[200px]">
                             <div className="space-y-1">
-                              {displayMembers.map(m => <div key={m.user_id} className="flex items-center gap-2">
+                              {displayMembers.map((m) => <div key={m.user_id} className="flex items-center gap-2">
                                   <Avatar className="h-5 w-5">
                                     <AvatarImage src={m.avatar_url ?? undefined} />
                                     <AvatarFallback className="text-[8px]">{initials(m.display_name)}</AvatarFallback>
@@ -642,7 +642,7 @@ export function DayViewPanel() {
                         </Avatar>}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold truncate">
-                          {displayMembers.length > 1 ? displayMembers.map(m => m.display_name).join(", ") : person?.display_name}
+                          {displayMembers.length > 1 ? displayMembers.map((m) => m.display_name).join(", ") : person?.display_name}
                           {" "}•{" "}({resolveClientName(t)}) • {stageLabel}
                         </p>
                       </div>
@@ -656,11 +656,11 @@ export function DayViewPanel() {
             {/* Tarefas Concluídas - Widget Verde */}
             {todayCompletedTasks.length > 0 && <div className="space-y-2">
                 <p className="text-xs font-medium text-green-600 dark:text-green-400 uppercase tracking-wide">Concluídas</p>
-                {todayCompletedTasks.map(t => {
+                {todayCompletedTasks.map((t) => {
             const members = assigneesByTaskId.get(t.id) ?? [];
             const person = teamByUserId.get(t.assigned_user_id);
             const client = clientsById.get(t.client_id);
-            const stageLabel = STAGES.find(s => s.key === t.stage)?.label ?? t.stage;
+            const stageLabel = STAGES.find((s) => s.key === t.stage)?.label ?? t.stage;
             const displayMembers = members.length > 0 ? members : person ? [{
               user_id: person.user_id,
               display_name: person.display_name,
@@ -670,7 +670,7 @@ export function DayViewPanel() {
                       {displayMembers.length > 1 ? <Tooltip>
                           <TooltipTrigger asChild>
                             <div className="flex -space-x-2 shrink-0">
-                              {displayMembers.slice(0, 3).map(m => <Avatar key={m.user_id} className="h-8 w-8 border-2 border-success-foreground/30">
+                              {displayMembers.slice(0, 3).map((m) => <Avatar key={m.user_id} className="h-8 w-8 border-2 border-success-foreground/30">
                                   <AvatarImage src={m.avatar_url ?? undefined} />
                                   <AvatarFallback className="text-[10px] bg-success-foreground/20 text-success-foreground">{initials(m.display_name)}</AvatarFallback>
                                 </Avatar>)}
@@ -681,7 +681,7 @@ export function DayViewPanel() {
                           </TooltipTrigger>
                           <TooltipContent side="top" className="max-w-[200px]">
                             <div className="space-y-1">
-                              {displayMembers.map(m => <div key={m.user_id} className="flex items-center gap-2">
+                              {displayMembers.map((m) => <div key={m.user_id} className="flex items-center gap-2">
                                   <Avatar className="h-5 w-5">
                                     <AvatarImage src={m.avatar_url ?? undefined} />
                                     <AvatarFallback className="text-[8px]">{initials(m.display_name)}</AvatarFallback>
@@ -696,7 +696,7 @@ export function DayViewPanel() {
                         </Avatar>}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold truncate text-success-foreground">
-                          {displayMembers.length > 1 ? displayMembers.map(m => m.display_name).join(", ") : person?.display_name}
+                          {displayMembers.length > 1 ? displayMembers.map((m) => m.display_name).join(", ") : person?.display_name}
                           {" "}•{" "}({resolveClientName(t)}) • {stageLabel}
                         </p>
                       </div>
@@ -716,8 +716,8 @@ export function DayViewPanel() {
               </p>}
            </CardContent>
          </Card> : (
-          /* ─── Conclusão de Tarefas ─── */
-           <Card className={cn(isFullscreen && "flex flex-col flex-1 min-h-[calc(100vh-140px)]")}>
+    /* ─── Conclusão de Tarefas ─── */
+    <Card className={cn(isFullscreen && "flex flex-col flex-1 min-h-[calc(100vh-140px)]")}>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Trophy className="h-5 w-5" />
@@ -741,13 +741,13 @@ export function DayViewPanel() {
                 <span className="w-5 shrink-0" />
               </div>
               {filteredRank.map((row, idx) => {
-                  const member = teamByUserId.get(row.user_id);
-                  const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx + 1}º`;
-                  const pending = row.taskTotal - row.taskCompleted;
-                  const prevPos = prevRankMap.current.get(row.user_id);
-                  const posChange = prevPos !== undefined ? prevPos - idx : 0;
-                  return (
-                    <div key={row.user_id} className={cn("flex items-center gap-3", isFullscreen ? "py-3" : "py-1")}>
+          const member = teamByUserId.get(row.user_id);
+          const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx + 1}º`;
+          const pending = row.taskTotal - row.taskCompleted;
+          const prevPos = prevRankMap.current.get(row.user_id);
+          const posChange = prevPos !== undefined ? prevPos - idx : 0;
+          return (
+            <div key={row.user_id} className={cn("flex items-center gap-3", isFullscreen ? "py-3" : "py-1")}>
                       {/* Posição */}
                       <span className={cn("w-8 text-center font-semibold shrink-0", isFullscreen ? "text-lg" : "text-sm")}>{medal}</span>
                       {/* Foto */}
@@ -775,9 +775,9 @@ export function DayViewPanel() {
                       <div className="flex-1 min-w-0">
                         <div className="relative w-full rounded-full bg-muted/50 overflow-hidden h-6">
                           <div
-                            className="absolute inset-y-0 left-0 rounded-full bg-success transition-all duration-500"
-                            style={{ width: `${row.completionPct}%` }}
-                          />
+                    className="absolute inset-y-0 left-0 rounded-full bg-success transition-all duration-500"
+                    style={{ width: `${row.completionPct}%` }} />
+
                           <div className="absolute inset-0 flex items-center justify-end pr-3">
                             <span className="font-bold tabular-nums text-foreground text-xs">
                               {row.completionPct}%
@@ -788,8 +788,8 @@ export function DayViewPanel() {
                       {/* Total de pontos + streak */}
                       <span className="w-14 text-center shrink-0 text-sm font-bold flex items-center justify-center gap-0.5">
                         {row.total}
-                        {(streakByUser.get(row.user_id) ?? 0) >= 2 && (
-                          <Tooltip>
+                        {(streakByUser.get(row.user_id) ?? 0) >= 2 &&
+                <Tooltip>
                             <TooltipTrigger asChild>
                               <span className="inline-flex">
                                 <Zap className="h-3.5 w-3.5 text-warning fill-warning" />
@@ -799,23 +799,23 @@ export function DayViewPanel() {
                               🔥 {streakByUser.get(row.user_id)} dias consecutivos no prazo!
                             </TooltipContent>
                           </Tooltip>
-                        )}
+                }
                       </span>
                       {/* Seta de posição */}
                       <div className="w-5 shrink-0 flex items-center justify-center">
                         {posChange > 0 ? <ArrowUp className="h-3.5 w-3.5 text-success" /> :
-                         posChange < 0 ? <ArrowDown className="h-3.5 w-3.5 text-destructive" /> :
-                         <span className="text-muted-foreground text-[10px]">–</span>}
+                posChange < 0 ? <ArrowDown className="h-3.5 w-3.5 text-destructive" /> :
+                <span className="text-muted-foreground text-[10px]">–</span>}
                       </div>
-                    </div>
-                  );
-                })}
+                    </div>);
 
-              {monthlyRank.length === 0 && (
-                <p className="text-muted-foreground text-center py-4">Nenhum dado de performance para este mês</p>
-              )}
+        })}
+
+              {monthlyRank.length === 0 &&
+        <p className="text-muted-foreground text-center py-4">Nenhum dado de performance para este mês</p>
+        }
             </CardContent>
-          </Card>
-        )}
+          </Card>)
+    }
     </div>;
 }
