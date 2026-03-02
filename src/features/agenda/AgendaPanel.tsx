@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { STAGES, STAGE_COLOR, type StageKey } from "@/lib/uau";
@@ -493,11 +494,12 @@ export function AgendaPanel() {
 
       {/* Dialog de criar tarefa (abrirá via botão + no dia) */}
       {canManageTasks && <Dialog open={open} onOpenChange={setOpen}>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
+          <DialogContent className="max-w-lg max-h-[90vh] flex flex-col p-0">
+            <DialogHeader className="px-6 pt-6 pb-0">
               <DialogTitle>Criar tarefa</DialogTitle>
             </DialogHeader>
-            <form className="space-y-4" onSubmit={form.handleSubmit(onCreateTask)}>
+            <ScrollArea className="flex-1 px-6 pb-6">
+            <form className="space-y-4 pt-4" onSubmit={form.handleSubmit(onCreateTask)}>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>{form.watch("is_freelancer") ? "Nome do cliente freela" : "Cliente"}</Label>
@@ -657,6 +659,7 @@ export function AgendaPanel() {
                 </Button>
               </DialogFooter>
             </form>
+            </ScrollArea>
           </DialogContent>
         </Dialog>}
 
