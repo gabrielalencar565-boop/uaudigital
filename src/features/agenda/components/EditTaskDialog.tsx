@@ -241,7 +241,7 @@ export function EditTaskDialog({
             <DialogTitle>Editar tarefa</DialogTitle>
           </DialogHeader>
 
-          <ScrollArea className="flex-1 min-h-0 px-6 pb-6">
+          <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-6">
           <form className="space-y-4 pt-4" onSubmit={form.handleSubmit(handleSubmit)}>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
@@ -466,7 +466,7 @@ export function EditTaskDialog({
               </div>
             </DialogFooter>
           </form>
-          </ScrollArea>
+          </div>
         </DialogContent>
       </Dialog>
 
