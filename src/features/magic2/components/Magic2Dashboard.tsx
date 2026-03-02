@@ -68,7 +68,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
   return (
     <section className={cn("grid gap-6", isMobile ? "grid-cols-1" : "lg:grid-cols-[460px_1fr]", fullscreen && "min-h-[calc(100vh-120px)]")}>
       {/* Coluna esquerda: anel grande */}
-      <Card className={cn("overflow-hidden", fullscreen && "flex flex-col")}>
+      <Card className={cn("overflow-hidden flex flex-col")}>
         <CardHeader>
           <CardTitle className={cn(isMobile ? "text-base" : "text-lg")}>Visão Geral</CardTitle>
           <CardDescription>Percentual concluído no mês selecionado.</CardDescription>
