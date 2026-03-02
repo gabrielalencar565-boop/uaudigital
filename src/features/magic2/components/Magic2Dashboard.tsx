@@ -73,12 +73,12 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
           <CardTitle className={cn(isMobile ? "text-base" : "text-lg")}>Visão Geral</CardTitle>
           <CardDescription>Percentual concluído no mês selecionado.</CardDescription>
         </CardHeader>
-        <CardContent className={cn("grid place-items-center flex-1", isMobile ? "pb-6" : "pb-10")}>
+        <CardContent className={cn("grid place-items-center flex-1 p-6", isMobile ? "pb-6" : "pb-10")}>
           <ProgressRing
             value={dashboard.overallPct}
             tone={dashboard.overallPct === 100 ? "success" : "warning"}
-            size={fullscreen ? 460 : isMobile ? 280 : 390}
-            stroke={isMobile ? 20 : 26}
+            size={fullscreen ? 400 : isMobile ? 240 : 340}
+            stroke={isMobile ? 18 : 24}
             label={
               <div className="text-center">
                 <div className={cn("font-semibold tabular-nums tracking-tight", isMobile ? "text-5xl" : "text-6xl")}>
