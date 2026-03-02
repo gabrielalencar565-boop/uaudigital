@@ -104,13 +104,8 @@ export function AgendaWeekTaskItem({
         onClick?.();
       }}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div
-          className={cn(
-            // flex-1 + min-w-0 evita empurrar os botões para fora no grid do mês
-            "min-w-0 flex-1",
-          )}
-        >
+      <div className="flex items-start justify-between gap-1">
+        <div className="shrink min-w-0">
           <div
             className={cn(
               "inline-flex items-center justify-center rounded-full font-semibold",
@@ -120,7 +115,7 @@ export function AgendaWeekTaskItem({
             )}
             title={stageLabel}
           >
-            <span className="whitespace-nowrap">{STAGE_SHORT[stage] ?? stageLabel}</span>
+            <span className="truncate">{STAGE_SHORT[stage] ?? stageLabel}</span>
           </div>
         </div>
 
