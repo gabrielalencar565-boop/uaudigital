@@ -77,7 +77,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
           <ProgressRing
             value={dashboard.overallPct}
             tone={dashboard.overallPct === 100 ? "success" : "warning"}
-            size={fullscreen ? 400 : isMobile ? 240 : 340}
+            size={fullscreen ? 440 : isMobile ? 260 : 370}
             stroke={isMobile ? 18 : 24}
             label={
               <div className="text-center">
