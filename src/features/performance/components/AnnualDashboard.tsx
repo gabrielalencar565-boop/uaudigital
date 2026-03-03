@@ -305,7 +305,43 @@ export function AnnualDashboard({
                     name={u.display_name?.split(" ")[0] ?? "?"}
                     stroke={CHART_COLORS[idx % CHART_COLORS.length]}
                     strokeWidth={2}
-                    dot={{ r: 3 }}
+                    dot={(props: any) => {
+                      const { cx, cy, value } = props;
+                      if (value == null || cx == null || cy == null) return <g />;
+                      const member = teamById.get(u.user_id);
+                      const size = 20;
+                      const r = size / 2;
+                      const clipId = `clip-${u.user_id}-${props.index}`;
+                      return (
+                        <g>
+                          <defs>
+                            <clipPath id={clipId}>
+                              <circle cx={cx} cy={cy} r={r} />
+                            </clipPath>
+                          </defs>
+                          <circle cx={cx} cy={cy} r={r + 1} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
+                          {member?.avatar_url ? (
+                            <image
+                              href={member.avatar_url}
+                              x={cx - r}
+                              y={cy - r}
+                              width={size}
+                              height={size}
+                              clipPath={`url(#${clipId})`}
+                              preserveAspectRatio="xMidYMid slice"
+                            />
+                          ) : (
+                            <>
+                              <circle cx={cx} cy={cy} r={r} fill="hsl(var(--muted))" />
+                              <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central" fontSize={7} fontWeight={700} fill="hsl(var(--muted-foreground))">
+                                {initials(member?.display_name ?? "?")}
+                              </text>
+                            </>
+                          )}
+                        </g>
+                      );
+                    }}
+                    activeDot={{ r: 14, strokeWidth: 2, stroke: CHART_COLORS[idx % CHART_COLORS.length] }}
                     connectNulls
                   />
                 ))}
