@@ -4,8 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { ProgressRing } from "@/components/metrics/ProgressRing";
-import { useFinClients, useFinRevenues, useUpsertFinRevenue, useFinExpenses, useUpsertFinExpense, useFinCreditCards } from "../hooks/use-financial-data";
+import { useFinClients, useFinRevenues, useUpsertFinRevenue, useFinExpenses, useUpsertFinExpense, useFinCreditCards, useFinAllExpenses } from "../hooks/use-financial-data";
 import { FinMonthYearSelector } from "./FinMonthYearSelector";
+import { buildEffectiveExpenses } from "../utils/build-effective-expenses";
 
 export function FinReceitasDespesasTab() {
   const now = new Date();
@@ -15,13 +16,17 @@ export function FinReceitasDespesasTab() {
   const clientsQ = useFinClients();
   const revenuesQ = useFinRevenues(year, month);
   const expensesQ = useFinExpenses(year, month);
+  const allYearExpensesQ = useFinAllExpenses(year);
   const cardsQ = useFinCreditCards();
   const upsertRev = useUpsertFinRevenue();
   const upsertExp = useUpsertFinExpense();
 
   const clients = (clientsQ.data?.filter((c) => c.is_active) ?? []).sort((a, b) => (a.due_day ?? 10) - (b.due_day ?? 10));
   const revenues = revenuesQ.data ?? [];
-  const allExpenses = expensesQ.data ?? [];
+  const allExpenses = useMemo(
+    () => buildEffectiveExpenses(expensesQ.data ?? [], allYearExpensesQ.data ?? [], month, year),
+    [expensesQ.data, allYearExpensesQ.data, month, year],
+  );
   const cards = cardsQ.data ?? [];
 
   const today = now.getDate();
