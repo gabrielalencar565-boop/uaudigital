@@ -1,11 +1,12 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ProgressRing } from "@/components/metrics/ProgressRing";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import {
-  BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Legend, RadarChart, Radar, PolarGrid,
-  PolarAngleAxis, PolarRadiusAxis,
+  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, Legend, ScatterChart, Scatter, ZAxis, Cell,
+  ReferenceLine, ReferenceArea,
 } from "recharts";
 
 function initials(name: string) {
@@ -32,17 +33,41 @@ type TeamMember = {
   avatar_url: string | null;
 };
 
+type TaskRow = {
+  id: string;
+  stage: string;
+  status: string;
+  due_date: string;
+  completed_at: string | null;
+  assigned_user_id: string;
+  quantity: number;
+  is_extra_demand: boolean;
+  deleted_at: string | null;
+};
+
 const MONTH_SHORT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
-const CRITERIA = [
-  { key: "metas_prazos" as const, label: "Metas/Prazos", max: 3 },
-  { key: "padrao_qualidade_uau" as const, label: "Qualidade", max: 4 },
-  { key: "comprometimento" as const, label: "Responsabilidade", max: 4 },
-  { key: "ambiente_organizado" as const, label: "Organização", max: 3 },
-  { key: "aprendizado_continuo" as const, label: "Aprendizado", max: 3 },
-];
+const STAGE_LABELS: Record<string, string> = {
+  planejamento: "Planejamento",
+  captacao: "Captação",
+  edicao_videos: "Vídeos",
+  design: "Design",
+  pdf: "PDF",
+  agendamento: "Agendamento",
+};
 
-const CHART_COLORS = [
+const STAGE_POINTS: Record<string, { base: number; usesQty: boolean }> = {
+  planejamento: { base: 4, usesQty: false },
+  captacao: { base: 1.5, usesQty: false },
+  edicao_videos: { base: 1, usesQty: true },
+  design: { base: 1, usesQty: true },
+  pdf: { base: 2, usesQty: false },
+  agendamento: { base: 1, usesQty: false },
+};
+
+const QUANTITATIVE_STAGES = ["planejamento", "captacao", "edicao_videos", "design", "pdf", "agendamento"];
+
+const COLORS = [
   "hsl(var(--primary))",
   "hsl(var(--primary) / 0.6)",
   "hsl(var(--primary) / 0.35)",
@@ -51,9 +76,19 @@ const CHART_COLORS = [
   "hsl(var(--destructive) / 0.6)",
 ];
 
-function totalPoints(s: ScoreRow) {
-  return s.aprendizado_continuo + s.padrao_qualidade_uau + s.metas_prazos +
-    s.ambiente_organizado + s.comprometimento + (s.video_destaque ?? 0) + (s.squad_destaque ?? 0);
+const SCATTER_ZONE_COLORS = {
+  topRight: "hsl(142 76% 36% / 0.08)",
+  topLeft: "hsl(48 96% 53% / 0.08)",
+  bottomRight: "hsl(48 96% 53% / 0.08)",
+  bottomLeft: "hsl(0 84% 60% / 0.08)",
+};
+
+function quantitativePoints(task: TaskRow): number {
+  const cfg = STAGE_POINTS[task.stage];
+  if (!cfg) return 0;
+  const wasOnTime = task.completed_at && new Date(task.completed_at).toISOString().slice(0, 10) <= task.due_date;
+  if (!wasOnTime) return 0;
+  return cfg.usesQty ? cfg.base * (task.quantity || 1) : cfg.base;
 }
 
 export function AnnualDashboard({
@@ -67,399 +102,390 @@ export function AnnualDashboard({
   teamById: Map<string, TeamMember>;
   year: number;
 }) {
-  // --- KPIs ---
-  const kpis = useMemo(() => {
-    if (!scores.length) return null;
+  // Fetch tasks for the year
+  const tasksQ = useQuery({
+    queryKey: ["annual_dashboard_tasks", year],
+    queryFn: async () => {
+      const startDate = `${year}-01-01`;
+      const endDate = `${year}-12-31`;
+      const { data, error } = await supabase
+        .from("tasks")
+        .select("id, stage, status, due_date, completed_at, assigned_user_id, quantity, is_extra_demand, deleted_at")
+        .gte("due_date", startDate)
+        .lte("due_date", endDate)
+        .is("deleted_at", null);
+      if (error) throw error;
+      return (data ?? []) as TaskRow[];
+    },
+  });
 
-    const totalAll = scores.reduce((s, r) => s + totalPoints(r), 0);
-    const months = new Set(scores.map((s) => s.month));
-    const avgPerMonth = months.size > 0 ? totalAll / months.size : 0;
-    const avgPerPerson = team.length > 0 && months.size > 0
-      ? totalAll / team.length / months.size
-      : 0;
+  const tasks = tasksQ.data ?? [];
+  const completedTasks = useMemo(() => tasks.filter((t) => t.status === "concluido"), [tasks]);
 
-    // Best month
-    const monthTotals = Array.from({ length: 12 }, (_, i) => {
-      const m = i + 1;
-      return scores.filter((s) => s.month === m).reduce((acc, s) => acc + totalPoints(s), 0);
-    });
-    const bestMonthIdx = monthTotals.indexOf(Math.max(...monthTotals));
-    const bestMonth = MONTH_SHORT[bestMonthIdx];
-    const bestMonthVal = monthTotals[bestMonthIdx];
-
-    // Total bonuses
-    const totalVideo = scores.reduce((s, r) => s + (r.video_destaque > 0 ? 1 : 0), 0);
-    const totalSquad = scores.reduce((s, r) => s + (r.squad_destaque > 0 ? 1 : 0), 0);
-
-    // Consistency: % of months with high performance per person
-    const highPerformance = scores.filter((s) => {
-      const base = s.aprendizado_continuo + s.padrao_qualidade_uau + s.metas_prazos +
-        s.ambiente_organizado + s.comprometimento;
-      return base >= 12; // ~70% of 17 max base
-    }).length;
-    const consistencyPct = scores.length > 0 ? (highPerformance / scores.length) * 100 : 0;
-
-    return { totalAll, avgPerMonth, avgPerPerson, bestMonth, bestMonthVal, totalVideo, totalSquad, consistencyPct, monthsEvaluated: months.size };
-  }, [scores, team]);
-
-  // --- Monthly evolution (line chart) ---
-  const monthlyEvolution = useMemo(() => {
-    const topUsers = [...team]
-      .map((t) => ({
-        ...t,
-        total: scores.filter((s) => s.user_id === t.user_id).reduce((acc, s) => acc + totalPoints(s), 0),
-      }))
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 5);
-
+  // 1.1 – Evolução Anual de Pontos Quantitativos (Line)
+  const quantEvolution = useMemo(() => {
     return Array.from({ length: 12 }, (_, i) => {
       const m = i + 1;
-      const row: Record<string, any> = { month: MONTH_SHORT[i] };
-      for (const u of topUsers) {
-        const s = scores.find((sc) => sc.user_id === u.user_id && sc.month === m);
-        row[u.user_id] = s ? totalPoints(s) : null;
-      }
-      return row;
+      const monthStr = String(m).padStart(2, "0");
+      const monthTasks = completedTasks.filter((t) => t.due_date.slice(5, 7) === monthStr);
+      const total = monthTasks.reduce((sum, t) => sum + quantitativePoints(t), 0);
+      return { month: MONTH_SHORT[i], total: Math.round(total * 10) / 10 };
     });
-  }, [scores, team]);
+  }, [completedTasks]);
 
-  const topUsersForChart = useMemo(() => {
-    return [...team]
-      .map((t) => ({
-        ...t,
-        total: scores.filter((s) => s.user_id === t.user_id).reduce((acc, s) => acc + totalPoints(s), 0),
+  // 1.2 – Produção Anual por Colaborador (Bar)
+  const prodByCollab = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const t of completedTasks) {
+      const pts = quantitativePoints(t);
+      map.set(t.assigned_user_id, (map.get(t.assigned_user_id) ?? 0) + pts);
+    }
+    return team
+      .map((m) => ({
+        name: m.display_name?.split(" ")[0] ?? "?",
+        user_id: m.user_id,
+        total: Math.round((map.get(m.user_id) ?? 0) * 10) / 10,
       }))
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 5);
-  }, [scores, team]);
+      .sort((a, b) => b.total - a.total);
+  }, [completedTasks, team]);
 
-  // --- Category average (bar chart) ---
-  const categoryAvg = useMemo(() => {
-    if (!scores.length) return [];
-    const count = scores.length;
-    return CRITERIA.map((c) => ({
-      category: c.label,
-      media: Math.round((scores.reduce((s, r) => s + r[c.key], 0) / count) * 100) / 100,
-      max: c.max,
-    }));
-  }, [scores]);
-
-  // --- Radar top 3 ---
-  const radarData = useMemo(() => {
-    const top3 = [...team]
-      .map((t) => ({
-        ...t,
-        total: scores.filter((s) => s.user_id === t.user_id).reduce((acc, s) => acc + totalPoints(s), 0),
-      }))
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 3);
-
-    return CRITERIA.map((c) => {
-      const row: Record<string, any> = { category: c.label };
-      for (const u of top3) {
-        const userScores = scores.filter((s) => s.user_id === u.user_id);
-        const avg = userScores.length > 0
-          ? userScores.reduce((s, r) => s + r[c.key], 0) / userScores.length
-          : 0;
-        row[u.user_id] = Math.round(avg * 100) / 100;
-      }
-      return row;
+  // 1.3 – Produção por Tipo de Tarefa (Grouped Bar)
+  const prodByType = useMemo(() => {
+    return QUANTITATIVE_STAGES.map((stage) => {
+      const stageTasks = completedTasks.filter((t) => t.stage === stage);
+      const count = stageTasks.length;
+      const units = stageTasks.reduce((s, t) => s + (STAGE_POINTS[stage]?.usesQty ? (t.quantity || 1) : 1), 0);
+      return { stage: STAGE_LABELS[stage] ?? stage, count, units };
     });
-  }, [scores, team]);
+  }, [completedTasks]);
 
-  const top3Users = useMemo(() => {
-    return [...team]
-      .map((t) => ({
-        ...t,
-        total: scores.filter((s) => s.user_id === t.user_id).reduce((acc, s) => acc + totalPoints(s), 0),
-      }))
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 3);
-  }, [scores, team]);
-
-  // --- Monthly team total bar chart ---
-  const monthlyTeamTotal = useMemo(() => {
+  // 2.1 – Evolução Anual da Média Qualitativa (Line)
+  const qualEvolution = useMemo(() => {
     return Array.from({ length: 12 }, (_, i) => {
       const m = i + 1;
-      const total = scores.filter((s) => s.month === m).reduce((acc, s) => acc + totalPoints(s), 0);
-      return { month: MONTH_SHORT[i], total };
+      const monthScores = scores.filter((s) => s.month === m);
+      if (!monthScores.length) return { month: MONTH_SHORT[i], media: null };
+      const avg = monthScores.reduce(
+        (s, r) => s + r.padrao_qualidade_uau + r.comprometimento + r.ambiente_organizado + r.aprendizado_continuo,
+        0,
+      ) / monthScores.length;
+      return { month: MONTH_SHORT[i], media: Math.round(avg * 100) / 100 };
     });
   }, [scores]);
 
-  if (!scores.length) return null;
+  // 2.2 – Índice de Responsabilidade (% no prazo + pontos perdidos)
+  const responsibilityIndex = useMemo(() => {
+    return Array.from({ length: 12 }, (_, i) => {
+      const m = i + 1;
+      const monthStr = String(m).padStart(2, "0");
+      const monthTasks = tasks.filter((t) => t.due_date.slice(5, 7) === monthStr && t.status === "concluido");
+      if (!monthTasks.length) return { month: MONTH_SHORT[i], pctOnTime: null, lost: 0 };
+      let onTime = 0;
+      let lost = 0;
+      for (const t of monthTasks) {
+        const completedDate = t.completed_at ? new Date(t.completed_at).toISOString().slice(0, 10) : null;
+        if (completedDate && completedDate <= t.due_date) {
+          onTime++;
+        } else {
+          lost++;
+        }
+      }
+      return {
+        month: MONTH_SHORT[i],
+        pctOnTime: Math.round((onTime / monthTasks.length) * 100),
+        lost,
+      };
+    });
+  }, [tasks]);
+
+  const totalLostYear = useMemo(() => responsibilityIndex.reduce((s, r) => s + r.lost, 0), [responsibilityIndex]);
+
+  // 2.3 – Matriz Produção x Qualidade (Scatter)
+  const scatterData = useMemo(() => {
+    return team.map((m) => {
+      const quantTotal = completedTasks
+        .filter((t) => t.assigned_user_id === m.user_id)
+        .reduce((s, t) => s + quantitativePoints(t), 0);
+      const userScores = scores.filter((s) => s.user_id === m.user_id);
+      const qualTotal = userScores.reduce(
+        (s, r) => s + r.padrao_qualidade_uau + r.comprometimento + r.ambiente_organizado + r.aprendizado_continuo,
+        0,
+      );
+      return {
+        user_id: m.user_id,
+        name: m.display_name,
+        avatar_url: m.avatar_url,
+        x: Math.round(quantTotal * 10) / 10,
+        y: qualTotal,
+      };
+    }).filter((d) => d.x > 0 || d.y > 0);
+  }, [team, completedTasks, scores]);
+
+  const scatterMidX = useMemo(() => {
+    if (!scatterData.length) return 0;
+    const max = Math.max(...scatterData.map((d) => d.x));
+    return Math.round(max / 2);
+  }, [scatterData]);
+
+  const scatterMidY = useMemo(() => {
+    if (!scatterData.length) return 0;
+    const max = Math.max(...scatterData.map((d) => d.y));
+    return Math.round(max / 2);
+  }, [scatterData]);
+
+  const scatterMaxX = useMemo(() => Math.max(...scatterData.map((d) => d.x), 10), [scatterData]);
+  const scatterMaxY = useMemo(() => Math.max(...scatterData.map((d) => d.y), 10), [scatterData]);
+
+  if (!scores.length && !tasks.length) return null;
+
+  const tooltipStyle = {
+    background: "hsl(var(--card))",
+    border: "1px solid hsl(var(--border))",
+    borderRadius: 8,
+  };
 
   return (
-    <div className="space-y-6 mt-6">
-      {/* KPI Cards */}
-      {kpis && (
-        <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
-          <Card className="text-center">
-            <CardContent className="pt-4 pb-3">
-              <p className="text-xs uppercase text-muted-foreground font-medium">Total Geral</p>
-              <p className="text-3xl font-bold tabular-nums text-primary">{kpis.totalAll}</p>
-              <p className="text-[10px] text-muted-foreground">pts acumulados</p>
-            </CardContent>
-          </Card>
-          <Card className="text-center">
-            <CardContent className="pt-4 pb-3">
-              <p className="text-xs uppercase text-muted-foreground font-medium">Média/Pessoa</p>
-              <p className="text-3xl font-bold tabular-nums">{kpis.avgPerPerson.toFixed(1)}</p>
-              <p className="text-[10px] text-muted-foreground">pts/mês/pessoa</p>
-            </CardContent>
-          </Card>
-          <Card className="text-center">
-            <CardContent className="pt-4 pb-3">
-              <p className="text-xs uppercase text-muted-foreground font-medium">Melhor Mês</p>
-              <p className="text-3xl font-bold tabular-nums">{kpis.bestMonth}</p>
-              <p className="text-[10px] text-muted-foreground">{kpis.bestMonthVal} pts</p>
-            </CardContent>
-          </Card>
-          <Card className="text-center">
-            <CardContent className="pt-4 pb-3">
-              <p className="text-xs uppercase text-muted-foreground font-medium">Meses Avaliados</p>
-              <p className="text-3xl font-bold tabular-nums">{kpis.monthsEvaluated}</p>
-              <p className="text-[10px] text-muted-foreground">de 12</p>
-            </CardContent>
-          </Card>
-          <Card className="text-center">
-            <CardContent className="pt-4 pb-3">
-              <p className="text-xs uppercase text-muted-foreground font-medium">🎬 Vídeo</p>
-              <p className="text-3xl font-bold tabular-nums">{kpis.totalVideo}</p>
-              <p className="text-[10px] text-muted-foreground">destaques</p>
-            </CardContent>
-          </Card>
-          <Card className="flex flex-col items-center justify-center">
-            <CardContent className="pt-4 pb-3 flex flex-col items-center">
-              <p className="text-xs uppercase text-muted-foreground font-medium mb-1">Consistência</p>
-              <ProgressRing
-                value={Math.min(kpis.consistencyPct, 100)}
-                size={70}
-                stroke={8}
-                tone={kpis.consistencyPct >= 70 ? "success" : kpis.consistencyPct >= 40 ? "warning" : "danger"}
-                label={<span className="text-lg font-bold">{Math.round(kpis.consistencyPct)}%</span>}
-              />
-            </CardContent>
-          </Card>
-        </div>
-      )}
+    <div className="space-y-8 mt-6">
+      {/* ════════════ BLOCO 1 — DESEMPENHO QUANTITATIVO ════════════ */}
+      <div>
+        <h3 className="text-lg font-semibold tracking-tight text-primary mb-4 flex items-center gap-2">
+          <span className="inline-block h-3 w-3 rounded-full bg-primary" />
+          Desempenho Quantitativo
+        </h3>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Monthly evolution line chart */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm uppercase text-center">Evolução Mensal — Top 5</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={280}>
-              <LineChart data={monthlyEvolution}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis dataKey="month" className="text-xs" />
-                <YAxis className="text-xs" />
-                <Tooltip
-                  contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
-                  labelStyle={{ fontWeight: 600 }}
-                  content={({ active, payload, label }) => {
-                    if (!active || !payload?.length) return null;
-                    return (
-                      <div className="rounded-lg border border-border/50 bg-card px-3 py-2 shadow-xl text-xs">
-                        <p className="font-semibold mb-1.5">{label}</p>
-                        {payload.map((p: any) => {
-                          const member = teamById.get(p.dataKey);
-                          return (
-                            <div key={p.dataKey} className="flex items-center gap-2 py-0.5">
-                              <Avatar className="h-5 w-5">
-                                <AvatarImage src={member?.avatar_url ?? undefined} />
-                                <AvatarFallback className="text-[8px]">{initials(member?.display_name ?? "?")}</AvatarFallback>
-                              </Avatar>
-                              <span className="text-muted-foreground">{member?.display_name?.split(" ")[0] ?? "?"}</span>
-                              <span className="ml-auto font-bold tabular-nums" style={{ color: p.stroke }}>{p.value} pts</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    );
-                  }}
-                />
-                <Legend
-                  content={({ payload }) => (
-                    <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-                      {payload?.map((entry: any) => {
-                        const member = teamById.get(entry.dataKey);
-                        return (
-                          <div key={entry.dataKey} className="flex items-center gap-1.5">
-                            <Avatar className="h-5 w-5 border" style={{ borderColor: entry.color }}>
-                              <AvatarImage src={member?.avatar_url ?? undefined} />
-                              <AvatarFallback className="text-[8px]">{initials(member?.display_name ?? "?")}</AvatarFallback>
-                            </Avatar>
-                            <span className="text-xs text-muted-foreground">{member?.display_name?.split(" ")[0] ?? "?"}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                />
-                {topUsersForChart.map((u, idx) => (
-                  <Line
-                    key={u.user_id}
-                    dataKey={u.user_id}
-                    name={u.display_name?.split(" ")[0] ?? "?"}
-                    stroke={CHART_COLORS[idx % CHART_COLORS.length]}
-                    strokeWidth={2}
-                    dot={(props: any) => {
-                      const { cx, cy, value } = props;
-                      if (value == null || cx == null || cy == null) return <g />;
-                      const member = teamById.get(u.user_id);
-                      const size = 20;
-                      const r = size / 2;
-                      const clipId = `clip-${u.user_id}-${props.index}`;
-                      return (
-                        <g>
-                          <defs>
-                            <clipPath id={clipId}>
-                              <circle cx={cx} cy={cy} r={r} />
-                            </clipPath>
-                          </defs>
-                          <circle cx={cx} cy={cy} r={r + 1} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
-                          {member?.avatar_url ? (
-                            <image
-                              href={member.avatar_url}
-                              x={cx - r}
-                              y={cy - r}
-                              width={size}
-                              height={size}
-                              clipPath={`url(#${clipId})`}
-                              preserveAspectRatio="xMidYMid slice"
-                            />
-                          ) : (
-                            <>
-                              <circle cx={cx} cy={cy} r={r} fill="hsl(var(--muted))" />
-                              <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central" fontSize={7} fontWeight={700} fill="hsl(var(--muted-foreground))">
-                                {initials(member?.display_name ?? "?")}
-                              </text>
-                            </>
-                          )}
-                        </g>
-                      );
-                    }}
-                    activeDot={{ r: 14, strokeWidth: 2, stroke: CHART_COLORS[idx % CHART_COLORS.length] }}
-                    connectNulls
-                  />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Monthly team total bar chart */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm uppercase text-center">Total da Equipe por Mês</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={monthlyTeamTotal}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis dataKey="month" className="text-xs" />
-                <YAxis className="text-xs" />
-                <Tooltip
-                  contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
-                  formatter={(v: number) => [`${v} pts`, "Total"]}
-                />
-                <Bar dataKey="total" name="Total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Category average bar chart */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm uppercase text-center">Média por Competência</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={categoryAvg} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis type="number" className="text-xs" domain={[0, 4]} />
-                <YAxis dataKey="category" type="category" className="text-xs" width={100} />
-                <Tooltip
-                  contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
-                  formatter={(v: number) => [v.toFixed(2), "Média"]}
-                />
-                <Bar dataKey="media" name="Média" fill="hsl(var(--primary) / 0.7)" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Radar chart top 3 */}
-        {top3Users.length >= 2 && (
-          <Card>
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* 1.1 – Evolução Anual Quantitativa */}
+          <Card className="lg:col-span-2">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm uppercase text-center">Perfil de Competências — Top 3</CardTitle>
+              <CardTitle className="text-sm uppercase text-center">Evolução Anual de Pontos Quantitativos</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={280}>
-                <RadarChart data={radarData}>
-                  <PolarGrid className="stroke-border" />
-                  <PolarAngleAxis dataKey="category" className="text-xs" />
-                  <PolarRadiusAxis className="text-xs" domain={[0, 4]} />
-                  {top3Users.map((u, idx) => (
-                    <Radar
-                      key={u.user_id}
-                      dataKey={u.user_id}
-                      name={u.display_name?.split(" ")[0] ?? "?"}
-                      stroke={CHART_COLORS[idx]}
-                      fill={CHART_COLORS[idx]}
-                      fillOpacity={0.15}
-                    />
-                  ))}
-                  <Legend
-                    content={({ payload }) => (
-                      <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-                        {payload?.map((entry: any) => {
-                          const member = teamById.get(entry.dataKey);
-                          return (
-                            <div key={entry.dataKey} className="flex items-center gap-1.5">
-                              <Avatar className="h-5 w-5 border" style={{ borderColor: entry.color }}>
-                                <AvatarImage src={member?.avatar_url ?? undefined} />
-                                <AvatarFallback className="text-[8px]">{initials(member?.display_name ?? "?")}</AvatarFallback>
-                              </Avatar>
-                              <span className="text-xs text-muted-foreground">{member?.display_name?.split(" ")[0] ?? "?"}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
+                <LineChart data={quantEvolution}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis dataKey="month" className="text-xs" />
+                  <YAxis className="text-xs" />
+                  <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => [`${v} pts`, "Total"]} />
+                  <Line
+                    dataKey="total"
+                    name="Pontos Quantitativos"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth={2.5}
+                    dot={{ r: 4, fill: "hsl(var(--primary))" }}
+                    connectNulls
                   />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* 1.2 – Produção por Colaborador */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm uppercase text-center">Produção Anual por Colaborador</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={prodByCollab}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis dataKey="name" className="text-xs" />
+                  <YAxis className="text-xs" />
                   <Tooltip
+                    contentStyle={tooltipStyle}
                     content={({ active, payload }) => {
                       if (!active || !payload?.length) return null;
+                      const d = payload[0]?.payload;
+                      const member = teamById.get(d?.user_id);
                       return (
                         <div className="rounded-lg border border-border/50 bg-card px-3 py-2 shadow-xl text-xs">
-                          <p className="font-semibold mb-1.5">{(payload[0] as any)?.payload?.category}</p>
-                          {payload.map((p: any) => {
-                            const member = teamById.get(p.dataKey);
-                            return (
-                              <div key={p.dataKey} className="flex items-center gap-2 py-0.5">
-                                <Avatar className="h-5 w-5">
-                                  <AvatarImage src={member?.avatar_url ?? undefined} />
-                                  <AvatarFallback className="text-[8px]">{initials(member?.display_name ?? "?")}</AvatarFallback>
-                                </Avatar>
-                                <span className="text-muted-foreground">{member?.display_name?.split(" ")[0] ?? "?"}</span>
-                                <span className="ml-auto font-bold tabular-nums" style={{ color: p.stroke }}>{p.value}</span>
-                              </div>
-                            );
-                          })}
+                          <div className="flex items-center gap-2 mb-1">
+                            <Avatar className="h-5 w-5">
+                              <AvatarImage src={member?.avatar_url ?? undefined} />
+                              <AvatarFallback className="text-[8px]">{initials(member?.display_name ?? "?")}</AvatarFallback>
+                            </Avatar>
+                            <span className="font-semibold">{member?.display_name ?? "?"}</span>
+                          </div>
+                          <p className="tabular-nums font-bold text-primary">{d?.total} pts</p>
                         </div>
                       );
                     }}
                   />
-                </RadarChart>
+                  <Bar dataKey="total" name="Total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                </BarChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
-        )}
+
+          {/* 1.3 – Produção por Tipo */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm uppercase text-center">Produção por Tipo de Tarefa</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={prodByType}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis dataKey="stage" className="text-xs" />
+                  <YAxis className="text-xs" />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Legend />
+                  <Bar dataKey="count" name="Entregas" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="units" name="Unidades" fill="hsl(var(--primary) / 0.4)" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* ════════════ BLOCO 2 — DESEMPENHO QUALITATIVO ════════════ */}
+      <div>
+        <h3 className="text-lg font-semibold tracking-tight text-primary mb-4 flex items-center gap-2">
+          <span className="inline-block h-3 w-3 rounded-full bg-accent-foreground/70" />
+          Desempenho Qualitativo
+        </h3>
+
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* 2.1 – Evolução Qualitativa */}
+          <Card className="lg:col-span-2">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm uppercase text-center">Evolução Anual da Média Qualitativa</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={280}>
+                <LineChart data={qualEvolution}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis dataKey="month" className="text-xs" />
+                  <YAxis className="text-xs" domain={[0, 12]} />
+                  <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => [`${v} pts`, "Média Qualitativa"]} />
+                  <Line
+                    dataKey="media"
+                    name="Média Qualitativa"
+                    stroke="hsl(var(--accent-foreground) / 0.7)"
+                    strokeWidth={2.5}
+                    dot={{ r: 4, fill: "hsl(var(--accent-foreground) / 0.7)" }}
+                    connectNulls
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* 2.2 – Índice de Responsabilidade */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm uppercase text-center">
+                Índice de Responsabilidade (Prazo)
+              </CardTitle>
+              <p className="text-xs text-muted-foreground text-center">
+                Pontos perdidos por atraso no ano: <span className="font-bold text-destructive tabular-nums">{totalLostYear}</span>
+              </p>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={responsibilityIndex}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis dataKey="month" className="text-xs" />
+                  <YAxis className="text-xs" domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+                  <Tooltip
+                    contentStyle={tooltipStyle}
+                    formatter={(v: any, name: string) => {
+                      if (name === "No Prazo") return [`${v}%`, name];
+                      return [v, name];
+                    }}
+                  />
+                  <Legend />
+                  <Bar dataKey="pctOnTime" name="No Prazo" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="lost" name="Atrasadas" fill="hsl(var(--destructive) / 0.6)" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* 2.3 – Matriz Produção x Qualidade */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm uppercase text-center">Matriz Produção × Qualidade</CardTitle>
+              <p className="text-xs text-muted-foreground text-center">Cada ponto = 1 colaborador</p>
+            </CardHeader>
+            <CardContent>
+              {scatterData.length >= 1 ? (
+                <ResponsiveContainer width="100%" height={320}>
+                  <ScatterChart margin={{ top: 10, right: 20, bottom: 10, left: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                    <XAxis
+                      type="number"
+                      dataKey="x"
+                      name="Quantitativo"
+                      className="text-xs"
+                      label={{ value: "Pontos Quantitativos", position: "insideBottom", offset: -5, className: "text-xs fill-muted-foreground" }}
+                    />
+                    <YAxis
+                      type="number"
+                      dataKey="y"
+                      name="Qualitativo"
+                      className="text-xs"
+                      label={{ value: "Pontos Qualitativos", angle: -90, position: "insideLeft", className: "text-xs fill-muted-foreground" }}
+                    />
+                    <ZAxis range={[200, 200]} />
+
+                    {/* Quadrant zones */}
+                    <ReferenceArea x1={scatterMidX} x2={scatterMaxX * 1.1} y1={scatterMidY} y2={scatterMaxY * 1.1} fill={SCATTER_ZONE_COLORS.topRight} fillOpacity={1} />
+                    <ReferenceArea x1={0} x2={scatterMidX} y1={scatterMidY} y2={scatterMaxY * 1.1} fill={SCATTER_ZONE_COLORS.topLeft} fillOpacity={1} />
+                    <ReferenceArea x1={scatterMidX} x2={scatterMaxX * 1.1} y1={0} y2={scatterMidY} fill={SCATTER_ZONE_COLORS.bottomRight} fillOpacity={1} />
+                    <ReferenceArea x1={0} x2={scatterMidX} y1={0} y2={scatterMidY} fill={SCATTER_ZONE_COLORS.bottomLeft} fillOpacity={1} />
+
+                    <ReferenceLine x={scatterMidX} stroke="hsl(var(--border))" strokeDasharray="4 4" />
+                    <ReferenceLine y={scatterMidY} stroke="hsl(var(--border))" strokeDasharray="4 4" />
+
+                    <Tooltip
+                      content={({ active, payload }) => {
+                        if (!active || !payload?.length) return null;
+                        const d = payload[0]?.payload;
+                        return (
+                          <div className="rounded-lg border border-border/50 bg-card px-3 py-2 shadow-xl text-xs">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Avatar className="h-6 w-6">
+                                <AvatarImage src={d?.avatar_url ?? undefined} />
+                                <AvatarFallback className="text-[8px]">{initials(d?.name ?? "?")}</AvatarFallback>
+                              </Avatar>
+                              <span className="font-semibold">{d?.name}</span>
+                            </div>
+                            <p className="text-muted-foreground">Quantitativo: <span className="font-bold text-primary tabular-nums">{d?.x}</span></p>
+                            <p className="text-muted-foreground">Qualitativo: <span className="font-bold text-primary tabular-nums">{d?.y}</span></p>
+                          </div>
+                        );
+                      }}
+                    />
+                    <Scatter data={scatterData} fill="hsl(var(--primary))">
+                      {scatterData.map((entry, idx) => (
+                        <Cell key={entry.user_id} fill={COLORS[idx % COLORS.length]} />
+                      ))}
+                    </Scatter>
+                  </ScatterChart>
+                </ResponsiveContainer>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-8">Dados insuficientes para a matriz.</p>
+              )}
+              {scatterData.length >= 1 && (
+                <div className="flex flex-wrap items-center justify-center gap-3 mt-2">
+                  {scatterData.map((d, idx) => {
+                    const member = teamById.get(d.user_id);
+                    return (
+                      <div key={d.user_id} className="flex items-center gap-1.5">
+                        <Avatar className="h-5 w-5 border-2" style={{ borderColor: COLORS[idx % COLORS.length] }}>
+                          <AvatarImage src={member?.avatar_url ?? undefined} />
+                          <AvatarFallback className="text-[8px]">{initials(member?.display_name ?? "?")}</AvatarFallback>
+                        </Avatar>
+                        <span className="text-xs text-muted-foreground">{member?.display_name?.split(" ")[0]}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
