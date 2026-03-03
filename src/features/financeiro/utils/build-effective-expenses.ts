@@ -25,7 +25,7 @@ export function buildEffectiveExpenses(
 
     // Recurring non-installment → appears every month
     if (e.is_recurring && !e.installment_total) {
-      result.push({ ...e, month: targetMonth, year: targetYear } as FinExpense);
+      result.push({ ...e, month: targetMonth, year: targetYear, status: "pendente", paid_at: null } as FinExpense);
       return;
     }
 
@@ -42,6 +42,8 @@ export function buildEffectiveExpenses(
           month: targetMonth,
           year: targetYear,
           installment_current: e.installment_current + offset,
+          status: "pendente",
+          paid_at: null,
         } as FinExpense);
       }
     }
