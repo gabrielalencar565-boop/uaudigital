@@ -210,6 +210,7 @@ export function useUpsertFinExpense() {
     },
     onSuccess: (_d, v) => {
       qc.invalidateQueries({ queryKey: FK.expenses(v.year, v.month) });
+      qc.invalidateQueries({ queryKey: ["fin-expenses-year", v.year] });
       toast.success("Despesa salva");
     },
     onError: (e: any) => toast.error(e.message),
@@ -225,6 +226,7 @@ export function useDeleteFinExpense() {
     },
     onSuccess: (_d, v) => {
       qc.invalidateQueries({ queryKey: FK.expenses(v.year, v.month) });
+      qc.invalidateQueries({ queryKey: ["fin-expenses-year", v.year] });
       toast.success("Despesa excluída");
     },
     onError: (e: any) => toast.error(e.message),
