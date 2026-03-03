@@ -199,11 +199,11 @@ export function FinReceitasDespesasTab() {
         <Card className="flex flex-col items-center justify-center py-4">
           <span className="text-sm font-medium text-muted-foreground mb-2">Clientes Ativos</span>
           <ProgressRing
-            value={Math.min(clients.length * 5, 100)}
+            value={revTotal > 0 ? revProgress : 0}
             size={100}
             stroke={10}
-            tone="primary"
-            label={<span className="text-3xl font-bold">{clients.length}</span>}
+            tone={revProgress >= 100 ? "success" : revProgress >= 50 ? "primary" : "warning"}
+            label={<span className="text-3xl font-bold">{revPaid}/{revTotal}</span>}
           />
         </Card>
         <Card className="flex flex-col items-center justify-center py-4">
