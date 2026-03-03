@@ -22,6 +22,7 @@ import { useEffect, useMemo, useState } from "react";
  import { Top3CompetencyRadar } from "@/features/performance/components/Top3CompetencyRadar";
 import { AdminDeadlineReport } from "@/features/performance/components/AdminDeadlineReport";
 import { AnnualShowcasePanel } from "@/features/performance/components/AnnualShowcasePanel";
+import { AnnualDashboard } from "@/features/performance/components/AnnualDashboard";
 import { useNow } from "@/hooks/use-now";
  
  function initials(name: string) {
@@ -455,11 +456,18 @@ const TOTAL_POINTS = 27;
                      </div>
                    );
                  })}
-                 {annualRank.length === 0 ? <p className="text-sm text-muted-foreground">Nenhuma avaliação ainda neste ano.</p> : null}
-               </div>
-             </CardContent>
-           </Card>
-         </TabsContent>
+                  {annualRank.length === 0 ? <p className="text-sm text-muted-foreground">Nenhuma avaliação ainda neste ano.</p> : null}
+                </div>
+              </CardContent>
+            </Card>
+
+            <AnnualDashboard
+              scores={annualQ.data ?? []}
+              team={teamQ.data ?? []}
+              teamById={teamById}
+              year={year}
+            />
+          </TabsContent>
 
         {isAdmin ? (
           <TabsContent value="relatorio" className="mt-6 space-y-4">
