@@ -39,25 +39,10 @@ export function FinDespesasDetalhadasTab() {
   const allYearExpenses = allYearExpensesQ.data ?? [];
   const cards = cardsQ.data ?? [];
 
-  // Build effective expenses for this month:
-  // 1. Recurring (non-installment) expenses from ANY month of this year should appear
-  // 2. Installment expenses only appear if their installment range covers this month
-  // 3. Direct expenses for this month
-  const expenses = useMemo(() => {
-    const directIds = new Set(storedExpenses.map(e => e.id));
-    const result = [...storedExpenses];
-    
-    // Add recurring expenses from other months that should carry over
-    allYearExpenses.forEach(e => {
-      if (directIds.has(e.id)) return; // already included
-      // Recurring non-installment expenses appear in all months
-      if (e.is_recurring && !e.installment_total) {
-        result.push({ ...e, month, year } as FinExpense);
-      }
-    });
-
-    return result;
-  }, [storedExpenses, allYearExpenses, month, year]);
+  const expenses = useMemo(
+    () => buildEffectiveExpenses(storedExpenses, allYearExpenses, month, year),
+    [storedExpenses, allYearExpenses, month, year],
+  );
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [cardDialogOpen, setCardDialogOpen] = useState(false);
