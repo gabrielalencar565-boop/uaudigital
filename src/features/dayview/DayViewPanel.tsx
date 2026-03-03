@@ -96,6 +96,9 @@ export function DayViewPanel() {
   const cleaningCompletionsQ = useCleaningCompletions(todayKey);
   const toggleCleaning = useToggleCleaningCompletion();
 
+  // ─── Realtime sync para agenda do dia ───
+  useRealtimeSync(["tasks", "task_assignees", "cleaning_completions", "cleaning_schedules", "cleaning_categories", "performance_scores"]);
+
   const todayDow = getDay(today); // 0=dom, 6=sab
 
   // Performance scores for podium
