@@ -15,6 +15,7 @@ import {
   type FinExpense, type FinCreditCard
 } from "../hooks/use-financial-data";
 import { FinMonthYearSelector } from "./FinMonthYearSelector";
+import { buildEffectiveExpenses } from "../utils/build-effective-expenses";
 
 const CATEGORIES = [
   { value: "administrativa", label: "Administrativa" },
