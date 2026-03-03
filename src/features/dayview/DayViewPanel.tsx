@@ -26,6 +26,7 @@ import {
   useToggleCleaningCompletion,
   DAYS_PT } from
 "@/features/cleaning/hooks/use-cleaning";
+import { useRealtimeSync } from "@/hooks/use-realtime-sync";
 
 function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join("");
@@ -94,6 +95,9 @@ export function DayViewPanel() {
   const cleaningCategoriesQ = useCleaningCategories();
   const cleaningCompletionsQ = useCleaningCompletions(todayKey);
   const toggleCleaning = useToggleCleaningCompletion();
+
+  // ─── Realtime sync para agenda do dia ───
+  useRealtimeSync(["tasks", "task_assignees", "cleaning_completions", "cleaning_schedules", "cleaning_categories", "performance_scores"]);
 
   const todayDow = getDay(today); // 0=dom, 6=sab
 
