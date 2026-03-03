@@ -1,11 +1,16 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ProgressRing } from "@/components/metrics/ProgressRing";
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend, RadarChart, Radar, PolarGrid,
   PolarAngleAxis, PolarRadiusAxis,
 } from "recharts";
+
+function initials(name: string) {
+  return name.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join("");
+}
 
 type ScoreRow = {
   user_id: string;
@@ -253,8 +258,46 @@ export function AnnualDashboard({
                 <Tooltip
                   contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
                   labelStyle={{ fontWeight: 600 }}
+                  content={({ active, payload, label }) => {
+                    if (!active || !payload?.length) return null;
+                    return (
+                      <div className="rounded-lg border border-border/50 bg-card px-3 py-2 shadow-xl text-xs">
+                        <p className="font-semibold mb-1.5">{label}</p>
+                        {payload.map((p: any) => {
+                          const member = teamById.get(p.dataKey);
+                          return (
+                            <div key={p.dataKey} className="flex items-center gap-2 py-0.5">
+                              <Avatar className="h-5 w-5">
+                                <AvatarImage src={member?.avatar_url ?? undefined} />
+                                <AvatarFallback className="text-[8px]">{initials(member?.display_name ?? "?")}</AvatarFallback>
+                              </Avatar>
+                              <span className="text-muted-foreground">{member?.display_name?.split(" ")[0] ?? "?"}</span>
+                              <span className="ml-auto font-bold tabular-nums" style={{ color: p.stroke }}>{p.value} pts</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  }}
                 />
-                <Legend />
+                <Legend
+                  content={({ payload }) => (
+                    <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                      {payload?.map((entry: any) => {
+                        const member = teamById.get(entry.dataKey);
+                        return (
+                          <div key={entry.dataKey} className="flex items-center gap-1.5">
+                            <Avatar className="h-5 w-5 border" style={{ borderColor: entry.color }}>
+                              <AvatarImage src={member?.avatar_url ?? undefined} />
+                              <AvatarFallback className="text-[8px]">{initials(member?.display_name ?? "?")}</AvatarFallback>
+                            </Avatar>
+                            <span className="text-xs text-muted-foreground">{member?.display_name?.split(" ")[0] ?? "?"}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                />
                 {topUsersForChart.map((u, idx) => (
                   <Line
                     key={u.user_id}
@@ -335,9 +378,46 @@ export function AnnualDashboard({
                       fillOpacity={0.15}
                     />
                   ))}
-                  <Legend />
+                  <Legend
+                    content={({ payload }) => (
+                      <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                        {payload?.map((entry: any) => {
+                          const member = teamById.get(entry.dataKey);
+                          return (
+                            <div key={entry.dataKey} className="flex items-center gap-1.5">
+                              <Avatar className="h-5 w-5 border" style={{ borderColor: entry.color }}>
+                                <AvatarImage src={member?.avatar_url ?? undefined} />
+                                <AvatarFallback className="text-[8px]">{initials(member?.display_name ?? "?")}</AvatarFallback>
+                              </Avatar>
+                              <span className="text-xs text-muted-foreground">{member?.display_name?.split(" ")[0] ?? "?"}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  />
                   <Tooltip
-                    contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
+                    content={({ active, payload }) => {
+                      if (!active || !payload?.length) return null;
+                      return (
+                        <div className="rounded-lg border border-border/50 bg-card px-3 py-2 shadow-xl text-xs">
+                          <p className="font-semibold mb-1.5">{(payload[0] as any)?.payload?.category}</p>
+                          {payload.map((p: any) => {
+                            const member = teamById.get(p.dataKey);
+                            return (
+                              <div key={p.dataKey} className="flex items-center gap-2 py-0.5">
+                                <Avatar className="h-5 w-5">
+                                  <AvatarImage src={member?.avatar_url ?? undefined} />
+                                  <AvatarFallback className="text-[8px]">{initials(member?.display_name ?? "?")}</AvatarFallback>
+                                </Avatar>
+                                <span className="text-muted-foreground">{member?.display_name?.split(" ")[0] ?? "?"}</span>
+                                <span className="ml-auto font-bold tabular-nums" style={{ color: p.stroke }}>{p.value}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    }}
                   />
                 </RadarChart>
               </ResponsiveContainer>
