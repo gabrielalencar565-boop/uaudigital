@@ -243,113 +243,113 @@ export function AnnualDashboard({
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Monthly evolution line chart */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm uppercase text-center">Evolução Mensal — Top 5</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={280}>
-              <LineChart data={monthlyEvolution}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis dataKey="month" className="text-xs" />
-                <YAxis className="text-xs" />
-                <Tooltip
-                  contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
-                  labelStyle={{ fontWeight: 600 }}
-                  content={({ active, payload, label }) => {
-                    if (!active || !payload?.length) return null;
-                    return (
-                      <div className="rounded-lg border border-border/50 bg-card px-3 py-2 shadow-xl text-xs">
-                        <p className="font-semibold mb-1.5">{label}</p>
-                        {payload.map((p: any) => {
-                          const member = teamById.get(p.dataKey);
-                          return (
-                            <div key={p.dataKey} className="flex items-center gap-2 py-0.5">
-                              <Avatar className="h-5 w-5">
-                                <AvatarImage src={member?.avatar_url ?? undefined} />
-                                <AvatarFallback className="text-[8px]">{initials(member?.display_name ?? "?")}</AvatarFallback>
-                              </Avatar>
-                              <span className="text-muted-foreground">{member?.display_name?.split(" ")[0] ?? "?"}</span>
-                              <span className="ml-auto font-bold tabular-nums" style={{ color: p.stroke }}>{p.value} pts</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    );
-                  }}
-                />
-                <Legend
-                  content={({ payload }) => (
-                    <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-                      {payload?.map((entry: any) => {
-                        const member = teamById.get(entry.dataKey);
+      {/* Monthly evolution line chart — full width */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm uppercase text-center">Evolução Mensal — Top 5</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={320}>
+            <LineChart data={monthlyEvolution}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+              <XAxis dataKey="month" className="text-xs" />
+              <YAxis className="text-xs" />
+              <Tooltip
+                contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
+                labelStyle={{ fontWeight: 600 }}
+                content={({ active, payload, label }) => {
+                  if (!active || !payload?.length) return null;
+                  return (
+                    <div className="rounded-lg border border-border/50 bg-card px-3 py-2 shadow-xl text-xs">
+                      <p className="font-semibold mb-1.5">{label}</p>
+                      {payload.map((p: any) => {
+                        const member = teamById.get(p.dataKey);
                         return (
-                          <div key={entry.dataKey} className="flex items-center gap-1.5">
-                            <Avatar className="h-5 w-5 border" style={{ borderColor: entry.color }}>
+                          <div key={p.dataKey} className="flex items-center gap-2 py-0.5">
+                            <Avatar className="h-5 w-5">
                               <AvatarImage src={member?.avatar_url ?? undefined} />
                               <AvatarFallback className="text-[8px]">{initials(member?.display_name ?? "?")}</AvatarFallback>
                             </Avatar>
-                            <span className="text-xs text-muted-foreground">{member?.display_name?.split(" ")[0] ?? "?"}</span>
+                            <span className="text-muted-foreground">{member?.display_name?.split(" ")[0] ?? "?"}</span>
+                            <span className="ml-auto font-bold tabular-nums" style={{ color: p.stroke }}>{p.value} pts</span>
                           </div>
                         );
                       })}
                     </div>
-                  )}
-                />
-                {topUsersForChart.map((u, idx) => (
-                  <Line
-                    key={u.user_id}
-                    dataKey={u.user_id}
-                    name={u.display_name?.split(" ")[0] ?? "?"}
-                    stroke={CHART_COLORS[idx % CHART_COLORS.length]}
-                    strokeWidth={2}
-                    dot={(props: any) => {
-                      const { cx, cy, value } = props;
-                      if (value == null || cx == null || cy == null) return <g />;
-                      const member = teamById.get(u.user_id);
-                      const size = 20;
-                      const r = size / 2;
-                      const clipId = `clip-${u.user_id}-${props.index}`;
+                  );
+                }}
+              />
+              <Legend
+                content={({ payload }) => (
+                  <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                    {payload?.map((entry: any) => {
+                      const member = teamById.get(entry.dataKey);
                       return (
-                        <g>
-                          <defs>
-                            <clipPath id={clipId}>
-                              <circle cx={cx} cy={cy} r={r} />
-                            </clipPath>
-                          </defs>
-                          <circle cx={cx} cy={cy} r={r + 1} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
-                          {member?.avatar_url ? (
-                            <image
-                              href={member.avatar_url}
-                              x={cx - r}
-                              y={cy - r}
-                              width={size}
-                              height={size}
-                              clipPath={`url(#${clipId})`}
-                              preserveAspectRatio="xMidYMid slice"
-                            />
-                          ) : (
-                            <>
-                              <circle cx={cx} cy={cy} r={r} fill="hsl(var(--muted))" />
-                              <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central" fontSize={7} fontWeight={700} fill="hsl(var(--muted-foreground))">
-                                {initials(member?.display_name ?? "?")}
-                              </text>
-                            </>
-                          )}
-                        </g>
+                        <div key={entry.dataKey} className="flex items-center gap-1.5">
+                          <Avatar className="h-5 w-5 border" style={{ borderColor: entry.color }}>
+                            <AvatarImage src={member?.avatar_url ?? undefined} />
+                            <AvatarFallback className="text-[8px]">{initials(member?.display_name ?? "?")}</AvatarFallback>
+                          </Avatar>
+                          <span className="text-xs text-muted-foreground">{member?.display_name?.split(" ")[0] ?? "?"}</span>
+                        </div>
                       );
-                    }}
-                    activeDot={{ r: 14, strokeWidth: 2, stroke: CHART_COLORS[idx % CHART_COLORS.length] }}
-                    connectNulls
-                  />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+                    })}
+                  </div>
+                )}
+              />
+              {topUsersForChart.map((u, idx) => (
+                <Line
+                  key={u.user_id}
+                  dataKey={u.user_id}
+                  name={u.display_name?.split(" ")[0] ?? "?"}
+                  stroke={CHART_COLORS[idx % CHART_COLORS.length]}
+                  strokeWidth={2}
+                  dot={(props: any) => {
+                    const { cx, cy, value } = props;
+                    if (value == null || cx == null || cy == null) return <g />;
+                    const member = teamById.get(u.user_id);
+                    const size = 20;
+                    const r = size / 2;
+                    const clipId = `clip-${u.user_id}-${props.index}`;
+                    return (
+                      <g>
+                        <defs>
+                          <clipPath id={clipId}>
+                            <circle cx={cx} cy={cy} r={r} />
+                          </clipPath>
+                        </defs>
+                        <circle cx={cx} cy={cy} r={r + 1} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
+                        {member?.avatar_url ? (
+                          <image
+                            href={member.avatar_url}
+                            x={cx - r}
+                            y={cy - r}
+                            width={size}
+                            height={size}
+                            clipPath={`url(#${clipId})`}
+                            preserveAspectRatio="xMidYMid slice"
+                          />
+                        ) : (
+                          <>
+                            <circle cx={cx} cy={cy} r={r} fill="hsl(var(--muted))" />
+                            <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central" fontSize={7} fontWeight={700} fill="hsl(var(--muted-foreground))">
+                              {initials(member?.display_name ?? "?")}
+                            </text>
+                          </>
+                        )}
+                      </g>
+                    );
+                  }}
+                  activeDot={{ r: 14, strokeWidth: 2, stroke: CHART_COLORS[idx % CHART_COLORS.length] }}
+                  connectNulls
+                />
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
 
+      <div className="grid gap-6 lg:grid-cols-2">
         {/* Monthly team total bar chart */}
         <Card>
           <CardHeader className="pb-2">
