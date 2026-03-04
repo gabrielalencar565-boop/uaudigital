@@ -62,7 +62,7 @@ export function TaskActivityReport({ onClose }: { onClose: () => void }) {
   const logsQ = useQuery({
     queryKey: ["task_activity_log"],
     queryFn: async (): Promise<ActivityLog[]> => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("task_activity_log")
         .select("id, task_id, user_id, action, old_value, new_value, created_at")
         .order("created_at", { ascending: false })
