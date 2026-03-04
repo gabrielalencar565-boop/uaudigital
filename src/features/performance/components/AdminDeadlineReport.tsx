@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { format } from "date-fns";
 
 import { supabase } from "@/integrations/supabase/client";
 import type { TaskAssigneeRow } from "@/features/data/task-assignees-queries";
@@ -9,8 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import type { TeamMemberRow } from "@/features/data/queries";
 import { STAGES, type StageKey } from "@/lib/uau";
+import { STAGE_BADGE_CLASS } from "@/features/agenda/components/AgendaWeekTaskItem";
 
 type TaskForReport = {
   id: string;
@@ -364,12 +367,33 @@ export function AdminDeadlineReport({
                           </div>
                         </TableCell>
                         <TableCell className="text-center">
-                          <Badge variant="outline" className="text-xs">
-                            {STAGES.find((s) => s.key === t.stage)?.label ?? t.stage}
-                          </Badge>
+                          {(() => {
+                            const stageTone = STAGE_BADGE_CLASS[t.stage];
+                            return (
+                              <span
+                                className={cn(
+                                  "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                                  stageTone.bg,
+                                  stageTone.fg,
+                                )}
+                              >
+                                {STAGES.find((s) => s.key === t.stage)?.label ?? t.stage}
+                              </span>
+                            );
+                          })()}
                         </TableCell>
-                        <TableCell className="text-center tabular-nums">{t.due_date}</TableCell>
-                        <TableCell className="text-center tabular-nums">{t.completed_at ? t.completed_at.slice(0, 10) : "—"}</TableCell>
+                        <TableCell className="text-center tabular-nums">
+                          {(() => {
+                            const [y, m, d] = t.due_date.split("-");
+                            return `${d}/${m}`;
+                          })()}
+                        </TableCell>
+                        <TableCell className="text-center tabular-nums">
+                          {t.completed_at ? (() => {
+                            const dt = new Date(t.completed_at);
+                            return format(dt, "dd/MM");
+                          })() : "—"}
+                        </TableCell>
                         <TableCell className="text-center">
                           <Badge variant={auto >= 0 ? "secondary" : "destructive"} className="tabular-nums">
                             {auto}
