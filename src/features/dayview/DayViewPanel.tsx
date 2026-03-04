@@ -97,7 +97,21 @@ export function DayViewPanel() {
   const toggleCleaning = useToggleCleaningCompletion();
 
   // ─── Realtime sync para agenda do dia ───
-  useRealtimeSync(["tasks", "task_assignees", "cleaning_completions", "cleaning_schedules", "cleaning_categories", "performance_scores"]);
+  useRealtimeSync([
+    "tasks",
+    "task_assignees",
+    "cleaning_completions",
+    "cleaning_schedules",
+    "cleaning_categories",
+    "performance_scores",
+    "clients",
+    "client_cycles",
+    "client_cycle_stages",
+    "magic2_cycles",
+    "magic2_cycle_stages",
+    "team_members",
+    "profiles",
+  ]);
 
   const todayDow = getDay(today); // 0=dom, 6=sab
 
