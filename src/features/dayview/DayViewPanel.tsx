@@ -809,9 +809,7 @@ export function DayViewPanel() {
                         {(streakByUser.get(row.user_id) ?? 0) >= 2 &&
                 <Tooltip>
                             <TooltipTrigger asChild>
-                              <span className="inline-flex">
-                                <Zap className="h-3.5 w-3.5 text-warning fill-warning" />
-                              </span>
+                              <span className="inline-flex text-base leading-none">⚡</span>
                             </TooltipTrigger>
                             <TooltipContent side="top">
                               🔥 {streakByUser.get(row.user_id)} dias consecutivos no prazo!
@@ -819,10 +817,14 @@ export function DayViewPanel() {
                           </Tooltip>
                 }
                       </span>
-                      {/* Seta de posição */}
-                      <div className="w-5 shrink-0 flex items-center justify-center">
+                      {/* Seta de posição / Streak */}
+                      <div className="w-10 shrink-0 flex items-center justify-center gap-0.5">
                         {posChange > 0 ? <ArrowUp className="h-3.5 w-3.5 text-success" /> :
                 posChange < 0 ? <ArrowDown className="h-3.5 w-3.5 text-destructive" /> :
+                (streakByUser.get(row.user_id) ?? 0) >= 1 ?
+                <span className="flex items-center gap-0.5 text-xs font-semibold text-warning">
+                  {streakByUser.get(row.user_id)} <span className="text-sm">⚡</span>
+                </span> :
                 <span className="text-muted-foreground text-[10px]">–</span>}
                       </div>
                     </div>);
