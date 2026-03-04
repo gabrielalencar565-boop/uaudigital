@@ -1,19 +1,30 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { FileText, ArrowRightLeft, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { FileText, ArrowRightLeft, CheckCircle2, XCircle, Loader2, Trash2, AlertTriangle } from "lucide-react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useClients, useTeamMembers } from "@/features/data/queries";
 import { STAGES, type StageKey } from "@/lib/uau";
 import { STAGE_BADGE_CLASS } from "@/features/agenda/components/AgendaWeekTaskItem";
+import { toast } from "sonner";
 
 type ActivityLog = {
   id: string;
@@ -44,7 +55,6 @@ function formatDateBR(dateStr: string) {
 
 function formatDateOnly(dateStr: string) {
   try {
-    // Handle YYYY-MM-DD format
     const [y, m, d] = dateStr.split("-").map(Number);
     if (y && m && d) return `${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")}/${y}`;
     return dateStr;
@@ -53,8 +63,13 @@ function formatDateOnly(dateStr: string) {
   }
 }
 
+const sb = supabase as any;
+
 export function TaskActivityReport({ onClose }: { onClose: () => void }) {
   const [filterAction, setFilterAction] = useState<string>("all");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [emptyingAll, setEmptyingAll] = useState(false);
+  const qc = useQueryClient();
 
   const clientsQ = useClients();
   const teamQ = useTeamMembers();
@@ -62,7 +77,7 @@ export function TaskActivityReport({ onClose }: { onClose: () => void }) {
   const logsQ = useQuery({
     queryKey: ["task_activity_log"],
     queryFn: async (): Promise<ActivityLog[]> => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await sb
         .from("task_activity_log")
         .select("id, task_id, user_id, action, old_value, new_value, created_at")
         .order("created_at", { ascending: false })
@@ -72,9 +87,8 @@ export function TaskActivityReport({ onClose }: { onClose: () => void }) {
     },
   });
 
-  // Get task info for all task_ids in logs
   const taskIds = useMemo(() => {
-    const ids = new Set((logsQ.data ?? []).map((l) => l.task_id));
+    const ids = new Set((logsQ.data ?? []).map((l: ActivityLog) => l.task_id));
     return Array.from(ids);
   }, [logsQ.data]);
 
@@ -91,26 +105,16 @@ export function TaskActivityReport({ onClose }: { onClose: () => void }) {
     },
   });
 
-  const tasksById = useMemo(
-    () => new Map((tasksInfoQ.data ?? []).map((t) => [t.id, t])),
-    [tasksInfoQ.data],
-  );
-  const clientsById = useMemo(
-    () => new Map((clientsQ.data ?? []).map((c) => [c.id, c])),
-    [clientsQ.data],
-  );
-  const teamByUserId = useMemo(
-    () => new Map((teamQ.data ?? []).map((m) => [m.user_id, m])),
-    [teamQ.data],
-  );
+  const tasksById = useMemo(() => new Map((tasksInfoQ.data ?? []).map((t) => [t.id, t])), [tasksInfoQ.data]);
+  const clientsById = useMemo(() => new Map((clientsQ.data ?? []).map((c) => [c.id, c])), [clientsQ.data]);
+  const teamByUserId = useMemo(() => new Map((teamQ.data ?? []).map((m) => [m.user_id, m])), [teamQ.data]);
 
   const filteredLogs = useMemo(() => {
     const logs = logsQ.data ?? [];
     if (filterAction === "all") return logs;
-    return logs.filter((l) => l.action === filterAction);
+    return logs.filter((l: ActivityLog) => l.action === filterAction);
   }, [logsQ.data, filterAction]);
 
-  // Group by date
   const groupedByDate = useMemo(() => {
     const groups = new Map<string, ActivityLog[]>();
     for (const log of filteredLogs) {
@@ -121,6 +125,35 @@ export function TaskActivityReport({ onClose }: { onClose: () => void }) {
     }
     return Array.from(groups.entries()).sort((a, b) => b[0].localeCompare(a[0]));
   }, [filteredLogs]);
+
+  const handleDeleteOne = async (logId: string) => {
+    setDeletingId(logId);
+    try {
+      const { error } = await sb.from("task_activity_log").delete().eq("id", logId);
+      if (error) throw error;
+      await qc.invalidateQueries({ queryKey: ["task_activity_log"] });
+      toast.success("Registro excluído");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao excluir registro");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleEmptyAll = async () => {
+    setEmptyingAll(true);
+    try {
+      // Delete all logs (RLS ensures only admin can)
+      const { error } = await sb.from("task_activity_log").delete().gte("id", "00000000-0000-0000-0000-000000000000");
+      if (error) throw error;
+      await qc.invalidateQueries({ queryKey: ["task_activity_log"] });
+      toast.success("Relatório esvaziado!");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao esvaziar relatório");
+    } finally {
+      setEmptyingAll(false);
+    }
+  };
 
   const actionIcon = (action: string) => {
     switch (action) {
@@ -148,6 +181,8 @@ export function TaskActivityReport({ onClose }: { onClose: () => void }) {
     }
   };
 
+  const totalLogs = logsQ.data?.length ?? 0;
+
   return (
     <Card className="h-full flex flex-col">
       <CardHeader className="pb-3">
@@ -162,8 +197,42 @@ export function TaskActivityReport({ onClose }: { onClose: () => void }) {
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
+            {totalLogs > 0 && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="sm" disabled={emptyingAll}>
+                    {emptyingAll ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Trash2 className="h-4 w-4 mr-2" />
+                    )}
+                    Esvaziar
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center gap-2">
+                      <AlertTriangle className="h-5 w-5 text-destructive" />
+                      Esvaziar relatório?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Esta ação excluirá permanentemente <strong>{totalLogs} registro{totalLogs !== 1 ? "s" : ""}</strong> de atividade.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleEmptyAll}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Esvaziar
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
             <Select value={filterAction} onValueChange={setFilterAction}>
-              <SelectTrigger className="w-[160px]">
+              <SelectTrigger className="w-[150px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -268,6 +337,21 @@ export function TaskActivityReport({ onClose }: { onClose: () => void }) {
                                 </p>
                               )}
                             </div>
+
+                            {/* Delete individual log */}
+                            <button
+                              type="button"
+                              className="shrink-0 grid place-items-center rounded-md border border-border/60 bg-background/70 text-muted-foreground transition hover:bg-accent hover:text-destructive h-7 w-7"
+                              onClick={() => handleDeleteOne(log.id)}
+                              disabled={deletingId === log.id}
+                              title="Excluir registro"
+                            >
+                              {deletingId === log.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-3.5 w-3.5" />
+                              )}
+                            </button>
                           </div>
                         );
                       })}
