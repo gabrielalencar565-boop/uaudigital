@@ -243,12 +243,8 @@ export function DayViewPanel() {
     return map;
   }, [tasksQ.data, assigneesQ.data, todayKey]);
 
-  // Ranking filtrado (oculta Gabriel e Ayrton apenas aqui)
-  const HIDDEN_IDS = useMemo(() => [
-  "e674c34f-b268-4dfd-82c5-9aea9cba853e",
-  "132c71a9-846b-48ec-abcb-10f50286fdd1"],
-  []);
-  const filteredRank = useMemo(() => monthlyRank.filter((r) => !HIDDEN_IDS.includes(r.user_id)), [monthlyRank, HIDDEN_IDS]);
+  // Ranking com todos os membros (sem filtro)
+  const filteredRank = monthlyRank;
 
   // Rastreia posição anterior para mostrar setas de subida/descida
   const prevRankMap = useRef(new Map<string, number>());
