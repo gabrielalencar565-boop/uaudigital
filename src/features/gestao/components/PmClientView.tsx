@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
-import { ChevronRight, ChevronDown, Folder, Plus, CheckCircle2, Circle, AlertOctagon } from "lucide-react";
+import { ChevronRight, ChevronDown, Folder, CheckCircle2, Circle, AlertOctagon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { statusLabel, stageLabel } from "../pm-constants";
-import type { PmTask, PmSubtask } from "../pm-types";
+import type { PmTask } from "../pm-types";
 
 function statusDot(key: string) {
   switch (key) {
@@ -16,26 +16,25 @@ function statusDot(key: string) {
   }
 }
 
-function subtaskStatusIcon(status: string) {
+function childStatusIcon(status: string) {
   switch (status) {
     case "concluido": return <CheckCircle2 className="h-3.5 w-3.5 text-success" />;
-    case "bloqueado": return <AlertOctagon className="h-3.5 w-3.5 text-destructive" />;
-    case "em_producao": return <Circle className="h-3.5 w-3.5 text-primary fill-primary/20" />;
-    case "em_revisao": return <Circle className="h-3.5 w-3.5 text-warning fill-warning/20" />;
-    case "aprovado": return <CheckCircle2 className="h-3.5 w-3.5 text-success/60" />;
+    case "cancelado": return <AlertOctagon className="h-3.5 w-3.5 text-destructive" />;
+    case "em_andamento": return <Circle className="h-3.5 w-3.5 text-primary fill-primary/20" />;
+    case "em_aprovacao": return <Circle className="h-3.5 w-3.5 text-warning fill-warning/20" />;
     default: return <Circle className="h-3.5 w-3.5 text-muted-foreground/50" />;
   }
 }
 
 interface Props {
   tasks: PmTask[];
-  subtasksMap: Record<string, PmSubtask[]>;
+  childTasksMap: Record<string, PmTask[]>;
   clientsMap: Record<string, string>;
   membersMap: Record<string, { name: string; avatar?: string }>;
   onTaskClick: (task: PmTask) => void;
 }
 
-export function PmClientView({ tasks, subtasksMap, clientsMap, membersMap, onTaskClick }: Props) {
+export function PmClientView({ tasks, childTasksMap, clientsMap, membersMap, onTaskClick }: Props) {
   const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set());
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
 
@@ -78,7 +77,6 @@ export function PmClientView({ tasks, subtasksMap, clientsMap, membersMap, onTas
 
         return (
           <div key={group.clientId}>
-            {/* Client row */}
             <button
               type="button"
               onClick={() => toggleClient(group.clientId)}
@@ -94,19 +92,17 @@ export function PmClientView({ tasks, subtasksMap, clientsMap, membersMap, onTas
               <span className="text-[11px] text-muted-foreground">{totalDone}/{group.tasks.length}</span>
             </button>
 
-            {/* Tasks nested under client */}
             {isClientOpen && (
               <div className="ml-5 border-l border-border/30 space-y-0.5">
                 {group.tasks.map((task) => {
                   const isTaskOpen = expandedTasks.has(task.id);
-                  const subs = subtasksMap[task.id] ?? [];
-                  const subsDone = subs.filter(s => s.status === "concluido").length;
+                  const children = childTasksMap[task.id] ?? [];
+                  const childDone = children.filter(s => s.status_global === "concluido").length;
 
                   return (
                     <div key={task.id}>
-                      {/* Task row */}
                       <div className="flex items-center gap-2 pl-3 pr-3 py-1.5 hover:bg-card/30 rounded-md transition group">
-                        {subs.length > 0 ? (
+                        {children.length > 0 ? (
                           <button type="button" onClick={() => toggleTask(task.id)} className="shrink-0">
                             {isTaskOpen ? (
                               <ChevronDown className="h-3 w-3 text-muted-foreground" />
@@ -125,31 +121,31 @@ export function PmClientView({ tasks, subtasksMap, clientsMap, membersMap, onTas
                         >
                           {task.title}
                         </button>
-                        {subs.length > 0 && (
-                          <span className="text-[10px] text-muted-foreground shrink-0">{subsDone}/{subs.length}</span>
+                        {children.length > 0 && (
+                          <span className="text-[10px] text-muted-foreground shrink-0">{childDone}/{children.length}</span>
                         )}
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/50 text-accent-foreground shrink-0">
                           {stageLabel(task.stage_current)}
                         </span>
                       </div>
 
-                      {/* Subtasks nested under task */}
-                      {isTaskOpen && subs.length > 0 && (
+                      {isTaskOpen && children.length > 0 && (
                         <div className="ml-8 border-l border-border/20 space-y-0.5 py-0.5">
-                          {subs.map(sub => (
+                          {children.map(child => (
                             <div
-                              key={sub.id}
+                              key={child.id}
                               className={cn(
-                                "flex items-center gap-2 pl-3 pr-3 py-1 rounded-md hover:bg-card/30 transition",
-                                sub.status === "concluido" && "opacity-50"
+                                "flex items-center gap-2 pl-3 pr-3 py-1 rounded-md hover:bg-card/30 transition cursor-pointer",
+                                child.status_global === "concluido" && "opacity-50"
                               )}
+                              onClick={() => onTaskClick(child)}
                             >
-                              {subtaskStatusIcon(sub.status)}
-                              <span className={cn("flex-1 truncate text-[13px]", sub.status === "concluido" && "line-through text-muted-foreground")}>
-                                {sub.title}
+                              {childStatusIcon(child.status_global)}
+                              <span className={cn("flex-1 truncate text-[13px]", child.status_global === "concluido" && "line-through text-muted-foreground")}>
+                                {child.title}
                               </span>
                               <span className="text-[10px] text-muted-foreground">
-                                {stageLabel(sub.stage)}
+                                {stageLabel(child.stage_current)}
                               </span>
                             </div>
                           ))}
