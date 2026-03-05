@@ -8,8 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -65,7 +63,7 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, defaultSta
   const [status, setStatus] = useState(defaultStatus || "backlog");
   const [assigneeId, setAssigneeId] = useState("");
   const [dueDate, setDueDate] = useState("");
-  const [useTemplate, setUseTemplate] = useState(true);
+  
   const [tagsRaw, setTagsRaw] = useState("");
 
   // Local subtasks for creation
@@ -78,7 +76,7 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, defaultSta
   const reset = () => {
     setTitle(""); setDescription(""); setClientId(""); setPriority("media");
     setStage("planejamento"); setStatus(defaultStatus || "backlog"); setAssigneeId("");
-    setDueDate(""); setUseTemplate(true); setTagsRaw("");
+    setDueDate(""); setTagsRaw("");
     setSubtasks([]); setNewSubtask(""); setAttachments([]);
   };
 
@@ -94,7 +92,7 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, defaultSta
         assignee_id: assigneeId || undefined,
         due_date: dueDate || undefined,
         tags: tagsRaw ? tagsRaw.split(",").map((t) => t.trim()).filter(Boolean) : [],
-        useTemplate,
+        useTemplate: false,
       });
       toast.success("Tarefa criada!");
       reset();
@@ -280,13 +278,10 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, defaultSta
                   )}
                 </h3>
 
-                {/* Template toggle */}
-                <div className="flex items-center gap-2 mb-3">
-                  <Checkbox id="tpl" checked={useTemplate} onCheckedChange={(v) => setUseTemplate(!!v)} />
-                  <Label htmlFor="tpl" className="cursor-pointer text-xs text-muted-foreground">
-                    Criar subtarefas do template padrão (7 etapas)
-                  </Label>
-                </div>
+                {/* Info */}
+                <p className="text-xs text-muted-foreground mb-3">
+                  Adicione subtarefas manualmente. Ao clicar em uma subtarefa, ela abrirá com a mesma estrutura da tarefa mãe.
+                </p>
 
                 {/* Custom subtasks list */}
                 <div className="space-y-1.5 mb-2">
