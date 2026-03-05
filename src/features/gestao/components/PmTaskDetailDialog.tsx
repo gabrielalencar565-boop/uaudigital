@@ -1,5 +1,4 @@
-import { useState, useMemo } from "react";
-import { format } from "date-fns";
+import { useState } from "react";
 import {
   CalendarDays, User, Flag, X, Trash2, ChevronRight, ArrowLeft,
   Circle, Layers, Tag, MessageSquare, PanelRight, Paperclip, FileText
@@ -11,18 +10,16 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import { PM_STATUSES, PM_STAGES, PM_PRIORITIES, PM_SUBTASK_STATUSES, stageLabel } from "../pm-constants";
+import { PM_STATUSES, PM_STAGES, PM_PRIORITIES, stageLabel } from "../pm-constants";
 import {
-  useUpdatePmTask, useDeletePmTask, usePmSubtasks,
+  useUpdatePmTask, useDeletePmTask, usePmChildTasks,
   usePmComments, usePmAttachments,
-  useUpdatePmSubtask, usePmSubtaskComments, usePmSubtaskAttachments
 } from "../hooks/use-pm-data";
 import { PmSubtaskList } from "./PmSubtaskList";
 import { PmCommentsSection } from "./PmCommentsSection";
 import { PmAttachmentsSection } from "./PmAttachmentsSection";
-import type { PmTask, PmSubtask } from "../pm-types";
+import type { PmTask } from "../pm-types";
 import { toast } from "sonner";
 
 function initials(n: string) {
@@ -40,61 +37,48 @@ interface Props {
 }
 
 export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap, members, isAdmin }: Props) {
-  const updateTask = useUpdatePmTask();
-  const deleteTask = useDeletePmTask();
-  const updateSub = useUpdatePmSubtask();
-  const subtasksQ = usePmSubtasks(task?.id ?? null);
-  const commentsQ = usePmComments(task?.id ?? null);
-  const attachmentsQ = usePmAttachments(task?.id ?? null);
-
-  // Internal subtask navigation state
-  const [activeSubtaskId, setActiveSubtaskId] = useState<string | null>(null);
+  // Navigation stack: array of task ids for breadcrumb
+  const [taskStack, setTaskStack] = useState<PmTask[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Task editing state
-  const [editingTitle, setEditingTitle] = useState(false);
-  const [titleDraft, setTitleDraft] = useState("");
-  const [editingDesc, setEditingDesc] = useState(false);
-  const [descDraft, setDescDraft] = useState("");
+  // The currently displayed task is either the last in stack or the root task
+  const currentTask = taskStack.length > 0 ? taskStack[taskStack.length - 1] : task;
 
-  // Subtask editing state
-  const [editingSubTitle, setEditingSubTitle] = useState(false);
-  const [subTitleDraft, setSubTitleDraft] = useState("");
-  const [editingSubDesc, setEditingSubDesc] = useState(false);
-  const [subDescDraft, setSubDescDraft] = useState("");
+  // Data for current task
+  const childTasksQ = usePmChildTasks(currentTask?.id ?? null);
+  const commentsQ = usePmComments(currentTask?.id ?? null);
+  const attachmentsQ = usePmAttachments(currentTask?.id ?? null);
 
-  // Subtask data hooks
-  const subCommentsQ = usePmSubtaskComments(activeSubtaskId);
-  const subAttachmentsQ = usePmSubtaskAttachments(activeSubtaskId);
+  if (!task || !currentTask) return null;
 
-  if (!task) return null;
+  const childTasks = childTasksQ.data ?? [];
+  const comments = commentsQ.data ?? [];
+  const attachments = attachmentsQ.data ?? [];
 
-  const subtasks = subtasksQ.data ?? [];
-  const activeSubtask = activeSubtaskId ? subtasks.find(s => s.id === activeSubtaskId) ?? null : null;
+  const isSubtaskView = taskStack.length > 0;
 
   const handleClose = () => {
-    setActiveSubtaskId(null);
+    setTaskStack([]);
     setSidebarOpen(false);
-    setEditingTitle(false);
-    setEditingDesc(false);
-    setEditingSubTitle(false);
-    setEditingSubDesc(false);
     onClose();
   };
 
-  const handleSelectSubtask = (sub: PmSubtask) => {
-    setActiveSubtaskId(sub.id);
-    setEditingSubTitle(false);
-    setEditingSubDesc(false);
+  const handleSelectSubtask = (sub: PmTask) => {
+    setTaskStack(prev => [...prev, sub]);
   };
 
   const handleBackToParent = () => {
-    setActiveSubtaskId(null);
-    setEditingSubTitle(false);
-    setEditingSubDesc(false);
+    setTaskStack(prev => prev.slice(0, -1));
   };
 
-  // ─── Render ───
+  const handleBreadcrumbClick = (index: number) => {
+    if (index === -1) {
+      // Go to root
+      setTaskStack([]);
+    } else {
+      setTaskStack(prev => prev.slice(0, index + 1));
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
@@ -102,30 +86,35 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
 
         {/* ─── Breadcrumb bar ─── */}
         <div className="flex items-center gap-1.5 border-b border-border/40 px-5 py-2 bg-card/50 shrink-0">
-          {activeSubtask && (
+          {isSubtaskView && (
             <Button variant="ghost" size="icon" className="h-6 w-6 mr-1" onClick={handleBackToParent}>
               <ArrowLeft className="h-3.5 w-3.5" />
             </Button>
           )}
-          <span
-            className={cn("text-xs truncate", activeSubtask ? "text-muted-foreground cursor-pointer hover:text-foreground transition" : "text-muted-foreground")}
-            onClick={activeSubtask ? handleBackToParent : undefined}
-          >
+          <span className="text-xs text-muted-foreground truncate">
             {clientsMap[task.client_id] ?? "—"}
           </span>
           <ChevronRight className="h-3 w-3 text-muted-foreground/50 shrink-0" />
           <span
-            className={cn("text-xs truncate", activeSubtask ? "text-muted-foreground cursor-pointer hover:text-foreground transition" : "font-medium")}
-            onClick={activeSubtask ? handleBackToParent : undefined}
+            className={cn("text-xs truncate", isSubtaskView ? "text-muted-foreground cursor-pointer hover:text-foreground transition" : "font-medium")}
+            onClick={isSubtaskView ? () => handleBreadcrumbClick(-1) : undefined}
           >
             {task.title}
           </span>
-          {activeSubtask && (
-            <>
+          {taskStack.map((stackTask, i) => (
+            <span key={stackTask.id} className="contents">
               <ChevronRight className="h-3 w-3 text-muted-foreground/50 shrink-0" />
-              <span className="text-xs font-medium truncate">{activeSubtask.title}</span>
-            </>
-          )}
+              <span
+                className={cn(
+                  "text-xs truncate",
+                  i < taskStack.length - 1 ? "text-muted-foreground cursor-pointer hover:text-foreground transition" : "font-medium"
+                )}
+                onClick={i < taskStack.length - 1 ? () => handleBreadcrumbClick(i) : undefined}
+              >
+                {stackTask.title}
+              </span>
+            </span>
+          ))}
           <div className="flex-1" />
           <Button
             variant="ghost"
@@ -144,61 +133,46 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
         {/* ─── Main content ─── */}
         <div className="flex flex-1 overflow-hidden min-h-0">
 
-          {/* ─── LEFT: Task or Subtask detail ─── */}
-          <div className="flex flex-1 overflow-hidden min-h-0">
-            {activeSubtask ? (
-              <SubtaskDetailView
-                subtask={activeSubtask}
-                membersMap={membersMap}
-                members={members}
-                comments={subCommentsQ.data ?? []}
-                attachments={subAttachmentsQ.data ?? []}
-                editingTitle={editingSubTitle}
-                setEditingTitle={setEditingSubTitle}
-                titleDraft={subTitleDraft}
-                setTitleDraft={setSubTitleDraft}
-                editingDesc={editingSubDesc}
-                setEditingDesc={setEditingSubDesc}
-                descDraft={subDescDraft}
-                setDescDraft={setSubDescDraft}
-              />
-            ) : (
-              <TaskDetailView
-                task={task}
-                subtasks={subtasks}
-                comments={commentsQ.data ?? []}
-                attachments={attachmentsQ.data ?? []}
-                membersMap={membersMap}
-                members={members}
-                isAdmin={isAdmin}
-                editingTitle={editingTitle}
-                setEditingTitle={setEditingTitle}
-                titleDraft={titleDraft}
-                setTitleDraft={setTitleDraft}
-                editingDesc={editingDesc}
-                setEditingDesc={setEditingDesc}
-                descDraft={descDraft}
-                setDescDraft={setDescDraft}
-                onSelectSubtask={handleSelectSubtask}
-                activeSubtaskId={activeSubtaskId}
-                onClose={handleClose}
-              />
-            )}
+          {/* ─── LEFT: Task detail (scrollable) ─── */}
+          <div className="flex-1 overflow-y-auto min-h-0">
+            <TaskContentView
+              task={currentTask}
+              childTasks={childTasks}
+              attachments={attachments}
+              membersMap={membersMap}
+              members={members}
+              isAdmin={isAdmin}
+              onSelectSubtask={handleSelectSubtask}
+              activeSubtaskId={null}
+              onClose={handleClose}
+              clientsMap={clientsMap}
+            />
           </div>
 
-          {/* ─── RIGHT: Subtask Sidebar ─── */}
+          {/* ─── RIGHT: Comments sidebar (like ClickUp Activity) ─── */}
+          <div className="w-80 shrink-0 flex flex-col bg-card/10 border-l border-border/30 hidden sm:flex">
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-border/30 shrink-0">
+              <MessageSquare className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-semibold">Atividade</span>
+            </div>
+            <div className="flex-1 overflow-y-auto px-4 py-3 min-h-0">
+              <PmCommentsSection taskId={currentTask.id} comments={comments} membersMap={membersMap} />
+            </div>
+          </div>
+
+          {/* ─── FAR RIGHT: Subtask Sidebar (toggle) ─── */}
           {sidebarOpen && (
             <div className="w-64 shrink-0 flex flex-col bg-card/30 border-l border-border/30 animate-in slide-in-from-right-5 duration-200">
-              <div className="flex items-center gap-2 px-4 py-3 border-b border-border/30">
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-border/30 shrink-0">
                 <Layers className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm font-semibold">Subtarefas</span>
-                <span className="text-[10px] text-muted-foreground ml-auto">{subtasks.length}</span>
+                <span className="text-[10px] text-muted-foreground ml-auto">{childTasks.length}</span>
               </div>
-              <div className="flex-1 overflow-y-auto">
+              <div className="flex-1 overflow-y-auto min-h-0">
                 <div className="py-1">
-                  {subtasks.map(sub => {
-                    const isActive = activeSubtaskId === sub.id;
-                    const isDone = sub.status === "concluido";
+                  {childTasks.map(sub => {
+                    const isActive = taskStack.length > 0 && taskStack[taskStack.length - 1].id === sub.id;
+                    const isDone = sub.status_global === "concluido";
                     return (
                       <div
                         key={sub.id}
@@ -209,12 +183,12 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
                         )}
                         onClick={() => handleSelectSubtask(sub)}
                       >
-                        <span className={cn("h-2 w-2 rounded-full shrink-0", statusDotColor(sub.status))} />
+                        <span className={cn("h-2 w-2 rounded-full shrink-0", statusDotColor(sub.status_global))} />
                         <span className={cn("truncate flex-1", isDone && "line-through")}>{sub.title}</span>
                       </div>
                     );
                   })}
-                  {subtasks.length === 0 && (
+                  {childTasks.length === 0 && (
                     <p className="text-xs text-muted-foreground text-center py-6">Nenhuma subtarefa</p>
                   )}
                 </div>
@@ -227,32 +201,31 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
   );
 }
 
-// ─── Task Detail View (main content) ───
+// ─── Task Content View (reused for both parent and child) ───
 
-function TaskDetailView({
-  task, subtasks, comments, attachments, membersMap, members, isAdmin,
-  editingTitle, setEditingTitle, titleDraft, setTitleDraft,
-  editingDesc, setEditingDesc, descDraft, setDescDraft,
-  onSelectSubtask, activeSubtaskId, onClose,
+function TaskContentView({
+  task, childTasks, attachments, membersMap, members, isAdmin,
+  onSelectSubtask, activeSubtaskId, onClose, clientsMap,
 }: {
   task: PmTask;
-  subtasks: PmSubtask[];
-  comments: any[];
+  childTasks: PmTask[];
   attachments: any[];
   membersMap: Record<string, { name: string; avatar?: string }>;
   members: { id: string; name: string }[];
   isAdmin: boolean;
-  editingTitle: boolean; setEditingTitle: (v: boolean) => void;
-  titleDraft: string; setTitleDraft: (v: string) => void;
-  editingDesc: boolean; setEditingDesc: (v: boolean) => void;
-  descDraft: string; setDescDraft: (v: string) => void;
-  onSelectSubtask: (sub: PmSubtask) => void;
+  onSelectSubtask: (sub: PmTask) => void;
   activeSubtaskId: string | null;
   onClose: () => void;
+  clientsMap: Record<string, string>;
 }) {
   const updateTask = useUpdatePmTask();
   const deleteTask = useDeletePmTask();
   const assignee = task.assignee_id ? membersMap[task.assignee_id] : undefined;
+
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState("");
+  const [editingDesc, setEditingDesc] = useState(false);
+  const [descDraft, setDescDraft] = useState("");
 
   const saveTitle = () => {
     if (titleDraft.trim() && titleDraft.trim() !== task.title) {
@@ -278,333 +251,157 @@ function TaskDetailView({
   };
 
   return (
-    <>
-      <div className="flex-1 border-r border-border/30 overflow-y-auto">
-        <div className="px-6 py-5 space-y-6">
-          {/* Title */}
-          {editingTitle ? (
-            <Input
-              autoFocus value={titleDraft}
-              onChange={(e) => setTitleDraft(e.target.value)}
-              onBlur={saveTitle}
-              onKeyDown={(e) => e.key === "Enter" && saveTitle()}
-              className="text-2xl font-bold border-0 bg-transparent p-0 h-auto focus-visible:ring-0 focus-visible:ring-offset-0"
-            />
-          ) : (
-            <h1
-              className="cursor-pointer text-2xl font-bold hover:text-primary transition-colors"
-              onClick={() => { setTitleDraft(task.title); setEditingTitle(true); }}
-            >{task.title}</h1>
-          )}
+    <div className="px-6 py-5 space-y-6">
+      {/* Title */}
+      {editingTitle ? (
+        <Input
+          autoFocus value={titleDraft}
+          onChange={(e) => setTitleDraft(e.target.value)}
+          onBlur={saveTitle}
+          onKeyDown={(e) => e.key === "Enter" && saveTitle()}
+          className="text-2xl font-bold border-0 bg-transparent p-0 h-auto focus-visible:ring-0 focus-visible:ring-offset-0"
+        />
+      ) : (
+        <h1
+          className="cursor-pointer text-2xl font-bold hover:text-primary transition-colors"
+          onClick={() => { setTitleDraft(task.title); setEditingTitle(true); }}
+        >{task.title}</h1>
+      )}
 
-          {/* Properties grid */}
-          <div className="grid grid-cols-2 gap-x-8 gap-y-2">
-            <PropertyRow icon={<Circle className="h-3.5 w-3.5" />} label="Status">
-              <Select value={task.status_global} onValueChange={(v) => updateTask.mutate({ id: task.id, status_global: v as any })}>
-                <SelectTrigger className="h-7 border-0 bg-transparent shadow-none p-0 w-auto gap-1.5">
-                  <Badge className={cn("text-[10px] uppercase font-bold tracking-wide px-2.5 py-0.5 rounded", statusBadgeColor(task.status_global))}>
-                    <SelectValue />
-                  </Badge>
-                </SelectTrigger>
-                <SelectContent>
-                  {PM_STATUSES.map(s => (
-                    <SelectItem key={s.key} value={s.key} className="text-xs">
-                      <div className="flex items-center gap-1.5">
-                        <span className={cn("h-2 w-2 rounded-full", statusDotColor(s.key))} />
-                        {s.label}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </PropertyRow>
+      {/* Properties grid */}
+      <div className="grid grid-cols-2 gap-x-8 gap-y-2">
+        <PropertyRow icon={<Circle className="h-3.5 w-3.5" />} label="Status">
+          <Select value={task.status_global} onValueChange={(v) => updateTask.mutate({ id: task.id, status_global: v as any })}>
+            <SelectTrigger className="h-7 border-0 bg-transparent shadow-none p-0 w-auto gap-1.5">
+              <Badge className={cn("text-[10px] uppercase font-bold tracking-wide px-2.5 py-0.5 rounded", statusBadgeColor(task.status_global))}>
+                <SelectValue />
+              </Badge>
+            </SelectTrigger>
+            <SelectContent>
+              {PM_STATUSES.map(s => (
+                <SelectItem key={s.key} value={s.key} className="text-xs">
+                  <div className="flex items-center gap-1.5">
+                    <span className={cn("h-2 w-2 rounded-full", statusDotColor(s.key))} />
+                    {s.label}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </PropertyRow>
 
-            <PropertyRow icon={<User className="h-3.5 w-3.5" />} label="Responsável">
-              <Select value={task.assignee_id ?? "__none__"} onValueChange={(v) => updateTask.mutate({ id: task.id, assignee_id: v === "__none__" ? null : v })}>
-                <SelectTrigger className="h-7 border-0 bg-transparent shadow-none p-0 w-auto gap-1.5">
-                  {assignee ? (
-                    <div className="flex items-center gap-1.5">
-                      <Avatar className="h-5 w-5">
-                        <AvatarImage src={assignee.avatar} />
-                        <AvatarFallback className="text-[8px] bg-primary/20 text-primary">{initials(assignee.name)}</AvatarFallback>
-                      </Avatar>
-                      <span className="text-xs">{assignee.name}</span>
-                    </div>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">Vazio</span>
-                  )}
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__" className="text-xs">Ninguém</SelectItem>
-                  {members.map(m => (
-                    <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </PropertyRow>
-
-            <PropertyRow icon={<CalendarDays className="h-3.5 w-3.5" />} label="Datas">
-              <div className="flex items-center gap-1.5 text-xs">
-                <span className="text-muted-foreground">Início</span>
-                <Input type="date" value={task.start_date ?? ""} onChange={(e) => updateTask.mutate({ id: task.id, start_date: e.target.value || null })} className="h-6 w-28 text-xs border-0 bg-transparent shadow-none p-0" />
-                <span className="text-muted-foreground">→</span>
-                <Input type="date" value={task.due_date ?? ""} onChange={(e) => updateTask.mutate({ id: task.id, due_date: e.target.value || null })} className="h-6 w-28 text-xs border-0 bg-transparent shadow-none p-0" />
-              </div>
-            </PropertyRow>
-
-            <PropertyRow icon={<Flag className="h-3.5 w-3.5" />} label="Prioridade">
-              <Select value={task.priority} onValueChange={(v) => updateTask.mutate({ id: task.id, priority: v as any })}>
-                <SelectTrigger className="h-7 border-0 bg-transparent shadow-none p-0 w-auto gap-1"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {PM_PRIORITIES.map(p => (
-                    <SelectItem key={p.key} value={p.key} className="text-xs">{p.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </PropertyRow>
-
-            <PropertyRow icon={<Layers className="h-3.5 w-3.5" />} label="Etapa">
-              <Select value={task.stage_current} onValueChange={(v) => updateTask.mutate({ id: task.id, stage_current: v as any })}>
-                <SelectTrigger className="h-7 border-0 bg-transparent shadow-none p-0 w-auto gap-1"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {PM_STAGES.map(s => (
-                    <SelectItem key={s.key} value={s.key} className="text-xs">{s.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </PropertyRow>
-
-            <PropertyRow icon={<Tag className="h-3.5 w-3.5" />} label="Etiquetas">
-              <div className="flex flex-wrap items-center gap-1">
-                {task.tags.length > 0 ? task.tags.map((tag) => (
-                  <Badge key={tag} variant="secondary" className="text-[10px] h-5 px-1.5">{tag}</Badge>
-                )) : (
-                  <span className="text-xs text-muted-foreground">Vazio</span>
-                )}
-              </div>
-            </PropertyRow>
-          </div>
-
-          {/* Description */}
-          <div className="border-t border-border/20 pt-4">
-            {editingDesc ? (
-              <div className="space-y-2">
-                <Textarea value={descDraft} onChange={(e) => setDescDraft(e.target.value)} className="min-h-[120px]" />
-                <div className="flex gap-2">
-                  <Button size="sm" onClick={saveDesc}>Salvar</Button>
-                  <Button size="sm" variant="ghost" onClick={() => setEditingDesc(false)}>Cancelar</Button>
+        <PropertyRow icon={<User className="h-3.5 w-3.5" />} label="Responsável">
+          <Select value={task.assignee_id ?? "__none__"} onValueChange={(v) => updateTask.mutate({ id: task.id, assignee_id: v === "__none__" ? null : v })}>
+            <SelectTrigger className="h-7 border-0 bg-transparent shadow-none p-0 w-auto gap-1.5">
+              {assignee ? (
+                <div className="flex items-center gap-1.5">
+                  <Avatar className="h-5 w-5">
+                    <AvatarImage src={assignee.avatar} />
+                    <AvatarFallback className="text-[8px] bg-primary/20 text-primary">{initials(assignee.name)}</AvatarFallback>
+                  </Avatar>
+                  <span className="text-xs">{assignee.name}</span>
                 </div>
-              </div>
-            ) : (
-              <div
-                className="cursor-pointer text-sm text-muted-foreground hover:text-foreground transition min-h-[40px] py-2"
-                onClick={() => { setDescDraft(task.description ?? ""); setEditingDesc(true); }}
-              >
-                {task.description || "Adicione uma descrição..."}
-              </div>
+              ) : (
+                <span className="text-xs text-muted-foreground">Vazio</span>
+              )}
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__" className="text-xs">Ninguém</SelectItem>
+              {members.map(m => (
+                <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </PropertyRow>
+
+        <PropertyRow icon={<CalendarDays className="h-3.5 w-3.5" />} label="Datas">
+          <div className="flex items-center gap-1.5 text-xs">
+            <span className="text-muted-foreground">Início</span>
+            <Input type="date" value={task.start_date ?? ""} onChange={(e) => updateTask.mutate({ id: task.id, start_date: e.target.value || null })} className="h-6 w-28 text-xs border-0 bg-transparent shadow-none p-0" />
+            <span className="text-muted-foreground">→</span>
+            <Input type="date" value={task.due_date ?? ""} onChange={(e) => updateTask.mutate({ id: task.id, due_date: e.target.value || null })} className="h-6 w-28 text-xs border-0 bg-transparent shadow-none p-0" />
+          </div>
+        </PropertyRow>
+
+        <PropertyRow icon={<Flag className="h-3.5 w-3.5" />} label="Prioridade">
+          <Select value={task.priority} onValueChange={(v) => updateTask.mutate({ id: task.id, priority: v as any })}>
+            <SelectTrigger className="h-7 border-0 bg-transparent shadow-none p-0 w-auto gap-1"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {PM_PRIORITIES.map(p => (
+                <SelectItem key={p.key} value={p.key} className="text-xs">{p.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </PropertyRow>
+
+        <PropertyRow icon={<Layers className="h-3.5 w-3.5" />} label="Etapa">
+          <Select value={task.stage_current} onValueChange={(v) => updateTask.mutate({ id: task.id, stage_current: v as any })}>
+            <SelectTrigger className="h-7 border-0 bg-transparent shadow-none p-0 w-auto gap-1"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {PM_STAGES.map(s => (
+                <SelectItem key={s.key} value={s.key} className="text-xs">{s.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </PropertyRow>
+
+        <PropertyRow icon={<Tag className="h-3.5 w-3.5" />} label="Etiquetas">
+          <div className="flex flex-wrap items-center gap-1">
+            {task.tags.length > 0 ? task.tags.map((tag) => (
+              <Badge key={tag} variant="secondary" className="text-[10px] h-5 px-1.5">{tag}</Badge>
+            )) : (
+              <span className="text-xs text-muted-foreground">Vazio</span>
             )}
           </div>
+        </PropertyRow>
+      </div>
 
-          {/* Subtasks */}
-          <div className="border-t border-border/20 pt-4">
-            <PmSubtaskList
-              taskId={task.id}
-              subtasks={subtasks}
-              membersMap={membersMap}
-              members={members}
-              parentTitle={task.title}
-              onSelectSubtask={onSelectSubtask}
-              activeSubtaskId={activeSubtaskId}
-            />
-          </div>
-
-          {/* Attachments */}
-          <div className="border-t border-border/20 pt-4">
-            <PmAttachmentsSection taskId={task.id} attachments={attachments} membersMap={membersMap} />
-          </div>
-
-          {/* Delete */}
-          {isAdmin && (
-            <div className="border-t border-border/20 pt-4 flex justify-end">
-              <Button variant="destructive" size="sm" className="gap-1.5" onClick={handleDelete}>
-                <Trash2 className="h-3.5 w-3.5" /> Excluir tarefa
-              </Button>
+      {/* Description */}
+      <div className="border-t border-border/20 pt-4">
+        {editingDesc ? (
+          <div className="space-y-2">
+            <Textarea value={descDraft} onChange={(e) => setDescDraft(e.target.value)} className="min-h-[120px]" />
+            <div className="flex gap-2">
+              <Button size="sm" onClick={saveDesc}>Salvar</Button>
+              <Button size="sm" variant="ghost" onClick={() => setEditingDesc(false)}>Cancelar</Button>
             </div>
-          )}
-        </div>
-      </div>
-
-      {/* Activity sidebar */}
-      <div className="w-80 shrink-0 flex flex-col bg-card/10 hidden sm:flex">
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-border/30">
-          <MessageSquare className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-semibold">Atividade</span>
-        </div>
-        <div className="flex-1 overflow-y-auto px-4 py-3">
-          <PmCommentsSection taskId={task.id} comments={comments} membersMap={membersMap} />
-        </div>
-      </div>
-    </>
-  );
-}
-
-// ─── Subtask Detail View ───
-
-function SubtaskDetailView({
-  subtask, membersMap, members, comments, attachments,
-  editingTitle, setEditingTitle, titleDraft, setTitleDraft,
-  editingDesc, setEditingDesc, descDraft, setDescDraft,
-}: {
-  subtask: PmSubtask;
-  membersMap: Record<string, { name: string; avatar?: string }>;
-  members: { id: string; name: string }[];
-  comments: any[];
-  attachments: any[];
-  editingTitle: boolean; setEditingTitle: (v: boolean) => void;
-  titleDraft: string; setTitleDraft: (v: string) => void;
-  editingDesc: boolean; setEditingDesc: (v: boolean) => void;
-  descDraft: string; setDescDraft: (v: string) => void;
-}) {
-  const updateSub = useUpdatePmSubtask();
-  const assignee = subtask.assignee_id ? membersMap[subtask.assignee_id] : undefined;
-
-  const saveTitle = () => {
-    if (titleDraft.trim() && titleDraft.trim() !== subtask.title) {
-      updateSub.mutate({ id: subtask.id, title: titleDraft.trim(), task_id: subtask.task_id });
-    }
-    setEditingTitle(false);
-  };
-
-  const saveDesc = () => {
-    updateSub.mutate({ id: subtask.id, description: descDraft, task_id: subtask.task_id });
-    setEditingDesc(false);
-  };
-
-  return (
-    <>
-      <div className="flex-1 border-r border-border/30 overflow-y-auto">
-        <div className="px-6 py-5 space-y-6">
-          {/* Title */}
-          {editingTitle ? (
-            <Input
-              autoFocus value={titleDraft}
-              onChange={(e) => setTitleDraft(e.target.value)}
-              onBlur={saveTitle}
-              onKeyDown={(e) => e.key === "Enter" && saveTitle()}
-              className="text-2xl font-bold border-0 bg-transparent p-0 h-auto focus-visible:ring-0 focus-visible:ring-offset-0"
-            />
-          ) : (
-            <h1
-              className="cursor-pointer text-2xl font-bold hover:text-primary transition-colors"
-              onClick={() => { setTitleDraft(subtask.title); setEditingTitle(true); }}
-            >{subtask.title}</h1>
-          )}
-
-          {/* Properties grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2">
-            <PropertyRow icon={<Circle className="h-3.5 w-3.5" />} label="Status">
-              <Select value={subtask.status} onValueChange={(v) => updateSub.mutate({ id: subtask.id, status: v, task_id: subtask.task_id })}>
-                <SelectTrigger className="h-7 border-0 bg-transparent shadow-none p-0 w-auto gap-1.5">
-                  <Badge className={cn("text-[10px] uppercase font-bold tracking-wide px-2.5 py-0.5 rounded-md", subtaskStatusBadgeColor(subtask.status))}>
-                    <SelectValue />
-                  </Badge>
-                </SelectTrigger>
-                <SelectContent>
-                  {PM_SUBTASK_STATUSES.map(s => (
-                    <SelectItem key={s.key} value={s.key} className="text-xs">{s.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </PropertyRow>
-
-            <PropertyRow icon={<User className="h-3.5 w-3.5" />} label="Responsável">
-              <Select value={subtask.assignee_id ?? "__none__"} onValueChange={(v) => updateSub.mutate({ id: subtask.id, assignee_id: v === "__none__" ? null : v, task_id: subtask.task_id })}>
-                <SelectTrigger className="h-7 border-0 bg-transparent shadow-none p-0 w-auto gap-1.5">
-                  {assignee ? (
-                    <div className="flex items-center gap-1.5">
-                      <Avatar className="h-5 w-5">
-                        <AvatarImage src={assignee.avatar} />
-                        <AvatarFallback className="text-[8px] bg-primary/20 text-primary">{initials(assignee.name)}</AvatarFallback>
-                      </Avatar>
-                      <span className="text-xs">{assignee.name}</span>
-                    </div>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">Ninguém</span>
-                  )}
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__" className="text-xs">Ninguém</SelectItem>
-                  {members.map(m => (
-                    <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </PropertyRow>
-
-            <PropertyRow icon={<CalendarDays className="h-3.5 w-3.5" />} label="Prazo">
-              <Input
-                type="date" value={subtask.due_date ?? ""}
-                onChange={(e) => updateSub.mutate({ id: subtask.id, due_date: e.target.value || null, task_id: subtask.task_id })}
-                className="h-7 w-36 text-xs border-0 bg-transparent shadow-none p-0"
-              />
-            </PropertyRow>
-
-            <PropertyRow icon={<Layers className="h-3.5 w-3.5" />} label="Etapa">
-              <Select value={subtask.stage} onValueChange={(v) => updateSub.mutate({ id: subtask.id, stage: v, task_id: subtask.task_id })}>
-                <SelectTrigger className="h-7 border-0 bg-transparent shadow-none p-0 w-auto gap-1"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {PM_STAGES.map(s => (
-                    <SelectItem key={s.key} value={s.key} className="text-xs">{s.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </PropertyRow>
           </div>
-
-          {/* Description */}
-          <div className="border-t border-border/20 pt-4">
-            <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
-              <FileText className="h-4 w-4 text-muted-foreground" /> Descrição
-            </h3>
-            {editingDesc ? (
-              <div className="space-y-2">
-                <Textarea value={descDraft} onChange={(e) => setDescDraft(e.target.value)} className="min-h-[120px] text-sm resize-none" />
-                <div className="flex gap-2">
-                  <Button size="sm" onClick={saveDesc}>Salvar</Button>
-                  <Button size="sm" variant="ghost" onClick={() => setEditingDesc(false)}>Cancelar</Button>
-                </div>
-              </div>
-            ) : (
-              <div
-                className="cursor-pointer text-sm text-muted-foreground hover:text-foreground transition min-h-[60px] py-2 rounded-md hover:bg-accent/20 px-2 -mx-2"
-                onClick={() => { setDescDraft(subtask.description ?? ""); setEditingDesc(true); }}
-              >
-                {subtask.description || "Adicione uma descrição detalhada..."}
-              </div>
-            )}
+        ) : (
+          <div
+            className="cursor-pointer text-sm text-muted-foreground hover:text-foreground transition min-h-[40px] py-2"
+            onClick={() => { setDescDraft(task.description ?? ""); setEditingDesc(true); }}
+          >
+            {task.description || "Adicione uma descrição..."}
           </div>
-
-          {/* Attachments */}
-          <div className="border-t border-border/20 pt-4">
-            <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-              <Paperclip className="h-4 w-4 text-muted-foreground" /> Anexos
-            </h3>
-            <PmAttachmentsSection subtaskId={subtask.id} attachments={attachments} membersMap={membersMap} />
-          </div>
-        </div>
+        )}
       </div>
 
-      {/* Activity sidebar */}
-      <div className="w-80 shrink-0 flex flex-col bg-card/10 hidden sm:flex">
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-border/30">
-          <MessageSquare className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-semibold">Atividade</span>
-        </div>
-        <div className="flex-1 overflow-y-auto px-4 py-3">
-          <PmCommentsSection subtaskId={subtask.id} comments={comments} membersMap={membersMap} />
-        </div>
+      {/* Subtasks */}
+      <div className="border-t border-border/20 pt-4">
+        <PmSubtaskList
+          parentTask={task}
+          childTasks={childTasks}
+          membersMap={membersMap}
+          members={members}
+          onSelectSubtask={onSelectSubtask}
+          activeSubtaskId={activeSubtaskId}
+        />
       </div>
-    </>
+
+      {/* Attachments */}
+      <div className="border-t border-border/20 pt-4">
+        <PmAttachmentsSection taskId={task.id} attachments={attachments} membersMap={membersMap} />
+      </div>
+
+      {/* Delete */}
+      {isAdmin && (
+        <div className="border-t border-border/20 pt-4 flex justify-end">
+          <Button variant="destructive" size="sm" className="gap-1.5" onClick={handleDelete}>
+            <Trash2 className="h-3.5 w-3.5" /> Excluir tarefa
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -634,19 +431,6 @@ function statusBadgeColor(key: string) {
   }
 }
 
-function subtaskStatusBadgeColor(key: string) {
-  switch (key) {
-    case "nao_iniciado": return "bg-muted-foreground/20 text-muted-foreground";
-    case "em_producao": return "bg-primary/20 text-primary";
-    case "aguardando": return "bg-yellow-500/20 text-yellow-600";
-    case "em_revisao": return "bg-accent/50 text-accent-foreground";
-    case "aprovado": return "bg-emerald-500/20 text-emerald-600";
-    case "concluido": return "bg-emerald-500/20 text-emerald-600";
-    case "bloqueado": return "bg-destructive/20 text-destructive";
-    default: return "bg-muted-foreground/20 text-muted-foreground";
-  }
-}
-
 function statusDotColor(key: string) {
   switch (key) {
     case "backlog": return "bg-muted-foreground";
@@ -655,12 +439,6 @@ function statusDotColor(key: string) {
     case "concluido": return "bg-success";
     case "pausado": return "bg-muted-foreground/50";
     case "cancelado": return "bg-destructive";
-    case "nao_iniciado": return "bg-muted-foreground/40";
-    case "em_producao": return "bg-primary";
-    case "aguardando": return "bg-warning/60";
-    case "em_revisao": return "bg-warning";
-    case "aprovado": return "bg-success/60";
-    case "bloqueado": return "bg-destructive";
     default: return "bg-muted-foreground";
   }
 }

@@ -10,13 +10,12 @@ import type { PmComment } from "../pm-types";
 function initials(n: string) { return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join(""); }
 
 interface Props {
-  taskId?: string;
-  subtaskId?: string;
+  taskId: string;
   comments: PmComment[];
   membersMap: Record<string, { name: string; avatar?: string }>;
 }
 
-export function PmCommentsSection({ taskId, subtaskId, comments, membersMap }: Props) {
+export function PmCommentsSection({ taskId, comments, membersMap }: Props) {
   const [content, setContent] = useState("");
   const addComment = useAddPmComment();
 
@@ -24,7 +23,6 @@ export function PmCommentsSection({ taskId, subtaskId, comments, membersMap }: P
     if (!content.trim()) return;
     await addComment.mutateAsync({
       task_id: taskId,
-      subtask_id: subtaskId,
       content: content.trim(),
     });
     setContent("");

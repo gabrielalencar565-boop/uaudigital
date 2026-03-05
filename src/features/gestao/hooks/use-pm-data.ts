@@ -1,29 +1,55 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import type { PmTask, PmSubtask, PmComment, PmAttachment, PmProject } from "../pm-types";
+import type { PmTask, PmComment, PmAttachment, PmProject } from "../pm-types";
 import { PM_TEMPLATE_SUBTASKS } from "../pm-constants";
 
 const sb = supabase as any;
 
 // ── Queries ──
 
+/** Fetch only root tasks (no parent) */
 export function usePmTasks() {
   return useQuery<PmTask[]>({
     queryKey: ["pm_tasks"],
     queryFn: async () => {
-      const { data, error } = await sb.from("pm_tasks").select("*").order("created_at", { ascending: false });
+      const { data, error } = await sb
+        .from("pm_tasks")
+        .select("*")
+        .is("parent_task_id", null)
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
     },
   });
 }
 
-export function usePmSubtasks(taskId: string | null) {
-  return useQuery<PmSubtask[]>({
-    queryKey: ["pm_subtasks", taskId],
-    enabled: !!taskId,
+/** Fetch child tasks of a parent */
+export function usePmChildTasks(parentId: string | null) {
+  return useQuery<PmTask[]>({
+    queryKey: ["pm_child_tasks", parentId],
+    enabled: !!parentId,
     queryFn: async () => {
-      const { data, error } = await sb.from("pm_subtasks").select("*").eq("task_id", taskId).order("order_index");
+      const { data, error } = await sb
+        .from("pm_tasks")
+        .select("*")
+        .eq("parent_task_id", parentId)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
+/** Fetch all child tasks (for kanban cards progress) */
+export function usePmAllChildTasks() {
+  return useQuery<PmTask[]>({
+    queryKey: ["pm_child_tasks_all"],
+    queryFn: async () => {
+      const { data, error } = await sb
+        .from("pm_tasks")
+        .select("*")
+        .not("parent_task_id", "is", null)
+        .order("created_at", { ascending: true });
       if (error) throw error;
       return data ?? [];
     },
@@ -42,36 +68,12 @@ export function usePmComments(taskId: string | null) {
   });
 }
 
-export function usePmSubtaskComments(subtaskId: string | null) {
-  return useQuery<PmComment[]>({
-    queryKey: ["pm_comments_subtask", subtaskId],
-    enabled: !!subtaskId,
-    queryFn: async () => {
-      const { data, error } = await sb.from("pm_comments").select("*").eq("subtask_id", subtaskId).order("created_at", { ascending: true });
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-}
-
 export function usePmAttachments(taskId: string | null) {
   return useQuery<PmAttachment[]>({
     queryKey: ["pm_attachments", taskId],
     enabled: !!taskId,
     queryFn: async () => {
       const { data, error } = await sb.from("pm_attachments").select("*").eq("task_id", taskId).order("created_at", { ascending: false });
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-}
-
-export function usePmSubtaskAttachments(subtaskId: string | null) {
-  return useQuery<PmAttachment[]>({
-    queryKey: ["pm_attachments_subtask", subtaskId],
-    enabled: !!subtaskId,
-    queryFn: async () => {
-      const { data, error } = await sb.from("pm_attachments").select("*").eq("subtask_id", subtaskId).order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
     },
@@ -104,6 +106,7 @@ export function useCreatePmTask() {
       assignee_id?: string;
       project_id?: string;
       tags?: string[];
+      parent_task_id?: string | null;
       useTemplate?: boolean;
     }) => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -117,24 +120,12 @@ export function useCreatePmTask() {
       }).select().single();
       if (error) throw error;
 
-      // Create template subtasks
-      if (useTemplate !== false) {
-        const subtasks = PM_TEMPLATE_SUBTASKS.map((t) => ({
-          task_id: data.id,
-          title: t.title,
-          stage: t.stage,
-          order_index: t.order_index,
-          is_required: t.is_required,
-        }));
-        await sb.from("pm_subtasks").insert(subtasks);
-      }
-
       // Activity log
       await sb.from("pm_activity_log").insert({
         entity_type: "task",
         entity_id: data.id,
         action: "created",
-        metadata: { title: data.title },
+        metadata: { title: data.title, parent_task_id: data.parent_task_id },
         created_by: user.id,
       });
 
@@ -142,6 +133,8 @@ export function useCreatePmTask() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pm_tasks"] });
+      qc.invalidateQueries({ queryKey: ["pm_child_tasks"] });
+      qc.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
     },
   });
 }
@@ -167,6 +160,8 @@ export function useUpdatePmTask() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pm_tasks"] });
+      qc.invalidateQueries({ queryKey: ["pm_child_tasks"] });
+      qc.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
     },
   });
 }
@@ -180,36 +175,8 @@ export function useDeletePmTask() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pm_tasks"] });
-    },
-  });
-}
-
-export function useUpdatePmSubtask() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, ...updates }: Partial<PmSubtask> & { id: string }) => {
-      const { data, error } = await sb.from("pm_subtasks").update(updates).eq("id", id).select().single();
-      if (error) throw error;
-      return data as PmSubtask;
-    },
-    onSuccess: (_, vars) => {
-      qc.invalidateQueries({ queryKey: ["pm_subtasks"] });
-      // Auto-update parent task status
-      checkAndUpdateParentStatus(vars.id);
-    },
-  });
-}
-
-export function useCreatePmSubtask() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (payload: Omit<PmSubtask, "id" | "created_at" | "updated_at">) => {
-      const { data, error } = await sb.from("pm_subtasks").insert(payload).select().single();
-      if (error) throw error;
-      return data as PmSubtask;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["pm_subtasks"] });
+      qc.invalidateQueries({ queryKey: ["pm_child_tasks"] });
+      qc.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
     },
   });
 }
@@ -217,12 +184,11 @@ export function useCreatePmSubtask() {
 export function useAddPmComment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: { task_id?: string; subtask_id?: string; content: string }) => {
+    mutationFn: async (payload: { task_id: string; content: string }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Não autenticado");
       const { data, error } = await sb.from("pm_comments").insert({
-        task_id: payload.task_id ?? null,
-        subtask_id: payload.subtask_id ?? null,
+        task_id: payload.task_id,
         content: payload.content,
         author_id: user.id,
       }).select().single();
@@ -232,47 +198,13 @@ export function useAddPmComment() {
         entity_type: "comment",
         entity_id: data.id,
         action: "comment_added",
-        metadata: { task_id: payload.task_id, subtask_id: payload.subtask_id },
+        metadata: { task_id: payload.task_id },
         created_by: user.id,
       });
       return data as PmComment;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pm_comments"] });
-      qc.invalidateQueries({ queryKey: ["pm_comments_subtask"] });
-    },
-  });
-}
-
-export function useUploadPmSubtaskAttachment() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ subtask_id, file }: { subtask_id: string; file: File }) => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Não autenticado");
-
-      const ext = file.name.split(".").pop() || "bin";
-      const path = `${user.id}/sub_${subtask_id}/${crypto.randomUUID()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from("pm-attachments").upload(path, file, { contentType: file.type });
-      if (upErr) throw upErr;
-
-      const { data: urlData } = supabase.storage.from("pm-attachments").getPublicUrl(path);
-
-      const { data, error } = await sb.from("pm_attachments").insert({
-        subtask_id,
-        uploaded_by: user.id,
-        file_name: file.name,
-        file_type: file.type,
-        file_size: file.size,
-        storage_path: path,
-        public_url: urlData.publicUrl,
-      }).select().single();
-      if (error) throw error;
-
-      return data as PmAttachment;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["pm_attachments_subtask"] });
     },
   });
 }
@@ -317,22 +249,24 @@ export function useUploadPmAttachment() {
   });
 }
 
-// ── Auto-update parent task status ──
-async function checkAndUpdateParentStatus(subtaskId: string) {
-  const { data: subtask } = await sb.from("pm_subtasks").select("task_id").eq("id", subtaskId).single();
-  if (!subtask) return;
+// ── Auto-update parent task status when child changes ──
+export async function checkAndUpdateParentStatus(taskId: string) {
+  const { data: task } = await sb.from("pm_tasks").select("parent_task_id").eq("id", taskId).single();
+  if (!task?.parent_task_id) return;
 
-  const { data: allSubs } = await sb.from("pm_subtasks").select("status").eq("task_id", subtask.task_id);
-  if (!allSubs || allSubs.length === 0) return;
+  const { data: siblings } = await sb.from("pm_tasks").select("status_global").eq("parent_task_id", task.parent_task_id);
+  if (!siblings || siblings.length === 0) return;
 
-  const allDone = allSubs.every((s: any) => s.status === "concluido");
-  const hasBlocked = allSubs.some((s: any) => s.status === "bloqueado");
-
-  let newStatus: string | null = null;
-  if (allDone) newStatus = "concluido";
-  else if (hasBlocked) newStatus = "em_andamento";
-
-  if (newStatus) {
-    await sb.from("pm_tasks").update({ status_global: newStatus }).eq("id", subtask.task_id);
+  const allDone = siblings.every((s: any) => s.status_global === "concluido");
+  if (allDone) {
+    await sb.from("pm_tasks").update({ status_global: "concluido" }).eq("id", task.parent_task_id);
   }
 }
+
+// Keep backward compat exports
+export function useUpdatePmSubtask() { return useUpdatePmTask(); }
+export function useCreatePmSubtask() { return useCreatePmTask(); }
+export function usePmSubtasks(taskId: string | null) { return usePmChildTasks(taskId); }
+export function usePmSubtaskComments(id: string | null) { return usePmComments(id); }
+export function usePmSubtaskAttachments(id: string | null) { return usePmAttachments(id); }
+export function useUploadPmSubtaskAttachment() { return useUploadPmAttachment(); }
