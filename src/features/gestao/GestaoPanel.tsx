@@ -161,6 +161,7 @@ export function GestaoPanel() {
             onTaskClick={setSelectedTask}
             onCreateClick={openCreate}
             filters={filters}
+            isAdmin={isAdmin}
           />
         </TabsContent>
 
@@ -183,6 +184,7 @@ export function GestaoPanel() {
                         assigneeAvatar={member?.avatar}
                         childTasks={childTasksMap[task.id] ?? []}
                         onClick={() => setSelectedTask(task)}
+                        isAdmin={isAdmin}
                       />
                     );
                   })}
