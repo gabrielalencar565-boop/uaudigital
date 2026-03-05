@@ -1027,6 +1027,7 @@ export type Database = {
         Row: {
           assignee_id: string | null
           client_id: string
+          cover_url: string | null
           created_at: string
           created_by: string
           description: string | null
@@ -1046,6 +1047,7 @@ export type Database = {
         Insert: {
           assignee_id?: string | null
           client_id: string
+          cover_url?: string | null
           created_at?: string
           created_by: string
           description?: string | null
@@ -1065,6 +1067,7 @@ export type Database = {
         Update: {
           assignee_id?: string | null
           client_id?: string
+          cover_url?: string | null
           created_at?: string
           created_by?: string
           description?: string | null
