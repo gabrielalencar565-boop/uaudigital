@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Plus, Search, LayoutGrid, CalendarDays, FolderOpen, List } from "lucide-react";
+import { Plus, Search, LayoutGrid, CalendarDays, FolderOpen } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,15 +9,13 @@ import { useSession } from "@/hooks/use-session";
 import { useRole } from "@/hooks/use-role";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { usePmTasks } from "./hooks/use-pm-data";
+import { usePmTasks, usePmAllChildTasks } from "./hooks/use-pm-data";
 import { PmKanbanBoard } from "./components/PmKanbanBoard";
 import { PmClientView } from "./components/PmClientView";
 import { PmTaskCard } from "./components/PmTaskCard";
 import { PmTaskDetailDialog } from "./components/PmTaskDetailDialog";
 import { PmCreateTaskDialog } from "./components/PmCreateTaskDialog";
-import type { PmTask, PmSubtask } from "./pm-types";
-
-const sb = supabase as any;
+import type { PmTask } from "./pm-types";
 
 export function GestaoPanel() {
   const { user } = useSession();
@@ -31,28 +29,21 @@ export function GestaoPanel() {
   const [createOpen, setCreateOpen] = useState(false);
   const [createDefaultStatus, setCreateDefaultStatus] = useState<string | undefined>();
 
-  // Data
+  // Data - only root tasks
   const tasksQ = usePmTasks();
   const tasks = tasksQ.data ?? [];
 
-  // Fetch all subtasks for all tasks (batch)
-  const allSubtasksQ = useQuery<PmSubtask[]>({
-    queryKey: ["pm_subtasks_all"],
-    queryFn: async () => {
-      const { data, error } = await sb.from("pm_subtasks").select("*").order("order_index");
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
-  const subtasksMap = useMemo(() => {
-    const map: Record<string, PmSubtask[]> = {};
-    (allSubtasksQ.data ?? []).forEach((s) => {
-      if (!map[s.task_id]) map[s.task_id] = [];
-      map[s.task_id].push(s);
+  // All child tasks for progress indicators on cards
+  const allChildTasksQ = usePmAllChildTasks();
+  const childTasksMap = useMemo(() => {
+    const map: Record<string, PmTask[]> = {};
+    (allChildTasksQ.data ?? []).forEach((t) => {
+      const pid = t.parent_task_id!;
+      if (!map[pid]) map[pid] = [];
+      map[pid].push(t);
     });
     return map;
-  }, [allSubtasksQ.data]);
+  }, [allChildTasksQ.data]);
 
   // Clients
   const clientsQ = useQuery({
@@ -164,7 +155,7 @@ export function GestaoPanel() {
         <TabsContent value="kanban" className="mt-4">
           <PmKanbanBoard
             tasks={tasks}
-            subtasksMap={subtasksMap}
+            childTasksMap={childTasksMap}
             clientsMap={clientsMap}
             membersMap={membersMap}
             onTaskClick={setSelectedTask}
@@ -190,7 +181,7 @@ export function GestaoPanel() {
                         clientName={clientsMap[task.client_id] ?? "—"}
                         assigneeName={member?.name}
                         assigneeAvatar={member?.avatar}
-                        subtasks={subtasksMap[task.id] ?? []}
+                        childTasks={childTasksMap[task.id] ?? []}
                         onClick={() => setSelectedTask(task)}
                       />
                     );
@@ -205,7 +196,7 @@ export function GestaoPanel() {
         <TabsContent value="clientes" className="mt-4">
           <PmClientView
             tasks={tasks}
-            subtasksMap={subtasksMap}
+            childTasksMap={childTasksMap}
             clientsMap={clientsMap}
             membersMap={membersMap}
             onTaskClick={setSelectedTask}
@@ -213,7 +204,7 @@ export function GestaoPanel() {
         </TabsContent>
       </Tabs>
 
-      {/* Task detail - Sheet (ClickUp style) */}
+      {/* Task detail */}
       <PmTaskDetailDialog
         task={selectedTask}
         open={!!selectedTask}

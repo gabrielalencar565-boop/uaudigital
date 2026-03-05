@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PM_KANBAN_COLUMNS, statusLabel } from "../pm-constants";
-import type { PmTask, PmSubtask } from "../pm-types";
+import type { PmTask } from "../pm-types";
 import { PmTaskCard } from "./PmTaskCard";
 
 function statusDot(key: string) {
@@ -17,7 +17,7 @@ function statusDot(key: string) {
 
 interface Props {
   tasks: PmTask[];
-  subtasksMap: Record<string, PmSubtask[]>;
+  childTasksMap: Record<string, PmTask[]>;
   clientsMap: Record<string, string>;
   membersMap: Record<string, { name: string; avatar?: string }>;
   onTaskClick: (task: PmTask) => void;
@@ -25,7 +25,7 @@ interface Props {
   filters: { clientId?: string; assigneeId?: string; search?: string };
 }
 
-export function PmKanbanBoard({ tasks, subtasksMap, clientsMap, membersMap, onTaskClick, onCreateClick, filters }: Props) {
+export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, onTaskClick, onCreateClick, filters }: Props) {
   const filtered = useMemo(() => {
     let list = tasks;
     if (filters.clientId) list = list.filter((t) => t.client_id === filters.clientId);
@@ -48,7 +48,6 @@ export function PmKanbanBoard({ tasks, subtasksMap, clientsMap, membersMap, onTa
     <div className="flex gap-3 overflow-x-auto pb-4">
       {columns.map((col) => (
         <div key={col.status} className="flex w-72 min-w-[280px] flex-col rounded-lg border border-border/40 bg-card/5">
-          {/* Column header */}
           <div className="flex items-center justify-between px-3 py-2.5 border-b border-border/30">
             <div className="flex items-center gap-2">
               <span className={cn("h-2.5 w-2.5 rounded-full", statusDot(col.status))} />
@@ -65,8 +64,6 @@ export function PmKanbanBoard({ tasks, subtasksMap, clientsMap, membersMap, onTa
               <Plus className="h-3.5 w-3.5" />
             </button>
           </div>
-
-          {/* Cards */}
           <div className="flex flex-col gap-1.5 p-2" style={{ minHeight: 80 }}>
             {col.tasks.map((task) => {
               const member = task.assignee_id ? membersMap[task.assignee_id] : undefined;
@@ -77,7 +74,7 @@ export function PmKanbanBoard({ tasks, subtasksMap, clientsMap, membersMap, onTa
                   clientName={clientsMap[task.client_id] ?? "—"}
                   assigneeName={member?.name}
                   assigneeAvatar={member?.avatar}
-                  subtasks={subtasksMap[task.id] ?? []}
+                  childTasks={childTasksMap[task.id] ?? []}
                   onClick={() => onTaskClick(task)}
                 />
               );
