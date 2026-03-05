@@ -118,6 +118,7 @@ export function PmSubtaskList({ taskId, subtasks, membersMap, members, onSelectS
                 isActive ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-card/40",
                 isDone && "opacity-50"
               )}
+              onClick={() => onSelectSubtask?.(sub)}
             >
               {/* Status icon - click toggles completion */}
               <div
