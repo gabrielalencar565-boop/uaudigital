@@ -123,7 +123,7 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
             onClick={() => setSidebarOpen(!sidebarOpen)}
             title="Sidebar de subtarefas"
           >
-            <PanelRight className="h-4 w-4" />
+            <Layers className="h-4 w-4" />
           </Button>
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleClose}>
             <X className="h-4 w-4" />
@@ -133,36 +133,9 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
         {/* ─── Main content ─── */}
         <div className="flex flex-1 overflow-hidden min-h-0">
 
-          {/* ─── LEFT: Task detail (scrollable) ─── */}
-          <div className="flex-1 overflow-y-auto min-h-0">
-            <TaskContentView
-              task={currentTask}
-              childTasks={childTasks}
-              attachments={attachments}
-              membersMap={membersMap}
-              members={members}
-              isAdmin={isAdmin}
-              onSelectSubtask={handleSelectSubtask}
-              activeSubtaskId={null}
-              onClose={handleClose}
-              clientsMap={clientsMap}
-            />
-          </div>
-
-          {/* ─── RIGHT: Comments sidebar (like ClickUp Activity) ─── */}
-          <div className="w-80 shrink-0 flex flex-col bg-card/10 border-l border-border/30 hidden sm:flex">
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-border/30 shrink-0">
-              <MessageSquare className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-semibold">Atividade</span>
-            </div>
-            <div className="flex-1 overflow-y-auto px-4 py-3 min-h-0">
-              <PmCommentsSection taskId={currentTask.id} comments={comments} membersMap={membersMap} />
-            </div>
-          </div>
-
-          {/* ─── FAR RIGHT: Subtask Sidebar (toggle) ─── */}
+          {/* ─── LEFT: Subtask Sidebar (toggle) ─── */}
           {sidebarOpen && (
-            <div className="w-64 shrink-0 flex flex-col bg-card/30 border-l border-border/30 animate-in slide-in-from-right-5 duration-200">
+            <div className="w-64 shrink-0 flex flex-col bg-card/30 border-r border-border/30 animate-in slide-in-from-left-5 duration-200">
               <div className="flex items-center gap-2 px-4 py-3 border-b border-border/30 shrink-0">
                 <Layers className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm font-semibold">Subtarefas</span>
@@ -178,7 +151,7 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
                         key={sub.id}
                         className={cn(
                           "flex items-center gap-2 px-4 py-2.5 cursor-pointer transition text-sm",
-                          isActive ? "bg-primary/10 text-primary border-l-2 border-l-primary" : "hover:bg-card/40",
+                          isActive ? "bg-primary/10 text-primary border-r-2 border-r-primary" : "hover:bg-card/40",
                           isDone && !isActive && "opacity-50"
                         )}
                         onClick={() => handleSelectSubtask(sub)}
@@ -195,6 +168,33 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
               </div>
             </div>
           )}
+
+          {/* ─── CENTER: Task detail (scrollable) ─── */}
+          <div className="flex-1 overflow-y-auto min-h-0">
+            <TaskContentView
+              task={currentTask}
+              childTasks={childTasks}
+              attachments={attachments}
+              membersMap={membersMap}
+              members={members}
+              isAdmin={isAdmin}
+              onSelectSubtask={handleSelectSubtask}
+              activeSubtaskId={null}
+              onClose={handleClose}
+              clientsMap={clientsMap}
+            />
+          </div>
+
+          {/* ─── RIGHT: Comments sidebar ─── */}
+          <div className="w-80 shrink-0 flex-col bg-card/10 border-l border-border/30 hidden sm:flex">
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-border/30 shrink-0">
+              <MessageSquare className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-semibold">Atividade</span>
+            </div>
+            <div className="flex-1 overflow-y-auto px-4 py-3 min-h-0">
+              <PmCommentsSection taskId={currentTask.id} comments={comments} membersMap={membersMap} />
+            </div>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
@@ -314,13 +314,8 @@ function TaskContentView({
           </Select>
         </PropertyRow>
 
-        <PropertyRow icon={<CalendarDays className="h-3.5 w-3.5" />} label="Datas">
-          <div className="flex items-center gap-1.5 text-xs">
-            <span className="text-muted-foreground">Início</span>
-            <Input type="date" value={task.start_date ?? ""} onChange={(e) => updateTask.mutate({ id: task.id, start_date: e.target.value || null })} className="h-6 w-28 text-xs border-0 bg-transparent shadow-none p-0" />
-            <span className="text-muted-foreground">→</span>
-            <Input type="date" value={task.due_date ?? ""} onChange={(e) => updateTask.mutate({ id: task.id, due_date: e.target.value || null })} className="h-6 w-28 text-xs border-0 bg-transparent shadow-none p-0" />
-          </div>
+        <PropertyRow icon={<CalendarDays className="h-3.5 w-3.5" />} label="Entrega">
+          <Input type="date" value={task.due_date ?? ""} onChange={(e) => updateTask.mutate({ id: task.id, due_date: e.target.value || null })} className="h-7 w-36 text-xs border-0 bg-transparent shadow-none p-0" />
         </PropertyRow>
 
         <PropertyRow icon={<Flag className="h-3.5 w-3.5" />} label="Prioridade">
