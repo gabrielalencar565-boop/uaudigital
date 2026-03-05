@@ -390,14 +390,6 @@ function TaskContentView({
         <PmAttachmentsSection taskId={task.id} attachments={attachments} membersMap={membersMap} />
       </div>
 
-      {/* Delete */}
-      {isAdmin && (
-        <div className="border-t border-border/20 pt-4 flex justify-end">
-          <Button variant="destructive" size="sm" className="gap-1.5" onClick={handleDelete}>
-            <Trash2 className="h-3.5 w-3.5" /> Excluir tarefa
-          </Button>
-        </div>
-      )}
     </div>
   );
 }
