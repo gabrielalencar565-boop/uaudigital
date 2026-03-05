@@ -1,0 +1,1 @@
+ALTER TABLE public.pm_tasks ADD COLUMN parent_task_id uuid REFERENCES public.pm_tasks(id) ON DELETE CASCADE DEFAULT NULL;

@@ -1032,6 +1032,7 @@ export type Database = {
           description: string | null
           due_date: string | null
           id: string
+          parent_task_id: string | null
           priority: Database["public"]["Enums"]["pm_priority"]
           project_id: string | null
           stage_current: Database["public"]["Enums"]["pm_stage"]
@@ -1050,6 +1051,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          parent_task_id?: string | null
           priority?: Database["public"]["Enums"]["pm_priority"]
           project_id?: string | null
           stage_current?: Database["public"]["Enums"]["pm_stage"]
@@ -1068,6 +1070,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          parent_task_id?: string | null
           priority?: Database["public"]["Enums"]["pm_priority"]
           project_id?: string | null
           stage_current?: Database["public"]["Enums"]["pm_stage"]
@@ -1084,6 +1087,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_tasks_parent_task_id_fkey"
+            columns: ["parent_task_id"]
+            isOneToOne: false
+            referencedRelation: "pm_tasks"
             referencedColumns: ["id"]
           },
           {
