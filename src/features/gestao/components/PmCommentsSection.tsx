@@ -26,42 +26,51 @@ export function PmCommentsSection({ taskId, comments, membersMap }: Props) {
   };
 
   return (
-    <div className="space-y-3">
-      <span className="text-sm font-medium">Comentários ({comments.length})</span>
-
-      <div className="max-h-60 space-y-3 overflow-y-auto">
+    <div className="flex flex-col gap-3 h-full">
+      {/* Comments feed */}
+      <div className="flex-1 space-y-4 min-h-0">
         {comments.map((c) => {
           const member = membersMap[c.author_id];
           return (
-            <div key={c.id} className="flex gap-2">
-              <Avatar className="h-7 w-7 shrink-0">
+            <div key={c.id} className="flex gap-2.5">
+              <Avatar className="h-6 w-6 shrink-0 mt-0.5">
                 <AvatarImage src={member?.avatar} />
-                <AvatarFallback className="text-[9px]">{initials(member?.name ?? "?")}</AvatarFallback>
+                <AvatarFallback className="text-[8px] bg-primary/10 text-primary">{initials(member?.name ?? "?")}</AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-2">
                   <span className="text-xs font-semibold">{member?.name ?? "Usuário"}</span>
-                  <span className="text-[10px] text-muted-foreground">{format(new Date(c.created_at), "dd/MM HH:mm")}</span>
+                  <span className="text-[10px] text-muted-foreground">{format(new Date(c.created_at), "dd 'de' MMM 'às' HH:mm")}</span>
                 </div>
-                <p className="mt-0.5 whitespace-pre-wrap text-sm text-foreground/90">{c.content}</p>
+                <p className="mt-1 whitespace-pre-wrap text-[13px] text-foreground/90 leading-relaxed">{c.content}</p>
               </div>
             </div>
           );
         })}
-        {comments.length === 0 && <p className="text-xs text-muted-foreground">Nenhum comentário ainda.</p>}
+        {comments.length === 0 && (
+          <p className="text-xs text-muted-foreground text-center py-4">Nenhum comentário ainda.</p>
+        )}
       </div>
 
-      <div className="flex items-end gap-2">
+      {/* Input area */}
+      <div className="border-t border-border/30 pt-3">
         <Textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
           placeholder="Escreva um comentário..."
-          className="min-h-[60px] text-sm"
+          className="min-h-[60px] text-sm resize-none"
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
         />
-        <Button size="icon" variant="ghost" onClick={handleSend} disabled={!content.trim() || addComment.isPending}>
-          <Send className="h-4 w-4" />
-        </Button>
+        <div className="flex justify-end mt-2">
+          <Button
+            size="sm"
+            onClick={handleSend}
+            disabled={!content.trim() || addComment.isPending}
+            className="gap-1.5"
+          >
+            <Send className="h-3 w-3" /> Enviar
+          </Button>
+        </div>
       </div>
     </div>
   );

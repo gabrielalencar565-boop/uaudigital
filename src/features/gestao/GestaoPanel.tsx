@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Plus, Search, LayoutGrid, CalendarDays, FolderOpen } from "lucide-react";
+import { Plus, Search, LayoutGrid, CalendarDays, FolderOpen, List } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,8 +25,8 @@ export function GestaoPanel() {
 
   const [view, setView] = useState<"kanban" | "agenda" | "clientes">("kanban");
   const [search, setSearch] = useState("");
-    const [filterClient, setFilterClient] = useState("__all__");
-    const [filterAssignee, setFilterAssignee] = useState("__all__");
+  const [filterClient, setFilterClient] = useState("__all__");
+  const [filterAssignee, setFilterAssignee] = useState("__all__");
   const [selectedTask, setSelectedTask] = useState<PmTask | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [createDefaultStatus, setCreateDefaultStatus] = useState<string | undefined>();
@@ -118,28 +118,28 @@ export function GestaoPanel() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl font-bold tracking-tight">Gestão de Tarefas</h2>
-          <p className="text-sm text-muted-foreground">Gerencie projetos e tarefas no estilo ClickUp</p>
+          <p className="text-xs text-muted-foreground">Gerencie projetos e tarefas da agência</p>
         </div>
-        <Button onClick={() => openCreate()} className="gap-2">
+        <Button onClick={() => openCreate()} className="gap-2" size="sm">
           <Plus className="h-4 w-4" /> Nova Tarefa
         </Button>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative w-56">
-          <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar..." className="pl-8 h-9" />
+      {/* Filters bar */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-border/30 pb-3">
+        <div className="relative w-52">
+          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar tarefas..." className="pl-8 h-8 text-xs" />
         </div>
         <Select value={filterClient} onValueChange={setFilterClient}>
-          <SelectTrigger className="h-9 w-40"><SelectValue placeholder="Cliente" /></SelectTrigger>
+          <SelectTrigger className="h-8 w-36 text-xs"><SelectValue placeholder="Cliente" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="__all__">Todos</SelectItem>
+            <SelectItem value="__all__">Todos os clientes</SelectItem>
             {(clientsQ.data ?? []).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={filterAssignee} onValueChange={setFilterAssignee}>
-          <SelectTrigger className="h-9 w-40"><SelectValue placeholder="Responsável" /></SelectTrigger>
+          <SelectTrigger className="h-8 w-36 text-xs"><SelectValue placeholder="Responsável" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="__all__">Todos</SelectItem>
             {membersList.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
@@ -149,15 +149,15 @@ export function GestaoPanel() {
 
       {/* View tabs */}
       <Tabs value={view} onValueChange={(v) => setView(v as any)}>
-        <TabsList className="bg-card/40">
-          <TabsTrigger value="kanban" className="gap-1.5 text-xs">
-            <LayoutGrid className="h-3.5 w-3.5" /> Kanban
+        <TabsList className="bg-card/30 h-8">
+          <TabsTrigger value="kanban" className="gap-1.5 text-xs h-7">
+            <LayoutGrid className="h-3 w-3" /> Kanban
           </TabsTrigger>
-          <TabsTrigger value="agenda" className="gap-1.5 text-xs">
-            <CalendarDays className="h-3.5 w-3.5" /> Agenda
+          <TabsTrigger value="agenda" className="gap-1.5 text-xs h-7">
+            <CalendarDays className="h-3 w-3" /> Agenda
           </TabsTrigger>
-          <TabsTrigger value="clientes" className="gap-1.5 text-xs">
-            <FolderOpen className="h-3.5 w-3.5" /> Por Cliente
+          <TabsTrigger value="clientes" className="gap-1.5 text-xs h-7">
+            <FolderOpen className="h-3 w-3" /> Por Cliente
           </TabsTrigger>
         </TabsList>
 
@@ -177,7 +177,7 @@ export function GestaoPanel() {
           <div className="space-y-4">
             {agendaTasks.map(([date, dateTasks]) => (
               <div key={date}>
-                <h3 className="mb-2 text-sm font-semibold text-muted-foreground">
+                <h3 className="mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   {date === "sem_prazo" ? "Sem prazo" : format(new Date(date + "T12:00:00"), "dd/MM/yyyy — EEEE")}
                 </h3>
                 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -213,7 +213,7 @@ export function GestaoPanel() {
         </TabsContent>
       </Tabs>
 
-      {/* Task detail dialog */}
+      {/* Task detail - Sheet (ClickUp style) */}
       <PmTaskDetailDialog
         task={selectedTask}
         open={!!selectedTask}

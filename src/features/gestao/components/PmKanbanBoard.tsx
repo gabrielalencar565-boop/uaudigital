@@ -1,10 +1,19 @@
 import { useMemo } from "react";
 import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { PM_KANBAN_COLUMNS, statusLabel, statusColor } from "../pm-constants";
+import { PM_KANBAN_COLUMNS, statusLabel } from "../pm-constants";
 import type { PmTask, PmSubtask } from "../pm-types";
 import { PmTaskCard } from "./PmTaskCard";
-import { useUpdatePmTask } from "../hooks/use-pm-data";
+
+function statusDot(key: string) {
+  switch (key) {
+    case "backlog": return "bg-muted-foreground";
+    case "em_andamento": return "bg-primary";
+    case "em_aprovacao": return "bg-warning";
+    case "concluido": return "bg-success";
+    default: return "bg-muted-foreground";
+  }
+}
 
 interface Props {
   tasks: PmTask[];
@@ -17,8 +26,6 @@ interface Props {
 }
 
 export function PmKanbanBoard({ tasks, subtasksMap, clientsMap, membersMap, onTaskClick, onCreateClick, filters }: Props) {
-  const updateTask = useUpdatePmTask();
-
   const filtered = useMemo(() => {
     let list = tasks;
     if (filters.clientId) list = list.filter((t) => t.client_id === filters.clientId);
@@ -38,28 +45,29 @@ export function PmKanbanBoard({ tasks, subtasksMap, clientsMap, membersMap, onTa
   }, [filtered]);
 
   return (
-    <div className="flex gap-4 overflow-x-auto pb-4">
+    <div className="flex gap-3 overflow-x-auto pb-4">
       {columns.map((col) => (
-        <div key={col.status} className="flex w-72 min-w-[280px] flex-col rounded-lg border border-border/40 bg-card/10">
+        <div key={col.status} className="flex w-72 min-w-[280px] flex-col rounded-lg border border-border/40 bg-card/5">
           {/* Column header */}
-          <div className="flex items-center justify-between border-b border-border/40 px-3 py-2">
+          <div className="flex items-center justify-between px-3 py-2.5 border-b border-border/30">
             <div className="flex items-center gap-2">
-              <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold", statusColor(col.status))}>
-                {statusLabel(col.status)}
+              <span className={cn("h-2.5 w-2.5 rounded-full", statusDot(col.status))} />
+              <span className="text-xs font-semibold">{statusLabel(col.status)}</span>
+              <span className="text-[10px] text-muted-foreground ml-1 bg-muted/50 rounded-full px-1.5 py-0.5">
+                {col.tasks.length}
               </span>
-              <span className="text-xs text-muted-foreground">{col.tasks.length}</span>
             </div>
             <button
               type="button"
               onClick={() => onCreateClick(col.status)}
               className="rounded p-1 text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-3.5 w-3.5" />
             </button>
           </div>
 
           {/* Cards */}
-          <div className="flex flex-col gap-2 p-2" style={{ minHeight: 100 }}>
+          <div className="flex flex-col gap-1.5 p-2" style={{ minHeight: 80 }}>
             {col.tasks.map((task) => {
               const member = task.assignee_id ? membersMap[task.assignee_id] : undefined;
               return (
@@ -75,7 +83,7 @@ export function PmKanbanBoard({ tasks, subtasksMap, clientsMap, membersMap, onTa
               );
             })}
             {col.tasks.length === 0 && (
-              <p className="py-6 text-center text-xs text-muted-foreground">Nenhuma tarefa</p>
+              <p className="py-6 text-center text-[11px] text-muted-foreground/60">Nenhuma tarefa</p>
             )}
           </div>
         </div>
