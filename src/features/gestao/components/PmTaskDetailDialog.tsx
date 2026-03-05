@@ -88,8 +88,17 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
 
         {/* ─── Breadcrumb bar ─── */}
         <div className="flex items-center gap-1.5 border-b border-border/40 px-5 py-2 bg-card/50 shrink-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn("h-7 w-7 shrink-0", sidebarOpen && "bg-primary/10 text-primary")}
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            title="Sidebar de subtarefas"
+          >
+            <Layers className="h-4 w-4" />
+          </Button>
           {isSubtaskView && (
-            <Button variant="ghost" size="icon" className="h-6 w-6 mr-1" onClick={handleBackToParent}>
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleBackToParent}>
               <ArrowLeft className="h-3.5 w-3.5" />
             </Button>
           )}
@@ -118,15 +127,7 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
             </span>
           ))}
           <div className="flex-1" />
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn("h-7 w-7", sidebarOpen && "bg-primary/10 text-primary")}
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            title="Sidebar de subtarefas"
-          >
-            <Layers className="h-4 w-4" />
-          </Button>
+          <TaskActionBar task={currentTask} isAdmin={isAdmin} onClose={handleClose} />
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleClose}>
             <X className="h-4 w-4" />
           </Button>
@@ -138,13 +139,20 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
           {/* ─── LEFT: Subtask Sidebar (toggle) ─── */}
           {sidebarOpen && (
             <div className="w-64 shrink-0 flex flex-col bg-card/30 border-r border-border/30 animate-in slide-in-from-left-5 duration-200">
-              <div className="flex items-center gap-2 px-4 py-3 border-b border-border/30 shrink-0">
-                <Layers className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-semibold">Subtarefas</span>
-                <span className="text-[10px] text-muted-foreground ml-auto">{childTasks.length}</span>
-              </div>
               <div className="flex-1 overflow-y-auto min-h-0">
-                <div className="py-1">
+                {/* Parent task */}
+                <div
+                  className={cn(
+                    "flex items-center gap-2 px-4 py-3 cursor-pointer transition border-b border-border/20",
+                    taskStack.length === 0 ? "bg-primary/10 text-primary" : "hover:bg-card/40"
+                  )}
+                  onClick={() => setTaskStack([])}
+                >
+                  <span className={cn("h-2.5 w-2.5 rounded-full shrink-0 border-2", statusCircleColor(task.status_global))} />
+                  <span className={cn("truncate flex-1 font-semibold text-sm")}>{task.title}</span>
+                </div>
+                {/* Child tasks */}
+                <div className="py-0.5">
                   {childTasks.map(sub => {
                     const isActive = taskStack.length > 0 && taskStack[taskStack.length - 1].id === sub.id;
                     const isDone = sub.status_global === "concluido";
@@ -152,13 +160,13 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
                       <div
                         key={sub.id}
                         className={cn(
-                          "flex items-center gap-2 px-4 py-2.5 cursor-pointer transition text-sm",
-                          isActive ? "bg-primary/10 text-primary border-r-2 border-r-primary" : "hover:bg-card/40",
+                          "flex items-center gap-2 pl-6 pr-4 py-2.5 cursor-pointer transition text-sm",
+                          isActive ? "bg-primary/10 text-primary" : "hover:bg-card/40",
                           isDone && !isActive && "opacity-50"
                         )}
                         onClick={() => handleSelectSubtask(sub)}
                       >
-                        <span className={cn("h-2 w-2 rounded-full shrink-0", statusDotColor(sub.status_global))} />
+                        <span className={cn("h-2 w-2 rounded-full shrink-0 border-[1.5px]", statusCircleColor(sub.status_global))} />
                         <span className={cn("truncate flex-1", isDone && "line-through")}>{sub.title}</span>
                       </div>
                     );
@@ -509,5 +517,17 @@ function statusDotColor(key: string) {
     case "pausado": return "bg-muted-foreground/50";
     case "cancelado": return "bg-destructive";
     default: return "bg-muted-foreground";
+  }
+}
+
+function statusCircleColor(key: string) {
+  switch (key) {
+    case "backlog": return "border-muted-foreground/50";
+    case "em_andamento": return "border-primary bg-primary/20";
+    case "em_aprovacao": return "border-warning bg-warning/20";
+    case "concluido": return "border-success bg-success";
+    case "pausado": return "border-muted-foreground/40";
+    case "cancelado": return "border-destructive bg-destructive/20";
+    default: return "border-muted-foreground/50";
   }
 }
