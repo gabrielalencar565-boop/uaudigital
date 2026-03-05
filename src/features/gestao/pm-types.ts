@@ -15,6 +15,7 @@ export interface PmTask {
   tags: string[];
   created_at: string;
   updated_at: string;
+  parent_task_id: string | null;
 }
 
 export interface PmSubtask {

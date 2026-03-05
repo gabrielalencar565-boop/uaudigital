@@ -6,20 +6,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { PM_SUBTASK_STATUSES, stageLabel } from "../pm-constants";
-import { useUpdatePmSubtask, useCreatePmSubtask } from "../hooks/use-pm-data";
-import type { PmSubtask } from "../pm-types";
+import { PM_STATUSES, stageLabel } from "../pm-constants";
+import { useUpdatePmTask, useCreatePmTask } from "../hooks/use-pm-data";
+import type { PmTask } from "../pm-types";
 
 function initials(n: string) { return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join(""); }
 
 function statusIcon(status: string) {
   switch (status) {
     case "concluido": return <CheckCircle2 className="h-4 w-4 text-success" />;
-    case "bloqueado": return <AlertOctagon className="h-4 w-4 text-destructive" />;
-    case "em_producao": return <Circle className="h-4 w-4 text-primary fill-primary/20" />;
-    case "em_revisao": return <Circle className="h-4 w-4 text-warning fill-warning/20" />;
-    case "aprovado": return <CheckCircle2 className="h-4 w-4 text-success/60" />;
-    case "aguardando": return <Circle className="h-4 w-4 text-warning" />;
+    case "cancelado": return <AlertOctagon className="h-4 w-4 text-destructive" />;
+    case "em_andamento": return <Circle className="h-4 w-4 text-primary fill-primary/20" />;
+    case "em_aprovacao": return <Circle className="h-4 w-4 text-warning fill-warning/20" />;
+    case "pausado": return <Circle className="h-4 w-4 text-muted-foreground" />;
     default: return <Circle className="h-4 w-4 text-muted-foreground" />;
   }
 }
@@ -27,53 +26,46 @@ function statusIcon(status: string) {
 function statusDot(status: string) {
   switch (status) {
     case "concluido": return "bg-success";
-    case "bloqueado": return "bg-destructive";
-    case "em_producao": return "bg-primary";
-    case "em_revisao": return "bg-warning";
-    case "aprovado": return "bg-success/60";
-    case "aguardando": return "bg-warning/60";
+    case "cancelado": return "bg-destructive";
+    case "em_andamento": return "bg-primary";
+    case "em_aprovacao": return "bg-warning";
+    case "pausado": return "bg-muted-foreground/50";
     default: return "bg-muted-foreground/40";
   }
 }
 
 interface Props {
-  taskId: string;
-  subtasks: PmSubtask[];
+  parentTask: PmTask;
+  childTasks: PmTask[];
   membersMap: Record<string, { name: string; avatar?: string }>;
   members?: { id: string; name: string }[];
-  parentTitle?: string;
-  onSelectSubtask?: (subtask: PmSubtask) => void;
+  onSelectSubtask?: (task: PmTask) => void;
   activeSubtaskId?: string | null;
 }
 
-export function PmSubtaskList({ taskId, subtasks, membersMap, members, onSelectSubtask, activeSubtaskId }: Props) {
-  const updateSub = useUpdatePmSubtask();
-  const createSub = useCreatePmSubtask();
+export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onSelectSubtask, activeSubtaskId }: Props) {
+  const updateTask = useUpdatePmTask();
+  const createTask = useCreatePmTask();
   const [newTitle, setNewTitle] = useState("");
 
-  const done = subtasks.filter(s => s.status === "concluido").length;
-  const total = subtasks.length;
+  const done = childTasks.filter(s => s.status_global === "concluido").length;
+  const total = childTasks.length;
   const progress = total > 0 ? Math.round((done / total) * 100) : 0;
 
   const handleAdd = async () => {
     if (!newTitle.trim()) return;
-    await createSub.mutateAsync({
-      task_id: taskId,
+    await createTask.mutateAsync({
+      client_id: parentTask.client_id,
       title: newTitle.trim(),
-      description: null,
-      stage: "planejamento",
-      status: "nao_iniciado",
-      assignee_id: null,
-      due_date: null,
-      order_index: subtasks.length,
-      is_required: false,
+      parent_task_id: parentTask.id,
+      stage_current: "planejamento",
     });
     setNewTitle("");
   };
 
-  const toggleStatus = (sub: PmSubtask) => {
-    const newStatus = sub.status === "concluido" ? "nao_iniciado" : "concluido";
-    updateSub.mutate({ id: sub.id, status: newStatus, task_id: sub.task_id });
+  const toggleStatus = (task: PmTask) => {
+    const newStatus = task.status_global === "concluido" ? "backlog" : "concluido";
+    updateTask.mutate({ id: task.id, status_global: newStatus as any });
   };
 
   return (
@@ -105,9 +97,9 @@ export function PmSubtaskList({ taskId, subtasks, membersMap, members, onSelectS
 
       {/* Rows */}
       <div className="space-y-0">
-        {subtasks.map((sub) => {
+        {childTasks.map((sub) => {
           const member = sub.assignee_id ? membersMap[sub.assignee_id] : undefined;
-          const isDone = sub.status === "concluido";
+          const isDone = sub.status_global === "concluido";
           const isActive = activeSubtaskId === sub.id;
 
           return (
@@ -125,34 +117,31 @@ export function PmSubtaskList({ taskId, subtasks, membersMap, members, onSelectS
                 className="shrink-0 cursor-pointer"
                 onClick={(e) => { e.stopPropagation(); toggleStatus(sub); }}
               >
-                {statusIcon(sub.status)}
+                {statusIcon(sub.status_global)}
               </div>
 
-              {/* Title + stage - click opens detail */}
-              <div
-                className="flex-1 flex items-center gap-2 min-w-0"
-                onClick={() => onSelectSubtask?.(sub)}
-              >
+              {/* Title + stage */}
+              <div className="flex-1 flex items-center gap-2 min-w-0">
                 <span className={cn("truncate text-sm hover:text-primary transition-colors", isDone && "line-through text-muted-foreground")}>{sub.title}</span>
                 <Badge variant="outline" className="text-[9px] h-4 px-1.5 shrink-0 hidden sm:inline-flex">
-                  {stageLabel(sub.stage)}
+                  {stageLabel(sub.stage_current)}
                 </Badge>
               </div>
 
               {/* Status select */}
               <div className="w-24 hidden sm:block" onClick={(e) => e.stopPropagation()}>
                 <Select
-                  value={sub.status}
-                  onValueChange={(v) => updateSub.mutate({ id: sub.id, status: v, task_id: sub.task_id })}
+                  value={sub.status_global}
+                  onValueChange={(v) => updateTask.mutate({ id: sub.id, status_global: v as any })}
                 >
                   <SelectTrigger className="h-6 text-[10px] border-0 bg-transparent shadow-none px-1">
                     <div className="flex items-center gap-1">
-                      <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", statusDot(sub.status))} />
+                      <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", statusDot(sub.status_global))} />
                       <SelectValue />
                     </div>
                   </SelectTrigger>
                   <SelectContent>
-                    {PM_SUBTASK_STATUSES.map((s) => (
+                    {PM_STATUSES.map((s) => (
                       <SelectItem key={s.key} value={s.key} className="text-xs">
                         <div className="flex items-center gap-1.5">
                           <span className={cn("h-1.5 w-1.5 rounded-full", statusDot(s.key))} />
@@ -169,7 +158,7 @@ export function PmSubtaskList({ taskId, subtasks, membersMap, members, onSelectS
                 {members && members.length > 0 ? (
                   <Select
                     value={sub.assignee_id ?? "__none__"}
-                    onValueChange={(v) => updateSub.mutate({ id: sub.id, assignee_id: v === "__none__" ? null : v, task_id: sub.task_id })}
+                    onValueChange={(v) => updateTask.mutate({ id: sub.id, assignee_id: v === "__none__" ? null : v })}
                   >
                     <SelectTrigger className="h-6 w-auto border-0 bg-transparent shadow-none p-0">
                       {member ? (
@@ -208,7 +197,7 @@ export function PmSubtaskList({ taskId, subtasks, membersMap, members, onSelectS
               </div>
 
               {/* Open indicator */}
-              <div className="w-6 flex justify-center" onClick={() => onSelectSubtask?.(sub)}>
+              <div className="w-6 flex justify-center">
                 <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 group-hover:text-primary transition" />
               </div>
             </div>
