@@ -396,6 +396,98 @@ function PropertyRow({ icon, label, children }: { icon: React.ReactNode; label: 
   );
 }
 
+// ─── Task Action Bar (header buttons like ClickUp) ───
+
+function TaskActionBar({ task, isAdmin, onClose }: { task: PmTask; isAdmin: boolean; onClose: () => void }) {
+  const updateTask = useUpdatePmTask();
+  const deleteTask = useDeletePmTask();
+  const createTask = useCreatePmTask();
+  const [addingSubtask, setAddingSubtask] = useState(false);
+  const [newSubTitle, setNewSubTitle] = useState("");
+
+  const toggleComplete = () => {
+    const newStatus = task.status_global === "concluido" ? "em_andamento" : "concluido";
+    updateTask.mutate({ id: task.id, status_global: newStatus as any });
+  };
+
+  const handleAddSubtask = async () => {
+    if (!newSubTitle.trim()) { setAddingSubtask(false); return; }
+    await createTask.mutateAsync({
+      client_id: task.client_id,
+      title: newSubTitle.trim(),
+      parent_task_id: task.id,
+      stage_current: "planejamento",
+    });
+    setNewSubTitle("");
+    setAddingSubtask(false);
+    toast.success("Subtarefa criada");
+  };
+
+  const handleDelete = async () => {
+    if (!confirm("Excluir esta tarefa e todas as subtarefas?")) return;
+    try {
+      await deleteTask.mutateAsync(task.id);
+      toast.success("Tarefa excluída");
+      onClose();
+    } catch (err: any) {
+      toast.error(err?.message ?? "Erro ao excluir");
+    }
+  };
+
+  const handleArchive = () => {
+    updateTask.mutate({ id: task.id, status_global: "cancelado" as any });
+    toast.success("Tarefa arquivada");
+  };
+
+  return (
+    <div className="flex items-center gap-0.5">
+      {/* Complete */}
+      <Button
+        variant="ghost" size="icon" className={cn("h-7 w-7", task.status_global === "concluido" && "text-success")}
+        onClick={toggleComplete} title="Marcar como concluído"
+      >
+        <CheckCircle2 className="h-4 w-4" />
+      </Button>
+
+      {/* Add subtask */}
+      {addingSubtask ? (
+        <div className="flex items-center gap-1">
+          <Input
+            autoFocus value={newSubTitle} onChange={(e) => setNewSubTitle(e.target.value)}
+            placeholder="Nome da subtarefa..."
+            className="h-7 w-40 text-xs"
+            onKeyDown={(e) => { if (e.key === "Enter") handleAddSubtask(); if (e.key === "Escape") setAddingSubtask(false); }}
+            onBlur={handleAddSubtask}
+          />
+        </div>
+      ) : (
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setAddingSubtask(true)} title="Adicionar subtarefa">
+          <Plus className="h-4 w-4" />
+        </Button>
+      )}
+
+      {/* More options */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-7 w-7">
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-40">
+          <DropdownMenuItem onClick={handleArchive} className="text-xs gap-2">
+            <Archive className="h-3.5 w-3.5" /> Arquivar
+          </DropdownMenuItem>
+          {isAdmin && (
+            <DropdownMenuItem onClick={handleDelete} className="text-xs gap-2 text-destructive focus:text-destructive">
+              <Trash2 className="h-3.5 w-3.5" /> Excluir
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}
+
 function statusBadgeColor(key: string) {
   switch (key) {
     case "backlog": return "bg-muted-foreground text-muted";
