@@ -1,9 +1,11 @@
 import { useState } from "react";
 import {
   CalendarDays, User, Flag, X, Trash2, ChevronRight, ArrowLeft,
-  Circle, Layers, Tag, MessageSquare, PanelRight, Paperclip, FileText
+  Circle, Layers, Tag, MessageSquare, Paperclip, FileText,
+  CheckCircle2, Plus, Pencil, MoreHorizontal, Archive
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
