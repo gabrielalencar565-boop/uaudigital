@@ -221,7 +221,6 @@ function TaskContentView({
   clientsMap: Record<string, string>;
 }) {
   const updateTask = useUpdatePmTask();
-  const deleteTask = useDeletePmTask();
   const assignee = task.assignee_id ? membersMap[task.assignee_id] : undefined;
 
   const [editingTitle, setEditingTitle] = useState(false);
@@ -239,17 +238,6 @@ function TaskContentView({
   const saveDesc = () => {
     updateTask.mutate({ id: task.id, description: descDraft });
     setEditingDesc(false);
-  };
-
-  const handleDelete = async () => {
-    if (!confirm("Excluir esta tarefa e todas as subtarefas?")) return;
-    try {
-      await deleteTask.mutateAsync(task.id);
-      toast.success("Tarefa excluída");
-      onClose();
-    } catch (err: any) {
-      toast.error(err?.message ?? "Erro ao excluir");
-    }
   };
 
   return (
