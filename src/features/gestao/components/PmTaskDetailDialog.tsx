@@ -91,7 +91,7 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-5xl max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col">
+      <DialogContent className="max-w-[90vw] w-[90vw] max-h-[90vh] h-[90vh] p-0 gap-0 overflow-hidden flex flex-col rounded-xl border-border/50 shadow-2xl">
         {/* Breadcrumb */}
         <div className="flex items-center gap-1.5 border-b border-border/40 px-5 py-2 bg-card/50 shrink-0">
           <span className="text-xs text-muted-foreground">{clientsMap[task.client_id] ?? "—"}</span>
