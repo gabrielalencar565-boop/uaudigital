@@ -7,6 +7,7 @@ import { UauSidebarShell, type MainTab } from "@/components/layout/UauSidebarShe
 import { PerformancePanel } from "@/features/performance/PerformancePanel";
 import { Magic2Panel } from "@/features/magic2/Magic2Panel";
 import { AgendaPanel } from "@/features/agenda/AgendaPanel";
+import { GestaoPanel } from "@/features/gestao/GestaoPanel";
 import { DayViewPanel } from "@/features/dayview/DayViewPanel";
 import { MeuPainelPanel } from "@/features/meu-painel/MeuPainelPanel";
 import { AdminContainer } from "@/features/admin/AdminContainer";
@@ -234,6 +235,8 @@ const Index = () => {
         <PerformancePanel />
       ) : tab === "magic2" ? (
         <Magic2Panel />
+      ) : tab === "gestao" ? (
+        <GestaoPanel />
       ) : (
         <AgendaPanel />
       )}
