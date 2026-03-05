@@ -1,14 +1,37 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Circle, User, CalendarDays, Flag, Layers, Tag, X, ChevronDown, Plus
+} from "lucide-react";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { PM_PRIORITIES, PM_STAGES } from "../pm-constants";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { cn } from "@/lib/utils";
+import { PM_PRIORITIES, PM_STAGES, PM_STATUSES } from "../pm-constants";
 import { useCreatePmTask } from "../hooks/use-pm-data";
 import { toast } from "sonner";
+
+function initials(n: string) {
+  return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
+}
+
+function statusBadgeColor(key: string) {
+  switch (key) {
+    case "backlog": return "bg-muted-foreground text-muted";
+    case "em_andamento": return "bg-primary text-primary-foreground";
+    case "em_aprovacao": return "bg-warning text-warning-foreground";
+    case "concluido": return "bg-success text-success-foreground";
+    case "pausado": return "bg-muted-foreground/50 text-muted";
+    case "cancelado": return "bg-destructive text-destructive-foreground";
+    default: return "bg-muted-foreground text-muted";
+  }
+}
 
 interface Props {
   open: boolean;
@@ -25,14 +48,18 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, defaultSta
   const [clientId, setClientId] = useState("");
   const [priority, setPriority] = useState("media");
   const [stage, setStage] = useState("planejamento");
+  const [status, setStatus] = useState(defaultStatus || "backlog");
   const [assigneeId, setAssigneeId] = useState("");
+  const [startDate, setStartDate] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [useTemplate, setUseTemplate] = useState(true);
   const [tagsRaw, setTagsRaw] = useState("");
+  const [descOpen, setDescOpen] = useState(false);
 
   const reset = () => {
     setTitle(""); setDescription(""); setClientId(""); setPriority("media");
-    setStage("planejamento"); setAssigneeId(""); setDueDate(""); setUseTemplate(true); setTagsRaw("");
+    setStage("planejamento"); setStatus(defaultStatus || "backlog"); setAssigneeId("");
+    setStartDate(""); setDueDate(""); setUseTemplate(true); setTagsRaw(""); setDescOpen(false);
   };
 
   const handleSubmit = async () => {
@@ -57,91 +84,202 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, defaultSta
     }
   };
 
+  const selectedClient = clients.find(c => c.id === clientId);
+  const selectedMember = members.find(m => m.id === assigneeId);
+
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Nova Tarefa</DialogTitle>
-        </DialogHeader>
+    <Sheet open={open} onOpenChange={(v) => { if (!v) { reset(); onClose(); } }}>
+      <SheetContent side="right" className="w-full sm:max-w-2xl p-0 flex flex-col [&>button]:hidden">
+        {/* Top bar */}
+        <div className="flex items-center gap-2 border-b border-border/40 px-5 py-3 bg-card/50 shrink-0">
+          <span className="text-sm font-semibold">Nova Tarefa</span>
+          <div className="flex-1" />
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { reset(); onClose(); }}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
 
-        <div className="space-y-4">
-          <div className="space-y-1">
-            <Label>Título *</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Nome da tarefa" />
-          </div>
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+          {/* Title - large input like ClickUp */}
+          <Input
+            autoFocus
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Nome da tarefa"
+            className="text-2xl font-bold border-0 bg-transparent p-0 h-auto focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/40"
+          />
 
-          <div className="space-y-1">
-            <Label>Descrição</Label>
-            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Detalhes..." />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label>Cliente *</Label>
-              <Select value={clientId} onValueChange={setClientId}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+          {/* Properties grid - 2 columns */}
+          <div className="grid grid-cols-2 gap-x-8 gap-y-2">
+            {/* Status */}
+            <PropertyRow icon={<Circle className="h-3.5 w-3.5" />} label="Status">
+              <Select value={status} onValueChange={setStatus}>
+                <SelectTrigger className="h-7 border-0 bg-transparent shadow-none p-0 w-auto gap-1.5">
+                  <Badge className={cn("text-[10px] uppercase font-bold tracking-wide px-2.5 py-0.5 rounded", statusBadgeColor(status))}>
+                    <SelectValue />
+                  </Badge>
+                </SelectTrigger>
                 <SelectContent>
-                  {clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                  {PM_STATUSES.map(s => (
+                    <SelectItem key={s.key} value={s.key} className="text-xs">{s.label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
-            </div>
+            </PropertyRow>
 
-            <div className="space-y-1">
-              <Label>Responsável</Label>
-              <Select value={assigneeId} onValueChange={setAssigneeId}>
-                <SelectTrigger><SelectValue placeholder="Ninguém" /></SelectTrigger>
+            {/* Responsável */}
+            <PropertyRow icon={<User className="h-3.5 w-3.5" />} label="Responsável">
+              <Select value={assigneeId || "__none__"} onValueChange={(v) => setAssigneeId(v === "__none__" ? "" : v)}>
+                <SelectTrigger className="h-7 border-0 bg-transparent shadow-none p-0 w-auto gap-1.5">
+                  {selectedMember ? (
+                    <div className="flex items-center gap-1.5">
+                      <Avatar className="h-5 w-5">
+                        <AvatarFallback className="text-[8px] bg-primary/20 text-primary">{initials(selectedMember.name)}</AvatarFallback>
+                      </Avatar>
+                      <span className="text-xs">{selectedMember.name}</span>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">Vazio</span>
+                  )}
+                </SelectTrigger>
                 <SelectContent>
-                  {members.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                  <SelectItem value="__none__" className="text-xs">Ninguém</SelectItem>
+                  {members.map(m => (
+                    <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
-            </div>
-          </div>
+            </PropertyRow>
 
-          <div className="grid grid-cols-3 gap-3">
-            <div className="space-y-1">
-              <Label>Prioridade</Label>
+            {/* Datas */}
+            <PropertyRow icon={<CalendarDays className="h-3.5 w-3.5" />} label="Datas">
+              <div className="flex items-center gap-1.5 text-xs">
+                <span className="text-muted-foreground">Início</span>
+                <Input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="h-6 w-28 text-xs border-0 bg-transparent shadow-none p-0"
+                />
+                <span className="text-muted-foreground">→</span>
+                <CalendarDays className="h-3 w-3 text-muted-foreground" />
+                <Input
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                  className="h-6 w-28 text-xs border-0 bg-transparent shadow-none p-0"
+                />
+              </div>
+            </PropertyRow>
+
+            {/* Prioridade */}
+            <PropertyRow icon={<Flag className="h-3.5 w-3.5" />} label="Prioridade">
               <Select value={priority} onValueChange={setPriority}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-7 border-0 bg-transparent shadow-none p-0 w-auto gap-1">
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
-                  {PM_PRIORITIES.map((p) => <SelectItem key={p.key} value={p.key}>{p.label}</SelectItem>)}
+                  {PM_PRIORITIES.map(p => (
+                    <SelectItem key={p.key} value={p.key} className="text-xs">{p.label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
-            </div>
+            </PropertyRow>
 
-            <div className="space-y-1">
-              <Label>Etapa</Label>
+            {/* Etapa */}
+            <PropertyRow icon={<Layers className="h-3.5 w-3.5" />} label="Etapa">
               <Select value={stage} onValueChange={setStage}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-7 border-0 bg-transparent shadow-none p-0 w-auto gap-1">
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
-                  {PM_STAGES.map((s) => <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>)}
+                  {PM_STAGES.map(s => (
+                    <SelectItem key={s.key} value={s.key} className="text-xs">{s.label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
-            </div>
+            </PropertyRow>
 
-            <div className="space-y-1">
-              <Label>Prazo</Label>
-              <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
-            </div>
+            {/* Etiquetas */}
+            <PropertyRow icon={<Tag className="h-3.5 w-3.5" />} label="Etiquetas">
+              <Input
+                value={tagsRaw}
+                onChange={(e) => setTagsRaw(e.target.value)}
+                placeholder="ex: social, vídeo"
+                className="h-6 text-xs border-0 bg-transparent shadow-none p-0 focus-visible:ring-0 placeholder:text-muted-foreground/40"
+              />
+            </PropertyRow>
+
+            {/* Cliente */}
+            <PropertyRow icon={<Layers className="h-3.5 w-3.5" />} label="Cliente *">
+              <Select value={clientId} onValueChange={setClientId}>
+                <SelectTrigger className="h-7 border-0 bg-transparent shadow-none p-0 w-auto gap-1">
+                  {selectedClient ? (
+                    <span className="text-xs">{selectedClient.name}</span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">Selecione</span>
+                  )}
+                </SelectTrigger>
+                <SelectContent>
+                  {clients.map(c => (
+                    <SelectItem key={c.id} value={c.id} className="text-xs">{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </PropertyRow>
           </div>
 
-          <div className="space-y-1">
-            <Label>Tags (separadas por vírgula)</Label>
-            <Input value={tagsRaw} onChange={(e) => setTagsRaw(e.target.value)} placeholder="social, vídeo, urgente" />
+          {/* Description */}
+          <div className="border-t border-border/20 pt-4">
+            <Collapsible open={descOpen} onOpenChange={setDescOpen}>
+              <CollapsibleTrigger className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition cursor-pointer">
+                <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", descOpen && "rotate-0", !descOpen && "-rotate-90")} />
+                Descrição
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-2">
+                <Textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Adicione uma descrição..."
+                  className="min-h-[100px] text-sm"
+                />
+              </CollapsibleContent>
+            </Collapsible>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Checkbox id="tpl" checked={useTemplate} onCheckedChange={(v) => setUseTemplate(!!v)} />
-            <Label htmlFor="tpl" className="cursor-pointer text-sm">Criar subtarefas do template padrão (7 etapas)</Label>
+          {/* Template option */}
+          <div className="border-t border-border/20 pt-4">
+            <div className="flex items-center gap-2">
+              <Checkbox id="tpl" checked={useTemplate} onCheckedChange={(v) => setUseTemplate(!!v)} />
+              <Label htmlFor="tpl" className="cursor-pointer text-sm text-muted-foreground">
+                Criar subtarefas do template padrão (7 etapas)
+              </Label>
+            </div>
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancelar</Button>
-          <Button onClick={handleSubmit} disabled={createTask.isPending}>
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-2 border-t border-border/40 px-6 py-3 bg-card/50 shrink-0">
+          <Button variant="ghost" onClick={() => { reset(); onClose(); }}>Cancelar</Button>
+          <Button onClick={handleSubmit} disabled={createTask.isPending} className="gap-1.5">
+            <Plus className="h-4 w-4" />
             {createTask.isPending ? "Criando..." : "Criar Tarefa"}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function PropertyRow({ icon, label, children }: { icon: React.ReactNode; label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-2 py-1.5 min-h-[36px]">
+      <div className="flex items-center gap-1.5 w-28 shrink-0 text-muted-foreground">
+        {icon}
+        <span className="text-xs">{label}</span>
+      </div>
+      <div className="flex-1 min-w-0">{children}</div>
+    </div>
   );
 }
