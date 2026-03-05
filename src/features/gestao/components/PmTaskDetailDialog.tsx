@@ -11,7 +11,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { PM_STATUSES, PM_STAGES, PM_PRIORITIES, PM_SUBTASK_STATUSES, stageLabel } from "../pm-constants";
@@ -195,7 +194,7 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
                 <span className="text-sm font-semibold">Subtarefas</span>
                 <span className="text-[10px] text-muted-foreground ml-auto">{subtasks.length}</span>
               </div>
-              <ScrollArea className="flex-1">
+              <div className="flex-1 overflow-y-auto">
                 <div className="py-1">
                   {subtasks.map(sub => {
                     const isActive = activeSubtaskId === sub.id;
@@ -219,7 +218,7 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
                     <p className="text-xs text-muted-foreground text-center py-6">Nenhuma subtarefa</p>
                   )}
                 </div>
-              </ScrollArea>
+              </div>
             </div>
           )}
         </div>
@@ -280,7 +279,7 @@ function TaskDetailView({
 
   return (
     <>
-      <ScrollArea className="flex-1 border-r border-border/30">
+      <div className="flex-1 border-r border-border/30 overflow-y-auto">
         <div className="px-6 py-5 space-y-6">
           {/* Title */}
           {editingTitle ? (
@@ -433,7 +432,7 @@ function TaskDetailView({
             </div>
           )}
         </div>
-      </ScrollArea>
+      </div>
 
       {/* Activity sidebar */}
       <div className="w-80 shrink-0 flex flex-col bg-card/10 hidden sm:flex">
@@ -441,9 +440,9 @@ function TaskDetailView({
           <MessageSquare className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm font-semibold">Atividade</span>
         </div>
-        <ScrollArea className="flex-1 px-4 py-3">
+        <div className="flex-1 overflow-y-auto px-4 py-3">
           <PmCommentsSection taskId={task.id} comments={comments} membersMap={membersMap} />
-        </ScrollArea>
+        </div>
       </div>
     </>
   );
@@ -483,7 +482,7 @@ function SubtaskDetailView({
 
   return (
     <>
-      <ScrollArea className="flex-1 border-r border-border/30">
+      <div className="flex-1 border-r border-border/30 overflow-y-auto">
         <div className="px-6 py-5 space-y-6">
           {/* Title */}
           {editingTitle ? (
@@ -593,7 +592,7 @@ function SubtaskDetailView({
             <PmAttachmentsSection subtaskId={subtask.id} attachments={attachments} membersMap={membersMap} />
           </div>
         </div>
-      </ScrollArea>
+      </div>
 
       {/* Activity sidebar */}
       <div className="w-80 shrink-0 flex flex-col bg-card/10 hidden sm:flex">
@@ -601,9 +600,9 @@ function SubtaskDetailView({
           <MessageSquare className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm font-semibold">Atividade</span>
         </div>
-        <ScrollArea className="flex-1 px-4 py-3">
+        <div className="flex-1 overflow-y-auto px-4 py-3">
           <PmCommentsSection subtaskId={subtask.id} comments={comments} membersMap={membersMap} />
-        </ScrollArea>
+        </div>
       </div>
     </>
   );
