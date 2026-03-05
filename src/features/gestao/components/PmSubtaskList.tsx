@@ -1,37 +1,41 @@
 import { useState } from "react";
-import { CheckCircle2, Circle, AlertOctagon, Plus, Flag, Clock, ChevronRight } from "lucide-react";
+import { Circle, Plus, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { PM_STATUSES, stageLabel } from "../pm-constants";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { PM_STATUSES } from "../pm-constants";
 import { useUpdatePmTask, useCreatePmTask } from "../hooks/use-pm-data";
 import type { PmTask } from "../pm-types";
 
 function initials(n: string) { return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join(""); }
 
-function statusIcon(status: string) {
-  switch (status) {
-    case "concluido": return <CheckCircle2 className="h-4 w-4 text-success" />;
-    case "cancelado": return <AlertOctagon className="h-4 w-4 text-destructive" />;
-    case "em_andamento": return <Circle className="h-4 w-4 text-primary fill-primary/20" />;
-    case "em_aprovacao": return <Circle className="h-4 w-4 text-warning fill-warning/20" />;
-    case "pausado": return <Circle className="h-4 w-4 text-muted-foreground" />;
-    default: return <Circle className="h-4 w-4 text-muted-foreground" />;
+function statusColor(key: string) {
+  switch (key) {
+    case "backlog": return "border-muted-foreground/50 text-muted-foreground";
+    case "em_andamento": return "border-primary text-primary";
+    case "em_aprovacao": return "border-warning text-warning";
+    case "concluido": return "border-success text-success";
+    case "pausado": return "border-muted-foreground/40 text-muted-foreground";
+    case "cancelado": return "border-destructive text-destructive";
+    default: return "border-muted-foreground/50 text-muted-foreground";
   }
 }
 
-function statusDot(status: string) {
-  switch (status) {
+function statusFill(key: string) {
+  switch (key) {
     case "concluido": return "bg-success";
-    case "cancelado": return "bg-destructive";
-    case "em_andamento": return "bg-primary";
-    case "em_aprovacao": return "bg-warning";
-    case "pausado": return "bg-muted-foreground/50";
-    default: return "bg-muted-foreground/40";
+    case "em_andamento": return "bg-primary/20";
+    case "em_aprovacao": return "bg-warning/20";
+    case "cancelado": return "bg-destructive/20";
+    default: return "";
   }
+}
+
+function statusLabel(key: string) {
+  return PM_STATUSES.find(s => s.key === key)?.label ?? key;
 }
 
 interface Props {
@@ -54,18 +58,17 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
 
   const handleAdd = async () => {
     if (!newTitle.trim()) return;
-    await createTask.mutateAsync({
+    const result = await createTask.mutateAsync({
       client_id: parentTask.client_id,
       title: newTitle.trim(),
       parent_task_id: parentTask.id,
       stage_current: "planejamento",
     });
     setNewTitle("");
-  };
-
-  const toggleStatus = (task: PmTask) => {
-    const newStatus = task.status_global === "concluido" ? "backlog" : "concluido";
-    updateTask.mutate({ id: task.id, status_global: newStatus as any });
+    // Auto-open the newly created subtask
+    if (result && onSelectSubtask) {
+      onSelectSubtask(result as PmTask);
+    }
   };
 
   return (
@@ -88,9 +91,7 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
         <div className="flex items-center gap-2 px-2 py-1 text-[10px] uppercase tracking-wider text-muted-foreground border-b border-border/20">
           <div className="w-5" />
           <div className="flex-1">Nome</div>
-          <div className="w-24 text-center hidden sm:block">Status</div>
           <div className="w-20 text-center">Responsável</div>
-          <div className="w-8 text-center"><Clock className="h-3 w-3 mx-auto" /></div>
           <div className="w-6" />
         </div>
       )}
@@ -112,45 +113,41 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
               )}
               onClick={() => onSelectSubtask?.(sub)}
             >
-              {/* Status icon - click toggles completion */}
-              <div
-                className="shrink-0 cursor-pointer"
-                onClick={(e) => { e.stopPropagation(); toggleStatus(sub); }}
-              >
-                {statusIcon(sub.status_global)}
-              </div>
-
-              {/* Title + stage */}
-              <div className="flex-1 flex items-center gap-2 min-w-0">
-                <span className={cn("truncate text-sm hover:text-primary transition-colors", isDone && "line-through text-muted-foreground")}>{sub.title}</span>
-                <Badge variant="outline" className="text-[9px] h-4 px-1.5 shrink-0 hidden sm:inline-flex">
-                  {stageLabel(sub.stage_current)}
-                </Badge>
-              </div>
-
-              {/* Status select */}
-              <div className="w-24 hidden sm:block" onClick={(e) => e.stopPropagation()}>
-                <Select
-                  value={sub.status_global}
-                  onValueChange={(v) => updateTask.mutate({ id: sub.id, status_global: v as any })}
-                >
-                  <SelectTrigger className="h-6 text-[10px] border-0 bg-transparent shadow-none px-1">
-                    <div className="flex items-center gap-1">
-                      <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", statusDot(sub.status_global))} />
-                      <SelectValue />
+              {/* Status circle - click opens status picker */}
+              <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button className="flex items-center justify-center h-5 w-5 rounded-full cursor-pointer hover:scale-110 transition">
+                      <span className={cn("h-4 w-4 rounded-full border-2 flex items-center justify-center", statusColor(sub.status_global), statusFill(sub.status_global))}>
+                        {isDone && (
+                          <svg className="h-2.5 w-2.5 text-success-foreground" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        )}
+                      </span>
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-48 p-1" align="start">
+                    <div className="space-y-0.5">
+                      {PM_STATUSES.map((s) => (
+                        <button
+                          key={s.key}
+                          className={cn(
+                            "flex items-center gap-2 w-full px-2.5 py-1.5 rounded text-xs hover:bg-accent transition text-left",
+                            sub.status_global === s.key && "bg-accent font-medium"
+                          )}
+                          onClick={() => updateTask.mutate({ id: sub.id, status_global: s.key as any })}
+                        >
+                          <span className={cn("h-3 w-3 rounded-full border-2 shrink-0", statusColor(s.key), statusFill(s.key))} />
+                          <span className="uppercase text-[10px] font-semibold tracking-wide">{s.label}</span>
+                        </button>
+                      ))}
                     </div>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PM_STATUSES.map((s) => (
-                      <SelectItem key={s.key} value={s.key} className="text-xs">
-                        <div className="flex items-center gap-1.5">
-                          <span className={cn("h-1.5 w-1.5 rounded-full", statusDot(s.key))} />
-                          {s.label}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              {/* Title only (no stage badge) */}
+              <div className="flex-1 min-w-0">
+                <span className={cn("truncate text-sm hover:text-primary transition-colors", isDone && "line-through text-muted-foreground")}>{sub.title}</span>
               </div>
 
               {/* Assignee */}
@@ -184,15 +181,6 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
                   </Avatar>
                 ) : (
                   <div className="h-5 w-5 rounded-full border border-dashed border-muted-foreground/30" />
-                )}
-              </div>
-
-              {/* Due date indicator */}
-              <div className="w-8 flex justify-center">
-                {sub.due_date ? (
-                  <span className="text-[9px] text-muted-foreground">{sub.due_date.slice(5)}</span>
-                ) : (
-                  <Flag className="h-3.5 w-3.5 text-muted-foreground/30 group-hover:text-muted-foreground transition" />
                 )}
               </div>
 
