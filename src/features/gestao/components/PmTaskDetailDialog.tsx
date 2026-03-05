@@ -15,7 +15,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { PM_STATUSES, PM_STAGES, PM_PRIORITIES, stageLabel } from "../pm-constants";
 import {
-  useUpdatePmTask, useDeletePmTask, usePmChildTasks,
+  useUpdatePmTask, useDeletePmTask, useCreatePmTask, usePmChildTasks,
   usePmComments, usePmAttachments,
 } from "../hooks/use-pm-data";
 import { PmSubtaskList } from "./PmSubtaskList";
