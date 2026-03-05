@@ -1,5 +1,5 @@
 import { PropsWithChildren, useMemo, useState } from "react";
-import { CalendarDays, ChevronLeft, DollarSign, Eye, LogOut, Shield, Target, TrendingUp, Trophy, UserRound } from "lucide-react";
+import { CalendarDays, ChevronLeft, ClipboardList, DollarSign, Eye, LogOut, Shield, Target, TrendingUp, Trophy, UserRound } from "lucide-react";
 import { useAppSettings } from "@/features/data/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -22,7 +22,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-export type MainTab = "visao_do_dia" | "meu_painel" | "desempenho" | "magic2" | "agenda" | "admin" | "financeiro" | "metas";
+export type MainTab = "visao_do_dia" | "meu_painel" | "desempenho" | "magic2" | "agenda" | "gestao" | "admin" | "financeiro" | "metas";
 
 type NavItem = {
   key: MainTab;
@@ -69,6 +69,7 @@ export function UauSidebarShell({
       { key: "visao_do_dia", label: "Visão do dia", icon: Eye },
       { key: "magic2", label: "Magic Number", icon: Target },
       { key: "agenda", label: "Agenda", icon: CalendarDays },
+      { key: "gestao", label: "Gestão", icon: ClipboardList },
       { key: "desempenho", label: "Desempenho", icon: Trophy },
     ];
 

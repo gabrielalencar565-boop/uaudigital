@@ -806,6 +806,295 @@ export type Database = {
         }
         Relationships: []
       }
+      pm_activity_log: {
+        Row: {
+          action: string
+          created_at: string
+          created_by: string
+          entity_id: string
+          entity_type: string
+          id: string
+          metadata: Json | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          created_by: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          metadata?: Json | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          created_by?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          metadata?: Json | null
+        }
+        Relationships: []
+      }
+      pm_attachments: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_size: number | null
+          file_type: string | null
+          id: string
+          public_url: string | null
+          storage_path: string
+          subtask_id: string | null
+          task_id: string | null
+          uploaded_by: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          public_url?: string | null
+          storage_path: string
+          subtask_id?: string | null
+          task_id?: string | null
+          uploaded_by: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          public_url?: string | null
+          storage_path?: string
+          subtask_id?: string | null
+          task_id?: string | null
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_attachments_subtask_id_fkey"
+            columns: ["subtask_id"]
+            isOneToOne: false
+            referencedRelation: "pm_subtasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_attachments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "pm_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_comments: {
+        Row: {
+          author_id: string
+          content: string
+          created_at: string
+          id: string
+          subtask_id: string | null
+          task_id: string | null
+        }
+        Insert: {
+          author_id: string
+          content: string
+          created_at?: string
+          id?: string
+          subtask_id?: string | null
+          task_id?: string | null
+        }
+        Update: {
+          author_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          subtask_id?: string | null
+          task_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_comments_subtask_id_fkey"
+            columns: ["subtask_id"]
+            isOneToOne: false
+            referencedRelation: "pm_subtasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_comments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "pm_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_projects: {
+        Row: {
+          client_id: string
+          created_at: string
+          description: string | null
+          id: string
+          month_ref: string | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          month_ref?: string | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          month_ref?: string | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_projects_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_subtasks: {
+        Row: {
+          assignee_id: string | null
+          created_at: string
+          description: string | null
+          due_date: string | null
+          id: string
+          is_required: boolean
+          order_index: number
+          stage: Database["public"]["Enums"]["pm_stage"]
+          status: Database["public"]["Enums"]["pm_subtask_status"]
+          task_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assignee_id?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          is_required?: boolean
+          order_index?: number
+          stage?: Database["public"]["Enums"]["pm_stage"]
+          status?: Database["public"]["Enums"]["pm_subtask_status"]
+          task_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assignee_id?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          is_required?: boolean
+          order_index?: number
+          stage?: Database["public"]["Enums"]["pm_stage"]
+          status?: Database["public"]["Enums"]["pm_subtask_status"]
+          task_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_subtasks_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "pm_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_tasks: {
+        Row: {
+          assignee_id: string | null
+          client_id: string
+          created_at: string
+          created_by: string
+          description: string | null
+          due_date: string | null
+          id: string
+          priority: Database["public"]["Enums"]["pm_priority"]
+          project_id: string | null
+          stage_current: Database["public"]["Enums"]["pm_stage"]
+          start_date: string | null
+          status_global: Database["public"]["Enums"]["pm_status"]
+          tags: string[] | null
+          title: string
+          updated_at: string
+          watchers: string[] | null
+        }
+        Insert: {
+          assignee_id?: string | null
+          client_id: string
+          created_at?: string
+          created_by: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          priority?: Database["public"]["Enums"]["pm_priority"]
+          project_id?: string | null
+          stage_current?: Database["public"]["Enums"]["pm_stage"]
+          start_date?: string | null
+          status_global?: Database["public"]["Enums"]["pm_status"]
+          tags?: string[] | null
+          title: string
+          updated_at?: string
+          watchers?: string[] | null
+        }
+        Update: {
+          assignee_id?: string | null
+          client_id?: string
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          priority?: Database["public"]["Enums"]["pm_priority"]
+          project_id?: string | null
+          stage_current?: Database["public"]["Enums"]["pm_stage"]
+          start_date?: string | null
+          status_global?: Database["public"]["Enums"]["pm_status"]
+          tags?: string[] | null
+          title?: string
+          updated_at?: string
+          watchers?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_tasks_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "pm_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -1177,6 +1466,30 @@ export type Database = {
         | "pdf"
         | "alteracoes"
         | "agendamento"
+      pm_priority: "baixa" | "media" | "alta" | "urgente"
+      pm_stage:
+        | "planejamento"
+        | "roteiro"
+        | "captacao"
+        | "edicao"
+        | "design"
+        | "revisao"
+        | "entrega"
+      pm_status:
+        | "backlog"
+        | "em_andamento"
+        | "em_aprovacao"
+        | "concluido"
+        | "pausado"
+        | "cancelado"
+      pm_subtask_status:
+        | "nao_iniciado"
+        | "em_producao"
+        | "aguardando"
+        | "em_revisao"
+        | "aprovado"
+        | "concluido"
+        | "bloqueado"
       stage_type:
         | "captacao"
         | "edicao_videos"
@@ -1332,6 +1645,33 @@ export const Constants = {
         "pdf",
         "alteracoes",
         "agendamento",
+      ],
+      pm_priority: ["baixa", "media", "alta", "urgente"],
+      pm_stage: [
+        "planejamento",
+        "roteiro",
+        "captacao",
+        "edicao",
+        "design",
+        "revisao",
+        "entrega",
+      ],
+      pm_status: [
+        "backlog",
+        "em_andamento",
+        "em_aprovacao",
+        "concluido",
+        "pausado",
+        "cancelado",
+      ],
+      pm_subtask_status: [
+        "nao_iniciado",
+        "em_producao",
+        "aguardando",
+        "em_revisao",
+        "aprovado",
+        "concluido",
+        "bloqueado",
       ],
       stage_type: [
         "captacao",

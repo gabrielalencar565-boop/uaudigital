@@ -19,7 +19,10 @@ type RealtimeTable =
   | "task_deadline_overrides"
   | "cleaning_categories"
   | "cleaning_schedules"
-  | "cleaning_completions";
+  | "cleaning_completions"
+  | "pm_tasks"
+  | "pm_subtasks"
+  | "pm_comments";
 
 const TABLE_TO_QUERY_KEYS: Record<RealtimeTable, string[][]> = {
   client_cycle_stages: [["client_cycle_stages"], ["magic2"]],
@@ -54,6 +57,9 @@ const TABLE_TO_QUERY_KEYS: Record<RealtimeTable, string[][]> = {
   cleaning_categories: [["cleaning_categories"]],
   cleaning_schedules: [["cleaning_schedules"]],
   cleaning_completions: [["cleaning_completions"]],
+  pm_tasks: [["pm_tasks"]],
+  pm_subtasks: [["pm_subtasks"], ["pm_subtasks_all"]],
+  pm_comments: [["pm_comments"]],
 };
 
 /**
@@ -124,5 +130,8 @@ export function useRealtimeSyncAll() {
     "cleaning_categories",
     "cleaning_schedules",
     "cleaning_completions",
+    "pm_tasks",
+    "pm_subtasks",
+    "pm_comments",
   ]);
 }
