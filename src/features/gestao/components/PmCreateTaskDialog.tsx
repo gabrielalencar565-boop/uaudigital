@@ -1,8 +1,8 @@
 import { useState } from "react";
 import {
-  Circle, User, CalendarDays, Flag, Layers, Tag, X, ChevronDown, Plus
+  Circle, User, CalendarDays, Flag, Layers, Tag, Plus, ChevronDown
 } from "lucide-react";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -88,20 +88,10 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, defaultSta
   const selectedMember = members.find(m => m.id === assigneeId);
 
   return (
-    <Sheet open={open} onOpenChange={(v) => { if (!v) { reset(); onClose(); } }}>
-      <SheetContent side="right" className="w-full sm:max-w-2xl p-0 flex flex-col [&>button]:hidden">
-        {/* Top bar */}
-        <div className="flex items-center gap-2 border-b border-border/40 px-5 py-3 bg-card/50 shrink-0">
-          <span className="text-sm font-semibold">Nova Tarefa</span>
-          <div className="flex-1" />
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { reset(); onClose(); }}>
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
-          {/* Title - large input like ClickUp */}
+    <Dialog open={open} onOpenChange={(v) => { if (!v) { reset(); onClose(); } }}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0 gap-0">
+        {/* Header */}
+        <div className="px-6 pt-5 pb-3">
           <Input
             autoFocus
             value={title}
@@ -109,8 +99,10 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, defaultSta
             placeholder="Nome da tarefa"
             className="text-2xl font-bold border-0 bg-transparent p-0 h-auto focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/40"
           />
+        </div>
 
-          {/* Properties grid - 2 columns */}
+        {/* Properties grid */}
+        <div className="px-6 pb-4">
           <div className="grid grid-cols-2 gap-x-8 gap-y-2">
             {/* Status */}
             <PropertyRow icon={<Circle className="h-3.5 w-3.5" />} label="Status">
@@ -229,46 +221,46 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, defaultSta
               </Select>
             </PropertyRow>
           </div>
+        </div>
 
-          {/* Description */}
-          <div className="border-t border-border/20 pt-4">
-            <Collapsible open={descOpen} onOpenChange={setDescOpen}>
-              <CollapsibleTrigger className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition cursor-pointer">
-                <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", descOpen && "rotate-0", !descOpen && "-rotate-90")} />
-                Descrição
-              </CollapsibleTrigger>
-              <CollapsibleContent className="mt-2">
-                <Textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Adicione uma descrição..."
-                  className="min-h-[100px] text-sm"
-                />
-              </CollapsibleContent>
-            </Collapsible>
-          </div>
+        {/* Description */}
+        <div className="px-6 pb-3 border-t border-border/20 pt-3">
+          <Collapsible open={descOpen} onOpenChange={setDescOpen}>
+            <CollapsibleTrigger className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition cursor-pointer">
+              <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", descOpen && "rotate-0", !descOpen && "-rotate-90")} />
+              Descrição
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-2">
+              <Textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Adicione uma descrição..."
+                className="min-h-[100px] text-sm"
+              />
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
 
-          {/* Template option */}
-          <div className="border-t border-border/20 pt-4">
-            <div className="flex items-center gap-2">
-              <Checkbox id="tpl" checked={useTemplate} onCheckedChange={(v) => setUseTemplate(!!v)} />
-              <Label htmlFor="tpl" className="cursor-pointer text-sm text-muted-foreground">
-                Criar subtarefas do template padrão (7 etapas)
-              </Label>
-            </div>
+        {/* Template option */}
+        <div className="px-6 pb-3 border-t border-border/20 pt-3">
+          <div className="flex items-center gap-2">
+            <Checkbox id="tpl" checked={useTemplate} onCheckedChange={(v) => setUseTemplate(!!v)} />
+            <Label htmlFor="tpl" className="cursor-pointer text-sm text-muted-foreground">
+              Criar subtarefas do template padrão (7 etapas)
+            </Label>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 border-t border-border/40 px-6 py-3 bg-card/50 shrink-0">
+        <div className="flex items-center justify-end gap-2 border-t border-border/40 px-6 py-3 bg-card/50">
           <Button variant="ghost" onClick={() => { reset(); onClose(); }}>Cancelar</Button>
           <Button onClick={handleSubmit} disabled={createTask.isPending} className="gap-1.5">
             <Plus className="h-4 w-4" />
             {createTask.isPending ? "Criando..." : "Criar Tarefa"}
           </Button>
         </div>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
 

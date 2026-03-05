@@ -2,9 +2,9 @@ import { useState } from "react";
 import { format } from "date-fns";
 import {
   CalendarDays, User, Flag, X, Trash2, ChevronRight,
-  Circle, Layers, Tag, Clock, MessageSquare, Paperclip
+  Circle, Layers, Tag, MessageSquare
 } from "lucide-react";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,8 +52,6 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
   const subtasks = subtasksQ.data ?? [];
   const comments = commentsQ.data ?? [];
   const attachments = attachmentsQ.data ?? [];
-  const done = subtasks.filter((s) => s.status === "concluido").length;
-  const total = subtasks.length;
   const assignee = task.assignee_id ? membersMap[task.assignee_id] : undefined;
 
   const saveTitle = () => {
@@ -92,9 +90,9 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
   };
 
   return (
-    <Sheet open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <SheetContent side="right" className="w-full sm:max-w-5xl p-0 flex flex-col [&>button]:hidden">
-        {/* Top breadcrumb bar */}
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-5xl max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col">
+        {/* Breadcrumb */}
         <div className="flex items-center gap-1.5 border-b border-border/40 px-5 py-2 bg-card/50 shrink-0">
           <span className="text-xs text-muted-foreground">{clientsMap[task.client_id] ?? "—"}</span>
           <ChevronRight className="h-3 w-3 text-muted-foreground/50" />
@@ -111,11 +109,11 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
         </div>
 
         {/* Main split */}
-        <div className="flex flex-1 overflow-hidden">
-          {/* LEFT content */}
+        <div className="flex flex-1 overflow-hidden min-h-0">
+          {/* LEFT */}
           <ScrollArea className="flex-1 border-r border-border/30">
             <div className="px-6 py-5 space-y-6">
-              {/* Title - large like ClickUp */}
+              {/* Title */}
               {editingTitle ? (
                 <Input
                   autoFocus
@@ -134,9 +132,8 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
                 </h1>
               )}
 
-              {/* Properties - 2 column grid like ClickUp */}
+              {/* Properties grid */}
               <div className="grid grid-cols-2 gap-x-8 gap-y-2">
-                {/* Status */}
                 <PropertyRow icon={<Circle className="h-3.5 w-3.5" />} label="Status">
                   <Select value={task.status_global} onValueChange={(v) => updateTask.mutate({ id: task.id, status_global: v as any })}>
                     <SelectTrigger className="h-7 border-0 bg-transparent shadow-none p-0 w-auto gap-1.5">
@@ -157,7 +154,6 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
                   </Select>
                 </PropertyRow>
 
-                {/* Responsáveis */}
                 <PropertyRow icon={<User className="h-3.5 w-3.5" />} label="Responsáveis">
                   <Select
                     value={task.assignee_id ?? "__none__"}
@@ -185,7 +181,6 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
                   </Select>
                 </PropertyRow>
 
-                {/* Datas */}
                 <PropertyRow icon={<CalendarDays className="h-3.5 w-3.5" />} label="Datas">
                   <div className="flex items-center gap-1.5 text-xs">
                     <span className="text-muted-foreground">Início</span>
@@ -206,7 +201,6 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
                   </div>
                 </PropertyRow>
 
-                {/* Prioridade */}
                 <PropertyRow icon={<Flag className="h-3.5 w-3.5" />} label="Prioridade">
                   <Select value={task.priority} onValueChange={(v) => updateTask.mutate({ id: task.id, priority: v as any })}>
                     <SelectTrigger className="h-7 border-0 bg-transparent shadow-none p-0 w-auto gap-1">
@@ -220,7 +214,6 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
                   </Select>
                 </PropertyRow>
 
-                {/* Etapa */}
                 <PropertyRow icon={<Layers className="h-3.5 w-3.5" />} label="Etapa">
                   <Select value={task.stage_current} onValueChange={(v) => updateTask.mutate({ id: task.id, stage_current: v as any })}>
                     <SelectTrigger className="h-7 border-0 bg-transparent shadow-none p-0 w-auto gap-1">
@@ -234,7 +227,6 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
                   </Select>
                 </PropertyRow>
 
-                {/* Etiquetas */}
                 <PropertyRow icon={<Tag className="h-3.5 w-3.5" />} label="Etiquetas">
                   <div className="flex flex-wrap items-center gap-1">
                     {task.tags.length > 0 ? task.tags.map((tag) => (
@@ -268,7 +260,7 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
 
               {/* Subtasks */}
               <div className="border-t border-border/20 pt-4">
-                <PmSubtaskList taskId={task.id} subtasks={subtasks} membersMap={membersMap} members={members} />
+                <PmSubtaskList taskId={task.id} subtasks={subtasks} membersMap={membersMap} members={members} parentTitle={task.title} />
               </div>
 
               {/* Attachments */}
@@ -287,7 +279,7 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
             </div>
           </ScrollArea>
 
-          {/* RIGHT: Activity sidebar */}
+          {/* RIGHT: Activity */}
           <div className="w-80 shrink-0 flex flex-col bg-card/10 hidden sm:flex">
             <div className="flex items-center gap-2 px-4 py-3 border-b border-border/30">
               <MessageSquare className="h-4 w-4 text-muted-foreground" />
@@ -298,12 +290,11 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
             </ScrollArea>
           </div>
         </div>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
 
-/* Property row - inline label + value */
 function PropertyRow({ icon, label, children }: { icon: React.ReactNode; label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-2 py-1.5 min-h-[36px]">
