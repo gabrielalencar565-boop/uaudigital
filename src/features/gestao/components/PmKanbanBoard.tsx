@@ -23,9 +23,10 @@ interface Props {
   onTaskClick: (task: PmTask) => void;
   onCreateClick: (status?: string) => void;
   filters: { clientId?: string; assigneeId?: string; search?: string };
+  isAdmin?: boolean;
 }
 
-export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, onTaskClick, onCreateClick, filters }: Props) {
+export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, onTaskClick, onCreateClick, filters, isAdmin }: Props) {
   const filtered = useMemo(() => {
     let list = tasks;
     if (filters.clientId) list = list.filter((t) => t.client_id === filters.clientId);
@@ -76,6 +77,7 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, on
                   assigneeAvatar={member?.avatar}
                   childTasks={childTasksMap[task.id] ?? []}
                   onClick={() => onTaskClick(task)}
+                  isAdmin={isAdmin}
                 />
               );
             })}
