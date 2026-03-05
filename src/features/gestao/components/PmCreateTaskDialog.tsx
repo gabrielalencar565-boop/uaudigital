@@ -76,7 +76,7 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, defaultSta
   const reset = () => {
     setTitle(""); setDescription(""); setClientId(""); setPriority("media");
     setStage("planejamento"); setStatus(defaultStatus || "backlog"); setAssigneeId("");
-    setDueDate(""); setUseTemplate(true); setTagsRaw("");
+    setDueDate(""); setTagsRaw("");
     setSubtasks([]); setNewSubtask(""); setAttachments([]);
   };
 
