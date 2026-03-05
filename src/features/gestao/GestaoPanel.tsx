@@ -25,8 +25,8 @@ export function GestaoPanel() {
 
   const [view, setView] = useState<"kanban" | "agenda" | "clientes">("kanban");
   const [search, setSearch] = useState("");
-  const [filterClient, setFilterClient] = useState("");
-  const [filterAssignee, setFilterAssignee] = useState("");
+    const [filterClient, setFilterClient] = useState("__all__");
+    const [filterAssignee, setFilterAssignee] = useState("__all__");
   const [selectedTask, setSelectedTask] = useState<PmTask | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [createDefaultStatus, setCreateDefaultStatus] = useState<string | undefined>();
@@ -83,13 +83,13 @@ export function GestaoPanel() {
   }, [membersQ.data]);
   const membersList = useMemo(() => (membersQ.data ?? []).map((m) => ({ id: m.user_id, name: m.display_name })), [membersQ.data]);
 
-  const filters = { clientId: filterClient || undefined, assigneeId: filterAssignee || undefined, search: search || undefined };
+  const filters = { clientId: filterClient === "__all__" ? undefined : filterClient, assigneeId: filterAssignee === "__all__" ? undefined : filterAssignee, search: search || undefined };
 
   // Agenda view: group by due_date
   const agendaTasks = useMemo(() => {
     let list = tasks;
-    if (filterClient) list = list.filter((t) => t.client_id === filterClient);
-    if (filterAssignee) list = list.filter((t) => t.assignee_id === filterAssignee);
+    if (filterClient && filterClient !== "__all__") list = list.filter((t) => t.client_id === filterClient);
+    if (filterAssignee && filterAssignee !== "__all__") list = list.filter((t) => t.assignee_id === filterAssignee);
     if (search) {
       const q = search.toLowerCase();
       list = list.filter((t) => t.title.toLowerCase().includes(q));
@@ -134,14 +134,14 @@ export function GestaoPanel() {
         <Select value={filterClient} onValueChange={setFilterClient}>
           <SelectTrigger className="h-9 w-40"><SelectValue placeholder="Cliente" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Todos</SelectItem>
+            <SelectItem value="__all__">Todos</SelectItem>
             {(clientsQ.data ?? []).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={filterAssignee} onValueChange={setFilterAssignee}>
           <SelectTrigger className="h-9 w-40"><SelectValue placeholder="Responsável" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Todos</SelectItem>
+            <SelectItem value="__all__">Todos</SelectItem>
             {membersList.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
           </SelectContent>
         </Select>
