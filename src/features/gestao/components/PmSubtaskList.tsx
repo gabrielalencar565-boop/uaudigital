@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { PM_SUBTASK_STATUSES, subtaskStatusMeta, stageLabel } from "../pm-constants";
+import { PM_SUBTASK_STATUSES, stageLabel } from "../pm-constants";
 import { useUpdatePmSubtask, useCreatePmSubtask } from "../hooks/use-pm-data";
+import { PmSubtaskDetailDialog } from "./PmSubtaskDetailDialog";
 import type { PmSubtask } from "../pm-types";
 
 function initials(n: string) { return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join(""); }
@@ -41,12 +42,14 @@ interface Props {
   subtasks: PmSubtask[];
   membersMap: Record<string, { name: string; avatar?: string }>;
   members?: { id: string; name: string }[];
+  parentTitle?: string;
 }
 
-export function PmSubtaskList({ taskId, subtasks, membersMap, members }: Props) {
+export function PmSubtaskList({ taskId, subtasks, membersMap, members, parentTitle }: Props) {
   const updateSub = useUpdatePmSubtask();
   const createSub = useCreatePmSubtask();
   const [newTitle, setNewTitle] = useState("");
+  const [selectedSubtask, setSelectedSubtask] = useState<PmSubtask | null>(null);
 
   const done = subtasks.filter(s => s.status === "concluido").length;
   const total = subtasks.length;
@@ -68,14 +71,9 @@ export function PmSubtaskList({ taskId, subtasks, membersMap, members }: Props) 
     setNewTitle("");
   };
 
-  const toggleDone = (sub: PmSubtask) => {
-    const newStatus = sub.status === "concluido" ? "nao_iniciado" : "concluido";
-    updateSub.mutate({ id: sub.id, status: newStatus, task_id: sub.task_id });
-  };
-
   return (
     <div className="space-y-2">
-      {/* Header with progress */}
+      {/* Header */}
       <div className="flex items-center gap-3">
         <h3 className="text-sm font-bold">Subtarefas</h3>
         <span className="text-xs text-muted-foreground">{done} de {total}</span>
@@ -100,7 +98,7 @@ export function PmSubtaskList({ taskId, subtasks, membersMap, members }: Props) 
         </div>
       )}
 
-      {/* Rows */}
+      {/* Rows - clickable to open detail */}
       <div className="space-y-0">
         {subtasks.map((sub) => {
           const member = sub.assignee_id ? membersMap[sub.assignee_id] : undefined;
@@ -110,16 +108,17 @@ export function PmSubtaskList({ taskId, subtasks, membersMap, members }: Props) 
             <div
               key={sub.id}
               className={cn(
-                "group flex items-center gap-2 px-2 py-2 transition hover:bg-card/40 border-b border-border/10",
+                "group flex items-center gap-2 px-2 py-2 transition hover:bg-card/40 border-b border-border/10 cursor-pointer",
                 isDone && "opacity-50"
               )}
+              onClick={() => setSelectedSubtask(sub)}
             >
-              {/* Toggle */}
-              <button type="button" onClick={() => toggleDone(sub)} className="shrink-0 hover:scale-110 transition-transform">
+              {/* Status icon */}
+              <div className="shrink-0">
                 {statusIcon(sub.status)}
-              </button>
+              </div>
 
-              {/* Title + tags */}
+              {/* Title + stage */}
               <div className="flex-1 flex items-center gap-2 min-w-0">
                 <span className={cn("truncate text-sm", isDone && "line-through text-muted-foreground")}>{sub.title}</span>
                 <Badge variant="outline" className="text-[9px] h-4 px-1.5 shrink-0 hidden sm:inline-flex">
@@ -127,8 +126,8 @@ export function PmSubtaskList({ taskId, subtasks, membersMap, members }: Props) 
                 </Badge>
               </div>
 
-              {/* Status select */}
-              <div className="w-24 hidden sm:block">
+              {/* Status select - stop propagation */}
+              <div className="w-24 hidden sm:block" onClick={(e) => e.stopPropagation()}>
                 <Select
                   value={sub.status}
                   onValueChange={(v) => updateSub.mutate({ id: sub.id, status: v, task_id: sub.task_id })}
@@ -153,7 +152,7 @@ export function PmSubtaskList({ taskId, subtasks, membersMap, members }: Props) 
               </div>
 
               {/* Assignee */}
-              <div className="w-20 flex justify-center">
+              <div className="w-20 flex justify-center" onClick={(e) => e.stopPropagation()}>
                 {members && members.length > 0 ? (
                   <Select
                     value={sub.assignee_id ?? "__none__"}
@@ -211,6 +210,16 @@ export function PmSubtaskList({ taskId, subtasks, membersMap, members }: Props) 
           </Button>
         )}
       </div>
+
+      {/* Subtask detail dialog */}
+      <PmSubtaskDetailDialog
+        subtask={selectedSubtask}
+        open={!!selectedSubtask}
+        onClose={() => setSelectedSubtask(null)}
+        parentTitle={parentTitle || "Tarefa"}
+        membersMap={membersMap}
+        members={members ?? []}
+      />
     </div>
   );
 }
