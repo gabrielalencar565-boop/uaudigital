@@ -2,7 +2,7 @@ import { useState } from "react";
 import { format } from "date-fns";
 import {
   CalendarDays, User, Flag, X, Trash2, ChevronRight,
-  Circle, Layers, Tag, Clock, Send, MessageSquare, Paperclip
+  Circle, Layers, Tag, Clock, MessageSquare, Paperclip
 } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
@@ -10,11 +10,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { PM_STATUSES, PM_STAGES, PM_PRIORITIES, statusColor, stageLabel, priorityMeta } from "../pm-constants";
+import { PM_STATUSES, PM_STAGES, PM_PRIORITIES, stageLabel } from "../pm-constants";
 import { useUpdatePmTask, useDeletePmTask, usePmSubtasks, usePmComments, usePmAttachments } from "../hooks/use-pm-data";
 import { PmSubtaskList } from "./PmSubtaskList";
 import { PmCommentsSection } from "./PmCommentsSection";
@@ -50,13 +49,11 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
 
   if (!task) return null;
 
-  const prio = priorityMeta(task.priority);
   const subtasks = subtasksQ.data ?? [];
   const comments = commentsQ.data ?? [];
   const attachments = attachmentsQ.data ?? [];
   const done = subtasks.filter((s) => s.status === "concluido").length;
   const total = subtasks.length;
-  const progress = total > 0 ? Math.round((done / total) * 100) : 0;
   const assignee = task.assignee_id ? membersMap[task.assignee_id] : undefined;
 
   const saveTitle = () => {
@@ -82,31 +79,43 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
     }
   };
 
+  const statusBadgeColor = (key: string) => {
+    switch (key) {
+      case "backlog": return "bg-muted-foreground text-muted";
+      case "em_andamento": return "bg-primary text-primary-foreground";
+      case "em_aprovacao": return "bg-warning text-warning-foreground";
+      case "concluido": return "bg-success text-success-foreground";
+      case "pausado": return "bg-muted-foreground/50 text-muted";
+      case "cancelado": return "bg-destructive text-destructive-foreground";
+      default: return "bg-muted-foreground text-muted";
+    }
+  };
+
   return (
     <Sheet open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <SheetContent side="right" className="w-full sm:max-w-4xl p-0 flex flex-col [&>button]:hidden">
-        {/* Top bar / breadcrumb */}
-        <div className="flex items-center gap-2 border-b border-border/40 px-4 py-2.5 bg-card/50 shrink-0">
+      <SheetContent side="right" className="w-full sm:max-w-5xl p-0 flex flex-col [&>button]:hidden">
+        {/* Top breadcrumb bar */}
+        <div className="flex items-center gap-1.5 border-b border-border/40 px-5 py-2 bg-card/50 shrink-0">
           <span className="text-xs text-muted-foreground">{clientsMap[task.client_id] ?? "—"}</span>
-          <ChevronRight className="h-3 w-3 text-muted-foreground" />
-          <span className="text-xs text-muted-foreground truncate">{stageLabel(task.stage_current)}</span>
-          <ChevronRight className="h-3 w-3 text-muted-foreground" />
+          <ChevronRight className="h-3 w-3 text-muted-foreground/50" />
+          <span className="text-xs text-muted-foreground">{stageLabel(task.stage_current)}</span>
+          <ChevronRight className="h-3 w-3 text-muted-foreground/50" />
           <span className="text-xs font-medium truncate">{task.title}</span>
           <div className="flex-1" />
           <span className="text-[10px] text-muted-foreground">
-            {task.created_at ? `Criada em ${format(new Date(task.created_at), "dd/MM")}` : ""}
+            {task.created_at ? `Criada em ${format(new Date(task.created_at), "dd 'de' MMM")}` : ""}
           </span>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
+          <Button variant="ghost" size="icon" className="h-7 w-7 ml-1" onClick={onClose}>
             <X className="h-4 w-4" />
           </Button>
         </div>
 
-        {/* Main content: split layout */}
+        {/* Main split */}
         <div className="flex flex-1 overflow-hidden">
-          {/* LEFT: task details */}
+          {/* LEFT content */}
           <ScrollArea className="flex-1 border-r border-border/30">
-            <div className="p-5 space-y-5">
-              {/* Title */}
+            <div className="px-6 py-5 space-y-6">
+              {/* Title - large like ClickUp */}
               {editingTitle ? (
                 <Input
                   autoFocus
@@ -114,33 +123,32 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
                   onChange={(e) => setTitleDraft(e.target.value)}
                   onBlur={saveTitle}
                   onKeyDown={(e) => e.key === "Enter" && saveTitle()}
-                  className="text-xl font-bold border-0 bg-transparent p-0 h-auto focus-visible:ring-0 focus-visible:ring-offset-0"
+                  className="text-2xl font-bold border-0 bg-transparent p-0 h-auto focus-visible:ring-0 focus-visible:ring-offset-0"
                 />
               ) : (
-                <h2
-                  className="cursor-pointer text-xl font-bold hover:text-primary transition-colors"
+                <h1
+                  className="cursor-pointer text-2xl font-bold hover:text-primary transition-colors"
                   onClick={() => { setTitleDraft(task.title); setEditingTitle(true); }}
                 >
                   {task.title}
-                </h2>
+                </h1>
               )}
 
-              {/* Properties table - ClickUp style */}
-              <div className="rounded-lg border border-border/40 divide-y divide-border/30 bg-card/20">
+              {/* Properties - 2 column grid like ClickUp */}
+              <div className="grid grid-cols-2 gap-x-8 gap-y-2">
                 {/* Status */}
                 <PropertyRow icon={<Circle className="h-3.5 w-3.5" />} label="Status">
                   <Select value={task.status_global} onValueChange={(v) => updateTask.mutate({ id: task.id, status_global: v as any })}>
-                    <SelectTrigger className="h-7 w-40 text-xs border-0 bg-transparent shadow-none">
-                      <div className="flex items-center gap-1.5">
-                        <span className={cn("h-2 w-2 rounded-full", statusDot(task.status_global))} />
+                    <SelectTrigger className="h-7 border-0 bg-transparent shadow-none p-0 w-auto gap-1.5">
+                      <Badge className={cn("text-[10px] uppercase font-bold tracking-wide px-2.5 py-0.5 rounded", statusBadgeColor(task.status_global))}>
                         <SelectValue />
-                      </div>
+                      </Badge>
                     </SelectTrigger>
                     <SelectContent>
                       {PM_STATUSES.map(s => (
                         <SelectItem key={s.key} value={s.key} className="text-xs">
                           <div className="flex items-center gap-1.5">
-                            <span className={cn("h-2 w-2 rounded-full", statusDot(s.key))} />
+                            <span className={cn("h-2 w-2 rounded-full", statusDotColor(s.key))} />
                             {s.label}
                           </div>
                         </SelectItem>
@@ -149,26 +157,24 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
                   </Select>
                 </PropertyRow>
 
-                {/* Responsável */}
-                <PropertyRow icon={<User className="h-3.5 w-3.5" />} label="Responsável">
+                {/* Responsáveis */}
+                <PropertyRow icon={<User className="h-3.5 w-3.5" />} label="Responsáveis">
                   <Select
                     value={task.assignee_id ?? "__none__"}
                     onValueChange={(v) => updateTask.mutate({ id: task.id, assignee_id: v === "__none__" ? null : v })}
                   >
-                    <SelectTrigger className="h-7 w-48 text-xs border-0 bg-transparent shadow-none">
-                      <div className="flex items-center gap-1.5">
-                        {assignee ? (
-                          <>
-                            <Avatar className="h-4 w-4">
-                              <AvatarImage src={assignee.avatar} />
-                              <AvatarFallback className="text-[7px]">{initials(assignee.name)}</AvatarFallback>
-                            </Avatar>
-                            <span>{assignee.name}</span>
-                          </>
-                        ) : (
-                          <span className="text-muted-foreground">Vazio</span>
-                        )}
-                      </div>
+                    <SelectTrigger className="h-7 border-0 bg-transparent shadow-none p-0 w-auto gap-1.5">
+                      {assignee ? (
+                        <div className="flex items-center gap-1.5">
+                          <Avatar className="h-5 w-5">
+                            <AvatarImage src={assignee.avatar} />
+                            <AvatarFallback className="text-[8px] bg-primary/20 text-primary">{initials(assignee.name)}</AvatarFallback>
+                          </Avatar>
+                          <span className="text-xs">{assignee.name}</span>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Vazio</span>
+                      )}
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__none__" className="text-xs">Ninguém</SelectItem>
@@ -181,27 +187,21 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
 
                 {/* Datas */}
                 <PropertyRow icon={<CalendarDays className="h-3.5 w-3.5" />} label="Datas">
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <CalendarDays className="h-3 w-3" />
-                      <span>Início</span>
-                    </div>
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <span className="text-muted-foreground">Início</span>
                     <Input
                       type="date"
                       value={task.start_date ?? ""}
                       onChange={(e) => updateTask.mutate({ id: task.id, start_date: e.target.value || null })}
-                      className="h-7 w-32 text-xs border-0 bg-transparent shadow-none p-0"
+                      className="h-6 w-28 text-xs border-0 bg-transparent shadow-none p-0"
                     />
                     <span className="text-muted-foreground">→</span>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <CalendarDays className="h-3 w-3" />
-                      <span>Vencimento</span>
-                    </div>
+                    <CalendarDays className="h-3 w-3 text-muted-foreground" />
                     <Input
                       type="date"
                       value={task.due_date ?? ""}
                       onChange={(e) => updateTask.mutate({ id: task.id, due_date: e.target.value || null })}
-                      className="h-7 w-32 text-xs border-0 bg-transparent shadow-none p-0"
+                      className="h-6 w-28 text-xs border-0 bg-transparent shadow-none p-0"
                     />
                   </div>
                 </PropertyRow>
@@ -209,7 +209,7 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
                 {/* Prioridade */}
                 <PropertyRow icon={<Flag className="h-3.5 w-3.5" />} label="Prioridade">
                   <Select value={task.priority} onValueChange={(v) => updateTask.mutate({ id: task.id, priority: v as any })}>
-                    <SelectTrigger className="h-7 w-32 text-xs border-0 bg-transparent shadow-none">
+                    <SelectTrigger className="h-7 border-0 bg-transparent shadow-none p-0 w-auto gap-1">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -223,7 +223,7 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
                 {/* Etapa */}
                 <PropertyRow icon={<Layers className="h-3.5 w-3.5" />} label="Etapa">
                   <Select value={task.stage_current} onValueChange={(v) => updateTask.mutate({ id: task.id, stage_current: v as any })}>
-                    <SelectTrigger className="h-7 w-36 text-xs border-0 bg-transparent shadow-none">
+                    <SelectTrigger className="h-7 border-0 bg-transparent shadow-none p-0 w-auto gap-1">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -244,28 +244,10 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
                     )}
                   </div>
                 </PropertyRow>
-
-                {/* Progresso */}
-                {total > 0 && (
-                  <PropertyRow icon={<Clock className="h-3.5 w-3.5" />} label="Progresso">
-                    <div className="flex items-center gap-3 flex-1">
-                      <div className="h-1.5 flex-1 max-w-48 overflow-hidden rounded-full bg-muted">
-                        <div
-                          className={cn("h-full rounded-full transition-all", progress === 100 ? "bg-success" : "bg-primary")}
-                          style={{ width: `${progress}%` }}
-                        />
-                      </div>
-                      <span className="text-xs text-muted-foreground">{done}/{total} ({progress}%)</span>
-                    </div>
-                  </PropertyRow>
-                )}
               </div>
 
-              <Separator className="bg-border/30" />
-
               {/* Description */}
-              <div>
-                <h3 className="text-sm font-bold mb-2">Descrição</h3>
+              <div className="border-t border-border/20 pt-4">
                 {editingDesc ? (
                   <div className="space-y-2">
                     <Textarea value={descDraft} onChange={(e) => setDescDraft(e.target.value)} className="min-h-[120px]" />
@@ -276,39 +258,36 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
                   </div>
                 ) : (
                   <div
-                    className="cursor-pointer rounded-md border border-dashed border-border/40 p-3 text-sm text-foreground/80 hover:bg-card/30 transition whitespace-pre-wrap min-h-[60px]"
+                    className="cursor-pointer text-sm text-muted-foreground hover:text-foreground transition min-h-[40px] py-2"
                     onClick={() => { setDescDraft(task.description ?? ""); setEditingDesc(true); }}
                   >
-                    {task.description || "Clique para adicionar descrição..."}
+                    {task.description || "Adicione uma descrição..."}
                   </div>
                 )}
               </div>
 
-              <Separator className="bg-border/30" />
-
               {/* Subtasks */}
-              <PmSubtaskList taskId={task.id} subtasks={subtasks} membersMap={membersMap} />
-
-              <Separator className="bg-border/30" />
+              <div className="border-t border-border/20 pt-4">
+                <PmSubtaskList taskId={task.id} subtasks={subtasks} membersMap={membersMap} members={members} />
+              </div>
 
               {/* Attachments */}
-              <PmAttachmentsSection taskId={task.id} attachments={attachments} membersMap={membersMap} />
+              <div className="border-t border-border/20 pt-4">
+                <PmAttachmentsSection taskId={task.id} attachments={attachments} membersMap={membersMap} />
+              </div>
 
               {/* Delete */}
               {isAdmin && (
-                <>
-                  <Separator className="bg-border/30" />
-                  <div className="flex justify-end">
-                    <Button variant="destructive" size="sm" className="gap-1.5" onClick={handleDelete}>
-                      <Trash2 className="h-3.5 w-3.5" /> Excluir tarefa
-                    </Button>
-                  </div>
-                </>
+                <div className="border-t border-border/20 pt-4 flex justify-end">
+                  <Button variant="destructive" size="sm" className="gap-1.5" onClick={handleDelete}>
+                    <Trash2 className="h-3.5 w-3.5" /> Excluir tarefa
+                  </Button>
+                </div>
               )}
             </div>
           </ScrollArea>
 
-          {/* RIGHT: Activity / Comments sidebar */}
+          {/* RIGHT: Activity sidebar */}
           <div className="w-80 shrink-0 flex flex-col bg-card/10 hidden sm:flex">
             <div className="flex items-center gap-2 px-4 py-3 border-b border-border/30">
               <MessageSquare className="h-4 w-4 text-muted-foreground" />
@@ -324,11 +303,11 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
   );
 }
 
-/* Property row component */
+/* Property row - inline label + value */
 function PropertyRow({ icon, label, children }: { icon: React.ReactNode; label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-3 px-4 py-2 min-h-[40px]">
-      <div className="flex items-center gap-2 w-28 shrink-0 text-muted-foreground">
+    <div className="flex items-center gap-2 py-1.5 min-h-[36px]">
+      <div className="flex items-center gap-1.5 w-28 shrink-0 text-muted-foreground">
         {icon}
         <span className="text-xs">{label}</span>
       </div>
@@ -337,8 +316,7 @@ function PropertyRow({ icon, label, children }: { icon: React.ReactNode; label: 
   );
 }
 
-/* Status dot color */
-function statusDot(key: string) {
+function statusDotColor(key: string) {
   switch (key) {
     case "backlog": return "bg-muted-foreground";
     case "em_andamento": return "bg-primary";
