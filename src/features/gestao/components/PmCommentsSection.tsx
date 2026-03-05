@@ -10,24 +10,28 @@ import type { PmComment } from "../pm-types";
 function initials(n: string) { return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join(""); }
 
 interface Props {
-  taskId: string;
+  taskId?: string;
+  subtaskId?: string;
   comments: PmComment[];
   membersMap: Record<string, { name: string; avatar?: string }>;
 }
 
-export function PmCommentsSection({ taskId, comments, membersMap }: Props) {
+export function PmCommentsSection({ taskId, subtaskId, comments, membersMap }: Props) {
   const [content, setContent] = useState("");
   const addComment = useAddPmComment();
 
   const handleSend = async () => {
     if (!content.trim()) return;
-    await addComment.mutateAsync({ task_id: taskId, content: content.trim() });
+    await addComment.mutateAsync({
+      task_id: taskId,
+      subtask_id: subtaskId,
+      content: content.trim(),
+    });
     setContent("");
   };
 
   return (
     <div className="flex flex-col gap-3 h-full">
-      {/* Comments feed */}
       <div className="flex-1 space-y-4 min-h-0">
         {comments.map((c) => {
           const member = membersMap[c.author_id];
@@ -52,7 +56,6 @@ export function PmCommentsSection({ taskId, comments, membersMap }: Props) {
         )}
       </div>
 
-      {/* Input area */}
       <div className="border-t border-border/30 pt-3">
         <Textarea
           value={content}

@@ -1,27 +1,33 @@
 import { useRef } from "react";
 import { format } from "date-fns";
-import { Paperclip, Upload, FileText, Image, Download } from "lucide-react";
+import { Upload, FileText, Image, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useUploadPmAttachment } from "../hooks/use-pm-data";
+import { useUploadPmAttachment, useUploadPmSubtaskAttachment } from "../hooks/use-pm-data";
 import type { PmAttachment } from "../pm-types";
 import { toast } from "sonner";
 
 interface Props {
-  taskId: string;
+  taskId?: string;
+  subtaskId?: string;
   attachments: PmAttachment[];
   membersMap: Record<string, { name: string }>;
 }
 
-export function PmAttachmentsSection({ taskId, attachments, membersMap }: Props) {
+export function PmAttachmentsSection({ taskId, subtaskId, attachments, membersMap }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
-  const upload = useUploadPmAttachment();
+  const uploadTask = useUploadPmAttachment();
+  const uploadSub = useUploadPmSubtaskAttachment();
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 20 * 1024 * 1024) { toast.error("Arquivo muito grande (máx 20MB)"); return; }
     try {
-      await upload.mutateAsync({ task_id: taskId, file });
+      if (subtaskId) {
+        await uploadSub.mutateAsync({ subtask_id: subtaskId, file });
+      } else if (taskId) {
+        await uploadTask.mutateAsync({ task_id: taskId, file });
+      }
       toast.success("Arquivo anexado!");
     } catch (err: any) {
       toast.error(err?.message ?? "Erro ao enviar arquivo");
@@ -30,12 +36,13 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap }: Props)
   };
 
   const isImage = (type: string | null) => type?.startsWith("image/");
+  const isPending = uploadTask.isPending || uploadSub.isPending;
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium">Anexos ({attachments.length})</span>
-        <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={upload.isPending}>
+        <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={isPending}>
           <Upload className="mr-1 h-3 w-3" /> Upload
         </Button>
         <input ref={fileRef} type="file" className="hidden" onChange={handleUpload} />

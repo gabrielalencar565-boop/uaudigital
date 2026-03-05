@@ -42,12 +42,36 @@ export function usePmComments(taskId: string | null) {
   });
 }
 
+export function usePmSubtaskComments(subtaskId: string | null) {
+  return useQuery<PmComment[]>({
+    queryKey: ["pm_comments_subtask", subtaskId],
+    enabled: !!subtaskId,
+    queryFn: async () => {
+      const { data, error } = await sb.from("pm_comments").select("*").eq("subtask_id", subtaskId).order("created_at", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
 export function usePmAttachments(taskId: string | null) {
   return useQuery<PmAttachment[]>({
     queryKey: ["pm_attachments", taskId],
     enabled: !!taskId,
     queryFn: async () => {
       const { data, error } = await sb.from("pm_attachments").select("*").eq("task_id", taskId).order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
+export function usePmSubtaskAttachments(subtaskId: string | null) {
+  return useQuery<PmAttachment[]>({
+    queryKey: ["pm_attachments_subtask", subtaskId],
+    enabled: !!subtaskId,
+    queryFn: async () => {
+      const { data, error } = await sb.from("pm_attachments").select("*").eq("subtask_id", subtaskId).order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
     },
@@ -193,11 +217,13 @@ export function useCreatePmSubtask() {
 export function useAddPmComment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: { task_id: string; content: string }) => {
+    mutationFn: async (payload: { task_id?: string; subtask_id?: string; content: string }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Não autenticado");
       const { data, error } = await sb.from("pm_comments").insert({
-        ...payload,
+        task_id: payload.task_id ?? null,
+        subtask_id: payload.subtask_id ?? null,
+        content: payload.content,
         author_id: user.id,
       }).select().single();
       if (error) throw error;
@@ -206,13 +232,47 @@ export function useAddPmComment() {
         entity_type: "comment",
         entity_id: data.id,
         action: "comment_added",
-        metadata: { task_id: payload.task_id },
+        metadata: { task_id: payload.task_id, subtask_id: payload.subtask_id },
         created_by: user.id,
       });
       return data as PmComment;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pm_comments"] });
+      qc.invalidateQueries({ queryKey: ["pm_comments_subtask"] });
+    },
+  });
+}
+
+export function useUploadPmSubtaskAttachment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ subtask_id, file }: { subtask_id: string; file: File }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Não autenticado");
+
+      const ext = file.name.split(".").pop() || "bin";
+      const path = `${user.id}/sub_${subtask_id}/${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("pm-attachments").upload(path, file, { contentType: file.type });
+      if (upErr) throw upErr;
+
+      const { data: urlData } = supabase.storage.from("pm-attachments").getPublicUrl(path);
+
+      const { data, error } = await sb.from("pm_attachments").insert({
+        subtask_id,
+        uploaded_by: user.id,
+        file_name: file.name,
+        file_type: file.type,
+        file_size: file.size,
+        storage_path: path,
+        public_url: urlData.publicUrl,
+      }).select().single();
+      if (error) throw error;
+
+      return data as PmAttachment;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["pm_attachments_subtask"] });
     },
   });
 }
