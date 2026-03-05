@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { format, getDay } from "date-fns";
-import { AlertTriangle, CheckCircle2, Clock, Pencil } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock, Pencil, Moon, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -92,6 +93,7 @@ const motivationalLines = [
 export function MeuPainelPanel() {
   const { user } = useSession();
 
+  const { theme, setTheme } = useTheme();
   const [myProfile, setMyProfile] = useState<{ full_name: string; avatar_url: string | null } | null>(null);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [profileVersion, setProfileVersion] = useState(0);
@@ -329,6 +331,10 @@ export function MeuPainelPanel() {
                 onMonthChange={(m) => setSelected((s) => ({ ...s, month: m }))}
                 onYearChange={(y) => setSelected((s) => ({ ...s, year: y }))}
               />
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
+                {theme === "dark" ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+                {theme === "dark" ? "Claro" : "Escuro"}
+              </Button>
               <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditProfileOpen(true)}>
                 <Pencil className="h-3.5 w-3.5" /> Editar perfil
               </Button>
