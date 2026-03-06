@@ -276,7 +276,7 @@ export function PmStageFlowConfig() {
             Fluxos de Etapas
           </h3>
           <p className="text-sm text-muted-foreground mt-1">
-            Configure como as tarefas avançam entre etapas, datas e responsáveis fixos por cliente.
+            Configure como as tarefas avançam entre etapas e datas de entrega.
           </p>
         </div>
         {!isEditing && (
@@ -298,24 +298,22 @@ export function PmStageFlowConfig() {
           </div>
 
           <p className="text-xs text-muted-foreground">
-            Marque as próximas etapas, configure a data de entrega e os responsáveis fixos por cliente.
+            Marque as próximas etapas e configure a data de entrega ao concluir.
           </p>
 
           <div className="border border-border/30 rounded-lg overflow-hidden">
-            <div className="grid grid-cols-[180px_1fr_160px_60px] gap-0 text-xs font-semibold uppercase tracking-wider text-muted-foreground bg-muted/30 border-b border-border/20">
+            <div className="grid grid-cols-[180px_1fr_160px] gap-0 text-xs font-semibold uppercase tracking-wider text-muted-foreground bg-muted/30 border-b border-border/20">
               <div className="px-4 py-2.5">Etapa Atual</div>
               <div className="px-4 py-2.5">Ao Concluir → Próximas</div>
               <div className="px-4 py-2.5">Data</div>
-              <div className="px-4 py-2.5">Resp.</div>
             </div>
             {STAGE_OPTIONS.map(stage => {
               const color = getStageCircleColor(stage.key);
               const isDone = stage.key === "entrega";
               const selectedNexts = editConfig[stage.key] ?? [];
-              const stageAssigneeCount = Object.keys(editStageAssignees[stage.key] ?? {}).length;
 
               return (
-                <div key={stage.key} className="grid grid-cols-[180px_1fr_160px_60px] gap-0 border-b border-border/10 hover:bg-accent/20 transition">
+                <div key={stage.key} className="grid grid-cols-[180px_1fr_160px] gap-0 border-b border-border/10 hover:bg-accent/20 transition">
                   <div className="flex items-center gap-2 px-4 py-3">
                     <span className={cn("h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0", color.border, isDone && color.bg)}>
                       {isDone && <Check className="h-2.5 w-2.5 text-white" />}
@@ -355,16 +353,6 @@ export function PmStageFlowConfig() {
                       </Select>
                     )}
                   </div>
-                  <div className="flex items-center justify-center px-2 py-2.5">
-                    {!isDone && (
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 relative" onClick={() => setAssigneeDialogStage(stage.key)} title="Responsáveis fixos por cliente">
-                        <Users className="h-3.5 w-3.5" />
-                        {stageAssigneeCount > 0 && (
-                          <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-[9px] text-primary-foreground grid place-items-center font-bold">{stageAssigneeCount}</span>
-                        )}
-                      </Button>
-                    )}
-                  </div>
                 </div>
               );
             })}
@@ -372,63 +360,6 @@ export function PmStageFlowConfig() {
         </div>
       )}
 
-      {/* Assignee dialog */}
-      <Dialog open={!!assigneeDialogStage} onOpenChange={(v) => { if (!v) setAssigneeDialogStage(null); }}>
-        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
-          <DialogTitle className="flex items-center gap-2 text-sm">
-            <Users className="h-4 w-4 text-muted-foreground" />
-            Responsáveis fixos — {assigneeDialogStage ? STAGE_OPTIONS.find(s => s.key === assigneeDialogStage)?.label : ""}
-          </DialogTitle>
-          <p className="text-xs text-muted-foreground">
-            Defina quem será automaticamente atribuído ao avançar uma tarefa para esta etapa, por cliente.
-          </p>
-          <div className="space-y-2 mt-2">
-            {(clientsQ.data ?? []).map(client => {
-              const currentAssignee = assigneeDialogStage ? (editStageAssignees[assigneeDialogStage]?.[client.id]) : undefined;
-              const hasConfig = currentAssignee !== undefined;
-              const member = currentAssignee ? (membersQ.data ?? []).find(m => m.user_id === currentAssignee) : null;
-
-              return (
-                <div key={client.id} className="flex items-center gap-3 rounded-lg border border-border/40 p-2.5">
-                  <span className="text-xs font-medium flex-1 min-w-0 truncate">{client.name}</span>
-                  <Select
-                    value={hasConfig ? (currentAssignee ?? "__none__") : "__unset__"}
-                    onValueChange={(v) => {
-                      if (!assigneeDialogStage) return;
-                      if (v === "__unset__") {
-                        removeClientAssignee(assigneeDialogStage, client.id);
-                      } else if (v === "__none__") {
-                        setClientAssignee(assigneeDialogStage, client.id, null);
-                      } else {
-                        setClientAssignee(assigneeDialogStage, client.id, v);
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="h-8 w-48 text-xs">
-                      <SelectValue placeholder="Sem config" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__unset__" className="text-xs text-muted-foreground">Sem configuração</SelectItem>
-                      <SelectItem value="__none__" className="text-xs text-muted-foreground">Sem pessoa fixa</SelectItem>
-                      {(membersQ.data ?? []).map(m => (
-                        <SelectItem key={m.user_id} value={m.user_id} className="text-xs">
-                          <div className="flex items-center gap-2">
-                            <Avatar className="h-4 w-4">
-                              <AvatarImage src={m.avatar_url ?? undefined} />
-                              <AvatarFallback className="text-[6px]">{initials(m.display_name)}</AvatarFallback>
-                            </Avatar>
-                            {m.display_name}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              );
-            })}
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Flow list */}
       <div className="space-y-3">
@@ -467,7 +398,6 @@ export function PmStageFlowConfig() {
                   const color = getStageCircleColor(stage.key);
                   const dateMode = dates[stage.key];
                   const dateModeLabel = dateMode === "pick" ? "📅 Escolher data" : typeof dateMode === "number" ? `⏱ +${dateMode} dia${dateMode > 1 ? "s" : ""}` : null;
-                  const assigneeCount = Object.keys((flow.stage_assignees ?? {})[stage.key] ?? {}).length;
 
                   return (
                     <div key={stage.key} className="flex items-center gap-2 flex-wrap">
@@ -488,9 +418,6 @@ export function PmStageFlowConfig() {
                       })}
                       {dateModeLabel && (
                         <span className="text-[10px] text-muted-foreground ml-1 bg-muted/50 rounded px-1.5 py-0.5">{dateModeLabel}</span>
-                      )}
-                      {assigneeCount > 0 && (
-                        <span className="text-[10px] text-muted-foreground ml-1 bg-muted/50 rounded px-1.5 py-0.5">👤 {assigneeCount} resp.</span>
                       )}
                       {nexts.length > 1 && (
                         <span className="text-[10px] text-muted-foreground ml-1">(escolha ao concluir)</span>
