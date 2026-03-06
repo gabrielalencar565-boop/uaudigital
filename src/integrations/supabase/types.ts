@@ -1063,6 +1063,7 @@ export type Database = {
           description: string | null
           due_date: string | null
           id: string
+          is_extra_demand: boolean
           parent_task_id: string | null
           priority: Database["public"]["Enums"]["pm_priority"]
           project_id: string | null
@@ -1083,6 +1084,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          is_extra_demand?: boolean
           parent_task_id?: string | null
           priority?: Database["public"]["Enums"]["pm_priority"]
           project_id?: string | null
@@ -1103,6 +1105,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          is_extra_demand?: boolean
           parent_task_id?: string | null
           priority?: Database["public"]["Enums"]["pm_priority"]
           project_id?: string | null
