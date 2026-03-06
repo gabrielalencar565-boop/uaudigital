@@ -85,7 +85,7 @@ export function UauSidebarShell({
         style={{ willChange: "background" }}
       >
         {/* Fixed top bar */}
-        <TopBar onEditProfile={() => setEditProfileOpen(true)} onOpenTask={(id) => setNotifTaskId(id)} />
+        <TopBar onEditProfile={() => setEditProfileOpen(true)} onOpenTask={(id) => setNotifTaskId(id)} onTabChange={onTabChange} isAdmin={isAdmin} />
 
         <Sidebar
           collapsible={isMobile ? "offcanvas" : "none"}
