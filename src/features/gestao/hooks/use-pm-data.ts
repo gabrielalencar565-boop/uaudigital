@@ -91,6 +91,23 @@ export function usePmProjects() {
   });
 }
 
+/** Fetch activity log for a task */
+export function usePmActivityLog(taskId: string | null) {
+  return useQuery<any[]>({
+    queryKey: ["pm_activity_log", taskId],
+    enabled: !!taskId,
+    queryFn: async () => {
+      const { data, error } = await sb
+        .from("pm_activity_log")
+        .select("*")
+        .eq("entity_id", taskId)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
 // ── Mutations ──
 
 export function useCreatePmTask() {
@@ -123,9 +140,9 @@ export function useCreatePmTask() {
       // Activity log
       await sb.from("pm_activity_log").insert({
         entity_type: "task",
-        entity_id: data.id,
+        entity_id: data.parent_task_id ?? data.id,
         action: "created",
-        metadata: { title: data.title, parent_task_id: data.parent_task_id },
+        metadata: { title: data.title, parent_task_id: data.parent_task_id, child_id: data.parent_task_id ? data.id : undefined },
         created_by: user.id,
       });
 
@@ -135,6 +152,7 @@ export function useCreatePmTask() {
       qc.invalidateQueries({ queryKey: ["pm_tasks"] });
       qc.invalidateQueries({ queryKey: ["pm_child_tasks"] });
       qc.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
+      qc.invalidateQueries({ queryKey: ["pm_activity_log"] });
     },
   });
 }
@@ -148,11 +166,13 @@ export function useUpdatePmTask() {
 
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
+        // Log to parent task if this is a child
+        const logEntityId = data.parent_task_id ?? id;
         await sb.from("pm_activity_log").insert({
           entity_type: "task",
-          entity_id: id,
+          entity_id: logEntityId,
           action: "updated",
-          metadata: updates,
+          metadata: { ...updates, task_id: id, title: data.title },
           created_by: user.id,
         });
       }
@@ -175,6 +195,7 @@ export function useUpdatePmTask() {
       qc.invalidateQueries({ queryKey: ["pm_tasks"] });
       qc.invalidateQueries({ queryKey: ["pm_child_tasks"] });
       qc.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
+      qc.invalidateQueries({ queryKey: ["pm_activity_log"] });
     },
   });
 }
@@ -209,15 +230,16 @@ export function useAddPmComment() {
 
       await sb.from("pm_activity_log").insert({
         entity_type: "comment",
-        entity_id: data.id,
+        entity_id: payload.task_id,
         action: "comment_added",
-        metadata: { task_id: payload.task_id },
+        metadata: { task_id: payload.task_id, content: payload.content },
         created_by: user.id,
       });
       return data as PmComment;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pm_comments"] });
+      qc.invalidateQueries({ queryKey: ["pm_activity_log"] });
     },
   });
 }
@@ -249,7 +271,7 @@ export function useUploadPmAttachment() {
 
       await sb.from("pm_activity_log").insert({
         entity_type: "attachment",
-        entity_id: data.id,
+        entity_id: task_id,
         action: "file_added",
         metadata: { task_id, file_name: file.name },
         created_by: user.id,
@@ -258,6 +280,7 @@ export function useUploadPmAttachment() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pm_attachments"] });
+      qc.invalidateQueries({ queryKey: ["pm_activity_log"] });
     },
   });
 }
@@ -267,12 +290,12 @@ export async function checkAndUpdateParentStatus(taskId: string) {
   const { data: task } = await sb.from("pm_tasks").select("parent_task_id").eq("id", taskId).single();
   if (!task?.parent_task_id) return;
 
-  const { data: siblings } = await sb.from("pm_tasks").select("status_global").eq("parent_task_id", task.parent_task_id);
+  const { data: siblings } = await sb.from("pm_tasks").select("stage_current").eq("parent_task_id", task.parent_task_id);
   if (!siblings || siblings.length === 0) return;
 
-  const allDone = siblings.every((s: any) => s.status_global === "concluido");
+  const allDone = siblings.every((s: any) => s.stage_current === "entrega");
   if (allDone) {
-    await sb.from("pm_tasks").update({ status_global: "concluido" }).eq("id", task.parent_task_id);
+    await sb.from("pm_tasks").update({ stage_current: "entrega" }).eq("id", task.parent_task_id);
   }
 }
 

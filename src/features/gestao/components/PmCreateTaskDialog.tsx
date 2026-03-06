@@ -1,35 +1,24 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import {
   User, CalendarDays, Flag, Layers, Tag, Plus, FolderOpen,
-  Upload, FileText, Image as ImageIcon, X, Paperclip, MessageSquare, ListTodo, Circle
+  Upload, FileText, Image as ImageIcon, X, Paperclip, MessageSquare, ListTodo, Circle, Check
 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import { PM_PRIORITIES, PM_STAGES, stageColorClass } from "../pm-constants";
+import { PM_PRIORITIES, PM_ACTIVE_STAGES, getStageCircleColor, stageLabel } from "../pm-constants";
 import { useCreatePmTask } from "../hooks/use-pm-data";
 import { toast } from "sonner";
 
 function initials(n: string) {
   return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
-}
-
-// removed statusBadgeColor - status is now driven by stages
-
-function priorityColor(key: string) {
-  switch (key) {
-    case "urgente": return "text-destructive";
-    case "alta": return "text-yellow-600";
-    case "media": return "text-primary";
-    case "baixa": return "text-muted-foreground";
-    default: return "text-muted-foreground";
-  }
 }
 
 interface Props {
@@ -48,22 +37,39 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, defaultSta
   const [description, setDescription] = useState("");
   const [clientId, setClientId] = useState("");
   const [priority, setPriority] = useState("media");
-  const [stage, setStage] = useState(defaultStatus || "planejamento");
+  const [stage, setStage] = useState(defaultStatus || "captacao");
   const [assigneeId, setAssigneeId] = useState("");
   const [dueDate, setDueDate] = useState("");
   
   const [tagsRaw, setTagsRaw] = useState("");
 
-  // Local subtasks for creation
   const [subtasks, setSubtasks] = useState<string[]>([]);
   const [newSubtask, setNewSubtask] = useState("");
-
-  // Local attachments preview
   const [attachments, setAttachments] = useState<File[]>([]);
+
+  // Auto-prepend [ClientName] when selecting client
+  const handleClientChange = (newClientId: string) => {
+    const oldClient = clients.find(c => c.id === clientId);
+    const newClient = clients.find(c => c.id === newClientId);
+    
+    let cleanTitle = title;
+    // Remove old prefix if present
+    if (oldClient) {
+      const oldPrefix = `[${oldClient.name}] `;
+      if (cleanTitle.startsWith(oldPrefix)) {
+        cleanTitle = cleanTitle.slice(oldPrefix.length);
+      }
+    }
+    
+    setClientId(newClientId);
+    if (newClient) {
+      setTitle(`[${newClient.name}] ${cleanTitle}`);
+    }
+  };
 
   const reset = () => {
     setTitle(""); setDescription(""); setClientId(""); setPriority("media");
-    setStage(defaultStatus || "planejamento"); setAssigneeId("");
+    setStage(defaultStatus || "captacao"); setAssigneeId("");
     setDueDate(""); setTagsRaw("");
     setSubtasks([]); setNewSubtask(""); setAttachments([]);
   };
@@ -83,14 +89,13 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, defaultSta
         useTemplate: false,
       });
 
-      // Create subtasks as child tasks
       if (subtasks.length > 0 && parentTask?.id) {
         for (const subTitle of subtasks) {
           await createTask.mutateAsync({
             client_id: clientId,
             title: subTitle,
             parent_task_id: parentTask.id,
-            stage_current: "planejamento",
+            stage_current: "captacao",
           });
         }
       }
@@ -127,7 +132,7 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, defaultSta
       <DialogContent hideClose className="max-w-[90vw] w-[90vw] max-h-[90vh] h-[90vh] p-0 gap-0 overflow-hidden rounded-xl border-border/50 shadow-2xl flex flex-col">
         <DialogTitle className="sr-only">Criar nova tarefa</DialogTitle>
 
-        {/* ── Header ── */}
+        {/* Header */}
         <div className="px-8 pt-6 pb-4 border-b border-border/30 shrink-0">
           <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
             <FolderOpen className="h-3.5 w-3.5" />
@@ -148,15 +153,29 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, defaultSta
           />
         </div>
 
-        {/* ── Body: main + comments sidebar ── */}
+        {/* Body */}
         <div className="flex flex-1 overflow-hidden min-h-0">
-
-          {/* ── CENTER: scrollable content ── */}
           <div className="flex-1 overflow-y-auto min-h-0">
             <div className="px-8 py-6 space-y-6">
-
               {/* Properties Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-1">
+                <PropertyRow icon={<FolderOpen className="h-3.5 w-3.5" />} label="Cliente *">
+                  <Select value={clientId} onValueChange={handleClientChange}>
+                    <SelectTrigger className="h-7 border-0 bg-transparent shadow-none p-0 w-auto gap-1">
+                      {selectedClient ? (
+                        <span className="text-xs font-medium">{selectedClient.name}</span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Selecione</span>
+                      )}
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clients.map(c => (
+                        <SelectItem key={c.id} value={c.id} className="text-xs">{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </PropertyRow>
+
                 <PropertyRow icon={<User className="h-3.5 w-3.5" />} label="Responsável">
                   <Select value={assigneeId || "__none__"} onValueChange={(v) => setAssigneeId(v === "__none__" ? "" : v)}>
                     <SelectTrigger className="h-7 border-0 bg-transparent shadow-none p-0 w-auto gap-1.5">
@@ -180,7 +199,7 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, defaultSta
                   </Select>
                 </PropertyRow>
 
-                <PropertyRow icon={<Flag className={cn("h-3.5 w-3.5", priorityColor(priority))} />} label="Prioridade">
+                <PropertyRow icon={<Flag className="h-3.5 w-3.5" />} label="Prioridade">
                   <Select value={priority} onValueChange={setPriority}>
                     <SelectTrigger className="h-7 border-0 bg-transparent shadow-none p-0 w-auto gap-1">
                       <SelectValue />
@@ -203,23 +222,28 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, defaultSta
                 </PropertyRow>
 
                 <PropertyRow icon={<Layers className="h-3.5 w-3.5" />} label="Etapa">
-                  <Select value={stage} onValueChange={setStage}>
-                    <SelectTrigger className="h-7 border-0 bg-transparent shadow-none p-0 w-auto gap-1.5">
-                      <Badge className={cn("text-[10px] font-bold px-2 py-0.5 rounded", stageColorClass(stage))}>
-                        <SelectValue />
-                      </Badge>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PM_STAGES.filter(s => !["roteiro", "edicao"].includes(s.key)).map(s => (
-                        <SelectItem key={s.key} value={s.key} className="text-xs">
-                          <div className="flex items-center gap-1.5">
-                            <span className={cn("h-2 w-2 rounded-full", stageColorClass(s.key).split(" ")[0])} />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className="flex items-center gap-2 min-h-[28px] hover:opacity-80 transition">
+                        <StageCircle stageKey={stage} />
+                        <span className="text-xs font-medium">{stageLabel(stage)}</span>
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-48 p-1" align="start">
+                      {PM_ACTIVE_STAGES.map(s => {
+                        const color = getStageCircleColor(s.key);
+                        const isDone = s.key === "entrega";
+                        return (
+                          <button key={s.key} className={cn("flex items-center gap-2 w-full px-2 py-1.5 rounded text-xs hover:bg-accent transition", stage === s.key && "bg-accent")} onClick={() => setStage(s.key)}>
+                            <span className={cn("h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0", color.border, isDone && `${color.bg}`)}>
+                              {isDone && <Check className="h-2.5 w-2.5 text-white" />}
+                            </span>
                             {s.label}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                          </button>
+                        );
+                      })}
+                    </PopoverContent>
+                  </Popover>
                 </PropertyRow>
 
                 <PropertyRow icon={<Tag className="h-3.5 w-3.5" />} label="Tags">
@@ -230,28 +254,11 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, defaultSta
                     className="h-7 text-xs border-0 bg-transparent shadow-none p-0 focus-visible:ring-0 placeholder:text-muted-foreground/30"
                   />
                 </PropertyRow>
-
-                <PropertyRow icon={<FolderOpen className="h-3.5 w-3.5" />} label="Cliente *">
-                  <Select value={clientId} onValueChange={setClientId}>
-                    <SelectTrigger className="h-7 border-0 bg-transparent shadow-none p-0 w-auto gap-1">
-                      {selectedClient ? (
-                        <span className="text-xs font-medium">{selectedClient.name}</span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">Selecione</span>
-                      )}
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clients.map(c => (
-                        <SelectItem key={c.id} value={c.id} className="text-xs">{c.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </PropertyRow>
               </div>
 
               <Separator className="opacity-30" />
 
-              {/* ── Description ── */}
+              {/* Description */}
               <div>
                 <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
                   <FileText className="h-4 w-4 text-muted-foreground" />
@@ -267,7 +274,7 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, defaultSta
 
               <Separator className="opacity-30" />
 
-              {/* ── Subtasks ── */}
+              {/* Subtasks */}
               <div>
                 <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
                   <ListTodo className="h-4 w-4 text-muted-foreground" />
@@ -277,11 +284,6 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, defaultSta
                   )}
                 </h3>
 
-                <p className="text-xs text-muted-foreground mb-3">
-                  As subtarefas serão criadas automaticamente ao salvar. Após criar, clique nelas para editar detalhes.
-                </p>
-
-                {/* Custom subtasks list */}
                 <div className="space-y-1.5 mb-2">
                   {subtasks.map((s, i) => (
                     <div key={i} className="flex items-center gap-2 group rounded-md border border-border/30 bg-card/30 px-3 py-1.5">
@@ -294,7 +296,6 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, defaultSta
                   ))}
                 </div>
 
-                {/* Add subtask input */}
                 <div className="flex items-center gap-2">
                   <Plus className="h-4 w-4 text-muted-foreground shrink-0" />
                   <Input
@@ -312,7 +313,7 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, defaultSta
 
               <Separator className="opacity-30" />
 
-              {/* ── Attachments ── */}
+              {/* Attachments */}
               <div>
                 <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
                   <Paperclip className="h-4 w-4 text-muted-foreground" />
@@ -349,7 +350,7 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, defaultSta
             </div>
           </div>
 
-          {/* ── RIGHT: Comments sidebar ── */}
+          {/* RIGHT: Comments sidebar */}
           <div className="w-80 shrink-0 flex-col bg-card/10 border-l border-border/30 hidden sm:flex">
             <div className="flex items-center gap-2 px-4 py-3 border-b border-border/30 shrink-0">
               <MessageSquare className="h-4 w-4 text-muted-foreground" />
@@ -363,7 +364,7 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, defaultSta
           </div>
         </div>
 
-        {/* ── Footer ── */}
+        {/* Footer */}
         <div className="flex items-center justify-end gap-3 border-t border-border/30 px-8 py-4 bg-card/50 shrink-0">
           <Button variant="ghost" onClick={() => { reset(); onClose(); }} className="text-sm">
             Cancelar
@@ -375,6 +376,16 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, defaultSta
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function StageCircle({ stageKey }: { stageKey: string }) {
+  const color = getStageCircleColor(stageKey);
+  const isDone = stageKey === "entrega";
+  return (
+    <span className={cn("h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0", color.border, isDone && `${color.bg}`)}>
+      {isDone && <Check className="h-2.5 w-2.5 text-white" />}
+    </span>
   );
 }
 

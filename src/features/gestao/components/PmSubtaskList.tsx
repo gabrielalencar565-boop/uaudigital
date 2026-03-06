@@ -5,31 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { PM_STAGES, stageColorClass, stageLabel } from "../pm-constants";
+import { PM_ACTIVE_STAGES, getStageCircleColor, stageLabel } from "../pm-constants";
 import { useUpdatePmTask, useCreatePmTask } from "../hooks/use-pm-data";
 import { PmAssigneeSelector } from "./PmAssigneeSelector";
 import type { PmTask } from "../pm-types";
 
 function initials(n: string) { return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join(""); }
-
-const ACTIVE_STAGES = PM_STAGES.filter(s => !["roteiro", "edicao"].includes(s.key));
-
-// Circle color per stage (solid)
-const CIRCLE_COLOR: Record<string, string> = {
-  planejamento: "border-muted-foreground text-muted-foreground",
-  captacao: "border-emerald-500 text-emerald-500",
-  edicao_videos: "border-primary text-primary",
-  design: "border-emerald-500 text-emerald-500",
-  revisao: "border-amber-500 text-amber-500",
-  pdf: "border-orange-500 text-orange-500",
-  entrega: "border-emerald-500 text-emerald-500 bg-emerald-500",
-  alteracoes: "border-amber-500 text-amber-500",
-  agendamento: "border-violet-500 text-violet-500",
-};
-
-const CIRCLE_BG: Record<string, string> = {
-  entrega: "bg-emerald-500",
-};
 
 interface Props {
   parentTask: PmTask;
@@ -55,7 +36,7 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
       client_id: parentTask.client_id,
       title: newTitle.trim(),
       parent_task_id: parentTask.id,
-      stage_current: "planejamento",
+      stage_current: "captacao",
     });
     setNewTitle("");
     if (result && onSelectSubtask) onSelectSubtask(result as PmTask);
@@ -115,7 +96,7 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
           const isDone = sub.stage_current === "entrega";
           const isActive = activeSubtaskId === sub.id;
           const subAssignees = allAssigneeIds(sub);
-          const circleColor = CIRCLE_COLOR[sub.stage_current] ?? "border-muted-foreground text-muted-foreground";
+          const circleColor = getStageCircleColor(sub.stage_current);
 
           return (
             <div
@@ -133,26 +114,28 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
                   <PopoverTrigger asChild>
                     <button className={cn(
                       "h-5 w-5 rounded-full border-2 flex items-center justify-center transition-all hover:scale-110",
-                      circleColor,
-                      isDone && "bg-emerald-500 border-emerald-500"
+                      circleColor.border,
+                      isDone && `${circleColor.bg} border-emerald-500`
                     )}>
                       {isDone && <Check className="h-3 w-3 text-white" />}
                     </button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-40 p-1" align="start">
-                    {ACTIVE_STAGES.map(s => {
-                      const sColor = CIRCLE_COLOR[s.key] ?? "border-muted-foreground";
+                  <PopoverContent className="w-48 p-1" align="start">
+                    {PM_ACTIVE_STAGES.map(s => {
+                      const sColor = getStageCircleColor(s.key);
                       const isEntrega = s.key === "entrega";
+                      const isSelected = sub.stage_current === s.key;
                       return (
                         <button
                           key={s.key}
-                          className={cn("flex items-center gap-2 w-full px-2 py-1.5 rounded text-xs hover:bg-accent transition", sub.stage_current === s.key && "bg-accent")}
+                          className={cn("flex items-center gap-2 w-full px-2 py-1.5 rounded text-xs hover:bg-accent transition", isSelected && "bg-accent")}
                           onClick={() => changeStage(sub.id, s.key)}
                         >
-                          <span className={cn("h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0", sColor, isEntrega && "bg-emerald-500 border-emerald-500")}>
+                          <span className={cn("h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0", sColor.border, isEntrega && `${sColor.bg}`)}>
                             {isEntrega && <Check className="h-2.5 w-2.5 text-white" />}
                           </span>
                           {s.label}
+                          {isSelected && <Check className="h-3 w-3 ml-auto text-primary" />}
                         </button>
                       );
                     })}
