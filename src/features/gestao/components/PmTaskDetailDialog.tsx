@@ -214,13 +214,13 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
   // Helper: sync completed stage with Magic Number + Performance
   const syncCompletedStage = async (completedStage: string) => {
-    // Only sync root tasks (no parent)
     if (task.parent_task_id) return;
     try {
-      const { data: { user } } = await (await import("@/integrations/supabase/client")).supabase.auth.getUser();
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       syncStage.mutate({ pmTaskId: task.id, completedStage, userId: user.id });
-    } catch (_) { /* ignore sync errors */ }
+    } catch (_) { /* ignore */ }
   };
 
   const handleConcluido = () => {
