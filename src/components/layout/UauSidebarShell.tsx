@@ -61,10 +61,9 @@ export function UauSidebarShell({
   const navItems = useMemo<NavItem[]>(() => {
     const base: NavItem[] = [
       { key: "meu_painel", label: "Meu Painel", icon: UserRound },
+      { key: "gestao", label: "Tarefas", icon: ClipboardList },
       { key: "visao_do_dia", label: "Visão do dia", icon: Eye },
       { key: "magic2", label: "Magic Number", icon: Target },
-      { key: "agenda", label: "Agenda", icon: CalendarDays },
-      { key: "gestao", label: "Tarefas", icon: ClipboardList },
       { key: "desempenho", label: "Desempenho", icon: Trophy },
     ];
 
