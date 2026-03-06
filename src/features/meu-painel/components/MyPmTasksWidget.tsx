@@ -156,7 +156,6 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
           )}
           <span className={cn("h-3 w-3 shrink-0 rounded-full border-2", dotClass)} />
           <span className="min-w-0 truncate text-[13px] font-medium text-foreground">
-            {clientName && <span className="text-muted-foreground">[{clientName.toUpperCase()}]</span>}{" "}
             {t.title}
           </span>
           {t.description && (
