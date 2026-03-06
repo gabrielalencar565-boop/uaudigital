@@ -323,7 +323,44 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
               membersMap={membersMap}
               members={members}
               onToggle={toggleAssignee}
-            />
+            >
+              <button className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 transition min-h-[28px] flex-wrap">
+                {allAssigneeIds.length > 0 ? allAssigneeIds.map(id => {
+                  const m = membersMap[id];
+                  if (!m) return null;
+                  return (
+                    <span key={id} className="flex items-center gap-1.5 bg-primary/10 rounded-full pl-0.5 pr-2.5 py-0.5">
+                      <Avatar className="h-5 w-5 border border-background">
+                        <AvatarImage src={m.avatar} />
+                        <AvatarFallback className="text-[7px] bg-primary/20 text-primary">{initials(m.name)}</AvatarFallback>
+                      </Avatar>
+                      <span className="text-xs font-medium">{m.name.split(" ")[0]}</span>
+                    </span>
+                  );
+                }) : (
+                  <span className="text-xs text-muted-foreground">Selecionar...</span>
+                )}
+              </button>
+            </PmAssigneeSelector>
+          </PropertyRow>
+
+          {/* Client */}
+          <PropertyRow icon={<User className="h-3.5 w-3.5" />} label="Cliente">
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="text-xs min-h-[28px] hover:opacity-80 transition">
+                  {clientsMap[task.client_id] ?? "—"}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-56 p-1 max-h-64 overflow-y-auto" align="start">
+                {Object.entries(clientsMap).map(([cid, cname]) => (
+                  <button key={cid} className={cn("flex items-center gap-2 w-full px-3 py-2 rounded text-sm hover:bg-accent transition text-left", task.client_id === cid && "bg-accent")} onClick={() => updateTask.mutate({ id: task.id, client_id: cid })}>
+                    {cname}
+                    {task.client_id === cid && <Check className="h-3 w-3 ml-auto text-primary" />}
+                  </button>
+                ))}
+              </PopoverContent>
+            </Popover>
           </PropertyRow>
 
           <PropertyRow icon={<CalendarDays className="h-3.5 w-3.5" />} label="Entrega">

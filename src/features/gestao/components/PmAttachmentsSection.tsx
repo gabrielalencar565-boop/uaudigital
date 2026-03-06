@@ -1,13 +1,18 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useCallback } from "react";
 import { format } from "date-fns";
-import { Upload, FileText, Download, MoreHorizontal, Pencil, Link2, Trash2, ImagePlus } from "lucide-react";
+import { Upload, FileText, Download, MoreHorizontal, Link2, ImagePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUploadPmAttachment } from "../hooks/use-pm-data";
 import type { PmAttachment } from "../pm-types";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { PmImageViewer } from "./PmImageViewer";
+
+function initials(n: string) {
+  return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
+}
 
 interface Props {
   taskId: string;
@@ -22,10 +27,9 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
   const upload = useUploadPmAttachment();
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
+  const [dragging, setDragging] = useState(false);
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const doUpload = useCallback(async (file: File) => {
     if (file.size > 20 * 1024 * 1024) { toast.error("Arquivo muito grande (máx 20MB)"); return; }
     try {
       await upload.mutateAsync({ task_id: taskId, file });
@@ -33,7 +37,30 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
     } catch (err: any) {
       toast.error(err?.message ?? "Erro ao enviar arquivo");
     }
+  }, [taskId, upload]);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    for (const file of Array.from(files)) {
+      await doUpload(file);
+    }
     if (fileRef.current) fileRef.current.value = "";
+  };
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragging(false);
+    const files = e.dataTransfer.files;
+    for (const file of Array.from(files)) {
+      await doUpload(file);
+    }
+  }, [doUpload]);
+
+  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setDragging(true); };
+  const handleDragLeave = (e: React.DragEvent) => {
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+    setDragging(false);
   };
 
   const isImage = (type: string | null) => type?.startsWith("image/");
@@ -51,35 +78,48 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
   };
 
   return (
-    <div className="space-y-3">
+    <div
+      className="space-y-3"
+      onDrop={handleDrop}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+    >
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium">Anexos ({attachments.length})</span>
         <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={upload.isPending}>
           <Upload className="mr-1 h-3 w-3" /> Upload
         </Button>
-        <input ref={fileRef} type="file" className="hidden" onChange={handleUpload} />
+        <input ref={fileRef} type="file" multiple className="hidden" onChange={handleUpload} />
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
+      {/* Drop zone overlay */}
+      {dragging && (
+        <div className="flex items-center justify-center rounded-lg border-2 border-dashed border-primary/50 bg-primary/5 py-8 transition-all">
+          <p className="text-sm text-primary font-medium">Solte os arquivos aqui</p>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-3">
         {attachments.map((att) => {
           const isCover = currentCoverUrl === att.public_url;
           const isImg = isImage(att.file_type);
+          const uploader = membersMap[att.uploaded_by];
 
           return (
             <div key={att.id} className={cn(
-              "relative group rounded-lg border overflow-hidden bg-card/30",
+              "relative group rounded-xl border overflow-hidden bg-card/30",
               isCover ? "border-primary/50 ring-1 ring-primary/30" : "border-border/40"
             )}>
               {/* Thumbnail / Icon area */}
               {isImg && att.public_url ? (
                 <div
-                  className="w-full h-32 cursor-pointer overflow-hidden bg-muted"
+                  className="w-full aspect-[4/3] cursor-pointer overflow-hidden bg-muted"
                   onClick={() => openViewer(att)}
                 >
                   <img src={att.public_url} alt={att.file_name} className="w-full h-full object-cover transition group-hover:scale-105" />
                 </div>
               ) : (
-                <div className="w-full h-32 flex items-center justify-center bg-muted/50">
+                <div className="w-full aspect-[4/3] flex items-center justify-center bg-muted/50">
                   <FileText className="h-10 w-10 text-muted-foreground/40" />
                 </div>
               )}
@@ -125,10 +165,13 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
                     {format(new Date(att.created_at), "MMM dd 'às' HH:mm")}
                   </p>
                 </div>
-                {membersMap[att.uploaded_by] && (
-                  <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center text-[7px] font-bold text-primary shrink-0">
-                    {membersMap[att.uploaded_by].name.split(" ").slice(0, 2).map(p => p[0]?.toUpperCase()).join("")}
-                  </div>
+                {uploader && (
+                  <Avatar className="h-6 w-6 shrink-0 border border-background">
+                    <AvatarImage src={uploader.avatar} />
+                    <AvatarFallback className="text-[8px] bg-primary/10 text-primary">
+                      {initials(uploader.name)}
+                    </AvatarFallback>
+                  </Avatar>
                 )}
               </div>
             </div>
@@ -136,9 +179,16 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
         })}
       </div>
 
-      {attachments.length === 0 && <p className="text-xs text-muted-foreground">Nenhum anexo.</p>}
+      {attachments.length === 0 && !dragging && (
+        <div
+          className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border/40 py-8 cursor-pointer hover:border-primary/30 transition"
+          onClick={() => fileRef.current?.click()}
+        >
+          <Upload className="h-6 w-6 text-muted-foreground/40 mb-2" />
+          <p className="text-xs text-muted-foreground">Arraste ou clique para anexar</p>
+        </div>
+      )}
 
-      {/* Fullscreen image viewer */}
       <PmImageViewer
         open={viewerOpen}
         onClose={() => setViewerOpen(false)}

@@ -32,14 +32,13 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
 
   const handleAdd = async () => {
     if (!newTitle.trim()) return;
-    const result = await createTask.mutateAsync({
+    await createTask.mutateAsync({
       client_id: parentTask.client_id,
       title: newTitle.trim(),
       parent_task_id: parentTask.id,
       stage_current: "captacao",
     });
     setNewTitle("");
-    if (result && onSelectSubtask) onSelectSubtask(result as PmTask);
   };
 
   const toggleAssignee = (subId: string, sub: PmTask, memberId: string) => {
