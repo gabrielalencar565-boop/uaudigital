@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { priorityMeta, stageLabel } from "../pm-constants";
+import { priorityMeta, stageLabel, stageColorClass, tagColor } from "../pm-constants";
 import { useUpdatePmTask, useDeletePmTask, useCreatePmTask } from "../hooks/use-pm-data";
 import type { PmTask } from "../pm-types";
 import { toast } from "sonner";
@@ -123,18 +123,22 @@ export function PmTaskCard({ task, clientName, assigneeName, assigneeAvatar, chi
             )}
             <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
               <span className="truncate">{clientName}</span>
-              <span className="text-border">•</span>
-              <span className="px-1.5 py-0.5 rounded bg-accent/50 text-[10px] font-medium text-accent-foreground">
-                {stageLabel(task.stage_current)}
-              </span>
+               <span className="text-border">•</span>
+               <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-medium", stageColorClass(task.stage_current))}>
+                 {stageLabel(task.stage_current)}
+               </span>
             </div>
             {task.tags.length > 0 && (
               <div className="flex flex-wrap gap-1">
-                {task.tags.slice(0, 3).map((tag) => (
-                  <span key={tag} className="inline-block rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary">
-                    {tag}
-                  </span>
-                ))}
+                {task.tags.slice(0, 3).map((tag) => {
+                  const tc = tagColor(tag);
+                  return (
+                    <span key={tag} className={cn("inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-medium", tc.bg, tc.text)}>
+                      <span className={cn("h-1 w-1 rounded-full", tc.dot)} />
+                      {tag}
+                    </span>
+                  );
+                })}
               </div>
             )}
             {total > 0 && (

@@ -1488,6 +1488,10 @@ export type Database = {
         | "design"
         | "revisao"
         | "entrega"
+        | "edicao_videos"
+        | "pdf"
+        | "alteracoes"
+        | "agendamento"
       pm_status:
         | "backlog"
         | "em_andamento"
@@ -1668,6 +1672,10 @@ export const Constants = {
         "design",
         "revisao",
         "entrega",
+        "edicao_videos",
+        "pdf",
+        "alteracoes",
+        "agendamento",
       ],
       pm_status: [
         "backlog",
