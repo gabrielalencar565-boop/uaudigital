@@ -1,10 +1,11 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import {
   Bold, Italic, Underline, Strikethrough, Code,
-  List, ListOrdered, Heading2, AlignLeft, AlignCenter, AlignRight,
-  ChevronDown, ChevronUp, FileText, Type
+  List, ListOrdered, Heading1, Heading2, Heading3, Heading4, AlignLeft,
+  ChevronDown, ChevronUp, FileText, Type, Check
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -14,11 +15,19 @@ interface Props {
   onCancel: () => void;
 }
 
+const HEADING_OPTIONS = [
+  { tag: "p", label: "Texto", icon: Type, shortcut: "" },
+  { tag: "h1", label: "Cabeçalho 1", icon: Heading1, shortcut: "" },
+  { tag: "h2", label: "Cabeçalho 2", icon: Heading2, shortcut: "" },
+  { tag: "h3", label: "Cabeçalho 3", icon: Heading3, shortcut: "" },
+  { tag: "h4", label: "Cabeçalho 4", icon: Heading4, shortcut: "" },
+];
+
 const TOOLBAR_ITEMS = [
   { cmd: "insertUnorderedList", icon: List, label: "Lista" },
   { cmd: "insertOrderedList", icon: ListOrdered, label: "Lista numerada" },
   { divider: true },
-  { cmd: "formatBlock_H2", icon: Heading2, label: "Título" },
+  { cmd: "heading_dropdown", icon: Heading2, label: "Cabeçalho" },
   { divider: true },
   { cmd: "bold", icon: Bold, label: "Negrito" },
   { cmd: "italic", icon: Italic, label: "Itálico" },
