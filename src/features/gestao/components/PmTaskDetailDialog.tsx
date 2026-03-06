@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import {
-  CalendarDays, User, Flag, X, ChevronRight, ArrowLeft,
-  Layers, Tag, MessageSquare, Plus, Check, CheckCircle2, RotateCcw
+  Calendar, UserCircle, Flag, X, ChevronRight, ArrowLeft,
+  Layers, Tag, MessageSquare, Plus, Check, CheckCircle2, RotateCcw, Paperclip, ListTodo, FileText
 } from "lucide-react";
 import { addDays, format } from "date-fns";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -99,11 +99,11 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
-      <DialogContent hideClose className="max-w-[90vw] w-[90vw] max-h-[90vh] h-[90vh] p-0 gap-0 overflow-hidden flex flex-col rounded-xl border-border/50 shadow-2xl">
+      <DialogContent hideClose className="max-w-[90vw] w-[90vw] max-h-[90vh] h-[90vh] p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border-border/30 shadow-2xl">
 
         {/* Breadcrumb bar */}
-        <div className="flex items-center gap-1.5 border-b border-border/40 px-5 py-2 bg-card/50 shrink-0">
-          <Button variant="ghost" size="icon" className={cn("h-7 w-7 shrink-0", sidebarOpen && "bg-primary/10 text-primary")} onClick={() => setSidebarOpen(!sidebarOpen)} title="Sidebar de subtarefas">
+        <div className="flex items-center gap-1.5 border-b border-border/20 px-5 py-2.5 bg-card/60 backdrop-blur-sm shrink-0">
+          <Button variant="ghost" size="icon" className={cn("h-7 w-7 shrink-0 rounded-lg", sidebarOpen && "bg-primary/10 text-primary")} onClick={() => setSidebarOpen(!sidebarOpen)} title="Sidebar de subtarefas">
             <Layers className="h-4 w-4" />
           </Button>
           {isSubtaskView && (
@@ -119,7 +119,7 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
             </span>
           ))}
           <div className="flex-1" />
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleClose}><X className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg" onClick={handleClose}><X className="h-4 w-4" /></Button>
         </div>
 
         {/* Main content */}
@@ -388,7 +388,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         {/* Properties grid */}
         <div className="grid grid-cols-2 gap-x-8 gap-y-2">
           {/* Assignee */}
-          <PropertyRow icon={<User className="h-3.5 w-3.5" />} label="Responsável">
+          <PropertyRow icon={<UserCircle className="h-3.5 w-3.5" />} label="Responsável">
             <PmAssigneeSelector
               selectedIds={allAssigneeIds}
               membersMap={membersMap}
@@ -416,7 +416,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           </PropertyRow>
 
           {/* Client */}
-          <PropertyRow icon={<User className="h-3.5 w-3.5" />} label="Cliente">
+          <PropertyRow icon={<UserCircle className="h-3.5 w-3.5" />} label="Cliente">
             <Popover>
               <PopoverTrigger asChild>
                 <button className="text-xs min-h-[28px] hover:opacity-80 transition">
@@ -440,7 +440,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
             </Popover>
           </PropertyRow>
 
-          <PropertyRow icon={<CalendarDays className="h-3.5 w-3.5" />} label="Entrega">
+          <PropertyRow icon={<Calendar className="h-3.5 w-3.5" />} label="Entrega">
             <Input type="date" value={task.due_date ?? ""} onChange={(e) => updateTask.mutate({ id: task.id, due_date: e.target.value || null })} className="h-7 w-36 text-xs border-0 bg-transparent shadow-none p-0" />
           </PropertyRow>
 
@@ -673,8 +673,8 @@ function StageCircleInline({ stageKey }: { stageKey: string }) {
 
 function PropertyRow({ icon, label, children }: { icon: React.ReactNode; label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-2 py-1.5 min-h-[36px]">
-      <div className="flex items-center gap-1.5 w-28 shrink-0 text-muted-foreground">{icon}<span className="text-xs">{label}</span></div>
+    <div className="flex items-center gap-2 py-2 min-h-[40px] rounded-lg hover:bg-muted/30 transition px-2 -mx-2">
+      <div className="flex items-center gap-2 w-28 shrink-0 text-muted-foreground/70">{icon}<span className="text-xs font-medium">{label}</span></div>
       <div className="flex-1 min-w-0">{children}</div>
     </div>
   );

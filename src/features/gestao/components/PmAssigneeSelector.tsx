@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search } from "lucide-react";
+import { Search, Check } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -51,20 +51,20 @@ export function PmAssigneeSelector({ selectedIds, membersMap, members, onToggle,
           </button>
         )}
       </PopoverTrigger>
-      <PopoverContent className="w-72 p-0" align="start">
-        <div className="p-2 border-b border-border/30">
+      <PopoverContent className="w-72 p-0 rounded-xl" align="start" side="bottom" sideOffset={4}>
+        <div className="p-2.5 border-b border-border/20">
           <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Busque ou insira o e-mail..."
-              className="h-8 pl-8 text-xs bg-muted/50 border-0"
+              placeholder="Buscar membro..."
+              className="h-9 pl-9 text-xs bg-muted/40 border-border/20 rounded-lg"
             />
           </div>
         </div>
-        <div className="py-1 max-h-64 overflow-y-auto">
-          <p className="px-3 py-1.5 text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Responsáveis</p>
+        <div className="py-1 max-h-[320px] overflow-y-auto">
+          <p className="px-3 py-2 text-[10px] text-muted-foreground/60 uppercase tracking-wider font-bold">Membros da equipe</p>
           {filtered.map(m => {
             const isSelected = selectedIds.includes(m.id);
             const memberInfo = membersMap[m.id];
@@ -72,24 +72,26 @@ export function PmAssigneeSelector({ selectedIds, membersMap, members, onToggle,
               <button
                 key={m.id}
                 className={cn(
-                  "flex items-center gap-3 w-full px-3 py-2 text-sm hover:bg-accent transition text-left",
-                  isSelected && "bg-accent/50"
+                  "flex items-center gap-3 w-full px-3 py-2.5 text-sm hover:bg-muted/50 transition text-left rounded-lg mx-0",
+                  isSelected && "bg-primary/8"
                 )}
                 onClick={() => onToggle(m.id)}
               >
-                <Avatar className="h-7 w-7 shrink-0">
+                <Avatar className="h-8 w-8 shrink-0 ring-2 ring-background">
                   <AvatarImage src={memberInfo?.avatar} />
-                  <AvatarFallback className="text-[9px] bg-primary/20 text-primary">{initials(m.name)}</AvatarFallback>
+                  <AvatarFallback className="text-[9px] font-bold bg-primary/15 text-primary">{initials(m.name)}</AvatarFallback>
                 </Avatar>
-                <span className="flex-1 truncate">{m.name}</span>
+                <span className="flex-1 truncate font-medium">{m.name}</span>
                 {isSelected && (
-                  <span className="h-2 w-2 rounded-full bg-primary shrink-0" />
+                  <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center shrink-0">
+                    <Check className="h-3 w-3 text-primary-foreground" />
+                  </div>
                 )}
               </button>
             );
           })}
           {filtered.length === 0 && (
-            <p className="text-xs text-muted-foreground text-center py-4">Nenhum membro encontrado</p>
+            <p className="text-xs text-muted-foreground/50 text-center py-6">Nenhum membro encontrado</p>
           )}
         </div>
       </PopoverContent>
