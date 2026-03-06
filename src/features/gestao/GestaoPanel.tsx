@@ -70,14 +70,13 @@ export function GestaoPanel() {
     return (defaultFlow?.stage_assignees ?? {}) as StageAssignees;
   }, [flowsQ.data]);
 
-  // Get client IDs where the filtered assignee is a fixed assignee in any stage
+  // Get client IDs where the filtered assignee is the fixed PLANEJAMENTO assignee only
   const fixedAssigneeClientIds = useMemo(() => {
     if (filterAssignee === "__all__") return new Set<string>();
     const clientIds = new Set<string>();
-    for (const stageKey of Object.keys(stageAssignees)) {
-      const stageMap = stageAssignees[stageKey];
-      if (!stageMap) continue;
-      for (const [clientId, userId] of Object.entries(stageMap)) {
+    const planejamentoMap = stageAssignees["planejamento"];
+    if (planejamentoMap) {
+      for (const [clientId, userId] of Object.entries(planejamentoMap)) {
         if (userId === filterAssignee) clientIds.add(clientId);
       }
     }
