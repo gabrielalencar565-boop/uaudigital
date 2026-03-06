@@ -72,6 +72,14 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
     return childTasksQ.data?.find(t => t.id === lastId) ?? null;
   }, [resolvedRootTask, taskStack, rootChildTasksQ.data, childTasksQ.data]);
 
+  // Collect all unique tags from all tasks
+  const allTags = useMemo(() => {
+    const tagSet = new Set<string>();
+    (tasksQ.data ?? []).forEach(t => (t.tags ?? []).forEach((tag: string) => tagSet.add(tag)));
+    (rootChildTasksQ.data ?? []).forEach(t => (t.tags ?? []).forEach((tag: string) => tagSet.add(tag)));
+    return Array.from(tagSet);
+  }, [tasksQ.data, rootChildTasksQ.data]);
+
   if (!task || !currentTask || !resolvedRootTask) return null;
 
   const childTasks = childTasksQ.data ?? [];
@@ -148,7 +156,7 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
 
           {/* CENTER: Task detail */}
           <div className="flex-1 overflow-y-auto min-h-0">
-            <TaskContentView task={currentTask} childTasks={childTasks} attachments={attachments} membersMap={membersMap} members={members} isAdmin={isAdmin} onSelectSubtask={handleSelectSubtask} activeSubtaskId={null} onClose={handleClose} clientsMap={clientsMap} />
+            <TaskContentView task={currentTask} childTasks={childTasks} attachments={attachments} membersMap={membersMap} members={members} isAdmin={isAdmin} onSelectSubtask={handleSelectSubtask} activeSubtaskId={null} onClose={handleClose} clientsMap={clientsMap} allTags={allTags} />
           </div>
 
           {/* RIGHT: Comments sidebar */}
@@ -181,11 +189,11 @@ function StageCircle({ stageKey, size = "md" }: { stageKey: string; size?: "xs" 
 
 // ─── Task Content View ───
 
-function TaskContentView({ task, childTasks, attachments, membersMap, members, isAdmin, onSelectSubtask, activeSubtaskId, onClose, clientsMap }: {
+function TaskContentView({ task, childTasks, attachments, membersMap, members, isAdmin, onSelectSubtask, activeSubtaskId, onClose, clientsMap, allTags }: {
   task: PmTask; childTasks: PmTask[]; attachments: any[];
   membersMap: Record<string, { name: string; avatar?: string }>; members: { id: string; name: string }[];
   isAdmin: boolean; onSelectSubtask: (sub: PmTask) => void; activeSubtaskId: string | null;
-  onClose: () => void; clientsMap: Record<string, string>;
+  onClose: () => void; clientsMap: Record<string, string>; allTags: string[];
 }) {
   const updateTask = useUpdatePmTask();
   const syncStage = usePmSyncStageCompletion();
@@ -297,6 +305,12 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     setNewTagName("");
   };
   const removeTag = (tag: string) => { updateTask.mutate({ id: task.id, tags: (task.tags ?? []).filter(t => t !== tag) } as any); };
+  const toggleGlobalTag = (tag: string) => {
+    const existing = task.tags ?? [];
+    if (!existing.includes(tag)) {
+      updateTask.mutate({ id: task.id, tags: [...existing, tag] } as any);
+    }
+  };
 
   return (
     <div className="space-y-0">
@@ -355,7 +369,14 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
               </PopoverTrigger>
               <PopoverContent className="w-56 p-1 max-h-64 overflow-y-auto" align="start">
                 {Object.entries(clientsMap).map(([cid, cname]) => (
-                  <button key={cid} className={cn("flex items-center gap-2 w-full px-3 py-2 rounded text-sm hover:bg-accent transition text-left", task.client_id === cid && "bg-accent")} onClick={() => updateTask.mutate({ id: task.id, client_id: cid })}>
+                  <button key={cid} className={cn("flex items-center gap-2 w-full px-3 py-2 rounded text-sm hover:bg-accent transition text-left", task.client_id === cid && "bg-accent")} onClick={() => {
+                    // Update client and auto-update title prefix
+                    const oldClientName = clientsMap[task.client_id];
+                    const newTitle = oldClientName && task.title.startsWith(`[${oldClientName}]`)
+                      ? `[${cname}]${task.title.slice(oldClientName.length + 2)}`
+                      : task.title;
+                    updateTask.mutate({ id: task.id, client_id: cid, title: newTitle });
+                  }}>
                     {cname}
                     {task.client_id === cid && <Check className="h-3 w-3 ml-auto text-primary" />}
                   </button>
@@ -444,25 +465,30 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                       ))}
                     </div>
                   )}
-                  {newTagName.trim() && (
+                  {newTagName.trim() && !allTags.some(t => parseTag(t).name.toLowerCase() === newTagName.trim().toLowerCase()) && (
                     <Button size="sm" className="mt-2 h-7 text-xs w-full" onClick={addTag}>
                       <Plus className="h-3 w-3 mr-1" /> Criar "{newTagName.trim()}"
                     </Button>
                   )}
                 </div>
-                {(task.tags ?? []).length > 0 && (
+                {/* Global tags list - toggle on/off */}
+                {allTags.length > 0 && (
                   <div className="p-2 space-y-0.5">
-                    {(task.tags ?? []).map(rawTag => {
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold px-2 py-1">Etiquetas disponíveis</p>
+                    {allTags
+                      .filter(t => !newTagName.trim() || parseTag(t).name.toLowerCase().includes(newTagName.trim().toLowerCase()))
+                      .map(rawTag => {
                       const tc = tagColor(rawTag);
                       const name = tagDisplay(rawTag);
+                      const isActive = (task.tags ?? []).includes(rawTag);
                       return (
-                        <div key={rawTag} className="flex items-center justify-between group px-2 py-1.5 rounded hover:bg-accent/50 transition">
-                          <div className="flex items-center gap-2">
-                            <span className={cn("h-3 w-3 rounded", tc.dot)} />
-                            <span className="text-xs">{name}</span>
-                          </div>
-                          <button onClick={() => removeTag(rawTag)} className="opacity-0 group-hover:opacity-100 transition"><X className="h-3 w-3 text-muted-foreground hover:text-destructive" /></button>
-                        </div>
+                        <button key={rawTag} className={cn("flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-accent/50 transition text-left", isActive && "bg-accent/30")} onClick={() => {
+                          if (isActive) { removeTag(rawTag); } else { toggleGlobalTag(rawTag); }
+                        }}>
+                          <span className={cn("h-3 w-3 rounded shrink-0", tc.dot)} />
+                          <span className="text-xs flex-1">{name}</span>
+                          {isActive && <Check className="h-3 w-3 text-primary shrink-0" />}
+                        </button>
                       );
                     })}
                   </div>

@@ -99,7 +99,7 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-2">
         {attachments.map((att) => {
           const isCover = currentCoverUrl === att.public_url;
           const isImg = isImage(att.file_type);
@@ -107,19 +107,19 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
 
           return (
             <div key={att.id} className={cn(
-              "relative group rounded-xl border overflow-hidden bg-card/30",
+              "relative group rounded-lg border overflow-hidden bg-card/30",
               isCover ? "border-primary/50 ring-1 ring-primary/30" : "border-border/40"
             )}>
               {/* Thumbnail / Icon area */}
               {isImg && att.public_url ? (
                 <div
-                  className="w-full aspect-[4/3] cursor-pointer overflow-hidden bg-muted"
+                  className="w-full aspect-square cursor-pointer overflow-hidden bg-muted"
                   onClick={() => openViewer(att)}
                 >
                   <img src={att.public_url} alt={att.file_name} className="w-full h-full object-cover transition group-hover:scale-105" />
                 </div>
               ) : (
-                <div className="w-full aspect-[4/3] flex items-center justify-center bg-muted/50">
+                <div className="w-full aspect-square flex items-center justify-center bg-muted/50">
                   <FileText className="h-10 w-10 text-muted-foreground/40" />
                 </div>
               )}
