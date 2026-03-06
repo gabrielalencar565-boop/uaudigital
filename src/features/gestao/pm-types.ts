@@ -19,6 +19,11 @@ export interface PmTask {
   cover_url: string | null;
   is_extra_demand: boolean;
   is_draft?: boolean;
+  // Cronograma (posting schedule) fields
+  post_type: string | null;
+  posting_date: string | null;
+  posting_time: string | null;
+  caption: string | null;
 }
 
 export interface PmSubtask {

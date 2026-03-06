@@ -1062,6 +1062,7 @@ export type Database = {
       pm_tasks: {
         Row: {
           assignee_id: string | null
+          caption: string | null
           client_id: string
           cover_url: string | null
           created_at: string
@@ -1072,6 +1073,9 @@ export type Database = {
           is_draft: boolean
           is_extra_demand: boolean
           parent_task_id: string | null
+          post_type: string | null
+          posting_date: string | null
+          posting_time: string | null
           priority: Database["public"]["Enums"]["pm_priority"]
           project_id: string | null
           stage_current: Database["public"]["Enums"]["pm_stage"]
@@ -1084,6 +1088,7 @@ export type Database = {
         }
         Insert: {
           assignee_id?: string | null
+          caption?: string | null
           client_id: string
           cover_url?: string | null
           created_at?: string
@@ -1094,6 +1099,9 @@ export type Database = {
           is_draft?: boolean
           is_extra_demand?: boolean
           parent_task_id?: string | null
+          post_type?: string | null
+          posting_date?: string | null
+          posting_time?: string | null
           priority?: Database["public"]["Enums"]["pm_priority"]
           project_id?: string | null
           stage_current?: Database["public"]["Enums"]["pm_stage"]
@@ -1106,6 +1114,7 @@ export type Database = {
         }
         Update: {
           assignee_id?: string | null
+          caption?: string | null
           client_id?: string
           cover_url?: string | null
           created_at?: string
@@ -1116,6 +1125,9 @@ export type Database = {
           is_draft?: boolean
           is_extra_demand?: boolean
           parent_task_id?: string | null
+          post_type?: string | null
+          posting_date?: string | null
+          posting_time?: string | null
           priority?: Database["public"]["Enums"]["pm_priority"]
           project_id?: string | null
           stage_current?: Database["public"]["Enums"]["pm_stage"]

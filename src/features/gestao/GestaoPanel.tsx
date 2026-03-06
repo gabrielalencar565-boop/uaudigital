@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Plus, Search, LayoutGrid, CalendarDays, FolderOpen, Settings2, CheckCircle2, FileSpreadsheet, Trash2, Users, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Search, LayoutGrid, CalendarDays, FolderOpen, Settings2, CheckCircle2, FileSpreadsheet, Trash2, Users, ChevronLeft, ChevronRight, CalendarRange } from "lucide-react";
 import { addDays, addMonths, subMonths, endOfMonth, format, startOfMonth, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -46,7 +46,7 @@ export function GestaoPanel() {
   const { user } = useSession();
   const { isAdmin } = useRole(user?.id);
 
-  const [view, setView] = useState<"kanban" | "agenda" | "clientes" | "pauta" | "fluxo" | "responsaveis">("kanban");
+  const [view, setView] = useState<"kanban" | "agenda" | "clientes" | "pauta" | "cronograma" | "fluxo" | "responsaveis">("kanban");
   const [search, setSearch] = useState("");
   const [filterClient, setFilterClient] = useState("__all__");
   const [filterAssignee, setFilterAssignee] = useState(user?.id ?? "__all__");
@@ -210,6 +210,9 @@ export function GestaoPanel() {
           <TabsTrigger value="pauta" className="gap-1.5 text-xs h-8 rounded-lg data-[state=active]:shadow-sm">
             <FileSpreadsheet className="h-3.5 w-3.5" /> Montagem de Pauta
           </TabsTrigger>
+          <TabsTrigger value="cronograma" className="gap-1.5 text-xs h-8 rounded-lg data-[state=active]:shadow-sm">
+            <CalendarRange className="h-3.5 w-3.5" /> Cronograma
+          </TabsTrigger>
           <TabsTrigger value="fluxo" className="gap-1.5 text-xs h-8 rounded-lg data-[state=active]:shadow-sm">
             <Settings2 className="h-3.5 w-3.5" /> Fluxo
           </TabsTrigger>
@@ -264,6 +267,16 @@ export function GestaoPanel() {
             members={membersList}
             clients={(clientsQ.data ?? []).map(c => ({ id: c.id, name: c.name }))}
             isAdmin={isAdmin}
+            onTaskClick={(t) => setSelectedTaskId(t.id)}
+          />
+        </TabsContent>
+
+        <TabsContent value="cronograma" className="mt-4">
+          <CronogramaGlobalView
+            tasks={tasks}
+            childTasksMap={childTasksMap}
+            clientsMap={clientsMap}
+            membersMap={membersMap}
             onTaskClick={(t) => setSelectedTaskId(t.id)}
           />
         </TabsContent>
@@ -521,6 +534,56 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+// ─── Cronograma Global View ───
+import { PmCronogramaTab } from "./components/PmCronogramaTab";
+
+function CronogramaGlobalView({ tasks, childTasksMap, clientsMap, membersMap, onTaskClick }: {
+  tasks: PmTask[];
+  childTasksMap: Record<string, PmTask[]>;
+  clientsMap: Record<string, string>;
+  membersMap: Record<string, { name: string; avatar?: string }>;
+  onTaskClick: (t: PmTask) => void;
+}) {
+  // Show all parent tasks that have child tasks with posting_date
+  const tasksWithSchedule = useMemo(() => {
+    return tasks.filter(t => {
+      const children = childTasksMap[t.id] ?? [];
+      return children.some(c => (c as any).posting_date);
+    });
+  }, [tasks, childTasksMap]);
+
+  if (tasksWithSchedule.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <CalendarRange className="h-12 w-12 text-muted-foreground/30 mb-4" />
+        <h3 className="text-sm font-semibold mb-1">Nenhum cronograma encontrado</h3>
+        <p className="text-xs text-muted-foreground max-w-sm">
+          Para criar um cronograma, abra uma tarefa, adicione subtarefas e preencha os dados de postagem (tipo, data, horário e legenda).
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      {tasksWithSchedule.map(task => (
+        <div key={task.id} className="space-y-2">
+          <div className="flex items-center gap-2 cursor-pointer hover:opacity-80" onClick={() => onTaskClick(task)}>
+            <Badge className="text-[10px] bg-primary/10 text-primary border-0">{clientsMap[task.client_id] ?? "—"}</Badge>
+            <h3 className="text-sm font-bold">{task.title}</h3>
+          </div>
+          <PmCronogramaTab
+            parentTask={task}
+            childTasks={childTasksMap[task.id] ?? []}
+            clientName={clientsMap[task.client_id] ?? ""}
+            membersMap={membersMap}
+          />
+        </div>
+      ))}
     </div>
   );
 }
