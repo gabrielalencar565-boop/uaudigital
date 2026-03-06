@@ -99,11 +99,11 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
-      <DialogContent hideClose className="max-w-[90vw] w-[90vw] max-h-[90vh] h-[90vh] p-0 gap-0 overflow-hidden flex flex-col rounded-xl border-border/50 shadow-2xl">
+      <DialogContent hideClose className="max-w-[90vw] w-[90vw] max-h-[90vh] h-[90vh] p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border-border/30 shadow-2xl">
 
         {/* Breadcrumb bar */}
-        <div className="flex items-center gap-1.5 border-b border-border/40 px-5 py-2 bg-card/50 shrink-0">
-          <Button variant="ghost" size="icon" className={cn("h-7 w-7 shrink-0", sidebarOpen && "bg-primary/10 text-primary")} onClick={() => setSidebarOpen(!sidebarOpen)} title="Sidebar de subtarefas">
+        <div className="flex items-center gap-1.5 border-b border-border/20 px-5 py-2.5 bg-card/60 backdrop-blur-sm shrink-0">
+          <Button variant="ghost" size="icon" className={cn("h-7 w-7 shrink-0 rounded-lg", sidebarOpen && "bg-primary/10 text-primary")} onClick={() => setSidebarOpen(!sidebarOpen)} title="Sidebar de subtarefas">
             <Layers className="h-4 w-4" />
           </Button>
           {isSubtaskView && (
@@ -119,7 +119,7 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
             </span>
           ))}
           <div className="flex-1" />
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleClose}><X className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg" onClick={handleClose}><X className="h-4 w-4" /></Button>
         </div>
 
         {/* Main content */}
@@ -673,8 +673,8 @@ function StageCircleInline({ stageKey }: { stageKey: string }) {
 
 function PropertyRow({ icon, label, children }: { icon: React.ReactNode; label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-2 py-1.5 min-h-[36px]">
-      <div className="flex items-center gap-1.5 w-28 shrink-0 text-muted-foreground">{icon}<span className="text-xs">{label}</span></div>
+    <div className="flex items-center gap-2 py-2 min-h-[40px] rounded-lg hover:bg-muted/30 transition px-2 -mx-2">
+      <div className="flex items-center gap-2 w-28 shrink-0 text-muted-foreground/70">{icon}<span className="text-xs font-medium">{label}</span></div>
       <div className="flex-1 min-w-0">{children}</div>
     </div>
   );
