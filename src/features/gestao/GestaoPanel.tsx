@@ -279,7 +279,7 @@ export function GestaoPanel() {
 }
 
 // ─── Agenda Calendar View (matches main Agenda module) ───
-function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filterClient, filterAssignee, search, cursor, setCursor }: {
+function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filterClient, filterAssignee, search, cursor, setCursor, fixedAssigneeClientIds }: {
   tasks: PmTask[];
   clientsMap: Record<string, string>;
   membersMap: Record<string, { name: string; avatar?: string }>;
@@ -289,6 +289,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
   search: string;
   cursor: Date;
   setCursor: React.Dispatch<React.SetStateAction<Date>>;
+  fixedAssigneeClientIds: Set<string>;
 }) {
   const updateTask = useUpdatePmTask();
   const deleteTask = useDeletePmTask();
