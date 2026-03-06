@@ -187,6 +187,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   onClose: () => void; clientsMap: Record<string, string>;
 }) {
   const updateTask = useUpdatePmTask();
+  const syncStage = usePmSyncStageCompletion();
   const flowConfig = useDefaultFlow();
 
   const allAssigneeIds = [
@@ -211,24 +212,38 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   // Alteração: go back to design or video (common return points)
   const alteracaoTargets = ["design", "edicao_videos"].filter(s => s !== task.stage_current);
 
+  // Helper: sync completed stage with Magic Number + Performance
+  const syncCompletedStage = async (completedStage: string) => {
+    // Only sync root tasks (no parent)
+    if (task.parent_task_id) return;
+    try {
+      const { data: { user } } = await (await import("@/integrations/supabase/client")).supabase.auth.getUser();
+      if (!user) return;
+      syncStage.mutate({ pmTaskId: task.id, completedStage, userId: user.id });
+    } catch (_) { /* ignore sync errors */ }
+  };
+
   const handleConcluido = () => {
     if (isDone) return;
+    const completedStage = task.stage_current;
     if (nextStages.length === 0) {
-      // No next stage configured, just go to entrega
       updateTask.mutate({ id: task.id, stage_current: "entrega" as any });
+      syncCompletedStage(completedStage);
       toast.success("Tarefa marcada como Entregue!");
     } else if (nextStages.length === 1) {
       updateTask.mutate({ id: task.id, stage_current: nextStages[0] as any });
+      syncCompletedStage(completedStage);
       toast.success(`Avançou para ${stageLabel(nextStages[0])}`);
     } else {
-      // Multiple options: show choice
       setStageChoiceOptions(nextStages);
       setStageChoiceOpen(true);
     }
   };
 
   const handleChooseNextStage = (stageKey: string) => {
+    const completedStage = task.stage_current;
     updateTask.mutate({ id: task.id, stage_current: stageKey as any });
+    syncCompletedStage(completedStage);
     toast.success(`Avançou para ${stageLabel(stageKey)}`);
     setStageChoiceOpen(false);
   };
