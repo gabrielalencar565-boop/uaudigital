@@ -1,14 +1,12 @@
-import { useState } from "react";
-import { Bell, ChevronDown, LogOut, Moon, Palette, Pencil, Sun } from "lucide-react";
+import { useRef } from "react";
+import { ChevronDown, LogOut, Moon, Palette, Pencil, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -18,6 +16,7 @@ import { useAppSettings } from "@/features/data/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { NotificationsDropdown } from "@/components/layout/NotificationsDropdown";
+import { useQueryClient } from "@tanstack/react-query";
 
 function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
@@ -25,12 +24,15 @@ function initials(name: string) {
 
 interface TopBarProps {
   onEditProfile?: () => void;
+  onOpenTask?: (taskId: string) => void;
 }
 
-export function TopBar({ onEditProfile }: TopBarProps) {
+export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
   const { theme, setTheme } = useTheme();
   const myProfileQ = useMyProfile();
   const appSettingsQ = useAppSettings();
+  const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const userName = myProfileQ.data?.full_name ?? "Usuário";
   const userRole = myProfileQ.data?.role_title ?? "Colaborador";
@@ -45,11 +47,83 @@ export function TopBar({ onEditProfile }: TopBarProps) {
     toast.message("Até já — mantendo o ritmo!");
   };
 
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !myProfileQ.data) return;
+
+    const userId = myProfileQ.data.user_id;
+    const ext = file.name.split(".").pop() ?? "jpg";
+    const path = `avatars/${userId}.${ext}`;
+
+    const { error: uploadErr } = await supabase.storage
+      .from("pm-attachments")
+      .upload(path, file, { upsert: true });
+
+    if (uploadErr) {
+      toast.error("Erro ao enviar foto");
+      return;
+    }
+
+    const { data: urlData } = supabase.storage
+      .from("pm-attachments")
+      .getPublicUrl(path);
+
+    const avatarUrl = urlData.publicUrl + "?t=" + Date.now();
+
+    // Update profiles table
+    await supabase
+      .from("profiles")
+      .update({ avatar_url: avatarUrl })
+      .eq("user_id", userId);
+
+    // Update team_members table
+    await supabase
+      .from("team_members")
+      .update({ avatar_url: avatarUrl })
+      .eq("user_id", userId);
+
+    queryClient.invalidateQueries({ queryKey: ["my_profile"] });
+    queryClient.invalidateQueries({ queryKey: ["team_members"] });
+    toast.success("Foto atualizada!");
+
+    // Reset input
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   return (
     <header className="fixed top-0 left-0 right-0 z-50 h-12 border-b border-border/40 bg-background/80 backdrop-blur-md">
       <div className="flex h-full items-center justify-between px-4">
-        {/* Left: Logo + workspace name */}
+        {/* Left: Avatar + Logo + workspace name */}
         <div className="flex items-center gap-2.5">
+          {/* Clickable avatar to change photo */}
+          <button
+            type="button"
+            onClick={handleAvatarClick}
+            className="relative group"
+            title="Alterar foto de perfil"
+          >
+            <Avatar className="h-7 w-7">
+              <AvatarImage src={userAvatar ?? undefined} alt={userName} />
+              <AvatarFallback className="bg-primary/10 text-primary text-[9px] font-semibold">
+                {userInitials}
+              </AvatarFallback>
+            </Avatar>
+            <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition">
+              <Pencil className="h-3 w-3 text-white" />
+            </div>
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleAvatarUpload}
+          />
+
           {logoUrl ? (
             <img
               src={logoUrl}
@@ -65,13 +139,11 @@ export function TopBar({ onEditProfile }: TopBarProps) {
             </div>
           )}
           <span className="text-sm font-semibold text-foreground">Uau Digital</span>
-          <ChevronDown className="h-3 w-3 text-muted-foreground" />
         </div>
 
         {/* Right: Notifications + Profile */}
         <div className="flex items-center gap-1.5">
-          {/* Notifications */}
-          <NotificationsDropdown />
+          <NotificationsDropdown onOpenTask={onOpenTask} />
 
           {/* Profile dropdown */}
           <DropdownMenu>
@@ -86,7 +158,6 @@ export function TopBar({ onEditProfile }: TopBarProps) {
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-64 rounded-xl p-2">
-              {/* Profile header */}
               <div className="flex items-center gap-3 px-2 py-3">
                 <Avatar className="h-10 w-10">
                   <AvatarImage src={userAvatar ?? undefined} alt={userName} />

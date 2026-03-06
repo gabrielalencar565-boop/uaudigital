@@ -1,20 +1,14 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Bell, AlertTriangle, AtSign, UserPlus, Clock } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { format, differenceInCalendarDays } from "date-fns";
-import { ptBR } from "date-fns/locale";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
-
-function initials(n: string) {
-  return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
-}
 
 type NotificationItem = {
   id: string;
@@ -25,12 +19,15 @@ type NotificationItem = {
   taskId?: string;
 };
 
-export function NotificationsDropdown() {
+interface NotificationsDropdownProps {
+  onOpenTask?: (taskId: string) => void;
+}
+
+export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps) {
   const { user } = useSession();
   const today = new Date();
-  const todayKey = format(today, "yyyy-MM-dd");
+  const [isRead, setIsRead] = useState(false);
 
-  // Fetch mentions (pm_comments containing @userId)
   const mentionsQ = useQuery({
     queryKey: ["notifications_mentions", user?.id],
     enabled: !!user?.id,
@@ -45,7 +42,6 @@ export function NotificationsDropdown() {
     },
   });
 
-  // Fetch assigned pm_tasks
   const assignedQ = useQuery({
     queryKey: ["notifications_assigned", user?.id],
     enabled: !!user?.id,
@@ -61,7 +57,6 @@ export function NotificationsDropdown() {
     },
   });
 
-  // Fetch team members for display names
   const membersQ = useQuery({
     queryKey: ["team_members_notif"],
     queryFn: async () => {
@@ -81,7 +76,6 @@ export function NotificationsDropdown() {
   const notifications = useMemo<NotificationItem[]>(() => {
     const items: NotificationItem[] = [];
 
-    // Mentions
     (mentionsQ.data ?? []).forEach((c: any) => {
       const author = membersMap[c.author_id];
       items.push({
@@ -94,7 +88,6 @@ export function NotificationsDropdown() {
       });
     });
 
-    // Assigned & overdue/upcoming
     (assignedQ.data ?? []).forEach((t: any) => {
       if (t.due_date) {
         const daysLeft = differenceInCalendarDays(new Date(t.due_date + "T00:00:00"), today);
@@ -120,7 +113,6 @@ export function NotificationsDropdown() {
       }
     });
 
-    // Sort by date descending
     items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     return items.slice(0, 30);
   }, [mentionsQ.data, assignedQ.data, membersMap, today]);
@@ -139,12 +131,24 @@ export function NotificationsDropdown() {
     upcoming: "text-warning",
   };
 
+  const handleOpenChange = (open: boolean) => {
+    if (open && notifications.length > 0) {
+      setIsRead(true);
+    }
+  };
+
+  const handleClickNotification = (n: NotificationItem) => {
+    if (n.taskId && onOpenTask) {
+      onOpenTask(n.taskId);
+    }
+  };
+
   return (
-    <Popover>
+    <Popover onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <button className="relative flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-accent/50 focus:outline-none">
           <Bell className="h-4 w-4 text-muted-foreground" />
-          {notifications.length > 0 && (
+          {notifications.length > 0 && !isRead && (
             <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">
               {notifications.length > 99 ? "99+" : notifications.length}
             </span>
@@ -165,9 +169,11 @@ export function NotificationsDropdown() {
               {notifications.map(n => {
                 const Icon = typeIcon[n.type];
                 return (
-                  <div
+                  <button
                     key={n.id}
-                    className="flex items-start gap-3 px-4 py-3 transition hover:bg-accent/30 cursor-pointer"
+                    type="button"
+                    onClick={() => handleClickNotification(n)}
+                    className="flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-accent/30 cursor-pointer"
                   >
                     <div className={cn("mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted/50", typeColor[n.type])}>
                       <Icon className="h-3.5 w-3.5" />
@@ -176,7 +182,7 @@ export function NotificationsDropdown() {
                       <p className="text-[13px] font-medium text-foreground leading-snug">{n.title}</p>
                       <p className="mt-0.5 truncate text-xs text-muted-foreground">{n.subtitle}</p>
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
