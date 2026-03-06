@@ -20,8 +20,8 @@ import {
   useUpdatePmTask, usePmTasks, usePmChildTasks,
   usePmComments, usePmAttachments, usePmSyncStageCompletion,
 } from "../hooks/use-pm-data";
-import { useDefaultFlowWithDates, getNextStages } from "./PmStageFlowConfig";
-import { PmSubtaskList } from "./PmSubtaskList";
+import { useDefaultFlowWithDates, getNextStages, getFixedAssignee } from "./PmStageFlowConfig";
+import type { StageAssignees } from "./PmStageFlowConfig";
 import { PmCommentsSection } from "./PmCommentsSection";
 import { PmAttachmentsSection } from "./PmAttachmentsSection";
 import { PmAssigneeSelector } from "./PmAssigneeSelector";
