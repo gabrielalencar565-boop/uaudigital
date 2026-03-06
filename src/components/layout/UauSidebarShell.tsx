@@ -2,9 +2,10 @@ import { PropsWithChildren, useMemo, useState } from "react";
 import {
   ChevronLeft,
   ChevronRight,
-  ClipboardList,
   DollarSign,
   Eye,
+  FolderOpen,
+  ListChecks,
   Palette,
   Shield,
   Target,
@@ -28,7 +29,6 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarInset,
   SidebarMenu,
   SidebarMenuButton,
@@ -63,6 +63,8 @@ type NavGroup = {
   label: string;
   items: NavItem[];
   adminOnly?: boolean;
+  /** Tailwind color class for the folder icon */
+  folderColor: string;
 };
 
 export function UauSidebarShell({
@@ -70,10 +72,14 @@ export function UauSidebarShell({
   tab,
   onTabChange,
   isAdmin,
+  selectedClientId,
+  onSelectClient,
 }: PropsWithChildren<{
   tab: MainTab;
   onTabChange: (t: MainTab) => void;
   isAdmin?: boolean;
+  selectedClientId?: string | null;
+  onSelectClient?: (id: string) => void;
 }>) {
   const isMobile = useIsMobile();
   const [collapsed, setCollapsed] = useState(false);
@@ -86,21 +92,47 @@ export function UauSidebarShell({
 
   useRealtimeSyncAll();
 
-  // Track which groups are open
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     tarefas: true,
     performance: true,
     gestao: true,
   });
+  const [criacaoOpen, setCriacaoOpen] = useState(false);
 
   const toggleGroup = (key: string) =>
     setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }));
+
+  // Clients for the Criação sub-list
+  const clientsQ = useQuery({
+    queryKey: ["clients_all"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("clients")
+        .select("id, name")
+        .eq("is_active", true)
+        .order("name");
+      return data ?? [];
+    },
+  });
+
+  // PM tasks to count per client
+  const pmTasksQ = usePmTasks();
+  const taskCountByClient = useMemo(() => {
+    const m: Record<string, number> = {};
+    (pmTasksQ.data ?? []).forEach((t) => {
+      if (!t.parent_task_id) {
+        m[t.client_id] = (m[t.client_id] || 0) + 1;
+      }
+    });
+    return m;
+  }, [pmTasksQ.data]);
 
   const navGroups = useMemo<NavGroup[]>(() => {
     const groups: NavGroup[] = [
       {
         key: "tarefas",
         label: "Tarefas",
+        folderColor: "text-emerald-500",
         items: [
           { key: "criacao", label: "Criação", icon: Palette },
         ],
@@ -108,6 +140,7 @@ export function UauSidebarShell({
       {
         key: "performance",
         label: "Performance",
+        folderColor: "text-amber-500",
         items: [
           { key: "visao_do_dia", label: "Visão do dia", icon: Eye },
           { key: "magic2", label: "Magic Number", icon: Target },
@@ -120,6 +153,7 @@ export function UauSidebarShell({
       groups.push({
         key: "gestao",
         label: "Gestão",
+        folderColor: "text-red-500",
         adminOnly: true,
         items: [
           { key: "financeiro", label: "Financeiro", icon: DollarSign },
@@ -145,6 +179,13 @@ export function UauSidebarShell({
     [allItems, tab],
   );
 
+  // Determine stage color for client task count badge
+  const getClientBadgeColor = (count: number) => {
+    if (count >= 20) return "text-red-400";
+    if (count >= 10) return "text-amber-400";
+    return "text-emerald-400";
+  };
+
   return (
     <SidebarProvider defaultOpen>
       <div
@@ -164,7 +205,7 @@ export function UauSidebarShell({
             !isMobile && (collapsed ? "w-16" : "w-56 xl:w-64"),
           )}
         >
-          <div className={cn("px-3 pb-2 pt-3", collapsed && !isMobile && "px-2")}>
+          <div className={cn("px-3 pb-1 pt-3", collapsed && !isMobile && "px-2")}>
             <div className={cn("flex items-center gap-2", collapsed && !isMobile && "justify-center")}>
               {!isMobile ? (
                 <button
@@ -182,9 +223,9 @@ export function UauSidebarShell({
             </div>
           </div>
 
-          <SidebarContent>
+          <SidebarContent className="gap-0">
             {/* Meu Painel – standalone at top */}
-            <SidebarGroup>
+            <SidebarGroup className="py-1">
               <SidebarGroupContent>
                 <SidebarMenu>
                   <SidebarMenuItem>
@@ -192,9 +233,9 @@ export function UauSidebarShell({
                       tooltip="Meu Painel"
                       isActive={tab === "meu_painel"}
                       onClick={() => onTabChange("meu_painel")}
-                      className={cn(collapsed && !isMobile && "justify-center")}
+                      className={cn("h-8", collapsed && !isMobile && "justify-center")}
                     >
-                      <UserRound />
+                      <UserRound className="h-4 w-4" />
                       {!collapsed || isMobile ? <span>Meu Painel</span> : null}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -204,37 +245,103 @@ export function UauSidebarShell({
 
             {/* Collapsible groups */}
             {navGroups.map((group) => {
-              const isGroupActive = group.items.some((it) => it.key === tab);
               const isOpen = openGroups[group.key] ?? true;
 
               return (
-                <SidebarGroup key={group.key}>
+                <SidebarGroup key={group.key} className="py-0.5">
                   {!collapsed || isMobile ? (
                     <Collapsible open={isOpen} onOpenChange={() => toggleGroup(group.key)}>
                       <CollapsibleTrigger asChild>
-                        <SidebarGroupLabel className="cursor-pointer select-none hover:text-sidebar-foreground transition-colors">
-                          <span>{group.label}</span>
+                        <button
+                          type="button"
+                          className="flex w-full items-center gap-2 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors"
+                        >
+                          <FolderOpen className={cn("h-4 w-4", group.folderColor)} />
+                          <span className="flex-1 text-left">{group.label}</span>
                           <ChevronRight
                             className={cn(
-                              "ml-auto h-3.5 w-3.5 transition-transform duration-200",
+                              "h-3 w-3 transition-transform duration-200",
                               isOpen && "rotate-90",
                             )}
                           />
-                        </SidebarGroupLabel>
+                        </button>
                       </CollapsibleTrigger>
                       <CollapsibleContent>
                         <SidebarGroupContent>
                           <SidebarMenu>
                             {group.items.map((it) => (
                               <SidebarMenuItem key={it.key}>
-                                <SidebarMenuButton
-                                  tooltip={it.label}
-                                  isActive={tab === it.key}
-                                  onClick={() => onTabChange(it.key)}
-                                >
-                                  <it.icon />
-                                  <span>{it.label}</span>
-                                </SidebarMenuButton>
+                                {it.key === "criacao" ? (
+                                  /* Criação with nested client list */
+                                  <div>
+                                    <SidebarMenuButton
+                                      tooltip={it.label}
+                                      isActive={tab === it.key}
+                                      onClick={() => {
+                                        onTabChange(it.key);
+                                        setCriacaoOpen((v) => !v);
+                                      }}
+                                      className="h-8"
+                                    >
+                                      <it.icon className="h-4 w-4" />
+                                      <span className="flex-1">{it.label}</span>
+                                      <ChevronRight
+                                        className={cn(
+                                          "h-3 w-3 text-sidebar-foreground/40 transition-transform duration-200",
+                                          criacaoOpen && "rotate-90",
+                                        )}
+                                      />
+                                    </SidebarMenuButton>
+
+                                    {criacaoOpen && (
+                                      <div className="ml-3 mt-0.5 max-h-[45vh] overflow-y-auto border-l border-sidebar-border/40 pl-2">
+                                        {(clientsQ.data ?? []).map((client) => {
+                                          const count = taskCountByClient[client.id] || 0;
+                                          const isSelected = selectedClientId === client.id;
+                                          return (
+                                            <button
+                                              key={client.id}
+                                              type="button"
+                                              onClick={() => {
+                                                onTabChange("criacao");
+                                                onSelectClient?.(client.id);
+                                              }}
+                                              className={cn(
+                                                "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors",
+                                                isSelected
+                                                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                                                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+                                              )}
+                                            >
+                                              <ListChecks className={cn("h-3.5 w-3.5 shrink-0", getClientBadgeColor(count))} />
+                                              <span className="flex-1 truncate text-[13px]">{client.name}</span>
+                                              {count > 0 && (
+                                                <span className="text-[11px] tabular-nums text-sidebar-foreground/40">
+                                                  {count}
+                                                </span>
+                                              )}
+                                            </button>
+                                          );
+                                        })}
+                                        {(clientsQ.data ?? []).length === 0 && (
+                                          <p className="px-2 py-2 text-xs text-sidebar-foreground/40">
+                                            Nenhum cliente
+                                          </p>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <SidebarMenuButton
+                                    tooltip={it.label}
+                                    isActive={tab === it.key}
+                                    onClick={() => onTabChange(it.key)}
+                                    className="h-8"
+                                  >
+                                    <it.icon className="h-4 w-4" />
+                                    <span>{it.label}</span>
+                                  </SidebarMenuButton>
+                                )}
                               </SidebarMenuItem>
                             ))}
                           </SidebarMenu>
@@ -242,7 +349,6 @@ export function UauSidebarShell({
                       </CollapsibleContent>
                     </Collapsible>
                   ) : (
-                    /* Collapsed: show only icons */
                     <SidebarGroupContent>
                       <SidebarMenu>
                         {group.items.map((it) => (
@@ -251,9 +357,9 @@ export function UauSidebarShell({
                               tooltip={it.label}
                               isActive={tab === it.key}
                               onClick={() => onTabChange(it.key)}
-                              className="justify-center"
+                              className="h-8 justify-center"
                             >
-                              <it.icon />
+                              <it.icon className="h-4 w-4" />
                             </SidebarMenuButton>
                           </SidebarMenuItem>
                         ))}
