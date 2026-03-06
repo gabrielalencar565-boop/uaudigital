@@ -148,7 +148,16 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
 
           {/* CENTER: Task detail */}
           <div className="flex-1 overflow-y-auto min-h-0">
-            <TaskContentView task={currentTask} childTasks={childTasks} attachments={attachments} membersMap={membersMap} members={members} isAdmin={isAdmin} onSelectSubtask={handleSelectSubtask} activeSubtaskId={null} onClose={handleClose} clientsMap={clientsMap} />
+            {(() => {
+              // Collect all unique tags from all tasks
+              const allTags = useMemo(() => {
+                const tagSet = new Set<string>();
+                (tasksQ.data ?? []).forEach(t => (t.tags ?? []).forEach(tag => tagSet.add(tag)));
+                (rootChildTasksQ.data ?? []).forEach(t => (t.tags ?? []).forEach(tag => tagSet.add(tag)));
+                return Array.from(tagSet);
+              }, [tasksQ.data, rootChildTasksQ.data]);
+              return <TaskContentView task={currentTask} childTasks={childTasks} attachments={attachments} membersMap={membersMap} members={members} isAdmin={isAdmin} onSelectSubtask={handleSelectSubtask} activeSubtaskId={null} onClose={handleClose} clientsMap={clientsMap} allTags={allTags} />;
+            })()}
           </div>
 
           {/* RIGHT: Comments sidebar */}
