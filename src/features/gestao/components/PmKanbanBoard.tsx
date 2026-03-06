@@ -51,30 +51,30 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, on
   }, [filtered]);
 
   return (
-    <div className="flex gap-2 overflow-x-auto pb-4">
+    <div className="flex gap-3 overflow-x-auto pb-4 -mx-1 px-1">
       {columns.map((col) => {
         const circleColor = getStageCircleColor(col.key);
         return (
-          <div key={col.key} className="flex w-[260px] min-w-[260px] flex-col rounded-lg bg-card/5">
+          <div key={col.key} className="flex w-[272px] min-w-[272px] flex-col rounded-2xl bg-muted/40 backdrop-blur-sm border border-border/20">
             {/* Column header */}
-            <div className="flex items-center justify-between px-3 py-2.5">
-              <div className="flex items-center gap-2">
-                <span className={cn("h-2.5 w-2.5 rounded-full", circleColor.bg)} />
-                <span className="text-xs font-semibold uppercase tracking-wide text-foreground/80">{col.label}</span>
-                <span className="text-[10px] text-muted-foreground bg-muted/50 rounded-full px-1.5 py-0.5 font-medium">
+            <div className="flex items-center justify-between px-4 py-3">
+              <div className="flex items-center gap-2.5">
+                <span className={cn("h-2.5 w-2.5 rounded-full ring-2 ring-offset-1 ring-offset-muted/40", circleColor.bg, circleColor.border.replace("border-", "ring-"))} />
+                <span className="text-[11px] font-bold uppercase tracking-wider text-foreground/70">{col.label}</span>
+                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-foreground/8 text-[10px] font-semibold text-foreground/50 px-1.5">
                   {col.tasks.length}
                 </span>
               </div>
               <button
                 type="button"
                 onClick={() => onCreateClick(col.key)}
-                className="rounded p-1 text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+                className="rounded-lg p-1.5 text-muted-foreground/60 transition-all hover:bg-primary/10 hover:text-primary active:scale-95"
               >
-                <Plus className="h-3.5 w-3.5" />
+                <Plus className="h-4 w-4" strokeWidth={2.5} />
               </button>
             </div>
             {/* Cards */}
-            <div className="flex flex-col gap-1.5 px-1.5 pb-2" style={{ minHeight: 60 }}>
+            <div className="flex flex-col gap-2 px-2 pb-3" style={{ minHeight: 60 }}>
               {col.tasks.map((task) => {
                 const member = task.assignee_id ? membersMap[task.assignee_id] : undefined;
                 return (
@@ -91,7 +91,12 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, on
                 );
               })}
               {col.tasks.length === 0 && (
-                <p className="py-6 text-center text-[11px] text-muted-foreground/40">Nenhuma tarefa</p>
+                <div className="flex flex-col items-center justify-center py-8 gap-2">
+                  <div className="h-8 w-8 rounded-xl bg-foreground/5 flex items-center justify-center">
+                    <Plus className="h-4 w-4 text-muted-foreground/30" />
+                  </div>
+                  <p className="text-[11px] text-muted-foreground/40 font-medium">Nenhuma tarefa</p>
+                </div>
               )}
             </div>
           </div>
