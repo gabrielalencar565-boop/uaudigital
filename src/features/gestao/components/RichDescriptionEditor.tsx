@@ -46,15 +46,24 @@ export function RichDescriptionEditor({ value, onChange, onSave, onCancel }: Pro
     }
   }, []);
 
+  const [headingOpen, setHeadingOpen] = useState(false);
+  const [currentBlock, setCurrentBlock] = useState("p");
+
+  const updateCurrentBlock = useCallback(() => {
+    const val = document.queryCommandValue("formatBlock");
+    setCurrentBlock(val || "p");
+  }, []);
+
   const execCmd = useCallback((cmd: string) => {
-    if (cmd === "formatBlock_H2") {
+    if (cmd.startsWith("formatBlock_")) {
+      const tag = cmd.replace("formatBlock_", "");
       const current = document.queryCommandValue("formatBlock");
-      if (current === "h2") {
+      if (current === tag) {
         document.execCommand("formatBlock", false, "p");
-        setIsHeading(false);
+        setCurrentBlock("p");
       } else {
-        document.execCommand("formatBlock", false, "h2");
-        setIsHeading(true);
+        document.execCommand("formatBlock", false, tag);
+        setCurrentBlock(tag);
       }
     } else if (cmd === "code") {
       const sel = window.getSelection();
