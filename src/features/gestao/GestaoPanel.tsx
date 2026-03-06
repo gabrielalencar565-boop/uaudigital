@@ -60,8 +60,29 @@ export function GestaoPanel() {
   // Data
   const tasksQ = usePmTasks();
   const allTasks = tasksQ.data ?? [];
-  // Filter out drafts for all views except pauta
   const tasks = useMemo(() => allTasks.filter(t => !(t as any).is_draft), [allTasks]);
+
+  // Load stage assignees to expand filter by fixed assignee
+  const flowsQ = useStageFlows();
+  const stageAssignees = useMemo(() => {
+    const flows = flowsQ.data ?? [];
+    const defaultFlow = flows.find(f => f.is_default) ?? flows[0];
+    return (defaultFlow?.stage_assignees ?? {}) as StageAssignees;
+  }, [flowsQ.data]);
+
+  // Get client IDs where the filtered assignee is a fixed assignee in any stage
+  const fixedAssigneeClientIds = useMemo(() => {
+    if (filterAssignee === "__all__") return new Set<string>();
+    const clientIds = new Set<string>();
+    for (const stageKey of Object.keys(stageAssignees)) {
+      const stageMap = stageAssignees[stageKey];
+      if (!stageMap) continue;
+      for (const [clientId, userId] of Object.entries(stageMap)) {
+        if (userId === filterAssignee) clientIds.add(clientId);
+      }
+    }
+    return clientIds;
+  }, [filterAssignee, stageAssignees]);
 
   const allChildTasksQ = usePmAllChildTasks();
   const childTasksMap = useMemo(() => {
