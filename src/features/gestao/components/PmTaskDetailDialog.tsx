@@ -656,6 +656,29 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         <div className="border-t border-border/20 pt-4">
           <PmAttachmentsSection taskId={task.id} attachments={attachments} membersMap={membersMap} onSetCover={handleSetCover} currentCoverUrl={task.cover_url} />
         </div>
+
+        {/* Posting Fields (only for subtasks / child tasks) */}
+        {task.parent_task_id && (
+          <div className="border-t border-border/20 pt-4">
+            <PmPostingFields task={task} />
+          </div>
+        )}
+
+        {/* Cronograma tab (only for parent tasks with children) */}
+        {!task.parent_task_id && childTasks.length > 0 && (
+          <div className="border-t border-border/20 pt-4">
+            <div className="flex items-center gap-2 mb-3">
+              <CalendarDays className="h-4 w-4 text-muted-foreground" />
+              <h3 className="text-sm font-bold">Cronograma</h3>
+            </div>
+            <PmCronogramaTab
+              parentTask={task}
+              childTasks={childTasks}
+              clientName={clientsMap[task.client_id] ?? ""}
+              membersMap={membersMap}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
