@@ -1,0 +1,1 @@
+ALTER TABLE public.pm_stage_flows ADD COLUMN IF NOT EXISTS stage_assignees jsonb DEFAULT '{}'::jsonb;

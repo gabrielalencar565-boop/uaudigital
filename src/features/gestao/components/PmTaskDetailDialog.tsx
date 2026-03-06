@@ -20,7 +20,7 @@ import {
   useUpdatePmTask, usePmTasks, usePmChildTasks,
   usePmComments, usePmAttachments, usePmSyncStageCompletion,
 } from "../hooks/use-pm-data";
-import { useDefaultFlowWithDates, getNextStages } from "./PmStageFlowConfig";
+import { useDefaultFlowWithDates, getNextStages, getFixedAssignee } from "./PmStageFlowConfig";
 import { PmSubtaskList } from "./PmSubtaskList";
 import { PmCommentsSection } from "./PmCommentsSection";
 import { PmAttachmentsSection } from "./PmAttachmentsSection";
@@ -199,7 +199,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 }) {
   const updateTask = useUpdatePmTask();
   const syncStage = usePmSyncStageCompletion();
-  const { flowConfig, transitionDates } = useDefaultFlowWithDates();
+  const { flowConfig, transitionDates, stageAssignees } = useDefaultFlowWithDates();
 
   const allAssigneeIds = [
     ...(task.assignee_id ? [task.assignee_id] : []),
@@ -241,6 +241,15 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   const advanceStage = (completedStage: string, nextStage: string, newDueDate?: string) => {
     const updates: any = { id: task.id, stage_current: nextStage as any };
     if (newDueDate) updates.due_date = newDueDate;
+
+    // Auto-assign fixed person for next stage + client
+    const fixedAssignee = getFixedAssignee(stageAssignees, nextStage, task.client_id);
+    if (fixedAssignee !== undefined) {
+      // fixedAssignee is string (user_id) or null (no fixed person → clear assignee)
+      updates.assignee_id = fixedAssignee;
+      updates.watchers = [];
+    }
+
     updateTask.mutate(updates);
     syncCompletedStage(completedStage);
     toast.success(nextStage === "entrega" ? "Tarefa marcada como Entregue!" : `Avançou para ${stageLabel(nextStage)}`);
@@ -251,25 +260,31 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     const completedStage = task.stage_current;
     const dateConfig = transitionDates[task.stage_current];
 
-    // If there's a date config, show date dialog first
-    if (dateConfig !== undefined && dateConfig !== null) {
+    // Calculate new due date
+    let newDueDate: string | undefined;
+
+    if (typeof dateConfig === "number") {
+      // Auto-apply +N days silently
+      const baseDate = task.due_date ? new Date(task.due_date + "T12:00:00") : new Date();
+      newDueDate = format(addDays(baseDate, dateConfig), "yyyy-MM-dd");
+    }
+
+    if (dateConfig === "pick") {
+      // Show date picker dialog
       setPendingCompletedStage(completedStage);
-      if (dateConfig === "pick") {
-        setCompletionDate(task.due_date ?? format(new Date(), "yyyy-MM-dd"));
-      } else if (typeof dateConfig === "number") {
-        const baseDate = task.due_date ? new Date(task.due_date + "T12:00:00") : new Date();
-        setCompletionDate(format(addDays(baseDate, dateConfig), "yyyy-MM-dd"));
-      }
+      setCompletionDate(task.due_date ?? format(new Date(), "yyyy-MM-dd"));
       setCompletionDateOpen(true);
       return;
     }
 
-    // No date config — advance directly
+    // No "pick" — advance directly (with auto-calculated date if any)
     if (nextStages.length === 0) {
-      advanceStage(completedStage, "entrega");
+      advanceStage(completedStage, "entrega", newDueDate);
     } else if (nextStages.length === 1) {
-      advanceStage(completedStage, nextStages[0]);
+      advanceStage(completedStage, nextStages[0], newDueDate);
     } else {
+      setPendingCompletedStage(completedStage);
+      setPendingDueDate(newDueDate);
       setStageChoiceOptions(nextStages);
       setStageChoiceOpen(true);
     }
