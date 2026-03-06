@@ -396,7 +396,6 @@ export function MeuPainelPanel() {
         isUpdating={setTaskStatus.isPending}
         onStart={onStart}
         onToggleComplete={onToggleComplete}
-        onOpenTask={(taskId) => setSelectedPmTaskId(taskId)}
       />
 
       {/* Widget de menções */}
