@@ -1,16 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { format, getDay } from "date-fns";
-import { AlertTriangle, CheckCircle2, Clock, Pencil, Moon, Sun } from "lucide-react";
-import { useTheme } from "next-themes";
+import { AlertTriangle, CheckCircle2, Clock } from "lucide-react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 import { useClients, useSetTaskStatus, useTasks } from "@/features/data/queries";
 import { STAGES } from "@/lib/uau";
 import { useSession } from "@/hooks/use-session";
+import { useRole } from "@/hooks/use-role";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { MeuPainelTasksGroupedCard, type MeuPainelTaskVM } from "@/features/meu-painel/components/MeuPainelTasksGroupedCard";
@@ -19,7 +18,10 @@ import { MeuPainelPerformanceRankCard } from "@/features/meu-painel/components/M
 import { useMyAnnualPerformanceRank } from "@/features/meu-painel/hooks/use-my-annual-performance-rank";
 import { useNow } from "@/hooks/use-now";
 import { MonthYearNav } from "@/features/magic2/components/MonthYearNav";
-import { EditProfileDialog } from "@/features/meu-painel/components/EditProfileDialog";
+import { MentionsWidget } from "@/features/meu-painel/components/MentionsWidget";
+import { PmTaskDetailDialog } from "@/features/gestao/components/PmTaskDetailDialog";
+import { usePmTasks } from "@/features/gestao/hooks/use-pm-data";
+import { useQuery } from "@tanstack/react-query";
 import {
   useCleaningSchedules,
   useCleaningCategories,
