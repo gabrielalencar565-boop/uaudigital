@@ -129,7 +129,7 @@ export function GestaoPanel() {
   }, [membersQ.data]);
   const membersList = useMemo(() => (membersQ.data ?? []).map((m) => ({ id: m.user_id, name: m.display_name })), [membersQ.data]);
 
-  const filters = { clientId: filterClient === "__all__" ? undefined : filterClient, assigneeId: filterAssignee === "__all__" ? undefined : filterAssignee, search: search || undefined };
+  const filters = { clientId: filterClient === "__all__" ? undefined : filterClient, assigneeId: filterAssignee === "__all__" ? undefined : filterAssignee, search: search || undefined, fixedAssigneeClientIds };
 
   const openCreate = (status?: string) => {
     setCreateDefaultStatus(status);
