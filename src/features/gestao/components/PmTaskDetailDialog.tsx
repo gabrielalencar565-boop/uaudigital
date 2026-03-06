@@ -6,14 +6,16 @@ import {
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-import { PM_STATUSES, PM_STAGES, PM_PRIORITIES, stageLabel } from "../pm-constants";
+import { PM_STATUSES, PM_STAGES, PM_PRIORITIES, stageLabel, stageColorClass, tagColor } from "../pm-constants";
 import {
   useUpdatePmTask, useDeletePmTask, useCreatePmTask, usePmChildTasks,
   usePmComments, usePmAttachments,
