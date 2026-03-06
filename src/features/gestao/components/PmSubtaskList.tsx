@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Plus, ChevronRight, Check } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { PM_ACTIVE_STAGES, getStageCircleColor, stageLabel } from "../pm-constants";
+import { PM_ACTIVE_STAGES, getStageCircleColor, stageLabel, tagColor, tagDisplay } from "../pm-constants";
 import { useUpdatePmTask, useCreatePmTask } from "../hooks/use-pm-data";
 import { PmAssigneeSelector } from "./PmAssigneeSelector";
 import type { PmTask } from "../pm-types";
@@ -142,8 +143,13 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
                 </Popover>
               </div>
 
-              {/* Title */}
-              <div className="flex-1 min-w-0">
+              {/* Tags + Title */}
+              <div className="flex-1 min-w-0 flex items-center gap-1.5">
+                {(sub.tags ?? []).map(rawTag => {
+                  const tc = tagColor(rawTag);
+                  const name = tagDisplay(rawTag);
+                  return <Badge key={rawTag} className={cn("text-[8px] h-4 px-1 gap-0.5 border-0 shrink-0", tc.bg, tc.text)}>{name}</Badge>;
+                })}
                 <span className={cn("truncate text-sm hover:text-primary transition-colors", isDone && "line-through text-muted-foreground")}>{sub.title}</span>
               </div>
 
