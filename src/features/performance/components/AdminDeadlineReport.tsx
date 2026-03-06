@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
+import { Trash2 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import type { TaskAssigneeRow } from "@/features/data/task-assignees-queries";
@@ -14,6 +15,7 @@ import { cn } from "@/lib/utils";
 import type { TeamMemberRow } from "@/features/data/queries";
 import { STAGES, type StageKey } from "@/lib/uau";
 import { STAGE_BADGE_CLASS } from "@/features/agenda/components/AgendaWeekTaskItem";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 type TaskForReport = {
   id: string;
@@ -263,6 +265,44 @@ export function AdminDeadlineReport({
     onError: (e: any) => toast.error(e?.message ?? "Erro ao salvar"),
   });
 
+  const deleteTaskMut = useMutation({
+    mutationFn: async (taskId: string) => {
+      const task = (tasksQ.data ?? []).find((t) => t.id === taskId);
+      // Soft-delete the task
+      const { error } = await supabase
+        .from("tasks")
+        .update({ deleted_at: new Date().toISOString(), deleted_by: currentUserId })
+        .eq("id", taskId);
+      if (error) throw error;
+
+      // Remove any override
+      await supabase.from("task_deadline_overrides").delete().eq("task_id", taskId);
+
+      // Recompute scores for affected users
+      if (task) {
+        const userIds = getTaskUserIds(task);
+        await Promise.all(
+          userIds.map((uid) =>
+            supabase.rpc("recompute_metas_prazos", {
+              _user_id: uid,
+              _year: year,
+              _month: month,
+            }),
+          ),
+        );
+      }
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["deadline_report_tasks", year, month] }),
+        qc.invalidateQueries({ queryKey: ["deadline_report_overrides", year, month] }),
+        qc.invalidateQueries({ queryKey: ["performance_scores"] }),
+      ]);
+      toast.success("Tarefa removida do relatório");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao apagar tarefa"),
+  });
+
   return (
     <div className="space-y-4">
       <div className="space-y-4">
@@ -350,6 +390,7 @@ export function AdminDeadlineReport({
                      <TableHead className="text-center">Concluiu</TableHead>
                      <TableHead className="text-center">Auto</TableHead>
                      <TableHead className="text-center">Exceção</TableHead>
+                     <TableHead className="w-10"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -415,12 +456,38 @@ export function AdminDeadlineReport({
                             </SelectContent>
                           </Select>
                         </TableCell>
+                        <TableCell className="text-center">
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" title="Apagar tarefa">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Apagar tarefa do relatório?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Esta tarefa será removida e não será mais contabilizada em nenhum lugar (pontuação, metas, desempenho).
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  onClick={() => deleteTaskMut.mutate(t.id)}
+                                >
+                                  Apagar
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </TableCell>
                       </TableRow>
                     );
                   })}
                   {userTasks.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
+                      <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
                         Nenhuma tarefa concluída para este colaborador no mês.
                       </TableCell>
                     </TableRow>
