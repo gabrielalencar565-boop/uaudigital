@@ -201,18 +201,7 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, defaultSta
                   </Select>
                 </PropertyRow>
 
-                <PropertyRow icon={<Flag className="h-3.5 w-3.5" />} label="Prioridade">
-                  <Select value={priority} onValueChange={setPriority}>
-                    <SelectTrigger className="h-7 border-0 bg-transparent shadow-none p-0 w-auto gap-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PM_PRIORITIES.map(p => (
-                        <SelectItem key={p.key} value={p.key} className="text-xs">{p.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </PropertyRow>
+
 
                 <PropertyRow icon={<CalendarDays className="h-3.5 w-3.5" />} label="Data de entrega">
                   <Input

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Plus, Search, LayoutGrid, CalendarDays, FolderOpen, Settings2, CheckCircle2 } from "lucide-react";
+import { Plus, Search, LayoutGrid, CalendarDays, FolderOpen, Settings2, CheckCircle2, FileSpreadsheet } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,7 @@ import { PmTaskCard } from "./components/PmTaskCard";
 import { PmTaskDetailDialog } from "./components/PmTaskDetailDialog";
 import { PmCreateTaskDialog } from "./components/PmCreateTaskDialog";
 import { PmStageFlowConfig } from "./components/PmStageFlowConfig";
+import { PmPautaView } from "./components/PmPautaView";
 import { stageLabel, getStageCircleColor, tagColor, tagDisplay } from "./pm-constants";
 import { cn } from "@/lib/utils";
 import type { PmTask } from "./pm-types";
@@ -26,7 +27,7 @@ export function GestaoPanel() {
   const { user } = useSession();
   const { isAdmin } = useRole(user?.id);
 
-  const [view, setView] = useState<"kanban" | "agenda" | "clientes" | "fluxo">("kanban");
+  const [view, setView] = useState<"kanban" | "agenda" | "clientes" | "pauta" | "fluxo">("kanban");
   const [search, setSearch] = useState("");
   const [filterClient, setFilterClient] = useState("__all__");
   const [filterAssignee, setFilterAssignee] = useState("__all__");
@@ -160,6 +161,9 @@ export function GestaoPanel() {
           <TabsTrigger value="clientes" className="gap-1.5 text-xs h-7">
             <FolderOpen className="h-3 w-3" /> Por Cliente
           </TabsTrigger>
+          <TabsTrigger value="pauta" className="gap-1.5 text-xs h-7">
+            <FileSpreadsheet className="h-3 w-3" /> Montagem de Pauta
+          </TabsTrigger>
           <TabsTrigger value="fluxo" className="gap-1.5 text-xs h-7">
             <Settings2 className="h-3 w-3" /> Fluxo
           </TabsTrigger>
@@ -251,6 +255,18 @@ export function GestaoPanel() {
             childTasksMap={childTasksMap}
             clientsMap={clientsMap}
             membersMap={membersMap}
+            onTaskClick={(t) => setSelectedTaskId(t.id)}
+          />
+        </TabsContent>
+
+        <TabsContent value="pauta" className="mt-4">
+          <PmPautaView
+            tasks={tasks}
+            clientsMap={clientsMap}
+            membersMap={membersMap}
+            members={membersList}
+            clients={(clientsQ.data ?? []).map(c => ({ id: c.id, name: c.name }))}
+            isAdmin={isAdmin}
             onTaskClick={(t) => setSelectedTaskId(t.id)}
           />
         </TabsContent>
