@@ -17,6 +17,7 @@ export interface PmTask {
   updated_at: string;
   parent_task_id: string | null;
   cover_url: string | null;
+  is_extra_demand: boolean;
 }
 
 export interface PmSubtask {

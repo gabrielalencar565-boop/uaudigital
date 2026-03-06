@@ -1,8 +1,10 @@
 import { useMemo, useState } from "react";
-import { Plus, Search, LayoutGrid, CalendarDays, FolderOpen, Settings2 } from "lucide-react";
+import { Plus, Search, LayoutGrid, CalendarDays, FolderOpen, Settings2, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSession } from "@/hooks/use-session";
@@ -16,6 +18,8 @@ import { PmTaskCard } from "./components/PmTaskCard";
 import { PmTaskDetailDialog } from "./components/PmTaskDetailDialog";
 import { PmCreateTaskDialog } from "./components/PmCreateTaskDialog";
 import { PmStageFlowConfig } from "./components/PmStageFlowConfig";
+import { stageLabel, getStageCircleColor, tagColor, tagDisplay } from "./pm-constants";
+import { cn } from "@/lib/utils";
 import type { PmTask } from "./pm-types";
 
 export function GestaoPanel() {
@@ -184,17 +188,54 @@ export function GestaoPanel() {
                 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                   {dateTasks.map((task) => {
                     const member = task.assignee_id ? membersMap[task.assignee_id] : undefined;
+                    const stageColor = getStageCircleColor(task.stage_current);
+                    const isDone = task.stage_current === "entrega";
                     return (
-                      <PmTaskCard
+                      <button
                         key={task.id}
-                        task={task}
-                        clientName={clientsMap[task.client_id] ?? "—"}
-                        assigneeName={member?.name}
-                        assigneeAvatar={member?.avatar}
-                        childTasks={childTasksMap[task.id] ?? []}
+                        type="button"
+                        className={cn(
+                          "w-full rounded-lg border border-border/60 bg-card/20 p-3 text-left transition hover:bg-card/40",
+                          "border-l-4",
+                          stageColor.border,
+                          isDone && "opacity-60",
+                        )}
                         onClick={() => setSelectedTaskId(task.id)}
-                        isAdmin={isAdmin}
-                      />
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className={cn("inline-flex h-7 items-center rounded-full px-3 text-xs font-semibold", stageColor.bg, "text-white")}>
+                            {stageLabel(task.stage_current)}
+                          </div>
+                          {isDone && <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-500" />}
+                          {task.is_extra_demand && (
+                            <Badge variant="secondary" className="text-[9px] h-5 px-1.5 gap-0.5 shrink-0">★ Extra</Badge>
+                          )}
+                        </div>
+
+                        {/* Tags */}
+                        {(task.tags ?? []).length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {(task.tags ?? []).map(rawTag => {
+                              const tc = tagColor(rawTag);
+                              const name = tagDisplay(rawTag);
+                              return <Badge key={rawTag} className={cn("text-[8px] h-4 px-1 gap-0.5 border-0", tc.bg, tc.text)}>{name}</Badge>;
+                            })}
+                          </div>
+                        )}
+
+                        <div className="mt-2 flex items-center gap-2">
+                          <Avatar className="h-6 w-6">
+                            <AvatarImage src={member?.avatar ?? undefined} alt="" />
+                            <AvatarFallback className="text-[10px]">
+                              {member ? member.name.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("") : "?"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold leading-5">{member?.name || "—"}</p>
+                            <p className="truncate text-xs text-muted-foreground">{clientsMap[task.client_id] || "—"}</p>
+                          </div>
+                        </div>
+                      </button>
                     );
                   })}
                 </div>

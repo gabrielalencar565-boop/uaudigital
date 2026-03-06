@@ -144,7 +144,14 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
                     return (
                       <div key={sub.id} className={cn("flex items-center gap-2 pl-6 pr-4 py-2.5 cursor-pointer transition text-sm", isActive ? "bg-primary/10 text-primary" : "hover:bg-card/40", isDone && !isActive && "opacity-50")} onClick={() => handleSelectSubtask(sub)}>
                         <StageCircle stageKey={sub.stage_current} size="xs" />
-                        <span className={cn("truncate flex-1", isDone && "line-through")}>{sub.title}</span>
+                        <div className="flex items-center gap-1 min-w-0 flex-1">
+                          {(sub.tags ?? []).map(rawTag => {
+                            const tc = tagColor(rawTag);
+                            const name = tagDisplay(rawTag);
+                            return <Badge key={rawTag} className={cn("text-[7px] h-3.5 px-1 gap-0 border-0 shrink-0", tc.bg, tc.text)}>{name}</Badge>;
+                          })}
+                          <span className={cn("truncate", isDone && "line-through")}>{sub.title}</span>
+                        </div>
                       </div>
                     );
                   })}
