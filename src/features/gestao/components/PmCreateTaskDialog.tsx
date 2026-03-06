@@ -88,6 +88,7 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, defaultSta
         due_date: dueDate || undefined,
         tags: tagsRaw ? tagsRaw.split(",").map((t) => t.trim()).filter(Boolean) : [],
         useTemplate: false,
+        is_extra_demand: isExtraDemand,
       });
 
       if (subtasks.length > 0 && parentTask?.id) {
