@@ -1,0 +1,6 @@
+
+ALTER TABLE public.pm_tasks
+  ADD COLUMN IF NOT EXISTS post_type text DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS posting_date date DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS posting_time text DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS caption text DEFAULT NULL;
