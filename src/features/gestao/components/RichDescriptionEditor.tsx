@@ -98,6 +98,54 @@ export function RichDescriptionEditor({ value, onChange, onSave, onCancel }: Pro
           if ("divider" in item) {
             return <div key={`d-${i}`} className="mx-0.5 h-5 w-px bg-border/40" />;
           }
+
+          // Heading dropdown
+          if (item.cmd === "heading_dropdown") {
+            const currentHeading = HEADING_OPTIONS.find(h => h.tag === currentBlock) ?? HEADING_OPTIONS[0];
+            const CurrentIcon = currentHeading.icon;
+            return (
+              <Popover key="heading" open={headingOpen} onOpenChange={setHeadingOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    className="inline-flex h-7 items-center gap-1 rounded-md px-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                    title="Transformar em"
+                  >
+                    <CurrentIcon className="h-3.5 w-3.5" />
+                    <ChevronDown className="h-3 w-3" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-56 p-1" sideOffset={6}>
+                  <p className="px-2 py-1.5 text-[11px] text-muted-foreground font-medium">Transformar em</p>
+                  {HEADING_OPTIONS.map((opt) => {
+                    const OptIcon = opt.icon;
+                    const isActive = currentBlock === opt.tag;
+                    return (
+                      <button
+                        key={opt.tag}
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          execCmd(`formatBlock_${opt.tag}`);
+                          setHeadingOpen(false);
+                        }}
+                        className={cn(
+                          "flex w-full items-center gap-3 rounded-md px-2 py-2 text-sm transition-colors hover:bg-accent",
+                          isActive && "text-primary"
+                        )}
+                      >
+                        <OptIcon className="h-4 w-4 shrink-0" />
+                        <span className="flex-1 text-left font-medium">{opt.label}</span>
+                        {isActive && <Check className="h-4 w-4 text-primary" />}
+                      </button>
+                    );
+                  })}
+                </PopoverContent>
+              </Popover>
+            );
+          }
+
           const Ico = item.icon;
           return (
             <button
