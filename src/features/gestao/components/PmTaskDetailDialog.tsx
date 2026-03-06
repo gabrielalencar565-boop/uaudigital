@@ -4,6 +4,7 @@ import {
   Layers, Tag, MessageSquare, Plus, Check, CheckCircle2, RotateCcw
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
