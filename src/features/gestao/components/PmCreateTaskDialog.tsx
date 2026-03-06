@@ -66,7 +66,6 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, membersMap
         stage_current: stage as any,
         assignee_id: assigneeId || undefined,
         due_date: dueDate || undefined,
-        start_date: startDate || undefined,
         description: description.trim() || undefined,
         is_extra_demand: isExtra,
       });
@@ -147,11 +146,11 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, membersMap
                 <SelectTrigger className="h-9 text-sm">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  {PM_ACTIVE_STAGES.map(s => (
-                    <SelectItem key={s} value={s} className="text-sm">{stageLabel(s)}</SelectItem>
-                  ))}
-                </SelectContent>
+              <SelectContent>
+                {PM_ACTIVE_STAGES.map(s => (
+                  <SelectItem key={s} value={s} className="text-sm">{stageLabel(s)}</SelectItem>
+                ))}
+              </SelectContent>
               </Select>
             </div>
 
