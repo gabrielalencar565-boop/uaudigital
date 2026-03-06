@@ -158,7 +158,20 @@ export function useUpdatePmTask() {
       }
       return data as PmTask;
     },
-    onSuccess: () => {
+    onMutate: async ({ id, ...updates }) => {
+      // Optimistic update for instant UI feedback
+      await qc.cancelQueries({ queryKey: ["pm_tasks"] });
+      await qc.cancelQueries({ queryKey: ["pm_child_tasks"] });
+      await qc.cancelQueries({ queryKey: ["pm_child_tasks_all"] });
+
+      const updateInList = (old: PmTask[] | undefined) =>
+        old?.map(t => t.id === id ? { ...t, ...updates } as PmTask : t);
+
+      qc.setQueriesData<PmTask[]>({ queryKey: ["pm_tasks"] }, updateInList);
+      qc.setQueriesData<PmTask[]>({ queryKey: ["pm_child_tasks"] }, updateInList);
+      qc.setQueriesData<PmTask[]>({ queryKey: ["pm_child_tasks_all"] }, updateInList);
+    },
+    onSettled: () => {
       qc.invalidateQueries({ queryKey: ["pm_tasks"] });
       qc.invalidateQueries({ queryKey: ["pm_child_tasks"] });
       qc.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
