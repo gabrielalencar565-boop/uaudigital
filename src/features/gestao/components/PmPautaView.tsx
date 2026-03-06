@@ -49,6 +49,7 @@ interface Props {
   clients: { id: string; name: string }[];
   isAdmin: boolean;
   onTaskClick: (t: PmTask) => void;
+  onCreateTask?: (stage?: string) => void;
 }
 
 export function PmPautaView({ tasks, clientsMap, membersMap, members, clients, isAdmin, onTaskClick }: Props) {
