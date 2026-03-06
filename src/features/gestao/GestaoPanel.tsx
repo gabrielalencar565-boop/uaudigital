@@ -215,6 +215,7 @@ export function GestaoPanel() {
             search={search}
             cursor={agendaCursor}
             setCursor={setAgendaCursor}
+            fixedAssigneeClientIds={fixedAssigneeClientIds}
           />
         </TabsContent>
 
