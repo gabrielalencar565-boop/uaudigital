@@ -1,6 +1,7 @@
 import { useRef } from "react";
-import { ChevronDown, LogOut, Moon, Palette, Pencil, Sun } from "lucide-react";
+import { LogOut, Moon, Palette, Pencil, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
+import { WorkspaceDropdown } from "@/components/layout/WorkspaceDropdown";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
