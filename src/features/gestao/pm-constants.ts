@@ -78,36 +78,50 @@ export function subtaskStatusMeta(key: string) {
 }
 
 // Stage color mapping synced with agenda (from STAGE_COLOR in uau.ts)
-const STAGE_BG_MAP: Record<string, string> = {
-  primary: "bg-primary/20 text-primary",
-  brand: "bg-accent text-accent-foreground",
+// Using solid background colors matching agenda badges
+const STAGE_FULL_COLOR_MAP: Record<string, string> = {
+  primary: "bg-primary text-primary-foreground",
+  brand: "bg-[hsl(var(--brand))] text-[hsl(var(--brand-foreground))]",
   secondary: "bg-secondary text-secondary-foreground",
-  warning: "bg-warning/20 text-warning",
+  warning: "bg-warning text-warning-foreground",
 };
 
 export function stageColorClass(key: string): string {
   const color = (STAGE_COLOR as Record<string, string>)[key];
-  return STAGE_BG_MAP[color] ?? "bg-muted text-muted-foreground";
+  return STAGE_FULL_COLOR_MAP[color] ?? "bg-muted text-muted-foreground";
 }
 
-// Tag color palette (auto-assigned based on tag name)
+// Predefined tag color palette for user selection
 export const TAG_COLORS = [
-  { bg: "bg-blue-500/20", text: "text-blue-600", dot: "bg-blue-500" },
-  { bg: "bg-emerald-500/20", text: "text-emerald-600", dot: "bg-emerald-500" },
-  { bg: "bg-violet-500/20", text: "text-violet-600", dot: "bg-violet-500" },
-  { bg: "bg-amber-500/20", text: "text-amber-600", dot: "bg-amber-500" },
-  { bg: "bg-rose-500/20", text: "text-rose-600", dot: "bg-rose-500" },
-  { bg: "bg-cyan-500/20", text: "text-cyan-600", dot: "bg-cyan-500" },
-  { bg: "bg-orange-500/20", text: "text-orange-600", dot: "bg-orange-500" },
-  { bg: "bg-pink-500/20", text: "text-pink-600", dot: "bg-pink-500" },
-  { bg: "bg-teal-500/20", text: "text-teal-600", dot: "bg-teal-500" },
-  { bg: "bg-indigo-500/20", text: "text-indigo-600", dot: "bg-indigo-500" },
+  { key: "blue", label: "Azul", bg: "bg-blue-500/20", text: "text-blue-400", dot: "bg-blue-500" },
+  { key: "green", label: "Verde", bg: "bg-emerald-500/20", text: "text-emerald-400", dot: "bg-emerald-500" },
+  { key: "purple", label: "Roxo", bg: "bg-violet-500/20", text: "text-violet-400", dot: "bg-violet-500" },
+  { key: "yellow", label: "Amarelo", bg: "bg-amber-500/20", text: "text-amber-400", dot: "bg-amber-500" },
+  { key: "red", label: "Vermelho", bg: "bg-rose-500/20", text: "text-rose-400", dot: "bg-rose-500" },
+  { key: "cyan", label: "Ciano", bg: "bg-cyan-500/20", text: "text-cyan-400", dot: "bg-cyan-500" },
+  { key: "orange", label: "Laranja", bg: "bg-orange-500/20", text: "text-orange-400", dot: "bg-orange-500" },
+  { key: "pink", label: "Rosa", bg: "bg-pink-500/20", text: "text-pink-400", dot: "bg-pink-500" },
+  { key: "teal", label: "Teal", bg: "bg-teal-500/20", text: "text-teal-400", dot: "bg-teal-500" },
+  { key: "indigo", label: "Índigo", bg: "bg-indigo-500/20", text: "text-indigo-400", dot: "bg-indigo-500" },
 ];
 
-export function tagColor(tag: string) {
-  let hash = 0;
-  for (let i = 0; i < tag.length; i++) {
-    hash = tag.charCodeAt(i) + ((hash << 5) - hash);
+// Tags are stored as "name:colorKey" in the tags array
+export function parseTag(raw: string): { name: string; colorKey: string } {
+  const idx = raw.lastIndexOf(":");
+  if (idx > 0) {
+    const colorKey = raw.slice(idx + 1);
+    if (TAG_COLORS.find(c => c.key === colorKey)) {
+      return { name: raw.slice(0, idx), colorKey };
+    }
   }
-  return TAG_COLORS[Math.abs(hash) % TAG_COLORS.length];
+  return { name: raw, colorKey: "blue" };
+}
+
+export function tagColor(raw: string) {
+  const { colorKey } = parseTag(raw);
+  return TAG_COLORS.find(c => c.key === colorKey) ?? TAG_COLORS[0];
+}
+
+export function tagDisplay(raw: string) {
+  return parseTag(raw).name;
 }

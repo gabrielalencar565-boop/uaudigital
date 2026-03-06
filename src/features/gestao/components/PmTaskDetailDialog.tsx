@@ -1,28 +1,25 @@
 import { useState } from "react";
 import {
   CalendarDays, User, Flag, X, ChevronRight, ArrowLeft,
-  Circle, Layers, Tag, MessageSquare,
-  CheckCircle2, Plus, MoreHorizontal, Archive, Trash2, Pencil
+  Layers, Tag, MessageSquare, Plus
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-import { PM_STATUSES, PM_STAGES, PM_PRIORITIES, stageLabel, stageColorClass, tagColor } from "../pm-constants";
+import { PM_STAGES, PM_PRIORITIES, stageLabel, stageColorClass, TAG_COLORS, parseTag, tagColor, tagDisplay } from "../pm-constants";
 import {
-  useUpdatePmTask, useDeletePmTask, useCreatePmTask, usePmChildTasks,
+  useUpdatePmTask, usePmChildTasks,
   usePmComments, usePmAttachments,
 } from "../hooks/use-pm-data";
 import { PmSubtaskList } from "./PmSubtaskList";
 import { PmCommentsSection } from "./PmCommentsSection";
 import { PmAttachmentsSection } from "./PmAttachmentsSection";
+import { PmAssigneeSelector } from "./PmAssigneeSelector";
 import type { PmTask } from "../pm-types";
 import { toast } from "sonner";
 
@@ -98,16 +95,16 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
             <div className="w-64 shrink-0 flex flex-col bg-card/30 border-r border-border/30 animate-in slide-in-from-left-5 duration-200">
               <div className="flex-1 overflow-y-auto min-h-0">
                 <div className={cn("flex items-center gap-2 px-4 py-3 cursor-pointer transition border-b border-border/20", taskStack.length === 0 ? "bg-primary/10 text-primary" : "hover:bg-card/40")} onClick={() => setTaskStack([])}>
-                  <span className={cn("h-2.5 w-2.5 rounded-full shrink-0 border-2", statusCircleColor(task.status_global))} />
+                  <span className={cn("h-2.5 w-2.5 rounded-full shrink-0", stageColorClass(task.stage_current).split(" ")[0])} />
                   <span className="truncate flex-1 font-semibold text-sm">{task.title}</span>
                 </div>
                 <div className="py-0.5">
                   {childTasks.map(sub => {
                     const isActive = taskStack.length > 0 && taskStack[taskStack.length - 1].id === sub.id;
-                    const isDone = sub.status_global === "concluido";
+                    const isDone = sub.stage_current === "entrega";
                     return (
                       <div key={sub.id} className={cn("flex items-center gap-2 pl-6 pr-4 py-2.5 cursor-pointer transition text-sm", isActive ? "bg-primary/10 text-primary" : "hover:bg-card/40", isDone && !isActive && "opacity-50")} onClick={() => handleSelectSubtask(sub)}>
-                        <span className={cn("h-2 w-2 rounded-full shrink-0 border-[1.5px]", statusCircleColor(sub.status_global))} />
+                        <span className={cn("h-2 w-2 rounded-full shrink-0", stageColorClass(sub.stage_current).split(" ")[0])} />
                         <span className={cn("truncate flex-1", isDone && "line-through")}>{sub.title}</span>
                       </div>
                     );
@@ -158,7 +155,8 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   const [titleDraft, setTitleDraft] = useState("");
   const [editingDesc, setEditingDesc] = useState(false);
   const [descDraft, setDescDraft] = useState("");
-  const [newTag, setNewTag] = useState("");
+  const [newTagName, setNewTagName] = useState("");
+  const [newTagColor, setNewTagColor] = useState("blue");
 
   const saveTitle = () => {
     if (titleDraft.trim() && titleDraft.trim() !== task.title) updateTask.mutate({ id: task.id, title: titleDraft.trim() });
@@ -184,10 +182,13 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   };
 
   const addTag = () => {
-    if (!newTag.trim()) return;
+    if (!newTagName.trim()) return;
+    const tagValue = `${newTagName.trim()}:${newTagColor}`;
     const existing = task.tags ?? [];
-    if (!existing.includes(newTag.trim())) updateTask.mutate({ id: task.id, tags: [...existing, newTag.trim()] } as any);
-    setNewTag("");
+    if (!existing.some(t => parseTag(t).name === newTagName.trim())) {
+      updateTask.mutate({ id: task.id, tags: [...existing, tagValue] } as any);
+    }
+    setNewTagName("");
   };
   const removeTag = (tag: string) => { updateTask.mutate({ id: task.id, tags: (task.tags ?? []).filter(t => t !== tag) } as any); };
 
@@ -210,54 +211,14 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
         {/* Properties grid */}
         <div className="grid grid-cols-2 gap-x-8 gap-y-2">
-          <PropertyRow icon={<Circle className="h-3.5 w-3.5" />} label="Status">
-            <Select value={task.status_global} onValueChange={(v) => updateTask.mutate({ id: task.id, status_global: v as any })}>
-              <SelectTrigger className="h-7 border-0 bg-transparent shadow-none p-0 w-auto gap-1.5">
-                <Badge className={cn("text-[10px] uppercase font-bold tracking-wide px-2.5 py-0.5 rounded", statusBadgeColor(task.status_global))}><SelectValue /></Badge>
-              </SelectTrigger>
-              <SelectContent>
-                {PM_STATUSES.map(s => (
-                  <SelectItem key={s.key} value={s.key} className="text-xs">
-                    <div className="flex items-center gap-1.5"><span className={cn("h-2 w-2 rounded-full", statusDotColor(s.key))} />{s.label}</div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </PropertyRow>
-
-          {/* Multi-assignee */}
+          {/* Assignee - ClickUp style */}
           <PropertyRow icon={<User className="h-3.5 w-3.5" />} label="Responsável">
-            <Popover>
-              <PopoverTrigger asChild>
-                <button className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 transition min-h-[28px]">
-                  {allAssigneeIds.length > 0 ? (
-                    <div className="flex items-center -space-x-1.5">
-                      {allAssigneeIds.map(id => {
-                        const m = membersMap[id];
-                        if (!m) return null;
-                        return (<Avatar key={id} className="h-6 w-6 border-2 border-background"><AvatarImage src={m.avatar} /><AvatarFallback className="text-[8px] bg-primary/20 text-primary">{initials(m.name)}</AvatarFallback></Avatar>);
-                      })}
-                      <span className="text-xs ml-2 text-muted-foreground">{allAssigneeIds.length === 1 ? membersMap[allAssigneeIds[0]]?.name : `${allAssigneeIds.length} pessoas`}</span>
-                    </div>
-                  ) : (<span className="text-xs text-muted-foreground">Selecionar...</span>)}
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-56 p-1" align="start">
-                <div className="space-y-0.5">
-                  {members.map(m => {
-                    const isSelected = allAssigneeIds.includes(m.id);
-                    const memberInfo = membersMap[m.id];
-                    return (
-                      <button key={m.id} className={cn("flex items-center gap-2 w-full px-2.5 py-1.5 rounded text-xs hover:bg-accent transition text-left", isSelected && "bg-accent/50")} onClick={() => toggleAssignee(m.id)}>
-                        <Checkbox checked={isSelected} className="h-3.5 w-3.5" />
-                        <Avatar className="h-5 w-5"><AvatarImage src={memberInfo?.avatar} /><AvatarFallback className="text-[7px] bg-primary/20 text-primary">{initials(m.name)}</AvatarFallback></Avatar>
-                        <span className="flex-1 truncate">{m.name}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </PopoverContent>
-            </Popover>
+            <PmAssigneeSelector
+              selectedIds={allAssigneeIds}
+              membersMap={membersMap}
+              members={members}
+              onToggle={toggleAssignee}
+            />
           </PropertyRow>
 
           <PropertyRow icon={<CalendarDays className="h-3.5 w-3.5" />} label="Entrega">
@@ -290,32 +251,57 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
             <Popover>
               <PopoverTrigger asChild>
                 <button className="flex flex-wrap items-center gap-1 cursor-pointer min-h-[28px]">
-                  {(task.tags ?? []).length > 0 ? (task.tags ?? []).map((tag) => {
-                    const tc = tagColor(tag);
-                    return (<Badge key={tag} className={cn("text-[10px] h-5 px-1.5 gap-1 border-0", tc.bg, tc.text)}><span className={cn("h-1.5 w-1.5 rounded-full", tc.dot)} />{tag}</Badge>);
+                  {(task.tags ?? []).length > 0 ? (task.tags ?? []).map((rawTag) => {
+                    const tc = tagColor(rawTag);
+                    const name = tagDisplay(rawTag);
+                    return (<Badge key={rawTag} className={cn("text-[10px] h-5 px-1.5 gap-1 border-0", tc.bg, tc.text)}>{name}</Badge>);
                   }) : (<span className="text-xs text-muted-foreground">Adicionar...</span>)}
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-56 p-3" align="start">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-1.5">
-                    <Input value={newTag} onChange={(e) => setNewTag(e.target.value)} placeholder="Nova etiqueta..." className="h-7 text-xs" onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }} />
-                    <Button size="sm" variant="ghost" className="h-7 text-xs px-2" onClick={addTag} disabled={!newTag.trim()}><Plus className="h-3 w-3" /></Button>
-                  </div>
-                  {(task.tags ?? []).length > 0 && (
-                    <div className="space-y-1 pt-1 border-t border-border/30">
-                      {(task.tags ?? []).map(tag => {
-                        const tc = tagColor(tag);
-                        return (
-                          <div key={tag} className="flex items-center justify-between group">
-                            <div className="flex items-center gap-1.5"><span className={cn("h-2.5 w-2.5 rounded-full", tc.dot)} /><span className="text-xs">{tag}</span></div>
-                            <button onClick={() => removeTag(tag)} className="opacity-0 group-hover:opacity-100 transition"><X className="h-3 w-3 text-muted-foreground hover:text-destructive" /></button>
-                          </div>
-                        );
-                      })}
+              <PopoverContent className="w-64 p-0" align="start">
+                <div className="p-3 border-b border-border/30">
+                  <Input
+                    value={newTagName}
+                    onChange={(e) => setNewTagName(e.target.value)}
+                    placeholder="Pesquise ou adicione tags..."
+                    className="h-8 text-xs"
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }}
+                  />
+                  {/* Color picker */}
+                  {newTagName.trim() && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {TAG_COLORS.map(c => (
+                        <button
+                          key={c.key}
+                          className={cn("h-5 w-5 rounded-full transition-all", c.dot, newTagColor === c.key ? "ring-2 ring-offset-2 ring-offset-background ring-white/50 scale-110" : "opacity-60 hover:opacity-100")}
+                          onClick={() => setNewTagColor(c.key)}
+                        />
+                      ))}
                     </div>
                   )}
+                  {newTagName.trim() && (
+                    <Button size="sm" className="mt-2 h-7 text-xs w-full" onClick={addTag}>
+                      <Plus className="h-3 w-3 mr-1" /> Criar "{newTagName.trim()}"
+                    </Button>
+                  )}
                 </div>
+                {(task.tags ?? []).length > 0 && (
+                  <div className="p-2 space-y-0.5">
+                    {(task.tags ?? []).map(rawTag => {
+                      const tc = tagColor(rawTag);
+                      const name = tagDisplay(rawTag);
+                      return (
+                        <div key={rawTag} className="flex items-center justify-between group px-2 py-1.5 rounded hover:bg-accent/50 transition">
+                          <div className="flex items-center gap-2">
+                            <span className={cn("h-3 w-3 rounded", tc.dot)} />
+                            <span className="text-xs">{name}</span>
+                          </div>
+                          <button onClick={() => removeTag(rawTag)} className="opacity-0 group-hover:opacity-100 transition"><X className="h-3 w-3 text-muted-foreground hover:text-destructive" /></button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </PopoverContent>
             </Popover>
           </PropertyRow>
@@ -361,40 +347,4 @@ function PropertyRow({ icon, label, children }: { icon: React.ReactNode; label: 
       <div className="flex-1 min-w-0">{children}</div>
     </div>
   );
-}
-
-function statusBadgeColor(key: string) {
-  switch (key) {
-    case "backlog": return "bg-muted-foreground text-muted";
-    case "em_andamento": return "bg-primary text-primary-foreground";
-    case "em_aprovacao": return "bg-warning text-warning-foreground";
-    case "concluido": return "bg-success text-success-foreground";
-    case "pausado": return "bg-muted-foreground/50 text-muted";
-    case "cancelado": return "bg-destructive text-destructive-foreground";
-    default: return "bg-muted-foreground text-muted";
-  }
-}
-
-function statusDotColor(key: string) {
-  switch (key) {
-    case "backlog": return "bg-muted-foreground";
-    case "em_andamento": return "bg-primary";
-    case "em_aprovacao": return "bg-warning";
-    case "concluido": return "bg-success";
-    case "pausado": return "bg-muted-foreground/50";
-    case "cancelado": return "bg-destructive";
-    default: return "bg-muted-foreground";
-  }
-}
-
-function statusCircleColor(key: string) {
-  switch (key) {
-    case "backlog": return "border-muted-foreground/50";
-    case "em_andamento": return "border-primary bg-primary/20";
-    case "em_aprovacao": return "border-warning bg-warning/20";
-    case "concluido": return "border-success bg-success";
-    case "pausado": return "border-muted-foreground/40";
-    case "cancelado": return "border-destructive bg-destructive/20";
-    default: return "border-muted-foreground/50";
-  }
 }
