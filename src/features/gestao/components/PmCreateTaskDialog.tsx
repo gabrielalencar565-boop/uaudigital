@@ -148,7 +148,7 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, membersMap
                 </SelectTrigger>
               <SelectContent>
                 {PM_ACTIVE_STAGES.map(s => (
-                  <SelectItem key={s} value={s} className="text-sm">{stageLabel(s)}</SelectItem>
+                  <SelectItem key={s.key} value={s.key} className="text-sm">{stageLabel(s.key)}</SelectItem>
                 ))}
               </SelectContent>
               </Select>
