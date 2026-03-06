@@ -121,9 +121,6 @@ export function GestaoPanel() {
           <h2 className="text-xl font-bold tracking-tight">Gestão de Tarefas</h2>
           <p className="text-xs text-muted-foreground">Gerencie projetos e tarefas da agência</p>
         </div>
-        <Button onClick={() => openCreate()} className="gap-2" size="sm">
-          <Plus className="h-4 w-4" /> Nova Tarefa
-        </Button>
       </div>
 
       {/* Filters bar */}
