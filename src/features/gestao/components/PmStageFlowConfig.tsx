@@ -96,25 +96,7 @@ export function PmStageFlowConfig() {
   const [editName, setEditName] = useState("");
   const [editConfig, setEditConfig] = useState<Record<string, string[]>>({});
   const [editTransitionDates, setEditTransitionDates] = useState<Record<string, "pick" | number>>({});
-  const [editStageAssignees, setEditStageAssignees] = useState<StageAssignees>({});
   const [isCreating, setIsCreating] = useState(false);
-  const [assigneeDialogStage, setAssigneeDialogStage] = useState<string | null>(null);
-
-  // Load clients and members for assignee config
-  const clientsQ = useQuery({
-    queryKey: ["clients_all"],
-    queryFn: async () => {
-      const { data } = await supabase.from("clients").select("id, name").eq("is_active", true).order("name");
-      return data ?? [];
-    },
-  });
-  const membersQ = useQuery({
-    queryKey: ["team_members"],
-    queryFn: async () => {
-      const { data } = await supabase.from("team_members").select("user_id, display_name, avatar_url").eq("is_active", true);
-      return data ?? [];
-    },
-  });
 
   const saveMutation = useMutation({
     mutationFn: async ({ id, name, flow_config, transition_dates, stage_assignees }: { id?: string; name: string; flow_config: Record<string, string[]>; transition_dates: Record<string, "pick" | number>; stage_assignees: StageAssignees }) => {
