@@ -187,6 +187,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   onClose: () => void; clientsMap: Record<string, string>;
 }) {
   const updateTask = useUpdatePmTask();
+  const flowConfig = useDefaultFlow();
 
   const allAssigneeIds = [
     ...(task.assignee_id ? [task.assignee_id] : []),
@@ -199,6 +200,53 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   const [descDraft, setDescDraft] = useState("");
   const [newTagName, setNewTagName] = useState("");
   const [newTagColor, setNewTagColor] = useState("blue");
+  const [stageChoiceOpen, setStageChoiceOpen] = useState(false);
+  const [stageChoiceOptions, setStageChoiceOptions] = useState<string[]>([]);
+  const [alteracaoChoiceOpen, setAlteracaoChoiceOpen] = useState(false);
+
+  // Possible next stages from flow
+  const nextStages = getNextStages(flowConfig, task.stage_current);
+  const isDone = task.stage_current === "entrega";
+
+  // Alteração: go back to design or video (common return points)
+  const alteracaoTargets = ["design", "edicao_videos"].filter(s => s !== task.stage_current);
+
+  const handleConcluido = () => {
+    if (isDone) return;
+    if (nextStages.length === 0) {
+      // No next stage configured, just go to entrega
+      updateTask.mutate({ id: task.id, stage_current: "entrega" as any });
+      toast.success("Tarefa marcada como Entregue!");
+    } else if (nextStages.length === 1) {
+      updateTask.mutate({ id: task.id, stage_current: nextStages[0] as any });
+      toast.success(`Avançou para ${stageLabel(nextStages[0])}`);
+    } else {
+      // Multiple options: show choice
+      setStageChoiceOptions(nextStages);
+      setStageChoiceOpen(true);
+    }
+  };
+
+  const handleChooseNextStage = (stageKey: string) => {
+    updateTask.mutate({ id: task.id, stage_current: stageKey as any });
+    toast.success(`Avançou para ${stageLabel(stageKey)}`);
+    setStageChoiceOpen(false);
+  };
+
+  const handleAlteracao = () => {
+    if (alteracaoTargets.length === 1) {
+      updateTask.mutate({ id: task.id, stage_current: alteracaoTargets[0] as any });
+      toast.success(`Retornou para ${stageLabel(alteracaoTargets[0])}`);
+    } else {
+      setAlteracaoChoiceOpen(true);
+    }
+  };
+
+  const handleChooseAlteracao = (stageKey: string) => {
+    updateTask.mutate({ id: task.id, stage_current: stageKey as any });
+    toast.success(`Retornou para ${stageLabel(stageKey)}`);
+    setAlteracaoChoiceOpen(false);
+  };
 
   const saveTitle = () => {
     if (titleDraft.trim() && titleDraft.trim() !== task.title) updateTask.mutate({ id: task.id, title: titleDraft.trim() });
