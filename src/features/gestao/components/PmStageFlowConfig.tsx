@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { ArrowRight, Check, Settings2, Plus, Trash2, Pencil, Save, X, Star, Users } from "lucide-react";
+import { ArrowRight, Check, Settings2, Plus, Trash2, Pencil, Save, X, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PM_ACTIVE_STAGES, getStageCircleColor } from "../pm-constants";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -8,8 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
 const sb = supabase as any;
