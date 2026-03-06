@@ -19,6 +19,7 @@ import { useMyAnnualPerformanceRank } from "@/features/meu-painel/hooks/use-my-a
 import { useNow } from "@/hooks/use-now";
 import { MonthYearNav } from "@/features/magic2/components/MonthYearNav";
 import { MentionsWidget } from "@/features/meu-painel/components/MentionsWidget";
+import { MyPmTasksWidget } from "@/features/meu-painel/components/MyPmTasksWidget";
 import { PmTaskDetailDialog } from "@/features/gestao/components/PmTaskDetailDialog";
 import { usePmTasks } from "@/features/gestao/hooks/use-pm-data";
 import { useQuery } from "@tanstack/react-query";
