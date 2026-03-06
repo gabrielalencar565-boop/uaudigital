@@ -265,6 +265,44 @@ export function AdminDeadlineReport({
     onError: (e: any) => toast.error(e?.message ?? "Erro ao salvar"),
   });
 
+  const deleteTaskMut = useMutation({
+    mutationFn: async (taskId: string) => {
+      const task = (tasksQ.data ?? []).find((t) => t.id === taskId);
+      // Soft-delete the task
+      const { error } = await supabase
+        .from("tasks")
+        .update({ deleted_at: new Date().toISOString(), deleted_by: currentUserId })
+        .eq("id", taskId);
+      if (error) throw error;
+
+      // Remove any override
+      await supabase.from("task_deadline_overrides").delete().eq("task_id", taskId);
+
+      // Recompute scores for affected users
+      if (task) {
+        const userIds = getTaskUserIds(task);
+        await Promise.all(
+          userIds.map((uid) =>
+            supabase.rpc("recompute_metas_prazos", {
+              _user_id: uid,
+              _year: year,
+              _month: month,
+            }),
+          ),
+        );
+      }
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["deadline_report_tasks", year, month] }),
+        qc.invalidateQueries({ queryKey: ["deadline_report_overrides", year, month] }),
+        qc.invalidateQueries({ queryKey: ["performance_scores"] }),
+      ]);
+      toast.success("Tarefa removida do relatório");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao apagar tarefa"),
+  });
+
   return (
     <div className="space-y-4">
       <div className="space-y-4">
