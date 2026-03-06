@@ -10,7 +10,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { PM_PRIORITIES, PM_STAGES, PM_STATUSES } from "../pm-constants";
@@ -83,7 +82,7 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, defaultSta
   const handleSubmit = async () => {
     if (!title.trim() || !clientId) { toast.error("Preencha título e cliente"); return; }
     try {
-      await createTask.mutateAsync({
+      const parentTask = await createTask.mutateAsync({
         title: title.trim(),
         description: description || undefined,
         client_id: clientId,
@@ -94,6 +93,19 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, defaultSta
         tags: tagsRaw ? tagsRaw.split(",").map((t) => t.trim()).filter(Boolean) : [],
         useTemplate: false,
       });
+
+      // Create subtasks as child tasks
+      if (subtasks.length > 0 && parentTask?.id) {
+        for (const subTitle of subtasks) {
+          await createTask.mutateAsync({
+            client_id: clientId,
+            title: subTitle,
+            parent_task_id: parentTask.id,
+            stage_current: "planejamento",
+          });
+        }
+      }
+
       toast.success("Tarefa criada!");
       reset();
       onClose();
@@ -123,29 +135,35 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, defaultSta
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) { reset(); onClose(); } }}>
-      <DialogContent className="max-w-[90vw] w-[90vw] max-h-[90vh] h-[90vh] p-0 gap-0 overflow-hidden rounded-xl border-border/50 shadow-2xl backdrop-blur-sm">
+      <DialogContent hideClose className="max-w-[90vw] w-[90vw] max-h-[90vh] h-[90vh] p-0 gap-0 overflow-hidden rounded-xl border-border/50 shadow-2xl flex flex-col">
         <DialogTitle className="sr-only">Criar nova tarefa</DialogTitle>
 
-        <div className="flex flex-col h-full">
-          {/* ── Header ── */}
-          <div className="px-8 pt-6 pb-4 border-b border-border/30">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
-              <FolderOpen className="h-3.5 w-3.5" />
-              <span>{selectedClient?.name || "Selecione um cliente"}</span>
-              <span className="text-muted-foreground/40">›</span>
-              <span>Nova Tarefa</span>
-            </div>
-            <Input
-              autoFocus
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Nome da tarefa..."
-              className="text-2xl font-bold border-0 bg-transparent p-0 h-auto focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/30"
-            />
+        {/* ── Header ── */}
+        <div className="px-8 pt-6 pb-4 border-b border-border/30 shrink-0">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
+            <FolderOpen className="h-3.5 w-3.5" />
+            <span>{selectedClient?.name || "Selecione um cliente"}</span>
+            <span className="text-muted-foreground/40">›</span>
+            <span>Nova Tarefa</span>
+            <div className="flex-1" />
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { reset(); onClose(); }}>
+              <X className="h-4 w-4" />
+            </Button>
           </div>
+          <Input
+            autoFocus
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Nome da tarefa..."
+            className="text-2xl font-bold border-0 bg-transparent p-0 h-auto focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/30"
+          />
+        </div>
 
-          {/* ── Body ── */}
-          <ScrollArea className="flex-1 min-h-0">
+        {/* ── Body: main + comments sidebar ── */}
+        <div className="flex flex-1 overflow-hidden min-h-0">
+
+          {/* ── CENTER: scrollable content ── */}
+          <div className="flex-1 overflow-y-auto min-h-0">
             <div className="px-8 py-6 space-y-6">
 
               {/* Properties Grid */}
@@ -278,9 +296,8 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, defaultSta
                   )}
                 </h3>
 
-                {/* Info */}
                 <p className="text-xs text-muted-foreground mb-3">
-                  Adicione subtarefas manualmente. Ao clicar em uma subtarefa, ela abrirá com a mesma estrutura da tarefa mãe.
+                  As subtarefas serão criadas automaticamente ao salvar. Após criar, clique nelas para editar detalhes.
                 </p>
 
                 {/* Custom subtasks list */}
@@ -348,32 +365,32 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, defaultSta
                 </Button>
                 <input ref={fileRef} type="file" className="hidden" onChange={handleFileAdd} multiple />
               </div>
-
-              <Separator className="opacity-30" />
-
-              {/* ── Comments placeholder ── */}
-              <div>
-                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                  <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                  Comentários
-                </h3>
-                <p className="text-xs text-muted-foreground italic">
-                  Os comentários estarão disponíveis após criar a tarefa.
-                </p>
-              </div>
             </div>
-          </ScrollArea>
-
-          {/* ── Footer ── */}
-          <div className="flex items-center justify-end gap-3 border-t border-border/30 px-8 py-4 bg-card/50 shrink-0">
-            <Button variant="ghost" onClick={() => { reset(); onClose(); }} className="text-sm">
-              Cancelar
-            </Button>
-            <Button onClick={handleSubmit} disabled={createTask.isPending} className="gap-1.5 text-sm px-6">
-              <Plus className="h-4 w-4" />
-              {createTask.isPending ? "Criando..." : "Criar Tarefa"}
-            </Button>
           </div>
+
+          {/* ── RIGHT: Comments sidebar ── */}
+          <div className="w-80 shrink-0 flex-col bg-card/10 border-l border-border/30 hidden sm:flex">
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-border/30 shrink-0">
+              <MessageSquare className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-semibold">Atividade</span>
+            </div>
+            <div className="flex-1 flex items-center justify-center px-4">
+              <p className="text-xs text-muted-foreground text-center italic">
+                Os comentários estarão disponíveis após criar a tarefa.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Footer ── */}
+        <div className="flex items-center justify-end gap-3 border-t border-border/30 px-8 py-4 bg-card/50 shrink-0">
+          <Button variant="ghost" onClick={() => { reset(); onClose(); }} className="text-sm">
+            Cancelar
+          </Button>
+          <Button onClick={handleSubmit} disabled={createTask.isPending} className="gap-1.5 text-sm px-6">
+            <Plus className="h-4 w-4" />
+            {createTask.isPending ? "Criando..." : "Criar Tarefa"}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
