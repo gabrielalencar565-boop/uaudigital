@@ -978,6 +978,7 @@ export type Database = {
           id: string
           is_default: boolean
           name: string
+          stage_assignees: Json | null
           transition_dates: Json | null
           updated_at: string
         }
@@ -988,6 +989,7 @@ export type Database = {
           id?: string
           is_default?: boolean
           name: string
+          stage_assignees?: Json | null
           transition_dates?: Json | null
           updated_at?: string
         }
@@ -998,6 +1000,7 @@ export type Database = {
           id?: string
           is_default?: boolean
           name?: string
+          stage_assignees?: Json | null
           transition_dates?: Json | null
           updated_at?: string
         }
