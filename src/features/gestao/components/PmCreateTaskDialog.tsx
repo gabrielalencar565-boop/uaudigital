@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import {
-  Circle, User, CalendarDays, Flag, Layers, Tag, Plus, FolderOpen,
-  Upload, FileText, Image as ImageIcon, X, Paperclip, MessageSquare, ListTodo
+  User, CalendarDays, Flag, Layers, Tag, Plus, FolderOpen,
+  Upload, FileText, Image as ImageIcon, X, Paperclip, MessageSquare, ListTodo, Circle
 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -20,17 +20,7 @@ function initials(n: string) {
   return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
 }
 
-function statusBadgeColor(key: string) {
-  switch (key) {
-    case "backlog": return "bg-muted-foreground/20 text-muted-foreground";
-    case "em_andamento": return "bg-primary/20 text-primary";
-    case "em_aprovacao": return "bg-yellow-500/20 text-yellow-600";
-    case "concluido": return "bg-emerald-500/20 text-emerald-600";
-    case "pausado": return "bg-muted-foreground/20 text-muted-foreground";
-    case "cancelado": return "bg-destructive/20 text-destructive";
-    default: return "bg-muted-foreground/20 text-muted-foreground";
-  }
-}
+// removed statusBadgeColor - status is now driven by stages
 
 function priorityColor(key: string) {
   switch (key) {
