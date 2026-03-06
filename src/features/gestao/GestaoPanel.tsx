@@ -271,6 +271,16 @@ export function GestaoPanel() {
           />
         </TabsContent>
 
+        <TabsContent value="cronograma" className="mt-4">
+          <CronogramaGlobalView
+            tasks={tasks}
+            childTasksMap={childTasksMap}
+            clientsMap={clientsMap}
+            membersMap={membersMap}
+            onTaskClick={(t) => setSelectedTaskId(t.id)}
+          />
+        </TabsContent>
+
         <TabsContent value="fluxo" className="mt-4">
           <PmStageFlowConfig />
         </TabsContent>
