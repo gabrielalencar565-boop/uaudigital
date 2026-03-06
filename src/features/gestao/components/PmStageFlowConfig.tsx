@@ -99,7 +99,7 @@ export function PmStageFlowConfig() {
   const [isCreating, setIsCreating] = useState(false);
 
   const saveMutation = useMutation({
-    mutationFn: async ({ id, name, flow_config, transition_dates, stage_assignees }: { id?: string; name: string; flow_config: Record<string, string[]>; transition_dates: Record<string, "pick" | number>; stage_assignees: StageAssignees }) => {
+    mutationFn: async ({ id, name, flow_config, transition_dates }: { id?: string; name: string; flow_config: Record<string, string[]>; transition_dates: Record<string, "pick" | number> }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Não autenticado");
       const cleaned: Record<string, string | string[]> = {};
@@ -108,10 +108,10 @@ export function PmStageFlowConfig() {
         else if (v.length > 1) cleaned[k] = v;
       });
       if (id) {
-        const { error } = await sb.from("pm_stage_flows").update({ name, flow_config: cleaned, transition_dates, stage_assignees, updated_at: new Date().toISOString() }).eq("id", id);
+        const { error } = await sb.from("pm_stage_flows").update({ name, flow_config: cleaned, transition_dates, updated_at: new Date().toISOString() }).eq("id", id);
         if (error) throw error;
       } else {
-        const { error } = await sb.from("pm_stage_flows").insert({ name, flow_config: cleaned, transition_dates, stage_assignees, created_by: user.id });
+        const { error } = await sb.from("pm_stage_flows").insert({ name, flow_config: cleaned, transition_dates, created_by: user.id });
         if (error) throw error;
       }
     },
@@ -160,7 +160,7 @@ export function PmStageFlowConfig() {
     setEditName(flow.name);
     setEditConfig(normalizeConfig(flow.flow_config));
     setEditTransitionDates(flow.transition_dates ?? {});
-    setEditStageAssignees(flow.stage_assignees ?? {});
+    
     setIsCreating(false);
   };
 
@@ -175,7 +175,7 @@ export function PmStageFlowConfig() {
     }
     setEditConfig(defaultConfig);
     setEditTransitionDates({});
-    setEditStageAssignees({});
+    
   };
 
   const cancelEdit = () => { setEditingId(null); setIsCreating(false); };
@@ -186,7 +186,7 @@ export function PmStageFlowConfig() {
     Object.entries(editConfig).forEach(([k, v]) => {
       if (v.length > 0) cleaned[k] = v;
     });
-    saveMutation.mutate({ id: editingId ?? undefined, name: editName.trim(), flow_config: cleaned, transition_dates: editTransitionDates, stage_assignees: editStageAssignees });
+    saveMutation.mutate({ id: editingId ?? undefined, name: editName.trim(), flow_config: cleaned, transition_dates: editTransitionDates });
   };
 
   const toggleStageNext = (stageKey: string, nextKey: string) => {
@@ -224,26 +224,6 @@ export function PmStageFlowConfig() {
     return String(val);
   };
 
-  const setClientAssignee = (stageKey: string, clientId: string, userId: string | null) => {
-    setEditStageAssignees(prev => {
-      const copy = { ...prev };
-      if (!copy[stageKey]) copy[stageKey] = {};
-      copy[stageKey] = { ...copy[stageKey], [clientId]: userId };
-      return copy;
-    });
-  };
-
-  const removeClientAssignee = (stageKey: string, clientId: string) => {
-    setEditStageAssignees(prev => {
-      const copy = { ...prev };
-      if (copy[stageKey]) {
-        const { [clientId]: _, ...rest } = copy[stageKey];
-        copy[stageKey] = rest;
-        if (Object.keys(copy[stageKey]).length === 0) delete copy[stageKey];
-      }
-      return copy;
-    });
-  };
 
   const isEditing = !!editingId || isCreating;
 
