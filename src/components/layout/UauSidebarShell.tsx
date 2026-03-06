@@ -64,7 +64,7 @@ export function UauSidebarShell({
       { key: "visao_do_dia", label: "Visão do dia", icon: Eye },
       { key: "magic2", label: "Magic Number", icon: Target },
       { key: "agenda", label: "Agenda", icon: CalendarDays },
-      { key: "gestao", label: "Gestão", icon: ClipboardList },
+      { key: "gestao", label: "Tarefas", icon: ClipboardList },
       { key: "desempenho", label: "Desempenho", icon: Trophy },
     ];
 
