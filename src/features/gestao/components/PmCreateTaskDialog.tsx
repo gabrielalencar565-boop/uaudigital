@@ -30,7 +30,6 @@ export function PmCreateTaskDialog({ open, onClose, clients, defaultStatus, onCr
         title: `[${client.name}]`,
         client_id: clientId,
         stage_current: (defaultStatus || "captacao") as any,
-        is_draft: true,
       });
 
       onClose();
