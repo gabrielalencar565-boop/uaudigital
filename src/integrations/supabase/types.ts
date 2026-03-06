@@ -1470,6 +1470,14 @@ export type Database = {
         Returns: string
       }
       magic2_seed_year: { Args: { _year: number }; Returns: undefined }
+      pm_sync_stage_completion: {
+        Args: {
+          _completed_stage: string
+          _pm_task_id: string
+          _user_id: string
+        }
+        Returns: undefined
+      }
       recompute_all_scores: {
         Args: { _month: number; _user_id: string; _year: number }
         Returns: undefined
