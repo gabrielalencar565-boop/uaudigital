@@ -24,7 +24,7 @@ interface Props {
   membersMap: Record<string, { name: string; avatar?: string }>;
   onTaskClick: (task: PmTask) => void;
   onCreateClick: (status?: string) => void;
-  filters: { clientId?: string; assigneeId?: string; search?: string };
+  filters: { clientId?: string; assigneeId?: string; search?: string; fixedAssigneeClientIds?: Set<string> };
   isAdmin?: boolean;
 }
 
@@ -32,7 +32,10 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, on
   const filtered = useMemo(() => {
     let list = tasks;
     if (filters.clientId) list = list.filter((t) => t.client_id === filters.clientId);
-    if (filters.assigneeId) list = list.filter((t) => t.assignee_id === filters.assigneeId);
+    if (filters.assigneeId) {
+      const fixedClients = filters.fixedAssigneeClientIds ?? new Set<string>();
+      list = list.filter((t) => t.assignee_id === filters.assigneeId || fixedClients.has(t.client_id));
+    }
     if (filters.search) {
       const q = filters.search.toLowerCase();
       list = list.filter((t) => t.title.toLowerCase().includes(q) || (t.description ?? "").toLowerCase().includes(q));
