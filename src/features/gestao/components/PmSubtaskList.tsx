@@ -1,42 +1,17 @@
 import { useState } from "react";
-import { Circle, Plus, ChevronRight } from "lucide-react";
+import { Plus, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { PM_STATUSES } from "../pm-constants";
+import { Badge } from "@/components/ui/badge";
+import { PM_STAGES, stageColorClass, stageLabel } from "../pm-constants";
 import { useUpdatePmTask, useCreatePmTask } from "../hooks/use-pm-data";
+import { PmAssigneeSelector } from "./PmAssigneeSelector";
 import type { PmTask } from "../pm-types";
 
 function initials(n: string) { return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join(""); }
-
-function statusColor(key: string) {
-  switch (key) {
-    case "backlog": return "border-muted-foreground/50 text-muted-foreground";
-    case "em_andamento": return "border-primary text-primary";
-    case "em_aprovacao": return "border-warning text-warning";
-    case "concluido": return "border-success text-success";
-    case "pausado": return "border-muted-foreground/40 text-muted-foreground";
-    case "cancelado": return "border-destructive text-destructive";
-    default: return "border-muted-foreground/50 text-muted-foreground";
-  }
-}
-
-function statusFill(key: string) {
-  switch (key) {
-    case "concluido": return "bg-success";
-    case "em_andamento": return "bg-primary/20";
-    case "em_aprovacao": return "bg-warning/20";
-    case "cancelado": return "bg-destructive/20";
-    default: return "";
-  }
-}
-
-function statusLabel(key: string) {
-  return PM_STATUSES.find(s => s.key === key)?.label ?? key;
-}
 
 interface Props {
   parentTask: PmTask;
@@ -52,7 +27,7 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
   const createTask = useCreatePmTask();
   const [newTitle, setNewTitle] = useState("");
 
-  const done = childTasks.filter(s => s.status_global === "concluido").length;
+  const done = childTasks.filter(s => s.stage_current === "entrega").length;
   const total = childTasks.length;
   const progress = total > 0 ? Math.round((done / total) * 100) : 0;
 
@@ -65,11 +40,29 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
       stage_current: "planejamento",
     });
     setNewTitle("");
-    // Auto-open the newly created subtask
     if (result && onSelectSubtask) {
       onSelectSubtask(result as PmTask);
     }
   };
+
+  const toggleAssignee = (subId: string, sub: PmTask, memberId: string) => {
+    const currentWatchers = sub.watchers ?? [];
+    if (sub.assignee_id === memberId) {
+      const remaining = currentWatchers.filter(w => w !== memberId);
+      updateTask.mutate({ id: subId, assignee_id: remaining[0] ?? null, watchers: remaining.slice(1) } as any);
+    } else if (currentWatchers.includes(memberId)) {
+      updateTask.mutate({ id: subId, watchers: currentWatchers.filter(w => w !== memberId) } as any);
+    } else if (!sub.assignee_id) {
+      updateTask.mutate({ id: subId, assignee_id: memberId } as any);
+    } else {
+      updateTask.mutate({ id: subId, watchers: [...currentWatchers, memberId] } as any);
+    }
+  };
+
+  const allAssigneeIds = (sub: PmTask) => [
+    ...(sub.assignee_id ? [sub.assignee_id] : []),
+    ...(sub.watchers ?? []).filter(w => w !== sub.assignee_id),
+  ];
 
   return (
     <div className="space-y-2">
@@ -89,7 +82,7 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
       {/* Table header */}
       {total > 0 && (
         <div className="flex items-center gap-2 px-2 py-1 text-[10px] uppercase tracking-wider text-muted-foreground border-b border-border/20">
-          <div className="w-5" />
+          <div className="w-20">Etapa</div>
           <div className="flex-1">Nome</div>
           <div className="w-20 text-center">Responsável</div>
           <div className="w-6" />
@@ -99,9 +92,9 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
       {/* Rows */}
       <div className="space-y-0">
         {childTasks.map((sub) => {
-          const member = sub.assignee_id ? membersMap[sub.assignee_id] : undefined;
-          const isDone = sub.status_global === "concluido";
+          const isDone = sub.stage_current === "entrega";
           const isActive = activeSubtaskId === sub.id;
+          const subAssignees = allAssigneeIds(sub);
 
           return (
             <div
@@ -113,39 +106,28 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
               )}
               onClick={() => onSelectSubtask?.(sub)}
             >
-              {/* Status circle - click opens status picker */}
-              <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <button className="flex items-center justify-center h-5 w-5 rounded-full cursor-pointer hover:scale-110 transition">
-                      <span className={cn("h-4 w-4 rounded-full border-2 flex items-center justify-center", statusColor(sub.status_global), statusFill(sub.status_global))}>
-                        {isDone && (
-                          <svg className="h-2.5 w-2.5 text-success-foreground" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                        )}
-                      </span>
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-48 p-1" align="start">
-                    <div className="space-y-0.5">
-                      {PM_STATUSES.map((s) => (
-                        <button
-                          key={s.key}
-                          className={cn(
-                            "flex items-center gap-2 w-full px-2.5 py-1.5 rounded text-xs hover:bg-accent transition text-left",
-                            sub.status_global === s.key && "bg-accent font-medium"
-                          )}
-                          onClick={() => updateTask.mutate({ id: sub.id, status_global: s.key as any })}
-                        >
-                          <span className={cn("h-3 w-3 rounded-full border-2 shrink-0", statusColor(s.key), statusFill(s.key))} />
-                          <span className="uppercase text-[10px] font-semibold tracking-wide">{s.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </PopoverContent>
-                </Popover>
+              {/* Stage badge */}
+              <div className="w-20 shrink-0" onClick={(e) => e.stopPropagation()}>
+                <Select value={sub.stage_current} onValueChange={(v) => updateTask.mutate({ id: sub.id, stage_current: v as any })}>
+                  <SelectTrigger className="h-6 w-auto border-0 bg-transparent shadow-none p-0">
+                    <Badge className={cn("text-[9px] font-bold px-1.5 py-0 rounded", stageColorClass(sub.stage_current))}>
+                      {stageLabel(sub.stage_current)}
+                    </Badge>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PM_STAGES.filter(s => !["roteiro", "edicao"].includes(s.key)).map(s => (
+                      <SelectItem key={s.key} value={s.key} className="text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <span className={cn("h-2 w-2 rounded-full", stageColorClass(s.key).split(" ")[0])} />
+                          {s.label}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
-              {/* Title only (no stage badge) */}
+              {/* Title */}
               <div className="flex-1 min-w-0">
                 <span className={cn("truncate text-sm hover:text-primary transition-colors", isDone && "line-through text-muted-foreground")}>{sub.title}</span>
               </div>
@@ -153,32 +135,27 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
               {/* Assignee */}
               <div className="w-20 flex justify-center" onClick={(e) => e.stopPropagation()}>
                 {members && members.length > 0 ? (
-                  <Select
-                    value={sub.assignee_id ?? "__none__"}
-                    onValueChange={(v) => updateTask.mutate({ id: sub.id, assignee_id: v === "__none__" ? null : v })}
+                  <PmAssigneeSelector
+                    selectedIds={subAssignees}
+                    membersMap={membersMap}
+                    members={members}
+                    onToggle={(mId) => toggleAssignee(sub.id, sub, mId)}
                   >
-                    <SelectTrigger className="h-6 w-auto border-0 bg-transparent shadow-none p-0">
-                      {member ? (
-                        <Avatar className="h-5 w-5">
-                          <AvatarImage src={member.avatar} />
-                          <AvatarFallback className="text-[7px] bg-primary/10 text-primary">{initials(member.name)}</AvatarFallback>
-                        </Avatar>
-                      ) : (
+                    <button className="flex items-center -space-x-1">
+                      {subAssignees.length > 0 ? subAssignees.slice(0, 2).map(id => {
+                        const m = membersMap[id];
+                        if (!m) return null;
+                        return (
+                          <Avatar key={id} className="h-5 w-5 border border-background">
+                            <AvatarImage src={m.avatar} />
+                            <AvatarFallback className="text-[7px] bg-primary/10 text-primary">{initials(m.name)}</AvatarFallback>
+                          </Avatar>
+                        );
+                      }) : (
                         <div className="h-5 w-5 rounded-full border border-dashed border-muted-foreground/30" />
                       )}
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__" className="text-xs">Ninguém</SelectItem>
-                      {members.map(m => (
-                        <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : member ? (
-                  <Avatar className="h-5 w-5">
-                    <AvatarImage src={member.avatar} />
-                    <AvatarFallback className="text-[7px] bg-primary/10 text-primary">{initials(member.name)}</AvatarFallback>
-                  </Avatar>
+                    </button>
+                  </PmAssigneeSelector>
                 ) : (
                   <div className="h-5 w-5 rounded-full border border-dashed border-muted-foreground/30" />
                 )}
