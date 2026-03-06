@@ -13,21 +13,37 @@ export type PmStatusKey = (typeof PM_STATUSES)[number]["key"];
 
 export const PM_KANBAN_COLUMNS: PmStatusKey[] = ["backlog", "em_andamento", "em_aprovacao", "concluido"];
 
-// Synced with agenda/magic stages (stage_type enum)
+// ── Stages: synced with agenda/magic. Fixed display order ──
 export const PM_STAGES = [
   { key: "captacao", label: "Captação" },
-  { key: "edicao_videos", label: "Vídeo" },
   { key: "planejamento", label: "Planejamento" },
   { key: "design", label: "Design" },
+  { key: "edicao_videos", label: "Vídeo" },
   { key: "revisao", label: "Revisão" },
   { key: "pdf", label: "PDF" },
-  { key: "entrega", label: "Entrega" },
-  { key: "alteracoes", label: "Alterações" },
   { key: "agendamento", label: "Agendamento" },
+  { key: "entrega", label: "Entregue" },
   // Legacy values kept for backward compat
   { key: "roteiro", label: "Roteiro" },
   { key: "edicao", label: "Edição" },
+  { key: "alteracoes", label: "Alterações" },
 ] as const;
+
+// Active stages (visible in UI, in display order)
+export const PM_ACTIVE_STAGES = PM_STAGES.filter(
+  (s) => !["roteiro", "edicao", "alteracoes"].includes(s.key)
+);
+
+// Stage flow: maps each stage to the next one when marked "concluído"
+export const STAGE_FLOW_NEXT: Record<string, string> = {
+  captacao: "planejamento",
+  planejamento: "design",
+  design: "edicao_videos",
+  edicao_videos: "revisao",
+  revisao: "pdf",
+  pdf: "agendamento",
+  agendamento: "entrega",
+};
 
 export type PmStageKey = (typeof PM_STAGES)[number]["key"];
 
@@ -52,9 +68,7 @@ export const PM_SUBTASK_STATUSES = [
 
 export type PmSubtaskStatusKey = (typeof PM_SUBTASK_STATUSES)[number]["key"];
 
-export const PM_TEMPLATE_SUBTASKS = PM_STAGES.filter(
-  (s) => !["roteiro", "edicao"].includes(s.key)
-).map((s, i) => ({
+export const PM_TEMPLATE_SUBTASKS = PM_ACTIVE_STAGES.map((s, i) => ({
   title: s.label,
   stage: s.key,
   order_index: i,
@@ -77,8 +91,23 @@ export function subtaskStatusMeta(key: string) {
   return PM_SUBTASK_STATUSES.find((s) => s.key === key) ?? PM_SUBTASK_STATUSES[0];
 }
 
+// ── Stage circle colors (ClickUp style) ──
+export const STAGE_CIRCLE_COLORS: Record<string, { border: string; bg: string; text: string }> = {
+  captacao: { border: "border-red-500", bg: "bg-red-500", text: "text-red-500" },
+  planejamento: { border: "border-orange-500", bg: "bg-orange-500", text: "text-orange-500" },
+  design: { border: "border-yellow-500", bg: "bg-yellow-500", text: "text-yellow-500" },
+  edicao_videos: { border: "border-blue-500", bg: "bg-blue-500", text: "text-blue-500" },
+  revisao: { border: "border-pink-500", bg: "bg-pink-500", text: "text-pink-500" },
+  pdf: { border: "border-indigo-500", bg: "bg-indigo-500", text: "text-indigo-500" },
+  agendamento: { border: "border-violet-500", bg: "bg-violet-500", text: "text-violet-500" },
+  entrega: { border: "border-emerald-500", bg: "bg-emerald-500", text: "text-emerald-500" },
+};
+
+export function getStageCircleColor(key: string) {
+  return STAGE_CIRCLE_COLORS[key] ?? { border: "border-muted-foreground", bg: "bg-muted-foreground", text: "text-muted-foreground" };
+}
+
 // Stage color mapping synced with agenda (from STAGE_COLOR in uau.ts)
-// Using solid background colors matching agenda badges
 const STAGE_FULL_COLOR_MAP: Record<string, string> = {
   primary: "bg-primary text-primary-foreground",
   brand: "bg-[hsl(var(--brand))] text-[hsl(var(--brand-foreground))]",

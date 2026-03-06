@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Plus, Search, LayoutGrid, CalendarDays, FolderOpen } from "lucide-react";
+import { Plus, Search, LayoutGrid, CalendarDays, FolderOpen, Settings2 } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,25 +15,25 @@ import { PmClientView } from "./components/PmClientView";
 import { PmTaskCard } from "./components/PmTaskCard";
 import { PmTaskDetailDialog } from "./components/PmTaskDetailDialog";
 import { PmCreateTaskDialog } from "./components/PmCreateTaskDialog";
+import { PmStageFlowConfig } from "./components/PmStageFlowConfig";
 import type { PmTask } from "./pm-types";
 
 export function GestaoPanel() {
   const { user } = useSession();
   const { isAdmin } = useRole(user?.id);
 
-  const [view, setView] = useState<"kanban" | "agenda" | "clientes">("kanban");
+  const [view, setView] = useState<"kanban" | "agenda" | "clientes" | "fluxo">("kanban");
   const [search, setSearch] = useState("");
   const [filterClient, setFilterClient] = useState("__all__");
   const [filterAssignee, setFilterAssignee] = useState("__all__");
-  const [selectedTask, setSelectedTask] = useState<PmTask | null>(null);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [createDefaultStatus, setCreateDefaultStatus] = useState<string | undefined>();
 
-  // Data - only root tasks
+  // Data
   const tasksQ = usePmTasks();
   const tasks = tasksQ.data ?? [];
 
-  // All child tasks for progress indicators on cards
   const allChildTasksQ = usePmAllChildTasks();
   const childTasksMap = useMemo(() => {
     const map: Record<string, PmTask[]> = {};
@@ -44,6 +44,12 @@ export function GestaoPanel() {
     });
     return map;
   }, [allChildTasksQ.data]);
+
+  // Resolve selected task from query data for reactivity
+  const selectedTask = useMemo(() => {
+    if (!selectedTaskId) return null;
+    return tasks.find(t => t.id === selectedTaskId) ?? null;
+  }, [selectedTaskId, tasks]);
 
   // Clients
   const clientsQ = useQuery({
@@ -76,7 +82,7 @@ export function GestaoPanel() {
 
   const filters = { clientId: filterClient === "__all__" ? undefined : filterClient, assigneeId: filterAssignee === "__all__" ? undefined : filterAssignee, search: search || undefined };
 
-  // Agenda view: group by due_date
+  // Agenda view
   const agendaTasks = useMemo(() => {
     let list = tasks;
     if (filterClient && filterClient !== "__all__") list = list.filter((t) => t.client_id === filterClient);
@@ -150,6 +156,9 @@ export function GestaoPanel() {
           <TabsTrigger value="clientes" className="gap-1.5 text-xs h-7">
             <FolderOpen className="h-3 w-3" /> Por Cliente
           </TabsTrigger>
+          <TabsTrigger value="fluxo" className="gap-1.5 text-xs h-7">
+            <Settings2 className="h-3 w-3" /> Fluxo
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="kanban" className="mt-4">
@@ -158,7 +167,7 @@ export function GestaoPanel() {
             childTasksMap={childTasksMap}
             clientsMap={clientsMap}
             membersMap={membersMap}
-            onTaskClick={setSelectedTask}
+            onTaskClick={(t) => setSelectedTaskId(t.id)}
             onCreateClick={openCreate}
             filters={filters}
             isAdmin={isAdmin}
@@ -183,7 +192,7 @@ export function GestaoPanel() {
                         assigneeName={member?.name}
                         assigneeAvatar={member?.avatar}
                         childTasks={childTasksMap[task.id] ?? []}
-                        onClick={() => setSelectedTask(task)}
+                        onClick={() => setSelectedTaskId(task.id)}
                         isAdmin={isAdmin}
                       />
                     );
@@ -201,8 +210,12 @@ export function GestaoPanel() {
             childTasksMap={childTasksMap}
             clientsMap={clientsMap}
             membersMap={membersMap}
-            onTaskClick={setSelectedTask}
+            onTaskClick={(t) => setSelectedTaskId(t.id)}
           />
+        </TabsContent>
+
+        <TabsContent value="fluxo" className="mt-4">
+          <PmStageFlowConfig />
         </TabsContent>
       </Tabs>
 
@@ -210,7 +223,7 @@ export function GestaoPanel() {
       <PmTaskDetailDialog
         task={selectedTask}
         open={!!selectedTask}
-        onClose={() => setSelectedTask(null)}
+        onClose={() => setSelectedTaskId(null)}
         clientsMap={clientsMap}
         membersMap={membersMap}
         members={membersList}

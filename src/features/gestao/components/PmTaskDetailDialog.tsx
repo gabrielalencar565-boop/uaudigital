@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   CalendarDays, User, Flag, X, ChevronRight, ArrowLeft,
-  Layers, Tag, MessageSquare, Plus
+  Layers, Tag, MessageSquare, Plus, Check
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -9,11 +9,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { PM_STAGES, PM_PRIORITIES, stageLabel, stageColorClass, TAG_COLORS, parseTag, tagColor, tagDisplay } from "../pm-constants";
 import {
-  useUpdatePmTask, usePmChildTasks,
+  PM_ACTIVE_STAGES, PM_PRIORITIES, stageLabel, getStageCircleColor,
+  TAG_COLORS, parseTag, tagColor, tagDisplay
+} from "../pm-constants";
+import {
+  useUpdatePmTask, usePmTasks, usePmChildTasks,
   usePmComments, usePmAttachments,
 } from "../hooks/use-pm-data";
 import { PmSubtaskList } from "./PmSubtaskList";
@@ -38,16 +40,37 @@ interface Props {
 }
 
 export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap, members, isAdmin }: Props) {
-  const [taskStack, setTaskStack] = useState<PmTask[]>([]);
+  const [taskStack, setTaskStack] = useState<string[]>([]); // store IDs instead of full objects
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const currentTask = taskStack.length > 0 ? taskStack[taskStack.length - 1] : task;
+  // ── Resolve tasks from query cache for reactivity ──
+  const tasksQ = usePmTasks();
+  const resolvedRootTask = useMemo(() => {
+    if (!task) return null;
+    return tasksQ.data?.find(t => t.id === task.id) ?? task;
+  }, [task, tasksQ.data]);
 
-  const childTasksQ = usePmChildTasks(currentTask?.id ?? null);
-  const commentsQ = usePmComments(currentTask?.id ?? null);
-  const attachmentsQ = usePmAttachments(currentTask?.id ?? null);
+  const currentTaskId = taskStack.length > 0 ? taskStack[taskStack.length - 1] : resolvedRootTask?.id ?? null;
 
-  if (!task || !currentTask) return null;
+  const childTasksQ = usePmChildTasks(currentTaskId);
+  const rootChildTasksQ = usePmChildTasks(resolvedRootTask?.id ?? null);
+  const commentsQ = usePmComments(currentTaskId);
+  const attachmentsQ = usePmAttachments(currentTaskId);
+
+  // Resolve current task from child tasks query data for reactivity
+  const currentTask = useMemo(() => {
+    if (!resolvedRootTask) return null;
+    if (taskStack.length === 0) return resolvedRootTask;
+    const lastId = taskStack[taskStack.length - 1];
+    // Look in all child task queries
+    const allChildren = rootChildTasksQ.data ?? [];
+    const found = allChildren.find(t => t.id === lastId);
+    if (found) return found;
+    // Fallback: look in current childTasks
+    return childTasksQ.data?.find(t => t.id === lastId) ?? null;
+  }, [resolvedRootTask, taskStack, rootChildTasksQ.data, childTasksQ.data]);
+
+  if (!task || !currentTask || !resolvedRootTask) return null;
 
   const childTasks = childTasksQ.data ?? [];
   const comments = commentsQ.data ?? [];
@@ -55,8 +78,14 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
 
   const isSubtaskView = taskStack.length > 0;
 
+  // Build breadcrumb labels from child tasks
+  const stackTasks = taskStack.map(id => {
+    const found = (rootChildTasksQ.data ?? []).find(t => t.id === id);
+    return found ?? { id, title: "..." } as PmTask;
+  });
+
   const handleClose = () => { setTaskStack([]); setSidebarOpen(false); onClose(); };
-  const handleSelectSubtask = (sub: PmTask) => { setTaskStack(prev => [...prev, sub]); };
+  const handleSelectSubtask = (sub: PmTask) => { setTaskStack(prev => [...prev, sub.id]); };
   const handleBackToParent = () => { setTaskStack(prev => prev.slice(0, -1)); };
   const handleBreadcrumbClick = (index: number) => {
     if (index === -1) setTaskStack([]);
@@ -75,13 +104,13 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
           {isSubtaskView && (
             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleBackToParent}><ArrowLeft className="h-3.5 w-3.5" /></Button>
           )}
-          <span className="text-xs text-muted-foreground truncate">{clientsMap[task.client_id] ?? "—"}</span>
+          <span className="text-xs text-muted-foreground truncate">{clientsMap[resolvedRootTask.client_id] ?? "—"}</span>
           <ChevronRight className="h-3 w-3 text-muted-foreground/50 shrink-0" />
-          <span className={cn("text-xs truncate", isSubtaskView ? "text-muted-foreground cursor-pointer hover:text-foreground transition" : "font-medium")} onClick={isSubtaskView ? () => handleBreadcrumbClick(-1) : undefined}>{task.title}</span>
-          {taskStack.map((stackTask, i) => (
+          <span className={cn("text-xs truncate", isSubtaskView ? "text-muted-foreground cursor-pointer hover:text-foreground transition" : "font-medium")} onClick={isSubtaskView ? () => handleBreadcrumbClick(-1) : undefined}>{resolvedRootTask.title}</span>
+          {stackTasks.map((stackTask, i) => (
             <span key={stackTask.id} className="contents">
               <ChevronRight className="h-3 w-3 text-muted-foreground/50 shrink-0" />
-              <span className={cn("text-xs truncate", i < taskStack.length - 1 ? "text-muted-foreground cursor-pointer hover:text-foreground transition" : "font-medium")} onClick={i < taskStack.length - 1 ? () => handleBreadcrumbClick(i) : undefined}>{stackTask.title}</span>
+              <span className={cn("text-xs truncate", i < stackTasks.length - 1 ? "text-muted-foreground cursor-pointer hover:text-foreground transition" : "font-medium")} onClick={i < stackTasks.length - 1 ? () => handleBreadcrumbClick(i) : undefined}>{stackTask.title}</span>
             </span>
           ))}
           <div className="flex-1" />
@@ -95,21 +124,21 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
             <div className="w-64 shrink-0 flex flex-col bg-card/30 border-r border-border/30 animate-in slide-in-from-left-5 duration-200">
               <div className="flex-1 overflow-y-auto min-h-0">
                 <div className={cn("flex items-center gap-2 px-4 py-3 cursor-pointer transition border-b border-border/20", taskStack.length === 0 ? "bg-primary/10 text-primary" : "hover:bg-card/40")} onClick={() => setTaskStack([])}>
-                  <span className={cn("h-2.5 w-2.5 rounded-full shrink-0", stageColorClass(task.stage_current).split(" ")[0])} />
-                  <span className="truncate flex-1 font-semibold text-sm">{task.title}</span>
+                  <StageCircle stageKey={resolvedRootTask.stage_current} size="sm" />
+                  <span className="truncate flex-1 font-semibold text-sm">{resolvedRootTask.title}</span>
                 </div>
                 <div className="py-0.5">
-                  {childTasks.map(sub => {
-                    const isActive = taskStack.length > 0 && taskStack[taskStack.length - 1].id === sub.id;
+                  {(rootChildTasksQ.data ?? []).map(sub => {
+                    const isActive = taskStack.length > 0 && taskStack[taskStack.length - 1] === sub.id;
                     const isDone = sub.stage_current === "entrega";
                     return (
                       <div key={sub.id} className={cn("flex items-center gap-2 pl-6 pr-4 py-2.5 cursor-pointer transition text-sm", isActive ? "bg-primary/10 text-primary" : "hover:bg-card/40", isDone && !isActive && "opacity-50")} onClick={() => handleSelectSubtask(sub)}>
-                        <span className={cn("h-2 w-2 rounded-full shrink-0", stageColorClass(sub.stage_current).split(" ")[0])} />
+                        <StageCircle stageKey={sub.stage_current} size="xs" />
                         <span className={cn("truncate flex-1", isDone && "line-through")}>{sub.title}</span>
                       </div>
                     );
                   })}
-                  {childTasks.length === 0 && <p className="text-xs text-muted-foreground text-center py-6">Nenhuma subtarefa</p>}
+                  {(rootChildTasksQ.data ?? []).length === 0 && <p className="text-xs text-muted-foreground text-center py-6">Nenhuma subtarefa</p>}
                 </div>
               </div>
             </div>
@@ -127,12 +156,24 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
               <span className="text-sm font-semibold">Atividade</span>
             </div>
             <div className="flex-1 overflow-y-auto px-4 py-3 min-h-0">
-              <PmCommentsSection taskId={currentTask.id} comments={comments} membersMap={membersMap} />
+              <PmCommentsSection taskId={currentTask.id} comments={comments} membersMap={membersMap} members={members} />
             </div>
           </div>
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ─── Stage Circle Component ───
+function StageCircle({ stageKey, size = "md" }: { stageKey: string; size?: "xs" | "sm" | "md" }) {
+  const color = getStageCircleColor(stageKey);
+  const isDone = stageKey === "entrega";
+  const sizeClass = size === "xs" ? "h-2 w-2" : size === "sm" ? "h-2.5 w-2.5" : "h-4 w-4";
+  return (
+    <span className={cn("rounded-full shrink-0 flex items-center justify-center", sizeClass, isDone ? `${color.bg}` : `border-2 ${color.border}`)}>
+      {isDone && size !== "xs" && <Check className="h-2 w-2 text-white" />}
+    </span>
   );
 }
 
@@ -211,7 +252,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
         {/* Properties grid */}
         <div className="grid grid-cols-2 gap-x-8 gap-y-2">
-          {/* Assignee - ClickUp style */}
+          {/* Assignee */}
           <PropertyRow icon={<User className="h-3.5 w-3.5" />} label="Responsável">
             <PmAssigneeSelector
               selectedIds={allAssigneeIds}
@@ -226,25 +267,52 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           </PropertyRow>
 
           <PropertyRow icon={<Flag className="h-3.5 w-3.5" />} label="Prioridade">
-            <Select value={task.priority} onValueChange={(v) => updateTask.mutate({ id: task.id, priority: v as any })}>
-              <SelectTrigger className="h-7 border-0 bg-transparent shadow-none p-0 w-auto gap-1"><SelectValue /></SelectTrigger>
-              <SelectContent>{PM_PRIORITIES.map(p => (<SelectItem key={p.key} value={p.key} className="text-xs">{p.label}</SelectItem>))}</SelectContent>
-            </Select>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="flex items-center gap-1.5 text-xs min-h-[28px] hover:opacity-80 transition">
+                  {PM_PRIORITIES.find(p => p.key === task.priority)?.label ?? task.priority}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-40 p-1" align="start">
+                {PM_PRIORITIES.map(p => (
+                  <button key={p.key} className={cn("flex items-center gap-2 w-full px-2 py-1.5 rounded text-xs hover:bg-accent transition", task.priority === p.key && "bg-accent")} onClick={() => updateTask.mutate({ id: task.id, priority: p.key as any })}>
+                    {p.label}
+                  </button>
+                ))}
+              </PopoverContent>
+            </Popover>
           </PropertyRow>
 
+          {/* Stage selector with colored circles (ClickUp style) */}
           <PropertyRow icon={<Layers className="h-3.5 w-3.5" />} label="Etapa">
-            <Select value={task.stage_current} onValueChange={(v) => updateTask.mutate({ id: task.id, stage_current: v as any })}>
-              <SelectTrigger className="h-7 border-0 bg-transparent shadow-none p-0 w-auto gap-1.5">
-                <Badge className={cn("text-[10px] font-bold px-2 py-0.5 rounded", stageColorClass(task.stage_current))}><SelectValue /></Badge>
-              </SelectTrigger>
-              <SelectContent>
-                {PM_STAGES.filter(s => !["roteiro", "edicao"].includes(s.key)).map(s => (
-                  <SelectItem key={s.key} value={s.key} className="text-xs">
-                    <div className="flex items-center gap-1.5"><span className={cn("h-2 w-2 rounded-full", stageColorClass(s.key).split(" ")[0])} />{s.label}</div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="flex items-center gap-2 min-h-[28px] hover:opacity-80 transition">
+                  <StageCircleInline stageKey={task.stage_current} />
+                  <span className="text-xs font-medium">{stageLabel(task.stage_current)}</span>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-56 p-1" align="start">
+                {PM_ACTIVE_STAGES.map(s => {
+                  const color = getStageCircleColor(s.key);
+                  const isDone = s.key === "entrega";
+                  const isSelected = task.stage_current === s.key;
+                  return (
+                    <button
+                      key={s.key}
+                      className={cn("flex items-center gap-3 w-full px-3 py-2 rounded text-sm hover:bg-accent transition", isSelected && "bg-accent")}
+                      onClick={() => updateTask.mutate({ id: task.id, stage_current: s.key as any })}
+                    >
+                      <span className={cn("h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0", color.border, isDone && `${color.bg}`)}>
+                        {isDone && <Check className="h-3 w-3 text-white" />}
+                      </span>
+                      <span className="font-medium">{s.label}</span>
+                      {isSelected && <Check className="h-3.5 w-3.5 ml-auto text-primary" />}
+                    </button>
+                  );
+                })}
+              </PopoverContent>
+            </Popover>
           </PropertyRow>
 
           <PropertyRow icon={<Tag className="h-3.5 w-3.5" />} label="Etiquetas">
@@ -267,15 +335,10 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                     className="h-8 text-xs"
                     onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }}
                   />
-                  {/* Color picker */}
                   {newTagName.trim() && (
                     <div className="flex flex-wrap gap-1.5 mt-2">
                       {TAG_COLORS.map(c => (
-                        <button
-                          key={c.key}
-                          className={cn("h-5 w-5 rounded-full transition-all", c.dot, newTagColor === c.key ? "ring-2 ring-offset-2 ring-offset-background ring-white/50 scale-110" : "opacity-60 hover:opacity-100")}
-                          onClick={() => setNewTagColor(c.key)}
-                        />
+                        <button key={c.key} className={cn("h-5 w-5 rounded-full transition-all", c.dot, newTagColor === c.key ? "ring-2 ring-offset-2 ring-offset-background ring-white/50 scale-110" : "opacity-60 hover:opacity-100")} onClick={() => setNewTagColor(c.key)} />
                       ))}
                     </div>
                   )}
@@ -335,6 +398,17 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         </div>
       </div>
     </div>
+  );
+}
+
+// ─── Inline Stage Circle ───
+function StageCircleInline({ stageKey }: { stageKey: string }) {
+  const color = getStageCircleColor(stageKey);
+  const isDone = stageKey === "entrega";
+  return (
+    <span className={cn("h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0", color.border, isDone && `${color.bg}`)}>
+      {isDone && <Check className="h-2.5 w-2.5 text-white" />}
+    </span>
   );
 }
 
