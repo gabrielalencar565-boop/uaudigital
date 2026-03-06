@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import {
   Calendar, UserCircle, Flag, X, ChevronRight, ArrowLeft,
-  Layers, Tag, MessageSquare, Plus, Check, CheckCircle2, RotateCcw, Paperclip, ListTodo, FileText
+  Layers, Tag, MessageSquare, Plus, Check, CheckCircle2, RotateCcw, Paperclip, ListTodo, FileText, CalendarDays
 } from "lucide-react";
 import { addDays, format } from "date-fns";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -25,6 +25,8 @@ import { PmSubtaskList } from "./PmSubtaskList";
 import { PmCommentsSection } from "./PmCommentsSection";
 import { PmAttachmentsSection } from "./PmAttachmentsSection";
 import { PmAssigneeSelector } from "./PmAssigneeSelector";
+import { PmCronogramaTab } from "./PmCronogramaTab";
+import { PmPostingFields } from "./PmPostingFields";
 import type { PmTask } from "../pm-types";
 import { toast } from "sonner";
 import { RichDescriptionEditor, ExpandableDescription } from "./RichDescriptionEditor";
