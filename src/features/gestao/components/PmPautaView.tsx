@@ -52,7 +52,7 @@ interface Props {
   onCreateTask?: (stage?: string) => void;
 }
 
-export function PmPautaView({ tasks, clientsMap, membersMap, members, clients, isAdmin, onTaskClick }: Props) {
+export function PmPautaView({ tasks, clientsMap, membersMap, members, clients, isAdmin, onTaskClick, onCreateTask }: Props) {
   const [cursor, setCursor] = useState(() => startOfMonth(new Date()));
   const [filterClientId, setFilterClientId] = useState<string | "all">("all");
   const [filterUserId, setFilterUserId] = useState<string | "all">("all");
