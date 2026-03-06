@@ -1,16 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { format, getDay } from "date-fns";
-import { AlertTriangle, CheckCircle2, Clock, Pencil, Moon, Sun } from "lucide-react";
-import { useTheme } from "next-themes";
+import { AlertTriangle, CheckCircle2, Clock } from "lucide-react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 import { useClients, useSetTaskStatus, useTasks } from "@/features/data/queries";
 import { STAGES } from "@/lib/uau";
 import { useSession } from "@/hooks/use-session";
+import { useRole } from "@/hooks/use-role";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { MeuPainelTasksGroupedCard, type MeuPainelTaskVM } from "@/features/meu-painel/components/MeuPainelTasksGroupedCard";
@@ -19,7 +18,10 @@ import { MeuPainelPerformanceRankCard } from "@/features/meu-painel/components/M
 import { useMyAnnualPerformanceRank } from "@/features/meu-painel/hooks/use-my-annual-performance-rank";
 import { useNow } from "@/hooks/use-now";
 import { MonthYearNav } from "@/features/magic2/components/MonthYearNav";
-import { EditProfileDialog } from "@/features/meu-painel/components/EditProfileDialog";
+import { MentionsWidget } from "@/features/meu-painel/components/MentionsWidget";
+import { PmTaskDetailDialog } from "@/features/gestao/components/PmTaskDetailDialog";
+import { usePmTasks } from "@/features/gestao/hooks/use-pm-data";
+import { useQuery } from "@tanstack/react-query";
 import {
   useCleaningSchedules,
   useCleaningCategories,
@@ -92,11 +94,11 @@ const motivationalLines = [
 
 export function MeuPainelPanel() {
   const { user } = useSession();
+  const { isAdmin } = useRole(user?.id);
 
-  const { theme, setTheme } = useTheme();
   const [myProfile, setMyProfile] = useState<{ full_name: string; avatar_url: string | null } | null>(null);
-  const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [profileVersion, setProfileVersion] = useState(0);
+  const [selectedPmTaskId, setSelectedPmTaskId] = useState<string | null>(null);
   const today = useNow();
   const todayKey = format(today, "yyyy-MM-dd");
 
@@ -331,13 +333,6 @@ export function MeuPainelPanel() {
                 onMonthChange={(m) => setSelected((s) => ({ ...s, month: m }))}
                 onYearChange={(y) => setSelected((s) => ({ ...s, year: y }))}
               />
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
-                {theme === "dark" ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
-                {theme === "dark" ? "Claro" : "Escuro"}
-              </Button>
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditProfileOpen(true)}>
-                <Pencil className="h-3.5 w-3.5" /> Editar perfil
-              </Button>
             </div>
           </div>
         </div>
@@ -403,11 +398,65 @@ export function MeuPainelPanel() {
         onToggleComplete={onToggleComplete}
       />
 
-      <EditProfileDialog
-        open={editProfileOpen}
-        onOpenChange={setEditProfileOpen}
-        onSaved={() => setProfileVersion((v) => v + 1)}
+      {/* Widget de menções */}
+      <MentionsWidget onOpenTask={(taskId) => setSelectedPmTaskId(taskId)} />
+
+      {/* PM Task Detail Dialog */}
+      <PmTaskDetailDialogWrapper
+        taskId={selectedPmTaskId}
+        onClose={() => setSelectedPmTaskId(null)}
+        isAdmin={isAdmin}
       />
     </div>
+  );
+}
+
+/** Wrapper to load data needed by PmTaskDetailDialog */
+function PmTaskDetailDialogWrapper({ taskId, onClose, isAdmin }: { taskId: string | null; onClose: () => void; isAdmin: boolean }) {
+  const pmTasksQ = usePmTasks();
+  const allTasks = pmTasksQ.data ?? [];
+
+  const task = useMemo(() => {
+    if (!taskId) return null;
+    return allTasks.find(t => t.id === taskId) ?? null;
+  }, [taskId, allTasks]);
+
+  const clientsQ = useQuery({
+    queryKey: ["clients_all"],
+    queryFn: async () => {
+      const { data } = await supabase.from("clients").select("id, name").eq("is_active", true).order("name");
+      return data ?? [];
+    },
+  });
+  const clientsMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    (clientsQ.data ?? []).forEach(c => { m[c.id] = c.name; });
+    return m;
+  }, [clientsQ.data]);
+
+  const membersQ = useQuery({
+    queryKey: ["team_members"],
+    queryFn: async () => {
+      const { data } = await supabase.from("team_members").select("user_id, display_name, avatar_url").eq("is_active", true);
+      return data ?? [];
+    },
+  });
+  const membersMap = useMemo(() => {
+    const m: Record<string, { name: string; avatar?: string }> = {};
+    (membersQ.data ?? []).forEach(tm => { m[tm.user_id] = { name: tm.display_name, avatar: tm.avatar_url ?? undefined }; });
+    return m;
+  }, [membersQ.data]);
+  const membersList = useMemo(() => (membersQ.data ?? []).map(m => ({ id: m.user_id, name: m.display_name })), [membersQ.data]);
+
+  return (
+    <PmTaskDetailDialog
+      task={task}
+      open={!!taskId}
+      onClose={onClose}
+      clientsMap={clientsMap}
+      membersMap={membersMap}
+      members={membersList}
+      isAdmin={isAdmin}
+    />
   );
 }
