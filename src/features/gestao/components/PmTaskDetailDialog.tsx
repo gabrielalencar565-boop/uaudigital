@@ -459,25 +459,30 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                       ))}
                     </div>
                   )}
-                  {newTagName.trim() && (
+                  {newTagName.trim() && !allTags.some(t => parseTag(t).name.toLowerCase() === newTagName.trim().toLowerCase()) && (
                     <Button size="sm" className="mt-2 h-7 text-xs w-full" onClick={addTag}>
                       <Plus className="h-3 w-3 mr-1" /> Criar "{newTagName.trim()}"
                     </Button>
                   )}
                 </div>
-                {(task.tags ?? []).length > 0 && (
+                {/* Global tags list - toggle on/off */}
+                {allTags.length > 0 && (
                   <div className="p-2 space-y-0.5">
-                    {(task.tags ?? []).map(rawTag => {
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold px-2 py-1">Etiquetas disponíveis</p>
+                    {allTags
+                      .filter(t => !newTagName.trim() || parseTag(t).name.toLowerCase().includes(newTagName.trim().toLowerCase()))
+                      .map(rawTag => {
                       const tc = tagColor(rawTag);
                       const name = tagDisplay(rawTag);
+                      const isActive = (task.tags ?? []).includes(rawTag);
                       return (
-                        <div key={rawTag} className="flex items-center justify-between group px-2 py-1.5 rounded hover:bg-accent/50 transition">
-                          <div className="flex items-center gap-2">
-                            <span className={cn("h-3 w-3 rounded", tc.dot)} />
-                            <span className="text-xs">{name}</span>
-                          </div>
-                          <button onClick={() => removeTag(rawTag)} className="opacity-0 group-hover:opacity-100 transition"><X className="h-3 w-3 text-muted-foreground hover:text-destructive" /></button>
-                        </div>
+                        <button key={rawTag} className={cn("flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-accent/50 transition text-left", isActive && "bg-accent/30")} onClick={() => {
+                          if (isActive) { removeTag(rawTag); } else { toggleGlobalTag(rawTag); }
+                        }}>
+                          <span className={cn("h-3 w-3 rounded shrink-0", tc.dot)} />
+                          <span className="text-xs flex-1">{name}</span>
+                          {isActive && <Check className="h-3 w-3 text-primary shrink-0" />}
+                        </button>
                       );
                     })}
                   </div>
