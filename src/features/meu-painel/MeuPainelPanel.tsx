@@ -94,11 +94,11 @@ const motivationalLines = [
 
 export function MeuPainelPanel() {
   const { user } = useSession();
+  const { isAdmin } = useRole(user?.id);
 
-  const { theme, setTheme } = useTheme();
   const [myProfile, setMyProfile] = useState<{ full_name: string; avatar_url: string | null } | null>(null);
-  const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [profileVersion, setProfileVersion] = useState(0);
+  const [selectedPmTaskId, setSelectedPmTaskId] = useState<string | null>(null);
   const today = useNow();
   const todayKey = format(today, "yyyy-MM-dd");
 
