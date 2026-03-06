@@ -978,6 +978,7 @@ export type Database = {
           id: string
           is_default: boolean
           name: string
+          transition_dates: Json | null
           updated_at: string
         }
         Insert: {
@@ -987,6 +988,7 @@ export type Database = {
           id?: string
           is_default?: boolean
           name: string
+          transition_dates?: Json | null
           updated_at?: string
         }
         Update: {
@@ -996,6 +998,7 @@ export type Database = {
           id?: string
           is_default?: boolean
           name?: string
+          transition_dates?: Json | null
           updated_at?: string
         }
         Relationships: []
@@ -1063,6 +1066,7 @@ export type Database = {
           description: string | null
           due_date: string | null
           id: string
+          is_draft: boolean
           is_extra_demand: boolean
           parent_task_id: string | null
           priority: Database["public"]["Enums"]["pm_priority"]
@@ -1084,6 +1088,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          is_draft?: boolean
           is_extra_demand?: boolean
           parent_task_id?: string | null
           priority?: Database["public"]["Enums"]["pm_priority"]
@@ -1105,6 +1110,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          is_draft?: boolean
           is_extra_demand?: boolean
           parent_task_id?: string | null
           priority?: Database["public"]["Enums"]["pm_priority"]

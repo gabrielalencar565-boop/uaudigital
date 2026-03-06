@@ -18,6 +18,7 @@ export interface PmTask {
   parent_task_id: string | null;
   cover_url: string | null;
   is_extra_demand: boolean;
+  is_draft?: boolean;
 }
 
 export interface PmSubtask {

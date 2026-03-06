@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 
 const sb = supabase as any;
@@ -15,6 +16,7 @@ export interface StageFlow {
   id: string;
   name: string;
   flow_config: Record<string, string | string[]>;
+  transition_dates?: Record<string, "pick" | number>;
   is_default: boolean;
   created_by: string;
   created_at: string;
@@ -31,11 +33,21 @@ export function useStageFlows() {
   });
 }
 
-/** Get the default flow's config */
+/** Get the default flow's config (backward compat) */
 export function useDefaultFlow() {
   const flowsQ = useStageFlows();
   const defaultFlow = (flowsQ.data ?? []).find(f => f.is_default) ?? (flowsQ.data ?? [])[0];
   return defaultFlow?.flow_config ?? {};
+}
+
+/** Get the default flow's config AND transition dates */
+export function useDefaultFlowWithDates() {
+  const flowsQ = useStageFlows();
+  const defaultFlow = (flowsQ.data ?? []).find(f => f.is_default) ?? (flowsQ.data ?? [])[0];
+  return {
+    flowConfig: defaultFlow?.flow_config ?? {},
+    transitionDates: (defaultFlow?.transition_dates ?? {}) as Record<string, "pick" | number>,
+  };
 }
 
 /** Get next stage options for a given stage key from the default flow */
@@ -47,7 +59,16 @@ export function getNextStages(flowConfig: Record<string, string | string[]>, sta
 }
 
 const STAGE_OPTIONS = PM_ACTIVE_STAGES;
-const ALTERACAO_STAGES = ["design", "edicao_videos"]; // default return stages for "Alteração"
+
+const DATE_MODE_OPTIONS = [
+  { value: "none", label: "Sem alteração de data" },
+  { value: "pick", label: "Escolher data" },
+  { value: "1", label: "+1 dia" },
+  { value: "2", label: "+2 dias" },
+  { value: "3", label: "+3 dias" },
+  { value: "5", label: "+5 dias" },
+  { value: "7", label: "+7 dias" },
+];
 
 export function PmStageFlowConfig() {
   const qc = useQueryClient();
@@ -57,23 +78,23 @@ export function PmStageFlowConfig() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editConfig, setEditConfig] = useState<Record<string, string[]>>({});
+  const [editTransitionDates, setEditTransitionDates] = useState<Record<string, "pick" | number>>({});
   const [isCreating, setIsCreating] = useState(false);
 
   const saveMutation = useMutation({
-    mutationFn: async ({ id, name, flow_config }: { id?: string; name: string; flow_config: Record<string, string[]> }) => {
+    mutationFn: async ({ id, name, flow_config, transition_dates }: { id?: string; name: string; flow_config: Record<string, string[]>; transition_dates: Record<string, "pick" | number> }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Não autenticado");
-      // Convert single-item arrays to strings for cleaner storage
       const cleaned: Record<string, string | string[]> = {};
       Object.entries(flow_config).forEach(([k, v]) => {
         if (v.length === 1) cleaned[k] = v[0];
         else if (v.length > 1) cleaned[k] = v;
       });
       if (id) {
-        const { error } = await sb.from("pm_stage_flows").update({ name, flow_config: cleaned, updated_at: new Date().toISOString() }).eq("id", id);
+        const { error } = await sb.from("pm_stage_flows").update({ name, flow_config: cleaned, transition_dates, updated_at: new Date().toISOString() }).eq("id", id);
         if (error) throw error;
       } else {
-        const { error } = await sb.from("pm_stage_flows").insert({ name, flow_config: cleaned, created_by: user.id });
+        const { error } = await sb.from("pm_stage_flows").insert({ name, flow_config: cleaned, transition_dates, created_by: user.id });
         if (error) throw error;
       }
     },
@@ -121,6 +142,7 @@ export function PmStageFlowConfig() {
     setEditingId(flow.id);
     setEditName(flow.name);
     setEditConfig(normalizeConfig(flow.flow_config));
+    setEditTransitionDates(flow.transition_dates ?? {});
     setIsCreating(false);
   };
 
@@ -134,6 +156,7 @@ export function PmStageFlowConfig() {
       defaultConfig[stages[i].key] = [stages[i + 1].key];
     }
     setEditConfig(defaultConfig);
+    setEditTransitionDates({});
   };
 
   const cancelEdit = () => { setEditingId(null); setIsCreating(false); };
@@ -144,7 +167,7 @@ export function PmStageFlowConfig() {
     Object.entries(editConfig).forEach(([k, v]) => {
       if (v.length > 0) cleaned[k] = v;
     });
-    saveMutation.mutate({ id: editingId ?? undefined, name: editName.trim(), flow_config: cleaned });
+    saveMutation.mutate({ id: editingId ?? undefined, name: editName.trim(), flow_config: cleaned, transition_dates: editTransitionDates });
   };
 
   const toggleStageNext = (stageKey: string, nextKey: string) => {
@@ -161,6 +184,27 @@ export function PmStageFlowConfig() {
     });
   };
 
+  const setDateMode = (stageKey: string, mode: string) => {
+    setEditTransitionDates(prev => {
+      const copy = { ...prev };
+      if (mode === "none") {
+        delete copy[stageKey];
+      } else if (mode === "pick") {
+        copy[stageKey] = "pick";
+      } else {
+        copy[stageKey] = parseInt(mode);
+      }
+      return copy;
+    });
+  };
+
+  const getDateModeValue = (stageKey: string): string => {
+    const val = editTransitionDates[stageKey];
+    if (val === undefined) return "none";
+    if (val === "pick") return "pick";
+    return String(val);
+  };
+
   const isEditing = !!editingId || isCreating;
 
   return (
@@ -172,7 +216,7 @@ export function PmStageFlowConfig() {
             Fluxos de Etapas
           </h3>
           <p className="text-sm text-muted-foreground mt-1">
-            Configure como as tarefas avançam entre etapas. Você pode definir múltiplas opções de próxima etapa.
+            Configure como as tarefas avançam entre etapas e como a data de entrega é ajustada.
           </p>
         </div>
         {!isEditing && (
@@ -194,14 +238,14 @@ export function PmStageFlowConfig() {
           </div>
 
           <p className="text-xs text-muted-foreground">
-            Marque uma ou mais etapas para onde a tarefa pode avançar ao concluir cada etapa. Se marcar mais de uma, o usuário escolherá ao clicar "Concluído".
+            Marque as próximas etapas e configure a data de entrega ao concluir cada etapa.
           </p>
 
-          {/* Flow editor: each stage row with checkboxes for next stages */}
           <div className="border border-border/30 rounded-lg overflow-hidden">
-            <div className="grid grid-cols-[200px_1fr] gap-0 text-xs font-semibold uppercase tracking-wider text-muted-foreground bg-muted/30 border-b border-border/20">
+            <div className="grid grid-cols-[180px_1fr_180px] gap-0 text-xs font-semibold uppercase tracking-wider text-muted-foreground bg-muted/30 border-b border-border/20">
               <div className="px-4 py-2.5">Etapa Atual</div>
-              <div className="px-4 py-2.5">Ao Concluir → Próximas Etapas</div>
+              <div className="px-4 py-2.5">Ao Concluir → Próximas</div>
+              <div className="px-4 py-2.5">Data ao Concluir</div>
             </div>
             {STAGE_OPTIONS.map(stage => {
               const color = getStageCircleColor(stage.key);
@@ -209,14 +253,14 @@ export function PmStageFlowConfig() {
               const selectedNexts = editConfig[stage.key] ?? [];
 
               return (
-                <div key={stage.key} className="grid grid-cols-[200px_1fr] gap-0 border-b border-border/10 hover:bg-accent/20 transition">
+                <div key={stage.key} className="grid grid-cols-[180px_1fr_180px] gap-0 border-b border-border/10 hover:bg-accent/20 transition">
                   <div className="flex items-center gap-2 px-4 py-3">
                     <span className={cn("h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0", color.border, isDone && color.bg)}>
                       {isDone && <Check className="h-2.5 w-2.5 text-white" />}
                     </span>
                     <span className="text-sm font-medium">{stage.label}</span>
                   </div>
-                  <div className="flex flex-wrap items-center gap-3 px-4 py-2.5">
+                  <div className="flex flex-wrap items-center gap-2 px-4 py-2.5">
                     {isDone ? (
                       <span className="text-xs text-emerald-500 font-medium flex items-center gap-1">
                         <Check className="h-3 w-3" /> Etapa Final
@@ -226,13 +270,27 @@ export function PmStageFlowConfig() {
                         const sc = getStageCircleColor(s.key);
                         const isChecked = selectedNexts.includes(s.key);
                         return (
-                          <label key={s.key} className={cn("flex items-center gap-1.5 cursor-pointer rounded-md border px-2 py-1.5 text-xs transition", isChecked ? "border-primary/40 bg-primary/10" : "border-border/30 hover:bg-accent/30")}>
+                          <label key={s.key} className={cn("flex items-center gap-1.5 cursor-pointer rounded-md border px-2 py-1 text-xs transition", isChecked ? "border-primary/40 bg-primary/10" : "border-border/30 hover:bg-accent/30")}>
                             <Checkbox checked={isChecked} onCheckedChange={() => toggleStageNext(stage.key, s.key)} className="h-3.5 w-3.5" />
                             <span className={cn("h-3 w-3 rounded-full border-2 shrink-0", sc.border, s.key === "entrega" && sc.bg)} />
                             <span>{s.label}</span>
                           </label>
                         );
                       })
+                    )}
+                  </div>
+                  <div className="flex items-center px-4 py-2.5">
+                    {!isDone && (
+                      <Select value={getDateModeValue(stage.key)} onValueChange={(v) => setDateMode(stage.key, v)}>
+                        <SelectTrigger className="h-7 text-xs w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {DATE_MODE_OPTIONS.map(opt => (
+                            <SelectItem key={opt.value} value={opt.value} className="text-xs">{opt.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     )}
                   </div>
                 </div>
@@ -247,6 +305,7 @@ export function PmStageFlowConfig() {
         {flows.map(flow => {
           if (editingId === flow.id) return null;
           const config = flow.flow_config as Record<string, string | string[]>;
+          const dates = (flow.transition_dates ?? {}) as Record<string, "pick" | number>;
 
           return (
             <div key={flow.id} className={cn("border rounded-lg p-5 transition", flow.is_default ? "border-primary/40 bg-primary/5" : "border-border/30 bg-card/30")}>
@@ -270,13 +329,14 @@ export function PmStageFlowConfig() {
                 </div>
               </div>
 
-              {/* Flow visualization */}
               <div className="space-y-2">
                 {STAGE_OPTIONS.map(stage => {
                   const raw = config[stage.key];
                   if (!raw) return null;
                   const nexts = Array.isArray(raw) ? raw : [raw];
                   const color = getStageCircleColor(stage.key);
+                  const dateMode = dates[stage.key];
+                  const dateModeLabel = dateMode === "pick" ? "📅 Escolher data" : typeof dateMode === "number" ? `⏱ +${dateMode} dia${dateMode > 1 ? "s" : ""}` : null;
 
                   return (
                     <div key={stage.key} className="flex items-center gap-2 flex-wrap">
@@ -295,6 +355,9 @@ export function PmStageFlowConfig() {
                           </div>
                         );
                       })}
+                      {dateModeLabel && (
+                        <span className="text-[10px] text-muted-foreground ml-1 bg-muted/50 rounded px-1.5 py-0.5">{dateModeLabel}</span>
+                      )}
                       {nexts.length > 1 && (
                         <span className="text-[10px] text-muted-foreground ml-1">(escolha ao concluir)</span>
                       )}
@@ -315,7 +378,6 @@ export function PmStageFlowConfig() {
 
       <p className="text-xs text-muted-foreground">
         💡 O fluxo ⭐ padrão é usado quando você clica "Concluído" ou "Alteração" dentro de uma tarefa.
-        Se houver múltiplas opções, o sistema pedirá para escolher.
       </p>
     </div>
   );

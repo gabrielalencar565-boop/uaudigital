@@ -126,6 +126,7 @@ export function useCreatePmTask() {
       parent_task_id?: string | null;
       useTemplate?: boolean;
       is_extra_demand?: boolean;
+      is_draft?: boolean;
     }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Não autenticado");
