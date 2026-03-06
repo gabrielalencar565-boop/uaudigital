@@ -419,6 +419,61 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           </PropertyRow>
         </div>
 
+        {/* ── Concluído / Alteração action buttons ── */}
+        <div className="flex items-center gap-2 pt-2">
+          {!isDone ? (
+            <Popover open={stageChoiceOpen} onOpenChange={setStageChoiceOpen}>
+              <PopoverTrigger asChild>
+                <Button size="sm" className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={handleConcluido}>
+                  <CheckCircle2 className="h-4 w-4" /> Concluído
+                </Button>
+              </PopoverTrigger>
+              {stageChoiceOptions.length > 1 && (
+                <PopoverContent className="w-52 p-1" align="start">
+                  <p className="text-xs text-muted-foreground px-3 py-2 font-medium">Avançar para qual etapa?</p>
+                  {stageChoiceOptions.map(sk => {
+                    const sc = getStageCircleColor(sk);
+                    return (
+                      <button key={sk} className="flex items-center gap-2 w-full px-3 py-2 rounded text-sm hover:bg-accent transition" onClick={() => handleChooseNextStage(sk)}>
+                        <span className={cn("h-4 w-4 rounded-full border-2 shrink-0", sc.border, sk === "entrega" && sc.bg)}>
+                          {sk === "entrega" && <Check className="h-2.5 w-2.5 text-white" />}
+                        </span>
+                        <span className="font-medium">{stageLabel(sk)}</span>
+                      </button>
+                    );
+                  })}
+                </PopoverContent>
+              )}
+            </Popover>
+          ) : (
+            <Badge className="bg-emerald-500/20 text-emerald-400 border-0 gap-1">
+              <Check className="h-3 w-3" /> Entregue
+            </Badge>
+          )}
+
+          <Popover open={alteracaoChoiceOpen} onOpenChange={setAlteracaoChoiceOpen}>
+            <PopoverTrigger asChild>
+              <Button size="sm" variant="outline" className="gap-1.5 text-amber-500 border-amber-500/30 hover:bg-amber-500/10" onClick={handleAlteracao}>
+                <RotateCcw className="h-3.5 w-3.5" /> Alteração
+              </Button>
+            </PopoverTrigger>
+            {alteracaoTargets.length > 1 && (
+              <PopoverContent className="w-52 p-1" align="start">
+                <p className="text-xs text-muted-foreground px-3 py-2 font-medium">Retornar para qual etapa?</p>
+                {alteracaoTargets.map(sk => {
+                  const sc = getStageCircleColor(sk);
+                  return (
+                    <button key={sk} className="flex items-center gap-2 w-full px-3 py-2 rounded text-sm hover:bg-accent transition" onClick={() => handleChooseAlteracao(sk)}>
+                      <span className={cn("h-4 w-4 rounded-full border-2 shrink-0", sc.border)} />
+                      <span className="font-medium">{stageLabel(sk)}</span>
+                    </button>
+                  );
+                })}
+              </PopoverContent>
+            )}
+          </Popover>
+        </div>
+
         {/* Description */}
         <div className="border-t border-border/20 pt-4">
           {editingDesc ? (
