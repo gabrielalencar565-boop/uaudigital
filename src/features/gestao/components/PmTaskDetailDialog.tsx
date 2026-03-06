@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import {
   CalendarDays, User, Flag, X, ChevronRight, ArrowLeft,
-  Layers, Tag, MessageSquare, Plus, Check
+  Layers, Tag, MessageSquare, Plus, Check, CheckCircle2, RotateCcw
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -18,6 +18,7 @@ import {
   useUpdatePmTask, usePmTasks, usePmChildTasks,
   usePmComments, usePmAttachments,
 } from "../hooks/use-pm-data";
+import { useDefaultFlow, getNextStages } from "./PmStageFlowConfig";
 import { PmSubtaskList } from "./PmSubtaskList";
 import { PmCommentsSection } from "./PmCommentsSection";
 import { PmAttachmentsSection } from "./PmAttachmentsSection";
