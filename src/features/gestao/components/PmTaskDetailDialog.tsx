@@ -27,6 +27,7 @@ import { PmAttachmentsSection } from "./PmAttachmentsSection";
 import { PmAssigneeSelector } from "./PmAssigneeSelector";
 import type { PmTask } from "../pm-types";
 import { toast } from "sonner";
+import { RichDescriptionEditor, ExpandableDescription } from "./RichDescriptionEditor";
 
 function initials(n: string) {
   return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
@@ -630,17 +631,17 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         {/* Description */}
         <div className="border-t border-border/20 pt-4">
           {editingDesc ? (
-            <div className="space-y-2">
-              <Textarea value={descDraft} onChange={(e) => setDescDraft(e.target.value)} className="min-h-[120px]" />
-              <div className="flex gap-2">
-                <Button size="sm" onClick={saveDesc}>Salvar</Button>
-                <Button size="sm" variant="ghost" onClick={() => setEditingDesc(false)}>Cancelar</Button>
-              </div>
-            </div>
+            <RichDescriptionEditor
+              value={descDraft}
+              onChange={setDescDraft}
+              onSave={() => { updateTask.mutate({ id: task.id, description: descDraft }); setEditingDesc(false); }}
+              onCancel={() => setEditingDesc(false)}
+            />
           ) : (
-            <div className="cursor-pointer text-sm text-muted-foreground hover:text-foreground transition min-h-[40px] py-2" onClick={() => { setDescDraft(task.description ?? ""); setEditingDesc(true); }}>
-              {task.description || "Adicione uma descrição..."}
-            </div>
+            <ExpandableDescription
+              html={task.description}
+              onEdit={() => { setDescDraft(task.description ?? ""); setEditingDesc(true); }}
+            />
           )}
         </div>
 
