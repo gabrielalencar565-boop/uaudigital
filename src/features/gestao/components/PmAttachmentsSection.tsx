@@ -155,19 +155,22 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
               </div>
 
               {/* Info bar */}
-              <div className="px-1.5 py-1 flex items-center gap-1">
-                {uploader && (
-                  <Avatar className="h-4 w-4 shrink-0 border border-background">
-                    <AvatarImage src={uploader.avatar} />
-                    <AvatarFallback className="text-[6px] bg-primary/10 text-primary">
-                      {initials(uploader.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                )}
-                <p className="truncate text-[9px] font-medium flex-1 min-w-0">
+              <div className="px-1.5 py-1 space-y-0.5">
+                <p className="truncate text-[9px] font-medium min-w-0">
                   {att.file_name}
                   {isCover && <span className="ml-0.5 text-[7px] text-primary font-bold uppercase">Capa</span>}
                 </p>
+                <div className="flex items-center gap-1 text-[8px] text-muted-foreground">
+                  <span>{format(new Date(att.created_at), "MMM dd 'às' h:mm a")}</span>
+                  {uploader && (
+                    <Avatar className="h-3.5 w-3.5 shrink-0 border border-background ml-auto">
+                      <AvatarImage src={uploader.avatar} />
+                      <AvatarFallback className="text-[5px] bg-primary/10 text-primary">
+                        {initials(uploader.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                  )}
+                </div>
               </div>
             </div>
           );

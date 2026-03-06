@@ -396,21 +396,16 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
             <Input type="date" value={task.due_date ?? ""} onChange={(e) => updateTask.mutate({ id: task.id, due_date: e.target.value || null })} className="h-7 w-36 text-xs border-0 bg-transparent shadow-none p-0" />
           </PropertyRow>
 
-          <PropertyRow icon={<Flag className="h-3.5 w-3.5" />} label="Prioridade">
-            <Popover>
-              <PopoverTrigger asChild>
-                <button className="flex items-center gap-1.5 text-xs min-h-[28px] hover:opacity-80 transition">
-                  {PM_PRIORITIES.find(p => p.key === task.priority)?.label ?? task.priority}
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-40 p-1" align="start">
-                {PM_PRIORITIES.map(p => (
-                  <button key={p.key} className={cn("flex items-center gap-2 w-full px-2 py-1.5 rounded text-xs hover:bg-accent transition", task.priority === p.key && "bg-accent")} onClick={() => updateTask.mutate({ id: task.id, priority: p.key as any })}>
-                    {p.label}
-                  </button>
-                ))}
-              </PopoverContent>
-            </Popover>
+          <PropertyRow icon={<Flag className="h-3.5 w-3.5" />} label="Demanda Extra">
+            <label className="flex items-center gap-2 cursor-pointer min-h-[28px]">
+              <input
+                type="checkbox"
+                checked={task.is_extra_demand ?? false}
+                onChange={(e) => updateTask.mutate({ id: task.id, is_extra_demand: e.target.checked } as any)}
+                className="h-4 w-4 rounded border-border accent-primary"
+              />
+              <span className="text-xs text-muted-foreground">Não contabiliza no Magic Number</span>
+            </label>
           </PropertyRow>
 
           {/* Stage selector with colored circles (ClickUp style) */}
