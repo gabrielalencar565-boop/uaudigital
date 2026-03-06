@@ -388,7 +388,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         {/* Properties grid */}
         <div className="grid grid-cols-2 gap-x-8 gap-y-2">
           {/* Assignee */}
-          <PropertyRow icon={<User className="h-3.5 w-3.5" />} label="Responsável">
+          <PropertyRow icon={<UserCircle className="h-3.5 w-3.5" />} label="Responsável">
             <PmAssigneeSelector
               selectedIds={allAssigneeIds}
               membersMap={membersMap}
@@ -416,7 +416,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           </PropertyRow>
 
           {/* Client */}
-          <PropertyRow icon={<User className="h-3.5 w-3.5" />} label="Cliente">
+          <PropertyRow icon={<UserCircle className="h-3.5 w-3.5" />} label="Cliente">
             <Popover>
               <PopoverTrigger asChild>
                 <button className="text-xs min-h-[28px] hover:opacity-80 transition">
@@ -440,7 +440,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
             </Popover>
           </PropertyRow>
 
-          <PropertyRow icon={<CalendarDays className="h-3.5 w-3.5" />} label="Entrega">
+          <PropertyRow icon={<Calendar className="h-3.5 w-3.5" />} label="Entrega">
             <Input type="date" value={task.due_date ?? ""} onChange={(e) => updateTask.mutate({ id: task.id, due_date: e.target.value || null })} className="h-7 w-36 text-xs border-0 bg-transparent shadow-none p-0" />
           </PropertyRow>
 
