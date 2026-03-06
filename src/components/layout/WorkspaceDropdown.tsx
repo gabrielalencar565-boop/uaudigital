@@ -59,17 +59,36 @@ export function WorkspaceDropdown() {
     if (!file || !user) return;
     setUploadingLogo(true);
     try {
-      if (!file.type.startsWith("image/")) throw new Error("Envie uma imagem");
+      const validTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp", "image/gif", "image/svg+xml"];
+      if (!validTypes.includes(file.type)) throw new Error("Formato inválido. Use PNG, JPEG, WebP, GIF ou SVG.");
       if (file.size > 5 * 1024 * 1024) throw new Error("Máx 5MB");
       const ext = (file.name.split(".").pop() || "png").toLowerCase();
-      const path = `logo.${ext}`;
+      const path = `logo_${Date.now()}.${ext}`;
       const up = await supabase.storage.from("app-assets").upload(path, file, {
         upsert: true,
         contentType: file.type,
       });
       if (up.error) throw up.error;
       const pub = supabase.storage.from("app-assets").getPublicUrl(path);
-      await updateAppSettings.mutateAsync({ logo_url: pub.data.publicUrl });
+      const newUrl = pub.data.publicUrl;
+
+      // Try update first, if no row exists then insert
+      const { data: updated, error: updateErr } = await supabase
+        .from("app_settings")
+        .update({ logo_url: newUrl })
+        .eq("id", 1)
+        .select();
+
+      if (updateErr) throw updateErr;
+
+      if (!updated || updated.length === 0) {
+        const { error: insertErr } = await supabase
+          .from("app_settings")
+          .insert({ id: 1, logo_url: newUrl });
+        if (insertErr) throw insertErr;
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["app_settings"] });
       toast.success("Logo atualizada!");
     } catch (err: any) {
       toast.error(err?.message ?? "Erro ao enviar logo");
