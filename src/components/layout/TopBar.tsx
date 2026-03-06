@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { ChevronDown, LogOut, Moon, Palette, Pencil, Sun } from "lucide-react";
+import { ChevronDown, LogOut, Moon, Palette, Pencil, Sun, Eye, Target, Trophy, ClipboardList, CalendarDays, DollarSign, TrendingUp, Shield } from "lucide-react";
 import { useTheme } from "next-themes";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -9,6 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useMyProfile } from "@/hooks/use-my-profile";
@@ -17,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { NotificationsDropdown } from "@/components/layout/NotificationsDropdown";
 import { useQueryClient } from "@tanstack/react-query";
+import type { MainTab } from "@/components/layout/UauSidebarShell";
 
 function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
@@ -25,6 +27,8 @@ function initials(name: string) {
 interface TopBarProps {
   onEditProfile?: () => void;
   onOpenTask?: (taskId: string) => void;
+  onTabChange?: (tab: MainTab) => void;
+  isAdmin?: boolean;
 }
 
 export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
