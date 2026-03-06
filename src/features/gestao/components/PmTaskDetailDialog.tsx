@@ -3,6 +3,7 @@ import {
   CalendarDays, User, Flag, X, ChevronRight, ArrowLeft,
   Layers, Tag, MessageSquare, Plus, Check, CheckCircle2, RotateCcw
 } from "lucide-react";
+import { addDays, format } from "date-fns";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -12,14 +13,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import {
-  PM_ACTIVE_STAGES, PM_PRIORITIES, stageLabel, getStageCircleColor,
+  PM_ACTIVE_STAGES, stageLabel, getStageCircleColor,
   TAG_COLORS, parseTag, tagColor, tagDisplay
 } from "../pm-constants";
 import {
   useUpdatePmTask, usePmTasks, usePmChildTasks,
   usePmComments, usePmAttachments, usePmSyncStageCompletion,
 } from "../hooks/use-pm-data";
-import { useDefaultFlow, getNextStages } from "./PmStageFlowConfig";
+import { useDefaultFlowWithDates, getNextStages } from "./PmStageFlowConfig";
 import { PmSubtaskList } from "./PmSubtaskList";
 import { PmCommentsSection } from "./PmCommentsSection";
 import { PmAttachmentsSection } from "./PmAttachmentsSection";
@@ -42,10 +43,9 @@ interface Props {
 }
 
 export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap, members, isAdmin }: Props) {
-  const [taskStack, setTaskStack] = useState<string[]>([]); // store IDs instead of full objects
+  const [taskStack, setTaskStack] = useState<string[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // ── Resolve tasks from query cache for reactivity ──
   const tasksQ = usePmTasks();
   const resolvedRootTask = useMemo(() => {
     if (!task) return null;
@@ -59,20 +59,16 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
   const commentsQ = usePmComments(currentTaskId);
   const attachmentsQ = usePmAttachments(currentTaskId);
 
-  // Resolve current task from child tasks query data for reactivity
   const currentTask = useMemo(() => {
     if (!resolvedRootTask) return null;
     if (taskStack.length === 0) return resolvedRootTask;
     const lastId = taskStack[taskStack.length - 1];
-    // Look in all child task queries
     const allChildren = rootChildTasksQ.data ?? [];
     const found = allChildren.find(t => t.id === lastId);
     if (found) return found;
-    // Fallback: look in current childTasks
     return childTasksQ.data?.find(t => t.id === lastId) ?? null;
   }, [resolvedRootTask, taskStack, rootChildTasksQ.data, childTasksQ.data]);
 
-  // Collect all unique tags from all tasks
   const allTags = useMemo(() => {
     const tagSet = new Set<string>();
     (tasksQ.data ?? []).forEach(t => (t.tags ?? []).forEach((tag: string) => tagSet.add(tag)));
@@ -88,7 +84,6 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
 
   const isSubtaskView = taskStack.length > 0;
 
-  // Build breadcrumb labels from child tasks
   const stackTasks = taskStack.map(id => {
     const found = (rootChildTasksQ.data ?? []).find(t => t.id === id);
     return found ?? { id, title: "..." } as PmTask;
@@ -204,7 +199,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 }) {
   const updateTask = useUpdatePmTask();
   const syncStage = usePmSyncStageCompletion();
-  const flowConfig = useDefaultFlow();
+  const { flowConfig, transitionDates } = useDefaultFlowWithDates();
 
   const allAssigneeIds = [
     ...(task.assignee_id ? [task.assignee_id] : []),
@@ -221,14 +216,18 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   const [stageChoiceOptions, setStageChoiceOptions] = useState<string[]>([]);
   const [alteracaoChoiceOpen, setAlteracaoChoiceOpen] = useState(false);
 
+  // Date on completion state
+  const [completionDateOpen, setCompletionDateOpen] = useState(false);
+  const [completionDate, setCompletionDate] = useState("");
+  const [pendingCompletedStage, setPendingCompletedStage] = useState("");
+  const [pendingDueDate, setPendingDueDate] = useState<string | undefined>();
+
   // Possible next stages from flow
   const nextStages = getNextStages(flowConfig, task.stage_current);
   const isDone = task.stage_current === "entrega";
 
-  // Alteração: go back to design or video (common return points)
   const alteracaoTargets = ["design", "edicao_videos"].filter(s => s !== task.stage_current);
 
-  // Helper: sync completed stage with Magic Number + Performance
   const syncCompletedStage = async (completedStage: string) => {
     if (task.parent_task_id) return;
     try {
@@ -239,29 +238,64 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     } catch (_) { /* ignore */ }
   };
 
+  const advanceStage = (completedStage: string, nextStage: string, newDueDate?: string) => {
+    const updates: any = { id: task.id, stage_current: nextStage as any };
+    if (newDueDate) updates.due_date = newDueDate;
+    updateTask.mutate(updates);
+    syncCompletedStage(completedStage);
+    toast.success(nextStage === "entrega" ? "Tarefa marcada como Entregue!" : `Avançou para ${stageLabel(nextStage)}`);
+  };
+
   const handleConcluido = () => {
     if (isDone) return;
     const completedStage = task.stage_current;
+    const dateConfig = transitionDates[task.stage_current];
+
+    // If there's a date config, show date dialog first
+    if (dateConfig !== undefined && dateConfig !== null) {
+      setPendingCompletedStage(completedStage);
+      if (dateConfig === "pick") {
+        setCompletionDate(task.due_date ?? format(new Date(), "yyyy-MM-dd"));
+      } else if (typeof dateConfig === "number") {
+        const baseDate = task.due_date ? new Date(task.due_date + "T12:00:00") : new Date();
+        setCompletionDate(format(addDays(baseDate, dateConfig), "yyyy-MM-dd"));
+      }
+      setCompletionDateOpen(true);
+      return;
+    }
+
+    // No date config — advance directly
     if (nextStages.length === 0) {
-      updateTask.mutate({ id: task.id, stage_current: "entrega" as any });
-      syncCompletedStage(completedStage);
-      toast.success("Tarefa marcada como Entregue!");
+      advanceStage(completedStage, "entrega");
     } else if (nextStages.length === 1) {
-      updateTask.mutate({ id: task.id, stage_current: nextStages[0] as any });
-      syncCompletedStage(completedStage);
-      toast.success(`Avançou para ${stageLabel(nextStages[0])}`);
+      advanceStage(completedStage, nextStages[0]);
     } else {
       setStageChoiceOptions(nextStages);
       setStageChoiceOpen(true);
     }
   };
 
+  const handleConfirmCompletionDate = () => {
+    const completedStage = pendingCompletedStage;
+    const newDueDate = completionDate || undefined;
+
+    if (nextStages.length === 0) {
+      advanceStage(completedStage, "entrega", newDueDate);
+    } else if (nextStages.length === 1) {
+      advanceStage(completedStage, nextStages[0], newDueDate);
+    } else {
+      setPendingDueDate(newDueDate);
+      setStageChoiceOptions(nextStages);
+      setStageChoiceOpen(true);
+    }
+    setCompletionDateOpen(false);
+  };
+
   const handleChooseNextStage = (stageKey: string) => {
-    const completedStage = task.stage_current;
-    updateTask.mutate({ id: task.id, stage_current: stageKey as any });
-    syncCompletedStage(completedStage);
-    toast.success(`Avançou para ${stageLabel(stageKey)}`);
+    const completedStage = pendingCompletedStage || task.stage_current;
+    advanceStage(completedStage, stageKey, pendingDueDate);
     setStageChoiceOpen(false);
+    setPendingDueDate(undefined);
   };
 
   const handleAlteracao = () => {
@@ -377,7 +411,6 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
               <PopoverContent className="w-56 p-1 max-h-64 overflow-y-auto" align="start">
                 {Object.entries(clientsMap).map(([cid, cname]) => (
                   <button key={cid} className={cn("flex items-center gap-2 w-full px-3 py-2 rounded text-sm hover:bg-accent transition text-left", task.client_id === cid && "bg-accent")} onClick={() => {
-                    // Update client and auto-update title prefix
                     const oldClientName = clientsMap[task.client_id];
                     const newTitle = oldClientName && task.title.startsWith(`[${oldClientName}]`)
                       ? `[${cname}]${task.title.slice(oldClientName.length + 2)}`
@@ -404,11 +437,10 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                 onChange={(e) => updateTask.mutate({ id: task.id, is_extra_demand: e.target.checked } as any)}
                 className="h-4 w-4 rounded border-border accent-primary"
               />
-              <span className="text-xs text-muted-foreground">Não contabiliza no Magic Number</span>
             </label>
           </PropertyRow>
 
-          {/* Stage selector with colored circles (ClickUp style) */}
+          {/* Stage selector */}
           <PropertyRow icon={<Layers className="h-3.5 w-3.5" />} label="Etapa">
             <Popover>
               <PopoverTrigger asChild>
@@ -420,7 +452,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
               <PopoverContent className="w-56 p-1" align="start">
                 {PM_ACTIVE_STAGES.map(s => {
                   const color = getStageCircleColor(s.key);
-                  const isDone = s.key === "entrega";
+                  const isDoneS = s.key === "entrega";
                   const isSelected = task.stage_current === s.key;
                   return (
                     <button
@@ -428,8 +460,8 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                       className={cn("flex items-center gap-3 w-full px-3 py-2 rounded text-sm hover:bg-accent transition", isSelected && "bg-accent")}
                       onClick={() => updateTask.mutate({ id: task.id, stage_current: s.key as any })}
                     >
-                      <span className={cn("h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0", color.border, isDone && `${color.bg}`)}>
-                        {isDone && <Check className="h-3 w-3 text-white" />}
+                      <span className={cn("h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0", color.border, isDoneS && `${color.bg}`)}>
+                        {isDoneS && <Check className="h-3 w-3 text-white" />}
                       </span>
                       <span className="font-medium">{s.label}</span>
                       {isSelected && <Check className="h-3.5 w-3.5 ml-auto text-primary" />}
@@ -473,7 +505,6 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                     </Button>
                   )}
                 </div>
-                {/* Global tags list - toggle on/off */}
                 {allTags.length > 0 && (
                   <div className="p-2 space-y-0.5">
                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold px-2 py-1">Etiquetas disponíveis</p>
@@ -503,29 +534,55 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         {/* ── Concluído / Alteração action buttons ── */}
         <div className="flex items-center gap-2 pt-2">
           {!isDone ? (
-            <Popover open={stageChoiceOpen} onOpenChange={setStageChoiceOpen}>
-              <PopoverTrigger asChild>
-                <Button size="sm" className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={handleConcluido}>
-                  <CheckCircle2 className="h-4 w-4" /> Concluído
-                </Button>
-              </PopoverTrigger>
-              {stageChoiceOptions.length > 1 && (
-                <PopoverContent className="w-52 p-1" align="start">
-                  <p className="text-xs text-muted-foreground px-3 py-2 font-medium">Avançar para qual etapa?</p>
-                  {stageChoiceOptions.map(sk => {
-                    const sc = getStageCircleColor(sk);
-                    return (
-                      <button key={sk} className="flex items-center gap-2 w-full px-3 py-2 rounded text-sm hover:bg-accent transition" onClick={() => handleChooseNextStage(sk)}>
-                        <span className={cn("h-4 w-4 rounded-full border-2 shrink-0", sc.border, sk === "entrega" && sc.bg)}>
-                          {sk === "entrega" && <Check className="h-2.5 w-2.5 text-white" />}
-                        </span>
-                        <span className="font-medium">{stageLabel(sk)}</span>
-                      </button>
-                    );
-                  })}
-                </PopoverContent>
-              )}
-            </Popover>
+            <>
+              <Popover open={stageChoiceOpen} onOpenChange={setStageChoiceOpen}>
+                <PopoverTrigger asChild>
+                  <Button size="sm" className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={handleConcluido}>
+                    <CheckCircle2 className="h-4 w-4" /> Concluído
+                  </Button>
+                </PopoverTrigger>
+                {stageChoiceOptions.length > 1 && (
+                  <PopoverContent className="w-52 p-1" align="start">
+                    <p className="text-xs text-muted-foreground px-3 py-2 font-medium">Avançar para qual etapa?</p>
+                    {stageChoiceOptions.map(sk => {
+                      const sc = getStageCircleColor(sk);
+                      return (
+                        <button key={sk} className="flex items-center gap-2 w-full px-3 py-2 rounded text-sm hover:bg-accent transition" onClick={() => handleChooseNextStage(sk)}>
+                          <span className={cn("h-4 w-4 rounded-full border-2 shrink-0", sc.border, sk === "entrega" && sc.bg)}>
+                            {sk === "entrega" && <Check className="h-2.5 w-2.5 text-white" />}
+                          </span>
+                          <span className="font-medium">{stageLabel(sk)}</span>
+                        </button>
+                      );
+                    })}
+                  </PopoverContent>
+                )}
+              </Popover>
+
+              {/* Completion date dialog */}
+              <Dialog open={completionDateOpen} onOpenChange={setCompletionDateOpen}>
+                <DialogContent className="max-w-xs">
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold">Data de entrega da próxima etapa</h3>
+                    <p className="text-xs text-muted-foreground">
+                      Defina a data de entrega para a próxima etapa.
+                    </p>
+                    <Input
+                      type="date"
+                      value={completionDate}
+                      onChange={(e) => setCompletionDate(e.target.value)}
+                      className="h-9"
+                    />
+                    <div className="flex justify-end gap-2">
+                      <Button size="sm" variant="ghost" onClick={() => setCompletionDateOpen(false)}>Cancelar</Button>
+                      <Button size="sm" onClick={handleConfirmCompletionDate} className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white">
+                        <Check className="h-3.5 w-3.5" /> Confirmar
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </>
           ) : (
             <Badge className="bg-emerald-500/20 text-emerald-400 border-0 gap-1">
               <Check className="h-3 w-3" /> Entregue

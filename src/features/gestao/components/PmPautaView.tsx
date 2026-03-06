@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { addDays, addMonths, subMonths, endOfMonth, format, startOfMonth, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CheckCircle2, Check } from "lucide-react";
+import { CheckCircle2, Check, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -11,8 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { PM_ACTIVE_STAGES, getStageCircleColor, stageLabel } from "../pm-constants";
-import { useUpdatePmTask, useCreatePmTask } from "../hooks/use-pm-data";
-import { PmAssigneeSelector } from "./PmAssigneeSelector";
+import { useCreatePmTask, useDeletePmTask } from "../hooks/use-pm-data";
 import type { PmTask } from "../pm-types";
 import { toast } from "sonner";
 
@@ -20,7 +19,6 @@ function initials(n: string) {
   return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
 }
 
-// Stage badge abbreviations
 const STAGE_ABBR: Record<string, string> = {
   captacao: "CAP",
   planejamento: "PLAN",
@@ -63,19 +61,22 @@ export function PmPautaView({ tasks, clientsMap, membersMap, members, clients, i
   const [moreOpen, setMoreOpen] = useState(false);
   const [moreDayKey, setMoreDayKey] = useState<string | null>(null);
 
-  const updateTask = useUpdatePmTask();
   const createTask = useCreatePmTask();
+  const deleteTask = useDeletePmTask();
 
   const todayKey = format(new Date(), "yyyy-MM-dd");
 
+  // Only show draft tasks in pauta
+  const draftTasks = useMemo(() => tasks.filter(t => (t as any).is_draft === true), [tasks]);
+
   // Filter tasks
   const filteredTasks = useMemo(() => {
-    let list = tasks;
+    let list = draftTasks;
     if (filterClientId !== "all") list = list.filter(t => t.client_id === filterClientId);
     if (filterUserId !== "all") list = list.filter(t => t.assignee_id === filterUserId || (t.watchers ?? []).includes(filterUserId));
     if (filterStage !== "all") list = list.filter(t => t.stage_current === filterStage);
     return list;
-  }, [tasks, filterClientId, filterUserId, filterStage]);
+  }, [draftTasks, filterClientId, filterUserId, filterStage]);
 
   // Calendar days
   const days = useMemo(() => {
@@ -113,15 +114,22 @@ export function PmPautaView({ tasks, clientsMap, membersMap, members, clients, i
     setMoreOpen(true);
   };
 
-  const ACTIVE_STAGES = PM_ACTIVE_STAGES.filter(s => !["entrega"].includes(s.key));
+  const handleDeleteDraft = (taskId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    deleteTask.mutate(taskId);
+    toast.success("Rascunho removido");
+  };
 
   return (
     <div className="space-y-4">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h3 className="text-lg font-semibold">
-          {format(cursor, "MMMM 'de' yyyy", { locale: ptBR })}
-        </h3>
+        <div>
+          <h3 className="text-lg font-semibold">
+            {format(cursor, "MMMM 'de' yyyy", { locale: ptBR })}
+          </h3>
+          <p className="text-[10px] text-muted-foreground">Rascunhos de pauta — não são tarefas definitivas</p>
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="ghost" size="sm" onClick={() => setCursor(d => startOfMonth(subMonths(d, 1)))}>←</Button>
           <Button variant="ghost" size="sm" onClick={() => setCursor(d => startOfMonth(addMonths(d, 1)))}>→</Button>
@@ -183,14 +191,12 @@ export function PmPautaView({ tasks, clientsMap, membersMap, members, clients, i
                 )}>
                   {format(d, "d")}
                 </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    className="grid h-5 w-5 place-items-center rounded border border-border/60 bg-background/80 text-[10px] text-foreground hover:bg-accent transition"
-                    onClick={() => openCreateForDay(key)}
-                    title="Adicionar"
-                  >+</button>
-                </div>
+                <button
+                  type="button"
+                  className="grid h-5 w-5 place-items-center rounded border border-border/60 bg-background/80 text-[10px] text-foreground hover:bg-accent transition"
+                  onClick={() => openCreateForDay(key)}
+                  title="Adicionar rascunho"
+                >+</button>
               </div>
 
               <div className="mt-1.5 space-y-1.5 max-h-[520px] overflow-y-auto">
@@ -201,6 +207,7 @@ export function PmPautaView({ tasks, clientsMap, membersMap, members, clients, i
                     clientsMap={clientsMap}
                     membersMap={membersMap}
                     onTaskClick={onTaskClick}
+                    onDelete={handleDeleteDraft}
                   />
                 ))}
                 {dayTasks.length > 5 && (
@@ -226,13 +233,13 @@ export function PmPautaView({ tasks, clientsMap, membersMap, members, clients, i
           </DialogTitle>
           <div className="max-h-[60vh] space-y-2 overflow-y-auto">
             {(moreDayKey ? tasksByDay.get(moreDayKey) ?? [] : []).map(t => (
-              <PautaTaskCard key={t.id} task={t} clientsMap={clientsMap} membersMap={membersMap} onTaskClick={onTaskClick} expanded />
+              <PautaTaskCard key={t.id} task={t} clientsMap={clientsMap} membersMap={membersMap} onTaskClick={onTaskClick} onDelete={handleDeleteDraft} expanded />
             ))}
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Quick create dialog */}
+      {/* Quick create dialog (creates DRAFT) */}
       <PautaCreateDialog
         open={createOpen}
         onClose={() => setCreateOpen(false)}
@@ -246,11 +253,12 @@ export function PmPautaView({ tasks, clientsMap, membersMap, members, clients, i
 }
 
 // ─── Task card for pauta grid ───
-function PautaTaskCard({ task, clientsMap, membersMap, onTaskClick, expanded }: {
+function PautaTaskCard({ task, clientsMap, membersMap, onTaskClick, onDelete, expanded }: {
   task: PmTask;
   clientsMap: Record<string, string>;
   membersMap: Record<string, { name: string; avatar?: string }>;
   onTaskClick: (t: PmTask) => void;
+  onDelete: (id: string, e: React.MouseEvent) => void;
   expanded?: boolean;
 }) {
   const isDone = task.stage_current === "entrega";
@@ -260,40 +268,47 @@ function PautaTaskCard({ task, clientsMap, membersMap, onTaskClick, expanded }: 
   const clientName = clientsMap[task.client_id] ?? "—";
 
   return (
-    <button
-      type="button"
+    <div
       className={cn(
-        "w-full rounded-lg border border-border/40 bg-card/30 p-2 text-left transition hover:bg-card/50",
+        "w-full rounded-lg border border-dashed border-border/60 bg-card/20 p-2 text-left transition hover:bg-card/40",
         isDone && "opacity-50"
       )}
-      onClick={() => onTaskClick(task)}
     >
       <div className="flex items-center justify-between gap-1">
         <div className={cn("inline-flex h-5 items-center rounded px-2 text-[10px] font-bold text-white", stageBg)}>
           {abbr}
         </div>
         <div className="flex items-center gap-1">
-          {isDone && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />}
           {task.is_extra_demand && (
             <Badge variant="secondary" className="text-[8px] h-4 px-1 gap-0.5">★ Extra</Badge>
           )}
+          <button
+            type="button"
+            className="h-4 w-4 grid place-items-center rounded text-muted-foreground hover:text-destructive transition"
+            onClick={(e) => onDelete(task.id, e)}
+            title="Remover rascunho"
+          >
+            <Trash2 className="h-3 w-3" />
+          </button>
         </div>
       </div>
-      <div className="mt-1.5 flex items-center gap-1.5">
-        <Avatar className="h-5 w-5 shrink-0">
-          <AvatarImage src={member?.avatar} />
-          <AvatarFallback className="text-[8px]">{member ? initials(member.name) : "?"}</AvatarFallback>
-        </Avatar>
-        <div className="min-w-0">
-          <p className="truncate text-xs font-semibold leading-4">{member?.name ?? "—"}</p>
-          <p className="truncate text-[10px] text-muted-foreground leading-3">{clientName}</p>
+      <button type="button" className="w-full text-left" onClick={() => onTaskClick(task)}>
+        <div className="mt-1.5 flex items-center gap-1.5">
+          <Avatar className="h-5 w-5 shrink-0">
+            <AvatarImage src={member?.avatar} />
+            <AvatarFallback className="text-[8px]">{member ? initials(member.name) : "?"}</AvatarFallback>
+          </Avatar>
+          <div className="min-w-0">
+            <p className="truncate text-xs font-semibold leading-4">{member?.name ?? "—"}</p>
+            <p className="truncate text-[10px] text-muted-foreground leading-3">{clientName}</p>
+          </div>
         </div>
-      </div>
-    </button>
+      </button>
+    </div>
   );
 }
 
-// ─── Quick create dialog for pauta ───
+// ─── Quick create dialog for pauta (creates DRAFT) ───
 function PautaCreateDialog({ open, onClose, dayKey, clients, members, membersMap }: {
   open: boolean;
   onClose: () => void;
@@ -308,7 +323,6 @@ function PautaCreateDialog({ open, onClose, dayKey, clients, members, membersMap
   const [assigneeId, setAssigneeId] = useState("");
   const [dueDate, setDueDate] = useState(dayKey);
 
-  // Sync dueDate with dayKey
   const effectiveDueDate = dueDate || dayKey;
 
   const reset = () => { setClientId(""); setStage("captacao"); setAssigneeId(""); setDueDate(dayKey); };
@@ -323,9 +337,9 @@ function PautaCreateDialog({ open, onClose, dayKey, clients, members, membersMap
         stage_current: stage,
         assignee_id: assigneeId || undefined,
         due_date: effectiveDueDate,
-        priority: "media",
-      });
-      toast.success("Tarefa criada!");
+        is_draft: true,
+      } as any);
+      toast.success("Rascunho criado!");
       reset();
       onClose();
     } catch (err: any) {
@@ -336,7 +350,7 @@ function PautaCreateDialog({ open, onClose, dayKey, clients, members, membersMap
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) { reset(); onClose(); } }}>
       <DialogContent className="max-w-sm">
-        <DialogTitle>Criar tarefa — {dayKey ? format(new Date(`${dayKey}T12:00:00`), "dd/MM/yyyy") : ""}</DialogTitle>
+        <DialogTitle>Rascunho — {dayKey ? format(new Date(`${dayKey}T12:00:00`), "dd/MM/yyyy") : ""}</DialogTitle>
         <div className="space-y-3 pt-2">
           <div className="space-y-1">
             <label className="text-xs font-medium">Cliente *</label>
@@ -385,7 +399,7 @@ function PautaCreateDialog({ open, onClose, dayKey, clients, members, membersMap
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button size="sm" variant="ghost" onClick={() => { reset(); onClose(); }}>Cancelar</Button>
-            <Button size="sm" onClick={handleCreate} disabled={createTask.isPending}>Criar</Button>
+            <Button size="sm" onClick={handleCreate} disabled={createTask.isPending}>Criar Rascunho</Button>
           </div>
         </div>
       </DialogContent>

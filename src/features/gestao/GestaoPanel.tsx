@@ -1,20 +1,21 @@
 import { useMemo, useState } from "react";
-import { Plus, Search, LayoutGrid, CalendarDays, FolderOpen, Settings2, CheckCircle2, FileSpreadsheet } from "lucide-react";
-import { format } from "date-fns";
+import { Plus, Search, LayoutGrid, CalendarDays, FolderOpen, Settings2, CheckCircle2, FileSpreadsheet, Trash2 } from "lucide-react";
+import { addDays, addMonths, subMonths, endOfMonth, format, startOfMonth, startOfWeek } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useSession } from "@/hooks/use-session";
 import { useRole } from "@/hooks/use-role";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { usePmTasks, usePmAllChildTasks } from "./hooks/use-pm-data";
+import { usePmTasks, usePmAllChildTasks, useUpdatePmTask, useDeletePmTask } from "./hooks/use-pm-data";
 import { PmKanbanBoard } from "./components/PmKanbanBoard";
 import { PmClientView } from "./components/PmClientView";
-import { PmTaskCard } from "./components/PmTaskCard";
 import { PmTaskDetailDialog } from "./components/PmTaskDetailDialog";
 import { PmCreateTaskDialog } from "./components/PmCreateTaskDialog";
 import { PmStageFlowConfig } from "./components/PmStageFlowConfig";
@@ -22,6 +23,22 @@ import { PmPautaView } from "./components/PmPautaView";
 import { stageLabel, getStageCircleColor, tagColor, tagDisplay } from "./pm-constants";
 import { cn } from "@/lib/utils";
 import type { PmTask } from "./pm-types";
+import { toast } from "sonner";
+
+function initials(n: string) {
+  return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
+}
+
+const STAGE_ABBR: Record<string, string> = {
+  captacao: "CAP", planejamento: "PLAN", design: "DSG", edicao_videos: "VDO",
+  revisao: "REV", pdf: "PDF", agendamento: "AGN", entrega: "OK",
+};
+
+const STAGE_BADGE_BG: Record<string, string> = {
+  captacao: "bg-red-500", planejamento: "bg-blue-500", design: "bg-yellow-500",
+  edicao_videos: "bg-purple-500", revisao: "bg-pink-500", pdf: "bg-indigo-500",
+  agendamento: "bg-violet-500", entrega: "bg-emerald-500",
+};
 
 export function GestaoPanel() {
   const { user } = useSession();
@@ -35,9 +52,14 @@ export function GestaoPanel() {
   const [createOpen, setCreateOpen] = useState(false);
   const [createDefaultStatus, setCreateDefaultStatus] = useState<string | undefined>();
 
+  // Agenda calendar state
+  const [agendaCursor, setAgendaCursor] = useState(() => startOfMonth(new Date()));
+
   // Data
   const tasksQ = usePmTasks();
-  const tasks = tasksQ.data ?? [];
+  const allTasks = tasksQ.data ?? [];
+  // Filter out drafts for all views except pauta
+  const tasks = useMemo(() => allTasks.filter(t => !(t as any).is_draft), [allTasks]);
 
   const allChildTasksQ = usePmAllChildTasks();
   const childTasksMap = useMemo(() => {
@@ -50,11 +72,10 @@ export function GestaoPanel() {
     return map;
   }, [allChildTasksQ.data]);
 
-  // Resolve selected task from query data for reactivity
   const selectedTask = useMemo(() => {
     if (!selectedTaskId) return null;
-    return tasks.find(t => t.id === selectedTaskId) ?? null;
-  }, [selectedTaskId, tasks]);
+    return allTasks.find(t => t.id === selectedTaskId) ?? null;
+  }, [selectedTaskId, allTasks]);
 
   // Clients
   const clientsQ = useQuery({
@@ -86,28 +107,6 @@ export function GestaoPanel() {
   const membersList = useMemo(() => (membersQ.data ?? []).map((m) => ({ id: m.user_id, name: m.display_name })), [membersQ.data]);
 
   const filters = { clientId: filterClient === "__all__" ? undefined : filterClient, assigneeId: filterAssignee === "__all__" ? undefined : filterAssignee, search: search || undefined };
-
-  // Agenda view
-  const agendaTasks = useMemo(() => {
-    let list = tasks;
-    if (filterClient && filterClient !== "__all__") list = list.filter((t) => t.client_id === filterClient);
-    if (filterAssignee && filterAssignee !== "__all__") list = list.filter((t) => t.assignee_id === filterAssignee);
-    if (search) {
-      const q = search.toLowerCase();
-      list = list.filter((t) => t.title.toLowerCase().includes(q));
-    }
-    const grouped: Record<string, PmTask[]> = {};
-    list.forEach((t) => {
-      const key = t.due_date ?? "sem_prazo";
-      if (!grouped[key]) grouped[key] = [];
-      grouped[key].push(t);
-    });
-    return Object.entries(grouped).sort(([a], [b]) => {
-      if (a === "sem_prazo") return 1;
-      if (b === "sem_prazo") return -1;
-      return a.localeCompare(b);
-    });
-  }, [tasks, filterClient, filterAssignee, search]);
 
   const openCreate = (status?: string) => {
     setCreateDefaultStatus(status);
@@ -183,70 +182,17 @@ export function GestaoPanel() {
         </TabsContent>
 
         <TabsContent value="agenda" className="mt-4">
-          <div className="space-y-4">
-            {agendaTasks.map(([date, dateTasks]) => (
-              <div key={date}>
-                <h3 className="mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  {date === "sem_prazo" ? "Sem prazo" : format(new Date(date + "T12:00:00"), "dd/MM/yyyy — EEEE")}
-                </h3>
-                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                  {dateTasks.map((task) => {
-                    const member = task.assignee_id ? membersMap[task.assignee_id] : undefined;
-                    const stageColor = getStageCircleColor(task.stage_current);
-                    const isDone = task.stage_current === "entrega";
-                    return (
-                      <button
-                        key={task.id}
-                        type="button"
-                        className={cn(
-                          "w-full rounded-lg border border-border/60 bg-card/20 p-3 text-left transition hover:bg-card/40",
-                          "border-l-4",
-                          stageColor.border,
-                          isDone && "opacity-60",
-                        )}
-                        onClick={() => setSelectedTaskId(task.id)}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className={cn("inline-flex h-7 items-center rounded-full px-3 text-xs font-semibold", stageColor.bg, "text-white")}>
-                            {stageLabel(task.stage_current)}
-                          </div>
-                          {isDone && <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-500" />}
-                          {task.is_extra_demand && (
-                            <Badge variant="secondary" className="text-[9px] h-5 px-1.5 gap-0.5 shrink-0">★ Extra</Badge>
-                          )}
-                        </div>
-
-                        {/* Tags */}
-                        {(task.tags ?? []).length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            {(task.tags ?? []).map(rawTag => {
-                              const tc = tagColor(rawTag);
-                              const name = tagDisplay(rawTag);
-                              return <Badge key={rawTag} className={cn("text-[8px] h-4 px-1 gap-0.5 border-0", tc.bg, tc.text)}>{name}</Badge>;
-                            })}
-                          </div>
-                        )}
-
-                        <div className="mt-2 flex items-center gap-2">
-                          <Avatar className="h-6 w-6">
-                            <AvatarImage src={member?.avatar ?? undefined} alt="" />
-                            <AvatarFallback className="text-[10px]">
-                              {member ? member.name.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("") : "?"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold leading-5">{member?.name || "—"}</p>
-                            <p className="truncate text-xs text-muted-foreground">{clientsMap[task.client_id] || "—"}</p>
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-            {agendaTasks.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">Nenhuma tarefa encontrada.</p>}
-          </div>
+          <AgendaCalendarView
+            tasks={tasks}
+            clientsMap={clientsMap}
+            membersMap={membersMap}
+            onTaskClick={(t) => setSelectedTaskId(t.id)}
+            filterClient={filterClient}
+            filterAssignee={filterAssignee}
+            search={search}
+            cursor={agendaCursor}
+            setCursor={setAgendaCursor}
+          />
         </TabsContent>
 
         <TabsContent value="clientes" className="mt-4">
@@ -261,7 +207,7 @@ export function GestaoPanel() {
 
         <TabsContent value="pauta" className="mt-4">
           <PmPautaView
-            tasks={tasks}
+            tasks={allTasks}
             clientsMap={clientsMap}
             membersMap={membersMap}
             members={membersList}
@@ -293,8 +239,225 @@ export function GestaoPanel() {
         onClose={() => setCreateOpen(false)}
         clients={(clientsQ.data ?? []).map((c) => ({ id: c.id, name: c.name }))}
         members={membersList}
+        membersMap={membersMap}
         defaultStatus={createDefaultStatus}
+        onCreated={(taskId) => {
+          setCreateOpen(false);
+          setSelectedTaskId(taskId);
+        }}
       />
+    </div>
+  );
+}
+
+// ─── Agenda Calendar View (matches main Agenda module) ───
+function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filterClient, filterAssignee, search, cursor, setCursor }: {
+  tasks: PmTask[];
+  clientsMap: Record<string, string>;
+  membersMap: Record<string, { name: string; avatar?: string }>;
+  onTaskClick: (t: PmTask) => void;
+  filterClient: string;
+  filterAssignee: string;
+  search: string;
+  cursor: Date;
+  setCursor: React.Dispatch<React.SetStateAction<Date>>;
+}) {
+  const updateTask = useUpdatePmTask();
+  const deleteTask = useDeletePmTask();
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [moreDayKey, setMoreDayKey] = useState<string | null>(null);
+
+  const todayKey = format(new Date(), "yyyy-MM-dd");
+
+  const filteredTasks = useMemo(() => {
+    let list = tasks;
+    if (filterClient && filterClient !== "__all__") list = list.filter(t => t.client_id === filterClient);
+    if (filterAssignee && filterAssignee !== "__all__") list = list.filter(t => t.assignee_id === filterAssignee);
+    if (search) {
+      const q = search.toLowerCase();
+      list = list.filter(t => t.title.toLowerCase().includes(q) || (clientsMap[t.client_id] ?? "").toLowerCase().includes(q));
+    }
+    return list;
+  }, [tasks, filterClient, filterAssignee, search, clientsMap]);
+
+  const days = useMemo(() => {
+    const start = startOfWeek(startOfMonth(cursor), { weekStartsOn: 0 });
+    const end = endOfMonth(cursor);
+    const out: Date[] = [];
+    let d = start;
+    while (d <= end || out.length % 7 !== 0) {
+      out.push(d);
+      d = addDays(d, 1);
+      if (out.length >= 42) break;
+    }
+    return out;
+  }, [cursor]);
+
+  const tasksByDay = useMemo(() => {
+    const map = new Map<string, PmTask[]>();
+    for (const t of filteredTasks) {
+      const key = t.due_date ?? "";
+      if (!key) continue;
+      const prev = map.get(key) ?? [];
+      map.set(key, [...prev, t]);
+    }
+    return map;
+  }, [filteredTasks]);
+
+  const handleMarkDone = (task: PmTask, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const newStage = task.stage_current === "entrega" ? "captacao" : "entrega";
+    updateTask.mutate({ id: task.id, stage_current: newStage as any });
+  };
+
+  const handleDelete = (taskId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    deleteTask.mutate(taskId);
+    toast.success("Tarefa removida");
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <h3 className="text-lg font-semibold">
+          {format(cursor, "MMMM 'de' yyyy", { locale: ptBR })}
+        </h3>
+        <Button variant="ghost" size="sm" onClick={() => setCursor(d => startOfMonth(subMonths(d, 1)))}>←</Button>
+        <Button variant="ghost" size="sm" onClick={() => setCursor(d => startOfMonth(addMonths(d, 1)))}>→</Button>
+      </div>
+
+      {/* Weekday headers */}
+      <div className="grid grid-cols-7 gap-2 text-xs text-muted-foreground">
+        {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map(d => (
+          <div key={d} className="px-2 py-1">{d}</div>
+        ))}
+      </div>
+
+      {/* Calendar grid */}
+      <div className="grid grid-cols-7 gap-2">
+        {days.map(d => {
+          const key = format(d, "yyyy-MM-dd");
+          const inMonth = d.getMonth() === cursor.getMonth();
+          const dayTasks = tasksByDay.get(key) ?? [];
+          const isToday = key === todayKey;
+
+          return (
+            <div
+              key={key}
+              className={cn(
+                "relative min-h-28 rounded-xl border border-border/60 bg-card/20 p-2 transition",
+                inMonth ? "opacity-100" : "opacity-40",
+                isToday && "border-primary ring-1 ring-primary/30"
+              )}
+            >
+              <div className="flex items-center justify-between mb-1.5">
+                <div className={cn(
+                  "grid h-7 w-7 place-items-center rounded-full text-xs font-medium",
+                  isToday ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+                )}>
+                  {format(d, "d")}
+                </div>
+              </div>
+
+              <div className="space-y-1.5 max-h-[520px] overflow-y-auto">
+                {dayTasks.slice(0, 5).map(t => {
+                  const isDone = t.stage_current === "entrega";
+                  const stageBg = STAGE_BADGE_BG[t.stage_current] ?? "bg-muted";
+                  const abbr = STAGE_ABBR[t.stage_current] ?? t.stage_current.toUpperCase().slice(0, 4);
+                  const member = t.assignee_id ? membersMap[t.assignee_id] : undefined;
+                  const clientName = clientsMap[t.client_id] ?? "—";
+
+                  return (
+                    <div
+                      key={t.id}
+                      className={cn(
+                        "w-full rounded-lg border border-border/40 bg-card/30 p-2 text-left transition hover:bg-card/50 cursor-pointer",
+                        isDone && "opacity-50"
+                      )}
+                      onClick={() => onTaskClick(t)}
+                    >
+                      <div className="flex items-center justify-between gap-1">
+                        <div className={cn("inline-flex h-5 items-center rounded px-2 text-[10px] font-bold text-white", stageBg)}>
+                          {abbr}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            className={cn("h-4 w-4 rounded border transition", isDone ? "bg-emerald-500 border-emerald-500" : "border-border/60 hover:border-primary")}
+                            onClick={(e) => handleMarkDone(t, e)}
+                            title={isDone ? "Desmarcar" : "Marcar concluído"}
+                          >
+                            {isDone && <CheckCircle2 className="h-3 w-3 text-white" />}
+                          </button>
+                          <button
+                            type="button"
+                            className="h-4 w-4 grid place-items-center text-muted-foreground hover:text-destructive transition"
+                            onClick={(e) => handleDelete(t.id, e)}
+                            title="Remover"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </div>
+                      {t.is_extra_demand && (
+                        <Badge variant="secondary" className="text-[8px] h-4 px-1 gap-0.5 mt-1">★ Extra</Badge>
+                      )}
+                      <div className="mt-1.5 flex items-center gap-1.5">
+                        <Avatar className="h-5 w-5 shrink-0">
+                          <AvatarImage src={member?.avatar} />
+                          <AvatarFallback className="text-[8px]">{member ? initials(member.name) : "?"}</AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0">
+                          <p className="truncate text-xs font-semibold leading-4">{member?.name ?? "—"}</p>
+                          <p className="truncate text-[10px] text-muted-foreground leading-3">{clientName}</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                {dayTasks.length > 5 && (
+                  <button
+                    type="button"
+                    className="w-full rounded-md border border-border/60 bg-background/50 px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-accent transition"
+                    onClick={() => { setMoreDayKey(key); setMoreOpen(true); }}
+                  >
+                    +{dayTasks.length - 5} mais
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* More tasks dialog */}
+      <Dialog open={moreOpen} onOpenChange={setMoreOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogTitle>
+            {moreDayKey ? format(new Date(`${moreDayKey}T12:00:00`), "dd/MM · EEEE", { locale: ptBR }) : "Tarefas"}
+          </DialogTitle>
+          <div className="max-h-[60vh] space-y-2 overflow-y-auto">
+            {(moreDayKey ? tasksByDay.get(moreDayKey) ?? [] : []).map(t => {
+              const member = t.assignee_id ? membersMap[t.assignee_id] : undefined;
+              return (
+                <div key={t.id} className="flex items-center gap-3 p-2 rounded-lg border border-border/40 cursor-pointer hover:bg-card/40" onClick={() => { setMoreOpen(false); onTaskClick(t); }}>
+                  <div className={cn("inline-flex h-5 items-center rounded px-2 text-[10px] font-bold text-white", STAGE_BADGE_BG[t.stage_current] ?? "bg-muted")}>
+                    {STAGE_ABBR[t.stage_current] ?? t.stage_current.slice(0, 4).toUpperCase()}
+                  </div>
+                  <Avatar className="h-5 w-5 shrink-0">
+                    <AvatarImage src={member?.avatar} />
+                    <AvatarFallback className="text-[8px]">{member ? initials(member.name) : "?"}</AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-semibold">{member?.name ?? "—"}</p>
+                    <p className="truncate text-[10px] text-muted-foreground">{clientsMap[t.client_id] ?? "—"}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
