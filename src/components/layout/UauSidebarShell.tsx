@@ -10,6 +10,9 @@ import { useMyProfile } from "@/hooks/use-my-profile";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { TopBar } from "@/components/layout/TopBar";
 import { EditProfileDialog } from "@/features/meu-painel/components/EditProfileDialog";
+import { useQuery } from "@tanstack/react-query";
+import { usePmTasks } from "@/features/gestao/hooks/use-pm-data";
+import { PmTaskDetailDialog } from "@/features/gestao/components/PmTaskDetailDialog";
 import {
   Sidebar,
   SidebarContent,
