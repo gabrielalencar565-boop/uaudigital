@@ -1,10 +1,11 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import {
   Bold, Italic, Underline, Strikethrough, Code,
-  List, ListOrdered, Heading2, AlignLeft, AlignCenter, AlignRight,
-  ChevronDown, ChevronUp, FileText, Type
+  List, ListOrdered, Heading1, Heading2, Heading3, Heading4, AlignLeft,
+  ChevronDown, ChevronUp, FileText, Type, Check
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -14,11 +15,19 @@ interface Props {
   onCancel: () => void;
 }
 
+const HEADING_OPTIONS = [
+  { tag: "p", label: "Texto", icon: Type, shortcut: "" },
+  { tag: "h1", label: "Cabeçalho 1", icon: Heading1, shortcut: "" },
+  { tag: "h2", label: "Cabeçalho 2", icon: Heading2, shortcut: "" },
+  { tag: "h3", label: "Cabeçalho 3", icon: Heading3, shortcut: "" },
+  { tag: "h4", label: "Cabeçalho 4", icon: Heading4, shortcut: "" },
+];
+
 const TOOLBAR_ITEMS = [
   { cmd: "insertUnorderedList", icon: List, label: "Lista" },
   { cmd: "insertOrderedList", icon: ListOrdered, label: "Lista numerada" },
   { divider: true },
-  { cmd: "formatBlock_H2", icon: Heading2, label: "Título" },
+  { cmd: "heading_dropdown", icon: Heading2, label: "Cabeçalho" },
   { divider: true },
   { cmd: "bold", icon: Bold, label: "Negrito" },
   { cmd: "italic", icon: Italic, label: "Itálico" },
@@ -29,7 +38,7 @@ const TOOLBAR_ITEMS = [
 
 export function RichDescriptionEditor({ value, onChange, onSave, onCancel }: Props) {
   const editorRef = useRef<HTMLDivElement>(null);
-  const [isHeading, setIsHeading] = useState(false);
+  
 
   useEffect(() => {
     if (editorRef.current && !editorRef.current.innerHTML) {
@@ -37,15 +46,24 @@ export function RichDescriptionEditor({ value, onChange, onSave, onCancel }: Pro
     }
   }, []);
 
+  const [headingOpen, setHeadingOpen] = useState(false);
+  const [currentBlock, setCurrentBlock] = useState("p");
+
+  const updateCurrentBlock = useCallback(() => {
+    const val = document.queryCommandValue("formatBlock");
+    setCurrentBlock(val || "p");
+  }, []);
+
   const execCmd = useCallback((cmd: string) => {
-    if (cmd === "formatBlock_H2") {
+    if (cmd.startsWith("formatBlock_")) {
+      const tag = cmd.replace("formatBlock_", "");
       const current = document.queryCommandValue("formatBlock");
-      if (current === "h2") {
+      if (current === tag) {
         document.execCommand("formatBlock", false, "p");
-        setIsHeading(false);
+        setCurrentBlock("p");
       } else {
-        document.execCommand("formatBlock", false, "h2");
-        setIsHeading(true);
+        document.execCommand("formatBlock", false, tag);
+        setCurrentBlock(tag);
       }
     } else if (cmd === "code") {
       const sel = window.getSelection();
@@ -80,6 +98,54 @@ export function RichDescriptionEditor({ value, onChange, onSave, onCancel }: Pro
           if ("divider" in item) {
             return <div key={`d-${i}`} className="mx-0.5 h-5 w-px bg-border/40" />;
           }
+
+          // Heading dropdown
+          if (item.cmd === "heading_dropdown") {
+            const currentHeading = HEADING_OPTIONS.find(h => h.tag === currentBlock) ?? HEADING_OPTIONS[0];
+            const CurrentIcon = currentHeading.icon;
+            return (
+              <Popover key="heading" open={headingOpen} onOpenChange={setHeadingOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    className="inline-flex h-7 items-center gap-1 rounded-md px-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                    title="Transformar em"
+                  >
+                    <CurrentIcon className="h-3.5 w-3.5" />
+                    <ChevronDown className="h-3 w-3" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-56 p-1" sideOffset={6}>
+                  <p className="px-2 py-1.5 text-[11px] text-muted-foreground font-medium">Transformar em</p>
+                  {HEADING_OPTIONS.map((opt) => {
+                    const OptIcon = opt.icon;
+                    const isActive = currentBlock === opt.tag;
+                    return (
+                      <button
+                        key={opt.tag}
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          execCmd(`formatBlock_${opt.tag}`);
+                          setHeadingOpen(false);
+                        }}
+                        className={cn(
+                          "flex w-full items-center gap-3 rounded-md px-2 py-2 text-sm transition-colors hover:bg-accent",
+                          isActive && "text-primary"
+                        )}
+                      >
+                        <OptIcon className="h-4 w-4 shrink-0" />
+                        <span className="flex-1 text-left font-medium">{opt.label}</span>
+                        {isActive && <Check className="h-4 w-4 text-primary" />}
+                      </button>
+                    );
+                  })}
+                </PopoverContent>
+              </Popover>
+            );
+          }
+
           const Ico = item.icon;
           return (
             <button
@@ -117,7 +183,7 @@ export function RichDescriptionEditor({ value, onChange, onSave, onCancel }: Pro
         className={cn(
           "min-h-[120px] max-h-[300px] overflow-y-auto rounded-lg border border-border/60 bg-background px-3 py-2",
           "text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40",
-          "[&_h2]:text-base [&_h2]:font-semibold [&_h2]:mb-1",
+          "[&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-2 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mb-1 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mb-1 [&_h4]:text-sm [&_h4]:font-semibold [&_h4]:mb-0.5",
           "[&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5",
           "[&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs [&_code]:font-mono",
         )}
@@ -198,7 +264,7 @@ export function ExpandableDescription({
         onClick={onEdit}
         className={cn(
           "cursor-pointer text-sm text-foreground/80 hover:text-foreground transition overflow-hidden",
-          "[&_h2]:text-base [&_h2]:font-semibold [&_h2]:mb-1",
+          "[&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-2 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mb-1 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mb-1 [&_h4]:text-sm [&_h4]:font-semibold [&_h4]:mb-0.5",
           "[&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5",
           "[&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs [&_code]:font-mono",
           !expanded && "max-h-[80px]"
