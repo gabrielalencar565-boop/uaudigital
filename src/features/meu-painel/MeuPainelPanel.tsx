@@ -388,7 +388,10 @@ export function MeuPainelPanel() {
         </Card>
       </div>
 
-      {/* Minhas tarefas (grupos) */}
+      {/* Tarefas de Gestão atribuídas (estilo ClickUp) */}
+      <MyPmTasksWidget onOpenTask={(taskId) => setSelectedPmTaskId(taskId)} />
+
+      {/* Minhas tarefas do mês (agenda) */}
       <MeuPainelTasksGroupedCard
         overdue={overdueTasks.map(toVM)}
         today={todayTasks.map(toVM)}
