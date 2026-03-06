@@ -35,7 +35,7 @@ type TeamMember = {
 const MONTH_SHORT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
 const CRITERIA = [
-  { key: "metas_prazos" as const, label: "Metas/Prazos", max: 3 },
+  { key: "metas_prazos" as const, label: "Tarefas", max: 3 },
   { key: "padrao_qualidade_uau" as const, label: "Qualidade", max: 4 },
   { key: "comprometimento" as const, label: "Responsabilidade", max: 4 },
   { key: "ambiente_organizado" as const, label: "Organização", max: 3 },
