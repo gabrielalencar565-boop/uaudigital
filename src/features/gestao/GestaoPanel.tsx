@@ -18,8 +18,9 @@ import { PmKanbanBoard } from "./components/PmKanbanBoard";
 import { PmClientView } from "./components/PmClientView";
 import { PmTaskDetailDialog } from "./components/PmTaskDetailDialog";
 import { PmCreateTaskDialog } from "./components/PmCreateTaskDialog";
-import { PmStageFlowConfig } from "./components/PmStageFlowConfig";
+import { PmStageFlowConfig, useStageFlows } from "./components/PmStageFlowConfig";
 import { PmAssigneeFlowConfig } from "./components/PmAssigneeFlowConfig";
+import type { StageAssignees } from "./components/PmStageFlowConfig";
 import { PmPautaView } from "./components/PmPautaView";
 import { stageLabel, getStageCircleColor, tagColor, tagDisplay } from "./pm-constants";
 import { cn } from "@/lib/utils";
@@ -48,7 +49,7 @@ export function GestaoPanel() {
   const [view, setView] = useState<"kanban" | "agenda" | "clientes" | "pauta" | "fluxo" | "responsaveis">("kanban");
   const [search, setSearch] = useState("");
   const [filterClient, setFilterClient] = useState("__all__");
-  const [filterAssignee, setFilterAssignee] = useState("__all__");
+  const [filterAssignee, setFilterAssignee] = useState(user?.id ?? "__all__");
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [createDefaultStatus, setCreateDefaultStatus] = useState<string | undefined>();
@@ -59,8 +60,29 @@ export function GestaoPanel() {
   // Data
   const tasksQ = usePmTasks();
   const allTasks = tasksQ.data ?? [];
-  // Filter out drafts for all views except pauta
   const tasks = useMemo(() => allTasks.filter(t => !(t as any).is_draft), [allTasks]);
+
+  // Load stage assignees to expand filter by fixed assignee
+  const flowsQ = useStageFlows();
+  const stageAssignees = useMemo(() => {
+    const flows = flowsQ.data ?? [];
+    const defaultFlow = flows.find(f => f.is_default) ?? flows[0];
+    return (defaultFlow?.stage_assignees ?? {}) as StageAssignees;
+  }, [flowsQ.data]);
+
+  // Get client IDs where the filtered assignee is a fixed assignee in any stage
+  const fixedAssigneeClientIds = useMemo(() => {
+    if (filterAssignee === "__all__") return new Set<string>();
+    const clientIds = new Set<string>();
+    for (const stageKey of Object.keys(stageAssignees)) {
+      const stageMap = stageAssignees[stageKey];
+      if (!stageMap) continue;
+      for (const [clientId, userId] of Object.entries(stageMap)) {
+        if (userId === filterAssignee) clientIds.add(clientId);
+      }
+    }
+    return clientIds;
+  }, [filterAssignee, stageAssignees]);
 
   const allChildTasksQ = usePmAllChildTasks();
   const childTasksMap = useMemo(() => {
@@ -107,7 +129,7 @@ export function GestaoPanel() {
   }, [membersQ.data]);
   const membersList = useMemo(() => (membersQ.data ?? []).map((m) => ({ id: m.user_id, name: m.display_name })), [membersQ.data]);
 
-  const filters = { clientId: filterClient === "__all__" ? undefined : filterClient, assigneeId: filterAssignee === "__all__" ? undefined : filterAssignee, search: search || undefined };
+  const filters = { clientId: filterClient === "__all__" ? undefined : filterClient, assigneeId: filterAssignee === "__all__" ? undefined : filterAssignee, search: search || undefined, fixedAssigneeClientIds };
 
   const openCreate = (status?: string) => {
     setCreateDefaultStatus(status);
@@ -193,6 +215,7 @@ export function GestaoPanel() {
             search={search}
             cursor={agendaCursor}
             setCursor={setAgendaCursor}
+            fixedAssigneeClientIds={fixedAssigneeClientIds}
           />
         </TabsContent>
 
@@ -256,7 +279,7 @@ export function GestaoPanel() {
 }
 
 // ─── Agenda Calendar View (matches main Agenda module) ───
-function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filterClient, filterAssignee, search, cursor, setCursor }: {
+function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filterClient, filterAssignee, search, cursor, setCursor, fixedAssigneeClientIds }: {
   tasks: PmTask[];
   clientsMap: Record<string, string>;
   membersMap: Record<string, { name: string; avatar?: string }>;
@@ -266,6 +289,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
   search: string;
   cursor: Date;
   setCursor: React.Dispatch<React.SetStateAction<Date>>;
+  fixedAssigneeClientIds: Set<string>;
 }) {
   const updateTask = useUpdatePmTask();
   const deleteTask = useDeletePmTask();
@@ -277,7 +301,9 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
   const filteredTasks = useMemo(() => {
     let list = tasks;
     if (filterClient && filterClient !== "__all__") list = list.filter(t => t.client_id === filterClient);
-    if (filterAssignee && filterAssignee !== "__all__") list = list.filter(t => t.assignee_id === filterAssignee);
+    if (filterAssignee && filterAssignee !== "__all__") {
+      list = list.filter(t => t.assignee_id === filterAssignee || fixedAssigneeClientIds.has(t.client_id));
+    }
     if (search) {
       const q = search.toLowerCase();
       list = list.filter(t => t.title.toLowerCase().includes(q) || (clientsMap[t.client_id] ?? "").toLowerCase().includes(q));
