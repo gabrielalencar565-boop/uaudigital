@@ -38,7 +38,7 @@ const TOOLBAR_ITEMS = [
 
 export function RichDescriptionEditor({ value, onChange, onSave, onCancel }: Props) {
   const editorRef = useRef<HTMLDivElement>(null);
-  const [isHeading, setIsHeading] = useState(false);
+  
 
   useEffect(() => {
     if (editorRef.current && !editorRef.current.innerHTML) {
