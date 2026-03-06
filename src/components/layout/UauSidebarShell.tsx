@@ -1,13 +1,22 @@
 import { PropsWithChildren, useMemo, useState } from "react";
-import { CalendarDays, ChevronLeft, ClipboardList, DollarSign, Eye, LogOut, Shield, Target, TrendingUp, Trophy, UserRound } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ClipboardList,
+  DollarSign,
+  Eye,
+  Palette,
+  Shield,
+  Target,
+  TrendingUp,
+  Trophy,
+  UserRound,
+} from "lucide-react";
 import { useAppSettings } from "@/features/data/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useRealtimeSyncAll } from "@/hooks/use-realtime-sync";
-import { useMyProfile } from "@/hooks/use-my-profile";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { TopBar } from "@/components/layout/TopBar";
 import { EditProfileDialog } from "@/features/meu-painel/components/EditProfileDialog";
 import { useQuery } from "@tanstack/react-query";
@@ -27,13 +36,33 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
-export type MainTab = "visao_do_dia" | "meu_painel" | "desempenho" | "magic2" | "agenda" | "gestao" | "admin" | "financeiro" | "metas";
+export type MainTab =
+  | "meu_painel"
+  | "criacao"
+  | "visao_do_dia"
+  | "magic2"
+  | "desempenho"
+  | "admin"
+  | "financeiro"
+  | "metas";
 
 type NavItem = {
   key: MainTab;
   label: string;
   icon: React.ComponentType<any>;
+};
+
+type NavGroup = {
+  key: string;
+  label: string;
+  items: NavItem[];
+  adminOnly?: boolean;
 };
 
 export function UauSidebarShell({
@@ -51,32 +80,70 @@ export function UauSidebarShell({
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [notifTaskId, setNotifTaskId] = useState<string | null>(null);
   const appSettingsQ = useAppSettings();
-  const myProfileQ = useMyProfile();
   const logoUrl = appSettingsQ.data?.logo_url;
   const logoShape = appSettingsQ.data?.logo_shape ?? "square";
   const logoClass = logoShape === "circle" ? "rounded-full" : "rounded-md";
 
   useRealtimeSyncAll();
 
-  const navItems = useMemo<NavItem[]>(() => {
-    const base: NavItem[] = [
-      { key: "meu_painel", label: "Meu Painel", icon: UserRound },
-      { key: "visao_do_dia", label: "Visão do dia", icon: Eye },
-      { key: "magic2", label: "Magic Number", icon: Target },
-      { key: "agenda", label: "Agenda", icon: CalendarDays },
-      { key: "gestao", label: "Gestão", icon: ClipboardList },
-      { key: "desempenho", label: "Desempenho", icon: Trophy },
+  // Track which groups are open
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
+    tarefas: true,
+    performance: true,
+    gestao: true,
+  });
+
+  const toggleGroup = (key: string) =>
+    setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }));
+
+  const navGroups = useMemo<NavGroup[]>(() => {
+    const groups: NavGroup[] = [
+      {
+        key: "tarefas",
+        label: "Tarefas",
+        items: [
+          { key: "criacao", label: "Criação", icon: Palette },
+        ],
+      },
+      {
+        key: "performance",
+        label: "Performance",
+        items: [
+          { key: "visao_do_dia", label: "Visão do dia", icon: Eye },
+          { key: "magic2", label: "Magic Number", icon: Target },
+          { key: "desempenho", label: "Desempenho", icon: Trophy },
+        ],
+      },
     ];
 
     if (isAdmin) {
-      base.push({ key: "financeiro", label: "Financeiro", icon: DollarSign });
-      base.push({ key: "metas", label: "Metas", icon: TrendingUp });
-      base.push({ key: "admin", label: "Admin", icon: Shield });
+      groups.push({
+        key: "gestao",
+        label: "Gestão",
+        adminOnly: true,
+        items: [
+          { key: "financeiro", label: "Financeiro", icon: DollarSign },
+          { key: "metas", label: "Metas", icon: TrendingUp },
+          { key: "admin", label: "Admin", icon: Shield },
+        ],
+      });
     }
-    return base;
+
+    return groups;
   }, [isAdmin]);
 
-  const currentTabLabel = useMemo(() => navItems.find((i) => i.key === tab)?.label ?? "Painel", [navItems, tab]);
+  const allItems = useMemo(
+    () => [
+      { key: "meu_painel" as MainTab, label: "Meu Painel" },
+      ...navGroups.flatMap((g) => g.items),
+    ],
+    [navGroups],
+  );
+
+  const currentTabLabel = useMemo(
+    () => allItems.find((i) => i.key === tab)?.label ?? "Painel",
+    [allItems, tab],
+  );
 
   return (
     <SidebarProvider defaultOpen>
@@ -84,8 +151,10 @@ export function UauSidebarShell({
         className="min-h-svh w-full bg-background text-foreground"
         style={{ willChange: "background" }}
       >
-        {/* Fixed top bar */}
-        <TopBar onEditProfile={() => setEditProfileOpen(true)} onOpenTask={(id) => setNotifTaskId(id)} />
+        <TopBar
+          onEditProfile={() => setEditProfileOpen(true)}
+          onOpenTask={(id) => setNotifTaskId(id)}
+        />
 
         <Sidebar
           collapsible={isMobile ? "offcanvas" : "none"}
@@ -97,7 +166,6 @@ export function UauSidebarShell({
         >
           <div className={cn("px-3 pb-2 pt-3", collapsed && !isMobile && "px-2")}>
             <div className={cn("flex items-center gap-2", collapsed && !isMobile && "justify-center")}>
-              {/* Desktop: collapse toggle */}
               {!isMobile ? (
                 <button
                   type="button"
@@ -115,26 +183,86 @@ export function UauSidebarShell({
           </div>
 
           <SidebarContent>
+            {/* Meu Painel – standalone at top */}
             <SidebarGroup>
-              {!collapsed || isMobile ? <SidebarGroupLabel>Painel</SidebarGroupLabel> : null}
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {navItems.map((it) => (
-                    <SidebarMenuItem key={it.key}>
-                      <SidebarMenuButton
-                        tooltip={it.label}
-                        isActive={tab === it.key}
-                        onClick={() => onTabChange(it.key)}
-                        className={cn(collapsed && !isMobile && "justify-center")}
-                      >
-                        <it.icon />
-                        {!collapsed || isMobile ? <span>{it.label}</span> : null}
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      tooltip="Meu Painel"
+                      isActive={tab === "meu_painel"}
+                      onClick={() => onTabChange("meu_painel")}
+                      className={cn(collapsed && !isMobile && "justify-center")}
+                    >
+                      <UserRound />
+                      {!collapsed || isMobile ? <span>Meu Painel</span> : null}
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
+
+            {/* Collapsible groups */}
+            {navGroups.map((group) => {
+              const isGroupActive = group.items.some((it) => it.key === tab);
+              const isOpen = openGroups[group.key] ?? true;
+
+              return (
+                <SidebarGroup key={group.key}>
+                  {!collapsed || isMobile ? (
+                    <Collapsible open={isOpen} onOpenChange={() => toggleGroup(group.key)}>
+                      <CollapsibleTrigger asChild>
+                        <SidebarGroupLabel className="cursor-pointer select-none hover:text-sidebar-foreground transition-colors">
+                          <span>{group.label}</span>
+                          <ChevronRight
+                            className={cn(
+                              "ml-auto h-3.5 w-3.5 transition-transform duration-200",
+                              isOpen && "rotate-90",
+                            )}
+                          />
+                        </SidebarGroupLabel>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <SidebarGroupContent>
+                          <SidebarMenu>
+                            {group.items.map((it) => (
+                              <SidebarMenuItem key={it.key}>
+                                <SidebarMenuButton
+                                  tooltip={it.label}
+                                  isActive={tab === it.key}
+                                  onClick={() => onTabChange(it.key)}
+                                >
+                                  <it.icon />
+                                  <span>{it.label}</span>
+                                </SidebarMenuButton>
+                              </SidebarMenuItem>
+                            ))}
+                          </SidebarMenu>
+                        </SidebarGroupContent>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  ) : (
+                    /* Collapsed: show only icons */
+                    <SidebarGroupContent>
+                      <SidebarMenu>
+                        {group.items.map((it) => (
+                          <SidebarMenuItem key={it.key}>
+                            <SidebarMenuButton
+                              tooltip={it.label}
+                              isActive={tab === it.key}
+                              onClick={() => onTabChange(it.key)}
+                              className="justify-center"
+                            >
+                              <it.icon />
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        ))}
+                      </SidebarMenu>
+                    </SidebarGroupContent>
+                  )}
+                </SidebarGroup>
+              );
+            })}
           </SidebarContent>
 
           <SidebarFooter>
@@ -148,7 +276,6 @@ export function UauSidebarShell({
         </Sidebar>
 
         <SidebarInset>
-          {/* Mobile topbar (com hamburger) */}
           {isMobile ? (
             <header className="sticky top-12 z-30 border-b border-border/60 bg-background/60 backdrop-blur">
               <div className="flex items-center gap-3 px-4 py-3">
@@ -178,10 +305,7 @@ export function UauSidebarShell({
           </div>
         </SidebarInset>
 
-        <EditProfileDialog
-          open={editProfileOpen}
-          onOpenChange={setEditProfileOpen}
-        />
+        <EditProfileDialog open={editProfileOpen} onOpenChange={setEditProfileOpen} />
 
         <NotifTaskDialogWrapper
           taskId={notifTaskId}
@@ -193,39 +317,61 @@ export function UauSidebarShell({
   );
 }
 
-function NotifTaskDialogWrapper({ taskId, onClose, isAdmin }: { taskId: string | null; onClose: () => void; isAdmin: boolean }) {
+function NotifTaskDialogWrapper({
+  taskId,
+  onClose,
+  isAdmin,
+}: {
+  taskId: string | null;
+  onClose: () => void;
+  isAdmin: boolean;
+}) {
   const pmTasksQ = usePmTasks();
   const task = useMemo(() => {
     if (!taskId) return null;
-    return (pmTasksQ.data ?? []).find(t => t.id === taskId) ?? null;
+    return (pmTasksQ.data ?? []).find((t) => t.id === taskId) ?? null;
   }, [taskId, pmTasksQ.data]);
 
   const clientsQ = useQuery({
     queryKey: ["clients_all"],
     queryFn: async () => {
-      const { data } = await supabase.from("clients").select("id, name").eq("is_active", true).order("name");
+      const { data } = await supabase
+        .from("clients")
+        .select("id, name")
+        .eq("is_active", true)
+        .order("name");
       return data ?? [];
     },
   });
   const clientsMap = useMemo(() => {
     const m: Record<string, string> = {};
-    (clientsQ.data ?? []).forEach(c => { m[c.id] = c.name; });
+    (clientsQ.data ?? []).forEach((c) => {
+      m[c.id] = c.name;
+    });
     return m;
   }, [clientsQ.data]);
 
   const membersQ = useQuery({
     queryKey: ["team_members"],
     queryFn: async () => {
-      const { data } = await supabase.from("team_members").select("user_id, display_name, avatar_url").eq("is_active", true);
+      const { data } = await supabase
+        .from("team_members")
+        .select("user_id, display_name, avatar_url")
+        .eq("is_active", true);
       return data ?? [];
     },
   });
   const membersMap = useMemo(() => {
     const m: Record<string, { name: string; avatar?: string }> = {};
-    (membersQ.data ?? []).forEach(tm => { m[tm.user_id] = { name: tm.display_name, avatar: tm.avatar_url ?? undefined }; });
+    (membersQ.data ?? []).forEach((tm) => {
+      m[tm.user_id] = { name: tm.display_name, avatar: tm.avatar_url ?? undefined };
+    });
     return m;
   }, [membersQ.data]);
-  const membersList = useMemo(() => (membersQ.data ?? []).map(m => ({ id: m.user_id, name: m.display_name })), [membersQ.data]);
+  const membersList = useMemo(
+    () => (membersQ.data ?? []).map((m) => ({ id: m.user_id, name: m.display_name })),
+    [membersQ.data],
+  );
 
   return (
     <PmTaskDetailDialog

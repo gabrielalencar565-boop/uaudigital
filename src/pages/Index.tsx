@@ -6,7 +6,6 @@ import { useForm } from "react-hook-form";
 import { UauSidebarShell, type MainTab } from "@/components/layout/UauSidebarShell";
 import { PerformancePanel } from "@/features/performance/PerformancePanel";
 import { Magic2Panel } from "@/features/magic2/Magic2Panel";
-import { AgendaPanel } from "@/features/agenda/AgendaPanel";
 import { GestaoPanel } from "@/features/gestao/GestaoPanel";
 import { DayViewPanel } from "@/features/dayview/DayViewPanel";
 import { MeuPainelPanel } from "@/features/meu-painel/MeuPainelPanel";
@@ -81,7 +80,6 @@ const Index = () => {
   const saveProfile = async (v: ProfileValues) => {
     if (!user) return;
 
-    // Upload avatar (se enviado)
     let avatar_url: string | null = null;
     if (avatarFile) {
       if (!avatarFile.type.startsWith("image/")) {
@@ -119,7 +117,6 @@ const Index = () => {
       return;
     }
 
-    // Salva também em team_members (visível para todos no app)
     try {
       const existing = await supabase.from("team_members").select("user_id").eq("user_id", user.id).maybeSingle();
       if (existing.error) throw existing.error;
@@ -140,7 +137,6 @@ const Index = () => {
         if (ins.error) throw ins.error;
       }
     } catch (e: any) {
-      // não bloqueia o onboarding, mas avisa
       toast.error(e?.message ?? "Erro ao salvar dados públicos do time");
     }
 
@@ -160,6 +156,28 @@ const Index = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [avatarFile]);
 
+  const renderPanel = () => {
+    switch (tab) {
+      case "admin":
+        return isAdmin ? <AdminContainer /> : <MeuPainelPanel />;
+      case "financeiro":
+        return isAdmin ? <FinanceiroPanel /> : <MeuPainelPanel />;
+      case "metas":
+        return isAdmin ? <FinMetasTab /> : <MeuPainelPanel />;
+      case "visao_do_dia":
+        return <DayViewPanel />;
+      case "desempenho":
+        return <PerformancePanel />;
+      case "magic2":
+        return <Magic2Panel />;
+      case "criacao":
+        return <GestaoPanel />;
+      case "meu_painel":
+      default:
+        return <MeuPainelPanel />;
+    }
+  };
+
   return (
     <UauSidebarShell
       tab={tab}
@@ -167,7 +185,6 @@ const Index = () => {
       onTabChange={(next) => {
         try {
           setTab(next);
-          // Sempre volta pro topo ao trocar de aba (evita “sumir” o conteúdo)
           window.scrollTo({ top: 0, left: 0, behavior: "auto" });
         } catch (e) {
           console.error("Falha ao trocar de aba:", e);
@@ -221,24 +238,8 @@ const Index = () => {
             </CardFooter>
           </form>
         </Card>
-      ) : tab === "admin" && isAdmin ? (
-        <AdminContainer />
-      ) : tab === "financeiro" && isAdmin ? (
-        <FinanceiroPanel />
-      ) : tab === "metas" && isAdmin ? (
-        <FinMetasTab />
-      ) : tab === "visao_do_dia" ? (
-        <DayViewPanel />
-      ) : tab === "meu_painel" ? (
-        <MeuPainelPanel />
-      ) : tab === "desempenho" ? (
-        <PerformancePanel />
-      ) : tab === "magic2" ? (
-        <Magic2Panel />
-      ) : tab === "gestao" ? (
-        <GestaoPanel />
       ) : (
-        <AgendaPanel />
+        renderPanel()
       )}
     </UauSidebarShell>
   );
