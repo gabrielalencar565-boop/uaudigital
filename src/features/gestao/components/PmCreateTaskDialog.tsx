@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import { PM_PRIORITIES, PM_STAGES, PM_STATUSES } from "../pm-constants";
+import { PM_PRIORITIES, PM_STAGES, stageColorClass } from "../pm-constants";
 import { useCreatePmTask } from "../hooks/use-pm-data";
 import { toast } from "sonner";
 
@@ -58,8 +58,7 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, defaultSta
   const [description, setDescription] = useState("");
   const [clientId, setClientId] = useState("");
   const [priority, setPriority] = useState("media");
-  const [stage, setStage] = useState("planejamento");
-  const [status, setStatus] = useState(defaultStatus || "backlog");
+  const [stage, setStage] = useState(defaultStatus || "planejamento");
   const [assigneeId, setAssigneeId] = useState("");
   const [dueDate, setDueDate] = useState("");
   
@@ -74,7 +73,7 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, defaultSta
 
   const reset = () => {
     setTitle(""); setDescription(""); setClientId(""); setPriority("media");
-    setStage("planejamento"); setStatus(defaultStatus || "backlog"); setAssigneeId("");
+    setStage(defaultStatus || "planejamento"); setAssigneeId("");
     setDueDate(""); setTagsRaw("");
     setSubtasks([]); setNewSubtask(""); setAttachments([]);
   };
@@ -168,21 +167,6 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, defaultSta
 
               {/* Properties Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-1">
-                <PropertyRow icon={<Circle className="h-3.5 w-3.5" />} label="Status">
-                  <Select value={status} onValueChange={setStatus}>
-                    <SelectTrigger className="h-7 border-0 bg-transparent shadow-none p-0 w-auto gap-1.5">
-                      <Badge className={cn("text-[10px] uppercase font-bold tracking-wide px-2.5 py-0.5 rounded-md", statusBadgeColor(status))}>
-                        <SelectValue />
-                      </Badge>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PM_STATUSES.map(s => (
-                        <SelectItem key={s.key} value={s.key} className="text-xs">{s.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </PropertyRow>
-
                 <PropertyRow icon={<User className="h-3.5 w-3.5" />} label="Responsável">
                   <Select value={assigneeId || "__none__"} onValueChange={(v) => setAssigneeId(v === "__none__" ? "" : v)}>
                     <SelectTrigger className="h-7 border-0 bg-transparent shadow-none p-0 w-auto gap-1.5">
@@ -230,12 +214,19 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, defaultSta
 
                 <PropertyRow icon={<Layers className="h-3.5 w-3.5" />} label="Etapa">
                   <Select value={stage} onValueChange={setStage}>
-                    <SelectTrigger className="h-7 border-0 bg-transparent shadow-none p-0 w-auto gap-1">
-                      <SelectValue />
+                    <SelectTrigger className="h-7 border-0 bg-transparent shadow-none p-0 w-auto gap-1.5">
+                      <Badge className={cn("text-[10px] font-bold px-2 py-0.5 rounded", stageColorClass(stage))}>
+                        <SelectValue />
+                      </Badge>
                     </SelectTrigger>
                     <SelectContent>
-                      {PM_STAGES.map(s => (
-                        <SelectItem key={s.key} value={s.key} className="text-xs">{s.label}</SelectItem>
+                      {PM_STAGES.filter(s => !["roteiro", "edicao"].includes(s.key)).map(s => (
+                        <SelectItem key={s.key} value={s.key} className="text-xs">
+                          <div className="flex items-center gap-1.5">
+                            <span className={cn("h-2 w-2 rounded-full", stageColorClass(s.key).split(" ")[0])} />
+                            {s.label}
+                          </div>
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
