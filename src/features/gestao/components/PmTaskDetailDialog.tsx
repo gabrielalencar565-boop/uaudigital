@@ -27,6 +27,7 @@ import { PmAttachmentsSection } from "./PmAttachmentsSection";
 import { PmAssigneeSelector } from "./PmAssigneeSelector";
 import type { PmTask } from "../pm-types";
 import { toast } from "sonner";
+import { RichDescriptionEditor, ExpandableDescription } from "./RichDescriptionEditor";
 
 function initials(n: string) {
   return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
