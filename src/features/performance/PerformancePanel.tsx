@@ -43,7 +43,7 @@ type ScoreRow = {
 };
  
 const CRITERIA = [
-  { key: "metas_prazos" as const, label: "Metas/Prazos", max: 3, desc: "Entregas no prazo vs atrasos" },
+  { key: "metas_prazos" as const, label: "Tarefas", max: 3, desc: "Entregas no prazo vs atrasos" },
   { key: "padrao_qualidade_uau" as const, label: "Qualidade", max: 4, desc: "Nível das entregas, atenção aos detalhes e retrabalho" },
   { key: "comprometimento" as const, label: "Responsabilidade", max: 4, desc: "Comprometimento, postura profissional e confiabilidade" },
   { key: "ambiente_organizado" as const, label: "Organização", max: 3, desc: "Organização das tarefas, arquivos e do espaço de trabalho" },
@@ -558,7 +558,7 @@ const TOTAL_POINTS = 27;
               ))}
               <div className="flex items-center justify-between gap-4 rounded-lg border border-dashed border-border/60 p-3 bg-muted/20">
                 <div className="min-w-0 flex-1">
-                  <Label className="font-medium">Metas/Prazos</Label>
+                  <Label className="font-medium">Tarefas</Label>
                   <p className="text-xs text-muted-foreground">Calculado automaticamente</p>
                 </div>
                 <Badge variant="secondary" className="tabular-nums">

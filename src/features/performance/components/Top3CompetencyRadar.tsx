@@ -58,7 +58,7 @@ export function Top3CompetencyRadar({
         u3: r2?.padrao_qualidade_uau ?? 0,
       },
       {
-        subject: "Metas/Prazos",
+        subject: "Tarefas",
         u1: r0?.metas_prazos ?? 0,
         u2: r1?.metas_prazos ?? 0,
         u3: r2?.metas_prazos ?? 0,
