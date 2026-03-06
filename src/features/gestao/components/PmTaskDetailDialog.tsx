@@ -355,7 +355,14 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
               </PopoverTrigger>
               <PopoverContent className="w-56 p-1 max-h-64 overflow-y-auto" align="start">
                 {Object.entries(clientsMap).map(([cid, cname]) => (
-                  <button key={cid} className={cn("flex items-center gap-2 w-full px-3 py-2 rounded text-sm hover:bg-accent transition text-left", task.client_id === cid && "bg-accent")} onClick={() => updateTask.mutate({ id: task.id, client_id: cid })}>
+                  <button key={cid} className={cn("flex items-center gap-2 w-full px-3 py-2 rounded text-sm hover:bg-accent transition text-left", task.client_id === cid && "bg-accent")} onClick={() => {
+                    // Update client and auto-update title prefix
+                    const oldClientName = clientsMap[task.client_id];
+                    const newTitle = oldClientName && task.title.startsWith(`[${oldClientName}]`)
+                      ? `[${cname}]${task.title.slice(oldClientName.length + 2)}`
+                      : task.title;
+                    updateTask.mutate({ id: task.id, client_id: cid, title: newTitle });
+                  }}>
                     {cname}
                     {task.client_id === cid && <Check className="h-3 w-3 ml-auto text-primary" />}
                   </button>
