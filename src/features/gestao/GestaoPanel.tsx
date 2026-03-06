@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Plus, Search, LayoutGrid, CalendarDays, FolderOpen, Settings2, CheckCircle2, FileSpreadsheet, Trash2, Users, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Search, LayoutGrid, CalendarDays, FolderOpen, Settings2, CheckCircle2, FileSpreadsheet, Trash2, Users, ChevronLeft, ChevronRight, CalendarRange } from "lucide-react";
 import { addDays, addMonths, subMonths, endOfMonth, format, startOfMonth, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -46,7 +46,7 @@ export function GestaoPanel() {
   const { user } = useSession();
   const { isAdmin } = useRole(user?.id);
 
-  const [view, setView] = useState<"kanban" | "agenda" | "clientes" | "pauta" | "fluxo" | "responsaveis">("kanban");
+  const [view, setView] = useState<"kanban" | "agenda" | "clientes" | "pauta" | "cronograma" | "fluxo" | "responsaveis">("kanban");
   const [search, setSearch] = useState("");
   const [filterClient, setFilterClient] = useState("__all__");
   const [filterAssignee, setFilterAssignee] = useState(user?.id ?? "__all__");
@@ -209,6 +209,9 @@ export function GestaoPanel() {
           </TabsTrigger>
           <TabsTrigger value="pauta" className="gap-1.5 text-xs h-8 rounded-lg data-[state=active]:shadow-sm">
             <FileSpreadsheet className="h-3.5 w-3.5" /> Montagem de Pauta
+          </TabsTrigger>
+          <TabsTrigger value="cronograma" className="gap-1.5 text-xs h-8 rounded-lg data-[state=active]:shadow-sm">
+            <CalendarRange className="h-3.5 w-3.5" /> Cronograma
           </TabsTrigger>
           <TabsTrigger value="fluxo" className="gap-1.5 text-xs h-8 rounded-lg data-[state=active]:shadow-sm">
             <Settings2 className="h-3.5 w-3.5" /> Fluxo
