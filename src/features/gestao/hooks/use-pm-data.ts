@@ -299,6 +299,25 @@ export async function checkAndUpdateParentStatus(taskId: string) {
   }
 }
 
+// ── Sync stage completion with Magic Number + Performance ──
+export function usePmSyncStageCompletion() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ pmTaskId, completedStage, userId }: { pmTaskId: string; completedStage: string; userId: string }) => {
+      const { error } = await supabase.rpc("pm_sync_stage_completion", {
+        _pm_task_id: pmTaskId,
+        _completed_stage: completedStage,
+        _user_id: userId,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["magic2"] });
+      qc.invalidateQueries({ queryKey: ["tasks"] });
+    },
+  });
+}
+
 // Keep backward compat exports
 export function useUpdatePmSubtask() { return useUpdatePmTask(); }
 export function useCreatePmSubtask() { return useCreatePmTask(); }
