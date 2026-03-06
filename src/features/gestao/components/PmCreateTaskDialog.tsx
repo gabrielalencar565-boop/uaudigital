@@ -42,6 +42,7 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, defaultSta
   const [dueDate, setDueDate] = useState("");
   
   const [tagsRaw, setTagsRaw] = useState("");
+  const [isExtraDemand, setIsExtraDemand] = useState(false);
 
   const [subtasks, setSubtasks] = useState<string[]>([]);
   const [newSubtask, setNewSubtask] = useState("");
@@ -70,7 +71,7 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, defaultSta
   const reset = () => {
     setTitle(""); setDescription(""); setClientId(""); setPriority("media");
     setStage(defaultStatus || "captacao"); setAssigneeId("");
-    setDueDate(""); setTagsRaw("");
+    setDueDate(""); setTagsRaw(""); setIsExtraDemand(false);
     setSubtasks([]); setNewSubtask(""); setAttachments([]);
   };
 
@@ -253,6 +254,18 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, defaultSta
                     placeholder="ex: social, vídeo"
                     className="h-7 text-xs border-0 bg-transparent shadow-none p-0 focus-visible:ring-0 placeholder:text-muted-foreground/30"
                   />
+                </PropertyRow>
+
+                <PropertyRow icon={<Flag className="h-3.5 w-3.5" />} label="Demanda Extra">
+                  <label className="flex items-center gap-2 cursor-pointer min-h-[28px]">
+                    <input
+                      type="checkbox"
+                      checked={isExtraDemand}
+                      onChange={(e) => setIsExtraDemand(e.target.checked)}
+                      className="h-4 w-4 rounded border-border accent-primary"
+                    />
+                    <span className="text-xs text-muted-foreground">Não contabiliza no Magic Number</span>
+                  </label>
                 </PropertyRow>
               </div>
 

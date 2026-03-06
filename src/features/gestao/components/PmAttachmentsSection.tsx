@@ -99,7 +99,7 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
         </div>
       )}
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-4 sm:grid-cols-5 gap-1.5">
         {attachments.map((att) => {
           const isCover = currentCoverUrl === att.public_url;
           const isImg = isImage(att.file_type);
@@ -107,29 +107,29 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
 
           return (
             <div key={att.id} className={cn(
-              "relative group rounded-lg border overflow-hidden bg-card/30",
+              "relative group rounded-md border overflow-hidden bg-card/30",
               isCover ? "border-primary/50 ring-1 ring-primary/30" : "border-border/40"
             )}>
               {/* Thumbnail / Icon area */}
               {isImg && att.public_url ? (
                 <div
-                  className="w-full aspect-square cursor-pointer overflow-hidden bg-muted"
+                  className="w-full aspect-[4/3] cursor-pointer overflow-hidden bg-muted"
                   onClick={() => openViewer(att)}
                 >
                   <img src={att.public_url} alt={att.file_name} className="w-full h-full object-cover transition group-hover:scale-105" />
                 </div>
               ) : (
-                <div className="w-full aspect-square flex items-center justify-center bg-muted/50">
-                  <FileText className="h-10 w-10 text-muted-foreground/40" />
+                <div className="w-full aspect-[4/3] flex items-center justify-center bg-muted/50">
+                  <FileText className="h-6 w-6 text-muted-foreground/40" />
                 </div>
               )}
 
               {/* 3-dot menu */}
-              <div className="absolute top-1.5 right-1.5">
+              <div className="absolute top-1 right-1">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button size="icon" variant="secondary" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm">
-                      <MoreHorizontal className="h-3.5 w-3.5" />
+                    <Button size="icon" variant="secondary" className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm">
+                      <MoreHorizontal className="h-3 w-3" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-44">
@@ -155,24 +155,19 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
               </div>
 
               {/* Info bar */}
-              <div className="px-2.5 py-2 flex items-center gap-2">
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-medium">
-                    {att.file_name}
-                    {isCover && <span className="ml-1 text-[8px] text-primary font-bold uppercase">Capa</span>}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground">
-                    {format(new Date(att.created_at), "MMM dd 'às' HH:mm")}
-                  </p>
-                </div>
+              <div className="px-1.5 py-1 flex items-center gap-1">
                 {uploader && (
-                  <Avatar className="h-6 w-6 shrink-0 border border-background">
+                  <Avatar className="h-4 w-4 shrink-0 border border-background">
                     <AvatarImage src={uploader.avatar} />
-                    <AvatarFallback className="text-[8px] bg-primary/10 text-primary">
+                    <AvatarFallback className="text-[6px] bg-primary/10 text-primary">
                       {initials(uploader.name)}
                     </AvatarFallback>
                   </Avatar>
                 )}
+                <p className="truncate text-[9px] font-medium flex-1 min-w-0">
+                  {att.file_name}
+                  {isCover && <span className="ml-0.5 text-[7px] text-primary font-bold uppercase">Capa</span>}
+                </p>
               </div>
             </div>
           );
