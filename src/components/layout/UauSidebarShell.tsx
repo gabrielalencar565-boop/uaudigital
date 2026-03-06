@@ -182,7 +182,60 @@ export function UauSidebarShell({
           open={editProfileOpen}
           onOpenChange={setEditProfileOpen}
         />
+
+        <NotifTaskDialogWrapper
+          taskId={notifTaskId}
+          onClose={() => setNotifTaskId(null)}
+          isAdmin={isAdmin ?? false}
+        />
       </div>
     </SidebarProvider>
+  );
+}
+
+function NotifTaskDialogWrapper({ taskId, onClose, isAdmin }: { taskId: string | null; onClose: () => void; isAdmin: boolean }) {
+  const pmTasksQ = usePmTasks();
+  const task = useMemo(() => {
+    if (!taskId) return null;
+    return (pmTasksQ.data ?? []).find(t => t.id === taskId) ?? null;
+  }, [taskId, pmTasksQ.data]);
+
+  const clientsQ = useQuery({
+    queryKey: ["clients_all"],
+    queryFn: async () => {
+      const { data } = await supabase.from("clients").select("id, name").eq("is_active", true).order("name");
+      return data ?? [];
+    },
+  });
+  const clientsMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    (clientsQ.data ?? []).forEach(c => { m[c.id] = c.name; });
+    return m;
+  }, [clientsQ.data]);
+
+  const membersQ = useQuery({
+    queryKey: ["team_members"],
+    queryFn: async () => {
+      const { data } = await supabase.from("team_members").select("user_id, display_name, avatar_url").eq("is_active", true);
+      return data ?? [];
+    },
+  });
+  const membersMap = useMemo(() => {
+    const m: Record<string, { name: string; avatar?: string }> = {};
+    (membersQ.data ?? []).forEach(tm => { m[tm.user_id] = { name: tm.display_name, avatar: tm.avatar_url ?? undefined }; });
+    return m;
+  }, [membersQ.data]);
+  const membersList = useMemo(() => (membersQ.data ?? []).map(m => ({ id: m.user_id, name: m.display_name })), [membersQ.data]);
+
+  return (
+    <PmTaskDetailDialog
+      task={task}
+      open={!!taskId}
+      onClose={onClose}
+      clientsMap={clientsMap}
+      membersMap={membersMap}
+      members={membersList}
+      isAdmin={isAdmin}
+    />
   );
 }
