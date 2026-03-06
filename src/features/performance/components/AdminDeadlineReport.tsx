@@ -487,7 +487,7 @@ export function AdminDeadlineReport({
                   })}
                   {userTasks.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
+                      <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
                         Nenhuma tarefa concluída para este colaborador no mês.
                       </TableCell>
                     </TableRow>
