@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { ArrowRight, Check, Settings2, Plus, Trash2, Pencil, Save, X, Star, Users } from "lucide-react";
+import { ArrowRight, Check, Settings2, Plus, Trash2, Pencil, Save, X, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PM_ACTIVE_STAGES, getStageCircleColor } from "../pm-constants";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -8,8 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
 const sb = supabase as any;
@@ -98,28 +96,10 @@ export function PmStageFlowConfig() {
   const [editName, setEditName] = useState("");
   const [editConfig, setEditConfig] = useState<Record<string, string[]>>({});
   const [editTransitionDates, setEditTransitionDates] = useState<Record<string, "pick" | number>>({});
-  const [editStageAssignees, setEditStageAssignees] = useState<StageAssignees>({});
   const [isCreating, setIsCreating] = useState(false);
-  const [assigneeDialogStage, setAssigneeDialogStage] = useState<string | null>(null);
-
-  // Load clients and members for assignee config
-  const clientsQ = useQuery({
-    queryKey: ["clients_all"],
-    queryFn: async () => {
-      const { data } = await supabase.from("clients").select("id, name").eq("is_active", true).order("name");
-      return data ?? [];
-    },
-  });
-  const membersQ = useQuery({
-    queryKey: ["team_members"],
-    queryFn: async () => {
-      const { data } = await supabase.from("team_members").select("user_id, display_name, avatar_url").eq("is_active", true);
-      return data ?? [];
-    },
-  });
 
   const saveMutation = useMutation({
-    mutationFn: async ({ id, name, flow_config, transition_dates, stage_assignees }: { id?: string; name: string; flow_config: Record<string, string[]>; transition_dates: Record<string, "pick" | number>; stage_assignees: StageAssignees }) => {
+    mutationFn: async ({ id, name, flow_config, transition_dates }: { id?: string; name: string; flow_config: Record<string, string[]>; transition_dates: Record<string, "pick" | number> }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Não autenticado");
       const cleaned: Record<string, string | string[]> = {};
@@ -128,10 +108,10 @@ export function PmStageFlowConfig() {
         else if (v.length > 1) cleaned[k] = v;
       });
       if (id) {
-        const { error } = await sb.from("pm_stage_flows").update({ name, flow_config: cleaned, transition_dates, stage_assignees, updated_at: new Date().toISOString() }).eq("id", id);
+        const { error } = await sb.from("pm_stage_flows").update({ name, flow_config: cleaned, transition_dates, updated_at: new Date().toISOString() }).eq("id", id);
         if (error) throw error;
       } else {
-        const { error } = await sb.from("pm_stage_flows").insert({ name, flow_config: cleaned, transition_dates, stage_assignees, created_by: user.id });
+        const { error } = await sb.from("pm_stage_flows").insert({ name, flow_config: cleaned, transition_dates, created_by: user.id });
         if (error) throw error;
       }
     },
@@ -180,7 +160,7 @@ export function PmStageFlowConfig() {
     setEditName(flow.name);
     setEditConfig(normalizeConfig(flow.flow_config));
     setEditTransitionDates(flow.transition_dates ?? {});
-    setEditStageAssignees(flow.stage_assignees ?? {});
+    
     setIsCreating(false);
   };
 
@@ -195,7 +175,7 @@ export function PmStageFlowConfig() {
     }
     setEditConfig(defaultConfig);
     setEditTransitionDates({});
-    setEditStageAssignees({});
+    
   };
 
   const cancelEdit = () => { setEditingId(null); setIsCreating(false); };
@@ -206,7 +186,7 @@ export function PmStageFlowConfig() {
     Object.entries(editConfig).forEach(([k, v]) => {
       if (v.length > 0) cleaned[k] = v;
     });
-    saveMutation.mutate({ id: editingId ?? undefined, name: editName.trim(), flow_config: cleaned, transition_dates: editTransitionDates, stage_assignees: editStageAssignees });
+    saveMutation.mutate({ id: editingId ?? undefined, name: editName.trim(), flow_config: cleaned, transition_dates: editTransitionDates });
   };
 
   const toggleStageNext = (stageKey: string, nextKey: string) => {
@@ -244,26 +224,6 @@ export function PmStageFlowConfig() {
     return String(val);
   };
 
-  const setClientAssignee = (stageKey: string, clientId: string, userId: string | null) => {
-    setEditStageAssignees(prev => {
-      const copy = { ...prev };
-      if (!copy[stageKey]) copy[stageKey] = {};
-      copy[stageKey] = { ...copy[stageKey], [clientId]: userId };
-      return copy;
-    });
-  };
-
-  const removeClientAssignee = (stageKey: string, clientId: string) => {
-    setEditStageAssignees(prev => {
-      const copy = { ...prev };
-      if (copy[stageKey]) {
-        const { [clientId]: _, ...rest } = copy[stageKey];
-        copy[stageKey] = rest;
-        if (Object.keys(copy[stageKey]).length === 0) delete copy[stageKey];
-      }
-      return copy;
-    });
-  };
 
   const isEditing = !!editingId || isCreating;
 
@@ -276,7 +236,7 @@ export function PmStageFlowConfig() {
             Fluxos de Etapas
           </h3>
           <p className="text-sm text-muted-foreground mt-1">
-            Configure como as tarefas avançam entre etapas, datas e responsáveis fixos por cliente.
+            Configure como as tarefas avançam entre etapas e datas de entrega.
           </p>
         </div>
         {!isEditing && (
@@ -298,24 +258,22 @@ export function PmStageFlowConfig() {
           </div>
 
           <p className="text-xs text-muted-foreground">
-            Marque as próximas etapas, configure a data de entrega e os responsáveis fixos por cliente.
+            Marque as próximas etapas e configure a data de entrega ao concluir.
           </p>
 
           <div className="border border-border/30 rounded-lg overflow-hidden">
-            <div className="grid grid-cols-[180px_1fr_160px_60px] gap-0 text-xs font-semibold uppercase tracking-wider text-muted-foreground bg-muted/30 border-b border-border/20">
+            <div className="grid grid-cols-[180px_1fr_160px] gap-0 text-xs font-semibold uppercase tracking-wider text-muted-foreground bg-muted/30 border-b border-border/20">
               <div className="px-4 py-2.5">Etapa Atual</div>
               <div className="px-4 py-2.5">Ao Concluir → Próximas</div>
               <div className="px-4 py-2.5">Data</div>
-              <div className="px-4 py-2.5">Resp.</div>
             </div>
             {STAGE_OPTIONS.map(stage => {
               const color = getStageCircleColor(stage.key);
               const isDone = stage.key === "entrega";
               const selectedNexts = editConfig[stage.key] ?? [];
-              const stageAssigneeCount = Object.keys(editStageAssignees[stage.key] ?? {}).length;
 
               return (
-                <div key={stage.key} className="grid grid-cols-[180px_1fr_160px_60px] gap-0 border-b border-border/10 hover:bg-accent/20 transition">
+                <div key={stage.key} className="grid grid-cols-[180px_1fr_160px] gap-0 border-b border-border/10 hover:bg-accent/20 transition">
                   <div className="flex items-center gap-2 px-4 py-3">
                     <span className={cn("h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0", color.border, isDone && color.bg)}>
                       {isDone && <Check className="h-2.5 w-2.5 text-white" />}
@@ -355,16 +313,6 @@ export function PmStageFlowConfig() {
                       </Select>
                     )}
                   </div>
-                  <div className="flex items-center justify-center px-2 py-2.5">
-                    {!isDone && (
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 relative" onClick={() => setAssigneeDialogStage(stage.key)} title="Responsáveis fixos por cliente">
-                        <Users className="h-3.5 w-3.5" />
-                        {stageAssigneeCount > 0 && (
-                          <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-[9px] text-primary-foreground grid place-items-center font-bold">{stageAssigneeCount}</span>
-                        )}
-                      </Button>
-                    )}
-                  </div>
                 </div>
               );
             })}
@@ -372,63 +320,6 @@ export function PmStageFlowConfig() {
         </div>
       )}
 
-      {/* Assignee dialog */}
-      <Dialog open={!!assigneeDialogStage} onOpenChange={(v) => { if (!v) setAssigneeDialogStage(null); }}>
-        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
-          <DialogTitle className="flex items-center gap-2 text-sm">
-            <Users className="h-4 w-4 text-muted-foreground" />
-            Responsáveis fixos — {assigneeDialogStage ? STAGE_OPTIONS.find(s => s.key === assigneeDialogStage)?.label : ""}
-          </DialogTitle>
-          <p className="text-xs text-muted-foreground">
-            Defina quem será automaticamente atribuído ao avançar uma tarefa para esta etapa, por cliente.
-          </p>
-          <div className="space-y-2 mt-2">
-            {(clientsQ.data ?? []).map(client => {
-              const currentAssignee = assigneeDialogStage ? (editStageAssignees[assigneeDialogStage]?.[client.id]) : undefined;
-              const hasConfig = currentAssignee !== undefined;
-              const member = currentAssignee ? (membersQ.data ?? []).find(m => m.user_id === currentAssignee) : null;
-
-              return (
-                <div key={client.id} className="flex items-center gap-3 rounded-lg border border-border/40 p-2.5">
-                  <span className="text-xs font-medium flex-1 min-w-0 truncate">{client.name}</span>
-                  <Select
-                    value={hasConfig ? (currentAssignee ?? "__none__") : "__unset__"}
-                    onValueChange={(v) => {
-                      if (!assigneeDialogStage) return;
-                      if (v === "__unset__") {
-                        removeClientAssignee(assigneeDialogStage, client.id);
-                      } else if (v === "__none__") {
-                        setClientAssignee(assigneeDialogStage, client.id, null);
-                      } else {
-                        setClientAssignee(assigneeDialogStage, client.id, v);
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="h-8 w-48 text-xs">
-                      <SelectValue placeholder="Sem config" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__unset__" className="text-xs text-muted-foreground">Sem configuração</SelectItem>
-                      <SelectItem value="__none__" className="text-xs text-muted-foreground">Sem pessoa fixa</SelectItem>
-                      {(membersQ.data ?? []).map(m => (
-                        <SelectItem key={m.user_id} value={m.user_id} className="text-xs">
-                          <div className="flex items-center gap-2">
-                            <Avatar className="h-4 w-4">
-                              <AvatarImage src={m.avatar_url ?? undefined} />
-                              <AvatarFallback className="text-[6px]">{initials(m.display_name)}</AvatarFallback>
-                            </Avatar>
-                            {m.display_name}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              );
-            })}
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Flow list */}
       <div className="space-y-3">
@@ -467,7 +358,6 @@ export function PmStageFlowConfig() {
                   const color = getStageCircleColor(stage.key);
                   const dateMode = dates[stage.key];
                   const dateModeLabel = dateMode === "pick" ? "📅 Escolher data" : typeof dateMode === "number" ? `⏱ +${dateMode} dia${dateMode > 1 ? "s" : ""}` : null;
-                  const assigneeCount = Object.keys((flow.stage_assignees ?? {})[stage.key] ?? {}).length;
 
                   return (
                     <div key={stage.key} className="flex items-center gap-2 flex-wrap">
@@ -488,9 +378,6 @@ export function PmStageFlowConfig() {
                       })}
                       {dateModeLabel && (
                         <span className="text-[10px] text-muted-foreground ml-1 bg-muted/50 rounded px-1.5 py-0.5">{dateModeLabel}</span>
-                      )}
-                      {assigneeCount > 0 && (
-                        <span className="text-[10px] text-muted-foreground ml-1 bg-muted/50 rounded px-1.5 py-0.5">👤 {assigneeCount} resp.</span>
                       )}
                       {nexts.length > 1 && (
                         <span className="text-[10px] text-muted-foreground ml-1">(escolha ao concluir)</span>
