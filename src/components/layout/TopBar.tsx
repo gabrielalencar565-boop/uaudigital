@@ -31,7 +31,7 @@ interface TopBarProps {
   isAdmin?: boolean;
 }
 
-export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
+export function TopBar({ onEditProfile, onOpenTask, onTabChange, isAdmin }: TopBarProps) {
   const { theme, setTheme } = useTheme();
   const myProfileQ = useMyProfile();
   const appSettingsQ = useAppSettings();
