@@ -970,6 +970,36 @@ export type Database = {
           },
         ]
       }
+      pm_stage_flows: {
+        Row: {
+          created_at: string
+          created_by: string
+          flow_config: Json
+          id: string
+          is_default: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          flow_config?: Json
+          id?: string
+          is_default?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          flow_config?: Json
+          id?: string
+          is_default?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       pm_subtasks: {
         Row: {
           assignee_id: string | null
