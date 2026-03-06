@@ -97,18 +97,18 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 h-12 border-b border-border/40 bg-background/80 backdrop-blur-md">
       <div className="flex h-full items-center justify-between px-4">
-        {/* Left: Avatar + Logo + workspace name */}
+        {/* Left: Avatar (edit profile photo) + Logo + workspace name */}
         <div className="flex items-center gap-2.5">
-          {/* Clickable avatar to change photo */}
+          {/* Clickable avatar to change profile photo */}
           <button
             type="button"
             onClick={handleAvatarClick}
             className="relative group"
             title="Alterar foto de perfil"
           >
-            <Avatar className="h-7 w-7">
+            <Avatar className="h-8 w-8 ring-2 ring-primary/30 ring-offset-1 ring-offset-background">
               <AvatarImage src={userAvatar ?? undefined} alt={userName} />
-              <AvatarFallback className="bg-primary/10 text-primary text-[9px] font-semibold">
+              <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-semibold">
                 {userInitials}
               </AvatarFallback>
             </Avatar>
