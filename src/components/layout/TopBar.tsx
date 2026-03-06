@@ -101,8 +101,8 @@ export function TopBar({ onEditProfile, onOpenTask, onTabChange, isAdmin }: TopB
   return (
     <header className="fixed top-0 left-0 right-0 z-50 h-12 border-b border-border/40 bg-background/80 backdrop-blur-md">
       <div className="flex h-full items-center justify-between px-4">
-        {/* Left: Avatar (edit profile photo) + Logo + workspace name */}
-        <div className="flex items-center gap-2.5">
+        {/* Left: Logo + workspace name + nav dropdown */}
+        <div className="flex items-center gap-2">
           {logoUrl ? (
             <img
               src={logoUrl}
@@ -117,7 +117,64 @@ export function TopBar({ onEditProfile, onOpenTask, onTabChange, isAdmin }: TopB
               <span className="text-xs font-bold text-primary">U</span>
             </div>
           )}
-          <span className="text-sm font-semibold text-foreground">Uau Digital</span>
+          <span className="text-sm font-semibold text-foreground hidden sm:inline-block">Uau Digital</span>
+
+          {onTabChange && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="ml-1 flex h-7 w-7 items-center justify-center rounded-md transition hover:bg-accent/50 focus:outline-none">
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-56 rounded-xl p-1.5">
+                <DropdownMenuLabel className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                  Área de Performance
+                </DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => onTabChange("meu_painel")} className="gap-2.5 rounded-lg cursor-pointer">
+                  <Eye className="h-4 w-4 text-muted-foreground" /> Meu Painel
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onTabChange("visao_do_dia")} className="gap-2.5 rounded-lg cursor-pointer">
+                  <Eye className="h-4 w-4 text-muted-foreground" /> Visão do Dia
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onTabChange("magic2")} className="gap-2.5 rounded-lg cursor-pointer">
+                  <Target className="h-4 w-4 text-muted-foreground" /> Magic Number
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onTabChange("desempenho")} className="gap-2.5 rounded-lg cursor-pointer">
+                  <Trophy className="h-4 w-4 text-muted-foreground" /> Desempenho
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator />
+
+                <DropdownMenuLabel className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                  Área de Tarefas
+                </DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => onTabChange("gestao")} className="gap-2.5 rounded-lg cursor-pointer">
+                  <ClipboardList className="h-4 w-4 text-muted-foreground" /> Gestão
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onTabChange("agenda")} className="gap-2.5 rounded-lg cursor-pointer">
+                  <CalendarDays className="h-4 w-4 text-muted-foreground" /> Agenda
+                </DropdownMenuItem>
+
+                {isAdmin && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                      Área de Gestão
+                    </DropdownMenuLabel>
+                    <DropdownMenuItem onClick={() => onTabChange("financeiro")} className="gap-2.5 rounded-lg cursor-pointer">
+                      <DollarSign className="h-4 w-4 text-muted-foreground" /> Financeiro
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onTabChange("metas")} className="gap-2.5 rounded-lg cursor-pointer">
+                      <TrendingUp className="h-4 w-4 text-muted-foreground" /> Metas
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onTabChange("admin")} className="gap-2.5 rounded-lg cursor-pointer">
+                      <Shield className="h-4 w-4 text-muted-foreground" /> Admin
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
 
         {/* Right: Notifications + Profile */}
