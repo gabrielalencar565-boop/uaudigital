@@ -301,7 +301,9 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
   const filteredTasks = useMemo(() => {
     let list = tasks;
     if (filterClient && filterClient !== "__all__") list = list.filter(t => t.client_id === filterClient);
-    if (filterAssignee && filterAssignee !== "__all__") list = list.filter(t => t.assignee_id === filterAssignee);
+    if (filterAssignee && filterAssignee !== "__all__") {
+      list = list.filter(t => t.assignee_id === filterAssignee || fixedAssigneeClientIds.has(t.client_id));
+    }
     if (search) {
       const q = search.toLowerCase();
       list = list.filter(t => t.title.toLowerCase().includes(q) || (clientsMap[t.client_id] ?? "").toLowerCase().includes(q));
