@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Plus, Search, LayoutGrid, CalendarDays, FolderOpen, Settings2, CheckCircle2, FileSpreadsheet, Trash2, Users } from "lucide-react";
+import { Plus, Search, LayoutGrid, CalendarDays, FolderOpen, Settings2, CheckCircle2, FileSpreadsheet, Trash2, Users, ChevronLeft, ChevronRight } from "lucide-react";
 import { addDays, addMonths, subMonths, endOfMonth, format, startOfMonth, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -347,19 +347,24 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
+      {/* Month navigation */}
       <div className="flex items-center gap-3">
-        <h3 className="text-lg font-semibold">
+        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => setCursor(d => startOfMonth(subMonths(d, 1)))}>
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <h3 className="text-base font-bold capitalize min-w-[160px] text-center">
           {format(cursor, "MMMM 'de' yyyy", { locale: ptBR })}
         </h3>
-        <Button variant="ghost" size="sm" onClick={() => setCursor(d => startOfMonth(subMonths(d, 1)))}>←</Button>
-        <Button variant="ghost" size="sm" onClick={() => setCursor(d => startOfMonth(addMonths(d, 1)))}>→</Button>
+        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => setCursor(d => startOfMonth(addMonths(d, 1)))}>
+          <ChevronRight className="h-4 w-4" />
+        </Button>
       </div>
 
       {/* Weekday headers */}
-      <div className="grid grid-cols-7 gap-2 text-xs text-muted-foreground">
+      <div className="grid grid-cols-7 gap-2">
         {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map(d => (
-          <div key={d} className="px-2 py-1">{d}</div>
+          <div key={d} className="px-2 py-1.5 text-[11px] font-semibold text-muted-foreground/60 uppercase tracking-wider text-center">{d}</div>
         ))}
       </div>
 
@@ -375,15 +380,15 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
             <div
               key={key}
               className={cn(
-                "relative min-h-28 rounded-xl border border-border/60 bg-card/20 p-2 transition",
-                inMonth ? "opacity-100" : "opacity-40",
-                isToday && "border-primary ring-1 ring-primary/30"
+                "relative min-h-28 rounded-2xl border bg-card/30 backdrop-blur-sm p-2.5 transition-all",
+                inMonth ? "opacity-100 border-border/20" : "opacity-30 border-transparent",
+                isToday && "border-primary/50 ring-2 ring-primary/15 bg-primary/5"
               )}
             >
-              <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center justify-between mb-2">
                 <div className={cn(
-                  "grid h-7 w-7 place-items-center rounded-full text-xs font-medium",
-                  isToday ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+                  "grid h-7 w-7 place-items-center rounded-lg text-xs font-bold",
+                  isToday ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground/70"
                 )}>
                   {format(d, "d")}
                 </div>
@@ -401,27 +406,27 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
                     <div
                       key={t.id}
                       className={cn(
-                        "w-full rounded-lg border border-border/40 bg-card/30 p-2 text-left transition hover:bg-card/50 cursor-pointer",
-                        isDone && "opacity-50"
+                        "w-full rounded-xl border border-border/20 bg-card/60 backdrop-blur-sm p-2 text-left transition-all hover:bg-card hover:shadow-sm hover:-translate-y-0.5 cursor-pointer group/card",
+                        isDone && "opacity-45"
                       )}
                       onClick={() => onTaskClick(t)}
                     >
                       <div className="flex items-center justify-between gap-1">
-                        <div className={cn("inline-flex h-5 items-center rounded px-2 text-[10px] font-bold text-white", stageBg)}>
+                        <div className={cn("inline-flex h-5 items-center rounded-md px-2 text-[9px] font-bold text-white tracking-wide", stageBg)}>
                           {abbr}
                         </div>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-0.5 opacity-0 group-hover/card:opacity-100 transition-opacity">
                           <button
                             type="button"
-                            className={cn("h-4 w-4 rounded border transition", isDone ? "bg-emerald-500 border-emerald-500" : "border-border/60 hover:border-primary")}
+                            className={cn("h-5 w-5 rounded-md flex items-center justify-center transition", isDone ? "bg-success text-success-foreground" : "border border-border/40 hover:border-primary hover:bg-primary/10")}
                             onClick={(e) => handleMarkDone(t, e)}
                             title={isDone ? "Desmarcar" : "Marcar concluído"}
                           >
-                            {isDone && <CheckCircle2 className="h-3 w-3 text-white" />}
+                            {isDone && <CheckCircle2 className="h-3 w-3" />}
                           </button>
                           <button
                             type="button"
-                            className="h-4 w-4 grid place-items-center text-muted-foreground hover:text-destructive transition"
+                            className="h-5 w-5 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition"
                             onClick={(e) => handleDelete(t.id, e)}
                             title="Remover"
                           >
@@ -430,16 +435,16 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
                         </div>
                       </div>
                       {t.is_extra_demand && (
-                        <Badge variant="secondary" className="text-[8px] h-4 px-1 gap-0.5 mt-1">★ Extra</Badge>
+                        <Badge variant="secondary" className="text-[8px] h-4 px-1.5 gap-0.5 mt-1 rounded-md">★ Extra</Badge>
                       )}
                       <div className="mt-1.5 flex items-center gap-1.5">
-                        <Avatar className="h-5 w-5 shrink-0">
+                        <Avatar className="h-5 w-5 shrink-0 ring-1 ring-background">
                           <AvatarImage src={member?.avatar} />
-                          <AvatarFallback className="text-[8px]">{member ? initials(member.name) : "?"}</AvatarFallback>
+                          <AvatarFallback className="text-[7px] font-bold bg-primary/10 text-primary">{member ? initials(member.name) : "?"}</AvatarFallback>
                         </Avatar>
                         <div className="min-w-0">
-                          <p className="truncate text-xs font-semibold leading-4">{member?.name ?? "—"}</p>
-                          <p className="truncate text-[10px] text-muted-foreground leading-3">{clientName}</p>
+                          <p className="truncate text-[11px] font-semibold leading-4">{member?.name ?? "—"}</p>
+                          <p className="truncate text-[10px] text-muted-foreground/60 leading-3">{clientName}</p>
                         </div>
                       </div>
                     </div>
@@ -448,7 +453,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
                 {dayTasks.length > 5 && (
                   <button
                     type="button"
-                    className="w-full rounded-md border border-border/60 bg-background/50 px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-accent transition"
+                    className="w-full rounded-lg bg-foreground/5 px-2 py-1 text-[10px] font-medium text-muted-foreground/60 hover:bg-foreground/10 hover:text-muted-foreground transition"
                     onClick={() => { setMoreDayKey(key); setMoreOpen(true); }}
                   >
                     +{dayTasks.length - 5} mais
@@ -462,7 +467,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
 
       {/* More tasks dialog */}
       <Dialog open={moreOpen} onOpenChange={setMoreOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg rounded-2xl">
           <DialogTitle>
             {moreDayKey ? format(new Date(`${moreDayKey}T12:00:00`), "dd/MM · EEEE", { locale: ptBR }) : "Tarefas"}
           </DialogTitle>
@@ -470,17 +475,17 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
             {(moreDayKey ? tasksByDay.get(moreDayKey) ?? [] : []).map(t => {
               const member = t.assignee_id ? membersMap[t.assignee_id] : undefined;
               return (
-                <div key={t.id} className="flex items-center gap-3 p-2 rounded-lg border border-border/40 cursor-pointer hover:bg-card/40" onClick={() => { setMoreOpen(false); onTaskClick(t); }}>
-                  <div className={cn("inline-flex h-5 items-center rounded px-2 text-[10px] font-bold text-white", STAGE_BADGE_BG[t.stage_current] ?? "bg-muted")}>
+                <div key={t.id} className="flex items-center gap-3 p-2.5 rounded-xl border border-border/20 cursor-pointer hover:bg-muted/40 transition" onClick={() => { setMoreOpen(false); onTaskClick(t); }}>
+                  <div className={cn("inline-flex h-5 items-center rounded-md px-2 text-[9px] font-bold text-white", STAGE_BADGE_BG[t.stage_current] ?? "bg-muted")}>
                     {STAGE_ABBR[t.stage_current] ?? t.stage_current.slice(0, 4).toUpperCase()}
                   </div>
-                  <Avatar className="h-5 w-5 shrink-0">
+                  <Avatar className="h-5 w-5 shrink-0 ring-1 ring-background">
                     <AvatarImage src={member?.avatar} />
-                    <AvatarFallback className="text-[8px]">{member ? initials(member.name) : "?"}</AvatarFallback>
+                    <AvatarFallback className="text-[7px] font-bold">{member ? initials(member.name) : "?"}</AvatarFallback>
                   </Avatar>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-xs font-semibold">{member?.name ?? "—"}</p>
-                    <p className="truncate text-[10px] text-muted-foreground">{clientsMap[t.client_id] ?? "—"}</p>
+                    <p className="truncate text-[10px] text-muted-foreground/60">{clientsMap[t.client_id] ?? "—"}</p>
                   </div>
                 </div>
               );

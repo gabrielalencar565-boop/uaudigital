@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { format, isPast, isToday } from "date-fns";
-import { CalendarDays, User, Flag, Plus, MoreHorizontal, Archive, Trash2, Pencil, Link2 } from "lucide-react";
+import { Calendar, UserCircle, Flag, Plus, MoreHorizontal, Archive, Trash2, Pencil, Link2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,21 +55,26 @@ export function PmTaskCard({ task, clientName, assigneeName, assigneeAvatar, chi
   const dueDateOverdue = task.due_date && isPast(new Date(task.due_date + "T23:59:59")) && !isToday(new Date(task.due_date + "T12:00:00"));
 
   return (
-    <div className="group w-full rounded-lg border border-border/30 bg-card text-left transition hover:border-border/60 overflow-hidden shadow-sm">
+    <div className="group w-full rounded-xl border border-border/20 bg-card shadow-sm transition-all hover:shadow-md hover:border-border/40 hover:-translate-y-0.5 overflow-hidden">
       {task.cover_url && (
         <div className="w-full h-20 overflow-hidden">
           <img src={task.cover_url} alt="" className="w-full h-full object-cover" />
         </div>
       )}
 
-      <button type="button" onClick={onClick} className="w-full p-3 text-left space-y-2.5">
+      <button type="button" onClick={onClick} className="w-full p-3.5 text-left space-y-2.5">
+        {/* Client name pill */}
+        <span className="inline-flex items-center rounded-md bg-primary/8 px-2 py-0.5 text-[10px] font-semibold text-primary/70 tracking-wide">
+          {clientName}
+        </span>
+
         {/* Title */}
         {renaming ? (
           <Input autoFocus value={renameDraft} onChange={(e) => setRenameDraft(e.target.value)} onBlur={handleRename}
             onKeyDown={(e) => { if (e.key === "Enter") handleRename(); if (e.key === "Escape") setRenaming(false); }}
             onClick={(e) => e.stopPropagation()} className="text-sm font-semibold h-6 border-0 bg-transparent p-0 focus-visible:ring-0" />
         ) : (
-          <p className="text-sm font-semibold leading-snug">{task.title}</p>
+          <p className="text-[13px] font-semibold leading-snug text-foreground/90">{task.title}</p>
         )}
 
         {/* Tags */}
@@ -78,45 +83,45 @@ export function PmTaskCard({ task, clientName, assigneeName, assigneeAvatar, chi
             {task.tags.slice(0, 3).map((rawTag) => {
               const tc = tagColor(rawTag);
               const name = tagDisplay(rawTag);
-              return <span key={rawTag} className={cn("inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-medium", tc.bg, tc.text)}>{name}</span>;
+              return <span key={rawTag} className={cn("inline-flex items-center rounded-md px-1.5 py-0.5 text-[9px] font-semibold", tc.bg, tc.text)}>{name}</span>;
             })}
           </div>
         )}
 
-        {/* Bottom row: avatar, date, priority flag, subtask count */}
-        <div className="flex items-center gap-2 pt-0.5">
+        {/* Bottom row */}
+        <div className="flex items-center gap-2 pt-1">
           {/* Assignee avatar */}
           {assigneeName ? (
-            <Avatar className="h-6 w-6 border border-border/30">
+            <Avatar className="h-6 w-6 ring-2 ring-background">
               <AvatarImage src={assigneeAvatar} />
-              <AvatarFallback className="text-[8px] bg-primary/10 text-primary">{initials(assigneeName)}</AvatarFallback>
+              <AvatarFallback className="text-[8px] bg-primary/10 text-primary font-bold">{initials(assigneeName)}</AvatarFallback>
             </Avatar>
           ) : (
-            <div className="h-6 w-6 rounded-full border border-dashed border-muted-foreground/30 flex items-center justify-center">
-              <User className="h-3 w-3 text-muted-foreground/30" />
+            <div className="h-6 w-6 rounded-full border-2 border-dashed border-muted-foreground/20 flex items-center justify-center">
+              <UserCircle className="h-3.5 w-3.5 text-muted-foreground/25" />
             </div>
           )}
 
           {/* Due date badge */}
           {task.due_date && (
             <span className={cn(
-              "flex items-center gap-1 text-[10px] font-medium rounded px-1.5 py-0.5",
-              dueDateOverdue ? "bg-destructive/20 text-destructive" : "bg-muted text-muted-foreground"
+              "flex items-center gap-1 text-[10px] font-semibold rounded-md px-2 py-0.5",
+              dueDateOverdue ? "bg-destructive/15 text-destructive" : "bg-muted text-muted-foreground"
             )}>
-              <CalendarDays className="h-3 w-3" />
+              <Calendar className="h-3 w-3" />
               {format(new Date(task.due_date + "T12:00:00"), "MMM d").toLowerCase()}
             </span>
           )}
 
           {/* Priority flag */}
           {task.priority === "urgente" && (
-            <span className="flex items-center text-destructive">
-              <Flag className="h-3 w-3" />
+            <span className="flex items-center gap-0.5 text-destructive bg-destructive/10 rounded-md px-1.5 py-0.5">
+              <Flag className="h-3 w-3" fill="currentColor" />
             </span>
           )}
           {task.priority === "alta" && (
-            <span className="flex items-center text-warning">
-              <Flag className="h-3 w-3" />
+            <span className="flex items-center gap-0.5 text-warning bg-warning/10 rounded-md px-1.5 py-0.5">
+              <Flag className="h-3 w-3" fill="currentColor" />
             </span>
           )}
 
@@ -124,36 +129,36 @@ export function PmTaskCard({ task, clientName, assigneeName, assigneeAvatar, chi
 
           {/* Subtask count */}
           {total > 0 && (
-            <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+            <span className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground/60 bg-muted/60 rounded-md px-1.5 py-0.5">
               <Link2 className="h-3 w-3" />
-              {total} subtarefas
+              {total}
             </span>
           )}
         </div>
       </button>
 
       {/* Hover action bar */}
-      <div className="flex items-center justify-end gap-0.5 px-2 pb-2 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="flex items-center justify-end gap-0.5 px-3 pb-2.5 opacity-0 group-hover:opacity-100 transition-opacity">
         {addingSubtask ? (
           <Input autoFocus value={newSubTitle} onChange={(e) => setNewSubTitle(e.target.value)} placeholder="Subtarefa..."
-            className="h-6 w-28 text-[10px]" onClick={(e) => e.stopPropagation()}
+            className="h-7 w-32 text-[10px] rounded-lg" onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => { if (e.key === "Enter") handleAddSubtask(); if (e.key === "Escape") setAddingSubtask(false); }}
             onBlur={handleAddSubtask} />
         ) : (
-          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); setAddingSubtask(true); }} title="Adicionar subtarefa">
+          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg" onClick={(e) => { e.stopPropagation(); setAddingSubtask(true); }} title="Adicionar subtarefa">
             <Plus className="h-3.5 w-3.5" />
           </Button>
         )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => e.stopPropagation()}>
+            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg" onClick={(e) => e.stopPropagation()}>
               <MoreHorizontal className="h-3.5 w-3.5" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-40" onClick={(e) => e.stopPropagation()}>
-            <DropdownMenuItem onClick={() => { setRenameDraft(task.title); setRenaming(true); }} className="text-xs gap-2"><Pencil className="h-3.5 w-3.5" /> Renomear</DropdownMenuItem>
-            <DropdownMenuItem onClick={handleArchive} className="text-xs gap-2"><Archive className="h-3.5 w-3.5" /> Arquivar</DropdownMenuItem>
-            {isAdmin && <DropdownMenuItem onClick={handleDelete} className="text-xs gap-2 text-destructive focus:text-destructive"><Trash2 className="h-3.5 w-3.5" /> Excluir</DropdownMenuItem>}
+          <DropdownMenuContent align="end" className="w-44 rounded-xl" onClick={(e) => e.stopPropagation()}>
+            <DropdownMenuItem onClick={() => { setRenameDraft(task.title); setRenaming(true); }} className="text-xs gap-2 rounded-lg"><Pencil className="h-3.5 w-3.5" /> Renomear</DropdownMenuItem>
+            <DropdownMenuItem onClick={handleArchive} className="text-xs gap-2 rounded-lg"><Archive className="h-3.5 w-3.5" /> Arquivar</DropdownMenuItem>
+            {isAdmin && <DropdownMenuItem onClick={handleDelete} className="text-xs gap-2 text-destructive focus:text-destructive rounded-lg"><Trash2 className="h-3.5 w-3.5" /> Excluir</DropdownMenuItem>}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
