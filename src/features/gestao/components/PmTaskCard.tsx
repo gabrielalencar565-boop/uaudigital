@@ -6,25 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { priorityMeta, stageLabel, stageColorClass, tagColor } from "../pm-constants";
+import { priorityMeta, stageLabel, stageColorClass, tagColor, tagDisplay } from "../pm-constants";
 import { useUpdatePmTask, useDeletePmTask, useCreatePmTask } from "../hooks/use-pm-data";
 import type { PmTask } from "../pm-types";
 import { toast } from "sonner";
 
 function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("");
-}
-
-function statusDot(key: string) {
-  switch (key) {
-    case "backlog": return "border-muted-foreground bg-transparent";
-    case "em_andamento": return "border-primary bg-primary/30";
-    case "em_aprovacao": return "border-warning bg-warning/30";
-    case "concluido": return "border-success bg-success";
-    case "pausado": return "border-muted-foreground/50 bg-transparent";
-    case "cancelado": return "border-destructive bg-destructive/30";
-    default: return "border-muted-foreground bg-transparent";
-  }
 }
 
 interface Props {
@@ -39,7 +27,7 @@ interface Props {
 
 export function PmTaskCard({ task, clientName, assigneeName, assigneeAvatar, childTasks = [], onClick, isAdmin }: Props) {
   const prio = priorityMeta(task.priority);
-  const done = childTasks.filter((s) => s.status_global === "concluido").length;
+  const done = childTasks.filter((s) => s.stage_current === "entrega").length;
   const total = childTasks.length;
   const progress = total > 0 ? Math.round((done / total) * 100) : 0;
 
@@ -48,12 +36,6 @@ export function PmTaskCard({ task, clientName, assigneeName, assigneeAvatar, chi
   const createTask = useCreatePmTask();
   const [addingSubtask, setAddingSubtask] = useState(false);
   const [newSubTitle, setNewSubTitle] = useState("");
-
-  const toggleComplete = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const newStatus = task.status_global === "concluido" ? "em_andamento" : "concluido";
-    updateTask.mutate({ id: task.id, status_global: newStatus as any });
-  };
 
   const handleAddSubtask = async () => {
     if (!newSubTitle.trim()) { setAddingSubtask(false); return; }
@@ -106,7 +88,6 @@ export function PmTaskCard({ task, clientName, assigneeName, assigneeAvatar, chi
 
       <button type="button" onClick={onClick} className="w-full p-3 text-left">
         <div className="flex items-start gap-2.5">
-          <div className={cn("mt-1 h-3.5 w-3.5 shrink-0 rounded-full border-2", statusDot(task.status_global))} />
           <div className="min-w-0 flex-1 space-y-1.5">
             {renaming ? (
               <Input
@@ -130,12 +111,12 @@ export function PmTaskCard({ task, clientName, assigneeName, assigneeAvatar, chi
             </div>
             {task.tags.length > 0 && (
               <div className="flex flex-wrap gap-1">
-                {task.tags.slice(0, 3).map((tag) => {
-                  const tc = tagColor(tag);
+                {task.tags.slice(0, 3).map((rawTag) => {
+                  const tc = tagColor(rawTag);
+                  const name = tagDisplay(rawTag);
                   return (
-                    <span key={tag} className={cn("inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-medium", tc.bg, tc.text)}>
-                      <span className={cn("h-1 w-1 rounded-full", tc.dot)} />
-                      {tag}
+                    <span key={rawTag} className={cn("inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-medium", tc.bg, tc.text)}>
+                      {name}
                     </span>
                   );
                 })}
@@ -183,16 +164,6 @@ export function PmTaskCard({ task, clientName, assigneeName, assigneeAvatar, chi
 
       {/* Action bar at bottom of card */}
       <div className="flex items-center justify-end gap-0.5 px-2 pb-2 opacity-0 group-hover:opacity-100 transition-opacity">
-        {/* Check complete */}
-        <Button
-          variant="ghost" size="icon"
-          className={cn("h-6 w-6", task.status_global === "concluido" && "text-success")}
-          onClick={toggleComplete}
-          title="Concluir"
-        >
-          <CheckCircle2 className="h-3.5 w-3.5" />
-        </Button>
-
         {/* Add subtask */}
         {addingSubtask ? (
           <Input
