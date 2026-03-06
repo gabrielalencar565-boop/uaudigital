@@ -98,24 +98,7 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 h-12 border-b border-border/40 bg-background/80 backdrop-blur-md">
       <div className="flex h-full items-center justify-between px-4">
-        {/* Left: Avatar (edit profile photo) + Logo + workspace name */}
-        <div className="flex items-center gap-2.5">
-          {logoUrl ? (
-            <img
-              src={logoUrl}
-              alt="Logo"
-              className={cn(
-                "h-7 w-7 object-cover",
-                logoShape === "circle" ? "rounded-full" : "rounded-md"
-              )}
-            />
-          ) : (
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10">
-              <span className="text-xs font-bold text-primary">U</span>
-            </div>
-          )}
-          <span className="text-sm font-semibold text-foreground">Uau Digital</span>
-        </div>
+        <WorkspaceDropdown />
 
         {/* Right: Notifications + Profile */}
         <div className="flex items-center gap-1.5">
