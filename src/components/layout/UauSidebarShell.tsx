@@ -49,6 +49,7 @@ export function UauSidebarShell({
   const isMobile = useIsMobile();
   const [collapsed, setCollapsed] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
+  const [notifTaskId, setNotifTaskId] = useState<string | null>(null);
   const appSettingsQ = useAppSettings();
   const myProfileQ = useMyProfile();
   const logoUrl = appSettingsQ.data?.logo_url;
