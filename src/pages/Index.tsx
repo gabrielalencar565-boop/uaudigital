@@ -39,6 +39,7 @@ type ProfileValues = z.infer<typeof profileSchema>;
 
 const Index = () => {
   const [tab, setTab] = useState<MainTab>("meu_painel");
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const { user } = useSession();
   const { isAdmin } = useRole(user?.id);
 
@@ -67,9 +68,7 @@ const Index = () => {
         }
         setHasProfile(!!data);
       });
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [user]);
 
   const onboardingText = useMemo(() => {
@@ -79,77 +78,36 @@ const Index = () => {
 
   const saveProfile = async (v: ProfileValues) => {
     if (!user) return;
-
     let avatar_url: string | null = null;
     if (avatarFile) {
-      if (!avatarFile.type.startsWith("image/")) {
-        toast.error("Envie uma imagem (PNG/JPG/WebP)");
-        return;
-      }
-      if (avatarFile.size > 5 * 1024 * 1024) {
-        toast.error("Imagem muito grande (máx 5MB)");
-        return;
-      }
-
+      if (!avatarFile.type.startsWith("image/")) { toast.error("Envie uma imagem (PNG/JPG/WebP)"); return; }
+      if (avatarFile.size > 5 * 1024 * 1024) { toast.error("Imagem muito grande (máx 5MB)"); return; }
       const ext = (avatarFile.name.split(".").pop() || "png").toLowerCase();
       const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
-      const up = await supabase.storage.from("avatars").upload(path, avatarFile, {
-        upsert: true,
-        contentType: avatarFile.type,
-      });
-      if (up.error) {
-        toast.error(up.error.message);
-        return;
-      }
-
+      const up = await supabase.storage.from("avatars").upload(path, avatarFile, { upsert: true, contentType: avatarFile.type });
+      if (up.error) { toast.error(up.error.message); return; }
       const pub = supabase.storage.from("avatars").getPublicUrl(path);
       avatar_url = pub.data.publicUrl ?? null;
     }
-
-    const { error } = await supabase.from("profiles").insert({
-      user_id: user.id,
-      full_name: v.full_name,
-      role_title: v.role_title,
-      avatar_url,
-    });
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-
+    const { error } = await supabase.from("profiles").insert({ user_id: user.id, full_name: v.full_name, role_title: v.role_title, avatar_url });
+    if (error) { toast.error(error.message); return; }
     try {
       const existing = await supabase.from("team_members").select("user_id").eq("user_id", user.id).maybeSingle();
       if (existing.error) throw existing.error;
       if (existing.data) {
-        const up = await supabase
-          .from("team_members")
-          .update({ display_name: v.full_name, role_title: v.role_title, avatar_url, is_active: true })
-          .eq("user_id", user.id);
+        const up = await supabase.from("team_members").update({ display_name: v.full_name, role_title: v.role_title, avatar_url, is_active: true }).eq("user_id", user.id);
         if (up.error) throw up.error;
       } else {
-        const ins = await supabase.from("team_members").insert({
-          user_id: user.id,
-          display_name: v.full_name,
-          role_title: v.role_title,
-          avatar_url,
-          is_active: true,
-        });
+        const ins = await supabase.from("team_members").insert({ user_id: user.id, display_name: v.full_name, role_title: v.role_title, avatar_url, is_active: true });
         if (ins.error) throw ins.error;
       }
-    } catch (e: any) {
-      toast.error(e?.message ?? "Erro ao salvar dados públicos do time");
-    }
-
+    } catch (e: any) { toast.error(e?.message ?? "Erro ao salvar dados públicos do time"); }
     toast.success("Perfil pronto — bora acelerar 🚀");
     setHasProfile(true);
   };
 
   useEffect(() => {
-    if (!avatarFile) {
-      if (avatarPreview) URL.revokeObjectURL(avatarPreview);
-      setAvatarPreview(null);
-      return;
-    }
+    if (!avatarFile) { if (avatarPreview) URL.revokeObjectURL(avatarPreview); setAvatarPreview(null); return; }
     const url = URL.createObjectURL(avatarFile);
     setAvatarPreview(url);
     return () => URL.revokeObjectURL(url);
@@ -158,23 +116,15 @@ const Index = () => {
 
   const renderPanel = () => {
     switch (tab) {
-      case "admin":
-        return isAdmin ? <AdminContainer /> : <MeuPainelPanel />;
-      case "financeiro":
-        return isAdmin ? <FinanceiroPanel /> : <MeuPainelPanel />;
-      case "metas":
-        return isAdmin ? <FinMetasTab /> : <MeuPainelPanel />;
-      case "visao_do_dia":
-        return <DayViewPanel />;
-      case "desempenho":
-        return <PerformancePanel />;
-      case "magic2":
-        return <Magic2Panel />;
-      case "criacao":
-        return <GestaoPanel />;
+      case "admin": return isAdmin ? <AdminContainer /> : <MeuPainelPanel />;
+      case "financeiro": return isAdmin ? <FinanceiroPanel /> : <MeuPainelPanel />;
+      case "metas": return isAdmin ? <FinMetasTab /> : <MeuPainelPanel />;
+      case "visao_do_dia": return <DayViewPanel />;
+      case "desempenho": return <PerformancePanel />;
+      case "magic2": return <Magic2Panel />;
+      case "criacao": return <GestaoPanel initialClientId={selectedClientId} />;
       case "meu_painel":
-      default:
-        return <MeuPainelPanel />;
+      default: return <MeuPainelPanel />;
     }
   };
 
@@ -182,6 +132,8 @@ const Index = () => {
     <UauSidebarShell
       tab={tab}
       isAdmin={isAdmin}
+      selectedClientId={selectedClientId}
+      onSelectClient={(id) => setSelectedClientId(id)}
       onTabChange={(next) => {
         try {
           setTab(next);
@@ -207,40 +159,27 @@ const Index = () => {
                     <AvatarImage src={avatarPreview ?? undefined} alt="Foto do perfil" />
                     <AvatarFallback>{initials(form.watch("full_name") || "?")}</AvatarFallback>
                   </Avatar>
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => setAvatarFile(e.target.files?.[0] ?? null)}
-                  />
+                  <Input type="file" accept="image/*" onChange={(e) => setAvatarFile(e.target.files?.[0] ?? null)} />
                 </div>
                 <p className="text-xs text-muted-foreground">PNG/JPG/WebP • até 5MB</p>
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="full_name">Nome</Label>
                 <Input id="full_name" placeholder="Seu nome" {...form.register("full_name")} />
-                {form.formState.errors.full_name && (
-                  <p className="text-sm text-danger">{form.formState.errors.full_name.message}</p>
-                )}
+                {form.formState.errors.full_name && <p className="text-sm text-danger">{form.formState.errors.full_name.message}</p>}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="role_title">Cargo</Label>
                 <Input id="role_title" placeholder="Ex.: Designer" {...form.register("role_title")} />
-                {form.formState.errors.role_title && (
-                  <p className="text-sm text-danger">{form.formState.errors.role_title.message}</p>
-                )}
+                {form.formState.errors.role_title && <p className="text-sm text-danger">{form.formState.errors.role_title.message}</p>}
               </div>
             </CardContent>
             <CardFooter>
-              <Button type="submit" variant="hero">
-                Entrar no painel
-              </Button>
+              <Button type="submit" variant="hero">Entrar no painel</Button>
             </CardFooter>
           </form>
         </Card>
-      ) : (
-        renderPanel()
-      )}
+      ) : renderPanel()}
     </UauSidebarShell>
   );
 };

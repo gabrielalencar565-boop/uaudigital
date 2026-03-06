@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Plus, Search, LayoutGrid, CalendarDays, FolderOpen, Settings2, CheckCircle2, FileSpreadsheet, Trash2, Users, ChevronLeft, ChevronRight } from "lucide-react";
 import { addDays, addMonths, subMonths, endOfMonth, format, startOfMonth, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -42,13 +42,20 @@ const STAGE_BADGE_BG: Record<string, string> = {
   agendamento: "bg-violet-500", entrega: "bg-emerald-500",
 };
 
-export function GestaoPanel() {
+export function GestaoPanel({ initialClientId }: { initialClientId?: string | null }) {
   const { user } = useSession();
   const { isAdmin } = useRole(user?.id);
 
   const [view, setView] = useState<"kanban" | "agenda" | "clientes" | "pauta" | "fluxo" | "responsaveis">("kanban");
   const [search, setSearch] = useState("");
-  const [filterClient, setFilterClient] = useState("__all__");
+  const [filterClient, setFilterClient] = useState(initialClientId ?? "__all__");
+
+  // Sync when sidebar client changes
+  const prevInitial = useRef(initialClientId);
+  if (initialClientId !== prevInitial.current) {
+    prevInitial.current = initialClientId;
+    if (initialClientId) setFilterClient(initialClientId);
+  }
   const [filterAssignee, setFilterAssignee] = useState(user?.id ?? "__all__");
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
