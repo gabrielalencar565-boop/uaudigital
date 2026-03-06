@@ -19,6 +19,7 @@ import { PmClientView } from "./components/PmClientView";
 import { PmTaskDetailDialog } from "./components/PmTaskDetailDialog";
 import { PmCreateTaskDialog } from "./components/PmCreateTaskDialog";
 import { PmStageFlowConfig } from "./components/PmStageFlowConfig";
+import { PmAssigneeFlowConfig } from "./components/PmAssigneeFlowConfig";
 import { PmPautaView } from "./components/PmPautaView";
 import { stageLabel, getStageCircleColor, tagColor, tagDisplay } from "./pm-constants";
 import { cn } from "@/lib/utils";
@@ -44,7 +45,7 @@ export function GestaoPanel() {
   const { user } = useSession();
   const { isAdmin } = useRole(user?.id);
 
-  const [view, setView] = useState<"kanban" | "agenda" | "clientes" | "pauta" | "fluxo">("kanban");
+  const [view, setView] = useState<"kanban" | "agenda" | "clientes" | "pauta" | "fluxo" | "responsaveis">("kanban");
   const [search, setSearch] = useState("");
   const [filterClient, setFilterClient] = useState("__all__");
   const [filterAssignee, setFilterAssignee] = useState("__all__");
@@ -163,6 +164,9 @@ export function GestaoPanel() {
           <TabsTrigger value="fluxo" className="gap-1.5 text-xs h-7">
             <Settings2 className="h-3 w-3" /> Fluxo
           </TabsTrigger>
+          <TabsTrigger value="responsaveis" className="gap-1.5 text-xs h-7">
+            <Users className="h-3 w-3" /> Responsáveis
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="kanban" className="mt-4">
@@ -216,6 +220,10 @@ export function GestaoPanel() {
 
         <TabsContent value="fluxo" className="mt-4">
           <PmStageFlowConfig />
+        </TabsContent>
+
+        <TabsContent value="responsaveis" className="mt-4">
+          <PmAssigneeFlowConfig />
         </TabsContent>
       </Tabs>
 
