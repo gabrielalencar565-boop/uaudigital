@@ -183,7 +183,7 @@ export function RichDescriptionEditor({ value, onChange, onSave, onCancel }: Pro
         className={cn(
           "min-h-[120px] max-h-[300px] overflow-y-auto rounded-lg border border-border/60 bg-background px-3 py-2",
           "text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40",
-          "[&_h2]:text-base [&_h2]:font-semibold [&_h2]:mb-1",
+          "[&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-2 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mb-1 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mb-1 [&_h4]:text-sm [&_h4]:font-semibold [&_h4]:mb-0.5",
           "[&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5",
           "[&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs [&_code]:font-mono",
         )}
