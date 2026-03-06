@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import {
-  CalendarDays, User, Flag, X, ChevronRight, ArrowLeft,
-  Layers, Tag, MessageSquare, Plus, Check, CheckCircle2, RotateCcw
+  Calendar, UserCircle, Flag, X, ChevronRight, ArrowLeft,
+  Layers, Tag, MessageSquare, Plus, Check, CheckCircle2, RotateCcw, Paperclip, ListTodo, FileText
 } from "lucide-react";
 import { addDays, format } from "date-fns";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
