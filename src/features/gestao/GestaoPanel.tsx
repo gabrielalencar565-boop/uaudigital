@@ -146,47 +146,75 @@ export function GestaoPanel() {
       </div>
 
       {/* Filters bar */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-border/30 pb-3">
-        <div className="relative w-52">
-          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar tarefas..." className="pl-8 h-8 text-xs" />
+      <div className="flex flex-wrap items-center gap-2.5 rounded-2xl bg-muted/30 backdrop-blur-sm border border-border/20 p-2.5">
+        <div className="relative flex-1 min-w-[180px] max-w-[240px]">
+          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/50" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar tarefas..." className="pl-9 h-9 text-xs rounded-xl border-border/30 bg-background/80" />
         </div>
         <Select value={filterClient} onValueChange={setFilterClient}>
-          <SelectTrigger className="h-8 w-36 text-xs"><SelectValue placeholder="Cliente" /></SelectTrigger>
-          <SelectContent>
+          <SelectTrigger className="h-9 w-44 text-xs rounded-xl border-border/30 bg-background/80"><SelectValue placeholder="Cliente" /></SelectTrigger>
+          <SelectContent className="rounded-xl">
             <SelectItem value="__all__">Todos os clientes</SelectItem>
             {(clientsQ.data ?? []).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select value={filterAssignee} onValueChange={setFilterAssignee}>
-          <SelectTrigger className="h-8 w-36 text-xs"><SelectValue placeholder="Responsável" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">Todos</SelectItem>
-            {membersList.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
+
+        {/* Responsável filter with avatar */}
+        <div className="flex items-center gap-1.5">
+          {filterAssignee !== "__all__" && membersMap[filterAssignee] && (
+            <Avatar className="h-7 w-7 ring-2 ring-primary/20">
+              <AvatarImage src={membersMap[filterAssignee].avatar} />
+              <AvatarFallback className="text-[9px] font-bold bg-primary/10 text-primary">{initials(membersMap[filterAssignee].name)}</AvatarFallback>
+            </Avatar>
+          )}
+          <Select value={filterAssignee} onValueChange={setFilterAssignee}>
+            <SelectTrigger className="h-9 w-44 text-xs rounded-xl border-border/30 bg-background/80"><SelectValue placeholder="Responsável" /></SelectTrigger>
+            <SelectContent className="rounded-xl">
+              <SelectItem value="__all__">
+                <span className="flex items-center gap-2">
+                  <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                  Todos
+                </span>
+              </SelectItem>
+              {membersList.map((m) => {
+                const mem = membersMap[m.id];
+                return (
+                  <SelectItem key={m.id} value={m.id}>
+                    <span className="flex items-center gap-2">
+                      <Avatar className="h-5 w-5">
+                        <AvatarImage src={mem?.avatar} />
+                        <AvatarFallback className="text-[8px] font-bold bg-primary/10 text-primary">{initials(m.name)}</AvatarFallback>
+                      </Avatar>
+                      {m.name}
+                    </span>
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* View tabs */}
       <Tabs value={view} onValueChange={(v) => setView(v as any)}>
-        <TabsList className="bg-card/30 h-8">
-          <TabsTrigger value="kanban" className="gap-1.5 text-xs h-7">
-            <LayoutGrid className="h-3 w-3" /> Kanban
+        <TabsList className="bg-muted/40 h-10 p-1 rounded-xl gap-0.5">
+          <TabsTrigger value="kanban" className="gap-1.5 text-xs h-8 rounded-lg data-[state=active]:shadow-sm">
+            <LayoutGrid className="h-3.5 w-3.5" /> Kanban
           </TabsTrigger>
-          <TabsTrigger value="agenda" className="gap-1.5 text-xs h-7">
-            <CalendarDays className="h-3 w-3" /> Agenda
+          <TabsTrigger value="agenda" className="gap-1.5 text-xs h-8 rounded-lg data-[state=active]:shadow-sm">
+            <CalendarDays className="h-3.5 w-3.5" /> Agenda
           </TabsTrigger>
-          <TabsTrigger value="clientes" className="gap-1.5 text-xs h-7">
-            <FolderOpen className="h-3 w-3" /> Por Cliente
+          <TabsTrigger value="clientes" className="gap-1.5 text-xs h-8 rounded-lg data-[state=active]:shadow-sm">
+            <FolderOpen className="h-3.5 w-3.5" /> Por Cliente
           </TabsTrigger>
-          <TabsTrigger value="pauta" className="gap-1.5 text-xs h-7">
-            <FileSpreadsheet className="h-3 w-3" /> Montagem de Pauta
+          <TabsTrigger value="pauta" className="gap-1.5 text-xs h-8 rounded-lg data-[state=active]:shadow-sm">
+            <FileSpreadsheet className="h-3.5 w-3.5" /> Montagem de Pauta
           </TabsTrigger>
-          <TabsTrigger value="fluxo" className="gap-1.5 text-xs h-7">
-            <Settings2 className="h-3 w-3" /> Fluxo
+          <TabsTrigger value="fluxo" className="gap-1.5 text-xs h-8 rounded-lg data-[state=active]:shadow-sm">
+            <Settings2 className="h-3.5 w-3.5" /> Fluxo
           </TabsTrigger>
-          <TabsTrigger value="responsaveis" className="gap-1.5 text-xs h-7">
-            <Users className="h-3 w-3" /> Responsáveis
+          <TabsTrigger value="responsaveis" className="gap-1.5 text-xs h-8 rounded-lg data-[state=active]:shadow-sm">
+            <Users className="h-3.5 w-3.5" /> Responsáveis
           </TabsTrigger>
         </TabsList>
 
