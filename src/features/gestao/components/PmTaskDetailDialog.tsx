@@ -16,7 +16,7 @@ import {
 } from "../pm-constants";
 import {
   useUpdatePmTask, usePmTasks, usePmChildTasks,
-  usePmComments, usePmAttachments,
+  usePmComments, usePmAttachments, usePmSyncStageCompletion,
 } from "../hooks/use-pm-data";
 import { useDefaultFlow, getNextStages } from "./PmStageFlowConfig";
 import { PmSubtaskList } from "./PmSubtaskList";
