@@ -196,7 +196,7 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, membersMap
           <div className="flex items-center gap-3 rounded-lg border border-border/40 p-3">
             <Switch checked={isExtra} onCheckedChange={setIsExtra} />
             <div className="flex items-center gap-1.5">
-              <Zap className="h-3.5 w-3.5 text-amber-500" />
+              <Zap className="h-3.5 w-3.5 text-warning" />
               <span className="text-xs font-medium">Demanda Extra</span>
             </div>
           </div>
