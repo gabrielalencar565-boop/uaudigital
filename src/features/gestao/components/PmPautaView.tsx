@@ -49,10 +49,9 @@ interface Props {
   clients: { id: string; name: string }[];
   isAdmin: boolean;
   onTaskClick: (t: PmTask) => void;
-  onCreateTask?: (stage?: string) => void;
 }
 
-export function PmPautaView({ tasks, clientsMap, membersMap, members, clients, isAdmin, onTaskClick, onCreateTask }: Props) {
+export function PmPautaView({ tasks, clientsMap, membersMap, members, clients, isAdmin, onTaskClick }: Props) {
   const [cursor, setCursor] = useState(() => startOfMonth(new Date()));
   const [filterClientId, setFilterClientId] = useState<string | "all">("all");
   const [filterUserId, setFilterUserId] = useState<string | "all">("all");
@@ -195,15 +194,9 @@ export function PmPautaView({ tasks, clientsMap, membersMap, members, clients, i
                 <button
                   type="button"
                   className="grid h-5 w-5 place-items-center rounded border border-border/60 bg-background/80 text-[10px] text-foreground hover:bg-accent transition"
-                  onClick={() => onCreateTask?.()}
-                  title="Nova tarefa"
-                >+</button>
-                <button
-                  type="button"
-                  className="grid h-5 w-5 place-items-center rounded border border-dashed border-border/60 bg-background/80 text-[10px] text-muted-foreground hover:bg-accent transition"
                   onClick={() => openCreateForDay(key)}
                   title="Adicionar rascunho"
-                >✎</button>
+                >+</button>
               </div>
 
               <div className="mt-1.5 space-y-1.5 max-h-[520px] overflow-y-auto">

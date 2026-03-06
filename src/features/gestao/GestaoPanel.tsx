@@ -215,7 +215,6 @@ export function GestaoPanel() {
             clients={(clientsQ.data ?? []).map(c => ({ id: c.id, name: c.name }))}
             isAdmin={isAdmin}
             onTaskClick={(t) => setSelectedTaskId(t.id)}
-            onCreateTask={(stage) => openCreate(stage)}
           />
         </TabsContent>
 
