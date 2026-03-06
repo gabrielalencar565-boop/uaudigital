@@ -1,19 +1,12 @@
 import { useMemo } from "react";
 import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { PM_KANBAN_COLUMNS, statusLabel } from "../pm-constants";
+import { PM_STAGES, stageLabel, stageColorClass } from "../pm-constants";
 import type { PmTask } from "../pm-types";
 import { PmTaskCard } from "./PmTaskCard";
 
-function statusDot(key: string) {
-  switch (key) {
-    case "backlog": return "bg-muted-foreground";
-    case "em_andamento": return "bg-primary";
-    case "em_aprovacao": return "bg-warning";
-    case "concluido": return "bg-success";
-    default: return "bg-muted-foreground";
-  }
-}
+// Use stages as kanban columns (excluding legacy)
+const KANBAN_STAGES = PM_STAGES.filter(s => !["roteiro", "edicao"].includes(s.key));
 
 interface Props {
   tasks: PmTask[];
@@ -39,27 +32,27 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, on
   }, [tasks, filters]);
 
   const columns = useMemo(() => {
-    return PM_KANBAN_COLUMNS.map((status) => ({
-      status,
-      tasks: filtered.filter((t) => t.status_global === status),
+    return KANBAN_STAGES.map((stage) => ({
+      stage: stage.key,
+      label: stage.label,
+      tasks: filtered.filter((t) => t.stage_current === stage.key),
     }));
   }, [filtered]);
 
   return (
     <div className="flex gap-3 overflow-x-auto pb-4">
       {columns.map((col) => (
-        <div key={col.status} className="flex w-72 min-w-[280px] flex-col rounded-lg border border-border/40 bg-card/5">
+        <div key={col.stage} className="flex w-72 min-w-[280px] flex-col rounded-lg border border-border/40 bg-card/5">
           <div className="flex items-center justify-between px-3 py-2.5 border-b border-border/30">
             <div className="flex items-center gap-2">
-              <span className={cn("h-2.5 w-2.5 rounded-full", statusDot(col.status))} />
-              <span className="text-xs font-semibold">{statusLabel(col.status)}</span>
+              <span className={cn("px-2 py-0.5 rounded text-[10px] font-bold", stageColorClass(col.stage))}>{col.label}</span>
               <span className="text-[10px] text-muted-foreground ml-1 bg-muted/50 rounded-full px-1.5 py-0.5">
                 {col.tasks.length}
               </span>
             </div>
             <button
               type="button"
-              onClick={() => onCreateClick(col.status)}
+              onClick={() => onCreateClick(col.stage)}
               className="rounded p-1 text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
             >
               <Plus className="h-3.5 w-3.5" />
