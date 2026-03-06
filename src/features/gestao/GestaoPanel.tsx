@@ -141,7 +141,7 @@ export function GestaoPanel() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl font-bold tracking-tight">Gestão de Tarefas</h2>
-          <p className="text-xs text-muted-foreground">Gerencie projetos e tarefas da agência</p>
+          
         </div>
       </div>
 
