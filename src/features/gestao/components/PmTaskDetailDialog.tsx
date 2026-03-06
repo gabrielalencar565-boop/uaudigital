@@ -305,6 +305,12 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     setNewTagName("");
   };
   const removeTag = (tag: string) => { updateTask.mutate({ id: task.id, tags: (task.tags ?? []).filter(t => t !== tag) } as any); };
+  const toggleGlobalTag = (tag: string) => {
+    const existing = task.tags ?? [];
+    if (!existing.includes(tag)) {
+      updateTask.mutate({ id: task.id, tags: [...existing, tag] } as any);
+    }
+  };
 
   return (
     <div className="space-y-0">
