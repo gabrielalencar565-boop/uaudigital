@@ -199,7 +199,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 }) {
   const updateTask = useUpdatePmTask();
   const syncStage = usePmSyncStageCompletion();
-  const { flowConfig, transitionDates } = useDefaultFlowWithDates();
+  const { flowConfig, transitionDates, stageAssignees } = useDefaultFlowWithDates();
 
   const allAssigneeIds = [
     ...(task.assignee_id ? [task.assignee_id] : []),
