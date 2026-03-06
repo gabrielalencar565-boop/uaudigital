@@ -119,19 +119,31 @@ export function UauSidebarShell({
               {!collapsed || isMobile ? <SidebarGroupLabel>Painel</SidebarGroupLabel> : null}
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {navItems.map((it) => (
-                    <SidebarMenuItem key={it.key}>
-                      <SidebarMenuButton
-                        tooltip={it.label}
-                        isActive={tab === it.key}
-                        onClick={() => onTabChange(it.key)}
-                        className={cn(collapsed && !isMobile && "justify-center")}
-                      >
-                        <it.icon />
-                        {!collapsed || isMobile ? <span>{it.label}</span> : null}
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
+                  {navItems.map((it) => {
+                    const active = tab === it.key;
+                    return (
+                      <SidebarMenuItem key={it.key}>
+                        <SidebarMenuButton
+                          tooltip={it.label}
+                          isActive={active}
+                          onClick={() => onTabChange(it.key)}
+                          className={cn(collapsed && !isMobile && "justify-center")}
+                        >
+                          <span
+                            className={cn(
+                              "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors",
+                              active
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-sidebar-accent/60 text-sidebar-foreground"
+                            )}
+                          >
+                            <it.icon className="h-4 w-4" />
+                          </span>
+                          {!collapsed || isMobile ? <span>{it.label}</span> : null}
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
