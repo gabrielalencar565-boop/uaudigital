@@ -234,6 +234,8 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
                     >
                       <Trash2 className="h-3.5 w-3.5" /> Excluir
                     </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
 
               {/* Info bar */}
