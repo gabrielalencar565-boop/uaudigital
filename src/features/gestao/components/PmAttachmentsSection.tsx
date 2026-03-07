@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback } from "react";
 import { format } from "date-fns";
-import { Upload, FileText, Download, MoreHorizontal, Link2, ImagePlus } from "lucide-react";
+import { Upload, FileText, Download, MoreHorizontal, Link2, ImagePlus, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -9,6 +9,10 @@ import type { PmAttachment } from "../pm-types";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { PmImageViewer } from "./PmImageViewer";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
+
+const sb = supabase as any;
 
 function initials(n: string) {
   return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
@@ -25,9 +29,11 @@ interface Props {
 export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCover, currentCoverUrl }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const upload = useUploadPmAttachment();
+  const queryClient = useQueryClient();
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
   const [dragging, setDragging] = useState(false);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
 
   const doUpload = useCallback(async (file: File) => {
     if (file.size > 20 * 1024 * 1024) { toast.error("Arquivo muito grande (máx 20MB)"); return; }
@@ -51,17 +57,60 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
   const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
     setDragging(false);
-    const files = e.dataTransfer.files;
-    for (const file of Array.from(files)) {
-      await doUpload(file);
+    
+    // Check if it's a file drop (external) vs attachment reorder
+    if (e.dataTransfer.files.length > 0 && !draggedId) {
+      for (const file of Array.from(e.dataTransfer.files)) {
+        await doUpload(file);
+      }
     }
-  }, [doUpload]);
+  }, [doUpload, draggedId]);
 
-  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setDragging(true); };
+  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); if (!draggedId) setDragging(true); };
   const handleDragLeave = (e: React.DragEvent) => {
     if (e.currentTarget.contains(e.relatedTarget as Node)) return;
     setDragging(false);
   };
+
+  // Attachment reorder via drag
+  const handleAttDragStart = (e: React.DragEvent, attId: string) => {
+    setDraggedId(attId);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleAttDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const handleAttDrop = async (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!draggedId || draggedId === targetId) {
+      setDraggedId(null);
+      return;
+    }
+
+    const fromIdx = attachments.findIndex(a => a.id === draggedId);
+    const toIdx = attachments.findIndex(a => a.id === targetId);
+    if (fromIdx === -1 || toIdx === -1) { setDraggedId(null); return; }
+
+    // Reorder
+    const reordered = [...attachments];
+    const [moved] = reordered.splice(fromIdx, 1);
+    reordered.splice(toIdx, 0, moved);
+
+    // Update order_index in DB
+    const updates = reordered.map((att, i) => 
+      sb.from("pm_attachments").update({ order_index: i }).eq("id", att.id)
+    );
+    await Promise.all(updates);
+    queryClient.invalidateQueries({ queryKey: ["pm_attachments"] });
+    setDraggedId(null);
+    toast.success("Ordem atualizada!");
+  };
+
+  const handleAttDragEnd = () => { setDraggedId(null); };
 
   const isImage = (type: string | null) => type?.startsWith("image/");
   const imageAttachments = attachments.filter(a => isImage(a.file_type) && a.public_url);
@@ -93,7 +142,7 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
       </div>
 
       {/* Drop zone overlay */}
-      {dragging && (
+      {dragging && !draggedId && (
         <div className="flex items-center justify-center rounded-lg border-2 border-dashed border-primary/50 bg-primary/5 py-8 transition-all">
           <p className="text-sm text-primary font-medium">Solte os arquivos aqui</p>
         </div>
@@ -104,12 +153,27 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
           const isCover = currentCoverUrl === att.public_url;
           const isImg = isImage(att.file_type);
           const uploader = membersMap[att.uploaded_by];
+          const isDragged = draggedId === att.id;
 
           return (
-            <div key={att.id} className={cn(
-              "relative group rounded-md border overflow-hidden bg-card/30",
-              isCover ? "border-primary/50 ring-1 ring-primary/30" : "border-border/40"
-            )}>
+            <div
+              key={att.id}
+              draggable
+              onDragStart={(e) => handleAttDragStart(e, att.id)}
+              onDragOver={handleAttDragOver}
+              onDrop={(e) => handleAttDrop(e, att.id)}
+              onDragEnd={handleAttDragEnd}
+              className={cn(
+                "relative group rounded-md border overflow-hidden bg-card/30 transition-all",
+                isCover ? "border-primary/50 ring-1 ring-primary/30" : "border-border/40",
+                isDragged && "opacity-40 scale-95"
+              )}
+            >
+              {/* Drag handle */}
+              <div className="absolute top-1 left-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing">
+                <GripVertical className="h-3.5 w-3.5 text-muted-foreground bg-background/80 rounded" />
+              </div>
+
               {/* Thumbnail / Icon area */}
               {isImg && att.public_url ? (
                 <div

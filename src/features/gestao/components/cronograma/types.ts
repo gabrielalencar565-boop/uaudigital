@@ -9,8 +9,10 @@ export const POST_TYPE_META: Record<string, { label: string; icon: typeof Film; 
 };
 
 export interface CronogramaPost extends PmTask {
-  /** First image attachment URL (auto-populated from subtask attachments) */
+  /** First image attachment URL */
   attachment_url?: string | null;
+  /** All image attachment URLs (for carousels) */
+  all_attachment_urls?: string[];
 }
 
 export interface CronogramaViewProps {
