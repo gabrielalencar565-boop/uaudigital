@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback } from "react";
 import { format } from "date-fns";
-import { Upload, FileText, Download, MoreHorizontal, Link2, ImagePlus, GripVertical } from "lucide-react";
+import { Upload, FileText, Download, MoreHorizontal, Link2, ImagePlus, GripVertical, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -112,6 +112,20 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
 
   const handleAttDragEnd = () => { setDraggedId(null); };
 
+  const handleDeleteAttachment = async (att: PmAttachment) => {
+    try {
+      // Delete from storage
+      const { error: storageErr } = await supabase.storage.from("pm-attachments").remove([att.storage_path]);
+      if (storageErr) console.warn("Storage delete error:", storageErr);
+      // Delete from DB
+      await sb.from("pm_attachments").delete().eq("id", att.id);
+      queryClient.invalidateQueries({ queryKey: ["pm_attachments"] });
+      toast.success("Anexo excluído!");
+    } catch (err: any) {
+      toast.error(err?.message ?? "Erro ao excluir anexo");
+    }
+  };
+
   const isImage = (type: string | null) => type?.startsWith("image/");
   const imageAttachments = attachments.filter(a => isImage(a.file_type) && a.public_url);
 
@@ -214,6 +228,12 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
                         </a>
                       </DropdownMenuItem>
                     )}
+                    <DropdownMenuItem
+                      className="text-xs gap-2 text-destructive focus:text-destructive"
+                      onClick={() => handleDeleteAttachment(att)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" /> Excluir
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
