@@ -843,6 +843,7 @@ export type Database = {
           file_size: number | null
           file_type: string | null
           id: string
+          order_index: number
           public_url: string | null
           storage_path: string
           subtask_id: string | null
@@ -855,6 +856,7 @@ export type Database = {
           file_size?: number | null
           file_type?: string | null
           id?: string
+          order_index?: number
           public_url?: string | null
           storage_path: string
           subtask_id?: string | null
@@ -867,6 +869,7 @@ export type Database = {
           file_size?: number | null
           file_type?: string | null
           id?: string
+          order_index?: number
           public_url?: string | null
           storage_path?: string
           subtask_id?: string | null
@@ -931,6 +934,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      pm_cronograma_feedback: {
+        Row: {
+          created_at: string
+          feedback_text: string | null
+          id: string
+          status: string
+          task_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          feedback_text?: string | null
+          id?: string
+          status?: string
+          task_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          feedback_text?: string | null
+          id?: string
+          status?: string
+          task_id?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       pm_projects: {
         Row: {
