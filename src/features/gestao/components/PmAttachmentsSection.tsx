@@ -228,8 +228,12 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
                         </a>
                       </DropdownMenuItem>
                     )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                    <DropdownMenuItem
+                      className="text-xs gap-2 text-destructive focus:text-destructive"
+                      onClick={() => handleDeleteAttachment(att)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" /> Excluir
+                    </DropdownMenuItem>
               </div>
 
               {/* Info bar */}
