@@ -6,13 +6,12 @@ import { useForm } from "react-hook-form";
 import { UauSidebarShell, type MainTab } from "@/components/layout/UauSidebarShell";
 import { PerformancePanel } from "@/features/performance/PerformancePanel";
 import { Magic2Panel } from "@/features/magic2/Magic2Panel";
-import { AgendaPanel } from "@/features/agenda/AgendaPanel";
-import { GestaoPanel } from "@/features/gestao/GestaoPanel";
 import { DayViewPanel } from "@/features/dayview/DayViewPanel";
 import { MeuPainelPanel } from "@/features/meu-painel/MeuPainelPanel";
 import { AdminContainer } from "@/features/admin/AdminContainer";
 import { FinanceiroPanel } from "@/features/financeiro/FinanceiroPanel";
 import { FinMetasTab } from "@/features/financeiro/components/FinMetasTab";
+import { GestaoPanel } from "@/features/gestao/GestaoPanel";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,12 +23,7 @@ import { useRole } from "@/hooks/use-role";
 import { toast } from "sonner";
 
 function initials(name: string) {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((p) => p[0]!.toUpperCase())
-    .join("");
+  return name.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join("");
 }
 
 const profileSchema = z.object({
@@ -37,6 +31,14 @@ const profileSchema = z.object({
   role_title: z.string().trim().min(2, "Informe seu cargo").max(120),
 });
 type ProfileValues = z.infer<typeof profileSchema>;
+
+// Map sidebar tabs to GestaoPanel views
+const GESTAO_VIEW_MAP: Record<string, string> = {
+  tarefas: "kanban",
+  agenda_gestao: "agenda",
+  cronograma: "cronograma",
+  fluxos: "fluxo",
+};
 
 const Index = () => {
   const [tab, setTab] = useState<MainTab>("meu_painel");
@@ -62,15 +64,10 @@ const Index = () => {
       .maybeSingle()
       .then(({ data, error }) => {
         if (cancelled) return;
-        if (error) {
-          setHasProfile(false);
-          return;
-        }
+        if (error) { setHasProfile(false); return; }
         setHasProfile(!!data);
       });
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [user]);
 
   const onboardingText = useMemo(() => {
@@ -80,70 +77,32 @@ const Index = () => {
 
   const saveProfile = async (v: ProfileValues) => {
     if (!user) return;
-
-    // Upload avatar (se enviado)
     let avatar_url: string | null = null;
     if (avatarFile) {
-      if (!avatarFile.type.startsWith("image/")) {
-        toast.error("Envie uma imagem (PNG/JPG/WebP)");
-        return;
-      }
-      if (avatarFile.size > 5 * 1024 * 1024) {
-        toast.error("Imagem muito grande (máx 5MB)");
-        return;
-      }
-
+      if (!avatarFile.type.startsWith("image/")) { toast.error("Envie uma imagem (PNG/JPG/WebP)"); return; }
+      if (avatarFile.size > 5 * 1024 * 1024) { toast.error("Imagem muito grande (máx 5MB)"); return; }
       const ext = (avatarFile.name.split(".").pop() || "png").toLowerCase();
       const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
-      const up = await supabase.storage.from("avatars").upload(path, avatarFile, {
-        upsert: true,
-        contentType: avatarFile.type,
-      });
-      if (up.error) {
-        toast.error(up.error.message);
-        return;
-      }
-
+      const up = await supabase.storage.from("avatars").upload(path, avatarFile, { upsert: true, contentType: avatarFile.type });
+      if (up.error) { toast.error(up.error.message); return; }
       const pub = supabase.storage.from("avatars").getPublicUrl(path);
       avatar_url = pub.data.publicUrl ?? null;
     }
-
-    const { error } = await supabase.from("profiles").insert({
-      user_id: user.id,
-      full_name: v.full_name,
-      role_title: v.role_title,
-      avatar_url,
-    });
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-
-    // Salva também em team_members (visível para todos no app)
+    const { error } = await supabase.from("profiles").insert({ user_id: user.id, full_name: v.full_name, role_title: v.role_title, avatar_url });
+    if (error) { toast.error(error.message); return; }
     try {
       const existing = await supabase.from("team_members").select("user_id").eq("user_id", user.id).maybeSingle();
       if (existing.error) throw existing.error;
       if (existing.data) {
-        const up = await supabase
-          .from("team_members")
-          .update({ display_name: v.full_name, role_title: v.role_title, avatar_url, is_active: true })
-          .eq("user_id", user.id);
+        const up = await supabase.from("team_members").update({ display_name: v.full_name, role_title: v.role_title, avatar_url, is_active: true }).eq("user_id", user.id);
         if (up.error) throw up.error;
       } else {
-        const ins = await supabase.from("team_members").insert({
-          user_id: user.id,
-          display_name: v.full_name,
-          role_title: v.role_title,
-          avatar_url,
-          is_active: true,
-        });
+        const ins = await supabase.from("team_members").insert({ user_id: user.id, display_name: v.full_name, role_title: v.role_title, avatar_url, is_active: true });
         if (ins.error) throw ins.error;
       }
     } catch (e: any) {
-      // não bloqueia o onboarding, mas avisa
       toast.error(e?.message ?? "Erro ao salvar dados públicos do time");
     }
-
     toast.success("Perfil pronto — bora acelerar 🚀");
     setHasProfile(true);
   };
@@ -160,22 +119,12 @@ const Index = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [avatarFile]);
 
-  return (
-    <UauSidebarShell
-      tab={tab}
-      isAdmin={isAdmin}
-      onTabChange={(next) => {
-        try {
-          setTab(next);
-          // Sempre volta pro topo ao trocar de aba (evita “sumir” o conteúdo)
-          window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-        } catch (e) {
-          console.error("Falha ao trocar de aba:", e);
-          toast.error("Não foi possível abrir esta aba. Tente recarregar.");
-        }
-      }}
-    >
-      {hasProfile === false ? (
+  const gestaoView = GESTAO_VIEW_MAP[tab];
+  const isGestaoTab = !!gestaoView;
+
+  const renderContent = () => {
+    if (hasProfile === false) {
+      return (
         <Card className="max-w-2xl">
           <CardHeader>
             <CardTitle>Primeiro acesso</CardTitle>
@@ -190,56 +139,54 @@ const Index = () => {
                     <AvatarImage src={avatarPreview ?? undefined} alt="Foto do perfil" />
                     <AvatarFallback>{initials(form.watch("full_name") || "?")}</AvatarFallback>
                   </Avatar>
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => setAvatarFile(e.target.files?.[0] ?? null)}
-                  />
+                  <Input type="file" accept="image/*" onChange={(e) => setAvatarFile(e.target.files?.[0] ?? null)} />
                 </div>
                 <p className="text-xs text-muted-foreground">PNG/JPG/WebP • até 5MB</p>
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="full_name">Nome</Label>
                 <Input id="full_name" placeholder="Seu nome" {...form.register("full_name")} />
-                {form.formState.errors.full_name && (
-                  <p className="text-sm text-danger">{form.formState.errors.full_name.message}</p>
-                )}
+                {form.formState.errors.full_name && <p className="text-sm text-danger">{form.formState.errors.full_name.message}</p>}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="role_title">Cargo</Label>
                 <Input id="role_title" placeholder="Ex.: Designer" {...form.register("role_title")} />
-                {form.formState.errors.role_title && (
-                  <p className="text-sm text-danger">{form.formState.errors.role_title.message}</p>
-                )}
+                {form.formState.errors.role_title && <p className="text-sm text-danger">{form.formState.errors.role_title.message}</p>}
               </div>
             </CardContent>
             <CardFooter>
-              <Button type="submit" variant="hero">
-                Entrar no painel
-              </Button>
+              <Button type="submit" variant="hero">Entrar no painel</Button>
             </CardFooter>
           </form>
         </Card>
-      ) : tab === "admin" && isAdmin ? (
-        <AdminContainer />
-      ) : tab === "financeiro" && isAdmin ? (
-        <FinanceiroPanel />
-      ) : tab === "metas" && isAdmin ? (
-        <FinMetasTab />
-      ) : tab === "visao_do_dia" ? (
-        <DayViewPanel />
-      ) : tab === "meu_painel" ? (
-        <MeuPainelPanel />
-      ) : tab === "desempenho" ? (
-        <PerformancePanel />
-      ) : tab === "magic2" ? (
-        <Magic2Panel />
-      ) : tab === "gestao" ? (
-        <GestaoPanel />
-      ) : (
-        <AgendaPanel />
-      )}
+      );
+    }
+    if (isGestaoTab) return <GestaoPanel forcedView={gestaoView} />;
+    if (tab === "configuracoes" && isAdmin) return <AdminContainer />;
+    if (tab === "financeiro" && isAdmin) return <FinanceiroPanel />;
+    if (tab === "metas" && isAdmin) return <FinMetasTab />;
+    if (tab === "visao_do_dia") return <DayViewPanel />;
+    if (tab === "meu_painel") return <MeuPainelPanel />;
+    if (tab === "desempenho") return <PerformancePanel />;
+    if (tab === "magic2") return <Magic2Panel />;
+    return <MeuPainelPanel />;
+  };
+
+  return (
+    <UauSidebarShell
+      tab={tab}
+      isAdmin={isAdmin}
+      onTabChange={(next) => {
+        try {
+          setTab(next);
+          window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+        } catch (e) {
+          console.error("Falha ao trocar de aba:", e);
+          toast.error("Não foi possível abrir esta aba. Tente recarregar.");
+        }
+      }}
+    >
+      {renderContent()}
     </UauSidebarShell>
   );
 };
