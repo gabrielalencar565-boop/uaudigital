@@ -539,7 +539,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
 }
 
 // ─── Cronograma Global View ───
-import { PmCronogramaTab } from "./components/PmCronogramaTab";
+import { CronogramaClientBrowser } from "./components/cronograma/CronogramaClientBrowser";
 
 function CronogramaGlobalView({ tasks, childTasksMap, clientsMap, membersMap, onTaskClick }: {
   tasks: PmTask[];
@@ -548,42 +548,13 @@ function CronogramaGlobalView({ tasks, childTasksMap, clientsMap, membersMap, on
   membersMap: Record<string, { name: string; avatar?: string }>;
   onTaskClick: (t: PmTask) => void;
 }) {
-  // Show all parent tasks that have child tasks with posting_date
-  const tasksWithSchedule = useMemo(() => {
-    return tasks.filter(t => {
-      const children = childTasksMap[t.id] ?? [];
-      return children.some(c => (c as any).posting_date);
-    });
-  }, [tasks, childTasksMap]);
-
-  if (tasksWithSchedule.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
-        <CalendarRange className="h-12 w-12 text-muted-foreground/30 mb-4" />
-        <h3 className="text-sm font-semibold mb-1">Nenhum cronograma encontrado</h3>
-        <p className="text-xs text-muted-foreground max-w-sm">
-          Para criar um cronograma, abra uma tarefa, adicione subtarefas e preencha os dados de postagem (tipo, data, horário e legenda).
-        </p>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-8">
-      {tasksWithSchedule.map(task => (
-        <div key={task.id} className="space-y-2">
-          <div className="flex items-center gap-2 cursor-pointer hover:opacity-80" onClick={() => onTaskClick(task)}>
-            <Badge className="text-[10px] bg-primary/10 text-primary border-0">{clientsMap[task.client_id] ?? "—"}</Badge>
-            <h3 className="text-sm font-bold">{task.title}</h3>
-          </div>
-          <PmCronogramaTab
-            parentTask={task}
-            childTasks={childTasksMap[task.id] ?? []}
-            clientName={clientsMap[task.client_id] ?? ""}
-            membersMap={membersMap}
-          />
-        </div>
-      ))}
-    </div>
+    <CronogramaClientBrowser
+      tasks={tasks}
+      childTasksMap={childTasksMap}
+      clientsMap={clientsMap}
+      membersMap={membersMap}
+      onTaskClick={onTaskClick}
+    />
   );
 }
