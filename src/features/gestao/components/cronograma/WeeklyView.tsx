@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, addWeeks, subWeeks, isSameDay, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, Clock } from "lucide-react";
@@ -6,11 +6,13 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { POST_TYPE_META, type CronogramaViewProps } from "./types";
 
-export function WeeklyView({ posts, selectedPost, onSelectPost }: CronogramaViewProps) {
+export function WeeklyView({ posts, selectedPost, onSelectPost, onDateChange }: CronogramaViewProps) {
   const [cursor, setCursor] = useState(() => {
     const first = posts.find(t => t.posting_date);
     return startOfWeek(first?.posting_date ? parseISO(first.posting_date) : new Date(), { weekStartsOn: 0 });
   });
+  const [dragOverDay, setDragOverDay] = useState<string | null>(null);
+  const dragPostId = useRef<string | null>(null);
 
   const days = useMemo(() => eachDayOfInterval({
     start: startOfWeek(cursor, { weekStartsOn: 0 }),
@@ -28,9 +30,20 @@ export function WeeklyView({ posts, selectedPost, onSelectPost }: CronogramaView
 
   const weekLabel = `${format(days[0], "dd MMM", { locale: ptBR })} — ${format(days[6], "dd MMM yyyy", { locale: ptBR })}`;
 
+  const handleDragStart = useCallback((postId: string) => {
+    dragPostId.current = postId;
+  }, []);
+
+  const handleDrop = useCallback((dayKey: string) => {
+    if (dragPostId.current && onDateChange) {
+      onDateChange(dragPostId.current, dayKey);
+    }
+    dragPostId.current = null;
+    setDragOverDay(null);
+  }, [onDateChange]);
+
   return (
     <div className="space-y-3">
-      {/* Week nav */}
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => setCursor(d => subWeeks(d, 1))}>
           <ChevronLeft className="h-4 w-4" />
@@ -41,19 +54,25 @@ export function WeeklyView({ posts, selectedPost, onSelectPost }: CronogramaView
         </Button>
       </div>
 
-      {/* Week columns */}
       <div className="grid grid-cols-7 gap-2">
         {days.map(day => {
           const key = format(day, "yyyy-MM-dd");
           const dayPosts = postsByDay.get(key) ?? [];
           const isToday = isSameDay(day, new Date());
+          const isDragOver = dragOverDay === key;
 
           return (
-            <div key={key} className={cn(
-              "rounded-xl border p-2 min-h-[160px] transition-all",
-              isToday ? "border-primary/40 bg-primary/5" : "border-border/20 bg-card/20",
-            )}>
-              {/* Day header */}
+            <div
+              key={key}
+              className={cn(
+                "rounded-xl border p-2 min-h-[160px] transition-all",
+                isToday ? "border-primary/40 bg-primary/5" : "border-border/20 bg-card/20",
+                isDragOver && "border-primary ring-2 ring-primary/30 bg-primary/10",
+              )}
+              onDragOver={(e) => { e.preventDefault(); setDragOverDay(key); }}
+              onDragLeave={() => setDragOverDay(null)}
+              onDrop={(e) => { e.preventDefault(); handleDrop(key); }}
+            >
               <div className="text-center mb-2">
                 <div className="text-[10px] uppercase font-semibold text-muted-foreground/60">
                   {format(day, "EEE", { locale: ptBR })}
@@ -66,7 +85,6 @@ export function WeeklyView({ posts, selectedPost, onSelectPost }: CronogramaView
                 </div>
               </div>
 
-              {/* Posts */}
               <div className="space-y-1.5">
                 {dayPosts.map(post => {
                   const meta = POST_TYPE_META[post.post_type ?? "post"] ?? POST_TYPE_META.post;
@@ -77,8 +95,10 @@ export function WeeklyView({ posts, selectedPost, onSelectPost }: CronogramaView
                   return (
                     <div
                       key={post.id}
+                      draggable
+                      onDragStart={() => handleDragStart(post.id)}
                       className={cn(
-                        "rounded-lg border p-1.5 cursor-pointer transition-all hover:scale-[1.02]",
+                        "rounded-lg border p-1.5 cursor-grab active:cursor-grabbing transition-all hover:scale-[1.02]",
                         isSelected ? "ring-2 ring-primary border-primary/40" : "border-border/30",
                         meta.color.replace("text-", "").includes("pink") ? "bg-pink-500/5" :
                         meta.color.includes("blue") ? "bg-blue-500/5" :
