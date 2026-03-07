@@ -962,6 +962,66 @@ export type Database = {
         }
         Relationships: []
       }
+      pm_pdf_settings: {
+        Row: {
+          accent_color: string
+          background_color: string
+          background_image_url: string | null
+          card_caption_font_size: number
+          card_date_font_size: number
+          card_font_size: number
+          card_proportion: string
+          cover_logo_url: string | null
+          id: string
+          show_caption_on_card: boolean
+          show_time_on_card: boolean
+          subtitle_color: string
+          subtitle_font_size: number
+          title_color: string
+          title_font_size: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          accent_color?: string
+          background_color?: string
+          background_image_url?: string | null
+          card_caption_font_size?: number
+          card_date_font_size?: number
+          card_font_size?: number
+          card_proportion?: string
+          cover_logo_url?: string | null
+          id?: string
+          show_caption_on_card?: boolean
+          show_time_on_card?: boolean
+          subtitle_color?: string
+          subtitle_font_size?: number
+          title_color?: string
+          title_font_size?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          accent_color?: string
+          background_color?: string
+          background_image_url?: string | null
+          card_caption_font_size?: number
+          card_date_font_size?: number
+          card_font_size?: number
+          card_proportion?: string
+          cover_logo_url?: string | null
+          id?: string
+          show_caption_on_card?: boolean
+          show_time_on_card?: boolean
+          subtitle_color?: string
+          subtitle_font_size?: number
+          title_color?: string
+          title_font_size?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       pm_projects: {
         Row: {
           client_id: string
