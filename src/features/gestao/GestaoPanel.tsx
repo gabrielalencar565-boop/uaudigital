@@ -199,31 +199,34 @@ export function GestaoPanel({ forcedView }: { forcedView?: string } = {}) {
         </div>
       </div>
 
-      {/* View tabs */}
-      <Tabs value={view} onValueChange={(v) => setView(v as any)}>
-        <TabsList className="bg-muted/40 h-10 p-1 rounded-xl gap-0.5">
-          <TabsTrigger value="kanban" className="gap-1.5 text-xs h-8 rounded-lg data-[state=active]:shadow-sm">
-            <LayoutGrid className="h-3.5 w-3.5" /> Kanban
-          </TabsTrigger>
-          <TabsTrigger value="agenda" className="gap-1.5 text-xs h-8 rounded-lg data-[state=active]:shadow-sm">
-            <CalendarDays className="h-3.5 w-3.5" /> Agenda
-          </TabsTrigger>
-          <TabsTrigger value="clientes" className="gap-1.5 text-xs h-8 rounded-lg data-[state=active]:shadow-sm">
-            <FolderOpen className="h-3.5 w-3.5" /> Por Cliente
-          </TabsTrigger>
-          <TabsTrigger value="pauta" className="gap-1.5 text-xs h-8 rounded-lg data-[state=active]:shadow-sm">
-            <FileSpreadsheet className="h-3.5 w-3.5" /> Montagem de Pauta
-          </TabsTrigger>
-          <TabsTrigger value="cronograma" className="gap-1.5 text-xs h-8 rounded-lg data-[state=active]:shadow-sm">
-            <CalendarRange className="h-3.5 w-3.5" /> Cronograma
-          </TabsTrigger>
-          <TabsTrigger value="fluxo" className="gap-1.5 text-xs h-8 rounded-lg data-[state=active]:shadow-sm">
-            <Settings2 className="h-3.5 w-3.5" /> Fluxo
-          </TabsTrigger>
-          <TabsTrigger value="responsaveis" className="gap-1.5 text-xs h-8 rounded-lg data-[state=active]:shadow-sm">
-            <Users className="h-3.5 w-3.5" /> Responsáveis
-          </TabsTrigger>
-        </TabsList>
+      {/* View tabs — hidden when sidebar drives the view */}
+      {!hideViewTabs && (
+        <Tabs value={effectiveView} onValueChange={(v) => setView(v as any)}>
+          <TabsList className="bg-muted/40 h-10 p-1 rounded-xl gap-0.5">
+            <TabsTrigger value="kanban" className="gap-1.5 text-xs h-8 rounded-lg data-[state=active]:shadow-sm">
+              <LayoutGrid className="h-3.5 w-3.5" /> Kanban
+            </TabsTrigger>
+            <TabsTrigger value="agenda" className="gap-1.5 text-xs h-8 rounded-lg data-[state=active]:shadow-sm">
+              <CalendarDays className="h-3.5 w-3.5" /> Agenda
+            </TabsTrigger>
+            <TabsTrigger value="clientes" className="gap-1.5 text-xs h-8 rounded-lg data-[state=active]:shadow-sm">
+              <FolderOpen className="h-3.5 w-3.5" /> Por Cliente
+            </TabsTrigger>
+            <TabsTrigger value="pauta" className="gap-1.5 text-xs h-8 rounded-lg data-[state=active]:shadow-sm">
+              <FileSpreadsheet className="h-3.5 w-3.5" /> Montagem de Pauta
+            </TabsTrigger>
+            <TabsTrigger value="cronograma" className="gap-1.5 text-xs h-8 rounded-lg data-[state=active]:shadow-sm">
+              <CalendarRange className="h-3.5 w-3.5" /> Cronograma
+            </TabsTrigger>
+            <TabsTrigger value="fluxo" className="gap-1.5 text-xs h-8 rounded-lg data-[state=active]:shadow-sm">
+              <Settings2 className="h-3.5 w-3.5" /> Fluxo
+            </TabsTrigger>
+            <TabsTrigger value="responsaveis" className="gap-1.5 text-xs h-8 rounded-lg data-[state=active]:shadow-sm">
+              <Users className="h-3.5 w-3.5" /> Responsáveis
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      )}
 
         <TabsContent value="kanban" className="mt-4">
           <PmKanbanBoard
