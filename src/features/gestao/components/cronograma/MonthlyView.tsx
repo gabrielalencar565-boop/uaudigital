@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isSameDay, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, Clock } from "lucide-react";
@@ -6,11 +6,13 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { POST_TYPE_META, type CronogramaViewProps } from "./types";
 
-export function MonthlyView({ posts, selectedPost, onSelectPost }: CronogramaViewProps) {
+export function MonthlyView({ posts, selectedPost, onSelectPost, onDateChange }: CronogramaViewProps) {
   const [cursor, setCursor] = useState(() => {
     const first = posts.find(t => t.posting_date);
     return startOfMonth(first?.posting_date ? parseISO(first.posting_date) : new Date());
   });
+  const [dragOverDay, setDragOverDay] = useState<string | null>(null);
+  const dragPostId = useRef<string | null>(null);
 
   const days = useMemo(() => eachDayOfInterval({ start: startOfMonth(cursor), end: endOfMonth(cursor) }), [cursor]);
 
@@ -23,9 +25,20 @@ export function MonthlyView({ posts, selectedPost, onSelectPost }: CronogramaVie
     return map;
   }, [posts]);
 
+  const handleDragStart = useCallback((postId: string) => {
+    dragPostId.current = postId;
+  }, []);
+
+  const handleDrop = useCallback((dayKey: string) => {
+    if (dragPostId.current && onDateChange) {
+      onDateChange(dragPostId.current, dayKey);
+    }
+    dragPostId.current = null;
+    setDragOverDay(null);
+  }, [onDateChange]);
+
   return (
     <div className="space-y-3">
-      {/* Month nav */}
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => setCursor(d => startOfMonth(subMonths(d, 1)))}>
           <ChevronLeft className="h-4 w-4" />
@@ -38,14 +51,12 @@ export function MonthlyView({ posts, selectedPost, onSelectPost }: CronogramaVie
         </Button>
       </div>
 
-      {/* Weekday headers */}
       <div className="grid grid-cols-7 gap-1">
         {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map(d => (
           <div key={d} className="px-1 py-1 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider text-center">{d}</div>
         ))}
       </div>
 
-      {/* Days grid */}
       <div className="grid grid-cols-7 gap-1">
         {Array.from({ length: days[0].getDay() }).map((_, i) => <div key={`b-${i}`} className="min-h-24" />)}
         {days.map(day => {
@@ -53,6 +64,7 @@ export function MonthlyView({ posts, selectedPost, onSelectPost }: CronogramaVie
           const dayPosts = postsByDay.get(key) ?? [];
           const isToday = isSameDay(day, new Date());
           const hasSelected = selectedPost?.posting_date === key;
+          const isDragOver = dragOverDay === key;
 
           return (
             <div
@@ -61,9 +73,13 @@ export function MonthlyView({ posts, selectedPost, onSelectPost }: CronogramaVie
                 "min-h-24 rounded-xl border p-1.5 transition-all cursor-pointer",
                 dayPosts.length > 0 ? "border-primary/30 bg-primary/5 hover:border-primary/60" : "border-border/20 bg-card/20",
                 isToday && "ring-2 ring-primary/20",
-                hasSelected && "ring-2 ring-primary"
+                hasSelected && "ring-2 ring-primary",
+                isDragOver && "border-primary ring-2 ring-primary/30 bg-primary/10",
               )}
               onClick={() => dayPosts.length > 0 && onSelectPost(dayPosts[0])}
+              onDragOver={(e) => { e.preventDefault(); setDragOverDay(key); }}
+              onDragLeave={() => setDragOverDay(null)}
+              onDrop={(e) => { e.preventDefault(); handleDrop(key); }}
             >
               <div className={cn("text-[10px] font-bold mb-1", isToday ? "text-primary" : "text-muted-foreground/60")}>
                 {format(day, "d")}
@@ -78,8 +94,10 @@ export function MonthlyView({ posts, selectedPost, onSelectPost }: CronogramaVie
                   return (
                     <div
                       key={post.id}
+                      draggable
+                      onDragStart={() => handleDragStart(post.id)}
                       className={cn(
-                        "rounded-lg border p-1 cursor-pointer transition-all hover:scale-[1.02]",
+                        "rounded-lg border p-1 cursor-grab active:cursor-grabbing transition-all hover:scale-[1.02]",
                         isSelected ? "ring-1 ring-primary border-primary/40" : "border-border/30",
                         meta.color.includes("pink") ? "bg-pink-500/5" :
                         meta.color.includes("blue") ? "bg-blue-500/5" :
