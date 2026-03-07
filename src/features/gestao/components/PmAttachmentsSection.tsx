@@ -112,6 +112,20 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
 
   const handleAttDragEnd = () => { setDraggedId(null); };
 
+  const handleDeleteAttachment = async (att: PmAttachment) => {
+    try {
+      // Delete from storage
+      const { error: storageErr } = await supabase.storage.from("pm-attachments").remove([att.storage_path]);
+      if (storageErr) console.warn("Storage delete error:", storageErr);
+      // Delete from DB
+      await sb.from("pm_attachments").delete().eq("id", att.id);
+      queryClient.invalidateQueries({ queryKey: ["pm_attachments"] });
+      toast.success("Anexo excluído!");
+    } catch (err: any) {
+      toast.error(err?.message ?? "Erro ao excluir anexo");
+    }
+  };
+
   const isImage = (type: string | null) => type?.startsWith("image/");
   const imageAttachments = attachments.filter(a => isImage(a.file_type) && a.public_url);
 
