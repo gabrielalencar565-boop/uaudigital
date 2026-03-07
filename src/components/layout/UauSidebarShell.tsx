@@ -58,7 +58,7 @@ const NAV: NavEntry[] = [
   { key: "meu_painel", label: "Meu Painel", icon: UserRound },
   {
     key: "gestao_group",
-    label: "Gestão",
+    label: "Projetos",
     icon: ClipboardList,
     children: [
       { key: "tarefas", label: "Tarefas", icon: LayoutGrid },
