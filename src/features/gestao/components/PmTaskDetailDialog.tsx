@@ -648,6 +648,13 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           )}
         </div>
 
+        {/* Posting Fields (for subtasks - all stages) */}
+        {task.parent_task_id && (
+          <div className="border-t border-border/20 pt-4">
+            <PmPostingFields task={task} />
+          </div>
+        )}
+
         {/* Subtasks */}
         <div className="border-t border-border/20 pt-4">
           <PmSubtaskList parentTask={task} childTasks={childTasks} membersMap={membersMap} members={members} onSelectSubtask={onSelectSubtask} activeSubtaskId={activeSubtaskId} />
@@ -657,13 +664,6 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         <div className="border-t border-border/20 pt-4">
           <PmAttachmentsSection taskId={task.id} attachments={attachments} membersMap={membersMap} onSetCover={handleSetCover} currentCoverUrl={task.cover_url} />
         </div>
-
-        {/* Posting Fields (only for subtasks when parent is in PDF stage or later) */}
-        {task.parent_task_id && parentStageCurrent && ["pdf", "alteracoes", "agendamento", "entrega"].includes(parentStageCurrent) && (
-          <div className="border-t border-border/20 pt-4">
-            <PmPostingFields task={task} />
-          </div>
-        )}
 
         {/* Cronograma tab (only for parent tasks with children) */}
         {!task.parent_task_id && childTasks.length > 0 && (

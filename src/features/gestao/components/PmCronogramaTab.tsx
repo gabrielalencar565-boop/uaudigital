@@ -6,9 +6,12 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import type { PmTask } from "../pm-types";
+import { useUpdatePmTask } from "../hooks/use-pm-data";
 import { toast } from "sonner";
 
 import { POST_TYPE_META, type CronogramaPost } from "./cronograma/types";
@@ -27,8 +30,9 @@ interface Props {
 
 export function PmCronogramaTab({ parentTask, childTasks, clientName, membersMap }: Props) {
   const [selectedPost, setSelectedPost] = useState<CronogramaPost | null>(null);
+  const updateTask = useUpdatePmTask();
 
-  // Fetch attachments for all child tasks to auto-populate images
+  // Fetch attachments for all child tasks
   const childIds = useMemo(() => childTasks.map(t => t.id), [childTasks]);
   const attachmentsQ = useQuery({
     queryKey: ["pm_attachments_batch", childIds],
@@ -36,21 +40,27 @@ export function PmCronogramaTab({ parentTask, childTasks, clientName, membersMap
     queryFn: async () => {
       const { data } = await sb
         .from("pm_attachments")
-        .select("task_id, public_url, file_type")
+        .select("task_id, public_url, file_type, order_index")
         .in("task_id", childIds)
+        .order("order_index", { ascending: true })
         .order("created_at", { ascending: true });
-      return (data ?? []) as { task_id: string; public_url: string | null; file_type: string | null }[];
+      return (data ?? []) as { task_id: string; public_url: string | null; file_type: string | null; order_index: number }[];
     },
   });
 
   // Build posts with auto-attached images
   const scheduledPosts: CronogramaPost[] = useMemo(() => {
     const attachments = attachmentsQ.data ?? [];
-    // Map: taskId -> first image URL
     const firstImageMap = new Map<string, string>();
+    const allImagesMap = new Map<string, string[]>();
     attachments.forEach(att => {
-      if (!firstImageMap.has(att.task_id) && att.file_type?.startsWith("image/") && att.public_url) {
-        firstImageMap.set(att.task_id, att.public_url);
+      if (att.file_type?.startsWith("image/") && att.public_url) {
+        if (!firstImageMap.has(att.task_id)) {
+          firstImageMap.set(att.task_id, att.public_url);
+        }
+        const existing = allImagesMap.get(att.task_id) ?? [];
+        existing.push(att.public_url);
+        allImagesMap.set(att.task_id, existing);
       }
     });
 
@@ -59,9 +69,16 @@ export function PmCronogramaTab({ parentTask, childTasks, clientName, membersMap
       .map(t => ({
         ...t,
         attachment_url: firstImageMap.get(t.id) ?? null,
+        all_attachment_urls: allImagesMap.get(t.id) ?? [],
       }))
       .sort((a, b) => (a.posting_date! > b.posting_date! ? 1 : -1));
   }, [childTasks, attachmentsQ.data]);
+
+  // Keep selectedPost in sync with latest data
+  const resolvedSelected = useMemo(() => {
+    if (!selectedPost) return null;
+    return scheduledPosts.find(p => p.id === selectedPost.id) ?? null;
+  }, [selectedPost, scheduledPosts]);
 
   const handleShare = async () => {
     const shareUrl = `${window.location.origin}/cronograma/${parentTask.id}`;
@@ -76,6 +93,11 @@ export function PmCronogramaTab({ parentTask, childTasks, clientName, membersMap
   const handleDownloadPDF = () => {
     const url = `${window.location.origin}/cronograma/${parentTask.id}?print=1`;
     window.open(url, "_blank");
+  };
+
+  const handleUpdatePost = (field: string, value: string | null) => {
+    if (!resolvedSelected) return;
+    updateTask.mutate({ id: resolvedSelected.id, [field]: value || null } as any);
   };
 
   if (scheduledPosts.length === 0) {
@@ -121,20 +143,24 @@ export function PmCronogramaTab({ parentTask, childTasks, clientName, membersMap
             </TabsList>
 
             <TabsContent value="semanal">
-              <WeeklyView posts={scheduledPosts} selectedPost={selectedPost} onSelectPost={setSelectedPost} />
+              <WeeklyView posts={scheduledPosts} selectedPost={resolvedSelected} onSelectPost={setSelectedPost} />
             </TabsContent>
             <TabsContent value="mensal">
-              <MonthlyView posts={scheduledPosts} selectedPost={selectedPost} onSelectPost={setSelectedPost} />
+              <MonthlyView posts={scheduledPosts} selectedPost={resolvedSelected} onSelectPost={setSelectedPost} />
             </TabsContent>
             <TabsContent value="feed">
-              <FeedView posts={scheduledPosts} selectedPost={selectedPost} onSelectPost={setSelectedPost} />
+              <FeedView posts={scheduledPosts} selectedPost={resolvedSelected} onSelectPost={setSelectedPost} />
             </TabsContent>
           </Tabs>
         </div>
 
-        {/* Right: Post detail preview */}
-        {selectedPost && (
-          <PostDetailSidebar post={selectedPost} onClose={() => setSelectedPost(null)} />
+        {/* Right: Post detail preview (editable) */}
+        {resolvedSelected && (
+          <PostDetailSidebar
+            post={resolvedSelected}
+            onClose={() => setSelectedPost(null)}
+            onUpdate={handleUpdatePost}
+          />
         )}
       </div>
 
@@ -149,7 +175,7 @@ export function PmCronogramaTab({ parentTask, childTasks, clientName, membersMap
               key={post.id}
               className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded-xl border border-border/20 cursor-pointer transition hover:bg-card/60",
-                selectedPost?.id === post.id && "ring-2 ring-primary bg-primary/5"
+                resolvedSelected?.id === post.id && "ring-2 ring-primary bg-primary/5"
               )}
               onClick={() => setSelectedPost(post)}
             >
@@ -172,13 +198,15 @@ export function PmCronogramaTab({ parentTask, childTasks, clientName, membersMap
   );
 }
 
-/** Post detail sidebar */
-function PostDetailSidebar({ post, onClose }: { post: CronogramaPost; onClose: () => void }) {
+/** Post detail sidebar - EDITABLE */
+function PostDetailSidebar({ post, onClose, onUpdate }: { post: CronogramaPost & { all_attachment_urls?: string[] }; onClose: () => void; onUpdate: (field: string, value: string | null) => void }) {
   const meta = POST_TYPE_META[post.post_type ?? "post"] ?? POST_TYPE_META.post;
-  const imgUrl = post.attachment_url || post.cover_url;
+  const allImages = (post as any).all_attachment_urls ?? [];
+  const isCarousel = post.post_type === "carrossel" && allImages.length > 1;
+  const singleImg = post.attachment_url || post.cover_url;
 
   return (
-    <div className="w-80 shrink-0 border border-border/30 rounded-2xl bg-card/60 backdrop-blur-sm p-4 space-y-4 animate-in slide-in-from-right-5 duration-200">
+    <div className="w-80 shrink-0 border border-border/30 rounded-2xl bg-card/60 backdrop-blur-sm p-4 space-y-4 animate-in slide-in-from-right-5 duration-200 overflow-y-auto max-h-[70vh]">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Instagram className="h-4 w-4 text-pink-500" />
@@ -198,29 +226,52 @@ function PostDetailSidebar({ post, onClose }: { post: CronogramaPost; onClose: (
         )}
       </div>
 
-      {post.caption && (
-        <div>
-          <h4 className="text-xs font-bold mb-1">Legenda:</h4>
-          <p className="text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed">{post.caption}</p>
+      {/* Images - carousel shows all pages */}
+      {isCarousel ? (
+        <div className="space-y-1">
+          <p className="text-[10px] text-muted-foreground font-medium">{allImages.length} páginas</p>
+          <div className="flex gap-1 overflow-x-auto pb-1">
+            {allImages.map((url: string, i: number) => (
+              <img key={i} src={url} alt={`Página ${i + 1}`} className="h-32 w-32 rounded-lg object-cover shrink-0" />
+            ))}
+          </div>
         </div>
-      )}
+      ) : singleImg ? (
+        <img src={singleImg} alt="" className="w-full rounded-xl object-cover aspect-square" />
+      ) : null}
 
-      <div className="flex items-center gap-2 bg-primary/10 rounded-xl px-3 py-2">
-        <Calendar className="h-3.5 w-3.5 text-primary" />
-        <span className="text-xs font-semibold">
-          Data: {post.posting_date ? format(parseISO(post.posting_date), "dd/MM/yy") : "—"}
-        </span>
-        {post.posting_time && (
-          <>
-            <Clock className="h-3.5 w-3.5 text-primary ml-2" />
-            <span className="text-xs font-semibold">Horário: {post.posting_time}</span>
-          </>
-        )}
+      {/* Editable date/time */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Calendar className="h-3.5 w-3.5 text-primary shrink-0" />
+          <Input
+            type="date"
+            value={post.posting_date ?? ""}
+            onChange={(e) => onUpdate("posting_date", e.target.value)}
+            className="h-7 text-xs flex-1"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <Clock className="h-3.5 w-3.5 text-primary shrink-0" />
+          <Input
+            type="time"
+            value={post.posting_time ?? ""}
+            onChange={(e) => onUpdate("posting_time", e.target.value)}
+            className="h-7 text-xs flex-1"
+          />
+        </div>
       </div>
 
-      {imgUrl && (
-        <img src={imgUrl} alt="" className="w-full rounded-xl object-cover aspect-square" />
-      )}
+      {/* Editable caption */}
+      <div>
+        <h4 className="text-xs font-bold mb-1">Legenda:</h4>
+        <Textarea
+          value={post.caption ?? ""}
+          onChange={(e) => onUpdate("caption", e.target.value)}
+          placeholder="Escreva a legenda..."
+          className="text-xs min-h-[80px] rounded-lg resize-none"
+        />
+      </div>
     </div>
   );
 }
