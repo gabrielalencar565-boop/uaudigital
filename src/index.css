@@ -94,21 +94,21 @@ All colors MUST be HSL.
     --auth-gradient-to: 44 100% 50%;
     --gradient-auth-title: linear-gradient(90deg, hsl(var(--auth-gradient-from)), hsl(var(--auth-gradient-to)));
 
-    /* Sidebar matches light theme */
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 265 4% 12.9%;
-    --sidebar-primary: 266 4% 20.8%;
-    --sidebar-primary-foreground: 248 0.3% 98.4%;
-    --sidebar-accent: 248 0.7% 96.8%;
-    --sidebar-accent-foreground: 266 4% 20.8%;
-    --sidebar-border: 256 1.3% 92.9%;
-    --sidebar-ring: 257 4% 70.4%;
+    /* Sidebar — purple brand #6b33b5 */
+    --sidebar-background: 271 56% 45%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 0 0% 100%;
+    --sidebar-primary-foreground: 271 56% 45%;
+    --sidebar-accent: 271 46% 55%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 271 46% 38%;
+    --sidebar-ring: 0 0% 100%;
     --chart-1: 41 22.2% 64.6%;
     --chart-2: 185 11.8% 60%;
     --chart-3: 227 7% 39.8%;
     --chart-4: 84 18.9% 82.8%;
     --chart-5: 70 18.8% 76.9%;
-    --sidebar: 248 0.3% 98.4%;
+    --sidebar: 271 56% 45%;
     --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
@@ -173,16 +173,16 @@ All colors MUST be HSL.
     --chart-4: 40 100% 65%;
     --chart-5: 350 100% 68%;
 
-    /* Sidebar */
-    --sidebar-background: 222 24% 8.5%;
-    --sidebar-foreground: 220 20% 72%;
-    --sidebar-primary: 253 100% 68%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 218 22% 11%;
-    --sidebar-accent-foreground: 220 38% 94%;
-    --sidebar-border: 220 29% 15%;
-    --sidebar-ring: 253 100% 68%;
-    --sidebar: 222 24% 8.5%;
+    /* Sidebar — purple brand (dark) */
+    --sidebar-background: 271 56% 32%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 0 0% 100%;
+    --sidebar-primary-foreground: 271 56% 32%;
+    --sidebar-accent: 271 46% 42%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 271 46% 26%;
+    --sidebar-ring: 0 0% 100%;
+    --sidebar: 271 56% 32%;
 
     /* Shadows – deeper for dark */
     --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.2);
