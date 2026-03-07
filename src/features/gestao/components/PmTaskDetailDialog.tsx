@@ -161,7 +161,7 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
 
           {/* CENTER: Task detail */}
           <div className="flex-1 overflow-y-auto min-h-0">
-            <TaskContentView task={currentTask} childTasks={childTasks} attachments={attachments} membersMap={membersMap} members={members} isAdmin={isAdmin} onSelectSubtask={handleSelectSubtask} activeSubtaskId={null} onClose={handleClose} clientsMap={clientsMap} allTags={allTags} />
+            <TaskContentView task={currentTask} childTasks={childTasks} attachments={attachments} membersMap={membersMap} members={members} isAdmin={isAdmin} onSelectSubtask={handleSelectSubtask} activeSubtaskId={null} onClose={handleClose} clientsMap={clientsMap} allTags={allTags} parentStageCurrent={isSubtaskView ? resolvedRootTask.stage_current : undefined} />
           </div>
 
           {/* RIGHT: Comments sidebar */}
@@ -657,8 +657,8 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           <PmAttachmentsSection taskId={task.id} attachments={attachments} membersMap={membersMap} onSetCover={handleSetCover} currentCoverUrl={task.cover_url} />
         </div>
 
-        {/* Posting Fields (only for subtasks / child tasks) */}
-        {task.parent_task_id && (
+        {/* Posting Fields (only for subtasks when parent is in PDF stage or later) */}
+        {task.parent_task_id && parentStageCurrent && ["pdf", "alteracoes", "agendamento", "entrega"].includes(parentStageCurrent) && (
           <div className="border-t border-border/20 pt-4">
             <PmPostingFields task={task} />
           </div>
