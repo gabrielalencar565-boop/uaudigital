@@ -228,7 +228,9 @@ export function GestaoPanel({ forcedView }: { forcedView?: string } = {}) {
         </Tabs>
       )}
 
-        <TabsContent value="kanban" className="mt-4">
+      {/* View content */}
+      <div className="mt-4">
+        {effectiveView === "kanban" && (
           <PmKanbanBoard
             tasks={tasks}
             childTasksMap={childTasksMap}
@@ -239,9 +241,8 @@ export function GestaoPanel({ forcedView }: { forcedView?: string } = {}) {
             filters={filters}
             isAdmin={isAdmin}
           />
-        </TabsContent>
-
-        <TabsContent value="agenda" className="mt-4">
+        )}
+        {effectiveView === "agenda" && (
           <AgendaCalendarView
             tasks={tasks}
             clientsMap={clientsMap}
@@ -254,9 +255,8 @@ export function GestaoPanel({ forcedView }: { forcedView?: string } = {}) {
             setCursor={setAgendaCursor}
             fixedAssigneeClientIds={fixedAssigneeClientIds}
           />
-        </TabsContent>
-
-        <TabsContent value="clientes" className="mt-4">
+        )}
+        {effectiveView === "clientes" && (
           <PmClientView
             tasks={tasks}
             childTasksMap={childTasksMap}
@@ -264,9 +264,8 @@ export function GestaoPanel({ forcedView }: { forcedView?: string } = {}) {
             membersMap={membersMap}
             onTaskClick={(t) => setSelectedTaskId(t.id)}
           />
-        </TabsContent>
-
-        <TabsContent value="pauta" className="mt-4">
+        )}
+        {effectiveView === "pauta" && (
           <PmPautaView
             tasks={allTasks}
             clientsMap={clientsMap}
@@ -276,9 +275,8 @@ export function GestaoPanel({ forcedView }: { forcedView?: string } = {}) {
             isAdmin={isAdmin}
             onTaskClick={(t) => setSelectedTaskId(t.id)}
           />
-        </TabsContent>
-
-        <TabsContent value="cronograma" className="mt-4">
+        )}
+        {effectiveView === "cronograma" && (
           <CronogramaGlobalView
             tasks={tasks}
             childTasksMap={childTasksMap}
@@ -286,16 +284,17 @@ export function GestaoPanel({ forcedView }: { forcedView?: string } = {}) {
             membersMap={membersMap}
             onTaskClick={(t) => setSelectedTaskId(t.id)}
           />
-        </TabsContent>
-
-        <TabsContent value="fluxo" className="mt-4">
-          <PmStageFlowConfig />
-        </TabsContent>
-
-        <TabsContent value="responsaveis" className="mt-4">
+        )}
+        {effectiveView === "fluxo" && (
+          <div className="space-y-8">
+            <PmStageFlowConfig />
+            <PmAssigneeFlowConfig />
+          </div>
+        )}
+        {effectiveView === "responsaveis" && (
           <PmAssigneeFlowConfig />
-        </TabsContent>
-      </Tabs>
+        )}
+      </div>
 
       {/* Task detail */}
       <PmTaskDetailDialog
