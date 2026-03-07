@@ -42,11 +42,15 @@ const STAGE_BADGE_BG: Record<string, string> = {
   agendamento: "bg-violet-500", entrega: "bg-emerald-500",
 };
 
-export function GestaoPanel() {
+export function GestaoPanel({ forcedView }: { forcedView?: string } = {}) {
   const { user } = useSession();
   const { isAdmin } = useRole(user?.id);
 
-  const [view, setView] = useState<"kanban" | "agenda" | "clientes" | "pauta" | "cronograma" | "fluxo" | "responsaveis">("kanban");
+  const [view, setView] = useState<"kanban" | "agenda" | "clientes" | "pauta" | "cronograma" | "fluxo" | "responsaveis">(
+    (forcedView as any) ?? "kanban"
+  );
+  const effectiveView = forcedView ? (forcedView === "fluxo" ? "fluxo" : forcedView as any) : view;
+  const hideViewTabs = !!forcedView;
   const [search, setSearch] = useState("");
   const [filterClient, setFilterClient] = useState("__all__");
   const [filterAssignee, setFilterAssignee] = useState(user?.id ?? "__all__");
