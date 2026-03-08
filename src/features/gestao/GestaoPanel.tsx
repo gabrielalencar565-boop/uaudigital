@@ -534,7 +534,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
                           <AvatarFallback className="text-[7px] font-bold bg-primary/10 text-primary">{member ? initials(member.name) : "?"}</AvatarFallback>
                         </Avatar>
                         <div className="min-w-0">
-                          <p className="truncate text-[11px] font-semibold leading-4">{member?.name ?? "—"}</p>
+                          <p className="truncate text-[11px] font-semibold leading-4">{member?.name?.split(" ")[0] ?? "—"}</p>
                           <p className="truncate text-[10px] text-muted-foreground/60 leading-3">{clientName}</p>
                         </div>
                       </div>
