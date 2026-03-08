@@ -10,6 +10,8 @@ import { useSession } from "@/hooks/use-session";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -23,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { useBatchUserRoles, useSetUserRoles } from "@/hooks/use-user-roles";
 import { RoleSelector } from "@/features/admin/components/RoleSelector";
 import { useAdminUsers, type AdminUserRow } from "@/hooks/use-admin-users";
+import { useSquads, useSquadMembers } from "@/features/projetos/hooks/use-squads";
 import type { AppRole } from "@/hooks/use-role";
 
 /* ───────── helpers ───────── */
@@ -60,8 +63,11 @@ export function AdminPanel() {
   // Role editing state
   const [editRoleUser, setEditRoleUser] = useState<AdminUserRow | null>(null);
   const [editRoles, setEditRoles] = useState<AppRole[]>([]);
+  const [editSquadIds, setEditSquadIds] = useState<string[]>([]);
 
   const usersQ = useAdminUsers();
+  const squadsQ = useSquads();
+  const squadMembersQ = useSquadMembers();
 
   const userIds = useMemo(() => {
     const ids = new Set<string>();
