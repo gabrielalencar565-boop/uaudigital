@@ -328,7 +328,7 @@ export function MeuPainelPanel() {
       </div>
 
       {/* Resumo do mês */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.15s" }}>
         <Card>
           <CardContent className="flex items-center gap-4 p-5">
             <div className="h-10 w-10 rounded-xl bg-sidebar/10 flex items-center justify-center shrink-0">
