@@ -305,7 +305,7 @@ export function MeuPainelPanel() {
           <div
             className="absolute -inset-12 opacity-60"
             style={{
-              background: "radial-gradient(ellipse 70% 60% at 25% 35%, #A78BFA 0%, transparent 70%), radial-gradient(ellipse 55% 65% at 75% 65%, #6366F1 0%, transparent 65%)",
+              background: "radial-gradient(ellipse 70% 60% at 25% 35%, #8B5CF6 0%, transparent 70%), radial-gradient(ellipse 55% 65% at 75% 65%, #5B21B6 0%, transparent 65%)",
               animation: "parallaxLayer2 12s ease-in-out infinite",
             }}
           />
