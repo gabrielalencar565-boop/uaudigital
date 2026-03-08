@@ -118,10 +118,11 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, on
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="flex gap-3 overflow-x-auto pb-4 -mx-1 px-1">
-        {columns.map((col) => {
+        {columns.map((col, idx) => {
           const circleColor = getStageCircleColor(col.key);
           return (
-            <div key={col.key} className="flex w-[272px] min-w-[272px] flex-col rounded-2xl bg-muted/40 backdrop-blur-sm border border-[#6932c8]">
+            <div key={col.key} className="flex w-[272px] min-w-[272px] flex-col rounded-2xl bg-muted/40 backdrop-blur-sm border border-[#6932c8] opacity-0"
+              style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: `${idx * 0.07}s` }}>
               {/* Column header */}
               <div className="flex items-center justify-between px-4 py-3">
                 <div className="flex items-center gap-2.5">
