@@ -144,7 +144,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
         <div>
-          <h2 className="text-xl font-bold tracking-tight">Gestão de Tarefas</h2>
+          <h2 className="font-bold tracking-tight text-3xl">Cronograma</h2>
           
         </div>
       </div>
