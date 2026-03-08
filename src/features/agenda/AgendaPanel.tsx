@@ -942,9 +942,9 @@ export function AgendaPanel() {
           {/* Row 1: Mês/Semana toggle + Month nav + week selector */}
           <div className="flex flex-wrap items-center gap-4">
             <Tabs value={view} onValueChange={v => setView(v as any)}>
-              <TabsList className="bg-muted/40 h-9 p-0.5 rounded-xl gap-0.5">
-                <TabsTrigger value="month" className="h-8 rounded-lg text-xs data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-sm px-4">Mês</TabsTrigger>
-                <TabsTrigger value="week" className="h-8 rounded-lg text-xs data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-sm px-4">Semana</TabsTrigger>
+              <TabsList className="bg-muted/40 h-10 p-1 rounded-full gap-1">
+                <TabsTrigger value="month" className="h-8 rounded-full text-sm data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-md px-5 transition-all">Mês</TabsTrigger>
+                <TabsTrigger value="week" className="h-8 rounded-full text-sm data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-md px-5 transition-all">Semana</TabsTrigger>
               </TabsList>
             </Tabs>
 
