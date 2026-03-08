@@ -238,7 +238,7 @@ export function MagicChecklistTable({
       toast.error(e?.message ?? "Erro ao atualizar tarefas/etapa");
     }
   };
-  return <Card className="overflow-hidden">
+  return <Card className="overflow-hidden opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.15s" }}>
       <CardHeader>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           
