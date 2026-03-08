@@ -220,7 +220,6 @@ export function VisaoGeralTab() {
   const upcomingHolidays = HOLIDAYS_2026.filter((h) => new Date(h.date) >= now);
 
   // Birthdays from team members
-  const allTeam = teamQ.data ?? [];
   const teamBirthdays = useMemo(() => {
     return allTeam
       .filter((m) => m.birth_date)
