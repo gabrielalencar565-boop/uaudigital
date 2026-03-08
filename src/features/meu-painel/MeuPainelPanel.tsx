@@ -314,7 +314,7 @@ export function MeuPainelPanel() {
           <div
             className="absolute -inset-16 opacity-50"
             style={{
-              background: "radial-gradient(circle 280px at 20% 70%, #8B5CF6 0%, transparent 60%), radial-gradient(circle 220px at 80% 25%, #A78BFA 0%, transparent 55%), radial-gradient(circle 160px at 55% 50%, #6366F1 0%, transparent 50%)",
+              background: "radial-gradient(circle 280px at 20% 70%, #7C3AED 0%, transparent 60%), radial-gradient(circle 220px at 80% 25%, #6D28D9 0%, transparent 55%), radial-gradient(circle 160px at 55% 50%, #4C1D95 0%, transparent 50%)",
               filter: "blur(30px)",
               animation: "parallaxLayer3 9s ease-in-out infinite",
             }}
