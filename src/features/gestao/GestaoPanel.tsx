@@ -514,7 +514,6 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
                             title={isDone ? "Desmarcar" : "Marcar concluído"}>
                             {isDone && <CheckCircle2 className="h-3.5 w-3.5" />}
                           </button>
-                          </button>
                           <button
                             type="button"
                             className="h-5 w-5 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition"
