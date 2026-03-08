@@ -390,6 +390,17 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
 
   const todayKey = format(new Date(), "yyyy-MM-dd");
 
+  // Holidays for visible years
+  const holidays = useMemo(() => {
+    const y = cursor.getFullYear();
+    const map = new Map<string, string>();
+    for (const [k, v] of getBrazilianHolidays(y)) map.set(k, v);
+    // also load adjacent year in case week view crosses year boundary
+    for (const [k, v] of getBrazilianHolidays(y - 1)) map.set(k, v);
+    for (const [k, v] of getBrazilianHolidays(y + 1)) map.set(k, v);
+    return map;
+  }, [cursor]);
+
   const handleDelete = (taskId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     deleteTask.mutate(taskId);
