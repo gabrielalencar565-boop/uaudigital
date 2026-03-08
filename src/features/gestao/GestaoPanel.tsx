@@ -458,6 +458,43 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
     toast.success("Tarefa removida");
   };
 
+  const filteredTasks = useMemo(() => {
+    let list = tasks;
+    if (filterClient && filterClient !== "__all__") list = list.filter((t) => t.client_id === filterClient);
+    if (filterAssignee && filterAssignee !== "__all__") {
+      list = list.filter((t) => t.assignee_id === filterAssignee || fixedAssigneeClientIds.has(t.client_id));
+    }
+    if (search) {
+      const q = search.toLowerCase();
+      list = list.filter((t) => t.title.toLowerCase().includes(q) || (clientsMap[t.client_id] ?? "").toLowerCase().includes(q));
+    }
+    return list;
+  }, [tasks, filterClient, filterAssignee, search, clientsMap]);
+
+  const days = useMemo(() => {
+    const start = startOfWeek(startOfMonth(cursor), { weekStartsOn: 0 });
+    const end = endOfMonth(cursor);
+    const out: Date[] = [];
+    let d = start;
+    while (d <= end || out.length % 7 !== 0) {
+      out.push(d);
+      d = addDays(d, 1);
+      if (out.length >= 42) break;
+    }
+    return out;
+  }, [cursor]);
+
+  const tasksByDay = useMemo(() => {
+    const map = new Map<string, PmTask[]>();
+    for (const t of filteredTasks) {
+      const key = t.due_date ?? "";
+      if (!key) continue;
+      const prev = map.get(key) ?? [];
+      map.set(key, [...prev, t]);
+    }
+    return map;
+  }, [filteredTasks]);
+
   return (
     <div className="space-y-5">
       {/* Month navigation */}
