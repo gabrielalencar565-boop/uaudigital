@@ -50,7 +50,7 @@ const VIEW_TITLES: Record<string, string> = {
   pauta: "Montagem de pauta",
   cronograma: "Cronograma de publicações",
   fluxo: "Configuração de fluxos",
-  responsaveis: "Responsáveis por etapa",
+  responsaveis: "Responsáveis por etapa"
 };
 
 export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
@@ -150,12 +150,12 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
     setCreateOpen(true);
   };
 
-   return (
+  return (
     <div className="space-y-4">
       {/* Header — dynamic title per view */}
       <div className="flex items-center justify-between opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
         <div className="flex items-center gap-3">
-          <h2 className="font-bold tracking-tight text-2xl">{VIEW_TITLES[effectiveView] ?? "Tarefas"}</h2>
+          <h2 className="font-bold tracking-tight text-4xl">{VIEW_TITLES[effectiveView] ?? "Tarefas"}</h2>
         </div>
         <div className="flex items-center gap-2">
           <div className="relative">
@@ -168,9 +168,9 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="__all__">Todos os clientes</SelectItem>
-              {(clientsQ.data ?? []).map((c) => (
-                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-              ))}
+              {(clientsQ.data ?? []).map((c) =>
+              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+              )}
             </SelectContent>
           </Select>
           <Select value={filterAssignee} onValueChange={setFilterAssignee}>
@@ -179,8 +179,8 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="__all__">Todos os responsáveis</SelectItem>
-              {(membersQ.data ?? []).map((m) => (
-                <SelectItem key={m.user_id} value={m.user_id}>
+              {(membersQ.data ?? []).map((m) =>
+              <SelectItem key={m.user_id} value={m.user_id}>
                   <span className="flex items-center gap-2">
                     <Avatar className="h-5 w-5">
                       <AvatarImage src={m.avatar_url ?? undefined} />
@@ -189,7 +189,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
                     {m.display_name}
                   </span>
                 </SelectItem>
-              ))}
+              )}
             </SelectContent>
           </Select>
         </div>
@@ -470,7 +470,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
           return (
             <div
               key={key}
-               className={cn(
+              className={cn(
                 "relative min-h-28 rounded-2xl border bg-card/30 backdrop-blur-sm p-2.5 transition-all calendar-card-hover",
                 inMonth ? "opacity-100 border-border/20" : "opacity-30 border-transparent",
                 isToday && "border-primary/50 ring-2 ring-primary/15 bg-primary/5"
