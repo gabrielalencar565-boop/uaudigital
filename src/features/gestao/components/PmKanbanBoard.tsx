@@ -1,36 +1,75 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, closestCenter, type DragStartEvent, type DragEndEvent } from "@dnd-kit/core";
+import { useDroppable } from "@dnd-kit/core";
+import { useDraggable } from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
 import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getStageCircleColor } from "../pm-constants";
 import type { PmTask } from "../pm-types";
 import { PmTaskCard } from "./PmTaskCard";
+import { useUpdatePmTask } from "../hooks/use-pm-data";
+import { toast } from "sonner";
 
-// Fixed column order per user request
 const KANBAN_COLUMNS = [
-{ key: "captacao", label: "Captação" },
-{ key: "planejamento", label: "Planejamento" },
-{ key: "design", label: "Design" },
-{ key: "edicao_videos", label: "Vídeo" },
-{ key: "revisao", label: "Revisão" },
-{ key: "pdf", label: "PDF" },
-{ key: "agendamento", label: "Agendamento" },
-{ key: "entrega", label: "Concluído" }] as
-const;
+  { key: "captacao", label: "Captação" },
+  { key: "planejamento", label: "Planejamento" },
+  { key: "design", label: "Design" },
+  { key: "edicao_videos", label: "Vídeo" },
+  { key: "revisao", label: "Revisão" },
+  { key: "pdf", label: "PDF" },
+  { key: "agendamento", label: "Agendamento" },
+  { key: "entrega", label: "Concluído" },
+] as const;
+
+/* ── Draggable wrapper ── */
+function DraggableCard({ task, children }: { task: PmTask; children: React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: task.id,
+    data: { task },
+  });
+  const style = transform
+    ? { transform: CSS.Translate.toString(transform), zIndex: isDragging ? 50 : undefined }
+    : undefined;
+
+  return (
+    <div ref={setNodeRef} style={style} {...listeners} {...attributes}
+      className={cn("touch-none", isDragging && "opacity-40")}>
+      {children}
+    </div>
+  );
+}
+
+/* ── Droppable column ── */
+function DroppableColumn({ id, children }: { id: string; children: React.ReactNode }) {
+  const { setNodeRef, isOver } = useDroppable({ id });
+  return (
+    <div ref={setNodeRef} className={cn("flex flex-col gap-2 px-2 pb-3 transition-colors rounded-xl", isOver && "bg-primary/5")} style={{ minHeight: 60 }}>
+      {children}
+    </div>
+  );
+}
 
 interface Props {
   tasks: PmTask[];
   childTasksMap: Record<string, PmTask[]>;
   clientsMap: Record<string, string>;
-  membersMap: Record<string, {name: string;avatar?: string;}>;
+  membersMap: Record<string, { name: string; avatar?: string }>;
   onTaskClick: (task: PmTask) => void;
   onCreateClick: (status?: string) => void;
-  filters: {clientId?: string;assigneeId?: string;search?: string;fixedAssigneeClientIds?: Set<string>;};
+  filters: { clientId?: string; assigneeId?: string; search?: string; fixedAssigneeClientIds?: Set<string> };
   isAdmin?: boolean;
 }
 
 export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, onTaskClick, onCreateClick, filters, isAdmin }: Props) {
+  const updateTask = useUpdatePmTask();
+  const [activeTask, setActiveTask] = useState<PmTask | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
+
   const filtered = useMemo(() => {
-    // Exclude completed snapshots (they only show in the agenda view)
     let list = tasks.filter((t) => t.status_global !== "concluido");
     if (filters.clientId) list = list.filter((t) => t.client_id === filters.clientId);
     if (filters.assigneeId) {
@@ -47,62 +86,101 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, on
   const columns = useMemo(() => {
     return KANBAN_COLUMNS.map((col) => ({
       ...col,
-      tasks: filtered.filter((t) => t.stage_current === col.key)
+      tasks: filtered.filter((t) => t.stage_current === col.key),
     }));
   }, [filtered]);
 
+  const handleDragStart = (event: DragStartEvent) => {
+    const task = (event.active.data.current as any)?.task as PmTask | undefined;
+    setActiveTask(task ?? null);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    setActiveTask(null);
+    const { active, over } = event;
+    if (!over) return;
+    const droppedTask = (active.data.current as any)?.task as PmTask | undefined;
+    if (!droppedTask) return;
+    const newStage = over.id as string;
+    if (droppedTask.stage_current === newStage) return;
+
+    updateTask.mutate(
+      { id: droppedTask.id, stage_current: newStage } as any,
+      { onError: () => toast.error("Erro ao mover tarefa") }
+    );
+  };
+
+  const activeMember = activeTask?.assignee_id ? membersMap[activeTask.assignee_id] : undefined;
+
   return (
-    <div className="flex gap-3 overflow-x-auto pb-4 -mx-1 px-1">
-      {columns.map((col) => {
-        const circleColor = getStageCircleColor(col.key);
-        return (
-          <div key={col.key} className="flex w-[272px] min-w-[272px] flex-col rounded-2xl bg-muted/40 backdrop-blur-sm border border-[#6932c8]">
-            {/* Column header */}
-            <div className="flex items-center justify-between px-4 py-3">
-              <div className="flex items-center gap-2.5">
-                <span className={cn("h-2.5 w-2.5 rounded-full ring-2 ring-offset-1 ring-offset-muted/40", circleColor.bg, circleColor.border.replace("border-", "ring-"))} />
-                <span className="text-[11px] font-bold uppercase tracking-wider text-foreground/70">{col.label}</span>
-                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-foreground/8 text-[10px] font-semibold text-foreground/50 px-1.5">
-                  {col.tasks.length}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => onCreateClick(col.key)}
-                className="rounded-lg p-1.5 text-muted-foreground/60 transition-all hover:bg-primary/10 hover:text-primary active:scale-95">
-                
-                <Plus className="h-4 w-4" strokeWidth={2.5} />
-              </button>
-            </div>
-            {/* Cards */}
-            <div className="flex flex-col gap-2 px-2 pb-3" style={{ minHeight: 60 }}>
-              {col.tasks.map((task) => {
-                const member = task.assignee_id ? membersMap[task.assignee_id] : undefined;
-                return (
-                  <PmTaskCard
-                    key={task.id}
-                    task={task}
-                    clientName={clientsMap[task.client_id] ?? "—"}
-                    assigneeName={member?.name}
-                    assigneeAvatar={member?.avatar}
-                    childTasks={childTasksMap[task.id] ?? []}
-                    onClick={() => onTaskClick(task)}
-                    isAdmin={isAdmin} />);
-
-
-              })}
-              {col.tasks.length === 0 &&
-              <div className="flex flex-col items-center justify-center py-8 gap-2">
-                  <div className="h-8 w-8 rounded-xl bg-foreground/5 flex items-center justify-center">
-                    <Plus className="h-4 w-4 text-muted-foreground/30" />
-                  </div>
-                  <p className="text-[11px] text-muted-foreground/40 font-medium">Nenhuma tarefa</p>
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      <div className="flex gap-3 overflow-x-auto pb-4 -mx-1 px-1">
+        {columns.map((col) => {
+          const circleColor = getStageCircleColor(col.key);
+          return (
+            <div key={col.key} className="flex w-[272px] min-w-[272px] flex-col rounded-2xl bg-muted/40 backdrop-blur-sm border border-[#6932c8]">
+              {/* Column header */}
+              <div className="flex items-center justify-between px-4 py-3">
+                <div className="flex items-center gap-2.5">
+                  <span className={cn("h-2.5 w-2.5 rounded-full ring-2 ring-offset-1 ring-offset-muted/40", circleColor.bg, circleColor.border.replace("border-", "ring-"))} />
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-foreground/70">{col.label}</span>
+                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-foreground/8 text-[10px] font-semibold text-foreground/50 px-1.5">
+                    {col.tasks.length}
+                  </span>
                 </div>
-              }
+                <button type="button" onClick={() => onCreateClick(col.key)}
+                  className="rounded-lg p-1.5 text-muted-foreground/60 transition-all hover:bg-primary/10 hover:text-primary active:scale-95">
+                  <Plus className="h-4 w-4" strokeWidth={2.5} />
+                </button>
+              </div>
+              {/* Cards */}
+              <DroppableColumn id={col.key}>
+                {col.tasks.map((task) => {
+                  const member = task.assignee_id ? membersMap[task.assignee_id] : undefined;
+                  return (
+                    <DraggableCard key={task.id} task={task}>
+                      <PmTaskCard
+                        task={task}
+                        clientName={clientsMap[task.client_id] ?? "—"}
+                        assigneeName={member?.name}
+                        assigneeAvatar={member?.avatar}
+                        childTasks={childTasksMap[task.id] ?? []}
+                        onClick={() => onTaskClick(task)}
+                        isAdmin={isAdmin}
+                      />
+                    </DraggableCard>
+                  );
+                })}
+                {col.tasks.length === 0 && (
+                  <div className="flex flex-col items-center justify-center py-8 gap-2">
+                    <div className="h-8 w-8 rounded-xl bg-foreground/5 flex items-center justify-center">
+                      <Plus className="h-4 w-4 text-muted-foreground/30" />
+                    </div>
+                    <p className="text-[11px] text-muted-foreground/40 font-medium">Nenhuma tarefa</p>
+                  </div>
+                )}
+              </DroppableColumn>
             </div>
-          </div>);
+          );
+        })}
+      </div>
 
-      })}
-    </div>);
-
+      {/* Drag overlay */}
+      <DragOverlay>
+        {activeTask && (
+          <div className="w-[256px] opacity-90 rotate-2 scale-105">
+            <PmTaskCard
+              task={activeTask}
+              clientName={clientsMap[activeTask.client_id] ?? "—"}
+              assigneeName={activeMember?.name}
+              assigneeAvatar={activeMember?.avatar}
+              childTasks={childTasksMap[activeTask.id] ?? []}
+              onClick={() => {}}
+              isAdmin={isAdmin}
+            />
+          </div>
+        )}
+      </DragOverlay>
+    </DndContext>
+  );
 }
