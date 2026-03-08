@@ -389,7 +389,7 @@ export function DayViewPanel() {
 
   return <div ref={containerRef} className={cn("space-y-6", isFullscreen && "bg-background p-6 overflow-auto min-h-screen")}>
       {/* Header em uma única linha */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
         <div className="flex items-center gap-3">
           <h2 className="text-2xl font-semibold tracking-tight">Visão do Dia</h2>
           <span className={cn(

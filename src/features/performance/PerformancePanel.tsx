@@ -227,7 +227,7 @@ const TOTAL_POINTS = 27;
    return (
      <div className="space-y-6">
       <Tabs value={tab} onValueChange={(v) => setTab(v as "mensal" | "anual" | "relatorio")}>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
             <div>
               <h2 className="text-2xl font-semibold tracking-tight">Ranking Mensal</h2>
               <p className="text-sm text-muted-foreground">Acompanhe o desempenho da equipe mês a mês</p>

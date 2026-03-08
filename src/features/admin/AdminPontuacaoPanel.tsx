@@ -82,14 +82,14 @@ export function AdminPontuacaoPanel() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
         <h2 className="text-2xl font-semibold tracking-tight">Pontuação</h2>
         <p className="text-sm text-muted-foreground">
           Configure os pontos de cada etapa para o cálculo de Metas/Prazos no desempenho.
         </p>
       </div>
 
-      <Card>
+      <Card className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.15s" }}>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Critérios por etapa</CardTitle>
           <CardDescription>

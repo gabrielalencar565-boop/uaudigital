@@ -285,7 +285,7 @@ export function MagicPanel({
   const loading = clientsQ.isLoading || allStagesQ.isLoading;
   return <div className="space-y-6">
       {/* Cabeçalho fixo (não some ao rolar) */}
-      <div className="sticky top-0 z-30 -mx-6 bg-background/80 px-6 py-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="sticky top-0 z-30 -mx-6 bg-background/80 px-6 py-4 backdrop-blur supports-[backdrop-filter]:bg-background/60 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
         <div className="flex-col gap-3 sm:items-end sm:justify-between flex sm:flex-row bg-success-foreground">
           
 

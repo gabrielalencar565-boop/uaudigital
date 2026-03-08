@@ -64,7 +64,7 @@ export function Magic2Panel() {
   const hasAny = cycles.length > 0;
   const due = useMemo(() => new Date(year, month - 1, 27), [month, year]);
   return <div className="space-y-6">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
         <div>
           <h3 className="text-lg font-semibold">Contagem regressiva</h3>
           <div className="mt-1">
