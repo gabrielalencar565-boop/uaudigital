@@ -128,7 +128,7 @@ export function FinMetasMensalTab() {
   return (
     <div className="space-y-6">
       {/* Month and Year navigator */}
-      <div className="flex items-center gap-3 flex-wrap">
+      <div className="flex items-center gap-3 flex-wrap opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0s" }}>
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
           if (selectedMonth <= 1) { setSelectedMonth(12); setYear((y) => y - 1); }
           else setSelectedMonth((p) => p - 1);

@@ -140,14 +140,14 @@ export function HealthScoreTab() {
   if (!selectedClientId) {
     return (
       <div className="space-y-4 mt-4">
-        <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center justify-between flex-wrap gap-2 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0s" }}>
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <HeartPulse className="h-5 w-5 text-red-500" /> Health Score
           </h2>
           <MonthYearNav month={month} year={year} onMonthChange={setMonth} onYearChange={setYear} />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.1s" }}>
           {clients.map((client) => {
             const s = scoresMap[client.id];
             const avg = s ? Math.round((s.resultado_percebido + s.alinhamento_estrategico + s.comunicacao_atendimento + s.qualidade_entregas + s.satisfacao_geral) / 5) : null;
