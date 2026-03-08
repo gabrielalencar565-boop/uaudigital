@@ -165,7 +165,7 @@ export function FinReceitasDespesasTab() {
             <DollarSign className="h-4 w-4 text-success" />
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-success">R$ {totalFaturamento.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+            <p className="text-3xl font-bold text-success">R$ <AnimatedNumber value={totalFaturamento} decimals={2} className="text-3xl font-bold text-success" glow={true} /></p>
           </CardContent>
         </Card>
         <Card>
@@ -174,7 +174,7 @@ export function FinReceitasDespesasTab() {
             <TrendingDown className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-destructive">R$ {totalDespesas.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+            <p className="text-3xl font-bold text-destructive">R$ <AnimatedNumber value={totalDespesas} decimals={2} className="text-3xl font-bold text-destructive" glow={true} /></p>
           </CardContent>
         </Card>
         <Card>
@@ -184,7 +184,7 @@ export function FinReceitasDespesasTab() {
           </CardHeader>
           <CardContent>
             <p className={`text-3xl font-bold ${lucro >= 0 ? "text-success" : "text-destructive"}`}>
-              {lucro < 0 ? "-" : ""}R$ {Math.abs(lucro).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+              {lucro < 0 ? "-" : ""}R$ <AnimatedNumber value={Math.abs(lucro)} decimals={2} className={`text-3xl font-bold ${lucro >= 0 ? "text-success" : "text-destructive"}`} glow={true} />
             </p>
           </CardContent>
         </Card>
@@ -194,7 +194,7 @@ export function FinReceitasDespesasTab() {
             <Receipt className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">R$ {ticketMedio.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+            <p className="text-3xl font-bold">R$ <AnimatedNumber value={ticketMedio} decimals={2} className="text-3xl font-bold" glow={true} /></p>
           </CardContent>
         </Card>
         <Card className="flex flex-col items-center justify-center py-4">
