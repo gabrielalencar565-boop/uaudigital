@@ -26,10 +26,36 @@ export function MonthYearNav({
   const years = Array.from({ length: 7 }, (_, i) => baseYear - 3 + i);
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
 
-  return;
+  return (
+    <div className="flex items-center gap-1.5">
+      <Select value={String(month)} onValueChange={(v) => onMonthChange(clampMonth(Number(v)))}>
+        <SelectTrigger className="h-8 w-[110px] text-xs">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {months.map((m) => (
+            <SelectItem key={m} value={String(m)}>
+              {getMonthNamePtBr(year, m)}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
 
-
-
+      <Select value={String(year)} onValueChange={(v) => onYearChange(Number(v))}>
+        <SelectTrigger className="h-8 w-[80px] text-xs">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {years.map((y) => (
+            <SelectItem key={y} value={String(y)}>
+              {y}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
 
 
 
