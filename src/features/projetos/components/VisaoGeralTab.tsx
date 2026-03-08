@@ -519,18 +519,18 @@ export function VisaoGeralTab() {
               <Tabs value={holidayFilter} onValueChange={(v) => setHolidayFilter(v as any)}>
                 <TabsList className="bg-muted/40 h-9 p-1 rounded-full gap-1 w-full">
                   <TabsTrigger value="all" className="h-7 rounded-full text-xs data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-md flex-1 transition-all">Todas as datas</TabsTrigger>
-                  <TabsTrigger value="comemorativas" className="h-7 rounded-full text-xs data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-md flex-1 transition-all">Datas comemorativas</TabsTrigger>
+                  <TabsTrigger value="comemorativas" className="h-7 rounded-full text-xs data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-md flex-1 transition-all">Aniversários</TabsTrigger>
                 </TabsList>
               </Tabs>
 
               <div className="space-y-2.5 max-h-[320px] overflow-y-auto pr-1">
-                {upcomingHolidays.length === 0 && (
+                {filteredDates.length === 0 && (
                   <p className="text-xs text-muted-foreground text-center py-4">Nenhuma data próxima</p>
                 )}
-                {upcomingHolidays.map((h) => (
-                  <div key={h.date} className="flex items-start gap-3 rounded-xl border border-sidebar/20 bg-sidebar/5 p-3.5 transition-colors hover:bg-sidebar/10">
+                {filteredDates.slice(0, 10).map((h, idx) => (
+                  <div key={`${h.date}-${idx}`} className="flex items-start gap-3 rounded-xl border border-sidebar/20 bg-sidebar/5 p-3.5 transition-colors hover:bg-sidebar/10">
                     <div className="h-9 w-9 rounded-full bg-sidebar/15 flex items-center justify-center flex-shrink-0">
-                      <Star className="h-4 w-4 text-sidebar" />
+                      {h.type === "Aniversário" ? <span className="text-base">🎂</span> : <Star className="h-4 w-4 text-sidebar" />}
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-foreground">{h.name}</p>
