@@ -214,7 +214,7 @@ export function UauSidebarShell({
 
                 // Group with children
                 const groupOpen = !!openGroups[entry.key];
-                const hasActiveChild = entry.children.some((c) => isActive(c.key)) || (entry.landingTab && isActive(entry.landingTab));
+                const hasActiveChild = entry.children.some((c) => isActive(c.key)) || entry.landingTab && isActive(entry.landingTab);
 
                 return (
                   <Collapsible key={entry.key} open={groupOpen} onOpenChange={() => toggleGroup(entry.key)}>
@@ -245,11 +245,11 @@ export function UauSidebarShell({
                           }
                         </SidebarMenuButton>
                         {(!collapsed || isMobile) &&
-                          <CollapsibleTrigger asChild>
+                        <CollapsibleTrigger asChild>
                             <button
-                              type="button"
-                              className="inline-flex h-10 w-8 items-center justify-center text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors"
-                            >
+                            type="button"
+                            className="inline-flex h-10 w-8 items-center justify-center text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors">
+                            
                               <ChevronDown className={cn("h-4 w-4 transition-transform", groupOpen && "rotate-180")} />
                             </button>
                           </CollapsibleTrigger>
@@ -316,7 +316,7 @@ export function UauSidebarShell({
             )}>
             
             <div className="mx-auto w-full 2xl:max-w-[1600px]">
-              <div className="animate-fade-in overflow-x-auto p-4 sm:p-6 lg:p-8 2xl:p-10">
+              <div className="animate-fade-in overflow-x-auto p-4 sm:p-6 lg:p-8 2xl:p-10 px-[10px] py-[10px]">
                 {children}
               </div>
             </div>
