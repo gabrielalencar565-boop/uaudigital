@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { format, getDay } from "date-fns";
 import { AlertTriangle, CheckCircle2, Clock } from "lucide-react";
+import confetti from "canvas-confetti";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -98,9 +99,10 @@ export function MeuPainelPanel() {
   const { user } = useSession();
   const { isAdmin } = useRole(user?.id);
 
-  const [myProfile, setMyProfile] = useState<{ full_name: string; avatar_url: string | null } | null>(null);
+  const [myProfile, setMyProfile] = useState<{ full_name: string; avatar_url: string | null; birth_date?: string | null } | null>(null);
   const [profileVersion, setProfileVersion] = useState(0);
   const [selectedPmTaskId, setSelectedPmTaskId] = useState<string | null>(null);
+  const [confettiFired, setConfettiFired] = useState(false);
   const today = useNow();
   const todayKey = format(today, "yyyy-MM-dd");
 
@@ -206,38 +208,64 @@ export function MeuPainelPanel() {
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
-    supabase
-      .from("profiles")
-      .select("full_name, avatar_url")
-      .eq("user_id", user.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (cancelled) return;
-        if (!data?.full_name) {
-          setMyProfile(null);
-          return;
-        }
-        setMyProfile({ full_name: data.full_name, avatar_url: data.avatar_url ?? null });
+    Promise.all([
+      supabase.from("profiles").select("full_name, avatar_url").eq("user_id", user.id).maybeSingle(),
+      supabase.from("team_members").select("birth_date").eq("user_id", user.id).maybeSingle(),
+    ]).then(([profileRes, tmRes]) => {
+      if (cancelled) return;
+      const data = profileRes.data;
+      if (!data?.full_name) {
+        setMyProfile(null);
+        return;
+      }
+      setMyProfile({
+        full_name: data.full_name,
+        avatar_url: data.avatar_url ?? null,
+        birth_date: (tmRes.data as any)?.birth_date ?? null,
       });
+    });
     return () => {
       cancelled = true;
     };
   }, [user?.id, profileVersion]);
 
+  const isBirthday = useMemo(() => {
+    if (!myProfile?.birth_date) return false;
+    const bd = new Date(myProfile.birth_date + "T12:00:00");
+    return bd.getMonth() === today.getMonth() && bd.getDate() === today.getDate();
+  }, [myProfile?.birth_date, todayKey]);
+
+  // Fire confetti on birthday
+  useEffect(() => {
+    if (isBirthday && !confettiFired) {
+      setConfettiFired(true);
+      const duration = 3000;
+      const end = Date.now() + duration;
+      const frame = () => {
+        confetti({ particleCount: 3, angle: 60, spread: 55, origin: { x: 0 }, colors: ["#7C3AED", "#F59E0B", "#10B981", "#EF4444", "#3B82F6"] });
+        confetti({ particleCount: 3, angle: 120, spread: 55, origin: { x: 1 }, colors: ["#7C3AED", "#F59E0B", "#10B981", "#EF4444", "#3B82F6"] });
+        if (Date.now() < end) requestAnimationFrame(frame);
+      };
+      frame();
+    }
+  }, [isBirthday, confettiFired]);
+
   const headerGreeting = useMemo(() => {
-    const g = greetingForHour(today.getHours());
     const name = myProfile?.full_name ? firstName(myProfile.full_name) : "";
+    if (isBirthday) return name ? `🎉 Feliz aniversário, ${name}!` : "🎉 Feliz aniversário!";
+    const g = greetingForHour(today.getHours());
     return name ? `${g}, ${name}` : g;
-  }, [myProfile?.full_name, today]);
+  }, [myProfile?.full_name, today, isBirthday]);
 
   const headerLine = useMemo(() => {
+    if (isBirthday) return "Hoje é o seu dia especial! 🎂 Parabéns de toda a equipe! 🥳";
     // frase estável por dia E por usuário (cada pessoa vê uma diferente)
     const userSeed = user?.id ?? myProfile?.full_name ?? "anonymous";
     const seed = hashStringToInt(`${todayKey}:${userSeed}`);
     const idx = seed % motivationalLines.length;
     const phrase = motivationalLines[idx] ?? motivationalLines[0];
     return `Frase do dia: ${phrase}`;
-  }, [myProfile?.full_name, todayKey, user?.id]);
+  }, [myProfile?.full_name, todayKey, user?.id, isBirthday]);
 
   const onStart = async (taskId: string) => {
     if (!user) return;

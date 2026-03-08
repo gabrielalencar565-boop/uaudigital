@@ -92,8 +92,8 @@ export function VisaoGeralTab() {
   const teamQ = useQuery({
     queryKey: ["team_members"],
     queryFn: async () => {
-      const { data } = await supabase.from("team_members").select("user_id, display_name, avatar_url, role_title").eq("is_active", true).order("display_name");
-      return data ?? [];
+      const { data } = await supabase.from("team_members").select("user_id, display_name, avatar_url, role_title, birth_date").eq("is_active", true).order("display_name");
+      return (data ?? []) as Array<{ user_id: string; display_name: string; avatar_url: string | null; role_title: string; birth_date: string | null }>;
     },
   });
 
@@ -218,6 +218,41 @@ export function VisaoGeralTab() {
   const weekDays = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
   const holidayMap = new Map(HOLIDAYS_2026.map((h) => [h.date, h.name]));
   const upcomingHolidays = HOLIDAYS_2026.filter((h) => new Date(h.date) >= now);
+
+  // Birthdays from team members
+  const teamBirthdays = useMemo(() => {
+    return allTeam
+      .filter((m) => m.birth_date)
+      .map((m) => {
+        const bd = new Date(m.birth_date + "T12:00:00");
+        const thisYear = new Date(now.getFullYear(), bd.getMonth(), bd.getDate());
+        const nextBirthday = thisYear >= now ? thisYear : new Date(now.getFullYear() + 1, bd.getMonth(), bd.getDate());
+        return {
+          date: format(nextBirthday, "yyyy-MM-dd"),
+          name: `🎂 ${m.display_name}`,
+          type: "Aniversário",
+        };
+      })
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [allTeam, now]);
+
+  // Birthday map for calendar highlighting
+  const birthdayMap = useMemo(() => {
+    const map = new Map<string, string>();
+    allTeam.filter((m) => m.birth_date).forEach((m) => {
+      const bd = new Date(m.birth_date + "T12:00:00");
+      const key = format(new Date(calMonth.getFullYear(), bd.getMonth(), bd.getDate()), "yyyy-MM-dd");
+      const existing = map.get(key);
+      map.set(key, existing ? `${existing}, ${m.display_name}` : `🎂 ${m.display_name}`);
+    });
+    return map;
+  }, [allTeam, calMonth]);
+
+  // Combined dates for "Próximas datas" widget
+  const filteredDates = useMemo(() => {
+    if (holidayFilter === "comemorativas") return teamBirthdays;
+    return [...upcomingHolidays, ...teamBirthdays].sort((a, b) => a.date.localeCompare(b.date));
+  }, [holidayFilter, upcomingHolidays, teamBirthdays]);
 
   if (showHealthScore) {
     return (
@@ -449,6 +484,7 @@ export function VisaoGeralTab() {
                   const inMonth = d.getMonth() === calMonth.getMonth();
                   const today = isToday(d);
                   const holiday = holidayMap.get(key);
+                  const birthday = birthdayMap.get(key);
                   return (
                     <div
                       key={key}
@@ -456,12 +492,16 @@ export function VisaoGeralTab() {
                         "relative flex flex-col items-center justify-center rounded-lg py-2 text-xs transition-all",
                         !inMonth && "opacity-30",
                         today && "bg-sidebar text-sidebar-foreground font-bold shadow-md",
-                        holiday && !today && "bg-primary/10"
+                        holiday && !today && "bg-primary/10",
+                        birthday && !today && !holiday && "bg-warning/10"
                       )}
-                      title={holiday ?? undefined}
+                      title={birthday ?? holiday ?? undefined}
                     >
                       <span>{format(d, "d")}</span>
-                      {holiday && (
+                      {birthday && (
+                        <span className="mt-0.5 text-[8px] leading-tight text-center truncate max-w-full px-0.5">🎂</span>
+                      )}
+                      {holiday && !birthday && (
                         <span className="mt-0.5 text-[8px] leading-tight text-center text-primary truncate max-w-full px-0.5">{holiday}</span>
                       )}
                     </div>
@@ -479,18 +519,18 @@ export function VisaoGeralTab() {
               <Tabs value={holidayFilter} onValueChange={(v) => setHolidayFilter(v as any)}>
                 <TabsList className="bg-muted/40 h-9 p-1 rounded-full gap-1 w-full">
                   <TabsTrigger value="all" className="h-7 rounded-full text-xs data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-md flex-1 transition-all">Todas as datas</TabsTrigger>
-                  <TabsTrigger value="comemorativas" className="h-7 rounded-full text-xs data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-md flex-1 transition-all">Datas comemorativas</TabsTrigger>
+                  <TabsTrigger value="comemorativas" className="h-7 rounded-full text-xs data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-md flex-1 transition-all">Aniversários</TabsTrigger>
                 </TabsList>
               </Tabs>
 
               <div className="space-y-2.5 max-h-[320px] overflow-y-auto pr-1">
-                {upcomingHolidays.length === 0 && (
+                {filteredDates.length === 0 && (
                   <p className="text-xs text-muted-foreground text-center py-4">Nenhuma data próxima</p>
                 )}
-                {upcomingHolidays.map((h) => (
-                  <div key={h.date} className="flex items-start gap-3 rounded-xl border border-sidebar/20 bg-sidebar/5 p-3.5 transition-colors hover:bg-sidebar/10">
+                {filteredDates.slice(0, 10).map((h, idx) => (
+                  <div key={`${h.date}-${idx}`} className="flex items-start gap-3 rounded-xl border border-sidebar/20 bg-sidebar/5 p-3.5 transition-colors hover:bg-sidebar/10">
                     <div className="h-9 w-9 rounded-full bg-sidebar/15 flex items-center justify-center flex-shrink-0">
-                      <Star className="h-4 w-4 text-sidebar" />
+                      {h.type === "Aniversário" ? <span className="text-base">🎂</span> : <Star className="h-4 w-4 text-sidebar" />}
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-foreground">{h.name}</p>

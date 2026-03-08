@@ -20,6 +20,7 @@ import { toast } from "sonner";
 const settingsSchema = z.object({
   full_name: z.string().trim().min(2, "Informe seu nome").max(120),
   role_title: z.string().trim().min(2, "Informe seu cargo").max(120),
+  birth_date: z.string().optional(),
 });
 
 type SettingsValues = z.infer<typeof settingsSchema>;
@@ -60,7 +61,7 @@ export function ConfiguracoesPanel() {
 
   const form = useForm<SettingsValues>({
     resolver: zodResolver(settingsSchema),
-    defaultValues: { full_name: "", role_title: "" },
+    defaultValues: { full_name: "", role_title: "", birth_date: "" },
   });
 
   // carregar dados atuais
@@ -79,11 +80,24 @@ export function ConfiguracoesPanel() {
           setLoading(false);
           return;
         }
-        if (data) {
-          form.reset({ full_name: data.full_name ?? "", role_title: data.role_title ?? "" });
-          setAvatarUrl(data.avatar_url ?? null);
-        }
-        setLoading(false);
+        // Also fetch birth_date from team_members
+        supabase
+          .from("team_members")
+          .select("birth_date")
+          .eq("user_id", user.id)
+          .maybeSingle()
+          .then(({ data: tmData }) => {
+            if (cancelled) return;
+            if (data) {
+              form.reset({
+                full_name: data.full_name ?? "",
+                role_title: data.role_title ?? "",
+                birth_date: (tmData as any)?.birth_date ?? "",
+              });
+              setAvatarUrl(data.avatar_url ?? null);
+            }
+            setLoading(false);
+          });
       });
     return () => {
       cancelled = true;
@@ -145,8 +159,9 @@ export function ConfiguracoesPanel() {
             display_name: v.full_name,
             role_title: v.role_title,
             avatar_url: nextAvatarUrl,
-             is_active: true,
-          },
+            is_active: true,
+            birth_date: v.birth_date || null,
+          } as any,
           { onConflict: "user_id" },
         );
       if (tm.error) throw tm.error;
@@ -213,6 +228,12 @@ export function ConfiguracoesPanel() {
               {form.formState.errors.role_title && (
                 <p className="text-sm text-danger">{form.formState.errors.role_title.message}</p>
               )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="birth_date">Data de nascimento</Label>
+              <Input id="birth_date" type="date" {...form.register("birth_date")} />
+              <p className="text-xs text-muted-foreground">Sua data de aniversário aparecerá no calendário e você receberá parabéns no dia.</p>
             </div>
           </CardContent>
 
