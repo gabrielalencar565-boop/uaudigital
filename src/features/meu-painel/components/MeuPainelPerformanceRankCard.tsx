@@ -64,7 +64,7 @@ export function MeuPainelPerformanceRankCard({
           style={{
             background: style.gradient,
             backgroundSize: "300% 300%",
-            animation: "gradientFlow 8s ease-in-out infinite",
+            animation: "gradientFlow 20s ease-in-out infinite",
           }}
         />
       ) : (
