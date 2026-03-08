@@ -40,7 +40,7 @@ export function PostDetailSidebar({ post, onClose, onUpdate, onRename }: Props) 
   };
 
   return (
-    <div className="w-96 shrink-0 border border-border/30 rounded-2xl bg-card/60 backdrop-blur-sm p-4 space-y-4 animate-in slide-in-from-right-5 duration-200 overflow-y-auto max-h-[70vh]">
+    <div className="w-full max-w-sm shrink-0 border border-border/30 rounded-2xl bg-card/60 backdrop-blur-sm p-4 space-y-4 animate-in slide-in-from-right-5 duration-200 overflow-y-auto max-h-[70vh]">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Instagram className="h-4 w-4 text-pink-500" />
