@@ -59,7 +59,7 @@ function useClientSquads() {
         .from("client_squads" as any)
         .select("*");
       if (error) throw error;
-      return (data ?? []) as { id: string; client_id: string; squad_id: string }[];
+      return (data ?? []) as unknown as { id: string; client_id: string; squad_id: string }[];
     },
   });
 }
