@@ -194,10 +194,10 @@ export function CronogramaClientBrowser({ tasks, childTasksMap, clientsMap, memb
     <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards" }}>
-        <h2 className="text-lg font-bold tracking-tight">Calendário de publicações</h2>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span>📅 {format(new Date(), "dd/MM/yyyy")}</span>
-          <span>🕐 {format(new Date(), "HH:mm:ss")}</span>
+        <h2 className="text-2xl font-bold tracking-tight">Calendário de publicações</h2>
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1.5"><CalendarRange className="h-3.5 w-3.5" /> {format(new Date(), "dd/MM/yyyy")}</span>
+          <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> {format(new Date(), "HH:mm:ss")}</span>
         </div>
       </div>
 
@@ -220,7 +220,7 @@ export function CronogramaClientBrowser({ tasks, childTasksMap, clientsMap, memb
 
         <div className="flex items-center gap-2">
           <Select value={selectedClientId} onValueChange={setSelectedClientId}>
-            <SelectTrigger className="h-8 w-52 text-xs rounded-xl border-border/30 bg-background/80">
+            <SelectTrigger className="h-9 w-52 text-sm rounded-xl border-border/30 bg-background/80">
               <SelectValue placeholder="Todos os clientes" />
             </SelectTrigger>
             <SelectContent className="rounded-xl">
@@ -232,11 +232,15 @@ export function CronogramaClientBrowser({ tasks, childTasksMap, clientsMap, memb
           </Select>
 
           {!noClientSelected && (
-            <>
-              <Button variant="outline" size="sm" className="gap-1.5 text-xs rounded-xl h-8" onClick={handleShare}>
-                <Link2 className="h-3.5 w-3.5" /> Link público
-              </Button>
-            </>
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs rounded-xl h-9" onClick={handleShare}>
+              <Link2 className="h-3.5 w-3.5" /> Link público
+            </Button>
+          )}
+
+          {!noClientSelected && (
+            <Button size="sm" className="gap-1.5 text-xs rounded-xl h-9 bg-sidebar text-sidebar-foreground hover:bg-sidebar/90" onClick={() => onTaskClick(filteredParentTasks[0])}>
+              <Plus className="h-3.5 w-3.5" /> Novo post
+            </Button>
           )}
         </div>
       </div>

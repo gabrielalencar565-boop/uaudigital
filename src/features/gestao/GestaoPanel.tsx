@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Plus, Search, LayoutGrid, CalendarDays, FolderOpen, Settings2, CheckCircle2, FileSpreadsheet, Trash2, Users, ChevronLeft, ChevronRight, CalendarRange } from "lucide-react";
+import { Plus, Search, LayoutGrid, CalendarDays, FolderOpen, Settings2, CheckCircle2, FileSpreadsheet, Trash2, Users, ChevronLeft, ChevronRight, CalendarRange, Filter } from "lucide-react";
 import { addDays, addMonths, subMonths, endOfMonth, format, startOfMonth, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useSession } from "@/hooks/use-session";
 import { useRole } from "@/hooks/use-role";
 import { useQuery } from "@tanstack/react-query";
@@ -41,6 +42,45 @@ const STAGE_BADGE_BG: Record<string, string> = {
   edicao_videos: "bg-purple-500", revisao: "bg-pink-500", pdf: "bg-indigo-500",
   agendamento: "bg-violet-500", entrega: "bg-emerald-500"
 };
+
+function FilterPopover({ search, setSearch, filterAssignee, setFilterAssignee, members }: {
+  search: string; setSearch: (v: string) => void;
+  filterAssignee: string; setFilterAssignee: (v: string) => void;
+  members: { user_id: string; display_name: string }[];
+}) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-1.5 rounded-xl h-9 text-sm">
+          <Filter className="h-3.5 w-3.5" /> Filtros
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-72 space-y-3 rounded-xl" align="end">
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground">Buscar</label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input placeholder="Buscar tarefa..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 pl-9 rounded-xl text-sm" />
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground">Responsável</label>
+          <Select value={filterAssignee} onValueChange={setFilterAssignee}>
+            <SelectTrigger className="h-9 rounded-xl text-sm">
+              <SelectValue placeholder="Todos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todos os responsáveis</SelectItem>
+              {members.map((m) => (
+                <SelectItem key={m.user_id} value={m.user_id}>{m.display_name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
   const { user } = useSession();
@@ -141,49 +181,30 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
-        <div>
-          <h2 className="font-bold tracking-tight text-3xl">Cronograma</h2>
-          
-        </div>
-      </div>
-
-      {/* Filters bar */}
-      <div className="flex flex-wrap items-center gap-3 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.1s" }}>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Buscar tarefa..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="h-9 w-56 rounded-xl pl-9 text-sm bg-muted/30 border-border/30"
+      {/* Header — Kanban de tarefas */}
+      <div className="flex items-center justify-between opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
+        <h2 className="font-bold tracking-tight text-2xl">Kanban de tarefas</h2>
+        <div className="flex items-center gap-2">
+          <Select value={filterClient} onValueChange={setFilterClient}>
+            <SelectTrigger className="h-9 w-52 rounded-xl text-sm border-primary/30 bg-background/80">
+              <SelectValue placeholder="Todos os clientes" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todos os clientes</SelectItem>
+              {(clientsQ.data ?? []).map((c) => (
+                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <FilterPopover
+            search={search}
+            setSearch={setSearch}
+            filterAssignee={filterAssignee}
+            setFilterAssignee={setFilterAssignee}
+            members={membersQ.data ?? []}
           />
         </div>
-        <Select value={filterClient} onValueChange={setFilterClient}>
-          <SelectTrigger className="h-9 w-48 rounded-xl text-sm bg-muted/30 border-border/30">
-            <SelectValue placeholder="Todos os clientes" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">Todos os clientes</SelectItem>
-            {(clientsQ.data ?? []).map((c) => (
-              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={filterAssignee} onValueChange={setFilterAssignee}>
-          <SelectTrigger className="h-9 w-48 rounded-xl text-sm bg-muted/30 border-border/30">
-            <SelectValue placeholder="Todos os responsáveis" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">Todos os responsáveis</SelectItem>
-            {(membersQ.data ?? []).map((m) => (
-              <SelectItem key={m.user_id} value={m.user_id}>{m.display_name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
-
 
 
 
