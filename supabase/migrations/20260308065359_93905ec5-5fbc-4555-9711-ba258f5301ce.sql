@@ -1,0 +1,1 @@
+ALTER TABLE public.squads ADD COLUMN leader_id uuid DEFAULT NULL;
