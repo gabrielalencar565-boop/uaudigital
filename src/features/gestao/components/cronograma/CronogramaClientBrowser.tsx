@@ -192,14 +192,6 @@ export function CronogramaClientBrowser({ tasks, childTasksMap, clientsMap, memb
 
   return (
     <div className="space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards" }}>
-        <h2 className="text-2xl font-bold tracking-tight">Calendário de publicações</h2>
-        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1.5"><CalendarRange className="h-3.5 w-3.5" /> {format(new Date(), "dd/MM/yyyy")}</span>
-          <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> {format(new Date(), "HH:mm:ss")}</span>
-        </div>
-      </div>
 
       {/* Controls bar */}
       <div className="flex items-center justify-between opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.1s" }}>
