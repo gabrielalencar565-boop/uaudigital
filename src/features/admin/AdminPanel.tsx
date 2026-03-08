@@ -379,11 +379,11 @@ export function AdminPanel() {
         )}
       </div>
 
-      {/* Dialog de edição de roles */}
+      {/* Dialog de edição */}
       <Dialog open={!!editRoleUser} onOpenChange={(open) => !open && setEditRoleUser(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Editar Permissões</DialogTitle>
+            <DialogTitle>Editar Usuário</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="flex items-center gap-3 rounded-lg border border-border/60 bg-card/20 p-3">
@@ -402,8 +402,44 @@ export function AdminPanel() {
             <RoleSelector
               selectedRoles={editRoles}
               onChange={setEditRoles}
-              disabled={setUserRoles.isPending}
+              disabled={savingAll}
             />
+
+            {/* Squad selector */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Squads</Label>
+              <div className="space-y-2">
+                {(squadsQ.data ?? []).map((squad: any) => (
+                  <label
+                    key={squad.id}
+                    className="flex items-center gap-3 rounded-lg border border-border/60 bg-card/20 p-3 transition hover:bg-card/40 cursor-pointer"
+                  >
+                    <Checkbox
+                      checked={editSquadIds.includes(squad.id)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setEditSquadIds((prev) => [...prev, squad.id]);
+                        } else {
+                          setEditSquadIds((prev) => prev.filter((id) => id !== squad.id));
+                        }
+                      }}
+                      disabled={savingAll}
+                      className="mt-0.5"
+                    />
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="h-3 w-3 rounded-full"
+                        style={{ backgroundColor: squad.color }}
+                      />
+                      <span className="font-medium text-sm">{squad.name}</span>
+                    </div>
+                  </label>
+                ))}
+                {(squadsQ.data ?? []).length === 0 && (
+                  <p className="text-xs text-muted-foreground">Nenhum squad cadastrado.</p>
+                )}
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button type="button" variant="secondary" onClick={() => setEditRoleUser(null)}>
@@ -413,9 +449,9 @@ export function AdminPanel() {
               type="button"
               variant="brand"
               onClick={handleSaveRoles}
-              disabled={setUserRoles.isPending}
+              disabled={savingAll}
             >
-              {setUserRoles.isPending ? "Salvando..." : "Salvar"}
+              {savingAll ? "Salvando..." : "Salvar"}
             </Button>
           </DialogFooter>
         </DialogContent>
