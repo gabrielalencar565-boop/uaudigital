@@ -328,7 +328,7 @@ export function MeuPainelPanel() {
       </div>
 
       {/* Resumo do mês */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.15s" }}>
         <Card>
           <CardContent className="flex items-center gap-4 p-5">
             <div className="h-10 w-10 rounded-xl bg-sidebar/10 flex items-center justify-center shrink-0">
@@ -379,21 +379,27 @@ export function MeuPainelPanel() {
       </div>
 
       {/* Tarefas de Gestão atribuídas (estilo ClickUp) */}
-      <MyPmTasksWidget onOpenTask={(taskId) => setSelectedPmTaskId(taskId)} />
+      <div className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.3s" }}>
+        <MyPmTasksWidget onOpenTask={(taskId) => setSelectedPmTaskId(taskId)} />
+      </div>
 
       {/* Minhas tarefas do mês (agenda) */}
-      <MeuPainelTasksGroupedCard
-        overdue={overdueTasks.map(toVM)}
-        today={todayTasks.map(toVM)}
-        upcoming={upcomingTasks.map(toVM)}
-        completed={completedTasks.map(toVM)}
-        isUpdating={setTaskStatus.isPending}
-        onStart={onStart}
-        onToggleComplete={onToggleComplete}
-      />
+      <div className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.45s" }}>
+        <MeuPainelTasksGroupedCard
+          overdue={overdueTasks.map(toVM)}
+          today={todayTasks.map(toVM)}
+          upcoming={upcomingTasks.map(toVM)}
+          completed={completedTasks.map(toVM)}
+          isUpdating={setTaskStatus.isPending}
+          onStart={onStart}
+          onToggleComplete={onToggleComplete}
+        />
+      </div>
 
       {/* Widget de menções */}
-      <MentionsWidget onOpenTask={(taskId) => setSelectedPmTaskId(taskId)} />
+      <div className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.6s" }}>
+        <MentionsWidget onOpenTask={(taskId) => setSelectedPmTaskId(taskId)} />
+      </div>
 
       {/* PM Task Detail Dialog */}
       <PmTaskDetailDialogWrapper
