@@ -311,3 +311,15 @@ All colors MUST be HSL.
   transform: translateY(-6px);
   box-shadow: 0 12px 28px -8px hsl(263 70% 50% / 0.18), 0 4px 12px -4px hsl(263 70% 50% / 0.1);
 }
+
+/* Futuristic widget animations */
+@keyframes meshShift {
+  0%, 100% { background-position: 0% 0%; filter: hue-rotate(0deg); }
+  33% { background-position: 30% 20%; filter: hue-rotate(8deg); }
+  66% { background-position: -10% -10%; filter: hue-rotate(-5deg); }
+}
+
+@keyframes gridDrift {
+  0% { background-position: 0px 0px; }
+  100% { background-position: 40px 40px; }
+}
