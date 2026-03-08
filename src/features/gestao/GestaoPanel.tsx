@@ -77,21 +77,13 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
   const allTasks = tasksQ.data ?? [];
   const tasks = useMemo(() => allTasks.filter((t) => !(t as any).is_draft), [allTasks]);
 
-  // Load stage assignees + flow config to expand filter and auto-advance
+  // Load stage assignees to expand filter by fixed assignee
   const flowsQ = useStageFlows();
-  const defaultFlowData = useMemo(() => {
+  const stageAssignees = useMemo(() => {
     const flows = flowsQ.data ?? [];
-    const df = flows.find((f) => f.is_default) ?? flows[0];
-    return {
-      stageAssignees: (df?.stage_assignees ?? {}) as StageAssignees,
-      flowConfig: (df?.flow_config ?? {}) as Record<string, string | string[]>,
-      transitionDates: (df?.transition_dates ?? {}) as Record<string, "pick" | number>,
-    };
+    const defaultFlow = flows.find((f) => f.is_default) ?? flows[0];
+    return (defaultFlow?.stage_assignees ?? {}) as StageAssignees;
   }, [flowsQ.data]);
-  const { stageAssignees, flowConfig, transitionDates } = defaultFlowData;
-
-  const createTask = useCreatePmTask();
-  const syncStage = usePmSyncStageCompletion();
 
   // Get client IDs where the filtered assignee is the fixed PLANEJAMENTO assignee only
   const fixedAssigneeClientIds = useMemo(() => {
