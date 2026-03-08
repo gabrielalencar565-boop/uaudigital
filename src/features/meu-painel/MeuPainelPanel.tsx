@@ -290,26 +290,45 @@ export function MeuPainelPanel() {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
-        <Card className="md:col-span-2">
-          <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:p-5">
+        <div className="md:col-span-2 relative group overflow-hidden rounded-2xl border border-sidebar/20 shadow-lg shadow-sidebar/5">
+          {/* Animated gradient mesh background */}
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_20%_30%,hsl(var(--sidebar)/0.35),transparent),radial-gradient(ellipse_60%_70%_at_80%_70%,hsl(var(--sidebar)/0.25),transparent),radial-gradient(ellipse_50%_50%_at_50%_50%,hsl(var(--sidebar)/0.10),transparent)] animate-[meshShift_8s_ease-in-out_infinite]" />
+          
+          {/* Animated geometric grid overlay */}
+          <div
+            className="absolute inset-0 opacity-[0.08]"
+            style={{
+              backgroundImage: `linear-gradient(hsl(var(--sidebar)/0.6) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--sidebar)/0.6) 1px, transparent 1px)`,
+              backgroundSize: "40px 40px",
+              animation: "gridDrift 20s linear infinite",
+            }}
+          />
+
+          {/* Glow border effect */}
+          <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-sidebar/10 pointer-events-none" />
+          <div className="absolute -inset-px rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 bg-[radial-gradient(circle_at_50%_0%,hsl(var(--sidebar)/0.15),transparent_70%)]" />
+
+          {/* Content */}
+          <div className="relative z-10 flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:p-5">
             <div className="flex min-w-0 items-center gap-3">
-              <Avatar className="h-11 w-11">
+              <Avatar className="h-11 w-11 ring-2 ring-sidebar/20 shadow-md shadow-sidebar/10">
                 <AvatarImage src={myProfile?.avatar_url ?? undefined} alt={myProfile?.full_name ?? ""} />
-                <AvatarFallback>{initials(myProfile?.full_name ?? "?")}</AvatarFallback>
+                <AvatarFallback className="bg-sidebar/10 text-sidebar font-bold">{initials(myProfile?.full_name ?? "?")}</AvatarFallback>
               </Avatar>
               <div className="min-w-0">
                 <h2 className="truncate text-lg font-semibold tracking-tight">{headerGreeting}</h2>
-                 <p className="break-words whitespace-normal text-sm text-muted-foreground">{headerLine}</p>
+                <p className="break-words whitespace-normal text-sm text-muted-foreground">{headerLine}</p>
               </div>
             </div>
 
+            {/* Glassmorphism badge */}
             <div className="flex items-center gap-2">
-              <Badge variant="secondary" className="tabular-nums">
+              <div className="inline-flex items-center rounded-full px-3.5 py-1.5 text-sm font-semibold tabular-nums backdrop-blur-md bg-sidebar/10 border border-sidebar/15 text-sidebar shadow-sm shadow-sidebar/5">
                 {format(today, "dd/MM")}
-              </Badge>
+              </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         <MeuPainelPerformanceRankCard
           label="Mensal"
