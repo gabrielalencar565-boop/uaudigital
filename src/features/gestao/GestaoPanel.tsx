@@ -434,10 +434,55 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
     return map;
   }, [filteredTasks]);
 
-  const handleMarkDone = (task: PmTask, e: React.MouseEvent) => {
+  const handleMarkDone = async (task: PmTask, e: React.MouseEvent) => {
     e.stopPropagation();
-    const newStatus = task.status_global === "concluido" ? "em_andamento" : "concluido";
-    updateTask.mutate({ id: task.id, status_global: newStatus as any });
+    const isDone = task.status_global === "concluido";
+
+    if (isDone) {
+      // Uncheck — just revert status
+      updateTask.mutate({ id: task.id, status_global: "em_andamento" as any });
+      return;
+    }
+
+    // 1) Mark current task as concluído
+    updateTask.mutate({ id: task.id, status_global: "concluido" as any });
+
+    // 2) Sync with Magic Number + Performance
+    if (user?.id) {
+      syncStage.mutate({ pmTaskId: task.id, completedStage: task.stage_current, userId: user.id });
+    }
+
+    // 3) Auto-create next stage task based on flow config
+    const nextStages = getNextStages(flowConfig, task.stage_current);
+    if (nextStages.length > 0) {
+      const nextStage = nextStages[0]; // use first configured next stage
+      const fixedAssignee = getFixedAssignee(stageAssignees, nextStage, task.client_id);
+      const assignee = fixedAssignee ?? task.assignee_id ?? undefined;
+
+      // Calculate due date: current due_date + offset (default +1 day)
+      const offset = transitionDates[task.stage_current];
+      const daysToAdd = typeof offset === "number" ? offset : 1;
+      const baseDueDate = task.due_date ?? task.posting_date ?? format(new Date(), "yyyy-MM-dd");
+      const nextDueDate = format(addDays(new Date(baseDueDate + "T00:00:00"), daysToAdd), "yyyy-MM-dd");
+
+      // Get client name for title prefix
+      const clientName = clientsMap[task.client_id] ?? "";
+      const stageDisplayName = stageLabel(nextStage) ?? nextStage;
+      const title = clientName ? `[${clientName}] ${stageDisplayName}` : stageDisplayName;
+
+      createTask.mutate({
+        client_id: task.client_id,
+        title,
+        stage_current: nextStage,
+        assignee_id: assignee,
+        due_date: nextDueDate,
+        project_id: (task as any).project_id ?? undefined,
+        is_extra_demand: task.is_extra_demand,
+      });
+
+      const assigneeName = assignee ? membersMap[assignee]?.name?.split(" ")[0] : null;
+      toast.success(`Próxima etapa criada: ${stageDisplayName}${assigneeName ? ` → ${assigneeName}` : ""}`);
+    }
   };
 
   const handleDelete = (taskId: string, e: React.MouseEvent) => {
