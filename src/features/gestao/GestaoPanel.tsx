@@ -187,8 +187,14 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
     <div className="space-y-4">
       {/* Header — Kanban de tarefas */}
       <div className="flex items-center justify-between opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
-        <h2 className="font-bold tracking-tight text-2xl">Kanban de tarefas</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="font-bold tracking-tight text-2xl">Kanban de tarefas</h2>
+        </div>
         <div className="flex items-center gap-2">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input placeholder="Buscar tarefa..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 w-48 pl-9 rounded-xl text-sm" />
+          </div>
           <Select value={filterClient} onValueChange={setFilterClient}>
             <SelectTrigger className="h-9 w-52 rounded-xl text-sm border-primary/30 bg-background/80">
               <SelectValue placeholder="Todos os clientes" />
@@ -200,14 +206,16 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
               ))}
             </SelectContent>
           </Select>
-          <FilterPopover
-            search={search}
-            setSearch={setSearch}
-            filterAssignee={filterAssignee}
-            setFilterAssignee={setFilterAssignee}
-            members={membersQ.data ?? []}
-          />
         </div>
+      </div>
+
+      {/* Member filter bar */}
+      <div className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.1s" }}>
+        <MemberFilterBar
+          members={membersQ.data ?? []}
+          selected={filterAssignee}
+          onSelect={setFilterAssignee}
+        />
       </div>
 
 
