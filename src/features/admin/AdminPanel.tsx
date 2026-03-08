@@ -252,11 +252,14 @@ export function AdminPanel() {
     [usersQ.data]
   );
 
-  /* ── role badges for a user ── */
+  /* ── role & squad badges for a user ── */
 
   const getRoleBadges = (userId: string) => {
     const roles = rolesQ.data?.get(userId) ?? [];
-    if (roles.length === 0) return null;
+    const squadIds = userSquadMap.get(userId) ?? [];
+    const squads = (squadsQ.data ?? []).filter((s: any) => squadIds.includes(s.id));
+
+    if (roles.length === 0 && squads.length === 0) return null;
     return (
       <div className="flex flex-wrap gap-1.5 justify-center">
         {roles.map((role) => {
@@ -273,6 +276,16 @@ export function AdminPanel() {
             </Badge>
           );
         })}
+        {squads.map((s: any) => (
+          <Badge
+            key={s.id}
+            variant="outline"
+            className="gap-1 text-xs font-normal border-sidebar text-sidebar"
+          >
+            <Users2 className="h-3 w-3" />
+            {s.name}
+          </Badge>
+        ))}
       </div>
     );
   };
