@@ -355,7 +355,7 @@ export function CronogramaClientBrowser({ tasks, childTasksMap, clientsMap, memb
                 onRename={handleRenamePost} /> :
 
 
-              <div className="rounded-2xl border bg-card/40 backdrop-blur-sm p-6 flex flex-col items-center justify-center min-h-[400px] text-center border-primary">
+              <div className="rounded-2xl border bg-card/40 backdrop-blur-sm p-6 flex flex-col items-center justify-center min-h-[400px] text-center border-[#d9d9d9]">
                     <Clock className="h-10 w-10 text-muted-foreground/20 mb-3" />
                     <p className="text-sm text-muted-foreground">Selecione um post para visualizar</p>
                   </div>
