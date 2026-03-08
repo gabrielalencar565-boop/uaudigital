@@ -30,7 +30,8 @@ interface Props {
 
 export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, onTaskClick, onCreateClick, filters, isAdmin }: Props) {
   const filtered = useMemo(() => {
-    let list = tasks;
+    // Exclude completed snapshots (they only show in the agenda view)
+    let list = tasks.filter((t) => t.status_global !== "concluido");
     if (filters.clientId) list = list.filter((t) => t.client_id === filters.clientId);
     if (filters.assigneeId) {
       const fixedClients = filters.fixedAssigneeClientIds ?? new Set<string>();
