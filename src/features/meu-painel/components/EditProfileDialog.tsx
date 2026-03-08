@@ -59,10 +59,22 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
       .maybeSingle()
       .then(({ data }) => {
         if (cancelled) return;
-        if (data) {
-          form.reset({ full_name: data.full_name ?? "", role_title: data.role_title ?? "" });
-          setAvatarUrl(data.avatar_url ?? null);
-        }
+        supabase
+          .from("team_members")
+          .select("birth_date")
+          .eq("user_id", user.id)
+          .maybeSingle()
+          .then(({ data: tmData }) => {
+            if (cancelled) return;
+            if (data) {
+              form.reset({
+                full_name: data.full_name ?? "",
+                role_title: data.role_title ?? "",
+                birth_date: (tmData as any)?.birth_date ?? "",
+              });
+              setAvatarUrl(data.avatar_url ?? null);
+            }
+          });
       });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
