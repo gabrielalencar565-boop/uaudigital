@@ -1,14 +1,42 @@
-import { useState, useMemo } from "react";
-import { format, startOfMonth, addMonths, subMonths } from "date-fns";
+import { useState, useMemo, useCallback, useRef } from "react";
+import { format, startOfMonth, endOfMonth, addMonths, subMonths, eachDayOfInterval, isSameDay, startOfWeek, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, FolderOpen, CalendarRange, Palette, ArrowLeft } from "lucide-react";
+import { ChevronLeft, ChevronRight, FolderOpen, CalendarRange, Palette, Clock, Link2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import type { PmTask } from "../../pm-types";
-import { PmCronogramaTab } from "../PmCronogramaTab";
+import { useUpdatePmTask } from "../../hooks/use-pm-data";
+import { toast } from "sonner";
+import { POST_TYPE_META, type CronogramaPost } from "./types";
+import { PostDetailSidebar } from "./PostDetailSidebar";
 import { PdfLayoutEditor } from "./PdfLayoutEditor";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+
+const sb = supabase as any;
+
+// Status legend for posts
+const STATUS_LEGEND = [
+  { color: "bg-emerald-500", label: "Aprovado pelo cliente" },
+  { color: "bg-blue-500", label: "Aprovado internamente" },
+  { color: "bg-amber-500", label: "Alterações (internas)" },
+  { color: "bg-red-500", label: "Alterações (cliente)" },
+  { color: "bg-primary", label: "Pendente do criador" },
+  { color: "bg-muted-foreground/30", label: "Sem posts" },
+];
+
+function getPostStatusColor(post: CronogramaPost): string {
+  const stage = post.stage_current;
+  if (stage === "entrega" || stage === "agendamento") return "bg-emerald-500";
+  if (stage === "revisao") return "bg-blue-500";
+  if (stage === "alteracoes") return "bg-amber-500";
+  if (stage === "pdf") return "bg-red-500";
+  return "bg-primary";
+}
 
 interface Props {
   tasks: PmTask[];
@@ -20,149 +48,333 @@ interface Props {
 
 export function CronogramaClientBrowser({ tasks, childTasksMap, clientsMap, membersMap, onTaskClick }: Props) {
   const [cursor, setCursor] = useState(() => startOfMonth(new Date()));
-  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"clientes" | "layout">("clientes");
+  const [selectedClientId, setSelectedClientId] = useState<string>("__all__");
+  const [selectedPost, setSelectedPost] = useState<CronogramaPost | null>(null);
+  const [activeTab, setActiveTab] = useState<"calendario" | "layout">("calendario");
+  const [dragOverDay, setDragOverDay] = useState<string | null>(null);
+  const dragPostId = useRef<string | null>(null);
 
+  const updateTask = useUpdatePmTask();
   const year = cursor.getFullYear();
   const month = cursor.getMonth() + 1;
 
-  // Group parent tasks by client, filter by month based on child posting_date
-  const clientGroups = useMemo(() => {
-    const groups: Record<string, { clientId: string; clientName: string; parentTasks: PmTask[]; postCount: number; thumbUrl: string | null }> = {};
-
+  // Get all unique client IDs that have scheduled posts
+  const clientOptions = useMemo(() => {
+    const clientIds = new Set<string>();
     tasks.forEach(t => {
       const children = childTasksMap[t.id] ?? [];
-      const monthChildren = children.filter(c => {
-        if (!c.posting_date) return false;
-        const d = new Date(c.posting_date + "T12:00:00");
-        return d.getFullYear() === year && d.getMonth() + 1 === month;
-      });
-      if (monthChildren.length === 0) return;
+      const hasScheduled = children.some(c => c.posting_date);
+      if (hasScheduled) clientIds.add(t.client_id);
+    });
+    return Array.from(clientIds)
+      .map(id => ({ id, name: clientsMap[id] ?? "—" }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [tasks, childTasksMap, clientsMap]);
 
-      const cid = t.client_id;
-      if (!groups[cid]) {
-        groups[cid] = { clientId: cid, clientName: clientsMap[cid] ?? "—", parentTasks: [], postCount: 0, thumbUrl: null };
-      }
-      groups[cid].parentTasks.push(t);
-      groups[cid].postCount += monthChildren.length;
-      // Use first child's cover/attachment as thumb
-      if (!groups[cid].thumbUrl) {
-        const firstWithImg = monthChildren.find(c => c.cover_url);
-        if (firstWithImg) groups[cid].thumbUrl = firstWithImg.cover_url;
+  // Fetch attachments for selected client's child tasks
+  const filteredParentTasks = useMemo(() => {
+    if (selectedClientId === "__all__") return [];
+    return tasks.filter(t => t.client_id === selectedClientId);
+  }, [tasks, selectedClientId]);
+
+  const allChildTasks = useMemo(() => {
+    return filteredParentTasks.flatMap(t => childTasksMap[t.id] ?? []);
+  }, [filteredParentTasks, childTasksMap]);
+
+  const childIds = useMemo(() => allChildTasks.map(t => t.id), [allChildTasks]);
+
+  const attachmentsQ = useQuery({
+    queryKey: ["pm_attachments_batch", childIds],
+    enabled: childIds.length > 0,
+    queryFn: async () => {
+      const { data } = await sb
+        .from("pm_attachments")
+        .select("task_id, public_url, file_type, order_index")
+        .in("task_id", childIds)
+        .order("order_index", { ascending: true })
+        .order("created_at", { ascending: true });
+      return (data ?? []) as { task_id: string; public_url: string | null; file_type: string | null; order_index: number }[];
+    },
+  });
+
+  // Build scheduled posts
+  const scheduledPosts: CronogramaPost[] = useMemo(() => {
+    const attachments = attachmentsQ.data ?? [];
+    const firstImageMap = new Map<string, string>();
+    const allImagesMap = new Map<string, string[]>();
+    attachments.forEach(att => {
+      if (att.file_type?.startsWith("image/") && att.public_url) {
+        if (!firstImageMap.has(att.task_id)) firstImageMap.set(att.task_id, att.public_url);
+        const existing = allImagesMap.get(att.task_id) ?? [];
+        existing.push(att.public_url);
+        allImagesMap.set(att.task_id, existing);
       }
     });
 
-    return Object.values(groups).sort((a, b) => a.clientName.localeCompare(b.clientName));
-  }, [tasks, childTasksMap, clientsMap, year, month]);
+    return allChildTasks
+      .filter(t => t.posting_date)
+      .map(t => ({
+        ...t,
+        attachment_url: firstImageMap.get(t.id) ?? null,
+        all_attachment_urls: allImagesMap.get(t.id) ?? [],
+      }))
+      .sort((a, b) => (a.posting_date! > b.posting_date! ? 1 : -1));
+  }, [allChildTasks, attachmentsQ.data]);
 
-  const selectedGroup = selectedClientId ? clientGroups.find(g => g.clientId === selectedClientId) : null;
+  // Posts by day
+  const postsByDay = useMemo(() => {
+    const map = new Map<string, CronogramaPost[]>();
+    scheduledPosts.forEach(p => {
+      if (!p.posting_date) return;
+      map.set(p.posting_date, [...(map.get(p.posting_date) ?? []), p]);
+    });
+    return map;
+  }, [scheduledPosts]);
 
-  // If a client is selected, show its cronograma
-  if (selectedGroup) {
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" className="gap-1.5 text-xs rounded-xl" onClick={() => setSelectedClientId(null)}>
-            <ArrowLeft className="h-3.5 w-3.5" /> Voltar
-          </Button>
-          <div className="flex items-center gap-2">
-            <h3 className="text-base font-bold">{selectedGroup.clientName}</h3>
-            <Badge variant="secondary" className="text-[10px]">
-              {format(cursor, "MMMM yyyy", { locale: ptBR })}
-            </Badge>
-          </div>
-        </div>
+  // Calendar days
+  const days = useMemo(() => {
+    const start = startOfWeek(startOfMonth(cursor), { weekStartsOn: 0 });
+    const end = endOfMonth(cursor);
+    const out: Date[] = [];
+    let d = start;
+    while (d <= end || out.length % 7 !== 0) {
+      out.push(d);
+      d = addDays(d, 1);
+      if (out.length >= 42) break;
+    }
+    return out;
+  }, [cursor]);
 
-        {selectedGroup.parentTasks.map(task => {
-          // Filter children for current month only
-          const allChildren = childTasksMap[task.id] ?? [];
-          const monthChildren = allChildren.filter(c => {
-            if (!c.posting_date) return false;
-            const d = new Date(c.posting_date + "T12:00:00");
-            return d.getFullYear() === year && d.getMonth() + 1 === month;
-          });
-          if (monthChildren.length === 0) return null;
+  const resolvedSelected = useMemo(() => {
+    if (!selectedPost) return null;
+    return scheduledPosts.find(p => p.id === selectedPost.id) ?? null;
+  }, [selectedPost, scheduledPosts]);
 
-          return (
-            <div key={task.id} className="space-y-2">
-              <div className="flex items-center gap-2 cursor-pointer hover:opacity-80" onClick={() => onTaskClick(task)}>
-                <Badge className="text-[10px] bg-primary/10 text-primary border-0">{task.title}</Badge>
-                <span className="text-xs text-muted-foreground">{monthChildren.length} postagens</span>
-              </div>
-              <PmCronogramaTab
-                parentTask={task}
-                childTasks={monthChildren}
-                clientName={selectedGroup.clientName}
-                membersMap={membersMap}
-              />
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
+  const handleDragStart = useCallback((postId: string) => {
+    dragPostId.current = postId;
+  }, []);
+
+  const handleDrop = useCallback((dayKey: string) => {
+    if (dragPostId.current) {
+      updateTask.mutate({ id: dragPostId.current, posting_date: dayKey } as any);
+      toast.success("Data atualizada!");
+    }
+    dragPostId.current = null;
+    setDragOverDay(null);
+  }, [updateTask]);
+
+  const handleShare = async () => {
+    const parentTask = filteredParentTasks[0];
+    if (!parentTask) return;
+    const shareUrl = `${window.location.origin}/cronograma/${parentTask.id}`;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success("Link copiado para a área de transferência!");
+    } catch {
+      toast.info(`Link: ${shareUrl}`);
+    }
+  };
+
+  const handleUpdatePost = (field: string, value: string | null) => {
+    if (!resolvedSelected) return;
+    updateTask.mutate({ id: resolvedSelected.id, [field]: value || null } as any);
+  };
+
+  const handleRenamePost = (newTitle: string) => {
+    if (!resolvedSelected) return;
+    updateTask.mutate({ id: resolvedSelected.id, title: newTitle } as any);
+    toast.success("Nome atualizado!");
+  };
+
+  const goToday = () => setCursor(startOfMonth(new Date()));
+
+  const noClientSelected = selectedClientId === "__all__";
 
   return (
     <div className="space-y-5">
-      <Tabs value={activeTab} onValueChange={v => setActiveTab(v as any)}>
-        <div className="flex items-center justify-between">
-          <TabsList className="bg-muted/40 h-9 p-0.5 rounded-xl gap-0.5">
-            <TabsTrigger value="clientes" className="gap-1.5 text-xs h-8 rounded-lg data-[state=active]:shadow-sm">
-              <FolderOpen className="h-3.5 w-3.5" /> Clientes
-            </TabsTrigger>
-            <TabsTrigger value="layout" className="gap-1.5 text-xs h-8 rounded-lg data-[state=active]:shadow-sm">
-              <Palette className="h-3.5 w-3.5" /> Layout PDF
-            </TabsTrigger>
-          </TabsList>
+      {/* Header */}
+      <div className="flex items-center justify-between opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards" }}>
+        <h2 className="text-lg font-bold tracking-tight">Calendário de publicações</h2>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span>📅 {format(new Date(), "dd/MM/yyyy")}</span>
+          <span>🕐 {format(new Date(), "HH:mm:ss")}</span>
+        </div>
+      </div>
 
-          {activeTab === "clientes" && (
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => setCursor(d => startOfMonth(subMonths(d, 1)))}>
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <h3 className="text-sm font-bold capitalize min-w-[140px] text-center">
-                {format(cursor, "MMMM yyyy", { locale: ptBR })}
-              </h3>
-              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => setCursor(d => startOfMonth(addMonths(d, 1)))}>
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
+      {/* Controls bar */}
+      <div className="flex items-center justify-between opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.1s" }}>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => setCursor(d => startOfMonth(subMonths(d, 1)))}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="sm" className="text-xs rounded-xl h-8 px-3" onClick={goToday}>
+            Hoje
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => setCursor(d => startOfMonth(addMonths(d, 1)))}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          <h3 className="text-base font-bold capitalize ml-2">
+            {format(cursor, "MMMM yyyy", { locale: ptBR })}
+          </h3>
         </div>
 
-        <TabsContent value="clientes" className="mt-4">
-          {clientGroups.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <CalendarRange className="h-12 w-12 text-muted-foreground/30 mb-4" />
-              <h3 className="text-sm font-semibold mb-1">Nenhum cronograma neste mês</h3>
-              <p className="text-xs text-muted-foreground max-w-sm">
-                Nenhuma postagem agendada para {format(cursor, "MMMM yyyy", { locale: ptBR })}.
+        <div className="flex items-center gap-2">
+          <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+            <SelectTrigger className="h-8 w-52 text-xs rounded-xl border-border/30 bg-background/80">
+              <SelectValue placeholder="Todos os clientes" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl">
+              <SelectItem value="__all__">Todos os clientes</SelectItem>
+              {clientOptions.map(c => (
+                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {!noClientSelected && (
+            <>
+              <Button variant="outline" size="sm" className="gap-1.5 text-xs rounded-xl h-8" onClick={handleShare}>
+                <Link2 className="h-3.5 w-3.5" /> Link público
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={v => setActiveTab(v as any)}>
+        <TabsList className="bg-muted/40 h-9 p-0.5 rounded-xl gap-0.5 mb-4 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.15s" }}>
+          <TabsTrigger value="calendario" className="gap-1.5 text-xs h-8 rounded-lg data-[state=active]:shadow-sm">
+            <CalendarRange className="h-3.5 w-3.5" /> Calendário
+          </TabsTrigger>
+          <TabsTrigger value="layout" className="gap-1.5 text-xs h-8 rounded-lg data-[state=active]:shadow-sm">
+            <Palette className="h-3.5 w-3.5" /> Layout PDF
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="calendario">
+          {noClientSelected ? (
+            /* Skeleton placeholder */
+            <div className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.2s" }}>
+              <div className="grid grid-cols-3 gap-4 mb-6">
+                {[0, 1, 2].map(i => (
+                  <div key={i} className="rounded-2xl border border-dashed border-border/40 p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-3 w-3 rounded-full" />
+                      <Skeleton className="h-4 w-24" />
+                    </div>
+                    {Array.from({ length: i === 0 ? 4 : i === 1 ? 3 : 2 }).map((_, j) => (
+                      <div key={j} className="rounded-xl border border-dashed border-border/30 p-3 space-y-2">
+                        <Skeleton className="h-3.5 w-3/4" />
+                        <Skeleton className="h-10 w-full rounded-lg" />
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+              <p className="text-center text-sm text-muted-foreground">
+                Selecione um cliente acima para visualizar suas tarefas
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-              {clientGroups.map(g => (
-                <div
-                  key={g.clientId}
-                  className="rounded-2xl border border-border/30 bg-card/60 backdrop-blur-sm p-4 cursor-pointer transition-all hover:border-primary/40 hover:shadow-md hover:-translate-y-0.5 group"
-                  onClick={() => setSelectedClientId(g.clientId)}
-                >
-                  {/* Thumbnail */}
-                  {g.thumbUrl ? (
-                    <img src={g.thumbUrl} alt="" className="w-full aspect-square rounded-xl object-cover mb-3 group-hover:scale-[1.02] transition-transform" />
-                  ) : (
-                    <div className="w-full aspect-square rounded-xl bg-muted/30 flex items-center justify-center mb-3">
-                      <FolderOpen className="h-8 w-8 text-muted-foreground/30" />
-                    </div>
-                  )}
-                  <h4 className="text-sm font-bold truncate">{g.clientName}</h4>
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <Badge variant="secondary" className="text-[9px] px-1.5">
-                      {g.postCount} {g.postCount === 1 ? "postagem" : "postagens"}
-                    </Badge>
+            /* Calendar grid */
+            <div className="flex gap-4 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.2s" }}>
+              <div className="flex-1 min-w-0">
+                <div className="rounded-2xl border border-border/30 bg-card/40 backdrop-blur-sm p-3">
+                  {/* Weekday headers */}
+                  <div className="grid grid-cols-7 mb-1">
+                    {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map(d => (
+                      <div key={d} className="px-2 py-2 text-xs font-semibold text-muted-foreground/60 text-center">{d}</div>
+                    ))}
+                  </div>
+
+                  {/* Days grid */}
+                  <div className="grid grid-cols-7 gap-1">
+                    {days.map(day => {
+                      const key = format(day, "yyyy-MM-dd");
+                      const inMonth = day.getMonth() === cursor.getMonth();
+                      const dayPosts = postsByDay.get(key) ?? [];
+                      const isToday = isSameDay(day, new Date());
+                      const isDragOver = dragOverDay === key;
+
+                      return (
+                        <div
+                          key={key}
+                          className={cn(
+                            "min-h-24 rounded-xl border p-2 transition-all",
+                            inMonth ? "border-border/20 bg-card/30" : "border-transparent opacity-30",
+                            isToday && "border-primary/50 ring-2 ring-primary/15 bg-primary/5",
+                            isDragOver && "border-primary ring-2 ring-primary/30 bg-primary/10",
+                            dayPosts.length > 0 && "cursor-pointer hover:border-primary/30"
+                          )}
+                          onClick={() => dayPosts.length > 0 && setSelectedPost(dayPosts[0])}
+                          onDragOver={(e) => { e.preventDefault(); setDragOverDay(key); }}
+                          onDragLeave={() => setDragOverDay(null)}
+                          onDrop={(e) => { e.preventDefault(); handleDrop(key); }}
+                        >
+                          <div className={cn(
+                            "text-xs font-bold mb-1",
+                            isToday ? "text-primary" : "text-muted-foreground/60"
+                          )}>
+                            {format(day, "d")}
+                          </div>
+                          <div className="space-y-0.5">
+                            {dayPosts.map(post => {
+                              const statusColor = getPostStatusColor(post);
+                              return (
+                                <div
+                                  key={post.id}
+                                  draggable
+                                  onDragStart={() => handleDragStart(post.id)}
+                                  className={cn(
+                                    "rounded-lg px-1.5 py-1 text-[10px] font-medium truncate cursor-grab active:cursor-grabbing transition-all hover:opacity-80",
+                                    statusColor === "bg-primary" ? "bg-primary/15 text-primary" :
+                                    statusColor === "bg-emerald-500" ? "bg-emerald-500/15 text-emerald-600" :
+                                    statusColor === "bg-blue-500" ? "bg-blue-500/15 text-blue-600" :
+                                    statusColor === "bg-amber-500" ? "bg-amber-500/15 text-amber-600" :
+                                    "bg-red-500/15 text-red-600",
+                                    resolvedSelected?.id === post.id && "ring-1 ring-primary"
+                                  )}
+                                  onClick={(e) => { e.stopPropagation(); setSelectedPost(post); }}
+                                >
+                                  {post.posting_time && `${post.posting_time} – `}{post.title}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Status legend */}
+                  <div className="flex items-center gap-4 mt-4 pt-3 border-t border-border/20 flex-wrap">
+                    {STATUS_LEGEND.map(s => (
+                      <div key={s.label} className="flex items-center gap-1.5">
+                        <div className={cn("h-2.5 w-2.5 rounded-full border border-background", s.color)} />
+                        <span className="text-[10px] text-muted-foreground">{s.label}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              ))}
+              </div>
+
+              {/* Sidebar */}
+              <div className="w-80 shrink-0">
+                {resolvedSelected ? (
+                  <PostDetailSidebar
+                    post={resolvedSelected}
+                    onClose={() => setSelectedPost(null)}
+                    onUpdate={handleUpdatePost}
+                    onRename={handleRenamePost}
+                  />
+                ) : (
+                  <div className="rounded-2xl border border-border/30 bg-card/40 backdrop-blur-sm p-6 flex flex-col items-center justify-center min-h-[400px] text-center">
+                    <Clock className="h-10 w-10 text-muted-foreground/20 mb-3" />
+                    <p className="text-sm text-muted-foreground">Selecione um post para visualizar</p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </TabsContent>
