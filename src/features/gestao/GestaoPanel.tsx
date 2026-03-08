@@ -326,6 +326,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
           childTasksMap={childTasksMap}
           clientsMap={clientsMap}
           membersMap={membersMap}
+          filterClient={filterClient}
           onTaskClick={(t) => setSelectedTaskId(t.id)} />
 
         }
@@ -591,20 +592,14 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
 // ─── Cronograma Global View ───
 import { CronogramaClientBrowser } from "./components/cronograma/CronogramaClientBrowser";
 
-function CronogramaGlobalView({ tasks, childTasksMap, clientsMap, membersMap, onTaskClick
-
-
-
-
-
-}: {tasks: PmTask[];childTasksMap: Record<string, PmTask[]>;clientsMap: Record<string, string>;membersMap: Record<string, {name: string;avatar?: string;}>;onTaskClick: (t: PmTask) => void;}) {
+function CronogramaGlobalView({ tasks, childTasksMap, clientsMap, membersMap, onTaskClick, filterClient
+}: {tasks: PmTask[];childTasksMap: Record<string, PmTask[]>;clientsMap: Record<string, string>;membersMap: Record<string, {name: string;avatar?: string;}>;onTaskClick: (t: PmTask) => void; filterClient: string;}) {
   return (
     <CronogramaClientBrowser
       tasks={tasks}
       childTasksMap={childTasksMap}
       clientsMap={clientsMap}
       membersMap={membersMap}
-      onTaskClick={onTaskClick} />);
-
-
+      onTaskClick={onTaskClick}
+      filterClient={filterClient} />);
 }
