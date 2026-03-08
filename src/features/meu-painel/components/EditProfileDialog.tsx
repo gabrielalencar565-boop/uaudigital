@@ -45,7 +45,7 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
 
   const form = useForm<ProfileValues>({
     resolver: zodResolver(profileSchema),
-    defaultValues: { full_name: "", role_title: "" },
+    defaultValues: { full_name: "", role_title: "", birth_date: "" },
   });
 
   // Load current profile when dialog opens
