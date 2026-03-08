@@ -328,7 +328,7 @@ export function MagicPanel({
             </div> : null}
           </TabsContent>}
 
-        <TabsContent value="dashboard" className="mt-0">
+        <TabsContent value="dashboard" className="mt-0 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.15s" }}>
            {activeClients.length === 0 ? <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
