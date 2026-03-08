@@ -139,6 +139,7 @@ export function UauSidebarShell({
     for (const e of NAV) {
       if (!isGroup(e) && e.key === tab) return e.label;
       if (isGroup(e)) {
+        if (e.landingTab === tab) return e.label;
         const child = e.children.find((c) => c.key === tab);
         if (child) return child.label;
       }
