@@ -99,9 +99,10 @@ export function MeuPainelPanel() {
   const { user } = useSession();
   const { isAdmin } = useRole(user?.id);
 
-  const [myProfile, setMyProfile] = useState<{ full_name: string; avatar_url: string | null } | null>(null);
+  const [myProfile, setMyProfile] = useState<{ full_name: string; avatar_url: string | null; birth_date?: string | null } | null>(null);
   const [profileVersion, setProfileVersion] = useState(0);
   const [selectedPmTaskId, setSelectedPmTaskId] = useState<string | null>(null);
+  const [confettiFired, setConfettiFired] = useState(false);
   const today = useNow();
   const todayKey = format(today, "yyyy-MM-dd");
 
