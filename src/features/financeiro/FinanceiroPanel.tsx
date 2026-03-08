@@ -30,26 +30,28 @@ export function FinanceiroPanel() {
         <p className="text-sm text-muted-foreground">Controle financeiro completo da empresa.</p>
       </div>
 
-      <Tabs value={subTab} onValueChange={(v) => setSubTab(v as FinSubTab)}>
-        <ScrollArea className="w-full">
-          <TabsList className="inline-flex w-max">
-            {TABS.map((t) => (
-              <TabsTrigger key={t.key} value={t.key} className="gap-1.5 whitespace-nowrap">
-                <t.icon className="h-4 w-4" />
-                {t.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
+      <div className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.15s" }}>
+        <Tabs value={subTab} onValueChange={(v) => setSubTab(v as FinSubTab)}>
+          <ScrollArea className="w-full">
+            <TabsList className="inline-flex w-max">
+              {TABS.map((t) => (
+                <TabsTrigger key={t.key} value={t.key} className="gap-1.5 whitespace-nowrap">
+                  <t.icon className="h-4 w-4" />
+                  {t.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
 
-        <TabsContent value="clientes" className="mt-6"><FinClientesTab /></TabsContent>
-        <TabsContent value="receitas_despesas" className="mt-6"><FinReceitasDespesasTab /></TabsContent>
-        <TabsContent value="despesas_detalhadas" className="mt-6"><FinDespesasDetalhadasTab /></TabsContent>
-        <TabsContent value="lancamentos" className="mt-6"><FinLancamentosTab /></TabsContent>
-        <TabsContent value="fluxo_caixa" className="mt-6"><FinFluxoCaixaTab /></TabsContent>
-        <TabsContent value="visao_anual" className="mt-6"><FinVisaoAnualTab /></TabsContent>
-      </Tabs>
+          <TabsContent value="clientes" className="mt-6 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.3s" }}><FinClientesTab /></TabsContent>
+          <TabsContent value="receitas_despesas" className="mt-6 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.3s" }}><FinReceitasDespesasTab /></TabsContent>
+          <TabsContent value="despesas_detalhadas" className="mt-6 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.3s" }}><FinDespesasDetalhadasTab /></TabsContent>
+          <TabsContent value="lancamentos" className="mt-6 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.3s" }}><FinLancamentosTab /></TabsContent>
+          <TabsContent value="fluxo_caixa" className="mt-6 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.3s" }}><FinFluxoCaixaTab /></TabsContent>
+          <TabsContent value="visao_anual" className="mt-6 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.3s" }}><FinVisaoAnualTab /></TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 }
