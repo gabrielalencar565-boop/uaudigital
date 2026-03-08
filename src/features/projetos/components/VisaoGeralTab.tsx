@@ -562,7 +562,7 @@ export function VisaoGeralTab() {
 
       {/* Edit squad dialog */}
       <Dialog open={!!editSquad} onOpenChange={(v) => !v && setEditSquad(null)}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Editar Squad</DialogTitle>
             <DialogDescription>Altere os dados do squad.</DialogDescription>
@@ -598,35 +598,25 @@ export function VisaoGeralTab() {
                 </SelectContent>
               </Select>
             </div>
+            <div>
+              <label className="text-sm font-medium">Membros</label>
+              <div className="max-h-48 overflow-y-auto space-y-1 mt-2 border border-border rounded-xl p-2">
+                {allTeam.map((m) => (
+                  <label key={m.user_id} className="flex items-center gap-3 px-2 py-1.5 rounded-xl hover:bg-muted/50 cursor-pointer">
+                    <Checkbox checked={selectedUsers.includes(m.user_id)} onCheckedChange={() => toggleUser(m.user_id)} />
+                    <Avatar className="h-6 w-6">
+                      <AvatarImage src={m.avatar_url ?? undefined} />
+                      <AvatarFallback className="text-[9px]">{initials(m.display_name)}</AvatarFallback>
+                    </Avatar>
+                    <span className="text-sm">{m.display_name}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setEditSquad(null)}>Cancelar</Button>
             <Button variant="hero" onClick={saveEdit} disabled={!editName.trim()}>Salvar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Config members dialog */}
-      <Dialog open={!!configSquad} onOpenChange={(v) => !v && setConfigSquad(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Membros — {configSquad?.name}</DialogTitle></DialogHeader>
-          <div className="max-h-72 overflow-y-auto space-y-1">
-            {allTeam.map((m) => (
-              <label key={m.user_id} className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-muted/50 cursor-pointer">
-                <Checkbox checked={selectedUsers.includes(m.user_id)} onCheckedChange={() => toggleUser(m.user_id)} />
-                <Avatar className="h-7 w-7">
-                  <AvatarImage src={m.avatar_url ?? undefined} />
-                  <AvatarFallback className="text-[10px]">{initials(m.display_name)}</AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className="text-sm font-medium">{m.display_name}</p>
-                  <p className="text-[10px] text-muted-foreground">{m.role_title}</p>
-                </div>
-              </label>
-            ))}
-          </div>
-          <DialogFooter>
-            <Button onClick={saveConfig}>Salvar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
