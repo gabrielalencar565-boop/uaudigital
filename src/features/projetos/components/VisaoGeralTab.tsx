@@ -199,12 +199,6 @@ export function VisaoGeralTab() {
     });
   };
 
-  const saveConfig = () => {
-    if (!configSquad) return;
-    updateMembers.mutate({ squadId: configSquad.id, userIds: selectedUsers }, {
-      onSuccess: () => setConfigSquad(null),
-    });
-  };
 
   const toggleUser = (uid: string) => {
     setSelectedUsers((prev) => prev.includes(uid) ? prev.filter((u) => u !== uid) : [...prev, uid]);
