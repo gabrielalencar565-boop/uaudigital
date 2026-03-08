@@ -259,3 +259,55 @@ All colors MUST be HSL.
     transform: translateY(0);
   }
 }
+
+/* Animated gradient border for calendar/cronograma cards */
+@property --border-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes rotateBorder {
+  to {
+    --border-angle: 360deg;
+  }
+}
+
+.calendar-card-hover {
+  position: relative;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.calendar-card-hover::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  padding: 2px;
+  background: conic-gradient(
+    from var(--border-angle),
+    transparent 40%,
+    hsl(263 70% 50%) 50%,
+    hsl(263 70% 65%) 55%,
+    hsl(280 60% 70%) 60%,
+    transparent 70%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  animation: rotateBorder 3s linear infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.calendar-card-hover:hover::before {
+  opacity: 1;
+}
+
+.calendar-card-hover:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 12px 28px -8px hsl(263 70% 50% / 0.18), 0 4px 12px -4px hsl(263 70% 50% / 0.1);
+}
