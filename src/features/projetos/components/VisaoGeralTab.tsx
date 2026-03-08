@@ -300,7 +300,7 @@ export function VisaoGeralTab() {
         <Card>
           <CardContent className="py-5 px-5 space-y-3">
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center"><FileText className="h-4 w-4 text-muted-foreground" /></div>
+              <div className="h-10 w-10 rounded-xl bg-sidebar/10 flex items-center justify-center"><FileText className="h-5 w-5 text-sidebar" /></div>
               <div>
                 <p className="text-sm font-semibold">Planejamentos gerais</p>
                 <p className="text-xs text-muted-foreground">Planejamentos a serem entregues</p>
@@ -317,7 +317,7 @@ export function VisaoGeralTab() {
         <Card>
           <CardContent className="py-5 px-5 space-y-3">
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center"><Users className="h-4 w-4 text-muted-foreground" /></div>
+              <div className="h-10 w-10 rounded-xl bg-sidebar/10 flex items-center justify-center"><Users className="h-5 w-5 text-sidebar" /></div>
               <div>
                 <p className="text-sm font-semibold">Contas por Squad</p>
                 <p className="text-xs text-muted-foreground">Total: {new Set(allTasks.map((t) => t.client_id)).size} contas ativas</p>
@@ -346,7 +346,7 @@ export function VisaoGeralTab() {
       <Card>
         <CardContent className="py-5 px-5 space-y-3">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center"><CheckCircle2 className="h-4 w-4 text-muted-foreground" /></div>
+            <div className="h-10 w-10 rounded-xl bg-sidebar/10 flex items-center justify-center"><CheckCircle2 className="h-5 w-5 text-sidebar" /></div>
             <div>
               <p className="text-sm font-semibold">Tarefas gerais</p>
               <p className="text-xs text-muted-foreground">Tarefas em andamento</p>
@@ -365,7 +365,7 @@ export function VisaoGeralTab() {
         <Card>
           <CardContent className="py-5 px-5 space-y-3">
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center"><CalendarDays className="h-4 w-4 text-muted-foreground" /></div>
+              <div className="h-10 w-10 rounded-xl bg-sidebar/10 flex items-center justify-center"><CalendarDays className="h-5 w-5 text-sidebar" /></div>
               <p className="text-sm font-semibold">Timeline de projetos especiais</p>
             </div>
             <div className="text-center py-8 text-xs text-muted-foreground">
@@ -454,7 +454,7 @@ export function VisaoGeralTab() {
       {/* Health Score access */}
       <Card className="cursor-pointer hover:border-primary/40 transition-colors" onClick={() => setShowHealthScore(true)}>
         <CardContent className="flex items-center gap-4 py-4 px-5">
-          <HeartPulse className="h-6 w-6 text-red-500" />
+          <div className="h-10 w-10 rounded-xl bg-sidebar/10 flex items-center justify-center"><HeartPulse className="h-5 w-5 text-sidebar" /></div>
           <div>
             <p className="text-sm font-semibold">Health Score</p>
             <p className="text-xs text-muted-foreground">Avaliar saúde dos clientes</p>
