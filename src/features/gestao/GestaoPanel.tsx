@@ -471,9 +471,9 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
           return (
             <div
               key={key}
-              className={cn("relative min-h-28 rounded-2xl border bg-card/30 backdrop-blur-sm p-2.5 transition-all calendar-card-hover border-[#d9d9d9]",
+              className={cn("relative min-h-28 rounded-2xl border border-[#d9d9d9] bg-card/30 backdrop-blur-sm p-2.5 transition-all calendar-card-hover",
 
-              inMonth ? "opacity-100 border-border/20" : "opacity-30 border-transparent",
+              inMonth ? "opacity-100" : "opacity-30 border-transparent",
               isToday && "border-primary/50 ring-2 ring-primary/15 bg-primary/5"
               )}>
               
