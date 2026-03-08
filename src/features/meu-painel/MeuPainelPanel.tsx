@@ -290,44 +290,41 @@ export function MeuPainelPanel() {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
-        {/* ── VisionOS Holographic Greeting Widget ── */}
-        <div className="md:col-span-2 relative group" style={{ perspective: "800px" }}>
-          {/* Animated gradient mesh background (bleeds behind card for glow) */}
-          <div className="absolute -inset-1 rounded-[32px] overflow-hidden opacity-70 blur-sm group-hover:opacity-100 transition-opacity duration-700">
-            <div className="absolute inset-0 visionos-mesh" />
-          </div>
+        <div className="md:col-span-2 relative group overflow-hidden rounded-2xl border border-sidebar/20 shadow-lg shadow-sidebar/5">
+          {/* Animated gradient mesh background */}
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_20%_30%,hsl(var(--sidebar)/0.35),transparent),radial-gradient(ellipse_60%_70%_at_80%_70%,hsl(var(--sidebar)/0.25),transparent),radial-gradient(ellipse_50%_50%_at_50%_50%,hsl(var(--sidebar)/0.10),transparent)] animate-[meshShift_8s_ease-in-out_infinite]" />
+          
+          {/* Animated geometric grid overlay */}
+          <div
+            className="absolute inset-0 opacity-[0.08]"
+            style={{
+              backgroundImage: `linear-gradient(hsl(var(--sidebar)/0.6) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--sidebar)/0.6) 1px, transparent 1px)`,
+              backgroundSize: "40px 40px",
+              animation: "gridDrift 20s linear infinite",
+            }}
+          />
 
-          {/* Main glass card */}
-          <div className="relative overflow-hidden rounded-[30px] visionos-glass">
-            {/* Holographic grid overlay */}
-            <div className="absolute inset-0 visionos-grid pointer-events-none" />
+          {/* Glow border effect */}
+          <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-sidebar/10 pointer-events-none" />
+          <div className="absolute -inset-px rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 bg-[radial-gradient(circle_at_50%_0%,hsl(var(--sidebar)/0.15),transparent_70%)]" />
 
-            {/* Soft inner glow edges */}
-            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[#7C3AED]/20 to-transparent" />
-
-            {/* Content */}
-            <div className="relative z-10 flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:p-6">
-              <div className="flex min-w-0 items-center gap-4">
-                {/* Avatar with animated holographic border */}
-                <div className="relative shrink-0">
-                  <div className="absolute -inset-[3px] rounded-full visionos-avatar-ring" />
-                  <Avatar className="h-12 w-12 relative ring-2 ring-white/10">
-                    <AvatarImage src={myProfile?.avatar_url ?? undefined} alt={myProfile?.full_name ?? ""} />
-                    <AvatarFallback className="bg-[#7C3AED]/20 text-white/90 font-bold text-sm">{initials(myProfile?.full_name ?? "?")}</AvatarFallback>
-                  </Avatar>
-                </div>
-                <div className="min-w-0">
-                  <h2 className="truncate text-lg font-semibold tracking-tight text-white/95">{headerGreeting}</h2>
-                  <p className="break-words whitespace-normal text-sm text-white/50">{headerLine}</p>
-                </div>
+          {/* Content */}
+          <div className="relative z-10 flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:p-5">
+            <div className="flex min-w-0 items-center gap-3">
+              <Avatar className="h-11 w-11 ring-2 ring-sidebar/20 shadow-md shadow-sidebar/10">
+                <AvatarImage src={myProfile?.avatar_url ?? undefined} alt={myProfile?.full_name ?? ""} />
+                <AvatarFallback className="bg-sidebar/10 text-sidebar font-bold">{initials(myProfile?.full_name ?? "?")}</AvatarFallback>
+              </Avatar>
+              <div className="min-w-0">
+                <h2 className="truncate text-lg font-semibold tracking-tight">{headerGreeting}</h2>
+                <p className="break-words whitespace-normal text-sm text-muted-foreground">{headerLine}</p>
               </div>
+            </div>
 
-              {/* Glassmorphism date pill */}
-              <div className="flex items-center gap-2">
-                <div className="visionos-pill inline-flex items-center rounded-full px-4 py-1.5 text-sm font-semibold tabular-nums text-white/90">
-                  {format(today, "dd/MM")}
-                </div>
+            {/* Glassmorphism badge */}
+            <div className="flex items-center gap-2">
+              <div className="inline-flex items-center rounded-full px-3.5 py-1.5 text-sm font-semibold tabular-nums backdrop-blur-md bg-sidebar/10 border border-sidebar/15 text-sidebar shadow-sm shadow-sidebar/5">
+                {format(today, "dd/MM")}
               </div>
             </div>
           </div>
