@@ -19,7 +19,7 @@ import { PmKanbanBoard } from "./components/PmKanbanBoard";
 import { PmClientView } from "./components/PmClientView";
 import { PmTaskDetailDialog } from "./components/PmTaskDetailDialog";
 import { PmCreateTaskDialog } from "./components/PmCreateTaskDialog";
-import { PmStageFlowConfig, useStageFlows, getNextStages, getFixedAssignee } from "./components/PmStageFlowConfig";
+import { PmStageFlowConfig, useStageFlows } from "./components/PmStageFlowConfig";
 import { PmAssigneeFlowConfig } from "./components/PmAssigneeFlowConfig";
 import type { StageAssignees } from "./components/PmStageFlowConfig";
 import { PmPautaView } from "./components/PmPautaView";
