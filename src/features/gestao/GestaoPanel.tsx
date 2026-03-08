@@ -498,7 +498,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards" }}>
       {/* Header: pill toggle + month nav */}
       <div className="flex flex-wrap items-center gap-4">
         <Tabs value={agendaView} onValueChange={(v) => setAgendaView(v as any)}>
