@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { LogOut, Moon, Palette, Pencil, Sun } from "lucide-react";
+import { LogOut, Moon, Palette, Pencil, Search, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { WorkspaceDropdown } from "@/components/layout/WorkspaceDropdown";
 
@@ -98,7 +98,18 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 h-12 border-b border-border/40 bg-background/80 backdrop-blur-md">
       <div className="flex h-full items-center justify-between px-4">
-        <WorkspaceDropdown />
+        <div className="flex items-center gap-3">
+          <WorkspaceDropdown />
+          <div className="relative hidden sm:block">
+            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Pesquisar cliente..."
+              className="h-8 w-56 rounded-full border border-border/50 bg-muted/30 pl-9 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/30 transition"
+              readOnly
+            />
+          </div>
+        </div>
 
         {/* Right: Notifications + Profile */}
         <div className="flex items-center gap-1.5">
