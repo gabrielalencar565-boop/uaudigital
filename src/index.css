@@ -312,7 +312,63 @@ All colors MUST be HSL.
   box-shadow: 0 12px 28px -8px hsl(263 70% 50% / 0.18), 0 4px 12px -4px hsl(263 70% 50% / 0.1);
 }
 
-/* Futuristic widget animations */
+/* ── VisionOS Holographic Widget ── */
+
+.visionos-mesh {
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 30%, #7C3AED, transparent),
+    radial-gradient(ellipse 60% 70% at 80% 70%, #6366F1, transparent),
+    radial-gradient(ellipse 50% 50% at 50% 50%, #8B5CF6, transparent),
+    radial-gradient(ellipse 40% 40% at 70% 20%, #22D3EE, transparent);
+  background-size: 200% 200%;
+  animation: visionosMesh 25s ease-in-out infinite;
+}
+
+.visionos-glass {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow:
+    0 8px 32px rgba(124, 58, 237, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.visionos-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 36px 36px;
+  animation: gridDrift 30s linear infinite;
+}
+
+.visionos-avatar-ring {
+  background: conic-gradient(from 0deg, #7C3AED, #EC4899, #6366F1, #22D3EE, #7C3AED);
+  animation: visionosRingSpin 6s linear infinite;
+  opacity: 0.8;
+  filter: blur(1px);
+}
+
+.visionos-pill {
+  background: rgba(124, 58, 237, 0.2);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border: 1px solid rgba(124, 58, 237, 0.3);
+  box-shadow: 0 0 20px rgba(124, 58, 237, 0.25);
+}
+
+@keyframes visionosMesh {
+  0%, 100% { background-position: 0% 50%; }
+  25% { background-position: 50% 0%; }
+  50% { background-position: 100% 50%; }
+  75% { background-position: 50% 100%; }
+}
+
+@keyframes visionosRingSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 @keyframes meshShift {
   0%, 100% { background-position: 0% 0%; filter: hue-rotate(0deg); }
   33% { background-position: 30% 20%; filter: hue-rotate(8deg); }
@@ -321,5 +377,5 @@ All colors MUST be HSL.
 
 @keyframes gridDrift {
   0% { background-position: 0px 0px; }
-  100% { background-position: 40px 40px; }
+  100% { background-position: 36px 36px; }
 }
