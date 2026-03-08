@@ -80,6 +80,8 @@ export function VisaoGeralTab() {
   const [newLeader, setNewLeader] = useState<string>("");
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [showHealthScore, setShowHealthScore] = useState(false);
+  const [calMonth, setCalMonth] = useState(new Date());
+  const [holidayFilter, setHolidayFilter] = useState<"all" | "comemorativas">("all");
 
   // Edit squad dialog
   const [editSquad, setEditSquad] = useState<any>(null);
