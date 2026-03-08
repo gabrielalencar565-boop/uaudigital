@@ -61,7 +61,7 @@ export function ConfiguracoesPanel() {
 
   const form = useForm<SettingsValues>({
     resolver: zodResolver(settingsSchema),
-    defaultValues: { full_name: "", role_title: "" },
+    defaultValues: { full_name: "", role_title: "", birth_date: "" },
   });
 
   // carregar dados atuais
