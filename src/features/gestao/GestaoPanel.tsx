@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Plus, Search, LayoutGrid, CalendarDays, FolderOpen, Settings2, CheckCircle2, FileSpreadsheet, Trash2, Users, ChevronLeft, ChevronRight, CalendarRange, Filter } from "lucide-react";
+import { Plus, Search, LayoutGrid, CalendarDays, FolderOpen, Settings2, CheckCircle2, FileSpreadsheet, Trash2, Users, ChevronLeft, ChevronRight, CalendarRange } from "lucide-react";
 import { addDays, addMonths, subMonths, endOfMonth, format, startOfMonth, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
 import { useSession } from "@/hooks/use-session";
 import { useRole } from "@/hooks/use-role";
 import { useQuery } from "@tanstack/react-query";
@@ -43,42 +43,46 @@ const STAGE_BADGE_BG: Record<string, string> = {
   agendamento: "bg-violet-500", entrega: "bg-emerald-500"
 };
 
-function FilterPopover({ search, setSearch, filterAssignee, setFilterAssignee, members }: {
-  search: string; setSearch: (v: string) => void;
-  filterAssignee: string; setFilterAssignee: (v: string) => void;
-  members: { user_id: string; display_name: string }[];
+function MemberFilterBar({ members, selected, onSelect }: {
+  members: { user_id: string; display_name: string; avatar_url: string | null }[];
+  selected: string;
+  onSelect: (id: string) => void;
 }) {
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-1.5 rounded-xl h-9 text-sm">
-          <Filter className="h-3.5 w-3.5" /> Filtros
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-72 space-y-3 rounded-xl" align="end">
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Buscar</label>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Buscar tarefa..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 pl-9 rounded-xl text-sm" />
-          </div>
-        </div>
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Responsável</label>
-          <Select value={filterAssignee} onValueChange={setFilterAssignee}>
-            <SelectTrigger className="h-9 rounded-xl text-sm">
-              <SelectValue placeholder="Todos" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">Todos os responsáveis</SelectItem>
-              {members.map((m) => (
-                <SelectItem key={m.user_id} value={m.user_id}>{m.display_name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </PopoverContent>
-    </Popover>
+    <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+      <button
+        type="button"
+        onClick={() => onSelect("__all__")}
+        className={cn(
+          "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all whitespace-nowrap border",
+          selected === "__all__"
+            ? "bg-sidebar text-sidebar-foreground border-sidebar shadow-sm"
+            : "bg-muted/40 text-muted-foreground border-border/30 hover:bg-muted/60"
+        )}
+      >
+        <Users className="h-3.5 w-3.5" />
+        Todos
+      </button>
+      {members.map((m) => (
+        <button
+          key={m.user_id}
+          type="button"
+          onClick={() => onSelect(m.user_id)}
+          className={cn(
+            "flex items-center gap-1.5 rounded-full pl-1 pr-3 py-1 text-xs font-medium transition-all whitespace-nowrap border",
+            selected === m.user_id
+              ? "bg-sidebar text-sidebar-foreground border-sidebar shadow-sm"
+              : "bg-muted/40 text-muted-foreground border-border/30 hover:bg-muted/60"
+          )}
+        >
+          <Avatar className="h-5 w-5">
+            <AvatarImage src={m.avatar_url ?? undefined} />
+            <AvatarFallback className="text-[9px] bg-primary/10 text-primary">{initials(m.display_name)}</AvatarFallback>
+          </Avatar>
+          {m.display_name.split(" ")[0]}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -183,8 +187,14 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
     <div className="space-y-4">
       {/* Header — Kanban de tarefas */}
       <div className="flex items-center justify-between opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
-        <h2 className="font-bold tracking-tight text-2xl">Kanban de tarefas</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="font-bold tracking-tight text-2xl">Kanban de tarefas</h2>
+        </div>
         <div className="flex items-center gap-2">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input placeholder="Buscar tarefa..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 w-48 pl-9 rounded-xl text-sm" />
+          </div>
           <Select value={filterClient} onValueChange={setFilterClient}>
             <SelectTrigger className="h-9 w-52 rounded-xl text-sm border-primary/30 bg-background/80">
               <SelectValue placeholder="Todos os clientes" />
@@ -196,14 +206,16 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
               ))}
             </SelectContent>
           </Select>
-          <FilterPopover
-            search={search}
-            setSearch={setSearch}
-            filterAssignee={filterAssignee}
-            setFilterAssignee={setFilterAssignee}
-            members={membersQ.data ?? []}
-          />
         </div>
+      </div>
+
+      {/* Member filter bar */}
+      <div className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.1s" }}>
+        <MemberFilterBar
+          members={membersQ.data ?? []}
+          selected={filterAssignee}
+          onSelect={setFilterAssignee}
+        />
       </div>
 
 

@@ -986,17 +986,39 @@ export function AgendaPanel() {
                 </SelectContent>
               </Select>
 
-              <Select value={filterUserId} onValueChange={v => setFilterUserId(v as any)}>
-                <SelectTrigger className="h-9 w-44 rounded-xl text-sm bg-muted/30 border-border/30">
-                  <SelectValue placeholder="Toda a equipe" />
-                </SelectTrigger>
-                <SelectContent className="bg-popover z-50">
-                  <SelectItem value="all">Toda a equipe</SelectItem>
-                  {team.filter(m => m.is_active).map(m => (
-                    <SelectItem key={m.user_id} value={m.user_id}>{m.display_name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+                <button
+                  type="button"
+                  onClick={() => setFilterUserId("all")}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all whitespace-nowrap border",
+                    filterUserId === "all"
+                      ? "bg-sidebar text-sidebar-foreground border-sidebar shadow-sm"
+                      : "bg-muted/40 text-muted-foreground border-border/30 hover:bg-muted/60"
+                  )}
+                >
+                  Todos
+                </button>
+                {team.filter(m => m.is_active).map(m => (
+                  <button
+                    key={m.user_id}
+                    type="button"
+                    onClick={() => setFilterUserId(m.user_id)}
+                    className={cn(
+                      "flex items-center gap-1.5 rounded-full pl-1 pr-3 py-1 text-xs font-medium transition-all whitespace-nowrap border",
+                      filterUserId === m.user_id
+                        ? "bg-sidebar text-sidebar-foreground border-sidebar shadow-sm"
+                        : "bg-muted/40 text-muted-foreground border-border/30 hover:bg-muted/60"
+                    )}
+                  >
+                    <Avatar className="h-5 w-5">
+                      <AvatarImage src={m.avatar_url ?? undefined} />
+                      <AvatarFallback className="text-[9px] bg-primary/10 text-primary">{initials(m.display_name)}</AvatarFallback>
+                    </Avatar>
+                    {m.display_name.split(" ")[0]}
+                  </button>
+                ))}
+              </div>
 
               <Select value={filterStage} onValueChange={v => setFilterStage(v as any)}>
                 <SelectTrigger className="h-9 w-44 rounded-xl text-sm bg-muted/30 border-border/30">
