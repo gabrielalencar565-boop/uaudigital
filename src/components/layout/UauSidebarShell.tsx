@@ -43,6 +43,7 @@ type NavGroup = {
   icon: React.ComponentType<any>;
   children: {key: MainTab;label: string;icon: React.ComponentType<any>;}[];
   adminOnly?: boolean;
+  landingTab?: MainTab;
 };
 
 type NavSingle = {
@@ -61,12 +62,13 @@ const NAV: NavEntry[] = [
   key: "gestao_group",
   label: "Projetos",
   icon: ClipboardList,
+  landingTab: "visao_geral_projetos",
   children: [
-  { key: "visao_geral_projetos", label: "Visão Geral", icon: PieChart },
   { key: "tarefas", label: "Tarefas", icon: LayoutGrid },
   { key: "agenda_gestao", label: "Agenda", icon: CalendarDays },
   { key: "cronograma", label: "Cronograma", icon: CalendarRange },
   { key: "fluxos", label: "Fluxos", icon: Workflow }]
+
 
 },
 {
@@ -211,16 +213,25 @@ export function UauSidebarShell({
 
                 // Group with children
                 const groupOpen = !!openGroups[entry.key];
-                const hasActiveChild = entry.children.some((c) => isActive(c.key));
+                const hasActiveChild = entry.children.some((c) => isActive(c.key)) || (entry.landingTab && isActive(entry.landingTab));
 
                 return (
                   <Collapsible key={entry.key} open={groupOpen} onOpenChange={() => toggleGroup(entry.key)}>
                     <SidebarMenuItem>
-                      <CollapsibleTrigger asChild>
+                      {/* Group header: click label area to navigate to landing, click chevron to toggle */}
+                      <div className="flex items-center">
                         <SidebarMenuButton
                           tooltip={entry.label}
+                          onClick={() => {
+                            if (entry.landingTab) {
+                              onTabChange(entry.landingTab);
+                              if (!groupOpen) toggleGroup(entry.key);
+                            } else {
+                              toggleGroup(entry.key);
+                            }
+                          }}
                           className={cn(
-                            "h-10 gap-3 rounded-xl text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors",
+                            "h-10 gap-3 rounded-xl text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors flex-1",
                             hasActiveChild && "bg-sidebar-accent text-sidebar-foreground font-semibold",
                             collapsed && !isMobile && "justify-center"
                           )}>
@@ -229,16 +240,20 @@ export function UauSidebarShell({
                           {(!collapsed || isMobile) &&
                           <>
                               <span className="flex-1 text-sm">{entry.label}</span>
-                              <ChevronDown
-                              className={cn(
-                                "h-4 w-4 shrink-0 transition-transform",
-                                groupOpen && "rotate-180"
-                              )} />
-                            
                             </>
                           }
                         </SidebarMenuButton>
-                      </CollapsibleTrigger>
+                        {(!collapsed || isMobile) &&
+                          <CollapsibleTrigger asChild>
+                            <button
+                              type="button"
+                              className="inline-flex h-10 w-8 items-center justify-center text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors"
+                            >
+                              <ChevronDown className={cn("h-4 w-4 transition-transform", groupOpen && "rotate-180")} />
+                            </button>
+                          </CollapsibleTrigger>
+                        }
+                      </div>
 
                       {(!collapsed || isMobile) &&
                       <CollapsibleContent>
