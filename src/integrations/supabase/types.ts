@@ -583,6 +583,74 @@ export type Database = {
         }
         Relationships: []
       }
+      health_scores: {
+        Row: {
+          alinhamento_estrategico: number
+          client_id: string
+          comentario_alinhamento: string | null
+          comentario_comunicacao: string | null
+          comentario_qualidade: string | null
+          comentario_resultado: string | null
+          comentario_satisfacao: string | null
+          comunicacao_atendimento: number
+          created_at: string
+          evaluated_by: string
+          id: string
+          month: number
+          qualidade_entregas: number
+          resultado_percebido: number
+          satisfacao_geral: number
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          alinhamento_estrategico?: number
+          client_id: string
+          comentario_alinhamento?: string | null
+          comentario_comunicacao?: string | null
+          comentario_qualidade?: string | null
+          comentario_resultado?: string | null
+          comentario_satisfacao?: string | null
+          comunicacao_atendimento?: number
+          created_at?: string
+          evaluated_by: string
+          id?: string
+          month: number
+          qualidade_entregas?: number
+          resultado_percebido?: number
+          satisfacao_geral?: number
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          alinhamento_estrategico?: number
+          client_id?: string
+          comentario_alinhamento?: string | null
+          comentario_comunicacao?: string | null
+          comentario_qualidade?: string | null
+          comentario_resultado?: string | null
+          comentario_satisfacao?: string | null
+          comunicacao_atendimento?: number
+          created_at?: string
+          evaluated_by?: string
+          id?: string
+          month?: number
+          qualidade_entregas?: number
+          resultado_percebido?: number
+          satisfacao_geral?: number
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "health_scores_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       magic2_client_links: {
         Row: {
           agenda_client_id: string
@@ -1315,6 +1383,62 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           uses_quantity?: boolean
+        }
+        Relationships: []
+      }
+      squad_members: {
+        Row: {
+          created_at: string
+          id: string
+          squad_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          squad_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          squad_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "squad_members_squad_id_fkey"
+            columns: ["squad_id"]
+            isOneToOne: false
+            referencedRelation: "squads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      squads: {
+        Row: {
+          color: string
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          created_by: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          name?: string
+          updated_at?: string
         }
         Relationships: []
       }
