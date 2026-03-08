@@ -244,32 +244,19 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   };
 
   const advanceStage = (completedStage: string, nextStage: string, newDueDate?: string) => {
-    // 1) Mark current task as concluído (keep stage_current unchanged so it stays visible in calendar)
-    updateTask.mutate({ id: task.id, status_global: "concluido" as any });
-    syncCompletedStage(completedStage);
+    const updates: any = { id: task.id, stage_current: nextStage as any };
+    if (newDueDate) updates.due_date = newDueDate;
 
-    // 2) Create a NEW task for the next stage
-    if (nextStage !== "entrega") {
-      const fixedAssignee = getFixedAssignee(stageAssignees, nextStage, task.client_id);
-      createTask.mutate({
-        client_id: task.client_id,
-        title: task.title,
-        description: task.description ?? undefined,
-        priority: task.priority,
-        stage_current: nextStage,
-        due_date: newDueDate ?? task.due_date ?? undefined,
-        assignee_id: fixedAssignee ?? task.assignee_id ?? undefined,
-        project_id: task.project_id ?? undefined,
-        tags: task.tags ?? [],
-        parent_task_id: task.parent_task_id ?? undefined,
-        is_extra_demand: task.is_extra_demand,
-      });
-      toast.success(`Concluído! Nova tarefa criada em ${stageLabel(nextStage)}`);
-    } else {
-      // Last stage — just mark as entrega
-      updateTask.mutate({ id: task.id, stage_current: "entrega" as any, status_global: "concluido" as any });
-      toast.success("Tarefa marcada como Entregue!");
+    // Auto-assign fixed person for next stage + client
+    const fixedAssignee = getFixedAssignee(stageAssignees, nextStage, task.client_id);
+    if (fixedAssignee !== undefined) {
+      updates.assignee_id = fixedAssignee;
+      updates.watchers = [];
     }
+
+    updateTask.mutate(updates);
+    syncCompletedStage(completedStage);
+    toast.success(nextStage === "entrega" ? "Tarefa marcada como Entregue!" : `Avançou para ${stageLabel(nextStage)}`);
   };
 
   const handleConcluido = () => {
