@@ -213,6 +213,7 @@ export function VisaoGeralTab() {
   });
 
   const weekDays = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+  const holidayMap = new Map(HOLIDAYS_2026.map((h) => [h.date, h.name]));
   const upcomingHolidays = HOLIDAYS_2026.filter((h) => new Date(h.date) >= now).slice(0, 4);
 
   if (showHealthScore) {
