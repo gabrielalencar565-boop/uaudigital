@@ -150,7 +150,41 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
       </div>
 
       {/* Filters bar */}
-      
+      <div className="flex flex-wrap items-center gap-3 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.1s" }}>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Buscar tarefa..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-9 w-56 rounded-xl pl-9 text-sm bg-muted/30 border-border/30"
+          />
+        </div>
+        <Select value={filterClient} onValueChange={setFilterClient}>
+          <SelectTrigger className="h-9 w-48 rounded-xl text-sm bg-muted/30 border-border/30">
+            <SelectValue placeholder="Todos os clientes" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">Todos os clientes</SelectItem>
+            {(clientsQ.data ?? []).map((c) => (
+              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={filterAssignee} onValueChange={setFilterAssignee}>
+          <SelectTrigger className="h-9 w-48 rounded-xl text-sm bg-muted/30 border-border/30">
+            <SelectValue placeholder="Todos os responsáveis" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">Todos os responsáveis</SelectItem>
+            {(membersQ.data ?? []).map((m) => (
+              <SelectItem key={m.user_id} value={m.user_id}>{m.display_name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+
 
 
 
