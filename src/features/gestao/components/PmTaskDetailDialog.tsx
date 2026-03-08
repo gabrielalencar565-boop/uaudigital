@@ -202,6 +202,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   parentStageCurrent?: string;
 }) {
   const updateTask = useUpdatePmTask();
+  const createTask = useCreatePmTask();
   const syncStage = usePmSyncStageCompletion();
   const { flowConfig, transitionDates, stageAssignees } = useDefaultFlowWithDates();
 
