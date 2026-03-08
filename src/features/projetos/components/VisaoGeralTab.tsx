@@ -484,6 +484,7 @@ export function VisaoGeralTab() {
                   const inMonth = d.getMonth() === calMonth.getMonth();
                   const today = isToday(d);
                   const holiday = holidayMap.get(key);
+                  const birthday = birthdayMap.get(key);
                   return (
                     <div
                       key={key}
@@ -491,12 +492,16 @@ export function VisaoGeralTab() {
                         "relative flex flex-col items-center justify-center rounded-lg py-2 text-xs transition-all",
                         !inMonth && "opacity-30",
                         today && "bg-sidebar text-sidebar-foreground font-bold shadow-md",
-                        holiday && !today && "bg-primary/10"
+                        holiday && !today && "bg-primary/10",
+                        birthday && !today && !holiday && "bg-warning/10"
                       )}
-                      title={holiday ?? undefined}
+                      title={birthday ?? holiday ?? undefined}
                     >
                       <span>{format(d, "d")}</span>
-                      {holiday && (
+                      {birthday && (
+                        <span className="mt-0.5 text-[8px] leading-tight text-center truncate max-w-full px-0.5">🎂</span>
+                      )}
+                      {holiday && !birthday && (
                         <span className="mt-0.5 text-[8px] leading-tight text-center text-primary truncate max-w-full px-0.5">{holiday}</span>
                       )}
                     </div>
