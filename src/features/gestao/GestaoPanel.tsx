@@ -428,8 +428,8 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
 
   const handleMarkDone = (task: PmTask, e: React.MouseEvent) => {
     e.stopPropagation();
-    const newStage = task.stage_current === "entrega" ? "captacao" : "entrega";
-    updateTask.mutate({ id: task.id, stage_current: newStage as any });
+    const newStatus = task.status_global === "concluido" ? "em_andamento" : "concluido";
+    updateTask.mutate({ id: task.id, status_global: newStatus as any });
   };
 
   const handleDelete = (taskId: string, e: React.MouseEvent) => {
@@ -488,7 +488,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
 
               <div className="space-y-1.5 max-h-[520px] overflow-y-auto">
                 {dayTasks.slice(0, 5).map((t) => {
-                  const isDone = t.stage_current === "entrega";
+                  const isDone = t.status_global === "concluido";
                   const stageBg = STAGE_BADGE_BG[t.stage_current] ?? "bg-muted";
                   const abbr = STAGE_ABBR[t.stage_current] ?? t.stage_current.toUpperCase().slice(0, 4);
                   const member = t.assignee_id ? membersMap[t.assignee_id] : undefined;
@@ -509,11 +509,10 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
                         <div className="flex items-center gap-0.5 transition-opacity">
                           <button
                             type="button"
-                            className={cn("h-5 w-5 rounded-md flex items-center justify-center transition border", isDone ? "bg-success text-success-foreground border-success" : "border-border hover:border-primary hover:bg-primary/10")}
+                            className={cn("h-4.5 w-4.5 rounded-full flex items-center justify-center transition", isDone ? "bg-success text-success-foreground" : "border border-muted-foreground/30 hover:border-primary hover:bg-primary/10")}
                             onClick={(e) => handleMarkDone(t, e)}
                             title={isDone ? "Desmarcar" : "Marcar concluído"}>
-                            
-                            {isDone ? <CheckCircle2 className="h-3 w-3" /> : <span className="h-3 w-3 rounded-sm border border-muted-foreground/40" />}
+                            {isDone && <CheckCircle2 className="h-3.5 w-3.5" />}
                           </button>
                           <button
                             type="button"
