@@ -1208,8 +1208,8 @@ export function AgendaPanel() {
                 })}
               </div>
             </>}
-        </CardContent>
-      </Card>}
+        </div>
+      </div>}
     </div>
   </DndContext>;
 }
