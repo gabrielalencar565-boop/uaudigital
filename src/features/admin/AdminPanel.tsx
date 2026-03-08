@@ -77,7 +77,18 @@ export function AdminPanel() {
 
   const rolesQ = useBatchUserRoles(userIds);
   const setUserRoles = useSetUserRoles();
-  const isBusy = setUserRoles.isPending;
+  const [savingAll, setSavingAll] = useState(false);
+  const isBusy = setUserRoles.isPending || savingAll;
+
+  // Build map: userId -> squadIds
+  const userSquadMap = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const sm of squadMembersQ.data ?? []) {
+      const existing = map.get(sm.user_id) ?? [];
+      map.set(sm.user_id, [...existing, sm.squad_id]);
+    }
+    return map;
+  }, [squadMembersQ.data]);
 
   const openRoleEditor = (r: AdminUserRow) => {
     const currentRoles = rolesQ.data?.get(r.user_id) ?? [];
