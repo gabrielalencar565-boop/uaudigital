@@ -12,6 +12,7 @@ import { AdminContainer } from "@/features/admin/AdminContainer";
 import { FinanceiroPanel } from "@/features/financeiro/FinanceiroPanel";
 import { FinMetasTab } from "@/features/financeiro/components/FinMetasTab";
 import { GestaoPanel } from "@/features/gestao/GestaoPanel";
+import { ProjetosPanel } from "@/features/projetos/ProjetosPanel";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -162,6 +163,7 @@ const Index = () => {
       );
     }
     if (isGestaoTab) return <GestaoPanel forcedView={gestaoView} />;
+    if (tab === "visao_geral_projetos") return <ProjetosPanel />;
     if (tab === "configuracoes" && isAdmin) return <AdminContainer />;
     if (tab === "financeiro" && isAdmin) return <FinanceiroPanel />;
     if (tab === "metas" && isAdmin) return <FinMetasTab />;
