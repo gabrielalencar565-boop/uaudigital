@@ -182,13 +182,9 @@ export function VisaoGeralTab() {
     });
   };
 
-  const openConfig = (sq: any) => {
+  const openEdit = (sq: any) => {
     const memberIds = allSquadMembers.filter((sm: any) => sm.squad_id === sq.id).map((sm: any) => sm.user_id);
     setSelectedUsers(memberIds);
-    setConfigSquad(sq);
-  };
-
-  const openEdit = (sq: any) => {
     setEditSquad(sq);
     setEditName(sq.name);
     setEditColor(sq.color);
@@ -197,7 +193,9 @@ export function VisaoGeralTab() {
 
   const saveEdit = () => {
     if (!editSquad || !editName.trim()) return;
-    updateSquad.mutate({ id: editSquad.id, name: editName.trim(), color: editColor, leaderId: editLeader || null }, {
+    // Save squad info + members in parallel
+    updateSquad.mutate({ id: editSquad.id, name: editName.trim(), color: editColor, leaderId: editLeader || null });
+    updateMembers.mutate({ squadId: editSquad.id, userIds: selectedUsers }, {
       onSuccess: () => setEditSquad(null),
     });
   };
