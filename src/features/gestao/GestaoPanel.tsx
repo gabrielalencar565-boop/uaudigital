@@ -428,8 +428,8 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
 
   const handleMarkDone = (task: PmTask, e: React.MouseEvent) => {
     e.stopPropagation();
-    const newStage = task.stage_current === "entrega" ? "captacao" : "entrega";
-    updateTask.mutate({ id: task.id, stage_current: newStage as any });
+    const newStatus = task.status_global === "concluido" ? "em_andamento" : "concluido";
+    updateTask.mutate({ id: task.id, status_global: newStatus as any });
   };
 
   const handleDelete = (taskId: string, e: React.MouseEvent) => {
