@@ -17,6 +17,7 @@ import { toast } from "sonner";
 const profileSchema = z.object({
   full_name: z.string().trim().min(2, "Informe seu nome").max(120),
   role_title: z.string().trim().min(2, "Informe seu cargo").max(120),
+  birth_date: z.string().optional(),
 });
 type ProfileValues = z.infer<typeof profileSchema>;
 
