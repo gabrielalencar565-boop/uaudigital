@@ -214,7 +214,7 @@ export function FinReceitasDespesasTab() {
             size={100}
             stroke={10}
             tone={margemLucro >= 20 ? "success" : margemLucro >= 0 ? "warning" : "danger"}
-            label={<span className={`text-2xl font-bold ${margemLucro >= 0 ? "text-success" : "text-destructive"}`}>{margemLucro.toFixed(0)}%</span>}
+            label={<AnimatedNumber value={Math.round(margemLucro)} suffix="%" className={`text-2xl font-bold ${margemLucro >= 0 ? "text-success" : "text-destructive"}`} glow={false} />}
           />
         </Card>
       </div>
