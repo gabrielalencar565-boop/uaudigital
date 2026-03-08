@@ -101,29 +101,38 @@ export function WorkspaceDropdown() {
   const handleBack = () => setView("main");
 
   return (
-    <Popover open={open} onOpenChange={(v) => { setOpen(v); if (!v) setView("main"); }}>
-      <PopoverTrigger asChild>
-        <button className="flex items-center gap-2 rounded-lg px-1.5 py-1 transition hover:bg-accent/50 focus:outline-none">
-          {logoUrl ? (
-            <img
-              src={logoUrl}
-              alt="Logo"
-              className={cn(
-                "h-7 w-7 object-cover",
-                logoShape === "circle" ? "rounded-full" : "rounded-md"
-              )}
-            />
-          ) : (
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10">
-              <span className="text-xs font-bold text-primary">U</span>
-            </div>
-          )}
-          <span className="text-sm font-semibold text-foreground hidden sm:inline-block">
-            {workspaceName}
-          </span>
-          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-        </button>
-      </PopoverTrigger>
+    <>
+      <button
+        onClick={() => logoInputRef.current?.click()}
+        disabled={uploadingLogo}
+        className="relative group flex items-center rounded-xl transition hover:opacity-80 focus:outline-none"
+        title="Alterar logo da empresa"
+      >
+        {logoUrl ? (
+          <img
+            src={logoUrl}
+            alt="Logo"
+            className={cn(
+              "h-8 w-8 object-cover",
+              logoShape === "circle" ? "rounded-full" : "rounded-xl"
+            )}
+          />
+        ) : (
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10">
+            <Camera className="h-4 w-4 text-primary" />
+          </div>
+        )}
+        <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/40 opacity-0 group-hover:opacity-100 transition">
+          <Camera className="h-3.5 w-3.5 text-white" />
+        </div>
+      </button>
+      <input
+        ref={logoInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleLogoUpload}
+      />
 
       <PopoverContent align="start" className="w-80 rounded-xl p-0" sideOffset={8}>
         {view === "main" && (
