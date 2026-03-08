@@ -305,7 +305,10 @@ export function AdminClientesPanel() {
                         </TableCell>
                         <TableCell>
                           <span className="text-sm text-muted-foreground">
-                            {format(new Date(client.magic_due_date), "MM/yyyy")}
+                            {(() => {
+                              const d = new Date(client.magic_due_date);
+                              return isValid(d) ? format(d, "MM/yyyy") : "—";
+                            })()}
                           </span>
                         </TableCell>
                         <TableCell className="text-right">
