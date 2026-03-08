@@ -290,40 +290,70 @@ export function MeuPainelPanel() {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
-        <div className="md:col-span-2 relative group overflow-hidden rounded-2xl border border-sidebar/20 shadow-lg shadow-sidebar/5">
-          {/* Animated gradient mesh background */}
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_20%_30%,hsl(var(--sidebar)/0.35),transparent),radial-gradient(ellipse_60%_70%_at_80%_70%,hsl(var(--sidebar)/0.25),transparent),radial-gradient(ellipse_50%_50%_at_50%_50%,hsl(var(--sidebar)/0.10),transparent)] animate-[meshShift_8s_ease-in-out_infinite]" />
-          
-          {/* Animated geometric grid overlay */}
+        <div className="md:col-span-2 relative group overflow-hidden shadow-xl shadow-[#7C3AED]/10" style={{ borderRadius: 28 }}>
+          {/* Layer 1 — deep base gradient (slowest) */}
           <div
-            className="absolute inset-0 opacity-[0.08]"
+            className="absolute -inset-8 opacity-90"
             style={{
-              backgroundImage: `linear-gradient(hsl(var(--sidebar)/0.6) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--sidebar)/0.6) 1px, transparent 1px)`,
-              backgroundSize: "40px 40px",
-              animation: "gridDrift 20s linear infinite",
+              background: "linear-gradient(135deg, #7C3AED 0%, #6366F1 40%, #8B5CF6 70%, #7C3AED 100%)",
+              backgroundSize: "200% 200%",
+              animation: "parallaxLayer1 16s ease-in-out infinite",
             }}
           />
 
-          {/* Glow border effect */}
-          <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-sidebar/10 pointer-events-none" />
-          <div className="absolute -inset-px rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 bg-[radial-gradient(circle_at_50%_0%,hsl(var(--sidebar)/0.15),transparent_70%)]" />
+          {/* Layer 2 — organic translucent shapes (medium speed) */}
+          <div
+            className="absolute -inset-12 opacity-60"
+            style={{
+              background: "radial-gradient(ellipse 70% 60% at 25% 35%, #A78BFA 0%, transparent 70%), radial-gradient(ellipse 55% 65% at 75% 65%, #6366F1 0%, transparent 65%)",
+              animation: "parallaxLayer2 12s ease-in-out infinite",
+            }}
+          />
+
+          {/* Layer 3 — blurred accent blobs (fastest) */}
+          <div
+            className="absolute -inset-16 opacity-50"
+            style={{
+              background: "radial-gradient(circle 280px at 20% 70%, #8B5CF6 0%, transparent 60%), radial-gradient(circle 220px at 80% 25%, #A78BFA 0%, transparent 55%), radial-gradient(circle 160px at 55% 50%, #6366F1 0%, transparent 50%)",
+              filter: "blur(30px)",
+              animation: "parallaxLayer3 9s ease-in-out infinite",
+            }}
+          />
+
+          {/* Geometric grid overlay */}
+          <div
+            className="absolute inset-0 opacity-[0.07]"
+            style={{
+              backgroundImage: "linear-gradient(rgba(255,255,255,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.4) 1px, transparent 1px)",
+              backgroundSize: "44px 44px",
+              animation: "gridDrift 22s linear infinite",
+            }}
+          />
+
+          {/* Glow border */}
+          <div className="absolute inset-0 pointer-events-none" style={{ borderRadius: 28, boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12)" }} />
+          <div className="absolute -inset-px opacity-0 group-hover:opacity-100 transition-opacity duration-700" style={{ borderRadius: 28, background: "radial-gradient(circle at 50% 0%, rgba(167,139,250,0.25), transparent 70%)" }} />
 
           {/* Content */}
-          <div className="relative z-10 flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:p-5">
-            <div className="flex min-w-0 items-center gap-3">
-              <Avatar className="h-11 w-11 ring-2 ring-sidebar/20 shadow-md shadow-sidebar/10">
-                <AvatarImage src={myProfile?.avatar_url ?? undefined} alt={myProfile?.full_name ?? ""} />
-                <AvatarFallback className="bg-sidebar/10 text-sidebar font-bold">{initials(myProfile?.full_name ?? "?")}</AvatarFallback>
-              </Avatar>
+          <div className="relative z-10 flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:p-6">
+            <div className="flex min-w-0 items-center gap-3.5">
+              {/* Avatar with gradient ring */}
+              <div className="relative shrink-0">
+                <div className="absolute -inset-[3px] rounded-full" style={{ background: "linear-gradient(135deg, #A78BFA, #6366F1, #8B5CF6)", opacity: 0.9 }} />
+                <Avatar className="relative h-12 w-12 ring-2 ring-white/20">
+                  <AvatarImage src={myProfile?.avatar_url ?? undefined} alt={myProfile?.full_name ?? ""} />
+                  <AvatarFallback className="bg-white/15 text-white font-bold text-sm">{initials(myProfile?.full_name ?? "?")}</AvatarFallback>
+                </Avatar>
+              </div>
               <div className="min-w-0">
-                <h2 className="truncate text-lg font-semibold tracking-tight">{headerGreeting}</h2>
-                <p className="break-words whitespace-normal text-sm text-muted-foreground">{headerLine}</p>
+                <h2 className="truncate text-lg font-semibold tracking-tight text-white drop-shadow-sm">{headerGreeting}</h2>
+                <p className="break-words whitespace-normal text-sm text-white/70">{headerLine}</p>
               </div>
             </div>
 
-            {/* Glassmorphism badge */}
+            {/* Glassmorphism date badge */}
             <div className="flex items-center gap-2">
-              <div className="inline-flex items-center rounded-full px-3.5 py-1.5 text-sm font-semibold tabular-nums backdrop-blur-md bg-sidebar/10 border border-sidebar/15 text-sidebar shadow-sm shadow-sidebar/5">
+              <div className="inline-flex items-center rounded-full px-4 py-1.5 text-sm font-semibold tabular-nums text-white backdrop-blur-xl border border-white/15 shadow-lg shadow-black/10" style={{ background: "rgba(255,255,255,0.12)" }}>
                 {format(today, "dd/MM")}
               </div>
             </div>
