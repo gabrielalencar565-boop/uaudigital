@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Progress } from "@/components/ui/progress";
 import {
   Plus, Trash2, Settings2, Users, CheckCircle2, Clock, FileText,
-  MoreHorizontal, CalendarDays, HeartPulse, Target
+  MoreHorizontal, CalendarDays, HeartPulse, Target, ChevronLeft, ChevronRight, Star
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -207,28 +207,28 @@ export function VisaoGeralTab() {
       </div>
 
       {/* Squad cards row */}
-      <div className="flex gap-4 overflow-x-auto pb-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {squads.map((sq: any) => {
           const st = squadStats[sq.id] ?? { total: 0, done: 0, inProgress: 0, overdue: 0, memberIds: [], clients: new Set() };
           const progress = st.total > 0 ? Math.round((st.done / st.total) * 100) : 0;
-          // Average health score for this squad's clients
           const clientIds = Array.from(st.clients);
           const healthVals = clientIds.map((c) => healthAvgMap[c]).filter((v) => v !== undefined);
           const avgHealth = healthVals.length > 0 ? Math.round(healthVals.reduce((a, b) => a + b, 0) / healthVals.length) : 0;
-          const healthColor = avgHealth >= 80 ? "text-green-500" : avgHealth >= 50 ? "text-yellow-500" : "text-red-500";
+          const healthColor = avgHealth >= 80 ? "text-success" : avgHealth >= 50 ? "text-warning" : "text-danger";
+          const members = st.memberIds.map((uid: string) => teamMap[uid]).filter(Boolean);
 
           return (
-            <Card key={sq.id} className="min-w-[220px] flex-shrink-0">
-              <CardContent className="py-4 px-4 space-y-3">
+            <Card key={sq.id}>
+              <CardContent className="py-5 px-5 space-y-4">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="h-5 w-5 rounded-full border-2" style={{ borderColor: sq.color }} />
-                    <span className="text-sm font-semibold">{sq.name}</span>
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-6 w-6 rounded-full border-[3px]" style={{ borderColor: sq.color }} />
+                    <span className="text-base font-semibold">{sq.name}</span>
                   </div>
                   {isAdmin && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <button className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted"><MoreHorizontal className="h-4 w-4" /></button>
+                        <button className="h-7 w-7 flex items-center justify-center rounded-lg hover:bg-muted"><MoreHorizontal className="h-4 w-4" /></button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => openConfig(sq)}><Settings2 className="h-4 w-4 mr-2" /> Configurar membros</DropdownMenuItem>
@@ -238,27 +238,45 @@ export function VisaoGeralTab() {
                   )}
                 </div>
 
-                {/* Progress */}
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1"><Target className="h-3 w-3" /> Progresso • <Clock className="h-3 w-3" /> {daysLeft} dias restantes</span>
-                    <span>{progress}%</span>
+                {/* Members avatars */}
+                <div className="flex items-center gap-2">
+                  <div className="flex -space-x-2">
+                    {members.slice(0, 5).map((m: any) => (
+                      <Avatar key={m.user_id} className="h-9 w-9 border-2 border-card">
+                        <AvatarImage src={m.avatar_url ?? undefined} alt={m.display_name} />
+                        <AvatarFallback className="text-[10px] bg-muted">{initials(m.display_name)}</AvatarFallback>
+                      </Avatar>
+                    ))}
+                    {members.length > 5 && (
+                      <div className="h-9 w-9 flex items-center justify-center rounded-full border-2 border-card bg-muted text-muted-foreground text-xs font-medium">
+                        +{members.length - 5}
+                      </div>
+                    )}
                   </div>
-                  <Progress value={progress} className="h-1.5" />
+                  <span className="text-xs text-muted-foreground">{members.length} {members.length === 1 ? "membro" : "membros"}</span>
+                </div>
+
+                {/* Progress */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1"><Target className="h-3.5 w-3.5" /> Progresso</span>
+                    <span className="font-medium text-foreground">{progress}%</span>
+                  </div>
+                  <Progress value={progress} className="h-2" />
+                  <p className="text-[11px] text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> {daysLeft} dias restantes</p>
                 </div>
 
                 {/* Health Score */}
-                <div className={cn("text-xs font-medium flex items-center gap-1", healthColor)}>
-                  <HeartPulse className="h-3 w-3" />
-                  <span>{avgHealth > 0 ? `${avgHealth} Health Score` : "0 Health Score"}</span>
+                <div className={cn("text-sm font-medium flex items-center gap-1.5", healthColor)}>
+                  <HeartPulse className="h-4 w-4" />
+                  <span>{avgHealth > 0 ? `${avgHealth} Health Score` : "Sem avaliação"}</span>
                 </div>
 
-                {/* Mini stats */}
-                <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-                  <span className="flex items-center gap-0.5"><Users className="h-3 w-3" /> {st.memberIds.length}</span>
-                  <span className="flex items-center gap-0.5"><FileText className="h-3 w-3" /> {st.clients.size}</span>
-                  <span className="flex items-center gap-0.5"><Clock className="h-3 w-3" /> {st.total}</span>
-                  <span className="flex items-center gap-0.5"><CheckCircle2 className="h-3 w-3" /> {st.done}</span>
+                {/* Stats row */}
+                <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1 border-t border-border">
+                  <span className="flex items-center gap-1"><FileText className="h-3.5 w-3.5" /> {st.clients.size} contas</span>
+                  <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> {st.total} tarefas</span>
+                  <span className="flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5 text-success" /> {st.done}</span>
                 </div>
               </CardContent>
             </Card>
@@ -267,9 +285,10 @@ export function VisaoGeralTab() {
 
         {/* Add squad card */}
         {isAdmin && (
-          <Card className="min-w-[60px] flex-shrink-0 border-dashed cursor-pointer hover:border-primary/40 transition-colors" onClick={() => setCreateOpen(true)}>
-            <CardContent className="flex items-center justify-center py-4 px-4 h-full">
-              <Plus className="h-6 w-6 text-muted-foreground" />
+          <Card className="border-dashed cursor-pointer hover:border-primary/40 transition-colors" onClick={() => setCreateOpen(true)}>
+            <CardContent className="flex flex-col items-center justify-center py-10 px-5 gap-2 h-full">
+              <Plus className="h-8 w-8 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">Criar Squad</span>
             </CardContent>
           </Card>
         )}
@@ -357,33 +376,43 @@ export function VisaoGeralTab() {
 
         {/* Calendar + holidays */}
         <Card>
-          <CardContent className="py-5 px-5 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center"><CalendarDays className="h-4 w-4 text-muted-foreground" /></div>
-                <p className="text-sm font-semibold">Calendário</p>
+          <CardContent className="py-5 px-5 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-lg bg-sidebar/10 flex items-center justify-center">
+                <CalendarDays className="h-4 w-4 text-sidebar" />
               </div>
-              <p className="text-sm font-semibold">Próximas datas</p>
+              <p className="text-base font-bold">Calendário</p>
             </div>
 
-            <div className="flex gap-4">
+            <div className="flex gap-6">
               {/* Mini calendar */}
-              <div className="flex-1">
-                <p className="text-center text-sm font-medium mb-2 capitalize">{format(now, "MMMM yyyy", { locale: ptBR })}</p>
-                <div className="grid grid-cols-7 gap-0.5 text-center text-[10px]">
+              <div className="flex-1 border border-border rounded-2xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <button className="h-7 w-7 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground">
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <p className="text-sm font-medium capitalize">{format(now, "MMMM yyyy", { locale: ptBR })}</p>
+                  <button className="h-7 w-7 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground">
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-7 gap-1 text-center">
                   {weekDays.map((d) => (
-                    <span key={d} className="text-muted-foreground font-medium py-1">{d}</span>
+                    <span key={d} className="text-xs text-muted-foreground font-medium py-1.5">{d}</span>
                   ))}
                   {calendarDays.map((day, i) => {
                     const inMonth = day.getMonth() === now.getMonth();
                     const today = isToday(day);
+                    const isHoliday = HOLIDAYS_2026.some((h) => isSameDay(new Date(h.date), day));
                     return (
                       <span
                         key={i}
                         className={cn(
-                          "py-1 rounded text-xs",
+                          "py-1.5 rounded-lg text-sm font-medium transition-colors",
                           !inMonth && "text-muted-foreground/30",
-                          today && "bg-primary text-primary-foreground font-bold"
+                          inMonth && !today && !isHoliday && "text-foreground",
+                          today && "bg-sidebar text-sidebar-foreground font-bold",
+                          isHoliday && !today && inMonth && "bg-sidebar/15 text-sidebar font-bold"
                         )}
                       >
                         {day.getDate()}
@@ -394,17 +423,28 @@ export function VisaoGeralTab() {
               </div>
 
               {/* Upcoming holidays */}
-              <div className="flex-1 space-y-2">
-                {upcomingHolidays.map((h) => (
-                  <div key={h.date} className="flex items-start gap-2 text-xs">
-                    <span className="text-primary mt-0.5">★</span>
-                    <div>
-                      <p className="font-medium">{h.name}</p>
-                      <p className="text-muted-foreground">{format(new Date(h.date), "d 'de' MMMM 'de' yyyy", { locale: ptBR })}</p>
+              <div className="flex-1 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-base font-bold">Próximas datas</p>
+                </div>
+                <div className="flex gap-2 mb-1">
+                  <span className="text-xs font-medium bg-sidebar text-sidebar-foreground px-3 py-1 rounded-full">Todas as datas</span>
+                  <span className="text-xs font-medium text-muted-foreground px-3 py-1 rounded-full border border-border">Datas comemorativas</span>
+                </div>
+                <div className="space-y-2.5">
+                  {upcomingHolidays.map((h) => (
+                    <div key={h.date} className="flex items-center gap-3 rounded-xl border border-sidebar/30 bg-sidebar/5 px-4 py-3">
+                      <div className="h-8 w-8 rounded-full bg-sidebar/15 flex items-center justify-center flex-shrink-0">
+                        <Star className="h-4 w-4 text-sidebar" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-sidebar">{h.name}</p>
+                        <p className="text-xs text-muted-foreground">{format(new Date(h.date), "d 'de' MMMM 'de' yyyy", { locale: ptBR })}</p>
+                      </div>
+                      <span className="text-[11px] text-muted-foreground whitespace-nowrap">{h.type}</span>
                     </div>
-                    <span className="ml-auto text-[10px] text-muted-foreground whitespace-nowrap">{h.type}</span>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
           </CardContent>
