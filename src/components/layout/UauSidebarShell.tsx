@@ -298,7 +298,9 @@ export function UauSidebarShell({
             )}>
             
             <div className="mx-auto w-full 2xl:max-w-[1600px]">
-              {children}
+              <div className="animate-fade-in overflow-x-auto p-4 sm:p-6 lg:p-8 2xl:p-10">
+                {children}
+              </div>
             </div>
           </div>
         </SidebarInset>
