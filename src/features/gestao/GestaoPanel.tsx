@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Plus, Search, LayoutGrid, CalendarDays, FolderOpen, Settings2, CheckCircle2, FileSpreadsheet, Trash2, Users, ChevronLeft, ChevronRight, CalendarRange } from "lucide-react";
 import { addDays, addMonths, subMonths, endOfMonth, format, startOfMonth, startOfWeek } from "date-fns";
+import { getBrazilianHolidays } from "@/lib/holidays";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -389,6 +390,17 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
 
   const todayKey = format(new Date(), "yyyy-MM-dd");
 
+  // Holidays for visible years
+  const holidays = useMemo(() => {
+    const y = cursor.getFullYear();
+    const map = new Map<string, string>();
+    for (const [k, v] of getBrazilianHolidays(y)) map.set(k, v);
+    // also load adjacent year in case week view crosses year boundary
+    for (const [k, v] of getBrazilianHolidays(y - 1)) map.set(k, v);
+    for (const [k, v] of getBrazilianHolidays(y + 1)) map.set(k, v);
+    return map;
+  }, [cursor]);
+
   const handleDelete = (taskId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     deleteTask.mutate(taskId);
@@ -542,11 +554,16 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
                     </div>
                   </div>
                   <div className="space-y-2.5 max-h-[500px] overflow-y-auto">
-                    {dayTasks.length ? dayTasks.map(renderTaskCard) : (
+                    {holidays.get(key) && (
+                      <div className="w-full rounded-xl bg-primary/5 px-3 py-2">
+                        <span className="text-sm font-medium text-primary/50">{holidays.get(key)}</span>
+                      </div>
+                    )}
+                    {dayTasks.length ? dayTasks.map(renderTaskCard) : !holidays.get(key) ? (
                       <div className="grid min-h-[120px] place-items-center rounded-lg border border-dashed border-border/60 bg-card/5 p-4">
                         <p className="text-sm text-muted-foreground">Sem tarefas</p>
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 </div>
               );
@@ -584,6 +601,11 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
                     </div>
                   </div>
                   <div className="space-y-1.5 max-h-[520px] overflow-y-auto">
+                    {holidays.get(key) && (
+                      <div className="w-full rounded-xl bg-primary/5 px-2.5 py-1.5 mb-1">
+                        <span className="text-[10px] font-medium text-primary/50">{holidays.get(key)}</span>
+                      </div>
+                    )}
                     {dayTasks.slice(0, 5).map(renderTaskCard)}
                     {dayTasks.length > 5 &&
                       <button
