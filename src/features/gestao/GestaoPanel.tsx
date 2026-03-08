@@ -167,6 +167,45 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
         </div>
       </div>
 
+function FilterPopover({ search, setSearch, filterAssignee, setFilterAssignee, members }: {
+  search: string; setSearch: (v: string) => void;
+  filterAssignee: string; setFilterAssignee: (v: string) => void;
+  members: { user_id: string; display_name: string }[];
+}) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-1.5 rounded-xl h-9 text-sm">
+          <Filter className="h-3.5 w-3.5" /> Filtros
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-72 space-y-3 rounded-xl" align="end">
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground">Buscar</label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input placeholder="Buscar tarefa..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 pl-9 rounded-xl text-sm" />
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground">Responsável</label>
+          <Select value={filterAssignee} onValueChange={setFilterAssignee}>
+            <SelectTrigger className="h-9 rounded-xl text-sm">
+              <SelectValue placeholder="Todos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todos os responsáveis</SelectItem>
+              {members.map((m) => (
+                <SelectItem key={m.user_id} value={m.user_id}>{m.display_name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 
 
 
