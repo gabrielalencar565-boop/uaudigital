@@ -328,7 +328,7 @@ export function MagicPanel({
             </div> : null}
           </TabsContent>}
 
-        <TabsContent value="dashboard" className="mt-0">
+        <TabsContent value="dashboard" className="mt-0 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.15s" }}>
            {activeClients.length === 0 ? <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -409,7 +409,7 @@ export function MagicPanel({
             </div>}
         </TabsContent>
 
-        {mode === "dayview" ? null : <TabsContent value="mensal" className="mt-0">
+        {mode === "dayview" ? null : <TabsContent value="mensal" className="mt-0 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.15s" }}>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h3 className="text-lg font-semibold">Visão mensal</h3>
