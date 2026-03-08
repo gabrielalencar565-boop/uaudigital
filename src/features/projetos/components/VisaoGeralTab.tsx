@@ -279,11 +279,10 @@ export function VisaoGeralTab() {
                     {isAdmin && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <button className="h-7 w-7 flex items-center justify-center rounded-lg hover:bg-muted"><MoreHorizontal className="h-4 w-4" /></button>
+                          <button className="h-7 w-7 flex items-center justify-center rounded-xl hover:bg-muted"><MoreHorizontal className="h-4 w-4" /></button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => openEdit(sq)}><Settings2 className="h-4 w-4 mr-2" /> Editar Squad</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => openConfig(sq)}><Users className="h-4 w-4 mr-2" /> Configurar membros</DropdownMenuItem>
                           <DropdownMenuItem className="text-destructive" onClick={() => deleteSquad.mutate(sq.id)}><Trash2 className="h-4 w-4 mr-2" /> Excluir</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
