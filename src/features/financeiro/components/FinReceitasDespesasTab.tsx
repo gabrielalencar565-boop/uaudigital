@@ -204,7 +204,7 @@ export function FinReceitasDespesasTab() {
             size={100}
             stroke={10}
             tone={revProgress >= 100 ? "success" : revProgress >= 50 ? "primary" : "warning"}
-            label={<span className="text-3xl font-bold">{revPaid}</span>}
+            label={<AnimatedNumber value={revPaid} className="text-3xl font-bold" glow={false} />}
           />
         </Card>
         <Card className="flex flex-col items-center justify-center py-4">
