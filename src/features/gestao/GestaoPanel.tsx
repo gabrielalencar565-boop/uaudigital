@@ -480,7 +480,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
               <div className="flex items-center justify-between mb-2">
                 <div className={cn(
                   "grid h-7 w-7 place-items-center rounded-lg text-xs font-bold",
-                  isToday ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground/70"
+                  isToday ? "bg-sidebar text-sidebar-foreground shadow-sm" : "text-muted-foreground/70"
                 )}>
                   {format(d, "d")}
                 </div>
