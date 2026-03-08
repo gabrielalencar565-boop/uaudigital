@@ -208,8 +208,8 @@ export function VisaoGeralTab() {
   };
 
   // Calendar
-  const calendarStart = startOfMonth(now);
-  const calendarEnd = endOfMonth(now);
+  const calendarStart = startOfMonth(calMonth);
+  const calendarEnd = endOfMonth(calMonth);
   const calendarDays = eachDayOfInterval({
     start: startOfWeek(calendarStart, { weekStartsOn: 0 }),
     end: endOfWeek(calendarEnd, { weekStartsOn: 0 }),
@@ -217,7 +217,7 @@ export function VisaoGeralTab() {
 
   const weekDays = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
   const holidayMap = new Map(HOLIDAYS_2026.map((h) => [h.date, h.name]));
-  const upcomingHolidays = HOLIDAYS_2026.filter((h) => new Date(h.date) >= now).slice(0, 4);
+  const upcomingHolidays = HOLIDAYS_2026.filter((h) => new Date(h.date) >= now);
 
   if (showHealthScore) {
     return (
