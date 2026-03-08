@@ -295,7 +295,7 @@ export function MeuPainelPanel() {
           <div
             className="absolute -inset-8 opacity-90"
             style={{
-              background: "linear-gradient(135deg, #7C3AED 0%, #6366F1 40%, #8B5CF6 70%, #7C3AED 100%)",
+              background: "linear-gradient(135deg, #4C1D95 0%, #6D28D9 35%, #7C3AED 65%, #5B21B6 100%)",
               backgroundSize: "200% 200%",
               animation: "parallaxLayer1 16s ease-in-out infinite",
             }}
