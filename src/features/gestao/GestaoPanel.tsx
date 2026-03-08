@@ -48,7 +48,7 @@ const VIEW_TITLES: Record<string, string> = {
   agenda: "Agenda de tarefas",
   clientes: "Tarefas por cliente",
   pauta: "Montagem de pauta",
-  cronograma: "Cronograma de publicações",
+  cronograma: "Cronograma",
   fluxo: "Configuração de fluxos",
   responsaveis: "Responsáveis por etapa"
 };
