@@ -153,7 +153,7 @@ export function UauSidebarShell({
           collapsible={isMobile ? "offcanvas" : "none"}
           className={cn(
             !isMobile &&
-            "fixed left-3 top-[3.5rem] z-40 h-[calc(100svh-4rem)] rounded-xl border border-sidebar-border bg-sidebar shadow-md",
+            "fixed left-0 top-[3.5rem] z-40 h-[calc(100svh-3.5rem)] border-r border-sidebar-border bg-sidebar",
             !isMobile && (collapsed ? "w-16" : "w-56 xl:w-64")
           )}>
           
@@ -293,14 +293,12 @@ export function UauSidebarShell({
               isMobile ?
               "px-4" :
               collapsed ?
-              "pl-[calc(4rem+theme(spacing.3)+theme(spacing.3))] pr-4 pt-[4.5rem]" :
-              "pl-[calc(14rem+theme(spacing.6)+theme(spacing.3))] pr-4 pt-[4.5rem] xl:pl-[calc(16rem+theme(spacing.6)+theme(spacing.3))] xl:pr-8"
+              "pl-[4rem] pr-4 pt-[4.5rem]" :
+              "pl-[14rem] pr-4 pt-[4.5rem] xl:pl-[16rem] xl:pr-8"
             )}>
             
             <div className="mx-auto w-full 2xl:max-w-[1600px]">
-              <div className="uau-surface overflow-x-auto border border-border/60 p-4 sm:p-6 lg:p-8 2xl:p-10 rounded-xl shadow-none py-0 px-[3px]">
-                {children}
-              </div>
+              {children}
             </div>
           </div>
         </SidebarInset>
