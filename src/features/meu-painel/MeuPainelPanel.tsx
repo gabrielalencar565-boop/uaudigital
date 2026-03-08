@@ -311,7 +311,7 @@ export function MeuPainelPanel() {
           </CardContent>
         </Card>
 
-        <div className="grid w-full grid-cols-2 gap-3 md:flex md:flex-wrap md:items-center md:justify-start">
+        <div className="flex w-full items-center justify-end gap-3">
           <MeuPainelPerformanceRankCard
             label="Mensal"
             rank={perf.rank}
@@ -319,23 +319,19 @@ export function MeuPainelPanel() {
             medal={perf.medal}
             isLoading={perf.isLoading}
           />
-          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-            <MeuPainelPerformanceRankCard
-              label="Anual"
-              rank={perfYear.rank}
-              total={perfYear.total}
-              medal={perfYear.medal}
-              isLoading={perfYear.isLoading}
-            />
-            <div className="flex items-center gap-2 justify-start md:justify-end">
-              <MonthYearNav
-                month={selected.month}
-                year={selected.year}
-                onMonthChange={(m) => setSelected((s) => ({ ...s, month: m }))}
-                onYearChange={(y) => setSelected((s) => ({ ...s, year: y }))}
-              />
-            </div>
-          </div>
+          <MeuPainelPerformanceRankCard
+            label="Anual"
+            rank={perfYear.rank}
+            total={perfYear.total}
+            medal={perfYear.medal}
+            isLoading={perfYear.isLoading}
+          />
+          <MonthYearNav
+            month={selected.month}
+            year={selected.year}
+            onMonthChange={(m) => setSelected((s) => ({ ...s, month: m }))}
+            onYearChange={(y) => setSelected((s) => ({ ...s, year: y }))}
+          />
         </div>
       </div>
 
