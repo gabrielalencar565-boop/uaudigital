@@ -77,7 +77,6 @@ export function VisaoGeralTab() {
   const [newName, setNewName] = useState("");
   const [newColor, setNewColor] = useState("#7C5CFF");
   const [newLeader, setNewLeader] = useState<string>("");
-  const [configSquad, setConfigSquad] = useState<any>(null);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [showHealthScore, setShowHealthScore] = useState(false);
 
@@ -182,13 +181,9 @@ export function VisaoGeralTab() {
     });
   };
 
-  const openConfig = (sq: any) => {
+  const openEdit = (sq: any) => {
     const memberIds = allSquadMembers.filter((sm: any) => sm.squad_id === sq.id).map((sm: any) => sm.user_id);
     setSelectedUsers(memberIds);
-    setConfigSquad(sq);
-  };
-
-  const openEdit = (sq: any) => {
     setEditSquad(sq);
     setEditName(sq.name);
     setEditColor(sq.color);
@@ -197,17 +192,13 @@ export function VisaoGeralTab() {
 
   const saveEdit = () => {
     if (!editSquad || !editName.trim()) return;
-    updateSquad.mutate({ id: editSquad.id, name: editName.trim(), color: editColor, leaderId: editLeader || null }, {
+    // Save squad info + members in parallel
+    updateSquad.mutate({ id: editSquad.id, name: editName.trim(), color: editColor, leaderId: editLeader || null });
+    updateMembers.mutate({ squadId: editSquad.id, userIds: selectedUsers }, {
       onSuccess: () => setEditSquad(null),
     });
   };
 
-  const saveConfig = () => {
-    if (!configSquad) return;
-    updateMembers.mutate({ squadId: configSquad.id, userIds: selectedUsers }, {
-      onSuccess: () => setConfigSquad(null),
-    });
-  };
 
   const toggleUser = (uid: string) => {
     setSelectedUsers((prev) => prev.includes(uid) ? prev.filter((u) => u !== uid) : [...prev, uid]);
@@ -279,11 +270,10 @@ export function VisaoGeralTab() {
                     {isAdmin && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <button className="h-7 w-7 flex items-center justify-center rounded-lg hover:bg-muted"><MoreHorizontal className="h-4 w-4" /></button>
+                          <button className="h-7 w-7 flex items-center justify-center rounded-xl hover:bg-muted"><MoreHorizontal className="h-4 w-4" /></button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => openEdit(sq)}><Settings2 className="h-4 w-4 mr-2" /> Editar Squad</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => openConfig(sq)}><Users className="h-4 w-4 mr-2" /> Configurar membros</DropdownMenuItem>
                           <DropdownMenuItem className="text-destructive" onClick={() => deleteSquad.mutate(sq.id)}><Trash2 className="h-4 w-4 mr-2" /> Excluir</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -565,7 +555,7 @@ export function VisaoGeralTab() {
 
       {/* Edit squad dialog */}
       <Dialog open={!!editSquad} onOpenChange={(v) => !v && setEditSquad(null)}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Editar Squad</DialogTitle>
             <DialogDescription>Altere os dados do squad.</DialogDescription>
@@ -601,35 +591,25 @@ export function VisaoGeralTab() {
                 </SelectContent>
               </Select>
             </div>
+            <div>
+              <label className="text-sm font-medium">Membros</label>
+              <div className="max-h-48 overflow-y-auto space-y-1 mt-2 border border-border rounded-xl p-2">
+                {allTeam.map((m) => (
+                  <label key={m.user_id} className="flex items-center gap-3 px-2 py-1.5 rounded-xl hover:bg-muted/50 cursor-pointer">
+                    <Checkbox checked={selectedUsers.includes(m.user_id)} onCheckedChange={() => toggleUser(m.user_id)} />
+                    <Avatar className="h-6 w-6">
+                      <AvatarImage src={m.avatar_url ?? undefined} />
+                      <AvatarFallback className="text-[9px]">{initials(m.display_name)}</AvatarFallback>
+                    </Avatar>
+                    <span className="text-sm">{m.display_name}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setEditSquad(null)}>Cancelar</Button>
             <Button variant="hero" onClick={saveEdit} disabled={!editName.trim()}>Salvar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Config members dialog */}
-      <Dialog open={!!configSquad} onOpenChange={(v) => !v && setConfigSquad(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Membros — {configSquad?.name}</DialogTitle></DialogHeader>
-          <div className="max-h-72 overflow-y-auto space-y-1">
-            {allTeam.map((m) => (
-              <label key={m.user_id} className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-muted/50 cursor-pointer">
-                <Checkbox checked={selectedUsers.includes(m.user_id)} onCheckedChange={() => toggleUser(m.user_id)} />
-                <Avatar className="h-7 w-7">
-                  <AvatarImage src={m.avatar_url ?? undefined} />
-                  <AvatarFallback className="text-[10px]">{initials(m.display_name)}</AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className="text-sm font-medium">{m.display_name}</p>
-                  <p className="text-[10px] text-muted-foreground">{m.role_title}</p>
-                </div>
-              </label>
-            ))}
-          </div>
-          <DialogFooter>
-            <Button onClick={saveConfig}>Salvar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
