@@ -2,7 +2,7 @@ import { PropsWithChildren, useMemo, useState } from "react";
 import {
   CalendarDays, ChevronDown, ChevronLeft, ClipboardList, DollarSign,
   Eye, FolderOpen, LayoutGrid, Settings, Target, TrendingUp, Trophy,
-  UserRound, Workflow, CalendarRange } from
+  UserRound, Workflow, CalendarRange, PieChart } from
 "lucide-react";
 import { useAppSettings } from "@/features/data/queries";
 import { cn } from "@/lib/utils";
@@ -25,6 +25,7 @@ import {
 
 export type MainTab =
 "meu_painel" |
+"visao_geral_projetos" |
 "tarefas" |
 "agenda_gestao" |
 "cronograma" |
@@ -61,6 +62,7 @@ const NAV: NavEntry[] = [
   label: "Projetos",
   icon: ClipboardList,
   children: [
+  { key: "visao_geral_projetos", label: "Visão Geral", icon: PieChart },
   { key: "tarefas", label: "Tarefas", icon: LayoutGrid },
   { key: "agenda_gestao", label: "Agenda", icon: CalendarDays },
   { key: "cronograma", label: "Cronograma", icon: CalendarRange },
