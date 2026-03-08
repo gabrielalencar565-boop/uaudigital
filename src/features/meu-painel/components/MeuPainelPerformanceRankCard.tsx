@@ -24,7 +24,7 @@ export function MeuPainelPerformanceRankCard({
   const { icon, number } = getRankDisplay(rank, medal);
 
   return (
-    <Card className="w-full md:w-fit">
+    <Card className="w-full">
       <CardContent className="relative flex w-full items-center justify-between gap-3 p-4 pt-7">
         <div className="flex min-w-0 items-center gap-3">
           <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border/60 bg-card/40">
