@@ -376,33 +376,43 @@ export function VisaoGeralTab() {
 
         {/* Calendar + holidays */}
         <Card>
-          <CardContent className="py-5 px-5 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center"><CalendarDays className="h-4 w-4 text-muted-foreground" /></div>
-                <p className="text-sm font-semibold">Calendário</p>
+          <CardContent className="py-5 px-5 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-lg bg-sidebar/10 flex items-center justify-center">
+                <CalendarDays className="h-4 w-4 text-sidebar" />
               </div>
-              <p className="text-sm font-semibold">Próximas datas</p>
+              <p className="text-base font-bold">Calendário</p>
             </div>
 
-            <div className="flex gap-4">
+            <div className="flex gap-6">
               {/* Mini calendar */}
-              <div className="flex-1">
-                <p className="text-center text-sm font-medium mb-2 capitalize">{format(now, "MMMM yyyy", { locale: ptBR })}</p>
-                <div className="grid grid-cols-7 gap-0.5 text-center text-[10px]">
+              <div className="flex-1 border border-border rounded-2xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <button className="h-7 w-7 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground">
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <p className="text-sm font-medium capitalize">{format(now, "MMMM yyyy", { locale: ptBR })}</p>
+                  <button className="h-7 w-7 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground">
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-7 gap-1 text-center">
                   {weekDays.map((d) => (
-                    <span key={d} className="text-muted-foreground font-medium py-1">{d}</span>
+                    <span key={d} className="text-xs text-muted-foreground font-medium py-1.5">{d}</span>
                   ))}
                   {calendarDays.map((day, i) => {
                     const inMonth = day.getMonth() === now.getMonth();
                     const today = isToday(day);
+                    const isHoliday = HOLIDAYS_2026.some((h) => isSameDay(new Date(h.date), day));
                     return (
                       <span
                         key={i}
                         className={cn(
-                          "py-1 rounded text-xs",
+                          "py-1.5 rounded-lg text-sm font-medium transition-colors",
                           !inMonth && "text-muted-foreground/30",
-                          today && "bg-primary text-primary-foreground font-bold"
+                          inMonth && !today && !isHoliday && "text-foreground",
+                          today && "bg-sidebar text-sidebar-foreground font-bold",
+                          isHoliday && !today && inMonth && "bg-sidebar/15 text-sidebar font-bold"
                         )}
                       >
                         {day.getDate()}
@@ -413,17 +423,28 @@ export function VisaoGeralTab() {
               </div>
 
               {/* Upcoming holidays */}
-              <div className="flex-1 space-y-2">
-                {upcomingHolidays.map((h) => (
-                  <div key={h.date} className="flex items-start gap-2 text-xs">
-                    <span className="text-primary mt-0.5">★</span>
-                    <div>
-                      <p className="font-medium">{h.name}</p>
-                      <p className="text-muted-foreground">{format(new Date(h.date), "d 'de' MMMM 'de' yyyy", { locale: ptBR })}</p>
+              <div className="flex-1 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-base font-bold">Próximas datas</p>
+                </div>
+                <div className="flex gap-2 mb-1">
+                  <span className="text-xs font-medium bg-sidebar text-sidebar-foreground px-3 py-1 rounded-full">Todas as datas</span>
+                  <span className="text-xs font-medium text-muted-foreground px-3 py-1 rounded-full border border-border">Datas comemorativas</span>
+                </div>
+                <div className="space-y-2.5">
+                  {upcomingHolidays.map((h) => (
+                    <div key={h.date} className="flex items-center gap-3 rounded-xl border border-sidebar/30 bg-sidebar/5 px-4 py-3">
+                      <div className="h-8 w-8 rounded-full bg-sidebar/15 flex items-center justify-center flex-shrink-0">
+                        <Star className="h-4 w-4 text-sidebar" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-sidebar">{h.name}</p>
+                        <p className="text-xs text-muted-foreground">{format(new Date(h.date), "d 'de' MMMM 'de' yyyy", { locale: ptBR })}</p>
+                      </div>
+                      <span className="text-[11px] text-muted-foreground whitespace-nowrap">{h.type}</span>
                     </div>
-                    <span className="ml-auto text-[10px] text-muted-foreground whitespace-nowrap">{h.type}</span>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
           </CardContent>
