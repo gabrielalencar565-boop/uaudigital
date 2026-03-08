@@ -471,10 +471,10 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
           return (
             <div
               key={key}
-              className={cn(
-                "relative min-h-28 rounded-2xl border bg-card/30 backdrop-blur-sm p-2.5 transition-all calendar-card-hover",
-                inMonth ? "opacity-100 border-border/20" : "opacity-30 border-transparent",
-                isToday && "border-primary/50 ring-2 ring-primary/15 bg-primary/5"
+              className={cn("relative min-h-28 rounded-2xl border bg-card/30 backdrop-blur-sm p-2.5 transition-all calendar-card-hover border-[#d9d9d9]",
+
+              inMonth ? "opacity-100 border-border/20" : "opacity-30 border-transparent",
+              isToday && "border-primary/50 ring-2 ring-primary/15 bg-primary/5"
               )}>
               
               <div className="flex items-center justify-between mb-2">
@@ -593,7 +593,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
 import { CronogramaClientBrowser } from "./components/cronograma/CronogramaClientBrowser";
 
 function CronogramaGlobalView({ tasks, childTasksMap, clientsMap, membersMap, onTaskClick, filterClient
-}: {tasks: PmTask[];childTasksMap: Record<string, PmTask[]>;clientsMap: Record<string, string>;membersMap: Record<string, {name: string;avatar?: string;}>;onTaskClick: (t: PmTask) => void; filterClient: string;}) {
+}: {tasks: PmTask[];childTasksMap: Record<string, PmTask[]>;clientsMap: Record<string, string>;membersMap: Record<string, {name: string;avatar?: string;}>;onTaskClick: (t: PmTask) => void;filterClient: string;}) {
   return (
     <CronogramaClientBrowser
       tasks={tasks}
