@@ -247,6 +247,42 @@ export type Database = {
           },
         ]
       }
+      client_squads: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          squad_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          squad_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          squad_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_squads_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_squads_squad_id_fkey"
+            columns: ["squad_id"]
+            isOneToOne: false
+            referencedRelation: "squads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_stages: {
         Row: {
           client_id: string
