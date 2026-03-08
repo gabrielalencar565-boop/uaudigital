@@ -34,7 +34,7 @@ function initials(n: string) {
 
 const STAGE_ABBR: Record<string, string> = {
   captacao: "CAP", planejamento: "PLAN", design: "DSG", edicao_videos: "VDO",
-  revisao: "REV", pdf: "PDF", agendamento: "AGN", entrega: "OK"
+  revisao: "REV", pdf: "PDF", agendamento: "AGN", entrega: "ENT"
 };
 
 const STAGE_BADGE_BG: Record<string, string> = {
@@ -509,11 +509,11 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
                         <div className="flex items-center gap-0.5 transition-opacity">
                           <button
                             type="button"
-                            className={cn("h-5 w-5 rounded-md flex items-center justify-center transition", isDone ? "bg-success text-success-foreground" : "border border-border/40 hover:border-primary hover:bg-primary/10")}
+                            className={cn("h-5 w-5 rounded-md flex items-center justify-center transition border", isDone ? "bg-success text-success-foreground border-success" : "border-border hover:border-primary hover:bg-primary/10")}
                             onClick={(e) => handleMarkDone(t, e)}
                             title={isDone ? "Desmarcar" : "Marcar concluído"}>
                             
-                            {isDone && <CheckCircle2 className="h-3 w-3" />}
+                            {isDone ? <CheckCircle2 className="h-3 w-3" /> : <span className="h-3 w-3 rounded-sm border border-muted-foreground/40" />}
                           </button>
                           <button
                             type="button"
@@ -534,7 +534,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
                           <AvatarFallback className="text-[7px] font-bold bg-primary/10 text-primary">{member ? initials(member.name) : "?"}</AvatarFallback>
                         </Avatar>
                         <div className="min-w-0">
-                          <p className="truncate text-[11px] font-semibold leading-4">{member?.name ?? "—"}</p>
+                          <p className="truncate text-[11px] font-semibold leading-4">{member?.name?.split(" ")[0] ?? "—"}</p>
                           <p className="truncate text-[10px] text-muted-foreground/60 leading-3">{clientName}</p>
                         </div>
                       </div>
