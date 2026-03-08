@@ -407,8 +407,13 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
     e.stopPropagation();
     if (t.status_global === "concluido") return;
 
-    // 1) Mark current task as concluído (keep stage + assignee so it stays in calendar)
-    updateTask.mutate({ id: t.id, status_global: "concluido" as any });
+    // 1) Mark current task as concluído — await to ensure DB persists before creating next
+    try {
+      await updateTask.mutateAsync({ id: t.id, status_global: "concluido" as any });
+    } catch (err) {
+      toast.error("Erro ao marcar como concluído");
+      return;
+    }
 
     // Sync performance
     try {
