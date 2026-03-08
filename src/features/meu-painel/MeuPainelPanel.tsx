@@ -290,14 +290,26 @@ export function MeuPainelPanel() {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
-        <div className="md:col-span-2 relative group overflow-hidden shadow-xl shadow-[#7C3AED]/10" style={{ borderRadius: 28 }}>
-          {/* Layer 1 — deep base gradient (slowest) */}
+        <div
+          className="md:col-span-2 relative group overflow-hidden transition-all duration-500 ease-out hover:-translate-y-1.5 hover:scale-[1.008]"
+          style={{
+            borderRadius: 28,
+            boxShadow: "0 8px 32px -8px rgba(124,58,237,0.18), 0 0 0 1px rgba(139,92,246,0.12), inset 0 0 0 1px rgba(255,255,255,0.06)",
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLElement).style.boxShadow = "0 16px 48px -8px rgba(124,58,237,0.32), 0 0 24px 2px rgba(139,92,246,0.18), 0 0 0 1px rgba(139,92,246,0.25), inset 0 0 0 1px rgba(255,255,255,0.10)";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLElement).style.boxShadow = "0 8px 32px -8px rgba(124,58,237,0.18), 0 0 0 1px rgba(139,92,246,0.12), inset 0 0 0 1px rgba(255,255,255,0.06)";
+          }}
+        >
+          {/* Layer 1 — deep base gradient (slowest, continuous motion) */}
           <div
             className="absolute -inset-8 opacity-90"
             style={{
-              background: "linear-gradient(135deg, #4C1D95 0%, #6D28D9 35%, #7C3AED 65%, #5B21B6 100%)",
-              backgroundSize: "200% 200%",
-              animation: "parallaxLayer1 16s ease-in-out infinite",
+              background: "linear-gradient(135deg, #4C1D95 0%, #6D28D9 25%, #7C3AED 50%, #5B21B6 75%, #4C1D95 100%)",
+              backgroundSize: "300% 300%",
+              animation: "gradientFlow 14s ease-in-out infinite",
             }}
           />
 
@@ -330,9 +342,16 @@ export function MeuPainelPanel() {
             }}
           />
 
-          {/* Glow border */}
-          <div className="absolute inset-0 pointer-events-none" style={{ borderRadius: 28, boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12)" }} />
-          <div className="absolute -inset-px opacity-0 group-hover:opacity-100 transition-opacity duration-700" style={{ borderRadius: 28, background: "radial-gradient(circle at 50% 0%, rgba(167,139,250,0.25), transparent 70%)" }} />
+          {/* Glow border — always visible, intensifies on hover */}
+          <div
+            className="absolute inset-0 pointer-events-none transition-opacity duration-500 opacity-40 group-hover:opacity-80"
+            style={{ borderRadius: 28, boxShadow: "inset 0 0 0 1.5px rgba(167,139,250,0.3), 0 0 20px 0 rgba(124,58,237,0.08)" }}
+          />
+          {/* Top glow accent on hover */}
+          <div
+            className="absolute -inset-px opacity-0 group-hover:opacity-100 transition-opacity duration-700"
+            style={{ borderRadius: 28, background: "radial-gradient(circle at 50% 0%, rgba(167,139,250,0.3), transparent 60%)" }}
+          />
 
           {/* Content */}
           <div className="relative z-10 flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:p-6">

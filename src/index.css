@@ -319,6 +319,12 @@ All colors MUST be HSL.
   100% { transform: translateX(0%) translateY(0%); }
 }
 
+@keyframes gradientFlow {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
 @keyframes parallaxLayer2 {
   0%   { transform: translate(0%, 0%) scale(1); }
   33%  { transform: translate(3%, -2%) scale(1.03); }
