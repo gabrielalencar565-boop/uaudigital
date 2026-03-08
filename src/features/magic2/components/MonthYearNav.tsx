@@ -34,10 +34,42 @@ export function MonthYearNav({
   const monthLabel = getMonthAbbrPtBr(year, month);
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
 
-  return;
+  return (
+    <div className="flex items-center gap-2">
+      <Button variant="outline" size="sm" onClick={() => {
+        if (month === 1) { onMonthChange(12); onYearChange(year - 1); }
+        else onMonthChange(clampMonth(month - 1));
+      }}>←</Button>
 
+      <Select value={String(month)} onValueChange={(v) => onMonthChange(Number(v))}>
+        <SelectTrigger className="w-28 h-9">
+          <SelectValue>{getMonthNamePtBr(year, month)}</SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          {months.map((m) => (
+            <SelectItem key={m} value={String(m)}>{getMonthNamePtBr(year, m)}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
 
+      <Select value={String(year)} onValueChange={(v) => onYearChange(Number(v))}>
+        <SelectTrigger className="w-20 h-9">
+          <SelectValue>{year}</SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          {years.map((y) => (
+            <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
 
+      <Button variant="outline" size="sm" onClick={() => {
+        if (month === 12) { onMonthChange(1); onYearChange(year + 1); }
+        else onMonthChange(clampMonth(month + 1));
+      }}>→</Button>
+    </div>
+  );
+}
 
 
 
