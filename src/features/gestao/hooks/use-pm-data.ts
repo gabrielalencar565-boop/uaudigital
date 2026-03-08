@@ -127,6 +127,7 @@ export function useCreatePmTask() {
       useTemplate?: boolean;
       is_extra_demand?: boolean;
       is_draft?: boolean;
+      status_global?: string;
     }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Não autenticado");
@@ -135,7 +136,7 @@ export function useCreatePmTask() {
       const { data, error } = await sb.from("pm_tasks").insert({
         ...rest,
         created_by: user.id,
-        status_global: "backlog",
+        status_global: rest.status_global || "backlog",
       }).select().single();
       if (error) throw error;
 

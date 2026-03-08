@@ -258,11 +258,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       tags: task.tags ?? [],
       parent_task_id: task.parent_task_id ?? undefined,
       is_extra_demand: task.is_extra_demand,
-    }, {
-      onSuccess: (snapshot) => {
-        // Mark the snapshot as concluído immediately
-        updateTask.mutate({ id: snapshot.id, status_global: "concluido" as any });
-      },
+      status_global: "concluido",
     });
 
     // Advance the actual task to the next stage
