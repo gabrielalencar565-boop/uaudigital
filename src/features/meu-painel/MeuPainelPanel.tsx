@@ -208,19 +208,22 @@ export function MeuPainelPanel() {
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
-    supabase
-      .from("profiles")
-      .select("full_name, avatar_url")
-      .eq("user_id", user.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (cancelled) return;
-        if (!data?.full_name) {
-          setMyProfile(null);
-          return;
-        }
-        setMyProfile({ full_name: data.full_name, avatar_url: data.avatar_url ?? null });
+    Promise.all([
+      supabase.from("profiles").select("full_name, avatar_url").eq("user_id", user.id).maybeSingle(),
+      supabase.from("team_members").select("birth_date").eq("user_id", user.id).maybeSingle(),
+    ]).then(([profileRes, tmRes]) => {
+      if (cancelled) return;
+      const data = profileRes.data;
+      if (!data?.full_name) {
+        setMyProfile(null);
+        return;
+      }
+      setMyProfile({
+        full_name: data.full_name,
+        avatar_url: data.avatar_url ?? null,
+        birth_date: (tmRes.data as any)?.birth_date ?? null,
       });
+    });
     return () => {
       cancelled = true;
     };
