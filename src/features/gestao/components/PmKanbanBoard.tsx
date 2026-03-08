@@ -7,24 +7,24 @@ import { PmTaskCard } from "./PmTaskCard";
 
 // Fixed column order per user request
 const KANBAN_COLUMNS = [
-  { key: "captacao", label: "Captação" },
-  { key: "planejamento", label: "Planejamento" },
-  { key: "design", label: "Design" },
-  { key: "edicao_videos", label: "Vídeo" },
-  { key: "revisao", label: "Revisão" },
-  { key: "pdf", label: "PDF" },
-  { key: "agendamento", label: "Agendamento" },
-  { key: "entrega", label: "Concluído" },
-] as const;
+{ key: "captacao", label: "Captação" },
+{ key: "planejamento", label: "Planejamento" },
+{ key: "design", label: "Design" },
+{ key: "edicao_videos", label: "Vídeo" },
+{ key: "revisao", label: "Revisão" },
+{ key: "pdf", label: "PDF" },
+{ key: "agendamento", label: "Agendamento" },
+{ key: "entrega", label: "Concluído" }] as
+const;
 
 interface Props {
   tasks: PmTask[];
   childTasksMap: Record<string, PmTask[]>;
   clientsMap: Record<string, string>;
-  membersMap: Record<string, { name: string; avatar?: string }>;
+  membersMap: Record<string, {name: string;avatar?: string;}>;
   onTaskClick: (task: PmTask) => void;
   onCreateClick: (status?: string) => void;
-  filters: { clientId?: string; assigneeId?: string; search?: string; fixedAssigneeClientIds?: Set<string> };
+  filters: {clientId?: string;assigneeId?: string;search?: string;fixedAssigneeClientIds?: Set<string>;};
   isAdmin?: boolean;
 }
 
@@ -46,7 +46,7 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, on
   const columns = useMemo(() => {
     return KANBAN_COLUMNS.map((col) => ({
       ...col,
-      tasks: filtered.filter((t) => t.stage_current === col.key),
+      tasks: filtered.filter((t) => t.stage_current === col.key)
     }));
   }, [filtered]);
 
@@ -55,7 +55,7 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, on
       {columns.map((col) => {
         const circleColor = getStageCircleColor(col.key);
         return (
-          <div key={col.key} className="flex w-[272px] min-w-[272px] flex-col rounded-2xl bg-muted/40 backdrop-blur-sm border border-border/20">
+          <div key={col.key} className="flex w-[272px] min-w-[272px] flex-col rounded-2xl bg-muted/40 backdrop-blur-sm border border-[#6932c8]">
             {/* Column header */}
             <div className="flex items-center justify-between px-4 py-3">
               <div className="flex items-center gap-2.5">
@@ -68,8 +68,8 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, on
               <button
                 type="button"
                 onClick={() => onCreateClick(col.key)}
-                className="rounded-lg p-1.5 text-muted-foreground/60 transition-all hover:bg-primary/10 hover:text-primary active:scale-95"
-              >
+                className="rounded-lg p-1.5 text-muted-foreground/60 transition-all hover:bg-primary/10 hover:text-primary active:scale-95">
+                
                 <Plus className="h-4 w-4" strokeWidth={2.5} />
               </button>
             </div>
@@ -86,22 +86,22 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, on
                     assigneeAvatar={member?.avatar}
                     childTasks={childTasksMap[task.id] ?? []}
                     onClick={() => onTaskClick(task)}
-                    isAdmin={isAdmin}
-                  />
-                );
+                    isAdmin={isAdmin} />);
+
+
               })}
-              {col.tasks.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-8 gap-2">
+              {col.tasks.length === 0 &&
+              <div className="flex flex-col items-center justify-center py-8 gap-2">
                   <div className="h-8 w-8 rounded-xl bg-foreground/5 flex items-center justify-center">
                     <Plus className="h-4 w-4 text-muted-foreground/30" />
                   </div>
                   <p className="text-[11px] text-muted-foreground/40 font-medium">Nenhuma tarefa</p>
                 </div>
-              )}
+              }
             </div>
-          </div>
-        );
+          </div>);
+
       })}
-    </div>
-  );
+    </div>);
+
 }

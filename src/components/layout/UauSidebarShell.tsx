@@ -247,9 +247,9 @@ export function UauSidebarShell({
                               <button
                                 key={child.key}
                                 onClick={() => onTabChange(child.key)}
-                                className={cn(
-                                  "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground",
-                                  active && "bg-sidebar-accent text-sidebar-foreground font-medium"
+                                className={cn("flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-sidebar-foreground/70 transition-colors hover:text-sidebar-foreground bg-[#6b2aa7]",
+
+                                active && "bg-sidebar-accent text-sidebar-foreground font-medium"
                                 )}>
                                 
                                   <child.icon className="h-4 w-4 shrink-0" />
