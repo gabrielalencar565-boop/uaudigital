@@ -383,79 +383,10 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
   fixedAssigneeClientIds: Set<string>;
 }) {
   const deleteTask = useDeletePmTask();
-  const updateTask = useUpdatePmTask();
-  const createTask = useCreatePmTask();
-  const syncStage = usePmSyncStageCompletion();
   const [moreOpen, setMoreOpen] = useState(false);
   const [moreDayKey, setMoreDayKey] = useState<string | null>(null);
 
-  // Flow config for auto-advance
-  const flowsQ = useStageFlows();
-  const { flowConfig, transitionDates, stageAssignees: flowAssignees } = useMemo(() => {
-    const flows = flowsQ.data ?? [];
-    const defaultFlow = flows.find((f) => f.is_default) ?? flows[0];
-    return {
-      flowConfig: (defaultFlow?.flow_config ?? {}) as Record<string, string[]>,
-      transitionDates: (defaultFlow?.transition_dates ?? {}) as Record<string, number | "pick">,
-      stageAssignees: (defaultFlow?.stage_assignees ?? {}) as StageAssignees,
-    };
-  }, [flowsQ.data]);
-
   const todayKey = format(new Date(), "yyyy-MM-dd");
-
-  const handleMarkDone = async (t: PmTask, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (t.status_global === "concluido") return;
-
-    // 1) Mark current task as concluído — await to ensure DB persists before creating next
-    try {
-      await updateTask.mutateAsync({ id: t.id, status_global: "concluido" as any });
-    } catch (err) {
-      toast.error("Erro ao marcar como concluído");
-      return;
-    }
-
-    // Sync performance
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user && !t.parent_task_id) {
-        syncStage.mutate({ pmTaskId: t.id, completedStage: t.stage_current, userId: user.id });
-      }
-    } catch (_) {}
-
-    // 2) Determine next stage from flow
-    const nextStages = (flowConfig[t.stage_current] ?? []) as string[];
-    const nextStage = nextStages[0];
-    if (!nextStage || nextStage === "entrega") {
-      toast.success("Tarefa marcada como concluída!");
-      return;
-    }
-
-    // Calculate due date
-    const dateConfig = transitionDates[t.stage_current];
-    const baseDate = t.due_date ? new Date(t.due_date + "T12:00:00") : new Date();
-    const daysToAdd = typeof dateConfig === "number" ? dateConfig : 1;
-    const newDueDate = format(addDays(baseDate, daysToAdd), "yyyy-MM-dd");
-
-    // Get fixed assignee for next stage
-    const stageMap = flowAssignees[nextStage] as Record<string, string> | undefined;
-    const fixedAssignee = stageMap?.[t.client_id] ?? null;
-
-    createTask.mutate({
-      client_id: t.client_id,
-      title: t.title,
-      description: t.description ?? undefined,
-      priority: t.priority,
-      stage_current: nextStage,
-      due_date: newDueDate,
-      assignee_id: fixedAssignee ?? t.assignee_id ?? undefined,
-      project_id: t.project_id ?? undefined,
-      tags: t.tags ?? [],
-      parent_task_id: t.parent_task_id ?? undefined,
-      is_extra_demand: t.is_extra_demand,
-    });
-    toast.success(`Concluído! Nova tarefa "${stageLabel(nextStage)}" criada para ${newDueDate}`);
-  };
 
   const handleDelete = (taskId: string, e: React.MouseEvent) => {
     e.stopPropagation();
