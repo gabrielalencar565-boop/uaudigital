@@ -74,10 +74,12 @@ export function FinFluxoCaixaTab() {
 
   return (
     <div className="space-y-6">
-      <FinMonthYearSelector month={month} year={year} onMonthChange={setMonth} onYearChange={setYear} />
+      <div className="opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0s" }}>
+        <FinMonthYearSelector month={month} year={year} onMonthChange={setMonth} onYearChange={setYear} />
+      </div>
 
       {/* KPIs Row 1 */}
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.1s" }}>
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm font-medium uppercase">Receita</CardTitle></CardHeader>
           <CardContent><p className="text-4xl font-bold">R$ {totalReceita.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p></CardContent>
