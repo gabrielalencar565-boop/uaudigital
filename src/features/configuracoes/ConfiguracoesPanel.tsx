@@ -80,11 +80,24 @@ export function ConfiguracoesPanel() {
           setLoading(false);
           return;
         }
-        if (data) {
-          form.reset({ full_name: data.full_name ?? "", role_title: data.role_title ?? "" });
-          setAvatarUrl(data.avatar_url ?? null);
-        }
-        setLoading(false);
+        // Also fetch birth_date from team_members
+        supabase
+          .from("team_members")
+          .select("birth_date")
+          .eq("user_id", user.id)
+          .maybeSingle()
+          .then(({ data: tmData }) => {
+            if (cancelled) return;
+            if (data) {
+              form.reset({
+                full_name: data.full_name ?? "",
+                role_title: data.role_title ?? "",
+                birth_date: (tmData as any)?.birth_date ?? "",
+              });
+              setAvatarUrl(data.avatar_url ?? null);
+            }
+            setLoading(false);
+          });
       });
     return () => {
       cancelled = true;
