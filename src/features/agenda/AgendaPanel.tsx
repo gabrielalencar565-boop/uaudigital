@@ -1127,7 +1127,7 @@ export function AgendaPanel() {
                   return (
                     <DayDropZone key={key} dayKey={key} isToday={key === todayKey} disabled={!canManageTasks}>
                       <div className={cn(
-                        "relative min-h-28 rounded-xl border border-border/60 bg-card/20 p-2 transition calendar-card-hover",
+                        "relative min-h-28 rounded-xl border border-[#d9d9d9] bg-card/20 p-2 transition calendar-card-hover",
                         inMonth ? "opacity-100" : "opacity-50",
                         hasOverdue && "ring-1 ring-danger/40"
                       )}>
