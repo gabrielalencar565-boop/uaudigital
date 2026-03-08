@@ -93,20 +93,45 @@ export function AdminPanel() {
   const openRoleEditor = (r: AdminUserRow) => {
     const currentRoles = rolesQ.data?.get(r.user_id) ?? [];
     setEditRoles(currentRoles);
+    setEditSquadIds(userSquadMap.get(r.user_id) ?? []);
     setEditRoleUser(r);
   };
 
   const handleSaveRoles = async () => {
     if (!editRoleUser) return;
+    setSavingAll(true);
     try {
+      // Save roles
       await setUserRoles.mutateAsync({
         userId: editRoleUser.user_id,
         roles: editRoles,
       });
-      toast.success("Permissões atualizadas!");
+
+      // Save squad memberships: remove from old squads, add to new
+      const currentSquads = userSquadMap.get(editRoleUser.user_id) ?? [];
+      const toRemove = currentSquads.filter((id) => !editSquadIds.includes(id));
+      const toAdd = editSquadIds.filter((id) => !currentSquads.includes(id));
+
+      for (const squadId of toRemove) {
+        await supabase
+          .from("squad_members")
+          .delete()
+          .eq("squad_id", squadId)
+          .eq("user_id", editRoleUser.user_id);
+      }
+      for (const squadId of toAdd) {
+        await supabase
+          .from("squad_members")
+          .insert({ squad_id: squadId, user_id: editRoleUser.user_id } as any);
+      }
+
+      await qc.invalidateQueries({ queryKey: ["squad_members"] });
+      toast.success("Configurações atualizadas!");
       setEditRoleUser(null);
     } catch (e: any) {
-      toast.error(e?.message ?? "Erro ao atualizar permissões");
+      toast.error(e?.message ?? "Erro ao atualizar");
+    } finally {
+      setSavingAll(false);
     }
   };
 
