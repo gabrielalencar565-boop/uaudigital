@@ -150,12 +150,12 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
     setCreateOpen(true);
   };
 
-  return (
+   return (
     <div className="space-y-4">
-      {/* Header — Kanban de tarefas */}
+      {/* Header — dynamic title per view */}
       <div className="flex items-center justify-between opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
         <div className="flex items-center gap-3">
-          <h2 className="font-bold tracking-tight text-2xl">Cronograma</h2>
+          <h2 className="font-bold tracking-tight text-2xl">{VIEW_TITLES[effectiveView] ?? "Tarefas"}</h2>
         </div>
         <div className="flex items-center gap-2">
           <div className="relative">
@@ -173,16 +173,26 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
               ))}
             </SelectContent>
           </Select>
+          <Select value={filterAssignee} onValueChange={setFilterAssignee}>
+            <SelectTrigger className="h-9 w-52 rounded-xl text-sm bg-background/80 border-border/30">
+              <SelectValue placeholder="Todos os responsáveis" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todos os responsáveis</SelectItem>
+              {(membersQ.data ?? []).map((m) => (
+                <SelectItem key={m.user_id} value={m.user_id}>
+                  <span className="flex items-center gap-2">
+                    <Avatar className="h-5 w-5">
+                      <AvatarImage src={m.avatar_url ?? undefined} />
+                      <AvatarFallback className="text-[9px] bg-primary/10 text-primary">{initials(m.display_name)}</AvatarFallback>
+                    </Avatar>
+                    {m.display_name}
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-      </div>
-
-      {/* Member filter bar */}
-      <div className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.1s" }}>
-        <MemberFilterBar
-          members={membersQ.data ?? []}
-          selected={filterAssignee}
-          onSelect={setFilterAssignee}
-        />
       </div>
 
 
