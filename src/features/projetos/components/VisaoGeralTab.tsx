@@ -219,6 +219,42 @@ export function VisaoGeralTab() {
   const holidayMap = new Map(HOLIDAYS_2026.map((h) => [h.date, h.name]));
   const upcomingHolidays = HOLIDAYS_2026.filter((h) => new Date(h.date) >= now);
 
+  // Birthdays from team members
+  const allTeam = teamQ.data ?? [];
+  const teamBirthdays = useMemo(() => {
+    return allTeam
+      .filter((m) => m.birth_date)
+      .map((m) => {
+        const bd = new Date(m.birth_date + "T12:00:00");
+        const thisYear = new Date(now.getFullYear(), bd.getMonth(), bd.getDate());
+        const nextBirthday = thisYear >= now ? thisYear : new Date(now.getFullYear() + 1, bd.getMonth(), bd.getDate());
+        return {
+          date: format(nextBirthday, "yyyy-MM-dd"),
+          name: `🎂 ${m.display_name}`,
+          type: "Aniversário",
+        };
+      })
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [allTeam, now]);
+
+  // Birthday map for calendar highlighting
+  const birthdayMap = useMemo(() => {
+    const map = new Map<string, string>();
+    allTeam.filter((m) => m.birth_date).forEach((m) => {
+      const bd = new Date(m.birth_date + "T12:00:00");
+      const key = format(new Date(calMonth.getFullYear(), bd.getMonth(), bd.getDate()), "yyyy-MM-dd");
+      const existing = map.get(key);
+      map.set(key, existing ? `${existing}, ${m.display_name}` : `🎂 ${m.display_name}`);
+    });
+    return map;
+  }, [allTeam, calMonth]);
+
+  // Combined dates for "Próximas datas" widget
+  const filteredDates = useMemo(() => {
+    if (holidayFilter === "comemorativas") return teamBirthdays;
+    return [...upcomingHolidays, ...teamBirthdays].sort((a, b) => a.date.localeCompare(b.date));
+  }, [holidayFilter, upcomingHolidays, teamBirthdays]);
+
   if (showHealthScore) {
     return (
       <div className="space-y-4">
