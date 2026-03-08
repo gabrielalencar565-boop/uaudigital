@@ -17,6 +17,7 @@ import { toast } from "sonner";
 const profileSchema = z.object({
   full_name: z.string().trim().min(2, "Informe seu nome").max(120),
   role_title: z.string().trim().min(2, "Informe seu cargo").max(120),
+  birth_date: z.string().optional(),
 });
 type ProfileValues = z.infer<typeof profileSchema>;
 
@@ -44,7 +45,7 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
 
   const form = useForm<ProfileValues>({
     resolver: zodResolver(profileSchema),
-    defaultValues: { full_name: "", role_title: "" },
+    defaultValues: { full_name: "", role_title: "", birth_date: "" },
   });
 
   // Load current profile when dialog opens
@@ -58,10 +59,22 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
       .maybeSingle()
       .then(({ data }) => {
         if (cancelled) return;
-        if (data) {
-          form.reset({ full_name: data.full_name ?? "", role_title: data.role_title ?? "" });
-          setAvatarUrl(data.avatar_url ?? null);
-        }
+        supabase
+          .from("team_members")
+          .select("birth_date")
+          .eq("user_id", user.id)
+          .maybeSingle()
+          .then(({ data: tmData }) => {
+            if (cancelled) return;
+            if (data) {
+              form.reset({
+                full_name: data.full_name ?? "",
+                role_title: data.role_title ?? "",
+                birth_date: (tmData as any)?.birth_date ?? "",
+              });
+              setAvatarUrl(data.avatar_url ?? null);
+            }
+          });
       });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -117,7 +130,8 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
             role_title: v.role_title,
             avatar_url: nextAvatarUrl,
             is_active: true,
-          },
+            birth_date: v.birth_date || null,
+          } as any,
           { onConflict: "user_id" },
         );
       if (tm.error) throw tm.error;
@@ -171,6 +185,12 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
             {form.formState.errors.role_title && (
               <p className="text-sm text-destructive">{form.formState.errors.role_title.message}</p>
             )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit_birth_date">Data de nascimento</Label>
+            <Input id="edit_birth_date" type="date" {...form.register("birth_date")} />
+            <p className="text-xs text-muted-foreground">Seu aniversário aparecerá no calendário e você receberá parabéns no dia.</p>
           </div>
 
           <DialogFooter>
