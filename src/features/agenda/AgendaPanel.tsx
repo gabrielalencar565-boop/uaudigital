@@ -937,9 +937,9 @@ export function AgendaPanel() {
           </CardContent>
         </Card> :
     // Desktop: grid de calendário (versão compacta original)
-    <Card>
-        <CardHeader className="space-y-4">
-          {/* Row 1: Mês/Semana toggle + Month nav + filters */}
+    <div className="rounded-2xl border border-border/30 bg-card/40 backdrop-blur-sm p-5 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.15s" }}>
+        <div className="space-y-4 mb-5">
+          {/* Row 1: Mês/Semana toggle + Month nav + week selector */}
           <div className="flex flex-wrap items-center gap-4">
             <Tabs value={view} onValueChange={v => setView(v as any)}>
               <TabsList className="bg-muted/40 h-9 p-0.5 rounded-xl gap-0.5">
@@ -972,49 +972,48 @@ export function AgendaPanel() {
                 </SelectContent>
               </Select>
             )}
+
+            <div className="ml-auto flex flex-wrap items-center gap-2">
+              <Select value={filterClientId} onValueChange={v => setFilterClientId(v as any)}>
+                <SelectTrigger className="h-9 w-44 rounded-xl text-sm bg-muted/30 border-border/30">
+                  <SelectValue placeholder="Todos os clientes" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover z-50">
+                  <SelectItem value="all">Todos os clientes</SelectItem>
+                  {clients.filter(c => !c.is_freelancer_sentinel).map(c => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={filterUserId} onValueChange={v => setFilterUserId(v as any)}>
+                <SelectTrigger className="h-9 w-44 rounded-xl text-sm bg-muted/30 border-border/30">
+                  <SelectValue placeholder="Toda a equipe" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover z-50">
+                  <SelectItem value="all">Toda a equipe</SelectItem>
+                  {team.filter(m => m.is_active).map(m => (
+                    <SelectItem key={m.user_id} value={m.user_id}>{m.display_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={filterStage} onValueChange={v => setFilterStage(v as any)}>
+                <SelectTrigger className="h-9 w-44 rounded-xl text-sm bg-muted/30 border-border/30">
+                  <SelectValue placeholder="Todas as etapas" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover z-50">
+                  <SelectItem value="all">Todas as etapas</SelectItem>
+                  {AGENDA_STAGES.map(s => (
+                    <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
+        </div>
 
-          {/* Row 2: Filters */}
-          <div className="flex flex-wrap items-center gap-2">
-            <Select value={filterClientId} onValueChange={v => setFilterClientId(v as any)}>
-              <SelectTrigger className="h-9 w-48 rounded-xl text-sm bg-muted/30 border-border/30">
-                <SelectValue placeholder="Todos os clientes" />
-              </SelectTrigger>
-              <SelectContent className="bg-popover z-50">
-                <SelectItem value="all">Todos os clientes</SelectItem>
-                {clients.filter(c => !c.is_freelancer_sentinel).map(c => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={filterUserId} onValueChange={v => setFilterUserId(v as any)}>
-              <SelectTrigger className="h-9 w-48 rounded-xl text-sm bg-muted/30 border-border/30">
-                <SelectValue placeholder="Toda a equipe" />
-              </SelectTrigger>
-              <SelectContent className="bg-popover z-50">
-                <SelectItem value="all">Toda a equipe</SelectItem>
-                {team.filter(m => m.is_active).map(m => (
-                  <SelectItem key={m.user_id} value={m.user_id}>{m.display_name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={filterStage} onValueChange={v => setFilterStage(v as any)}>
-              <SelectTrigger className="h-9 w-48 rounded-xl text-sm bg-muted/30 border-border/30">
-                <SelectValue placeholder="Todas as etapas" />
-              </SelectTrigger>
-              <SelectContent className="bg-popover z-50">
-                <SelectItem value="all">Todas as etapas</SelectItem>
-                {AGENDA_STAGES.map(s => (
-                  <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </CardHeader>
-
-        <CardContent>
+        <div>
           {view === "week" ? <div className="overflow-x-auto pb-4">
               {/* Grid horizontal com colunas mais largas */}
               <div className="flex gap-4 min-w-max">
@@ -1209,8 +1208,8 @@ export function AgendaPanel() {
                 })}
               </div>
             </>}
-        </CardContent>
-      </Card>}
+        </div>
+      </div>}
     </div>
   </DndContext>;
 }
