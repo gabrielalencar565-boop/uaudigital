@@ -288,7 +288,7 @@ export function MeuPainelPanel() {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <Card className="md:col-span-2">
           <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:p-5">

@@ -141,7 +141,7 @@ export function AdminLimpezaPanel() {
       </Card>
 
       {/* Escala Semanal */}
-      <Card>
+      <Card className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.15s" }}>
         <CardHeader>
           <CardTitle className="text-base">Escala Semanal</CardTitle>
           <CardDescription>Defina quem faz qual limpeza em cada dia da semana.</CardDescription>

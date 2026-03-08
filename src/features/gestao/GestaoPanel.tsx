@@ -150,7 +150,7 @@ export function GestaoPanel({ forcedView }: { forcedView?: string } = {}) {
       </div>
 
       {/* Filters bar */}
-      <div className="flex flex-wrap items-center gap-2.5 rounded-2xl bg-muted/30 backdrop-blur-sm border border-border/20 p-2.5">
+      <div className="flex flex-wrap items-center gap-2.5 rounded-2xl bg-muted/30 backdrop-blur-sm border border-border/20 p-2.5 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.15s" }}>
         <div className="relative flex-1 min-w-[180px] max-w-[240px]">
           <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/50" />
           <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar tarefas..." className="pl-9 h-9 text-xs rounded-xl border-border/30 bg-background/80" />

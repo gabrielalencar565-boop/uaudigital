@@ -207,7 +207,7 @@ export function VisaoGeralTab() {
       </div>
 
       {/* Squad cards row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.15s" }}>
         {squads.map((sq: any) => {
           const st = squadStats[sq.id] ?? { total: 0, done: 0, inProgress: 0, overdue: 0, memberIds: [], clients: new Set() };
           const progress = st.total > 0 ? Math.round((st.done / st.total) * 100) : 0;
