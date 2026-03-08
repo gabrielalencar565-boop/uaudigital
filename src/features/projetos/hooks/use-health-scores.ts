@@ -32,7 +32,7 @@ export function useHealthScores(month: number, year: number) {
         .eq("month", month)
         .eq("year", year);
       if (error) throw error;
-      return (data ?? []) as HealthScore[];
+      return (data ?? []) as unknown as HealthScore[];
     },
   });
 }

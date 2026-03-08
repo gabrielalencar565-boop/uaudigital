@@ -199,7 +199,7 @@ export function VisaoGeralTab() {
 
                   {/* Progress */}
                   <div className="flex items-center gap-4">
-                    <ProgressRing value={progress} size={56} strokeWidth={5} />
+                    <ProgressRing value={progress} size={56} stroke={5} />
                     <div className="flex-1 grid grid-cols-3 gap-2 text-center">
                       <div>
                         <p className="text-lg font-bold text-green-500">{st.done}</p>
