@@ -288,9 +288,9 @@ export function MeuPainelPanel() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Card>
+    <div className="space-y-6 animate-fade-in">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+        <Card className="md:col-span-2">
           <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:p-5">
             <div className="flex min-w-0 items-center gap-3">
               <Avatar className="h-11 w-11">
@@ -311,30 +311,28 @@ export function MeuPainelPanel() {
           </CardContent>
         </Card>
 
-        <div className="grid w-full grid-cols-2 gap-3 md:flex md:flex-wrap md:items-center md:justify-start">
+        <MeuPainelPerformanceRankCard
+          label="Mensal"
+          rank={perf.rank}
+          total={perf.total}
+          medal={perf.medal}
+          isLoading={perf.isLoading}
+        />
+        <div className="flex flex-col gap-2">
           <MeuPainelPerformanceRankCard
-            label="Mensal"
-            rank={perf.rank}
-            total={perf.total}
-            medal={perf.medal}
-            isLoading={perf.isLoading}
+            label="Anual"
+            rank={perfYear.rank}
+            total={perfYear.total}
+            medal={perfYear.medal}
+            isLoading={perfYear.isLoading}
           />
-          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-            <MeuPainelPerformanceRankCard
-              label="Anual"
-              rank={perfYear.rank}
-              total={perfYear.total}
-              medal={perfYear.medal}
-              isLoading={perfYear.isLoading}
+          <div className="flex items-center gap-2 justify-start">
+            <MonthYearNav
+              month={selected.month}
+              year={selected.year}
+              onMonthChange={(m) => setSelected((s) => ({ ...s, month: m }))}
+              onYearChange={(y) => setSelected((s) => ({ ...s, year: y }))}
             />
-            <div className="flex items-center gap-2 justify-start md:justify-end">
-              <MonthYearNav
-                month={selected.month}
-                year={selected.year}
-                onMonthChange={(m) => setSelected((s) => ({ ...s, month: m }))}
-                onYearChange={(y) => setSelected((s) => ({ ...s, year: y }))}
-              />
-            </div>
           </div>
         </div>
       </div>
