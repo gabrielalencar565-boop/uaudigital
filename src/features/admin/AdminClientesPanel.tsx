@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState, useEffect, useCallback } from "react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { format } from "date-fns";
+import { format, isValid } from "date-fns";
 import { Plus, Pencil, Trash2, Users, Pause, Play, Filter } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -202,7 +202,10 @@ export function AdminClientesPanel() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div
+        className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between opacity-0"
+        style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}
+      >
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Gerenciar Clientes</h2>
           <p className="text-sm text-muted-foreground">
@@ -228,7 +231,10 @@ export function AdminClientesPanel() {
         </div>
       </div>
 
-      <Card>
+      <Card
+        className="opacity-0"
+        style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.15s" }}
+      >
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
@@ -305,7 +311,10 @@ export function AdminClientesPanel() {
                         </TableCell>
                         <TableCell>
                           <span className="text-sm text-muted-foreground">
-                            {format(new Date(client.magic_due_date), "MM/yyyy")}
+                            {(() => {
+                              const d = new Date(client.magic_due_date);
+                              return isValid(d) ? format(d, "MM/yyyy") : "—";
+                            })()}
                           </span>
                         </TableCell>
                         <TableCell className="text-right">

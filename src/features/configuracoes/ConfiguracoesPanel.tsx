@@ -163,12 +163,18 @@ export function ConfiguracoesPanel() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div
+        className="opacity-0"
+        style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}
+      >
         <h2 className="text-2xl font-semibold tracking-tight">Configurações</h2>
         <p className="text-sm text-muted-foreground">Edite seu nome, cargo e foto.</p>
       </div>
 
-      <Card className={loading ? "opacity-80" : ""}>
+      <Card
+        className={`opacity-0 ${loading ? "opacity-80" : ""}`}
+        style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.15s" }}
+      >
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <UserRound className="h-5 w-5" />
@@ -220,7 +226,10 @@ export function ConfiguracoesPanel() {
       </Card>
 
       {isAdmin ? (
-        <Card>
+        <Card
+          className="opacity-0"
+          style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.3s" }}
+        >
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <ImageIcon className="h-5 w-5" />
