@@ -390,8 +390,23 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
 
 
 }: {tasks: PmTask[];clientsMap: Record<string, string>;membersMap: Record<string, {name: string;avatar?: string;}>;onTaskClick: (t: PmTask) => void;filterClient: string;filterAssignee: string;search: string;cursor: Date;setCursor: React.Dispatch<React.SetStateAction<Date>>;fixedAssigneeClientIds: Set<string>;}) {
+  const { user } = useSession();
   const updateTask = useUpdatePmTask();
   const deleteTask = useDeletePmTask();
+  const createTask = useCreatePmTask();
+  const syncStage = usePmSyncStageCompletion();
+
+  // Flow config for auto-advance
+  const flowsQ = useStageFlows();
+  const { flowConfig, transitionDates, stageAssignees: flowAssignees } = useMemo(() => {
+    const flows = flowsQ.data ?? [];
+    const df = flows.find((f) => f.is_default) ?? flows[0];
+    return {
+      flowConfig: (df?.flow_config ?? {}) as Record<string, string | string[]>,
+      transitionDates: (df?.transition_dates ?? {}) as Record<string, "pick" | number>,
+      stageAssignees: (df?.stage_assignees ?? {}) as StageAssignees,
+    };
+  }, [flowsQ.data]);
   const [moreOpen, setMoreOpen] = useState(false);
   const [moreDayKey, setMoreDayKey] = useState<string | null>(null);
 
