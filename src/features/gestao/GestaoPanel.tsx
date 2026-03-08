@@ -43,48 +43,15 @@ const STAGE_BADGE_BG: Record<string, string> = {
   agendamento: "bg-violet-500", entrega: "bg-emerald-500"
 };
 
-function MemberFilterBar({ members, selected, onSelect }: {
-  members: { user_id: string; display_name: string; avatar_url: string | null }[];
-  selected: string;
-  onSelect: (id: string) => void;
-}) {
-  return (
-    <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
-      <button
-        type="button"
-        onClick={() => onSelect("__all__")}
-        className={cn(
-          "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all whitespace-nowrap border",
-          selected === "__all__"
-            ? "bg-sidebar text-sidebar-foreground border-sidebar shadow-sm"
-            : "bg-muted/40 text-muted-foreground border-border/30 hover:bg-muted/60"
-        )}
-      >
-        <Users className="h-3.5 w-3.5" />
-        Todos
-      </button>
-      {members.map((m) => (
-        <button
-          key={m.user_id}
-          type="button"
-          onClick={() => onSelect(m.user_id)}
-          className={cn(
-            "flex items-center gap-1.5 rounded-full pl-1 pr-3 py-1 text-xs font-medium transition-all whitespace-nowrap border",
-            selected === m.user_id
-              ? "bg-sidebar text-sidebar-foreground border-sidebar shadow-sm"
-              : "bg-muted/40 text-muted-foreground border-border/30 hover:bg-muted/60"
-          )}
-        >
-          <Avatar className="h-5 w-5">
-            <AvatarImage src={m.avatar_url ?? undefined} />
-            <AvatarFallback className="text-[9px] bg-primary/10 text-primary">{initials(m.display_name)}</AvatarFallback>
-          </Avatar>
-          {m.display_name.split(" ")[0]}
-        </button>
-      ))}
-    </div>
-  );
-}
+const VIEW_TITLES: Record<string, string> = {
+  kanban: "Kanban de tarefas",
+  agenda: "Agenda de tarefas",
+  clientes: "Tarefas por cliente",
+  pauta: "Montagem de pauta",
+  cronograma: "Cronograma de publicações",
+  fluxo: "Configuração de fluxos",
+  responsaveis: "Responsáveis por etapa",
+};
 
 export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
   const { user } = useSession();
