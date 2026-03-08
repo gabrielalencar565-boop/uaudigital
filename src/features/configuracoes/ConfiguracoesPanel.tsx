@@ -229,6 +229,12 @@ export function ConfiguracoesPanel() {
                 <p className="text-sm text-danger">{form.formState.errors.role_title.message}</p>
               )}
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="birth_date">Data de nascimento</Label>
+              <Input id="birth_date" type="date" {...form.register("birth_date")} />
+              <p className="text-xs text-muted-foreground">Sua data de aniversário aparecerá no calendário e você receberá parabéns no dia.</p>
+            </div>
           </CardContent>
 
           <CardFooter>
