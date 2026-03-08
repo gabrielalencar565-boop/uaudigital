@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { useSquads, useSquadMembers, useCreateSquad, useDeleteSquad, useUpdateSquadMembers } from "../hooks/use-squads";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { useSquads, useSquadMembers, useCreateSquad, useDeleteSquad, useUpdateSquadMembers, useUpdateSquad, useClientSquads } from "../hooks/use-squads";
 import { useHealthScores } from "../hooks/use-health-scores";
 import { useSession } from "@/hooks/use-session";
 import { useRole } from "@/hooks/use-role";
@@ -12,19 +12,20 @@ import { supabase } from "@/integrations/supabase/client";
 import { Progress } from "@/components/ui/progress";
 import {
   Plus, Trash2, Settings2, Users, CheckCircle2, Clock, FileText,
-  MoreHorizontal, CalendarDays, HeartPulse, Target, ChevronLeft, ChevronRight, Star
+  MoreHorizontal, CalendarDays, HeartPulse, Target, ChevronLeft, ChevronRight, Star, Shield
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   format, startOfMonth, endOfMonth, differenceInDays, startOfWeek, endOfWeek,
-  addDays, eachDayOfInterval, isSameDay, isToday
+  eachDayOfInterval, isSameDay, isToday
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from "recharts";
 import { HealthScoreTab } from "./HealthScoreTab";
 
@@ -32,7 +33,11 @@ function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join("");
 }
 
-// Brazilian holidays (static)
+const SQUAD_COLOR_PALETTE = [
+  "#7C5CFF", "#3B82F6", "#10B981", "#F59E0B", "#EF4444",
+  "#EC4899", "#8B5CF6", "#06B6D4", "#F97316",
+];
+
 const HOLIDAYS_2026 = [
   { date: "2026-01-01", name: "Confraternização Universal", type: "Feriado Nacional" },
   { date: "2026-02-16", name: "Carnaval", type: "Feriado Nacional" },
@@ -49,21 +54,38 @@ const HOLIDAYS_2026 = [
   { date: "2026-12-25", name: "Natal", type: "Feriado Nacional" },
 ];
 
+function FadeUp({ children, delay = 0, className }: { children: React.ReactNode; delay?: number; className?: string }) {
+  return (
+    <div className={cn("opacity-0", className)} style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: `${delay}s` }}>
+      {children}
+    </div>
+  );
+}
+
 export function VisaoGeralTab() {
   const { user } = useSession();
   const { isAdmin } = useRole(user?.id);
   const squadsQ = useSquads();
   const membersQ = useSquadMembers();
+  const clientSquadsQ = useClientSquads();
   const createSquad = useCreateSquad();
   const deleteSquad = useDeleteSquad();
   const updateMembers = useUpdateSquadMembers();
+  const updateSquad = useUpdateSquad();
 
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [newColor, setNewColor] = useState("#7C5CFF");
+  const [newLeader, setNewLeader] = useState<string>("");
   const [configSquad, setConfigSquad] = useState<any>(null);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [showHealthScore, setShowHealthScore] = useState(false);
+
+  // Edit squad dialog
+  const [editSquad, setEditSquad] = useState<any>(null);
+  const [editName, setEditName] = useState("");
+  const [editColor, setEditColor] = useState("#7C5CFF");
+  const [editLeader, setEditLeader] = useState<string>("");
 
   const teamQ = useQuery({
     queryKey: ["team_members"],
@@ -90,11 +112,11 @@ export function VisaoGeralTab() {
     },
   });
 
-  // Health scores
   const healthQ = useHealthScores(now.getMonth() + 1, now.getFullYear());
 
   const squads = squadsQ.data ?? [];
   const allSquadMembers = membersQ.data ?? [];
+  const allClientSquads = clientSquadsQ.data ?? [];
   const allTeam = teamQ.data ?? [];
   const allTasks = pmTasksQ.data ?? [];
   const healthScores = healthQ.data ?? [];
@@ -105,7 +127,6 @@ export function VisaoGeralTab() {
     return m;
   }, [allTeam]);
 
-  // Health score average per client
   const healthAvgMap = useMemo(() => {
     const m: Record<string, number> = {};
     healthScores.forEach((s) => {
@@ -114,20 +135,30 @@ export function VisaoGeralTab() {
     return m;
   }, [healthScores]);
 
+  // Clients per squad from client_squads table
+  const clientsPerSquad = useMemo(() => {
+    const m: Record<string, string[]> = {};
+    allClientSquads.forEach((cs: any) => {
+      if (!m[cs.squad_id]) m[cs.squad_id] = [];
+      m[cs.squad_id].push(cs.client_id);
+    });
+    return m;
+  }, [allClientSquads]);
+
   // Stats per squad
   const squadStats = useMemo(() => {
-    const stats: Record<string, { total: number; done: number; inProgress: number; overdue: number; memberIds: string[]; clients: Set<string> }> = {};
+    const stats: Record<string, { total: number; done: number; inProgress: number; overdue: number; memberIds: string[]; clientCount: number }> = {};
     squads.forEach((sq: any) => {
       const memberIds = allSquadMembers.filter((sm: any) => sm.squad_id === sq.id).map((sm: any) => sm.user_id);
       const tasks = allTasks.filter((t) => t.assignee_id && memberIds.includes(t.assignee_id));
       const done = tasks.filter((t) => t.status_global === "concluido").length;
       const inProgress = tasks.filter((t) => t.status_global === "em_andamento").length;
       const overdue = tasks.filter((t) => t.due_date && new Date(t.due_date) < now && t.status_global !== "concluido").length;
-      const clients = new Set(tasks.map((t) => t.client_id));
-      stats[sq.id] = { total: tasks.length, done, inProgress, overdue, memberIds, clients };
+      const clientCount = (clientsPerSquad[sq.id] ?? []).length;
+      stats[sq.id] = { total: tasks.length, done, inProgress, overdue, memberIds, clientCount };
     });
     return stats;
-  }, [squads, allSquadMembers, allTasks]);
+  }, [squads, allSquadMembers, allTasks, clientsPerSquad]);
 
   // Global stats
   const globalStats = useMemo(() => {
@@ -137,18 +168,17 @@ export function VisaoGeralTab() {
     return { total, done, inProgress };
   }, [allTasks]);
 
-  // Contas por squad chart data
   const chartData = useMemo(() => {
     return squads.map((sq: any) => ({
       name: sq.name,
-      contas: squadStats[sq.id]?.clients.size ?? 0,
+      contas: (clientsPerSquad[sq.id] ?? []).length,
     }));
-  }, [squads, squadStats]);
+  }, [squads, clientsPerSquad]);
 
   const handleCreate = () => {
     if (!newName.trim() || !user) return;
-    createSquad.mutate({ name: newName.trim(), color: newColor, userId: user.id }, {
-      onSuccess: () => { setCreateOpen(false); setNewName(""); },
+    createSquad.mutate({ name: newName.trim(), color: newColor, userId: user.id, leaderId: newLeader || undefined }, {
+      onSuccess: () => { setCreateOpen(false); setNewName(""); setNewLeader(""); },
     });
   };
 
@@ -156,6 +186,20 @@ export function VisaoGeralTab() {
     const memberIds = allSquadMembers.filter((sm: any) => sm.squad_id === sq.id).map((sm: any) => sm.user_id);
     setSelectedUsers(memberIds);
     setConfigSquad(sq);
+  };
+
+  const openEdit = (sq: any) => {
+    setEditSquad(sq);
+    setEditName(sq.name);
+    setEditColor(sq.color);
+    setEditLeader(sq.leader_id ?? "");
+  };
+
+  const saveEdit = () => {
+    if (!editSquad || !editName.trim()) return;
+    updateSquad.mutate({ id: editSquad.id, name: editName.trim(), color: editColor, leaderId: editLeader || null }, {
+      onSuccess: () => setEditSquad(null),
+    });
   };
 
   const saveConfig = () => {
@@ -178,8 +222,6 @@ export function VisaoGeralTab() {
   });
 
   const weekDays = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
-
-  // Upcoming holidays
   const upcomingHolidays = HOLIDAYS_2026.filter((h) => new Date(h.date) >= now).slice(0, 4);
 
   if (showHealthScore) {
@@ -198,112 +240,170 @@ export function VisaoGeralTab() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
-        <h1 className="text-xl font-bold text-foreground">Visão geral dos projetos</h1>
-        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-          <span className="flex items-center gap-1"><CalendarDays className="h-4 w-4" /> {format(now, "dd/MM/yyyy")}</span>
-          <span className="flex items-center gap-1"><Clock className="h-4 w-4" /> {format(now, "HH:mm:ss")}</span>
+      <FadeUp delay={0}>
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-bold text-foreground">Visão geral dos projetos</h1>
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+            <span className="flex items-center gap-1"><CalendarDays className="h-4 w-4" /> {format(now, "dd/MM/yyyy")}</span>
+            <span className="flex items-center gap-1"><Clock className="h-4 w-4" /> {format(now, "HH:mm:ss")}</span>
+          </div>
         </div>
-      </div>
+      </FadeUp>
 
       {/* Squad cards row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.15s" }}>
-        {squads.map((sq: any) => {
-          const st = squadStats[sq.id] ?? { total: 0, done: 0, inProgress: 0, overdue: 0, memberIds: [], clients: new Set() };
-          const progress = st.total > 0 ? Math.round((st.done / st.total) * 100) : 0;
-          const clientIds = Array.from(st.clients);
-          const healthVals = clientIds.map((c) => healthAvgMap[c]).filter((v) => v !== undefined);
-          const avgHealth = healthVals.length > 0 ? Math.round(healthVals.reduce((a, b) => a + b, 0) / healthVals.length) : 0;
-          const healthColor = avgHealth >= 80 ? "text-success" : avgHealth >= 50 ? "text-warning" : "text-danger";
-          const members = st.memberIds.map((uid: string) => teamMap[uid]).filter(Boolean);
+      <FadeUp delay={0.15}>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {squads.map((sq: any, idx: number) => {
+            const st = squadStats[sq.id] ?? { total: 0, done: 0, inProgress: 0, overdue: 0, memberIds: [], clientCount: 0 };
+            const progress = st.total > 0 ? Math.round((st.done / st.total) * 100) : 0;
+            const clientIds = clientsPerSquad[sq.id] ?? [];
+            const healthVals = clientIds.map((c: string) => healthAvgMap[c]).filter((v) => v !== undefined);
+            const avgHealth = healthVals.length > 0 ? Math.round(healthVals.reduce((a, b) => a + b, 0) / healthVals.length) : 0;
+            const healthColor = avgHealth >= 80 ? "text-success" : avgHealth >= 50 ? "text-warning" : "text-danger";
+            const members = st.memberIds.map((uid: string) => teamMap[uid]).filter(Boolean);
 
-          return (
-            <Card key={sq.id}>
-              <CardContent className="py-5 px-5 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="h-6 w-6 rounded-full border-[3px]" style={{ borderColor: sq.color }} />
-                    <span className="text-base font-semibold">{sq.name}</span>
+            return (
+              <Card key={sq.id}>
+                <CardContent className="py-5 px-5 space-y-4">
+                  {/* Header with shield icon */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="h-11 w-11 rounded-xl flex items-center justify-center"
+                        style={{ backgroundColor: `${sq.color}20` }}
+                      >
+                        <Shield className="h-5 w-5" style={{ color: sq.color }} />
+                      </div>
+                      <span className="text-base font-semibold">{sq.name}</span>
+                    </div>
+                    {isAdmin && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="h-7 w-7 flex items-center justify-center rounded-lg hover:bg-muted"><MoreHorizontal className="h-4 w-4" /></button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openEdit(sq)}><Settings2 className="h-4 w-4 mr-2" /> Editar Squad</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openConfig(sq)}><Users className="h-4 w-4 mr-2" /> Configurar membros</DropdownMenuItem>
+                          <DropdownMenuItem className="text-destructive" onClick={() => deleteSquad.mutate(sq.id)}><Trash2 className="h-4 w-4 mr-2" /> Excluir</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                   </div>
-                  {isAdmin && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button className="h-7 w-7 flex items-center justify-center rounded-lg hover:bg-muted"><MoreHorizontal className="h-4 w-4" /></button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => openConfig(sq)}><Settings2 className="h-4 w-4 mr-2" /> Configurar membros</DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive" onClick={() => deleteSquad.mutate(sq.id)}><Trash2 className="h-4 w-4 mr-2" /> Excluir</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
-                </div>
 
-                {/* Members avatars */}
-                <div className="flex items-center gap-2">
+                  {/* Members avatars only */}
                   <div className="flex -space-x-2">
-                    {members.slice(0, 5).map((m: any) => (
-                      <Avatar key={m.user_id} className="h-9 w-9 border-2 border-card">
+                    {members.slice(0, 6).map((m: any) => (
+                      <Avatar key={m.user_id} className="h-8 w-8 border-2 border-card">
                         <AvatarImage src={m.avatar_url ?? undefined} alt={m.display_name} />
                         <AvatarFallback className="text-[10px] bg-muted">{initials(m.display_name)}</AvatarFallback>
                       </Avatar>
                     ))}
-                    {members.length > 5 && (
-                      <div className="h-9 w-9 flex items-center justify-center rounded-full border-2 border-card bg-muted text-muted-foreground text-xs font-medium">
-                        +{members.length - 5}
+                    {members.length > 6 && (
+                      <div className="h-8 w-8 flex items-center justify-center rounded-full border-2 border-card bg-muted text-muted-foreground text-[10px] font-medium">
+                        +{members.length - 6}
                       </div>
                     )}
                   </div>
-                  <span className="text-xs text-muted-foreground">{members.length} {members.length === 1 ? "membro" : "membros"}</span>
-                </div>
 
-                {/* Progress */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1"><Target className="h-3.5 w-3.5" /> Progresso</span>
-                    <span className="font-medium text-foreground">{progress}%</span>
+                  {/* Progress */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1"><Target className="h-3.5 w-3.5" /> Progresso • <Clock className="h-3 w-3" /> {daysLeft} dias restantes</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Progress value={progress} className="h-2 flex-1" />
+                      <span className="text-xs font-medium text-foreground">{progress}%</span>
+                    </div>
                   </div>
-                  <Progress value={progress} className="h-2" />
-                  <p className="text-[11px] text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> {daysLeft} dias restantes</p>
-                </div>
 
-                {/* Health Score */}
-                <div className={cn("text-sm font-medium flex items-center gap-1.5", healthColor)}>
-                  <HeartPulse className="h-4 w-4" />
-                  <span>{avgHealth > 0 ? `${avgHealth} Health Score` : "Sem avaliação"}</span>
-                </div>
+                  {/* Health Score */}
+                  <div className={cn("text-sm font-medium flex items-center gap-1.5", avgHealth > 0 ? healthColor : "text-muted-foreground")}>
+                    <span className={cn("h-2 w-2 rounded-full", avgHealth >= 80 ? "bg-success" : avgHealth >= 50 ? "bg-warning" : avgHealth > 0 ? "bg-destructive" : "bg-muted-foreground")} />
+                    <span className="font-bold">{avgHealth > 0 ? avgHealth : "—"}</span>
+                    <span>Health Score</span>
+                  </div>
 
-                {/* Stats row */}
-                <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1 border-t border-border">
-                  <span className="flex items-center gap-1"><FileText className="h-3.5 w-3.5" /> {st.clients.size} contas</span>
-                  <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> {st.total} tarefas</span>
-                  <span className="flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5 text-success" /> {st.done}</span>
-                </div>
+                  {/* Stats row */}
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1 border-t border-border">
+                    <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {members.length}</span>
+                    <span className="flex items-center gap-1"><FileText className="h-3.5 w-3.5" /> {st.clientCount}</span>
+                    <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> {st.total}</span>
+                    <span className="flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5 text-success" /> {st.done}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+
+          {/* Add squad card */}
+          {isAdmin && (
+            <Card className="border-dashed cursor-pointer hover:border-primary/40 transition-colors" onClick={() => setCreateOpen(true)}>
+              <CardContent className="flex flex-col items-center justify-center py-10 px-5 gap-2 h-full">
+                <Plus className="h-8 w-8 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Criar Squad</span>
               </CardContent>
             </Card>
-          );
-        })}
+          )}
+        </div>
+      </FadeUp>
 
-        {/* Add squad card */}
-        {isAdmin && (
-          <Card className="border-dashed cursor-pointer hover:border-primary/40 transition-colors" onClick={() => setCreateOpen(true)}>
-            <CardContent className="flex flex-col items-center justify-center py-10 px-5 gap-2 h-full">
-              <Plus className="h-8 w-8 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Criar Squad</span>
+      {/* Middle row */}
+      <FadeUp delay={0.3}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Card>
+            <CardContent className="py-5 px-5 space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-sidebar/10 flex items-center justify-center"><FileText className="h-5 w-5 text-sidebar" /></div>
+                <div>
+                  <p className="text-sm font-semibold">Planejamentos gerais</p>
+                  <p className="text-xs text-muted-foreground">Planejamentos a serem entregues</p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xl font-bold">{globalStats.done}/{globalStats.total}</span>
+                <span className="text-sm text-muted-foreground">{progressPct}% completado</span>
+              </div>
             </CardContent>
           </Card>
-        )}
-      </div>
 
-      {/* Middle row: Planejamentos + Contas por squad */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Planejamentos gerais */}
+          <Card>
+            <CardContent className="py-5 px-5 space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-sidebar/10 flex items-center justify-center"><Users className="h-5 w-5 text-sidebar" /></div>
+                <div>
+                  <p className="text-sm font-semibold">Contas por Squad</p>
+                  <p className="text-xs text-muted-foreground">Total: {new Set(allClientSquads.map((cs: any) => cs.client_id)).size} contas atribuídas</p>
+                </div>
+              </div>
+              {chartData.length > 0 ? (
+                <div className="h-32">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                      <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                      <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" allowDecimals={false} />
+                      <Tooltip />
+                      <Bar dataKey="contas" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">Crie squads para ver o gráfico</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </FadeUp>
+
+      {/* Tarefas gerais */}
+      <FadeUp delay={0.45}>
         <Card>
           <CardContent className="py-5 px-5 space-y-3">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-sidebar/10 flex items-center justify-center"><FileText className="h-5 w-5 text-sidebar" /></div>
+              <div className="h-10 w-10 rounded-xl bg-sidebar/10 flex items-center justify-center"><CheckCircle2 className="h-5 w-5 text-sidebar" /></div>
               <div>
-                <p className="text-sm font-semibold">Planejamentos gerais</p>
-                <p className="text-xs text-muted-foreground">Planejamentos a serem entregues</p>
+                <p className="text-sm font-semibold">Tarefas gerais</p>
+                <p className="text-xs text-muted-foreground">Tarefas em andamento</p>
               </div>
             </div>
             <div className="flex items-center justify-between">
@@ -312,169 +412,199 @@ export function VisaoGeralTab() {
             </div>
           </CardContent>
         </Card>
-
-        {/* Contas por Squad */}
-        <Card>
-          <CardContent className="py-5 px-5 space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-sidebar/10 flex items-center justify-center"><Users className="h-5 w-5 text-sidebar" /></div>
-              <div>
-                <p className="text-sm font-semibold">Contas por Squad</p>
-                <p className="text-xs text-muted-foreground">Total: {new Set(allTasks.map((t) => t.client_id)).size} contas ativas</p>
-              </div>
-            </div>
-            {chartData.length > 0 ? (
-              <div className="h-32">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                    <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-                    <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" allowDecimals={false} />
-                    <Tooltip />
-                    <Bar dataKey="contas" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            ) : (
-              <p className="text-xs text-muted-foreground">Crie squads para ver o gráfico</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Tarefas gerais */}
-      <Card>
-        <CardContent className="py-5 px-5 space-y-3">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-sidebar/10 flex items-center justify-center"><CheckCircle2 className="h-5 w-5 text-sidebar" /></div>
-            <div>
-              <p className="text-sm font-semibold">Tarefas gerais</p>
-              <p className="text-xs text-muted-foreground">Tarefas em andamento</p>
-            </div>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-xl font-bold">{globalStats.done}/{globalStats.total}</span>
-            <span className="text-sm text-muted-foreground">{progressPct}% completado</span>
-          </div>
-        </CardContent>
-      </Card>
+      </FadeUp>
 
       {/* Bottom row: Timeline + Calendar */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Timeline placeholder */}
-        <Card>
-          <CardContent className="py-5 px-5 space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-sidebar/10 flex items-center justify-center"><CalendarDays className="h-5 w-5 text-sidebar" /></div>
-              <p className="text-sm font-semibold">Timeline de projetos especiais</p>
-            </div>
-            <div className="text-center py-8 text-xs text-muted-foreground">
-              Semana de {format(startOfWeek(now, { weekStartsOn: 0 }), "d 'de' MMMM, yyyy", { locale: ptBR })}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Calendar + holidays */}
-        <Card>
-          <CardContent className="py-5 px-5 space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-lg bg-sidebar/10 flex items-center justify-center">
-                <CalendarDays className="h-4 w-4 text-sidebar" />
+      <FadeUp delay={0.6}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Card>
+            <CardContent className="py-5 px-5 space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-sidebar/10 flex items-center justify-center"><CalendarDays className="h-5 w-5 text-sidebar" /></div>
+                <p className="text-sm font-semibold">Timeline de projetos especiais</p>
               </div>
-              <p className="text-base font-bold">Calendário</p>
-            </div>
+              <div className="text-center py-8 text-xs text-muted-foreground">
+                Semana de {format(startOfWeek(now, { weekStartsOn: 0 }), "d 'de' MMMM, yyyy", { locale: ptBR })}
+              </div>
+            </CardContent>
+          </Card>
 
-            <div className="flex gap-6">
-              {/* Mini calendar */}
-              <div className="flex-1 border border-border rounded-2xl p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <button className="h-7 w-7 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground">
-                    <ChevronLeft className="h-4 w-4" />
-                  </button>
-                  <p className="text-sm font-medium capitalize">{format(now, "MMMM yyyy", { locale: ptBR })}</p>
-                  <button className="h-7 w-7 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground">
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
+          <Card>
+            <CardContent className="py-5 px-5 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-lg bg-sidebar/10 flex items-center justify-center">
+                  <CalendarDays className="h-4 w-4 text-sidebar" />
                 </div>
-                <div className="grid grid-cols-7 gap-1 text-center">
-                  {weekDays.map((d) => (
-                    <span key={d} className="text-xs text-muted-foreground font-medium py-1.5">{d}</span>
-                  ))}
-                  {calendarDays.map((day, i) => {
-                    const inMonth = day.getMonth() === now.getMonth();
-                    const today = isToday(day);
-                    const isHoliday = HOLIDAYS_2026.some((h) => isSameDay(new Date(h.date), day));
-                    return (
-                      <span
-                        key={i}
-                        className={cn(
-                          "py-1.5 rounded-lg text-sm font-medium transition-colors",
-                          !inMonth && "text-muted-foreground/30",
-                          inMonth && !today && !isHoliday && "text-foreground",
-                          today && "bg-sidebar text-sidebar-foreground font-bold",
-                          isHoliday && !today && inMonth && "bg-sidebar/15 text-sidebar font-bold"
-                        )}
-                      >
-                        {day.getDate()}
-                      </span>
-                    );
-                  })}
-                </div>
+                <p className="text-base font-bold">Calendário</p>
               </div>
 
-              {/* Upcoming holidays */}
-              <div className="flex-1 space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-base font-bold">Próximas datas</p>
+              <div className="flex gap-6">
+                <div className="flex-1 border border-border rounded-2xl p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <button className="h-7 w-7 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground">
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    <p className="text-sm font-medium capitalize">{format(now, "MMMM yyyy", { locale: ptBR })}</p>
+                    <button className="h-7 w-7 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground">
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-7 gap-1 text-center">
+                    {weekDays.map((d) => (
+                      <span key={d} className="text-xs text-muted-foreground font-medium py-1.5">{d}</span>
+                    ))}
+                    {calendarDays.map((day, i) => {
+                      const inMonth = day.getMonth() === now.getMonth();
+                      const today = isToday(day);
+                      const isHoliday = HOLIDAYS_2026.some((h) => isSameDay(new Date(h.date), day));
+                      return (
+                        <span
+                          key={i}
+                          className={cn(
+                            "py-1.5 rounded-lg text-sm font-medium transition-colors",
+                            !inMonth && "text-muted-foreground/30",
+                            inMonth && !today && !isHoliday && "text-foreground",
+                            today && "bg-sidebar text-sidebar-foreground font-bold",
+                            isHoliday && !today && inMonth && "bg-sidebar/15 text-sidebar font-bold"
+                          )}
+                        >
+                          {day.getDate()}
+                        </span>
+                      );
+                    })}
+                  </div>
                 </div>
-                <div className="flex gap-2 mb-1">
-                  <span className="text-xs font-medium bg-sidebar text-sidebar-foreground px-3 py-1 rounded-full">Todas as datas</span>
-                  <span className="text-xs font-medium text-muted-foreground px-3 py-1 rounded-full border border-border">Datas comemorativas</span>
-                </div>
-                <div className="space-y-2.5">
-                  {upcomingHolidays.map((h) => (
-                    <div key={h.date} className="flex items-center gap-3 rounded-xl border border-sidebar/30 bg-sidebar/5 px-4 py-3">
-                      <div className="h-8 w-8 rounded-full bg-sidebar/15 flex items-center justify-center flex-shrink-0">
-                        <Star className="h-4 w-4 text-sidebar" />
+
+                <div className="flex-1 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-base font-bold">Próximas datas</p>
+                  </div>
+                  <div className="flex gap-2 mb-1">
+                    <span className="text-xs font-medium bg-sidebar text-sidebar-foreground px-3 py-1 rounded-full">Todas as datas</span>
+                    <span className="text-xs font-medium text-muted-foreground px-3 py-1 rounded-full border border-border">Datas comemorativas</span>
+                  </div>
+                  <div className="space-y-2.5">
+                    {upcomingHolidays.map((h) => (
+                      <div key={h.date} className="flex items-center gap-3 rounded-xl border border-sidebar/30 bg-sidebar/5 px-4 py-3">
+                        <div className="h-8 w-8 rounded-full bg-sidebar/15 flex items-center justify-center flex-shrink-0">
+                          <Star className="h-4 w-4 text-sidebar" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-sidebar">{h.name}</p>
+                          <p className="text-xs text-muted-foreground">{format(new Date(h.date), "d 'de' MMMM 'de' yyyy", { locale: ptBR })}</p>
+                        </div>
+                        <span className="text-[11px] text-muted-foreground whitespace-nowrap">{h.type}</span>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-sidebar">{h.name}</p>
-                        <p className="text-xs text-muted-foreground">{format(new Date(h.date), "d 'de' MMMM 'de' yyyy", { locale: ptBR })}</p>
-                      </div>
-                      <span className="text-[11px] text-muted-foreground whitespace-nowrap">{h.type}</span>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
+        </div>
+      </FadeUp>
 
       {/* Health Score access */}
-      <Card className="cursor-pointer hover:border-primary/40 transition-colors" onClick={() => setShowHealthScore(true)}>
-        <CardContent className="flex items-center gap-4 py-4 px-5">
-          <div className="h-10 w-10 rounded-xl bg-sidebar/10 flex items-center justify-center"><HeartPulse className="h-5 w-5 text-sidebar" /></div>
-          <div>
-            <p className="text-sm font-semibold">Health Score</p>
-            <p className="text-xs text-muted-foreground">Avaliar saúde dos clientes</p>
-          </div>
-        </CardContent>
-      </Card>
+      <FadeUp delay={0.75}>
+        <Card className="cursor-pointer hover:border-primary/40 transition-colors" onClick={() => setShowHealthScore(true)}>
+          <CardContent className="flex items-center gap-4 py-4 px-5">
+            <div className="h-10 w-10 rounded-xl bg-sidebar/10 flex items-center justify-center"><HeartPulse className="h-5 w-5 text-sidebar" /></div>
+            <div>
+              <p className="text-sm font-semibold">Health Score</p>
+              <p className="text-xs text-muted-foreground">Avaliar saúde dos clientes</p>
+            </div>
+          </CardContent>
+        </Card>
+      </FadeUp>
 
       {/* Create dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Criar Squad</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <Input placeholder="Nome do squad" value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={60} />
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-muted-foreground">Cor:</label>
-              <input type="color" value={newColor} onChange={(e) => setNewColor(e.target.value)} className="h-8 w-8 rounded cursor-pointer border-0" />
+          <DialogHeader>
+            <DialogTitle>Criar Squad</DialogTitle>
+            <DialogDescription>Defina o nome, cor e líder do squad.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Nome *</label>
+              <Input placeholder="Nome do squad" value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={60} className="mt-1" />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Cor</label>
+              <div className="flex items-center gap-2.5 mt-2">
+                {SQUAD_COLOR_PALETTE.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setNewColor(c)}
+                    className={cn("h-9 w-9 rounded-full transition-all", newColor === c ? "ring-2 ring-offset-2 ring-foreground" : "")}
+                    style={{ backgroundColor: c }}
+                  />
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Líder do Squad</label>
+              <Select value={newLeader} onValueChange={setNewLeader}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Selecione um líder (opcional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {allTeam.map((m) => (
+                    <SelectItem key={m.user_id} value={m.user_id}>{m.display_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={handleCreate} disabled={!newName.trim()}>Criar</Button>
+            <Button variant="ghost" onClick={() => setCreateOpen(false)}>Cancelar</Button>
+            <Button variant="hero" onClick={handleCreate} disabled={!newName.trim()}>Criar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit squad dialog */}
+      <Dialog open={!!editSquad} onOpenChange={(v) => !v && setEditSquad(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Editar Squad</DialogTitle>
+            <DialogDescription>Altere os dados do squad.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Nome *</label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} maxLength={60} className="mt-1" />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Cor</label>
+              <div className="flex items-center gap-2.5 mt-2">
+                {SQUAD_COLOR_PALETTE.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setEditColor(c)}
+                    className={cn("h-9 w-9 rounded-full transition-all", editColor === c ? "ring-2 ring-offset-2 ring-foreground" : "")}
+                    style={{ backgroundColor: c }}
+                  />
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Líder do Squad</label>
+              <Select value={editLeader} onValueChange={setEditLeader}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Selecione um líder (opcional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {allTeam.map((m) => (
+                    <SelectItem key={m.user_id} value={m.user_id}>{m.display_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setEditSquad(null)}>Cancelar</Button>
+            <Button variant="hero" onClick={saveEdit} disabled={!editName.trim()}>Salvar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
