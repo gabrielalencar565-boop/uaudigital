@@ -460,42 +460,24 @@ export function AgendaPanel() {
     onDragEnd={handleDragEnd}
   >
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Agenda mensal</h2>
-          
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant={overdueCount ? "destructive" : "success"} className="gap-2">
-            <TriangleAlert className="h-3.5 w-3.5" />
-            {overdueCount ? `${overdueCount} atrasada(s)` : "Sem atrasos"}
-          </Badge>
-          <Badge variant={dueTodayCount ? "warning" : "secondary"}>
-            {dueTodayCount ? `⏰ ${dueTodayCount} vence(m) hoje` : "Hoje ok"}
-          </Badge>
+      {/* Title row */}
+      <div className="flex items-center justify-between opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
+        <h2 className="text-2xl font-bold tracking-tight">Agenda de projetos</h2>
+        <div className="flex items-center gap-2">
           {isAdmin && (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => setReportOpen(true)}
-              className="gap-2"
-            >
-              <FileText className="h-4 w-4" />
-              Relatório
+            <Button variant="outline" size="sm" onClick={() => setReportOpen(true)} className="gap-2 rounded-xl">
+              <FileText className="h-4 w-4" /> Relatório
             </Button>
           )}
           {canManageTasks && (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => setTrashOpen(true)}
-              className="gap-2"
-            >
-              <Trash2 className="h-4 w-4" />
-              Lixeira
+            <Button variant="outline" size="sm" onClick={() => setTrashOpen(true)} className="gap-2 rounded-xl">
+              <Trash2 className="h-4 w-4" /> Lixeira
             </Button>
           )}
+          <div className="flex items-center gap-1.5 text-muted-foreground">
+            <Calendar className="h-4 w-4" />
+            <span className="text-sm font-semibold">{overdueCount}</span>
+          </div>
         </div>
       </div>
 
