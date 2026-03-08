@@ -471,7 +471,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
     const nextStages = getNextStages(flowConfig, task.stage_current);
     if (nextStages.length > 0) {
       const nextStage = nextStages[0]; // use first configured next stage
-      const fixedAssignee = getFixedAssignee(stageAssignees, nextStage, task.client_id);
+      const fixedAssignee = getFixedAssignee(flowAssignees, nextStage, task.client_id);
       const assignee = fixedAssignee ?? task.assignee_id ?? undefined;
 
       // Calculate due date: current due_date + offset (default +1 day)
