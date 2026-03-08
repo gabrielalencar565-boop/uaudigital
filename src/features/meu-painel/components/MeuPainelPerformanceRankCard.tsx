@@ -1,6 +1,7 @@
 import { CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { AnimatedNumber } from "@/components/ui/animated-number";
 
 function getRankDisplay(rank: number | null, medal: string | null): {icon: string | null; number: number | null;} {
   if (rank === null) return { icon: "🏁", number: null };
