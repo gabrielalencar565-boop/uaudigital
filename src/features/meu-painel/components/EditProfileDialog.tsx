@@ -130,7 +130,8 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
             role_title: v.role_title,
             avatar_url: nextAvatarUrl,
             is_active: true,
-          },
+            birth_date: v.birth_date || null,
+          } as any,
           { onConflict: "user_id" },
         );
       if (tm.error) throw tm.error;
