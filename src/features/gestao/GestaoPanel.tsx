@@ -498,8 +498,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
                     <div
                       key={t.id}
                       className={cn(
-                        "w-full rounded-xl border border-border/20 bg-card/60 backdrop-blur-sm p-2 text-left transition-all hover:bg-card hover:shadow-sm hover:-translate-y-0.5 cursor-pointer group/card",
-                        isDone && "opacity-45"
+                        "w-full rounded-xl border border-border/20 bg-card/60 backdrop-blur-sm p-2 text-left transition-all hover:bg-card hover:shadow-sm hover:-translate-y-0.5 cursor-pointer group/card"
                       )}
                       onClick={() => onTaskClick(t)}>
                       
