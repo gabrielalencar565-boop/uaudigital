@@ -938,85 +938,77 @@ export function AgendaPanel() {
         </Card> :
     // Desktop: grid de calendário (versão compacta original)
     <Card>
-        <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <CardTitle>{format(cursor, "MMMM 'de' yyyy", {
-              locale: ptBR
-            })}</CardTitle>
-            <CardDescription className="flex items-center gap-2">
-              <Filter className="h-4 w-4" />
-              Filtros
-            </CardDescription>
-          </div>
+        <CardHeader className="space-y-4">
+          {/* Row 1: Mês/Semana toggle + Month nav + filters */}
+          <div className="flex flex-wrap items-center gap-4">
+            <Tabs value={view} onValueChange={v => setView(v as any)}>
+              <TabsList className="bg-muted/40 h-9 p-0.5 rounded-xl gap-0.5">
+                <TabsTrigger value="month" className="h-8 rounded-lg text-xs data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-sm px-4">Mês</TabsTrigger>
+                <TabsTrigger value="week" className="h-8 rounded-lg text-xs data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-sm px-4">Semana</TabsTrigger>
+              </TabsList>
+            </Tabs>
 
-          <Tabs value={view} onValueChange={v => setView(v as any)}>
-            <TabsList>
-              <TabsTrigger value="month">Mês</TabsTrigger>
-              <TabsTrigger value="week">Semana</TabsTrigger>
-            </TabsList>
-          </Tabs>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => setCursor(d => startOfMonth(subMonths(d, 1)))}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-base font-bold capitalize min-w-[160px] text-center">
+                {format(cursor, "MMMM yyyy", { locale: ptBR })}
+              </span>
+              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => setCursor(d => startOfMonth(addMonths(d, 1)))}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <Button variant="ghost" onClick={() => setCursor(d => startOfMonth(subMonths(d, 1)))}>
-              ←
-            </Button>
-            <Button variant="ghost" onClick={() => setCursor(d => startOfMonth(addMonths(d, 1)))}>
-              →
-            </Button>
-
-            {view === "week" ? (
-              <Select
-                value={weekStartKey}
-                onValueChange={(v) => {
-                  setCursor(ymdToLocalDate(v));
-                }}
-              >
-                <SelectTrigger className="w-[220px]">
+            {view === "week" && (
+              <Select value={weekStartKey} onValueChange={(v) => setCursor(ymdToLocalDate(v))}>
+                <SelectTrigger className="h-9 w-[220px] rounded-xl text-sm">
                   <SelectValue placeholder="Semana" />
                 </SelectTrigger>
                 <SelectContent className="bg-popover z-50">
                   {weekOptions.map((w) => (
-                    <SelectItem key={w.key} value={w.key}>
-                      {w.label}
-                    </SelectItem>
+                    <SelectItem key={w.key} value={w.key}>{w.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            ) : null}
+            )}
+          </div>
 
+          {/* Row 2: Filters */}
+          <div className="flex flex-wrap items-center gap-2">
             <Select value={filterClientId} onValueChange={v => setFilterClientId(v as any)}>
-              <SelectTrigger className="w-[220px]">
-                <SelectValue placeholder="Cliente" />
+              <SelectTrigger className="h-9 w-48 rounded-xl text-sm bg-muted/30 border-border/30">
+                <SelectValue placeholder="Todos os clientes" />
               </SelectTrigger>
               <SelectContent className="bg-popover z-50">
                 <SelectItem value="all">Todos os clientes</SelectItem>
-                {clients.filter(c => !c.is_freelancer_sentinel).map(c => <SelectItem key={c.id} value={c.id}>
-                    {c.name}
-                  </SelectItem>)}
+                {clients.filter(c => !c.is_freelancer_sentinel).map(c => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
 
             <Select value={filterUserId} onValueChange={v => setFilterUserId(v as any)}>
-              <SelectTrigger className="w-[220px]">
-                <SelectValue placeholder="Responsável" />
+              <SelectTrigger className="h-9 w-48 rounded-xl text-sm bg-muted/30 border-border/30">
+                <SelectValue placeholder="Toda a equipe" />
               </SelectTrigger>
               <SelectContent className="bg-popover z-50">
                 <SelectItem value="all">Toda a equipe</SelectItem>
-                {team.filter(m => m.is_active).map(m => <SelectItem key={m.user_id} value={m.user_id}>
-                    {m.display_name}
-                  </SelectItem>)}
+                {team.filter(m => m.is_active).map(m => (
+                  <SelectItem key={m.user_id} value={m.user_id}>{m.display_name}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
 
             <Select value={filterStage} onValueChange={v => setFilterStage(v as any)}>
-              <SelectTrigger className="w-[220px]">
-                <SelectValue placeholder="Etapa" />
+              <SelectTrigger className="h-9 w-48 rounded-xl text-sm bg-muted/30 border-border/30">
+                <SelectValue placeholder="Todas as etapas" />
               </SelectTrigger>
               <SelectContent className="bg-popover z-50">
                 <SelectItem value="all">Todas as etapas</SelectItem>
-                {AGENDA_STAGES.map(s => <SelectItem key={s.key} value={s.key}>
-                    {s.label}
-                  </SelectItem>)}
+                {AGENDA_STAGES.map(s => (
+                  <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
