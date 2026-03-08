@@ -192,14 +192,6 @@ export function CronogramaClientBrowser({ tasks, childTasksMap, clientsMap, memb
 
   return (
     <div className="space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards" }}>
-        <h2 className="text-2xl font-bold tracking-tight">Calendário de publicações</h2>
-        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1.5"><CalendarRange className="h-3.5 w-3.5" /> {format(new Date(), "dd/MM/yyyy")}</span>
-          <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> {format(new Date(), "HH:mm:ss")}</span>
-        </div>
-      </div>
 
       {/* Controls bar */}
       <div className="flex items-center justify-between opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.1s" }}>
@@ -305,11 +297,11 @@ export function CronogramaClientBrowser({ tasks, childTasksMap, clientsMap, memb
                         <div
                           key={key}
                           className={cn(
-                            "min-h-24 rounded-xl border p-2 transition-all",
+                            "min-h-24 rounded-xl border p-2 transition-all calendar-card-hover",
                             inMonth ? "border-border/20 bg-card/30" : "border-transparent opacity-30",
                             isToday && "border-primary/50 ring-2 ring-primary/15 bg-primary/5",
                             isDragOver && "border-primary ring-2 ring-primary/30 bg-primary/10",
-                            dayPosts.length > 0 && "cursor-pointer hover:border-primary/30"
+                            dayPosts.length > 0 && "cursor-pointer"
                           )}
                           onClick={() => dayPosts.length > 0 && setSelectedPost(dayPosts[0])}
                           onDragOver={(e) => { e.preventDefault(); setDragOverDay(key); }}

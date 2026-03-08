@@ -43,48 +43,15 @@ const STAGE_BADGE_BG: Record<string, string> = {
   agendamento: "bg-violet-500", entrega: "bg-emerald-500"
 };
 
-function MemberFilterBar({ members, selected, onSelect }: {
-  members: { user_id: string; display_name: string; avatar_url: string | null }[];
-  selected: string;
-  onSelect: (id: string) => void;
-}) {
-  return (
-    <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
-      <button
-        type="button"
-        onClick={() => onSelect("__all__")}
-        className={cn(
-          "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all whitespace-nowrap border",
-          selected === "__all__"
-            ? "bg-sidebar text-sidebar-foreground border-sidebar shadow-sm"
-            : "bg-muted/40 text-muted-foreground border-border/30 hover:bg-muted/60"
-        )}
-      >
-        <Users className="h-3.5 w-3.5" />
-        Todos
-      </button>
-      {members.map((m) => (
-        <button
-          key={m.user_id}
-          type="button"
-          onClick={() => onSelect(m.user_id)}
-          className={cn(
-            "flex items-center gap-1.5 rounded-full pl-1 pr-3 py-1 text-xs font-medium transition-all whitespace-nowrap border",
-            selected === m.user_id
-              ? "bg-sidebar text-sidebar-foreground border-sidebar shadow-sm"
-              : "bg-muted/40 text-muted-foreground border-border/30 hover:bg-muted/60"
-          )}
-        >
-          <Avatar className="h-5 w-5">
-            <AvatarImage src={m.avatar_url ?? undefined} />
-            <AvatarFallback className="text-[9px] bg-primary/10 text-primary">{initials(m.display_name)}</AvatarFallback>
-          </Avatar>
-          {m.display_name.split(" ")[0]}
-        </button>
-      ))}
-    </div>
-  );
-}
+const VIEW_TITLES: Record<string, string> = {
+  kanban: "Kanban de tarefas",
+  agenda: "Agenda de tarefas",
+  clientes: "Tarefas por cliente",
+  pauta: "Montagem de pauta",
+  cronograma: "Cronograma de publicações",
+  fluxo: "Configuração de fluxos",
+  responsaveis: "Responsáveis por etapa",
+};
 
 export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
   const { user } = useSession();
@@ -183,12 +150,12 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
     setCreateOpen(true);
   };
 
-  return (
+   return (
     <div className="space-y-4">
-      {/* Header — Kanban de tarefas */}
+      {/* Header — dynamic title per view */}
       <div className="flex items-center justify-between opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
         <div className="flex items-center gap-3">
-          <h2 className="font-bold tracking-tight text-2xl">Cronograma</h2>
+          <h2 className="font-bold tracking-tight text-2xl">{VIEW_TITLES[effectiveView] ?? "Tarefas"}</h2>
         </div>
         <div className="flex items-center gap-2">
           <div className="relative">
@@ -206,16 +173,26 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
               ))}
             </SelectContent>
           </Select>
+          <Select value={filterAssignee} onValueChange={setFilterAssignee}>
+            <SelectTrigger className="h-9 w-52 rounded-xl text-sm bg-background/80 border-border/30">
+              <SelectValue placeholder="Todos os responsáveis" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todos os responsáveis</SelectItem>
+              {(membersQ.data ?? []).map((m) => (
+                <SelectItem key={m.user_id} value={m.user_id}>
+                  <span className="flex items-center gap-2">
+                    <Avatar className="h-5 w-5">
+                      <AvatarImage src={m.avatar_url ?? undefined} />
+                      <AvatarFallback className="text-[9px] bg-primary/10 text-primary">{initials(m.display_name)}</AvatarFallback>
+                    </Avatar>
+                    {m.display_name}
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-      </div>
-
-      {/* Member filter bar */}
-      <div className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.1s" }}>
-        <MemberFilterBar
-          members={membersQ.data ?? []}
-          selected={filterAssignee}
-          onSelect={setFilterAssignee}
-        />
       </div>
 
 
@@ -493,8 +470,8 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
           return (
             <div
               key={key}
-              className={cn(
-                "relative min-h-28 rounded-2xl border bg-card/30 backdrop-blur-sm p-2.5 transition-all",
+               className={cn(
+                "relative min-h-28 rounded-2xl border bg-card/30 backdrop-blur-sm p-2.5 transition-all calendar-card-hover",
                 inMonth ? "opacity-100 border-border/20" : "opacity-30 border-transparent",
                 isToday && "border-primary/50 ring-2 ring-primary/15 bg-primary/5"
               )}>
