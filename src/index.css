@@ -95,20 +95,20 @@ All colors MUST be HSL.
     --gradient-auth-title: linear-gradient(90deg, hsl(var(--auth-gradient-from)), hsl(var(--auth-gradient-to)));
 
     /* Sidebar — purple brand #6932c9 */
-    --sidebar-background: 271 62% 49%;
+    --sidebar-background: 263 70% 50%;
     --sidebar-foreground: 0 0% 100%;
     --sidebar-primary: 0 0% 100%;
-    --sidebar-primary-foreground: 271 62% 49%;
-    --sidebar-accent: 262 60% 44%;
+    --sidebar-primary-foreground: 263 70% 50%;
+    --sidebar-accent: 263 70% 42%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 271 56% 36%;
+    --sidebar-border: 263 70% 38%;
     --sidebar-ring: 0 0% 100%;
     --chart-1: 41 22.2% 64.6%;
     --chart-2: 185 11.8% 60%;
     --chart-3: 227 7% 39.8%;
     --chart-4: 84 18.9% 82.8%;
     --chart-5: 70 18.8% 76.9%;
-    --sidebar: 271 62% 49%;
+    --sidebar: 263 70% 50%;
     --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
@@ -174,15 +174,15 @@ All colors MUST be HSL.
     --chart-5: 350 100% 68%;
 
     /* Sidebar — purple brand (dark) */
-    --sidebar-background: 271 62% 36%;
-    --sidebar-foreground: 0 0% 95%;
+    --sidebar-background: 263 70% 50%;
+    --sidebar-foreground: 0 0% 100%;
     --sidebar-primary: 0 0% 100%;
-    --sidebar-primary-foreground: 271 62% 36%;
-    --sidebar-accent: 262 60% 44%;
+    --sidebar-primary-foreground: 263 70% 50%;
+    --sidebar-accent: 263 70% 42%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 271 56% 26%;
+    --sidebar-border: 263 70% 38%;
     --sidebar-ring: 0 0% 100%;
-    --sidebar: 271 62% 36%;
+    --sidebar: 263 70% 50%;
 
     /* Shadows – deeper for dark */
     --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.2);
