@@ -14,12 +14,12 @@ import { useSession } from "@/hooks/use-session";
 import { useRole } from "@/hooks/use-role";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { usePmTasks, usePmAllChildTasks, useUpdatePmTask, useDeletePmTask, useCreatePmTask, usePmSyncStageCompletion } from "./hooks/use-pm-data";
+import { usePmTasks, usePmAllChildTasks, useUpdatePmTask, useDeletePmTask } from "./hooks/use-pm-data";
 import { PmKanbanBoard } from "./components/PmKanbanBoard";
 import { PmClientView } from "./components/PmClientView";
 import { PmTaskDetailDialog } from "./components/PmTaskDetailDialog";
 import { PmCreateTaskDialog } from "./components/PmCreateTaskDialog";
-import { PmStageFlowConfig, useStageFlows, getNextStages, getFixedAssignee } from "./components/PmStageFlowConfig";
+import { PmStageFlowConfig, useStageFlows } from "./components/PmStageFlowConfig";
 import { PmAssigneeFlowConfig } from "./components/PmAssigneeFlowConfig";
 import type { StageAssignees } from "./components/PmStageFlowConfig";
 import { PmPautaView } from "./components/PmPautaView";
@@ -77,21 +77,13 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
   const allTasks = tasksQ.data ?? [];
   const tasks = useMemo(() => allTasks.filter((t) => !(t as any).is_draft), [allTasks]);
 
-  // Load stage assignees + flow config to expand filter and auto-advance
+  // Load stage assignees to expand filter by fixed assignee
   const flowsQ = useStageFlows();
-  const defaultFlowData = useMemo(() => {
+  const stageAssignees = useMemo(() => {
     const flows = flowsQ.data ?? [];
-    const df = flows.find((f) => f.is_default) ?? flows[0];
-    return {
-      stageAssignees: (df?.stage_assignees ?? {}) as StageAssignees,
-      flowConfig: (df?.flow_config ?? {}) as Record<string, string | string[]>,
-      transitionDates: (df?.transition_dates ?? {}) as Record<string, "pick" | number>,
-    };
+    const defaultFlow = flows.find((f) => f.is_default) ?? flows[0];
+    return (defaultFlow?.stage_assignees ?? {}) as StageAssignees;
   }, [flowsQ.data]);
-  const { stageAssignees, flowConfig, transitionDates } = defaultFlowData;
-
-  const createTask = useCreatePmTask();
-  const syncStage = usePmSyncStageCompletion();
 
   // Get client IDs where the filtered assignee is the fixed PLANEJAMENTO assignee only
   const fixedAssigneeClientIds = useMemo(() => {
@@ -378,35 +370,19 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
 }
 
 // ─── Agenda Calendar View (matches main Agenda module) ───
-function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filterClient, filterAssignee, search, cursor, setCursor, fixedAssigneeClientIds
-
-
-
-
-
-
-
-
-
-
-}: {tasks: PmTask[];clientsMap: Record<string, string>;membersMap: Record<string, {name: string;avatar?: string;}>;onTaskClick: (t: PmTask) => void;filterClient: string;filterAssignee: string;search: string;cursor: Date;setCursor: React.Dispatch<React.SetStateAction<Date>>;fixedAssigneeClientIds: Set<string>;}) {
-  const { user } = useSession();
-  const updateTask = useUpdatePmTask();
+function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filterClient, filterAssignee, search, cursor, setCursor, fixedAssigneeClientIds }: {
+  tasks: PmTask[];
+  clientsMap: Record<string, string>;
+  membersMap: Record<string, { name: string; avatar?: string }>;
+  onTaskClick: (t: PmTask) => void;
+  filterClient: string;
+  filterAssignee: string;
+  search: string;
+  cursor: Date;
+  setCursor: React.Dispatch<React.SetStateAction<Date>>;
+  fixedAssigneeClientIds: Set<string>;
+}) {
   const deleteTask = useDeletePmTask();
-  const createTask = useCreatePmTask();
-  const syncStage = usePmSyncStageCompletion();
-
-  // Flow config for auto-advance
-  const flowsQ = useStageFlows();
-  const { flowConfig, transitionDates, stageAssignees: flowAssignees } = useMemo(() => {
-    const flows = flowsQ.data ?? [];
-    const df = flows.find((f) => f.is_default) ?? flows[0];
-    return {
-      flowConfig: (df?.flow_config ?? {}) as Record<string, string | string[]>,
-      transitionDates: (df?.transition_dates ?? {}) as Record<string, "pick" | number>,
-      stageAssignees: (df?.stage_assignees ?? {}) as StageAssignees,
-    };
-  }, [flowsQ.data]);
   const [moreOpen, setMoreOpen] = useState(false);
   const [moreDayKey, setMoreDayKey] = useState<string | null>(null);
 
@@ -448,57 +424,6 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
     }
     return map;
   }, [filteredTasks]);
-
-  const handleMarkDone = async (task: PmTask, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const isDone = task.status_global === "concluido";
-
-    if (isDone) {
-      // Uncheck — just revert status
-      updateTask.mutate({ id: task.id, status_global: "em_andamento" as any });
-      return;
-    }
-
-    // 1) Mark current task as concluído
-    updateTask.mutate({ id: task.id, status_global: "concluido" as any });
-
-    // 2) Sync with Magic Number + Performance
-    if (user?.id) {
-      syncStage.mutate({ pmTaskId: task.id, completedStage: task.stage_current, userId: user.id });
-    }
-
-    // 3) Auto-create next stage task based on flow config
-    const nextStages = getNextStages(flowConfig, task.stage_current);
-    if (nextStages.length > 0) {
-      const nextStage = nextStages[0]; // use first configured next stage
-      const fixedAssignee = getFixedAssignee(flowAssignees, nextStage, task.client_id);
-      const assignee = fixedAssignee ?? task.assignee_id ?? undefined;
-
-      // Calculate due date: current due_date + offset (default +1 day)
-      const offset = transitionDates[task.stage_current];
-      const daysToAdd = typeof offset === "number" ? offset : 1;
-      const baseDueDate = task.due_date ?? task.posting_date ?? format(new Date(), "yyyy-MM-dd");
-      const nextDueDate = format(addDays(new Date(baseDueDate + "T00:00:00"), daysToAdd), "yyyy-MM-dd");
-
-      // Get client name for title prefix
-      const clientName = clientsMap[task.client_id] ?? "";
-      const stageDisplayName = stageLabel(nextStage) ?? nextStage;
-      const title = clientName ? `[${clientName}] ${stageDisplayName}` : stageDisplayName;
-
-      createTask.mutate({
-        client_id: task.client_id,
-        title,
-        stage_current: nextStage,
-        assignee_id: assignee,
-        due_date: nextDueDate,
-        project_id: (task as any).project_id ?? undefined,
-        is_extra_demand: task.is_extra_demand,
-      });
-
-      const assigneeName = assignee ? membersMap[assignee]?.name?.split(" ")[0] : null;
-      toast.success(`Próxima etapa criada: ${stageDisplayName}${assigneeName ? ` → ${assigneeName}` : ""}`);
-    }
-  };
 
   const handleDelete = (taskId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -575,13 +500,11 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
                           {abbr}
                         </div>
                         <div className="flex items-center gap-0.5 transition-opacity">
-                          <button
-                            type="button"
-                            className={cn("h-5 w-5 rounded-full flex items-center justify-center transition", isDone ? "bg-success text-success-foreground" : "border border-muted-foreground/25 hover:border-primary hover:bg-primary/10")}
-                            onClick={(e) => handleMarkDone(t, e)}
-                            title={isDone ? "Desmarcar" : "Marcar concluído"}>
+                          <div
+                            className={cn("h-5 w-5 rounded-full flex items-center justify-center", isDone ? "bg-success text-success-foreground" : "border border-muted-foreground/25")}
+                            title={isDone ? "Concluído" : "Pendente"}>
                             {isDone && <CheckCircle2 className="h-3.5 w-3.5" />}
-                          </button>
+                          </div>
                           <button
                             type="button"
                             className="h-5 w-5 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition"
