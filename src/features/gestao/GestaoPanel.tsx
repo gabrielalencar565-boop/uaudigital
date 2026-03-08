@@ -554,7 +554,12 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
                     </div>
                   </div>
                   <div className="space-y-2.5 max-h-[500px] overflow-y-auto">
-                    {dayTasks.length ? dayTasks.map(renderTaskCard) : (
+                    {holidays.get(key) && (
+                      <div className="w-full rounded-xl bg-primary/5 px-3 py-2">
+                        <span className="text-sm font-medium text-primary/50">{holidays.get(key)}</span>
+                      </div>
+                    )}
+                    {dayTasks.length ? dayTasks.map(renderTaskCard) : !holidays.get(key) ? (
                       <div className="grid min-h-[120px] place-items-center rounded-lg border border-dashed border-border/60 bg-card/5 p-4">
                         <p className="text-sm text-muted-foreground">Sem tarefas</p>
                       </div>
