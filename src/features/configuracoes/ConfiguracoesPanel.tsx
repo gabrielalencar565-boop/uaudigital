@@ -159,8 +159,9 @@ export function ConfiguracoesPanel() {
             display_name: v.full_name,
             role_title: v.role_title,
             avatar_url: nextAvatarUrl,
-             is_active: true,
-          },
+            is_active: true,
+            birth_date: v.birth_date || null,
+          } as any,
           { onConflict: "user_id" },
         );
       if (tm.error) throw tm.error;
