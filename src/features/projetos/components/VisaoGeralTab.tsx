@@ -207,28 +207,28 @@ export function VisaoGeralTab() {
       </div>
 
       {/* Squad cards row */}
-      <div className="flex gap-4 overflow-x-auto pb-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {squads.map((sq: any) => {
           const st = squadStats[sq.id] ?? { total: 0, done: 0, inProgress: 0, overdue: 0, memberIds: [], clients: new Set() };
           const progress = st.total > 0 ? Math.round((st.done / st.total) * 100) : 0;
-          // Average health score for this squad's clients
           const clientIds = Array.from(st.clients);
           const healthVals = clientIds.map((c) => healthAvgMap[c]).filter((v) => v !== undefined);
           const avgHealth = healthVals.length > 0 ? Math.round(healthVals.reduce((a, b) => a + b, 0) / healthVals.length) : 0;
-          const healthColor = avgHealth >= 80 ? "text-green-500" : avgHealth >= 50 ? "text-yellow-500" : "text-red-500";
+          const healthColor = avgHealth >= 80 ? "text-success" : avgHealth >= 50 ? "text-warning" : "text-danger";
+          const members = st.memberIds.map((uid: string) => teamMap[uid]).filter(Boolean);
 
           return (
-            <Card key={sq.id} className="min-w-[220px] flex-shrink-0">
-              <CardContent className="py-4 px-4 space-y-3">
+            <Card key={sq.id}>
+              <CardContent className="py-5 px-5 space-y-4">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="h-5 w-5 rounded-full border-2" style={{ borderColor: sq.color }} />
-                    <span className="text-sm font-semibold">{sq.name}</span>
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-6 w-6 rounded-full border-[3px]" style={{ borderColor: sq.color }} />
+                    <span className="text-base font-semibold">{sq.name}</span>
                   </div>
                   {isAdmin && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <button className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted"><MoreHorizontal className="h-4 w-4" /></button>
+                        <button className="h-7 w-7 flex items-center justify-center rounded-lg hover:bg-muted"><MoreHorizontal className="h-4 w-4" /></button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => openConfig(sq)}><Settings2 className="h-4 w-4 mr-2" /> Configurar membros</DropdownMenuItem>
@@ -238,27 +238,45 @@ export function VisaoGeralTab() {
                   )}
                 </div>
 
-                {/* Progress */}
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1"><Target className="h-3 w-3" /> Progresso • <Clock className="h-3 w-3" /> {daysLeft} dias restantes</span>
-                    <span>{progress}%</span>
+                {/* Members avatars */}
+                <div className="flex items-center gap-2">
+                  <div className="flex -space-x-2">
+                    {members.slice(0, 5).map((m: any) => (
+                      <Avatar key={m.user_id} className="h-9 w-9 border-2 border-card">
+                        <AvatarImage src={m.avatar_url ?? undefined} alt={m.display_name} />
+                        <AvatarFallback className="text-[10px] bg-muted">{initials(m.display_name)}</AvatarFallback>
+                      </Avatar>
+                    ))}
+                    {members.length > 5 && (
+                      <div className="h-9 w-9 flex items-center justify-center rounded-full border-2 border-card bg-muted text-muted-foreground text-xs font-medium">
+                        +{members.length - 5}
+                      </div>
+                    )}
                   </div>
-                  <Progress value={progress} className="h-1.5" />
+                  <span className="text-xs text-muted-foreground">{members.length} {members.length === 1 ? "membro" : "membros"}</span>
+                </div>
+
+                {/* Progress */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1"><Target className="h-3.5 w-3.5" /> Progresso</span>
+                    <span className="font-medium text-foreground">{progress}%</span>
+                  </div>
+                  <Progress value={progress} className="h-2" />
+                  <p className="text-[11px] text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> {daysLeft} dias restantes</p>
                 </div>
 
                 {/* Health Score */}
-                <div className={cn("text-xs font-medium flex items-center gap-1", healthColor)}>
-                  <HeartPulse className="h-3 w-3" />
-                  <span>{avgHealth > 0 ? `${avgHealth} Health Score` : "0 Health Score"}</span>
+                <div className={cn("text-sm font-medium flex items-center gap-1.5", healthColor)}>
+                  <HeartPulse className="h-4 w-4" />
+                  <span>{avgHealth > 0 ? `${avgHealth} Health Score` : "Sem avaliação"}</span>
                 </div>
 
-                {/* Mini stats */}
-                <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-                  <span className="flex items-center gap-0.5"><Users className="h-3 w-3" /> {st.memberIds.length}</span>
-                  <span className="flex items-center gap-0.5"><FileText className="h-3 w-3" /> {st.clients.size}</span>
-                  <span className="flex items-center gap-0.5"><Clock className="h-3 w-3" /> {st.total}</span>
-                  <span className="flex items-center gap-0.5"><CheckCircle2 className="h-3 w-3" /> {st.done}</span>
+                {/* Stats row */}
+                <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1 border-t border-border">
+                  <span className="flex items-center gap-1"><FileText className="h-3.5 w-3.5" /> {st.clients.size} contas</span>
+                  <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> {st.total} tarefas</span>
+                  <span className="flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5 text-success" /> {st.done}</span>
                 </div>
               </CardContent>
             </Card>
@@ -267,9 +285,10 @@ export function VisaoGeralTab() {
 
         {/* Add squad card */}
         {isAdmin && (
-          <Card className="min-w-[60px] flex-shrink-0 border-dashed cursor-pointer hover:border-primary/40 transition-colors" onClick={() => setCreateOpen(true)}>
-            <CardContent className="flex items-center justify-center py-4 px-4 h-full">
-              <Plus className="h-6 w-6 text-muted-foreground" />
+          <Card className="border-dashed cursor-pointer hover:border-primary/40 transition-colors" onClick={() => setCreateOpen(true)}>
+            <CardContent className="flex flex-col items-center justify-center py-10 px-5 gap-2 h-full">
+              <Plus className="h-8 w-8 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">Criar Squad</span>
             </CardContent>
           </Card>
         )}
