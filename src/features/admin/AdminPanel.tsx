@@ -1,14 +1,23 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Check, EyeOff, Eye, ShieldCheck, ShieldX, UserMinus, Clock, X, Settings2 } from "lucide-react";
+import {
+  Mail, Pencil, Trash2, UserPlus, Users2,
+  Settings2, ShieldCheck, ShieldX, Eye, EyeOff, Clock, Check, X,
+} from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useBatchUserRoles, useSetUserRoles } from "@/hooks/use-user-roles";
@@ -16,50 +25,42 @@ import { RoleSelector } from "@/features/admin/components/RoleSelector";
 import { useAdminUsers, type AdminUserRow } from "@/hooks/use-admin-users";
 import type { AppRole } from "@/hooks/use-role";
 
+/* ───────── helpers ───────── */
+
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .map((w) => w[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
+
 function formatDate(dateStr: string | null) {
   if (!dateStr) return "—";
   const d = new Date(dateStr);
-  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
-function StatusBadge({ status }: { status: AdminUserRow["access_status"] }) {
-  if (!status) return null;
-  const config = {
-    pending: { label: "Pendente", variant: "warning" as const, icon: Clock },
-    approved: { label: "Aprovado", variant: "success" as const, icon: Check },
-    rejected: { label: "Removido", variant: "destructive" as const, icon: X },
-  };
-  const { label, variant, icon: Icon } = config[status];
-  return (
-    <Badge variant={variant} className="gap-1 text-xs">
-      <Icon className="h-3 w-3" />
-      {label}
-    </Badge>
-  );
-}
+const ROLE_MAP: Record<string, { label: string; color: string }> = {
+  admin: { label: "Administrador", color: "border-sidebar text-sidebar" },
+  planner: { label: "Planejador", color: "border-warning text-warning" },
+  collaborator: { label: "Colaborador", color: "border-border text-foreground" },
+};
 
-function VisibilityBadge({ visible }: { visible: boolean }) {
-  return visible ? (
-    <Badge variant="secondary" className="gap-1 text-xs">
-      <Eye className="h-3 w-3" /> Visível
-    </Badge>
-  ) : (
-    <Badge variant="outline" className="gap-1 text-xs text-muted-foreground">
-      <EyeOff className="h-3 w-3" /> Oculto
-    </Badge>
-  );
-}
+/* ───────── component ───────── */
 
 export function AdminPanel() {
   const qc = useQueryClient();
-  const [filter, setFilter] = useState("");
   const { user } = useSession();
-  
+  const [filter, setFilter] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
+
   // Role editing state
   const [editRoleUser, setEditRoleUser] = useState<AdminUserRow | null>(null);
   const [editRoles, setEditRoles] = useState<AppRole[]>([]);
 
-  // Usar nova RPC que filtra usuários válidos automaticamente
   const usersQ = useAdminUsers();
 
   const userIds = useMemo(() => {
@@ -68,18 +69,16 @@ export function AdminPanel() {
     return Array.from(ids);
   }, [usersQ.data]);
 
-  // Batch fetch roles for all users
   const rolesQ = useBatchUserRoles(userIds);
   const setUserRoles = useSetUserRoles();
+  const isBusy = setUserRoles.isPending;
 
-  const isBusy = useMemo(() => setUserRoles.isPending, [setUserRoles.isPending]);
-  
   const openRoleEditor = (r: AdminUserRow) => {
     const currentRoles = rolesQ.data?.get(r.user_id) ?? [];
     setEditRoles(currentRoles);
     setEditRoleUser(r);
   };
-  
+
   const handleSaveRoles = async () => {
     if (!editRoleUser) return;
     try {
@@ -93,18 +92,8 @@ export function AdminPanel() {
       toast.error(e?.message ?? "Erro ao atualizar permissões");
     }
   };
-  
-  const getRoleBadges = (userId: string) => {
-    const roles = rolesQ.data?.get(userId) ?? [];
-    if (roles.length === 0) return <span className="text-xs text-muted-foreground">Sem permissões</span>;
-    return (
-      <div className="flex flex-wrap gap-1">
-        {roles.includes("admin") && <Badge variant="destructive" className="text-[10px] px-1.5">Admin</Badge>}
-        {roles.includes("planner") && <Badge variant="warning" className="text-[10px] px-1.5">Planejador</Badge>}
-        {roles.includes("collaborator") && <Badge variant="secondary" className="text-[10px] px-1.5">Colaborador</Badge>}
-      </div>
-    );
-  };
+
+  /* ── mutations ── */
 
   const approve = useMutation({
     mutationFn: async (req: AdminUserRow) => {
@@ -166,7 +155,6 @@ export function AdminPanel() {
 
   const hide = useMutation({
     mutationFn: async (req: AdminUserRow) => {
-      if (!user) throw new Error("Não autenticado");
       const tm = await supabase.from("team_members").update({ is_active: false }).eq("user_id", req.user_id);
       if (tm.error) throw tm.error;
     },
@@ -180,7 +168,6 @@ export function AdminPanel() {
 
   const unhide = useMutation({
     mutationFn: async (req: AdminUserRow) => {
-      if (!user) throw new Error("Não autenticado");
       const tm = await supabase.from("team_members").update({ is_active: true }).eq("user_id", req.user_id);
       if (tm.error) throw tm.error;
     },
@@ -192,140 +179,150 @@ export function AdminPanel() {
     onError: (e: any) => toast.error(e?.message ?? "Erro ao reexibir"),
   });
 
+  /* ── filtering ── */
+
   const rows = useMemo(() => {
-    const all = usersQ.data ?? [];
+    let all = usersQ.data ?? [];
+    // Only show approved users in main grid
+    all = all.filter((r) => r.access_status === "approved");
+
     const f = filter.trim().toLowerCase();
-    if (!f) return all;
-    return all.filter((r) => 
-      r.email.toLowerCase().includes(f) || 
-      r.display_name.toLowerCase().includes(f) ||
-      r.user_id.toLowerCase().includes(f)
-    );
-  }, [usersQ.data, filter]);
+    if (f) {
+      all = all.filter(
+        (r) =>
+          r.email.toLowerCase().includes(f) ||
+          r.display_name.toLowerCase().includes(f)
+      );
+    }
 
-  const pending = rows.filter((r) => r.access_status === "pending");
-  const approved = rows.filter((r) => r.access_status === "approved");
-  const rejected = rows.filter((r) => r.access_status === "rejected");
+    if (roleFilter !== "all") {
+      all = all.filter((r) => {
+        const roles = rolesQ.data?.get(r.user_id) ?? [];
+        return roles.includes(roleFilter as AppRole);
+      });
+    }
 
-  const UserRow = ({ r, actions, showRoles }: { r: AdminUserRow; actions: React.ReactNode; showRoles?: boolean }) => (
-    <div
-      className={cn(
-        "rounded-lg border border-border/60 p-3",
-        r.access_status === "pending" && "bg-warning/5 border-warning/30",
-        r.access_status === "approved" && "bg-card/30",
-        r.access_status === "rejected" && "bg-muted/30",
-      )}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 space-y-1 flex-1">
-          <p className="truncate text-sm font-medium">{r.display_name}</p>
-          <p className="truncate text-xs text-muted-foreground">{r.email}</p>
-          <div className="flex flex-wrap items-center gap-2">
-            <StatusBadge status={r.access_status} />
-            {r.access_status === "approved" && <VisibilityBadge visible={r.is_active} />}
-            <span className="text-xs text-muted-foreground">{formatDate(r.requested_at)}</span>
-          </div>
-          {showRoles && r.access_status === "approved" && (
-            <div className="pt-1">{getRoleBadges(r.user_id)}</div>
-          )}
-        </div>
-        <div className="flex flex-wrap gap-1.5 shrink-0">{actions}</div>
-      </div>
-    </div>
+    return all;
+  }, [usersQ.data, filter, roleFilter, rolesQ.data]);
+
+  const pending = useMemo(
+    () => (usersQ.data ?? []).filter((r) => r.access_status === "pending"),
+    [usersQ.data]
   );
 
+  /* ── role badges for a user ── */
+
+  const getRoleBadges = (userId: string) => {
+    const roles = rolesQ.data?.get(userId) ?? [];
+    if (roles.length === 0) return null;
+    return (
+      <div className="flex flex-wrap gap-1.5 justify-center">
+        {roles.map((role) => {
+          const cfg = ROLE_MAP[role];
+          if (!cfg) return null;
+          return (
+            <Badge
+              key={role}
+              variant="outline"
+              className={cn("gap-1 text-xs font-normal", cfg.color)}
+            >
+              <Users2 className="h-3 w-3" />
+              {cfg.label}
+            </Badge>
+          );
+        })}
+      </div>
+    );
+  };
+
+  /* ── render ── */
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-semibold tracking-tight">Usuários</h2>
-        <p className="text-sm text-muted-foreground">Gerencie acessos da equipe.</p>
+    <div className="space-y-6 animate-fade-in">
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="text-2xl font-semibold tracking-tight">Gestão de usuários</h2>
       </div>
 
-      <div className="max-w-sm">
-        <Input
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          placeholder="Buscar por email ou nome..."
-          className="h-9"
-        />
+      {/* Toolbar */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative flex-1 max-w-md">
+          <Input
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            placeholder="Buscar usuários..."
+            className="h-10 pl-9"
+          />
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+            <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          </span>
+        </div>
+
+        <Select value={roleFilter} onValueChange={setRoleFilter}>
+          <SelectTrigger className="w-48 h-10">
+            <SelectValue placeholder="Todos os cargos" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os cargos</SelectItem>
+            <SelectItem value="admin">Administrador</SelectItem>
+            <SelectItem value="planner">Planejador</SelectItem>
+            <SelectItem value="collaborator">Colaborador</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {usersQ.isLoading && <p className="text-sm text-muted-foreground">Carregando...</p>}
       {usersQ.isError && <p className="text-sm text-destructive">Erro ao carregar usuários.</p>}
 
-      {/* Pendentes */}
+      {/* Pending banner */}
       {pending.length > 0 && (
-        <Card className="border-warning/40">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Clock className="h-4 w-4 text-warning" />
-              Pendentes ({pending.length})
-            </CardTitle>
-            <CardDescription>Aguardando aprovação</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
+        <div className="rounded-xl border border-warning/40 bg-warning/5 p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-warning" />
+            <span className="font-medium text-sm">
+              {pending.length} solicitação(ões) pendente(s)
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-2">
             {pending.map((r) => (
-              <UserRow
+              <div
                 key={r.user_id}
-                r={r}
-                actions={
-                  <>
-                    <Button size="sm" variant="brand" onClick={() => approve.mutate(r)} disabled={isBusy}>
-                      <ShieldCheck className="h-4 w-4" />
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => reject.mutate(r)} disabled={isBusy}>
-                      <ShieldX className="h-4 w-4" />
-                    </Button>
-                  </>
-                }
-              />
+                className="flex items-center gap-2 rounded-lg border border-border/60 bg-background px-3 py-2"
+              >
+                <span className="text-sm font-medium">{r.display_name}</span>
+                <span className="text-xs text-muted-foreground">{r.email}</span>
+                <Button size="sm" variant="brand" onClick={() => approve.mutate(r)} disabled={isBusy} className="h-7 px-2">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => reject.mutate(r)} disabled={isBusy} className="h-7 px-2">
+                  <ShieldX className="h-3.5 w-3.5" />
+                </Button>
+              </div>
             ))}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
-      {/* Aprovados */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Check className="h-4 w-4 text-success" />
-            Ativos ({approved.length})
-          </CardTitle>
-          <CardDescription>Membros com acesso ao sistema</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {approved.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum usuário aprovado.</p>
-          ) : (
-            approved.map((r) => (
-              <UserRow
-                key={r.user_id}
-                r={r}
-                showRoles
-                actions={
-                  <>
-                    <Button size="sm" variant="ghost" onClick={() => openRoleEditor(r)} disabled={isBusy} title="Editar permissões">
-                      <Settings2 className="h-4 w-4" />
-                    </Button>
-                    {r.is_active ? (
-                      <Button size="sm" variant="ghost" onClick={() => hide.mutate(r)} disabled={isBusy} title="Ocultar">
-                        <EyeOff className="h-4 w-4" />
-                      </Button>
-                    ) : (
-                      <Button size="sm" variant="ghost" onClick={() => unhide.mutate(r)} disabled={isBusy} title="Mostrar">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    )}
-                    <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => revoke.mutate(r)} disabled={isBusy} title="Remover">
-                      <UserMinus className="h-4 w-4" />
-                    </Button>
-                  </>
-                }
-              />
-            ))
-          )}
-        </CardContent>
-      </Card>
+      {/* User cards grid */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {rows.map((r) => (
+          <UserCard
+            key={r.user_id}
+            user={r}
+            roleBadges={getRoleBadges(r.user_id)}
+            onEditRoles={() => openRoleEditor(r)}
+            onRevoke={() => revoke.mutate(r)}
+            onHide={() => hide.mutate(r)}
+            onUnhide={() => unhide.mutate(r)}
+            isBusy={isBusy}
+          />
+        ))}
+        {rows.length === 0 && !usersQ.isLoading && (
+          <p className="col-span-full text-sm text-muted-foreground text-center py-8">
+            Nenhum usuário encontrado.
+          </p>
+        )}
+      </div>
 
       {/* Dialog de edição de roles */}
       <Dialog open={!!editRoleUser} onOpenChange={(open) => !open && setEditRoleUser(null)}>
@@ -334,11 +331,19 @@ export function AdminPanel() {
             <DialogTitle>Editar Permissões</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="rounded-lg border border-border/60 bg-card/20 p-3">
-              <p className="text-sm font-medium">{editRoleUser?.display_name ?? "—"}</p>
-              <p className="text-xs text-muted-foreground">{editRoleUser?.email}</p>
+            <div className="flex items-center gap-3 rounded-lg border border-border/60 bg-card/20 p-3">
+              <Avatar className="h-10 w-10">
+                {editRoleUser?.avatar_url && <AvatarImage src={editRoleUser.avatar_url} />}
+                <AvatarFallback className="bg-muted text-sm font-medium">
+                  {editRoleUser ? getInitials(editRoleUser.display_name) : ""}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="text-sm font-medium">{editRoleUser?.display_name ?? "—"}</p>
+                <p className="text-xs text-muted-foreground">{editRoleUser?.email}</p>
+              </div>
             </div>
-            
+
             <RoleSelector
               selectedRoles={editRoles}
               onChange={setEditRoles}
@@ -346,11 +351,7 @@ export function AdminPanel() {
             />
           </div>
           <DialogFooter>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setEditRoleUser(null)}
-            >
+            <Button type="button" variant="secondary" onClick={() => setEditRoleUser(null)}>
               Cancelar
             </Button>
             <Button
@@ -364,31 +365,122 @@ export function AdminPanel() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
 
-      {/* Removidos */}
-      {rejected.length > 0 && (
-        <Card className="opacity-70">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <X className="h-4 w-4 text-muted-foreground" />
-              Removidos ({rejected.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {rejected.slice(0, 10).map((r) => (
-              <UserRow
-                key={r.user_id}
-                r={r}
-                actions={
-                  <Button size="sm" variant="outline" onClick={() => approve.mutate(r)} disabled={isBusy}>
-                    <ShieldCheck className="h-4 w-4" />
-                  </Button>
-                }
-              />
-            ))}
-          </CardContent>
-        </Card>
+/* ───────── User Card ───────── */
+
+function UserCard({
+  user,
+  roleBadges,
+  onEditRoles,
+  onRevoke,
+  onHide,
+  onUnhide,
+  isBusy,
+}: {
+  user: AdminUserRow;
+  roleBadges: React.ReactNode;
+  onEditRoles: () => void;
+  onRevoke: () => void;
+  onHide: () => void;
+  onUnhide: () => void;
+  isBusy: boolean;
+}) {
+  return (
+    <div className="rounded-xl border border-border/60 bg-card/30 p-5 flex flex-col items-center text-center space-y-3 transition-colors hover:border-sidebar/30">
+      {/* Avatar */}
+      <Avatar className="h-16 w-16">
+        {user.avatar_url && <AvatarImage src={user.avatar_url} />}
+        <AvatarFallback className="bg-muted text-lg font-semibold">
+          {getInitials(user.display_name)}
+        </AvatarFallback>
+      </Avatar>
+
+      {/* Name & email */}
+      <div className="space-y-0.5">
+        <p className="font-semibold text-sm">{user.display_name}</p>
+        <p className="text-xs text-muted-foreground truncate max-w-[200px]">{user.email}</p>
+      </div>
+
+      {/* Role badges */}
+      {roleBadges}
+
+      {/* Visibility badge */}
+      {!user.is_active && (
+        <Badge variant="outline" className="gap-1 text-xs text-muted-foreground">
+          <EyeOff className="h-3 w-3" /> Oculto
+        </Badge>
       )}
+
+      <Separator className="my-1" />
+
+      {/* Email button */}
+      <a
+        href={`mailto:${user.email}`}
+        className="inline-flex items-center gap-2 rounded-lg border border-border/60 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted/50 transition-colors"
+      >
+        <Mail className="h-3.5 w-3.5" />
+        Email
+      </a>
+
+      <Separator className="my-1" />
+
+      {/* Actions */}
+      <div className="flex items-center gap-2">
+        <Button
+          size="icon"
+          variant="outline"
+          className="h-8 w-8 rounded-lg"
+          onClick={onEditRoles}
+          disabled={isBusy}
+          title="Editar permissões"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </Button>
+
+        {user.is_active ? (
+          <Button
+            size="icon"
+            variant="outline"
+            className="h-8 w-8 rounded-lg"
+            onClick={onHide}
+            disabled={isBusy}
+            title="Ocultar"
+          >
+            <EyeOff className="h-3.5 w-3.5" />
+          </Button>
+        ) : (
+          <Button
+            size="icon"
+            variant="outline"
+            className="h-8 w-8 rounded-lg"
+            onClick={onUnhide}
+            disabled={isBusy}
+            title="Mostrar"
+          >
+            <Eye className="h-3.5 w-3.5" />
+          </Button>
+        )}
+
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-8 rounded-lg gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10"
+          onClick={onRevoke}
+          disabled={isBusy}
+          title="Excluir"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+          Excluir
+        </Button>
+      </div>
+
+      {/* Creation date */}
+      <p className="text-[11px] text-muted-foreground pt-1">
+        Criado em {formatDate(user.requested_at)}
+      </p>
     </div>
   );
 }
