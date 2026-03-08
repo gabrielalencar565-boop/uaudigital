@@ -601,6 +601,11 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
                     </div>
                   </div>
                   <div className="space-y-1.5 max-h-[520px] overflow-y-auto">
+                    {holidays.get(key) && (
+                      <div className="w-full rounded-xl bg-primary/5 px-2.5 py-1.5 mb-1">
+                        <span className="text-[10px] font-medium text-primary/50">{holidays.get(key)}</span>
+                      </div>
+                    )}
                     {dayTasks.slice(0, 5).map(renderTaskCard)}
                     {dayTasks.length > 5 &&
                       <button
