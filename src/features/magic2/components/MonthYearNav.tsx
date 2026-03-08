@@ -1,4 +1,3 @@
-import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 function clampMonth(m: number) {
@@ -14,13 +13,13 @@ export function MonthYearNav({
   month,
   year,
   onMonthChange,
-  onYearChange
-
-
-
-
-
-}: {month: number;year: number;onMonthChange: (m: number) => void;onYearChange: (y: number) => void;}) {
+  onYearChange,
+}: {
+  month: number;
+  year: number;
+  onMonthChange: (m: number) => void;
+  onYearChange: (y: number) => void;
+}) {
   const now = new Date();
   const baseYear = now.getFullYear();
   const years = Array.from({ length: 7 }, (_, i) => baseYear - 3 + i);
@@ -55,40 +54,4 @@ export function MonthYearNav({
       </Select>
     </div>
   );
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 }
