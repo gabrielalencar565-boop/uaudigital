@@ -318,23 +318,13 @@ export function MeuPainelPanel() {
           medal={perf.medal}
           isLoading={perf.isLoading}
         />
-        <div className="flex flex-col gap-2">
-          <MeuPainelPerformanceRankCard
-            label="Anual"
-            rank={perfYear.rank}
-            total={perfYear.total}
-            medal={perfYear.medal}
-            isLoading={perfYear.isLoading}
-          />
-          <div className="flex items-center gap-2 justify-start">
-            <MonthYearNav
-              month={selected.month}
-              year={selected.year}
-              onMonthChange={(m) => setSelected((s) => ({ ...s, month: m }))}
-              onYearChange={(y) => setSelected((s) => ({ ...s, year: y }))}
-            />
-          </div>
-        </div>
+        <MeuPainelPerformanceRankCard
+          label="Anual"
+          rank={perfYear.rank}
+          total={perfYear.total}
+          medal={perfYear.medal}
+          isLoading={perfYear.isLoading}
+        />
       </div>
 
       {/* Resumo do mês */}
