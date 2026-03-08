@@ -644,6 +644,13 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
             </Badge>
           )}
 
+          {/* Revert button — go back to previous stage */}
+          {!isDone && task.stage_current !== "captacao" && (
+            <Button size="sm" variant="outline" className="gap-1.5 text-muted-foreground border-border/40 hover:bg-muted/60" onClick={handleRevert}>
+              <RotateCcw className="h-3.5 w-3.5" /> Reverter
+            </Button>
+          )}
+
           <Popover open={alteracaoChoiceOpen} onOpenChange={setAlteracaoChoiceOpen}>
             <PopoverTrigger asChild>
               <Button size="sm" variant="outline" className="gap-1.5 text-amber-500 border-amber-500/30 hover:bg-amber-500/10" onClick={handleAlteracao}>
