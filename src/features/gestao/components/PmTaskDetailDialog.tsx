@@ -243,11 +243,32 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     } catch (_) { /* ignore */ }
   };
 
-  const advanceStage = (completedStage: string, nextStage: string, newDueDate?: string) => {
+  const advanceStage = async (completedStage: string, nextStage: string, newDueDate?: string) => {
+    // Save a "completed snapshot" so the agenda keeps showing the old stage as done
+    const snapshotDueDate = task.due_date ?? format(new Date(), "yyyy-MM-dd");
+    createTask.mutate({
+      client_id: task.client_id,
+      title: task.title,
+      description: task.description ?? undefined,
+      priority: task.priority,
+      stage_current: completedStage,
+      due_date: snapshotDueDate,
+      assignee_id: task.assignee_id ?? undefined,
+      project_id: task.project_id ?? undefined,
+      tags: task.tags ?? [],
+      parent_task_id: task.parent_task_id ?? undefined,
+      is_extra_demand: task.is_extra_demand,
+    }, {
+      onSuccess: (snapshot) => {
+        // Mark the snapshot as concluído immediately
+        updateTask.mutate({ id: snapshot.id, status_global: "concluido" as any });
+      },
+    });
+
+    // Advance the actual task to the next stage
     const updates: any = { id: task.id, stage_current: nextStage as any };
     if (newDueDate) updates.due_date = newDueDate;
 
-    // Auto-assign fixed person for next stage + client
     const fixedAssignee = getFixedAssignee(stageAssignees, nextStage, task.client_id);
     if (fixedAssignee !== undefined) {
       updates.assignee_id = fixedAssignee;
@@ -257,6 +278,21 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     updateTask.mutate(updates);
     syncCompletedStage(completedStage);
     toast.success(nextStage === "entrega" ? "Tarefa marcada como Entregue!" : `Avançou para ${stageLabel(nextStage)}`);
+  };
+
+  // Revert: go back to previous stage (undo concluído advance)
+  const handleRevert = () => {
+    if (!task.stage_current || task.stage_current === "captacao") return;
+    // Find the stage that points to the current stage
+    const prevStage = Object.entries(flowConfig).find(([_, targets]) => 
+      (targets as string[]).includes(task.stage_current)
+    )?.[0];
+    if (!prevStage) {
+      toast.error("Não foi possível reverter");
+      return;
+    }
+    updateTask.mutate({ id: task.id, stage_current: prevStage as any });
+    toast.success(`Revertido para ${stageLabel(prevStage)}`);
   };
 
   const handleConcluido = () => {
@@ -606,6 +642,13 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
             <Badge className="bg-emerald-500/20 text-emerald-400 border-0 gap-1">
               <Check className="h-3 w-3" /> Entregue
             </Badge>
+          )}
+
+          {/* Revert button — go back to previous stage */}
+          {!isDone && task.stage_current !== "captacao" && (
+            <Button size="sm" variant="outline" className="gap-1.5 text-muted-foreground border-border/40 hover:bg-muted/60" onClick={handleRevert}>
+              <RotateCcw className="h-3.5 w-3.5" /> Reverter
+            </Button>
           )}
 
           <Popover open={alteracaoChoiceOpen} onOpenChange={setAlteracaoChoiceOpen}>
