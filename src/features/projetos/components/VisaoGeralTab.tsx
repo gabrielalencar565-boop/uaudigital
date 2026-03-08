@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Progress } from "@/components/ui/progress";
 import {
   Plus, Trash2, Settings2, Users, CheckCircle2, Clock, FileText,
-  MoreHorizontal, CalendarDays, HeartPulse, Target
+  MoreHorizontal, CalendarDays, HeartPulse, Target, ChevronLeft, ChevronRight, Star
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
