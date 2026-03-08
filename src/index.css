@@ -312,11 +312,26 @@ All colors MUST be HSL.
   box-shadow: 0 12px 28px -8px hsl(263 70% 50% / 0.18), 0 4px 12px -4px hsl(263 70% 50% / 0.1);
 }
 
-/* Futuristic widget animations */
-@keyframes meshShift {
-  0%, 100% { background-position: 0% 0%; filter: hue-rotate(0deg); }
-  33% { background-position: 30% 20%; filter: hue-rotate(8deg); }
-  66% { background-position: -10% -10%; filter: hue-rotate(-5deg); }
+/* Parallax gradient widget animations */
+@keyframes parallaxLayer1 {
+  0%   { transform: translateX(0%) translateY(0%); }
+  50%  { transform: translateX(4%) translateY(1%); }
+  100% { transform: translateX(0%) translateY(0%); }
+}
+
+@keyframes parallaxLayer2 {
+  0%   { transform: translate(0%, 0%) scale(1); }
+  33%  { transform: translate(3%, -2%) scale(1.03); }
+  66%  { transform: translate(-2%, 3%) scale(0.98); }
+  100% { transform: translate(0%, 0%) scale(1); }
+}
+
+@keyframes parallaxLayer3 {
+  0%   { transform: translate(0%, 0%) rotate(0deg); }
+  25%  { transform: translate(-5%, 3%) rotate(1deg); }
+  50%  { transform: translate(3%, -4%) rotate(-1deg); }
+  75%  { transform: translate(5%, 2%) rotate(0.5deg); }
+  100% { transform: translate(0%, 0%) rotate(0deg); }
 }
 
 @keyframes gridDrift {
