@@ -34,7 +34,7 @@ function initials(n: string) {
 
 const STAGE_ABBR: Record<string, string> = {
   captacao: "CAP", planejamento: "PLAN", design: "DSG", edicao_videos: "VDO",
-  revisao: "REV", pdf: "PDF", agendamento: "AGN", entrega: "OK"
+  revisao: "REV", pdf: "PDF", agendamento: "AGN", entrega: "ENT"
 };
 
 const STAGE_BADGE_BG: Record<string, string> = {
