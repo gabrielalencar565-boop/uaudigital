@@ -506,7 +506,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
                         <div className={cn("inline-flex h-5 items-center rounded-md px-2 text-[9px] font-bold text-white tracking-wide", stageBg)}>
                           {abbr}
                         </div>
-                        <div className="flex items-center gap-0.5 opacity-0 group-hover/card:opacity-100 transition-opacity">
+                        <div className="flex items-center gap-0.5 transition-opacity">
                           <button
                             type="button"
                             className={cn("h-5 w-5 rounded-md flex items-center justify-center transition", isDone ? "bg-success text-success-foreground" : "border border-border/40 hover:border-primary hover:bg-primary/10")}
