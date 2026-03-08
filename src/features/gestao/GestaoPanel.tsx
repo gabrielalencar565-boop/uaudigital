@@ -188,7 +188,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
       {/* Header — Kanban de tarefas */}
       <div className="flex items-center justify-between opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
         <div className="flex items-center gap-3">
-          <h2 className="font-bold tracking-tight text-2xl">Kanban de tarefas</h2>
+          <h2 className="font-bold tracking-tight text-2xl">Cronograma</h2>
         </div>
         <div className="flex items-center gap-2">
           <div className="relative">
