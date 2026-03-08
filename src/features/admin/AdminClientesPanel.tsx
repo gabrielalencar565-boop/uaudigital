@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { format } from "date-fns";
 import { Plus, Pencil, Trash2, Users, Pause, Play, Filter } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -27,6 +28,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -37,7 +39,9 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { useAllClients, useCreateClient, useDeleteClient, useToggleClientActive, type ClientRow } from "@/features/data/queries";
+import { useSquads } from "@/features/projetos/hooks/use-squads";
 import { ContractMonthsSelector } from "@/features/admin/components/ContractMonthsSelector";
 
 const clientSchema = z.object({
@@ -47,16 +51,54 @@ const clientSchema = z.object({
 
 type ClientFormValues = z.infer<typeof clientSchema>;
 
+function useClientSquads() {
+  return useQuery({
+    queryKey: ["client_squads"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("client_squads" as any)
+        .select("*");
+      if (error) throw error;
+      return (data ?? []) as unknown as { id: string; client_id: string; squad_id: string }[];
+    },
+  });
+}
+
 export function AdminClientesPanel() {
   const clientsQ = useAllClients();
   const createClient = useCreateClient();
   const toggleActive = useToggleClientActive();
   const deleteClient = useDeleteClient();
+  const squadsQ = useSquads();
+  const clientSquadsQ = useClientSquads();
+  const qc = useQueryClient();
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editClient, setEditClient] = useState<ClientRow | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<ClientRow | null>(null);
   const [showInactive, setShowInactive] = useState(false);
+  const [editSquadIds, setEditSquadIds] = useState<string[]>([]);
+
+  const squads = squadsQ.data ?? [];
+  const clientSquads = clientSquadsQ.data ?? [];
+
+  // Map client_id -> squad_ids
+  const clientSquadMap = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const cs of clientSquads) {
+      const arr = map.get(cs.client_id) ?? [];
+      arr.push(cs.squad_id);
+      map.set(cs.client_id, arr);
+    }
+    return map;
+  }, [clientSquads]);
+
+  // Map squad_id -> squad
+  const squadMap = useMemo(() => {
+    const map = new Map<string, any>();
+    for (const s of squads) map.set(s.id, s);
+    return map;
+  }, [squads]);
 
   const clients = useMemo(() => {
     const all = clientsQ.data ?? [];
@@ -97,13 +139,31 @@ export function AdminClientesPanel() {
   const handleEdit = async (values: ClientFormValues) => {
     if (!editClient) return;
     try {
-      const { supabase } = await import("@/integrations/supabase/client");
       const { error } = await supabase
         .from("clients")
         .update({ name: values.name, notes: values.notes || null })
         .eq("id", editClient.id);
       if (error) throw error;
+
+      // Sync squads
+      const currentSquadIds = clientSquadMap.get(editClient.id) ?? [];
+      const toRemove = currentSquadIds.filter((id) => !editSquadIds.includes(id));
+      const toAdd = editSquadIds.filter((id) => !currentSquadIds.includes(id));
+
+      for (const squadId of toRemove) {
+        await supabase
+          .from("client_squads" as any)
+          .delete()
+          .eq("client_id", editClient.id)
+          .eq("squad_id", squadId);
+      }
+      if (toAdd.length > 0) {
+        const rows = toAdd.map((squadId) => ({ client_id: editClient.id, squad_id: squadId }));
+        await supabase.from("client_squads" as any).insert(rows as any);
+      }
+
       clientsQ.refetch();
+      qc.invalidateQueries({ queryKey: ["client_squads"] });
       toast.success("Cliente atualizado!");
       setEditClient(null);
     } catch (e: any) {
@@ -137,6 +197,7 @@ export function AdminClientesPanel() {
   const openEdit = (client: ClientRow) => {
     setEditClient(client);
     editForm.reset({ name: client.name, notes: client.notes ?? "" });
+    setEditSquadIds(clientSquadMap.get(client.id) ?? []);
   };
 
   return (
@@ -201,63 +262,88 @@ export function AdminClientesPanel() {
                   <TableRow>
                     <TableHead>Status</TableHead>
                     <TableHead>Nome</TableHead>
+                    <TableHead>Squads</TableHead>
                     <TableHead>Observações</TableHead>
                     <TableHead>Desde</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {clients.map((client) => (
-                    <TableRow key={client.id} className={!client.is_active ? "opacity-60" : ""}>
-                      <TableCell>
-                        <Badge variant={client.is_active ? "success" : "secondary"}>
-                          {client.is_active ? "Ativo" : "Pausado"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="font-medium">{client.name}</TableCell>
-                      <TableCell className="max-w-[200px] truncate text-muted-foreground">
-                        {client.notes || "—"}
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm text-muted-foreground">
-                          {format(new Date(client.magic_due_date), "MM/yyyy")}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openEdit(client)}
-                            title="Editar"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleToggleActive(client)}
-                            title={client.is_active ? "Pausar contrato" : "Reativar contrato"}
-                            disabled={toggleActive.isPending}
-                          >
-                            {client.is_active ? (
-                              <Pause className="h-4 w-4 text-warning" />
+                  {clients.map((client) => {
+                    const squadIds = clientSquadMap.get(client.id) ?? [];
+                    return (
+                      <TableRow key={client.id} className={!client.is_active ? "opacity-60" : ""}>
+                        <TableCell>
+                          <Badge variant={client.is_active ? "success" : "secondary"}>
+                            {client.is_active ? "Ativo" : "Pausado"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="font-medium">{client.name}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {squadIds.length === 0 ? (
+                              <span className="text-xs text-muted-foreground">—</span>
                             ) : (
-                              <Play className="h-4 w-4 text-success" />
+                              squadIds.map((sid) => {
+                                const squad = squadMap.get(sid);
+                                if (!squad) return null;
+                                return (
+                                  <Badge
+                                    key={sid}
+                                    variant="outline"
+                                    className="text-xs border-sidebar/40 text-sidebar"
+                                  >
+                                    {squad.name}
+                                  </Badge>
+                                );
+                              })
                             )}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setDeleteConfirm(client)}
-                            title="Excluir permanentemente"
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                          </div>
+                        </TableCell>
+                        <TableCell className="max-w-[200px] truncate text-muted-foreground">
+                          {client.notes || "—"}
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm text-muted-foreground">
+                            {format(new Date(client.magic_due_date), "MM/yyyy")}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openEdit(client)}
+                              title="Editar"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleToggleActive(client)}
+                              title={client.is_active ? "Pausar contrato" : "Reativar contrato"}
+                              disabled={toggleActive.isPending}
+                            >
+                              {client.is_active ? (
+                                <Pause className="h-4 w-4 text-warning" />
+                              ) : (
+                                <Play className="h-4 w-4 text-success" />
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setDeleteConfirm(client)}
+                              title="Excluir permanentemente"
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
@@ -339,6 +425,37 @@ export function AdminClientesPanel() {
                 rows={3}
               />
             </div>
+
+            {/* Squads */}
+            {squads.length > 0 && (
+              <div className="space-y-2">
+                <Label>Squads Responsáveis</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {squads.map((squad) => (
+                    <label
+                      key={squad.id}
+                      className="flex items-center gap-2 rounded-lg border border-border/60 px-3 py-2 cursor-pointer hover:bg-accent/50 transition-colors"
+                    >
+                      <Checkbox
+                        checked={editSquadIds.includes(squad.id)}
+                        onCheckedChange={(checked) => {
+                          setEditSquadIds((prev) =>
+                            checked
+                              ? [...prev, squad.id]
+                              : prev.filter((id) => id !== squad.id)
+                          );
+                        }}
+                      />
+                      <span
+                        className="h-2.5 w-2.5 rounded-full shrink-0"
+                        style={{ backgroundColor: squad.color || "hsl(var(--sidebar))" }}
+                      />
+                      <span className="text-sm">{squad.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Meses de contrato */}
             {editClient && (
