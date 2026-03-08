@@ -1647,6 +1647,7 @@ export type Database = {
       team_members: {
         Row: {
           avatar_url: string | null
+          birth_date: string | null
           created_at: string
           display_name: string
           is_active: boolean
@@ -1656,6 +1657,7 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          birth_date?: string | null
           created_at?: string
           display_name: string
           is_active?: boolean
@@ -1665,6 +1667,7 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          birth_date?: string | null
           created_at?: string
           display_name?: string
           is_active?: boolean
