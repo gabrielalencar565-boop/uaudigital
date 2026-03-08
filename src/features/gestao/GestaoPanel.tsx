@@ -378,15 +378,21 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
 }
 
 // ─── Agenda Calendar View (matches main Agenda module) ───
-function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filterClient, filterAssignee, search, cursor, setCursor, fixedAssigneeClientIds
-
-
-
-
-
-
-
-
+function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filterClient, filterAssignee, search, cursor, setCursor, fixedAssigneeClientIds }: {
+  tasks: PmTask[];
+  clientsMap: Record<string, string>;
+  membersMap: Record<string, { name: string; avatar?: string }>;
+  onTaskClick: (t: PmTask) => void;
+  filterClient: string;
+  filterAssignee: string;
+  search: string;
+  cursor: Date;
+  setCursor: React.Dispatch<React.SetStateAction<Date>>;
+  fixedAssigneeClientIds: Set<string>;
+}) {
+  const deleteTask = useDeletePmTask();
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [moreDayKey, setMoreDayKey] = useState<string | null>(null);
 
   const todayKey = format(new Date(), "yyyy-MM-dd");
 
@@ -426,11 +432,6 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
     }
     return map;
   }, [filteredTasks]);
-
-}: {tasks: PmTask[];clientsMap: Record<string, string>;membersMap: Record<string, {name: string;avatar?: string;}>;onTaskClick: (t: PmTask) => void;filterClient: string;filterAssignee: string;search: string;cursor: Date;setCursor: React.Dispatch<React.SetStateAction<Date>>;fixedAssigneeClientIds: Set<string>;}) {
-  const deleteTask = useDeletePmTask();
-  const [moreOpen, setMoreOpen] = useState(false);
-  const [moreDayKey, setMoreDayKey] = useState<string | null>(null);
 
   const handleDelete = (taskId: string, e: React.MouseEvent) => {
     e.stopPropagation();
