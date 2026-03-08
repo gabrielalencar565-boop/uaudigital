@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { CheckCircle2, Circle, DollarSign, TrendingDown, TrendingUp, Receipt, CreditCard, AlertCircle, Clock } from "lucide-react";
+import { AnimatedNumber } from "@/components/ui/animated-number";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -164,7 +165,7 @@ export function FinReceitasDespesasTab() {
             <DollarSign className="h-4 w-4 text-success" />
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-success">R$ {totalFaturamento.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+            <p className="text-3xl font-bold text-success">R$ <AnimatedNumber value={totalFaturamento} decimals={2} className="text-3xl font-bold text-success" glow={true} /></p>
           </CardContent>
         </Card>
         <Card>
@@ -173,7 +174,7 @@ export function FinReceitasDespesasTab() {
             <TrendingDown className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-destructive">R$ {totalDespesas.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+            <p className="text-3xl font-bold text-destructive">R$ <AnimatedNumber value={totalDespesas} decimals={2} className="text-3xl font-bold text-destructive" glow={true} /></p>
           </CardContent>
         </Card>
         <Card>
@@ -183,7 +184,7 @@ export function FinReceitasDespesasTab() {
           </CardHeader>
           <CardContent>
             <p className={`text-3xl font-bold ${lucro >= 0 ? "text-success" : "text-destructive"}`}>
-              {lucro < 0 ? "-" : ""}R$ {Math.abs(lucro).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+              {lucro < 0 ? "-" : ""}R$ <AnimatedNumber value={Math.abs(lucro)} decimals={2} className={`text-3xl font-bold ${lucro >= 0 ? "text-success" : "text-destructive"}`} glow={true} />
             </p>
           </CardContent>
         </Card>
@@ -193,7 +194,7 @@ export function FinReceitasDespesasTab() {
             <Receipt className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">R$ {ticketMedio.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+            <p className="text-3xl font-bold">R$ <AnimatedNumber value={ticketMedio} decimals={2} className="text-3xl font-bold" glow={true} /></p>
           </CardContent>
         </Card>
         <Card className="flex flex-col items-center justify-center py-4">
@@ -203,7 +204,7 @@ export function FinReceitasDespesasTab() {
             size={100}
             stroke={10}
             tone={revProgress >= 100 ? "success" : revProgress >= 50 ? "primary" : "warning"}
-            label={<span className="text-3xl font-bold">{revPaid}</span>}
+            label={<AnimatedNumber value={revPaid} className="text-3xl font-bold" glow={false} />}
           />
         </Card>
         <Card className="flex flex-col items-center justify-center py-4">
@@ -213,7 +214,7 @@ export function FinReceitasDespesasTab() {
             size={100}
             stroke={10}
             tone={margemLucro >= 20 ? "success" : margemLucro >= 0 ? "warning" : "danger"}
-            label={<span className={`text-2xl font-bold ${margemLucro >= 0 ? "text-success" : "text-destructive"}`}>{margemLucro.toFixed(0)}%</span>}
+            label={<AnimatedNumber value={Math.round(margemLucro)} suffix="%" className={`text-2xl font-bold ${margemLucro >= 0 ? "text-success" : "text-destructive"}`} glow={false} />}
           />
         </Card>
       </div>

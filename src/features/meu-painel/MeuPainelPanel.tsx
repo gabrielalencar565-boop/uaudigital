@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { format, getDay } from "date-fns";
 import { AlertTriangle, CheckCircle2, Clock } from "lucide-react";
+import { AnimatedNumber } from "@/components/ui/animated-number";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -404,7 +405,7 @@ export function MeuPainelPanel() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Tarefas do mês</p>
-              <div className="text-3xl font-semibold tabular-nums tracking-tight">{summary.total}</div>
+              <AnimatedNumber value={summary.total} className="text-3xl font-semibold tracking-tight" />
             </div>
           </CardContent>
         </Card>
@@ -416,7 +417,7 @@ export function MeuPainelPanel() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Concluídas</p>
-              <div className="text-3xl font-semibold tabular-nums tracking-tight">{summary.done}</div>
+              <AnimatedNumber value={summary.done} className="text-3xl font-semibold tracking-tight" />
             </div>
           </CardContent>
         </Card>
@@ -428,7 +429,7 @@ export function MeuPainelPanel() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Pendentes</p>
-              <div className="text-3xl font-semibold tabular-nums tracking-tight">{summary.pending}</div>
+              <AnimatedNumber value={summary.pending} className="text-3xl font-semibold tracking-tight" />
             </div>
           </CardContent>
         </Card>
@@ -440,7 +441,7 @@ export function MeuPainelPanel() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Atrasadas</p>
-              <div className="text-3xl font-semibold tabular-nums tracking-tight">{summary.overdue}</div>
+              <AnimatedNumber value={summary.overdue} className="text-3xl font-semibold tracking-tight" />
             </div>
           </CardContent>
         </Card>

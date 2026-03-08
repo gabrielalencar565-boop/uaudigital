@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { AnimatedNumber } from "@/components/ui/animated-number";
  import { Trophy, Edit, RefreshCw, Video, Star } from "lucide-react";
  
  import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -305,7 +306,7 @@ const TOTAL_POINTS = 27;
                       <div className="mt-4 space-y-2">
                         <p className={`${isFirst ? "text-2xl" : "text-xl"} font-semibold`}>{member?.display_name ?? row.user_id}</p>
                         <div className="flex items-baseline justify-center gap-2">
-                          <span className={`${isFirst ? "text-5xl" : "text-4xl"} font-bold text-primary tabular-nums`}>{row.total}</span>
+                          <AnimatedNumber value={row.total} className={`${isFirst ? "text-5xl" : "text-4xl"} font-bold text-primary`} />
                           <span className="text-base text-muted-foreground">pts</span>
                         </div>
                       </div>
