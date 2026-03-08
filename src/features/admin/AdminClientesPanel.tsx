@@ -202,7 +202,10 @@ export function AdminClientesPanel() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div
+        className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between opacity-0"
+        style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}
+      >
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Gerenciar Clientes</h2>
           <p className="text-sm text-muted-foreground">
@@ -228,7 +231,10 @@ export function AdminClientesPanel() {
         </div>
       </div>
 
-      <Card>
+      <Card
+        className="opacity-0"
+        style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.15s" }}
+      >
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
