@@ -212,17 +212,6 @@ export function CronogramaClientBrowser({ tasks, childTasksMap, clientsMap, memb
         </div>
 
         <div className="flex items-center gap-2">
-          <Select value={selectedClientId} onValueChange={setSelectedClientId}>
-            <SelectTrigger className="h-9 w-52 text-sm rounded-xl border-border/30 bg-background/80">
-              <SelectValue placeholder="Todos os clientes" />
-            </SelectTrigger>
-            <SelectContent className="rounded-xl">
-              <SelectItem value="__all__">Todos os clientes</SelectItem>
-              {clientOptions.map(c => (
-                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
 
           {!noClientSelected && (
             <Button variant="outline" size="sm" className="gap-1.5 text-xs rounded-xl h-9" onClick={handleShare}>

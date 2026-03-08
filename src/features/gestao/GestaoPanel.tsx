@@ -326,6 +326,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
           childTasksMap={childTasksMap}
           clientsMap={clientsMap}
           membersMap={membersMap}
+          filterClient={filterClient}
           onTaskClick={(t) => setSelectedTaskId(t.id)} />
 
         }
