@@ -4,21 +4,50 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useSquads, useSquadMembers, useCreateSquad, useDeleteSquad, useUpdateSquadMembers } from "../hooks/use-squads";
+import { useHealthScores } from "../hooks/use-health-scores";
 import { useSession } from "@/hooks/use-session";
 import { useRole } from "@/hooks/use-role";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { ProgressRing } from "@/components/metrics/ProgressRing";
-import { Plus, Trash2, Settings2, Users, CheckCircle2, Clock, AlertTriangle, BarChart3, CalendarDays } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import {
+  Plus, Trash2, Settings2, Users, CheckCircle2, Clock, FileText,
+  MoreHorizontal, CalendarDays, HeartPulse, Target
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
-import { format, startOfMonth, endOfMonth } from "date-fns";
+import {
+  format, startOfMonth, endOfMonth, differenceInDays, startOfWeek, endOfWeek,
+  addDays, eachDayOfInterval, isSameDay, isToday
+} from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from "recharts";
+import { HealthScoreTab } from "./HealthScoreTab";
 
 function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join("");
 }
+
+// Brazilian holidays (static)
+const HOLIDAYS_2026 = [
+  { date: "2026-01-01", name: "Confraternização Universal", type: "Feriado Nacional" },
+  { date: "2026-02-16", name: "Carnaval", type: "Feriado Nacional" },
+  { date: "2026-02-17", name: "Carnaval", type: "Feriado Nacional" },
+  { date: "2026-04-03", name: "Sexta-feira Santa", type: "Feriado Nacional" },
+  { date: "2026-04-21", name: "Tiradentes", type: "Feriado Nacional" },
+  { date: "2026-05-01", name: "Dia do Trabalho", type: "Feriado Nacional" },
+  { date: "2026-06-04", name: "Corpus Christi", type: "Feriado Nacional" },
+  { date: "2026-09-07", name: "Independência do Brasil", type: "Feriado Nacional" },
+  { date: "2026-10-12", name: "Nossa Senhora Aparecida", type: "Feriado Nacional" },
+  { date: "2026-11-02", name: "Finados", type: "Feriado Nacional" },
+  { date: "2026-11-15", name: "Proclamação da República", type: "Feriado Nacional" },
+  { date: "2026-11-20", name: "Dia da Consciência Negra", type: "Feriado Nacional" },
+  { date: "2026-12-25", name: "Natal", type: "Feriado Nacional" },
+];
 
 export function VisaoGeralTab() {
   const { user } = useSession();
@@ -34,6 +63,7 @@ export function VisaoGeralTab() {
   const [newColor, setNewColor] = useState("#7C5CFF");
   const [configSquad, setConfigSquad] = useState<any>(null);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [showHealthScore, setShowHealthScore] = useState(false);
 
   const teamQ = useQuery({
     queryKey: ["team_members"],
@@ -46,6 +76,7 @@ export function VisaoGeralTab() {
   const now = new Date();
   const monthStart = format(startOfMonth(now), "yyyy-MM-dd");
   const monthEnd = format(endOfMonth(now), "yyyy-MM-dd");
+  const daysLeft = differenceInDays(endOfMonth(now), now);
 
   const pmTasksQ = useQuery({
     queryKey: ["pm_tasks_overview", monthStart],
@@ -59,10 +90,14 @@ export function VisaoGeralTab() {
     },
   });
 
+  // Health scores
+  const healthQ = useHealthScores(now.getMonth() + 1, now.getFullYear());
+
   const squads = squadsQ.data ?? [];
   const allSquadMembers = membersQ.data ?? [];
   const allTeam = teamQ.data ?? [];
   const allTasks = pmTasksQ.data ?? [];
+  const healthScores = healthQ.data ?? [];
 
   const teamMap = useMemo(() => {
     const m: Record<string, typeof allTeam[0]> = {};
@@ -70,16 +105,26 @@ export function VisaoGeralTab() {
     return m;
   }, [allTeam]);
 
+  // Health score average per client
+  const healthAvgMap = useMemo(() => {
+    const m: Record<string, number> = {};
+    healthScores.forEach((s) => {
+      m[s.client_id] = Math.round((s.resultado_percebido + s.alinhamento_estrategico + s.comunicacao_atendimento + s.qualidade_entregas + s.satisfacao_geral) / 5);
+    });
+    return m;
+  }, [healthScores]);
+
   // Stats per squad
   const squadStats = useMemo(() => {
-    const stats: Record<string, { total: number; done: number; inProgress: number; overdue: number; memberIds: string[] }> = {};
+    const stats: Record<string, { total: number; done: number; inProgress: number; overdue: number; memberIds: string[]; clients: Set<string> }> = {};
     squads.forEach((sq: any) => {
       const memberIds = allSquadMembers.filter((sm: any) => sm.squad_id === sq.id).map((sm: any) => sm.user_id);
       const tasks = allTasks.filter((t) => t.assignee_id && memberIds.includes(t.assignee_id));
       const done = tasks.filter((t) => t.status_global === "concluido").length;
       const inProgress = tasks.filter((t) => t.status_global === "em_andamento").length;
       const overdue = tasks.filter((t) => t.due_date && new Date(t.due_date) < now && t.status_global !== "concluido").length;
-      stats[sq.id] = { total: tasks.length, done, inProgress, overdue, memberIds };
+      const clients = new Set(tasks.map((t) => t.client_id));
+      stats[sq.id] = { total: tasks.length, done, inProgress, overdue, memberIds, clients };
     });
     return stats;
   }, [squads, allSquadMembers, allTasks]);
@@ -89,19 +134,16 @@ export function VisaoGeralTab() {
     const total = allTasks.length;
     const done = allTasks.filter((t) => t.status_global === "concluido").length;
     const inProgress = allTasks.filter((t) => t.status_global === "em_andamento").length;
-    const overdue = allTasks.filter((t) => t.due_date && new Date(t.due_date) < now && t.status_global !== "concluido").length;
-    const backlog = allTasks.filter((t) => t.status_global === "backlog").length;
-    return { total, done, inProgress, overdue, backlog };
+    return { total, done, inProgress };
   }, [allTasks]);
 
-  // Stage distribution
-  const stageDistribution = useMemo(() => {
-    const stages: Record<string, number> = {};
-    allTasks.forEach((t) => {
-      stages[t.stage_current] = (stages[t.stage_current] || 0) + 1;
-    });
-    return Object.entries(stages).sort((a, b) => b[1] - a[1]);
-  }, [allTasks]);
+  // Contas por squad chart data
+  const chartData = useMemo(() => {
+    return squads.map((sq: any) => ({
+      name: sq.name,
+      contas: squadStats[sq.id]?.clients.size ?? 0,
+    }));
+  }, [squads, squadStats]);
 
   const handleCreate = () => {
     if (!newName.trim() || !user) return;
@@ -127,123 +169,258 @@ export function VisaoGeralTab() {
     setSelectedUsers((prev) => prev.includes(uid) ? prev.filter((u) => u !== uid) : [...prev, uid]);
   };
 
-  const monthLabel = format(now, "MMMM yyyy", { locale: ptBR });
+  // Calendar
+  const calendarStart = startOfMonth(now);
+  const calendarEnd = endOfMonth(now);
+  const calendarDays = eachDayOfInterval({
+    start: startOfWeek(calendarStart, { weekStartsOn: 0 }),
+    end: endOfWeek(calendarEnd, { weekStartsOn: 0 }),
+  });
+
+  const weekDays = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+
+  // Upcoming holidays
+  const upcomingHolidays = HOLIDAYS_2026.filter((h) => new Date(h.date) >= now).slice(0, 4);
+
+  if (showHealthScore) {
+    return (
+      <div className="space-y-4">
+        <Button variant="ghost" size="sm" onClick={() => setShowHealthScore(false)} className="gap-1.5">
+          ← Voltar à Visão Geral
+        </Button>
+        <HealthScoreTab />
+      </div>
+    );
+  }
+
+  const progressPct = globalStats.total > 0 ? Math.round((globalStats.done / globalStats.total) * 100) : 0;
 
   return (
-    <div className="space-y-6 mt-4">
-      {/* Global summary row */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <SummaryCard icon={<BarChart3 className="h-4 w-4" />} label="Total" value={globalStats.total} color="text-foreground" />
-        <SummaryCard icon={<CheckCircle2 className="h-4 w-4" />} label="Concluídas" value={globalStats.done} color="text-green-500" />
-        <SummaryCard icon={<Clock className="h-4 w-4" />} label="Em andamento" value={globalStats.inProgress} color="text-blue-500" />
-        <SummaryCard icon={<AlertTriangle className="h-4 w-4" />} label="Atrasadas" value={globalStats.overdue} color="text-red-500" />
-        <SummaryCard icon={<CalendarDays className="h-4 w-4" />} label="Backlog" value={globalStats.backlog} color="text-muted-foreground" />
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-bold text-foreground">Visão geral dos projetos</h1>
+        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+          <span className="flex items-center gap-1"><CalendarDays className="h-4 w-4" /> {format(now, "dd/MM/yyyy")}</span>
+          <span className="flex items-center gap-1"><Clock className="h-4 w-4" /> {format(now, "HH:mm:ss")}</span>
+        </div>
       </div>
 
-      {/* Squad cards */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-foreground">Squads</h2>
+      {/* Squad cards row */}
+      <div className="flex gap-4 overflow-x-auto pb-2">
+        {squads.map((sq: any) => {
+          const st = squadStats[sq.id] ?? { total: 0, done: 0, inProgress: 0, overdue: 0, memberIds: [], clients: new Set() };
+          const progress = st.total > 0 ? Math.round((st.done / st.total) * 100) : 0;
+          // Average health score for this squad's clients
+          const clientIds = Array.from(st.clients);
+          const healthVals = clientIds.map((c) => healthAvgMap[c]).filter((v) => v !== undefined);
+          const avgHealth = healthVals.length > 0 ? Math.round(healthVals.reduce((a, b) => a + b, 0) / healthVals.length) : 0;
+          const healthColor = avgHealth >= 80 ? "text-green-500" : avgHealth >= 50 ? "text-yellow-500" : "text-red-500";
+
+          return (
+            <Card key={sq.id} className="min-w-[220px] flex-shrink-0">
+              <CardContent className="py-4 px-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="h-5 w-5 rounded-full border-2" style={{ borderColor: sq.color }} />
+                    <span className="text-sm font-semibold">{sq.name}</span>
+                  </div>
+                  {isAdmin && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted"><MoreHorizontal className="h-4 w-4" /></button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => openConfig(sq)}><Settings2 className="h-4 w-4 mr-2" /> Configurar membros</DropdownMenuItem>
+                        <DropdownMenuItem className="text-destructive" onClick={() => deleteSquad.mutate(sq.id)}><Trash2 className="h-4 w-4 mr-2" /> Excluir</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
+
+                {/* Progress */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1"><Target className="h-3 w-3" /> Progresso • <Clock className="h-3 w-3" /> {daysLeft} dias restantes</span>
+                    <span>{progress}%</span>
+                  </div>
+                  <Progress value={progress} className="h-1.5" />
+                </div>
+
+                {/* Health Score */}
+                <div className={cn("text-xs font-medium flex items-center gap-1", healthColor)}>
+                  <HeartPulse className="h-3 w-3" />
+                  <span>{avgHealth > 0 ? `${avgHealth} Health Score` : "0 Health Score"}</span>
+                </div>
+
+                {/* Mini stats */}
+                <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+                  <span className="flex items-center gap-0.5"><Users className="h-3 w-3" /> {st.memberIds.length}</span>
+                  <span className="flex items-center gap-0.5"><FileText className="h-3 w-3" /> {st.clients.size}</span>
+                  <span className="flex items-center gap-0.5"><Clock className="h-3 w-3" /> {st.total}</span>
+                  <span className="flex items-center gap-0.5"><CheckCircle2 className="h-3 w-3" /> {st.done}</span>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+
+        {/* Add squad card */}
         {isAdmin && (
-          <Button size="sm" variant="outline" onClick={() => setCreateOpen(true)} className="gap-1.5">
-            <Plus className="h-4 w-4" /> Novo Squad
-          </Button>
+          <Card className="min-w-[60px] flex-shrink-0 border-dashed cursor-pointer hover:border-primary/40 transition-colors" onClick={() => setCreateOpen(true)}>
+            <CardContent className="flex items-center justify-center py-4 px-4 h-full">
+              <Plus className="h-6 w-6 text-muted-foreground" />
+            </CardContent>
+          </Card>
         )}
       </div>
 
-      {squads.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-            <Users className="h-10 w-10 mb-3 opacity-40" />
-            <p className="text-sm">Nenhum squad criado ainda</p>
-            {isAdmin && <Button size="sm" variant="outline" className="mt-3" onClick={() => setCreateOpen(true)}>Criar Squad</Button>}
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {squads.map((sq: any) => {
-            const st = squadStats[sq.id] ?? { total: 0, done: 0, inProgress: 0, overdue: 0, memberIds: [] };
-            const progress = st.total > 0 ? Math.round((st.done / st.total) * 100) : 0;
-            return (
-              <Card key={sq.id} className="relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-1 h-full" style={{ backgroundColor: sq.color }} />
-                <CardHeader className="flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-base font-semibold">{sq.name}</CardTitle>
-                  {isAdmin && (
-                    <div className="flex gap-1">
-                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openConfig(sq)}>
-                        <Settings2 className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => deleteSquad.mutate(sq.id)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  )}
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Members */}
-                  <div className="flex items-center gap-1">
-                    {st.memberIds.slice(0, 5).map((uid) => {
-                      const m = teamMap[uid];
-                      return (
-                        <Avatar key={uid} className="h-7 w-7 border-2 border-background -ml-1 first:ml-0">
-                          <AvatarImage src={m?.avatar_url ?? undefined} />
-                          <AvatarFallback className="text-[10px]">{initials(m?.display_name ?? "?")}</AvatarFallback>
-                        </Avatar>
-                      );
-                    })}
-                    {st.memberIds.length > 5 && (
-                      <span className="text-xs text-muted-foreground ml-1">+{st.memberIds.length - 5}</span>
-                    )}
-                    {st.memberIds.length === 0 && <span className="text-xs text-muted-foreground">Sem membros</span>}
-                  </div>
-
-                  {/* Progress */}
-                  <div className="flex items-center gap-4">
-                    <ProgressRing value={progress} size={56} stroke={5} />
-                    <div className="flex-1 grid grid-cols-3 gap-2 text-center">
-                      <div>
-                        <p className="text-lg font-bold text-green-500">{st.done}</p>
-                        <p className="text-[10px] text-muted-foreground">Feitas</p>
-                      </div>
-                      <div>
-                        <p className="text-lg font-bold text-blue-500">{st.inProgress}</p>
-                        <p className="text-[10px] text-muted-foreground">Fazendo</p>
-                      </div>
-                      <div>
-                        <p className="text-lg font-bold text-red-500">{st.overdue}</p>
-                        <p className="text-[10px] text-muted-foreground">Atrasadas</p>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Stage distribution */}
-      {stageDistribution.length > 0 && (
+      {/* Middle row: Planejamentos + Contas por squad */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Planejamentos gerais */}
         <Card>
-          <CardHeader><CardTitle className="text-base">Tarefas por etapa — {monthLabel}</CardTitle></CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {stageDistribution.map(([stage, count]) => {
-                const pct = globalStats.total > 0 ? Math.round((count / globalStats.total) * 100) : 0;
-                return (
-                  <div key={stage} className="flex items-center gap-3">
-                    <span className="text-xs text-muted-foreground w-28 truncate capitalize">{stage.replace(/_/g, " ")}</span>
-                    <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
-                      <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
-                    </div>
-                    <span className="text-xs font-medium w-8 text-right">{count}</span>
-                  </div>
-                );
-              })}
+          <CardContent className="py-5 px-5 space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center"><FileText className="h-4 w-4 text-muted-foreground" /></div>
+              <div>
+                <p className="text-sm font-semibold">Planejamentos gerais</p>
+                <p className="text-xs text-muted-foreground">Planejamentos a serem entregues</p>
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xl font-bold">{globalStats.done}/{globalStats.total}</span>
+              <span className="text-sm text-muted-foreground">{progressPct}% completado</span>
             </div>
           </CardContent>
         </Card>
-      )}
+
+        {/* Contas por Squad */}
+        <Card>
+          <CardContent className="py-5 px-5 space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center"><Users className="h-4 w-4 text-muted-foreground" /></div>
+              <div>
+                <p className="text-sm font-semibold">Contas por Squad</p>
+                <p className="text-xs text-muted-foreground">Total: {new Set(allTasks.map((t) => t.client_id)).size} contas ativas</p>
+              </div>
+            </div>
+            {chartData.length > 0 ? (
+              <div className="h-32">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                    <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                    <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" allowDecimals={false} />
+                    <Tooltip />
+                    <Bar dataKey="contas" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">Crie squads para ver o gráfico</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Tarefas gerais */}
+      <Card>
+        <CardContent className="py-5 px-5 space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center"><CheckCircle2 className="h-4 w-4 text-muted-foreground" /></div>
+            <div>
+              <p className="text-sm font-semibold">Tarefas gerais</p>
+              <p className="text-xs text-muted-foreground">Tarefas em andamento</p>
+            </div>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-xl font-bold">{globalStats.done}/{globalStats.total}</span>
+            <span className="text-sm text-muted-foreground">{progressPct}% completado</span>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Bottom row: Timeline + Calendar */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Timeline placeholder */}
+        <Card>
+          <CardContent className="py-5 px-5 space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center"><CalendarDays className="h-4 w-4 text-muted-foreground" /></div>
+              <p className="text-sm font-semibold">Timeline de projetos especiais</p>
+            </div>
+            <div className="text-center py-8 text-xs text-muted-foreground">
+              Semana de {format(startOfWeek(now, { weekStartsOn: 0 }), "d 'de' MMMM, yyyy", { locale: ptBR })}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Calendar + holidays */}
+        <Card>
+          <CardContent className="py-5 px-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center"><CalendarDays className="h-4 w-4 text-muted-foreground" /></div>
+                <p className="text-sm font-semibold">Calendário</p>
+              </div>
+              <p className="text-sm font-semibold">Próximas datas</p>
+            </div>
+
+            <div className="flex gap-4">
+              {/* Mini calendar */}
+              <div className="flex-1">
+                <p className="text-center text-sm font-medium mb-2 capitalize">{format(now, "MMMM yyyy", { locale: ptBR })}</p>
+                <div className="grid grid-cols-7 gap-0.5 text-center text-[10px]">
+                  {weekDays.map((d) => (
+                    <span key={d} className="text-muted-foreground font-medium py-1">{d}</span>
+                  ))}
+                  {calendarDays.map((day, i) => {
+                    const inMonth = day.getMonth() === now.getMonth();
+                    const today = isToday(day);
+                    return (
+                      <span
+                        key={i}
+                        className={cn(
+                          "py-1 rounded text-xs",
+                          !inMonth && "text-muted-foreground/30",
+                          today && "bg-primary text-primary-foreground font-bold"
+                        )}
+                      >
+                        {day.getDate()}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Upcoming holidays */}
+              <div className="flex-1 space-y-2">
+                {upcomingHolidays.map((h) => (
+                  <div key={h.date} className="flex items-start gap-2 text-xs">
+                    <span className="text-primary mt-0.5">★</span>
+                    <div>
+                      <p className="font-medium">{h.name}</p>
+                      <p className="text-muted-foreground">{format(new Date(h.date), "d 'de' MMMM 'de' yyyy", { locale: ptBR })}</p>
+                    </div>
+                    <span className="ml-auto text-[10px] text-muted-foreground whitespace-nowrap">{h.type}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Health Score access */}
+      <Card className="cursor-pointer hover:border-primary/40 transition-colors" onClick={() => setShowHealthScore(true)}>
+        <CardContent className="flex items-center gap-4 py-4 px-5">
+          <HeartPulse className="h-6 w-6 text-red-500" />
+          <div>
+            <p className="text-sm font-semibold">Health Score</p>
+            <p className="text-xs text-muted-foreground">Avaliar saúde dos clientes</p>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Create dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
@@ -287,19 +464,5 @@ export function VisaoGeralTab() {
         </DialogContent>
       </Dialog>
     </div>
-  );
-}
-
-function SummaryCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: number; color: string }) {
-  return (
-    <Card>
-      <CardContent className="flex items-center gap-3 py-4 px-4">
-        <div className={cn("shrink-0", color)}>{icon}</div>
-        <div>
-          <p className={cn("text-xl font-bold", color)}>{value}</p>
-          <p className="text-[10px] text-muted-foreground">{label}</p>
-        </div>
-      </CardContent>
-    </Card>
   );
 }
