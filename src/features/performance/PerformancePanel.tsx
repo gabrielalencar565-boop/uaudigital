@@ -256,7 +256,7 @@ const TOTAL_POINTS = 27;
             </div>
           </div>
  
-         <TabsContent value="mensal" className="mt-6 space-y-6">
+         <TabsContent value="mensal" className="mt-6 space-y-6 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards" }}>
            <div className="flex flex-wrap gap-2">
              {MONTHS.map((m, idx) => (
                <Button
