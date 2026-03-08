@@ -415,7 +415,42 @@ export function VisaoGeralTab() {
               <p className="text-base font-bold">Calendário</p>
             </div>
 
+            {/* Day-of-week headers */}
+            <div className="grid grid-cols-7 gap-1 text-center">
+              {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((d) => (
+                <div key={d} className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground py-1">{d}</div>
+              ))}
+            </div>
 
+            {/* Calendar grid */}
+            <div className="grid grid-cols-7 gap-1">
+              {calendarDays.map((d) => {
+                const key = format(d, "yyyy-MM-dd");
+                const inMonth = d.getMonth() === now.getMonth();
+                const today = isToday(d);
+                const holiday = holidayMap.get(key);
+                return (
+                  <div
+                    key={key}
+                    className={cn(
+                      "relative flex flex-col items-center justify-center rounded-lg py-2 text-xs transition-all",
+                      !inMonth && "opacity-30",
+                      today && "bg-sidebar text-sidebar-foreground font-bold shadow-md",
+                      holiday && !today && "bg-primary/10"
+                    )}
+                    title={holiday ?? undefined}
+                  >
+                    <span>{format(d, "d")}</span>
+                    {holiday && (
+                      <span className="mt-0.5 text-[8px] leading-tight text-center text-primary truncate max-w-full px-0.5">{holiday}</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      </FadeUp>
       {/* Health Score access */}
       <FadeUp delay={0.75}>
         <Card className="cursor-pointer hover:border-primary/40 transition-colors" onClick={() => setShowHealthScore(true)}>
