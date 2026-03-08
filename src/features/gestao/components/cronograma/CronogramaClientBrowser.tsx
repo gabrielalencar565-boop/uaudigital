@@ -286,7 +286,7 @@ export function CronogramaClientBrowser({ tasks, childTasksMap, clientsMap, memb
                     return (
                       <div
                         key={key}
-                        className={cn("min-h-24 rounded-xl border p-2 transition-all calendar-card-hover border-[#b0b0b0]",
+                        className={cn("min-h-24 rounded-xl border p-2 transition-all calendar-card-hover border-[#d9d9d9]",
 
                         inMonth ? "border-border/20 bg-card/30" : "border-transparent opacity-30",
                         isToday && "border-primary/50 ring-2 ring-primary/15 bg-primary/5",
@@ -355,7 +355,7 @@ export function CronogramaClientBrowser({ tasks, childTasksMap, clientsMap, memb
                 onRename={handleRenamePost} /> :
 
 
-              <div className="rounded-2xl border bg-card/40 backdrop-blur-sm p-6 flex flex-col items-center justify-center min-h-[400px] text-center border-[#b0b0b0]">
+              <div className="rounded-2xl border bg-card/40 backdrop-blur-sm p-6 flex flex-col items-center justify-center min-h-[400px] text-center border-[#d9d9d9]">
                     <Clock className="h-10 w-10 text-muted-foreground/20 mb-3" />
                     <p className="text-sm text-muted-foreground">Selecione um post para visualizar</p>
                   </div>
