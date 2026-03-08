@@ -241,11 +241,25 @@ All colors MUST be HSL.
 
   .uau-text-gradient-auth {
     background-image: var(--gradient-auth-title);
-    /* Glow behind the title (requested: match #5c2c9c → #ffba01) */
     filter:
       drop-shadow(0 0 28px hsl(var(--auth-gradient-from) / 0.45))
       drop-shadow(0 0 34px hsl(var(--auth-gradient-to) / 0.35));
     @apply bg-clip-text text-transparent;
+  }
+
+  /* Animated number hover glow */
+  .uau-number-glow {
+    @apply cursor-default;
+    transition: text-shadow 0.3s ease, transform 0.3s ease;
+  }
+  .uau-number-glow:hover {
+    text-shadow: 0 0 12px hsl(var(--primary) / 0.35), 0 0 4px hsl(var(--primary) / 0.2);
+    transform: scale(1.06);
+  }
+
+  /* Flash on value change */
+  .uau-number-flash {
+    animation: numberFlash 0.5s ease-out;
   }
 }
 
