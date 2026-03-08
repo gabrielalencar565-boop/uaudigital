@@ -456,7 +456,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
       {/* Weekday headers */}
       <div className="grid grid-cols-7 gap-2">
         {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((d) =>
-        <div key={d} className="px-2 py-1.5 text-[11px] font-semibold text-muted-foreground/60 uppercase tracking-wider text-center">{d}</div>
+        <div key={d} className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-center text-primary">{d}</div>
         )}
       </div>
 
