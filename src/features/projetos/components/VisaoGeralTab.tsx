@@ -77,7 +77,6 @@ export function VisaoGeralTab() {
   const [newName, setNewName] = useState("");
   const [newColor, setNewColor] = useState("#7C5CFF");
   const [newLeader, setNewLeader] = useState<string>("");
-  const [configSquad, setConfigSquad] = useState<any>(null);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [showHealthScore, setShowHealthScore] = useState(false);
 
