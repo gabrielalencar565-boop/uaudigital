@@ -563,7 +563,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
                       <div className="grid min-h-[120px] place-items-center rounded-lg border border-dashed border-border/60 bg-card/5 p-4">
                         <p className="text-sm text-muted-foreground">Sem tarefas</p>
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 </div>
               );
