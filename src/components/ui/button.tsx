@@ -9,7 +9,7 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        default: "bg-sidebar text-sidebar-foreground hover:bg-sidebar/90",
         hero:
           "bg-primary text-primary-foreground shadow-glow hover:opacity-95 active:opacity-90",
         brand:
