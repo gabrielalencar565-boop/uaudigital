@@ -385,6 +385,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
   const deleteTask = useDeletePmTask();
   const [moreOpen, setMoreOpen] = useState(false);
   const [moreDayKey, setMoreDayKey] = useState<string | null>(null);
+  const [agendaView, setAgendaView] = useState<"month" | "week">("month");
 
   const todayKey = format(new Date(), "yyyy-MM-dd");
 
@@ -405,7 +406,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
       list = list.filter((t) => t.title.toLowerCase().includes(q) || (clientsMap[t.client_id] ?? "").toLowerCase().includes(q));
     }
     return list;
-  }, [tasks, filterClient, filterAssignee, search, clientsMap]);
+  }, [tasks, filterClient, filterAssignee, search, clientsMap, fixedAssigneeClientIds]);
 
   const days = useMemo(() => {
     const start = startOfWeek(startOfMonth(cursor), { weekStartsOn: 0 });
@@ -420,6 +421,9 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
     return out;
   }, [cursor]);
 
+  const weekStart = useMemo(() => startOfWeek(cursor, { weekStartsOn: 0 }), [cursor]);
+  const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
+
   const tasksByDay = useMemo(() => {
     const map = new Map<string, PmTask[]>();
     for (const t of filteredTasks) {
@@ -431,122 +435,171 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
     return map;
   }, [filteredTasks]);
 
+  const renderTaskCard = (t: PmTask) => {
+    const isDone = t.status_global === "concluido";
+    const stageBg = STAGE_BADGE_BG[t.stage_current] ?? "bg-muted";
+    const abbr = STAGE_ABBR[t.stage_current] ?? t.stage_current.toUpperCase().slice(0, 4);
+    const member = t.assignee_id ? membersMap[t.assignee_id] : undefined;
+    const clientName = clientsMap[t.client_id] ?? "—";
+
+    return (
+      <div
+        key={t.id}
+        className="w-full rounded-xl border border-border/20 bg-card/60 backdrop-blur-sm p-2 text-left transition-all hover:bg-card hover:shadow-sm hover:-translate-y-0.5 cursor-pointer group/card"
+        onClick={() => onTaskClick(t)}>
+        <div className="flex items-center justify-between gap-1">
+          <div className={cn("inline-flex h-5 items-center rounded-md px-2 text-[9px] font-bold text-white tracking-wide", stageBg)}>
+            {abbr}
+          </div>
+          <div className="flex items-center gap-0.5">
+            <div
+              className={cn("h-5 w-5 rounded-full flex items-center justify-center",
+                isDone ? "bg-success text-success-foreground" : "border border-muted-foreground/25"
+              )}
+              title={isDone ? "Concluído" : "Pendente"}>
+              {isDone && <CheckCircle2 className="h-3.5 w-3.5" />}
+            </div>
+            <button
+              type="button"
+              className="h-5 w-5 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition"
+              onClick={(e) => handleDelete(t.id, e)}
+              title="Remover">
+              <Trash2 className="h-3 w-3" />
+            </button>
+          </div>
+        </div>
+        {t.is_extra_demand &&
+          <Badge variant="secondary" className="text-[8px] h-4 px-1.5 gap-0.5 mt-1 rounded-md">★ Extra</Badge>
+        }
+        <div className="mt-1.5 flex items-center gap-1.5">
+          <Avatar className="h-5 w-5 shrink-0 ring-1 ring-background">
+            <AvatarImage src={member?.avatar} />
+            <AvatarFallback className="text-[7px] font-bold bg-primary/10 text-primary">{member ? initials(member.name) : "?"}</AvatarFallback>
+          </Avatar>
+          <div className="min-w-0">
+            <p className="truncate text-[11px] font-semibold leading-4">{member?.name?.split(" ")[0] ?? "—"}</p>
+            <p className="truncate text-[10px] text-muted-foreground/60 leading-3">{clientName}</p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-5">
-      {/* Month navigation */}
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => setCursor((d) => startOfMonth(subMonths(d, 1)))}>
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        <h3 className="text-base font-bold capitalize min-w-[160px] text-center">
-          {format(cursor, "MMMM 'de' yyyy", { locale: ptBR })}
-        </h3>
-        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => setCursor((d) => startOfMonth(addMonths(d, 1)))}>
-          <ChevronRight className="h-4 w-4" />
-        </Button>
+      {/* Header: pill toggle + month nav */}
+      <div className="flex flex-wrap items-center gap-4">
+        <Tabs value={agendaView} onValueChange={(v) => setAgendaView(v as any)}>
+          <TabsList className="bg-muted/40 h-10 p-1 rounded-full gap-1">
+            <TabsTrigger value="month" className="h-8 rounded-full text-sm data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-md px-5 transition-all">Mês</TabsTrigger>
+            <TabsTrigger value="week" className="h-8 rounded-full text-sm data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-md px-5 transition-all">Semana</TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => setCursor((d) => agendaView === "week" ? addDays(d, -7) : startOfMonth(subMonths(d, 1)))}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <span className="text-base font-bold capitalize min-w-[160px] text-center">
+            {format(cursor, "MMMM yyyy", { locale: ptBR })}
+          </span>
+          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => setCursor((d) => agendaView === "week" ? addDays(d, 7) : startOfMonth(addMonths(d, 1)))}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
-      {/* Weekday headers */}
-      <div className="grid grid-cols-7 gap-2">
-        {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((d) =>
-        <div key={d} className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-center text-primary">{d}</div>
-        )}
-      </div>
+      {agendaView === "week" ? (
+        /* ── WEEK VIEW ── */
+        <div className="overflow-x-auto pb-4">
+          <div className="flex gap-4 min-w-max">
+            {weekDays.map((d) => {
+              const key = format(d, "yyyy-MM-dd");
+              const dayTasks = tasksByDay.get(key) ?? [];
+              const dow = format(d, "EEEE", { locale: ptBR });
+              const dowTitle = dow.charAt(0).toUpperCase() + dow.slice(1);
+              const isToday = key === todayKey;
+              const doneCount = dayTasks.filter((t) => t.status_global === "concluido").length;
 
-      {/* Calendar grid */}
-      <div className="grid grid-cols-7 gap-2">
-        {days.map((d) => {
-          const key = format(d, "yyyy-MM-dd");
-          const inMonth = d.getMonth() === cursor.getMonth();
-          const dayTasks = tasksByDay.get(key) ?? [];
-          const isToday = key === todayKey;
-
-          return (
-            <div
-              key={key}
-              className={cn("relative min-h-28 rounded-2xl border border-[#d9d9d9] bg-card/30 backdrop-blur-sm p-2.5 transition-all calendar-card-hover",
-
-              inMonth ? "opacity-100" : "opacity-30 border-transparent",
-              isToday && "border-primary/50 ring-2 ring-primary/15 bg-primary/5"
-              )}>
-              
-              <div className="flex items-center justify-between mb-2">
-                <div className={cn(
-                  "grid h-7 w-7 place-items-center rounded-lg text-xs font-bold",
-                  isToday ? "bg-sidebar text-sidebar-foreground shadow-sm" : "text-muted-foreground/70"
-                )}>
-                  {format(d, "d")}
-                </div>
-              </div>
-
-              <div className="space-y-1.5 max-h-[520px] overflow-y-auto">
-                {dayTasks.slice(0, 5).map((t) => {
-                  const isDone = t.status_global === "concluido";
-                  const stageBg = STAGE_BADGE_BG[t.stage_current] ?? "bg-muted";
-                  const abbr = STAGE_ABBR[t.stage_current] ?? t.stage_current.toUpperCase().slice(0, 4);
-                  const member = t.assignee_id ? membersMap[t.assignee_id] : undefined;
-                  const clientName = clientsMap[t.client_id] ?? "—";
-
-                  return (
-                    <div
-                      key={t.id}
-                      className={cn(
-                        "w-full rounded-xl border border-border/20 bg-card/60 backdrop-blur-sm p-2 text-left transition-all hover:bg-card hover:shadow-sm hover:-translate-y-0.5 cursor-pointer group/card"
+              return (
+                <div
+                  key={key}
+                  className={cn(
+                    "w-[280px] flex-shrink-0 rounded-xl border bg-card/10 p-4 transition",
+                    isToday ? "border-primary ring-2 ring-primary/40" : "border-border/60"
+                  )}>
+                  <div className="flex items-start justify-between gap-2 mb-4">
+                    <div className="min-w-0">
+                      <p className={cn("text-sm font-medium", isToday && "text-primary")}>{dowTitle}</p>
+                      <p className={cn("mt-1 text-3xl font-semibold leading-none tracking-tight", isToday && "text-primary")}>
+                        {format(d, "dd")}
+                      </p>
+                      {dayTasks.length > 0 && (
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          {doneCount}/{dayTasks.length} concluída(s)
+                        </p>
                       )}
-                      onClick={() => onTaskClick(t)}>
-                      
-                      <div className="flex items-center justify-between gap-1">
-                        <div className={cn("inline-flex h-5 items-center rounded-md px-2 text-[9px] font-bold text-white tracking-wide", stageBg)}>
-                          {abbr}
-                        </div>
-                        <div className="flex items-center gap-0.5 transition-opacity">
-                          <div
-                            className={cn("h-5 w-5 rounded-full flex items-center justify-center",
-                              isDone ? "bg-success text-success-foreground" : "border border-muted-foreground/25"
-                            )}
-                            title={isDone ? "Concluído" : "Pendente"}>
-                            {isDone && <CheckCircle2 className="h-3.5 w-3.5" />}
-                          </div>
-                          <button
-                            type="button"
-                            className="h-5 w-5 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition"
-                            onClick={(e) => handleDelete(t.id, e)}
-                            title="Remover">
-                            
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                        </div>
+                    </div>
+                  </div>
+                  <div className="space-y-2.5 max-h-[500px] overflow-y-auto">
+                    {dayTasks.length ? dayTasks.map(renderTaskCard) : (
+                      <div className="grid min-h-[120px] place-items-center rounded-lg border border-dashed border-border/60 bg-card/5 p-4">
+                        <p className="text-sm text-muted-foreground">Sem tarefas</p>
                       </div>
-                      {t.is_extra_demand &&
-                      <Badge variant="secondary" className="text-[8px] h-4 px-1.5 gap-0.5 mt-1 rounded-md">★ Extra</Badge>
-                      }
-                      <div className="mt-1.5 flex items-center gap-1.5">
-                        <Avatar className="h-5 w-5 shrink-0 ring-1 ring-background">
-                          <AvatarImage src={member?.avatar} />
-                          <AvatarFallback className="text-[7px] font-bold bg-primary/10 text-primary">{member ? initials(member.name) : "?"}</AvatarFallback>
-                        </Avatar>
-                        <div className="min-w-0">
-                          <p className="truncate text-[11px] font-semibold leading-4">{member?.name?.split(" ")[0] ?? "—"}</p>
-                          <p className="truncate text-[10px] text-muted-foreground/60 leading-3">{clientName}</p>
-                        </div>
-                      </div>
-                    </div>);
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        /* ── MONTH VIEW ── */
+        <>
+          <div className="grid grid-cols-7 gap-2">
+            {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((d) =>
+              <div key={d} className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-center text-primary">{d}</div>
+            )}
+          </div>
+          <div className="grid grid-cols-7 gap-2">
+            {days.map((d) => {
+              const key = format(d, "yyyy-MM-dd");
+              const inMonth = d.getMonth() === cursor.getMonth();
+              const dayTasks = tasksByDay.get(key) ?? [];
+              const isToday = key === todayKey;
 
-                })}
-                {dayTasks.length > 5 &&
-                <button
-                  type="button"
-                  className="w-full rounded-lg bg-foreground/5 px-2 py-1 text-[10px] font-medium text-muted-foreground/60 hover:bg-foreground/10 hover:text-muted-foreground transition"
-                  onClick={() => {setMoreDayKey(key);setMoreOpen(true);}}>
-                  
-                    +{dayTasks.length - 5} mais
-                  </button>
-                }
-              </div>
-            </div>);
-
-        })}
-      </div>
+              return (
+                <div
+                  key={key}
+                  className={cn("relative min-h-28 rounded-2xl border border-[#d9d9d9] bg-card/30 backdrop-blur-sm p-2.5 transition-all calendar-card-hover",
+                    inMonth ? "opacity-100" : "opacity-30 border-transparent",
+                    isToday && "border-primary/50 ring-2 ring-primary/15 bg-primary/5"
+                  )}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className={cn(
+                      "grid h-7 w-7 place-items-center rounded-lg text-xs font-bold",
+                      isToday ? "bg-sidebar text-sidebar-foreground shadow-sm" : "text-muted-foreground/70"
+                    )}>
+                      {format(d, "d")}
+                    </div>
+                  </div>
+                  <div className="space-y-1.5 max-h-[520px] overflow-y-auto">
+                    {dayTasks.slice(0, 5).map(renderTaskCard)}
+                    {dayTasks.length > 5 &&
+                      <button
+                        type="button"
+                        className="w-full rounded-lg bg-foreground/5 px-2 py-1 text-[10px] font-medium text-muted-foreground/60 hover:bg-foreground/10 hover:text-muted-foreground transition"
+                        onClick={() => { setMoreDayKey(key); setMoreOpen(true); }}>
+                        +{dayTasks.length - 5} mais
+                      </button>
+                    }
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
 
       {/* More tasks dialog */}
       <Dialog open={moreOpen} onOpenChange={setMoreOpen}>
@@ -558,7 +611,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
             {(moreDayKey ? tasksByDay.get(moreDayKey) ?? [] : []).map((t) => {
               const member = t.assignee_id ? membersMap[t.assignee_id] : undefined;
               return (
-                <div key={t.id} className="flex items-center gap-3 p-2.5 rounded-xl border border-border/20 cursor-pointer hover:bg-muted/40 transition" onClick={() => {setMoreOpen(false);onTaskClick(t);}}>
+                <div key={t.id} className="flex items-center gap-3 p-2.5 rounded-xl border border-border/20 cursor-pointer hover:bg-muted/40 transition" onClick={() => { setMoreOpen(false); onTaskClick(t); }}>
                   <div className={cn("inline-flex h-5 items-center rounded-md px-2 text-[9px] font-bold text-white", STAGE_BADGE_BG[t.stage_current] ?? "bg-muted")}>
                     {STAGE_ABBR[t.stage_current] ?? t.stage_current.slice(0, 4).toUpperCase()}
                   </div>
@@ -570,14 +623,14 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
                     <p className="truncate text-xs font-semibold">{member?.name ?? "—"}</p>
                     <p className="truncate text-[10px] text-muted-foreground/60">{clientsMap[t.client_id] ?? "—"}</p>
                   </div>
-                </div>);
-
+                </div>
+              );
             })}
           </div>
         </DialogContent>
       </Dialog>
-    </div>);
-
+    </div>
+  );
 }
 
 // ─── Cronograma Global View ───
