@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   format, startOfMonth, endOfMonth, differenceInDays, startOfWeek, endOfWeek,
-  eachDayOfInterval, isSameDay, isToday
+  eachDayOfInterval, isSameDay, isToday, subMonths, addMonths
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
