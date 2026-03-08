@@ -71,7 +71,13 @@ export function AnimatedNumber({
     };
   }, [value, duration]);
 
-  const formatted = decimals > 0 ? display.toFixed(decimals) : Math.round(display).toString();
+  // Auto-detect decimals from value if not explicitly set
+  const effectiveDecimals = decimals > 0 ? decimals : (() => {
+    const str = value.toString();
+    const dot = str.indexOf(".");
+    return dot >= 0 ? str.length - dot - 1 : 0;
+  })();
+  const formatted = effectiveDecimals > 0 ? display.toFixed(effectiveDecimals) : Math.round(display).toString();
 
   return (
     <span
