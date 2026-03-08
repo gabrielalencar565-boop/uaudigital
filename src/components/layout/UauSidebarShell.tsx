@@ -298,7 +298,7 @@ export function UauSidebarShell({
             )}>
             
             <div className="mx-auto w-full 2xl:max-w-[1600px]">
-              <div className="uau-surface overflow-x-auto border border-border/60 p-4 sm:p-6 lg:p-8 2xl:p-10 py-[32px] rounded-xl shadow-none">
+              <div className="uau-surface overflow-x-auto border border-border/60 p-4 sm:p-6 lg:p-8 2xl:p-10 rounded-xl shadow-none py-0 px-[3px]">
                 {children}
               </div>
             </div>
