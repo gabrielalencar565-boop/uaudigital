@@ -229,20 +229,43 @@ export function MeuPainelPanel() {
     };
   }, [user?.id, profileVersion]);
 
+  const isBirthday = useMemo(() => {
+    if (!myProfile?.birth_date) return false;
+    const bd = new Date(myProfile.birth_date + "T12:00:00");
+    return bd.getMonth() === today.getMonth() && bd.getDate() === today.getDate();
+  }, [myProfile?.birth_date, todayKey]);
+
+  // Fire confetti on birthday
+  useEffect(() => {
+    if (isBirthday && !confettiFired) {
+      setConfettiFired(true);
+      const duration = 3000;
+      const end = Date.now() + duration;
+      const frame = () => {
+        confetti({ particleCount: 3, angle: 60, spread: 55, origin: { x: 0 }, colors: ["#7C3AED", "#F59E0B", "#10B981", "#EF4444", "#3B82F6"] });
+        confetti({ particleCount: 3, angle: 120, spread: 55, origin: { x: 1 }, colors: ["#7C3AED", "#F59E0B", "#10B981", "#EF4444", "#3B82F6"] });
+        if (Date.now() < end) requestAnimationFrame(frame);
+      };
+      frame();
+    }
+  }, [isBirthday, confettiFired]);
+
   const headerGreeting = useMemo(() => {
-    const g = greetingForHour(today.getHours());
     const name = myProfile?.full_name ? firstName(myProfile.full_name) : "";
+    if (isBirthday) return name ? `🎉 Feliz aniversário, ${name}!` : "🎉 Feliz aniversário!";
+    const g = greetingForHour(today.getHours());
     return name ? `${g}, ${name}` : g;
-  }, [myProfile?.full_name, today]);
+  }, [myProfile?.full_name, today, isBirthday]);
 
   const headerLine = useMemo(() => {
+    if (isBirthday) return "Hoje é o seu dia especial! 🎂 Parabéns de toda a equipe! 🥳";
     // frase estável por dia E por usuário (cada pessoa vê uma diferente)
     const userSeed = user?.id ?? myProfile?.full_name ?? "anonymous";
     const seed = hashStringToInt(`${todayKey}:${userSeed}`);
     const idx = seed % motivationalLines.length;
     const phrase = motivationalLines[idx] ?? motivationalLines[0];
     return `Frase do dia: ${phrase}`;
-  }, [myProfile?.full_name, todayKey, user?.id]);
+  }, [myProfile?.full_name, todayKey, user?.id, isBirthday]);
 
   const onStart = async (taskId: string) => {
     if (!user) return;
