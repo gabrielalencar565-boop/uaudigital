@@ -92,8 +92,8 @@ export function VisaoGeralTab() {
   const teamQ = useQuery({
     queryKey: ["team_members"],
     queryFn: async () => {
-      const { data } = await supabase.from("team_members").select("user_id, display_name, avatar_url, role_title").eq("is_active", true).order("display_name");
-      return data ?? [];
+      const { data } = await supabase.from("team_members").select("user_id, display_name, avatar_url, role_title, birth_date").eq("is_active", true).order("display_name");
+      return (data ?? []) as Array<{ user_id: string; display_name: string; avatar_url: string | null; role_title: string; birth_date: string | null }>;
     },
   });
 
