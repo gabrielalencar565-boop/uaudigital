@@ -213,6 +213,7 @@ export function VisaoGeralTab() {
   });
 
   const weekDays = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+  const holidayMap = new Map(HOLIDAYS_2026.map((h) => [h.date, h.name]));
   const upcomingHolidays = HOLIDAYS_2026.filter((h) => new Date(h.date) >= now).slice(0, 4);
 
   if (showHealthScore) {
@@ -404,96 +405,53 @@ export function VisaoGeralTab() {
         </Card>
       </FadeUp>
 
-      {/* Bottom row: Timeline + Calendar */}
+      {/* Calendar full-width */}
       <FadeUp delay={0.6}>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <Card>
-            <CardContent className="py-5 px-5 space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-sidebar/10 flex items-center justify-center"><CalendarDays className="h-5 w-5 text-sidebar" /></div>
-                <p className="text-sm font-semibold">Timeline de projetos especiais</p>
+        <Card>
+          <CardContent className="py-5 px-5 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-lg bg-sidebar/10 flex items-center justify-center">
+                <CalendarDays className="h-4 w-4 text-sidebar" />
               </div>
-              <div className="text-center py-8 text-xs text-muted-foreground">
-                Semana de {format(startOfWeek(now, { weekStartsOn: 0 }), "d 'de' MMMM, yyyy", { locale: ptBR })}
-              </div>
-            </CardContent>
-          </Card>
+              <p className="text-base font-bold">Calendário</p>
+            </div>
 
-          <Card>
-            <CardContent className="py-5 px-5 space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-lg bg-sidebar/10 flex items-center justify-center">
-                  <CalendarDays className="h-4 w-4 text-sidebar" />
-                </div>
-                <p className="text-base font-bold">Calendário</p>
-              </div>
+            {/* Day-of-week headers */}
+            <div className="grid grid-cols-7 gap-1 text-center">
+              {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((d) => (
+                <div key={d} className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground py-1">{d}</div>
+              ))}
+            </div>
 
-              <div className="flex gap-6">
-                <div className="flex-1 border border-border rounded-2xl p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <button className="h-7 w-7 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground">
-                      <ChevronLeft className="h-4 w-4" />
-                    </button>
-                    <p className="text-sm font-medium capitalize">{format(now, "MMMM yyyy", { locale: ptBR })}</p>
-                    <button className="h-7 w-7 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground">
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
+            {/* Calendar grid */}
+            <div className="grid grid-cols-7 gap-1">
+              {calendarDays.map((d) => {
+                const key = format(d, "yyyy-MM-dd");
+                const inMonth = d.getMonth() === now.getMonth();
+                const today = isToday(d);
+                const holiday = holidayMap.get(key);
+                return (
+                  <div
+                    key={key}
+                    className={cn(
+                      "relative flex flex-col items-center justify-center rounded-lg py-2 text-xs transition-all",
+                      !inMonth && "opacity-30",
+                      today && "bg-sidebar text-sidebar-foreground font-bold shadow-md",
+                      holiday && !today && "bg-primary/10"
+                    )}
+                    title={holiday ?? undefined}
+                  >
+                    <span>{format(d, "d")}</span>
+                    {holiday && (
+                      <span className="mt-0.5 text-[8px] leading-tight text-center text-primary truncate max-w-full px-0.5">{holiday}</span>
+                    )}
                   </div>
-                  <div className="grid grid-cols-7 gap-1 text-center">
-                    {weekDays.map((d) => (
-                      <span key={d} className="text-xs text-muted-foreground font-medium py-1.5">{d}</span>
-                    ))}
-                    {calendarDays.map((day, i) => {
-                      const inMonth = day.getMonth() === now.getMonth();
-                      const today = isToday(day);
-                      const isHoliday = HOLIDAYS_2026.some((h) => isSameDay(new Date(h.date), day));
-                      return (
-                        <span
-                          key={i}
-                          className={cn(
-                            "py-1.5 rounded-lg text-sm font-medium transition-colors",
-                            !inMonth && "text-muted-foreground/30",
-                            inMonth && !today && !isHoliday && "text-foreground",
-                            today && "bg-sidebar text-sidebar-foreground font-bold",
-                            isHoliday && !today && inMonth && "bg-sidebar/15 text-sidebar font-bold"
-                          )}
-                        >
-                          {day.getDate()}
-                        </span>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="flex-1 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <p className="text-base font-bold">Próximas datas</p>
-                  </div>
-                  <div className="flex gap-2 mb-1">
-                    <span className="text-xs font-medium bg-sidebar text-sidebar-foreground px-3 py-1 rounded-full">Todas as datas</span>
-                    <span className="text-xs font-medium text-muted-foreground px-3 py-1 rounded-full border border-border">Datas comemorativas</span>
-                  </div>
-                  <div className="space-y-2.5">
-                    {upcomingHolidays.map((h) => (
-                      <div key={h.date} className="flex items-center gap-3 rounded-xl border border-sidebar/30 bg-sidebar/5 px-4 py-3">
-                        <div className="h-8 w-8 rounded-full bg-sidebar/15 flex items-center justify-center flex-shrink-0">
-                          <Star className="h-4 w-4 text-sidebar" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-sidebar">{h.name}</p>
-                          <p className="text-xs text-muted-foreground">{format(new Date(h.date), "d 'de' MMMM 'de' yyyy", { locale: ptBR })}</p>
-                        </div>
-                        <span className="text-[11px] text-muted-foreground whitespace-nowrap">{h.type}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
       </FadeUp>
-
       {/* Health Score access */}
       <FadeUp delay={0.75}>
         <Card className="cursor-pointer hover:border-primary/40 transition-colors" onClick={() => setShowHealthScore(true)}>
