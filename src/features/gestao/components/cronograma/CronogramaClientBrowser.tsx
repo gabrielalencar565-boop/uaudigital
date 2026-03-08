@@ -297,11 +297,11 @@ export function CronogramaClientBrowser({ tasks, childTasksMap, clientsMap, memb
                         <div
                           key={key}
                           className={cn(
-                            "min-h-24 rounded-xl border p-2 transition-all",
+                            "min-h-24 rounded-xl border p-2 transition-all calendar-card-hover",
                             inMonth ? "border-border/20 bg-card/30" : "border-transparent opacity-30",
                             isToday && "border-primary/50 ring-2 ring-primary/15 bg-primary/5",
                             isDragOver && "border-primary ring-2 ring-primary/30 bg-primary/10",
-                            dayPosts.length > 0 && "cursor-pointer hover:border-primary/30"
+                            dayPosts.length > 0 && "cursor-pointer"
                           )}
                           onClick={() => dayPosts.length > 0 && setSelectedPost(dayPosts[0])}
                           onDragOver={(e) => { e.preventDefault(); setDragOverDay(key); }}
