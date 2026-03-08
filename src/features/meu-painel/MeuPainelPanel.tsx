@@ -295,7 +295,7 @@ export function MeuPainelPanel() {
           <div
             className="absolute -inset-8 opacity-90"
             style={{
-              background: "linear-gradient(135deg, #7C3AED 0%, #6366F1 40%, #8B5CF6 70%, #7C3AED 100%)",
+              background: "linear-gradient(135deg, #4C1D95 0%, #6D28D9 35%, #7C3AED 65%, #5B21B6 100%)",
               backgroundSize: "200% 200%",
               animation: "parallaxLayer1 16s ease-in-out infinite",
             }}
@@ -305,7 +305,7 @@ export function MeuPainelPanel() {
           <div
             className="absolute -inset-12 opacity-60"
             style={{
-              background: "radial-gradient(ellipse 70% 60% at 25% 35%, #A78BFA 0%, transparent 70%), radial-gradient(ellipse 55% 65% at 75% 65%, #6366F1 0%, transparent 65%)",
+              background: "radial-gradient(ellipse 70% 60% at 25% 35%, #8B5CF6 0%, transparent 70%), radial-gradient(ellipse 55% 65% at 75% 65%, #5B21B6 0%, transparent 65%)",
               animation: "parallaxLayer2 12s ease-in-out infinite",
             }}
           />
@@ -314,7 +314,7 @@ export function MeuPainelPanel() {
           <div
             className="absolute -inset-16 opacity-50"
             style={{
-              background: "radial-gradient(circle 280px at 20% 70%, #8B5CF6 0%, transparent 60%), radial-gradient(circle 220px at 80% 25%, #A78BFA 0%, transparent 55%), radial-gradient(circle 160px at 55% 50%, #6366F1 0%, transparent 50%)",
+              background: "radial-gradient(circle 280px at 20% 70%, #7C3AED 0%, transparent 60%), radial-gradient(circle 220px at 80% 25%, #6D28D9 0%, transparent 55%), radial-gradient(circle 160px at 55% 50%, #4C1D95 0%, transparent 50%)",
               filter: "blur(30px)",
               animation: "parallaxLayer3 9s ease-in-out infinite",
             }}
