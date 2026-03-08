@@ -488,7 +488,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
 
               <div className="space-y-1.5 max-h-[520px] overflow-y-auto">
                 {dayTasks.slice(0, 5).map((t) => {
-                  const isDone = t.stage_current === "entrega";
+                  const isDone = t.status_global === "concluido";
                   const stageBg = STAGE_BADGE_BG[t.stage_current] ?? "bg-muted";
                   const abbr = STAGE_ABBR[t.stage_current] ?? t.stage_current.toUpperCase().slice(0, 4);
                   const member = t.assignee_id ? membersMap[t.assignee_id] : undefined;
