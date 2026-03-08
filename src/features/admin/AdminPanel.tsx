@@ -10,6 +10,8 @@ import { useSession } from "@/hooks/use-session";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -23,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { useBatchUserRoles, useSetUserRoles } from "@/hooks/use-user-roles";
 import { RoleSelector } from "@/features/admin/components/RoleSelector";
 import { useAdminUsers, type AdminUserRow } from "@/hooks/use-admin-users";
+import { useSquads, useSquadMembers } from "@/features/projetos/hooks/use-squads";
 import type { AppRole } from "@/hooks/use-role";
 
 /* ───────── helpers ───────── */
@@ -60,8 +63,11 @@ export function AdminPanel() {
   // Role editing state
   const [editRoleUser, setEditRoleUser] = useState<AdminUserRow | null>(null);
   const [editRoles, setEditRoles] = useState<AppRole[]>([]);
+  const [editSquadIds, setEditSquadIds] = useState<string[]>([]);
 
   const usersQ = useAdminUsers();
+  const squadsQ = useSquads();
+  const squadMembersQ = useSquadMembers();
 
   const userIds = useMemo(() => {
     const ids = new Set<string>();
@@ -71,25 +77,61 @@ export function AdminPanel() {
 
   const rolesQ = useBatchUserRoles(userIds);
   const setUserRoles = useSetUserRoles();
-  const isBusy = setUserRoles.isPending;
+  const [savingAll, setSavingAll] = useState(false);
+  const isBusy = setUserRoles.isPending || savingAll;
+
+  // Build map: userId -> squadIds
+  const userSquadMap = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const sm of squadMembersQ.data ?? []) {
+      const existing = map.get(sm.user_id) ?? [];
+      map.set(sm.user_id, [...existing, sm.squad_id]);
+    }
+    return map;
+  }, [squadMembersQ.data]);
 
   const openRoleEditor = (r: AdminUserRow) => {
     const currentRoles = rolesQ.data?.get(r.user_id) ?? [];
     setEditRoles(currentRoles);
+    setEditSquadIds(userSquadMap.get(r.user_id) ?? []);
     setEditRoleUser(r);
   };
 
   const handleSaveRoles = async () => {
     if (!editRoleUser) return;
+    setSavingAll(true);
     try {
+      // Save roles
       await setUserRoles.mutateAsync({
         userId: editRoleUser.user_id,
         roles: editRoles,
       });
-      toast.success("Permissões atualizadas!");
+
+      // Save squad memberships: remove from old squads, add to new
+      const currentSquads = userSquadMap.get(editRoleUser.user_id) ?? [];
+      const toRemove = currentSquads.filter((id) => !editSquadIds.includes(id));
+      const toAdd = editSquadIds.filter((id) => !currentSquads.includes(id));
+
+      for (const squadId of toRemove) {
+        await supabase
+          .from("squad_members")
+          .delete()
+          .eq("squad_id", squadId)
+          .eq("user_id", editRoleUser.user_id);
+      }
+      for (const squadId of toAdd) {
+        await supabase
+          .from("squad_members")
+          .insert({ squad_id: squadId, user_id: editRoleUser.user_id } as any);
+      }
+
+      await qc.invalidateQueries({ queryKey: ["squad_members"] });
+      toast.success("Configurações atualizadas!");
       setEditRoleUser(null);
     } catch (e: any) {
-      toast.error(e?.message ?? "Erro ao atualizar permissões");
+      toast.error(e?.message ?? "Erro ao atualizar");
+    } finally {
+      setSavingAll(false);
     }
   };
 
@@ -210,11 +252,14 @@ export function AdminPanel() {
     [usersQ.data]
   );
 
-  /* ── role badges for a user ── */
+  /* ── role & squad badges for a user ── */
 
   const getRoleBadges = (userId: string) => {
     const roles = rolesQ.data?.get(userId) ?? [];
-    if (roles.length === 0) return null;
+    const squadIds = userSquadMap.get(userId) ?? [];
+    const squads = (squadsQ.data ?? []).filter((s: any) => squadIds.includes(s.id));
+
+    if (roles.length === 0 && squads.length === 0) return null;
     return (
       <div className="flex flex-wrap gap-1.5 justify-center">
         {roles.map((role) => {
@@ -231,6 +276,16 @@ export function AdminPanel() {
             </Badge>
           );
         })}
+        {squads.map((s: any) => (
+          <Badge
+            key={s.id}
+            variant="outline"
+            className="gap-1 text-xs font-normal border-sidebar text-sidebar"
+          >
+            <Users2 className="h-3 w-3" />
+            {s.name}
+          </Badge>
+        ))}
       </div>
     );
   };
@@ -324,11 +379,11 @@ export function AdminPanel() {
         )}
       </div>
 
-      {/* Dialog de edição de roles */}
+      {/* Dialog de edição */}
       <Dialog open={!!editRoleUser} onOpenChange={(open) => !open && setEditRoleUser(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Editar Permissões</DialogTitle>
+            <DialogTitle>Editar Usuário</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="flex items-center gap-3 rounded-lg border border-border/60 bg-card/20 p-3">
@@ -347,8 +402,44 @@ export function AdminPanel() {
             <RoleSelector
               selectedRoles={editRoles}
               onChange={setEditRoles}
-              disabled={setUserRoles.isPending}
+              disabled={savingAll}
             />
+
+            {/* Squad selector */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Squads</Label>
+              <div className="space-y-2">
+                {(squadsQ.data ?? []).map((squad: any) => (
+                  <label
+                    key={squad.id}
+                    className="flex items-center gap-3 rounded-lg border border-border/60 bg-card/20 p-3 transition hover:bg-card/40 cursor-pointer"
+                  >
+                    <Checkbox
+                      checked={editSquadIds.includes(squad.id)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setEditSquadIds((prev) => [...prev, squad.id]);
+                        } else {
+                          setEditSquadIds((prev) => prev.filter((id) => id !== squad.id));
+                        }
+                      }}
+                      disabled={savingAll}
+                      className="mt-0.5"
+                    />
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="h-3 w-3 rounded-full"
+                        style={{ backgroundColor: squad.color }}
+                      />
+                      <span className="font-medium text-sm">{squad.name}</span>
+                    </div>
+                  </label>
+                ))}
+                {(squadsQ.data ?? []).length === 0 && (
+                  <p className="text-xs text-muted-foreground">Nenhum squad cadastrado.</p>
+                )}
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button type="button" variant="secondary" onClick={() => setEditRoleUser(null)}>
@@ -358,9 +449,9 @@ export function AdminPanel() {
               type="button"
               variant="brand"
               onClick={handleSaveRoles}
-              disabled={setUserRoles.isPending}
+              disabled={savingAll}
             >
-              {setUserRoles.isPending ? "Salvando..." : "Salvar"}
+              {savingAll ? "Salvando..." : "Salvar"}
             </Button>
           </DialogFooter>
         </DialogContent>
