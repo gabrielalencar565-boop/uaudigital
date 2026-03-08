@@ -43,42 +43,46 @@ const STAGE_BADGE_BG: Record<string, string> = {
   agendamento: "bg-violet-500", entrega: "bg-emerald-500"
 };
 
-function FilterPopover({ search, setSearch, filterAssignee, setFilterAssignee, members }: {
-  search: string; setSearch: (v: string) => void;
-  filterAssignee: string; setFilterAssignee: (v: string) => void;
-  members: { user_id: string; display_name: string }[];
+function MemberFilterBar({ members, selected, onSelect }: {
+  members: { user_id: string; display_name: string; avatar_url: string | null }[];
+  selected: string;
+  onSelect: (id: string) => void;
 }) {
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-1.5 rounded-xl h-9 text-sm">
-          <Filter className="h-3.5 w-3.5" /> Filtros
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-72 space-y-3 rounded-xl" align="end">
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Buscar</label>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Buscar tarefa..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 pl-9 rounded-xl text-sm" />
-          </div>
-        </div>
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Responsável</label>
-          <Select value={filterAssignee} onValueChange={setFilterAssignee}>
-            <SelectTrigger className="h-9 rounded-xl text-sm">
-              <SelectValue placeholder="Todos" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">Todos os responsáveis</SelectItem>
-              {members.map((m) => (
-                <SelectItem key={m.user_id} value={m.user_id}>{m.display_name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </PopoverContent>
-    </Popover>
+    <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+      <button
+        type="button"
+        onClick={() => onSelect("__all__")}
+        className={cn(
+          "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all whitespace-nowrap border",
+          selected === "__all__"
+            ? "bg-sidebar text-sidebar-foreground border-sidebar shadow-sm"
+            : "bg-muted/40 text-muted-foreground border-border/30 hover:bg-muted/60"
+        )}
+      >
+        <Users className="h-3.5 w-3.5" />
+        Todos
+      </button>
+      {members.map((m) => (
+        <button
+          key={m.user_id}
+          type="button"
+          onClick={() => onSelect(m.user_id)}
+          className={cn(
+            "flex items-center gap-1.5 rounded-full pl-1 pr-3 py-1 text-xs font-medium transition-all whitespace-nowrap border",
+            selected === m.user_id
+              ? "bg-sidebar text-sidebar-foreground border-sidebar shadow-sm"
+              : "bg-muted/40 text-muted-foreground border-border/30 hover:bg-muted/60"
+          )}
+        >
+          <Avatar className="h-5 w-5">
+            <AvatarImage src={m.avatar_url ?? undefined} />
+            <AvatarFallback className="text-[9px] bg-primary/10 text-primary">{initials(m.display_name)}</AvatarFallback>
+          </Avatar>
+          {m.display_name.split(" ")[0]}
+        </button>
+      ))}
+    </div>
   );
 }
 
