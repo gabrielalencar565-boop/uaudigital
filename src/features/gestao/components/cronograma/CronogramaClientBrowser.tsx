@@ -44,11 +44,12 @@ interface Props {
   clientsMap: Record<string, string>;
   membersMap: Record<string, { name: string; avatar?: string }>;
   onTaskClick: (t: PmTask) => void;
+  filterClient: string;
 }
 
-export function CronogramaClientBrowser({ tasks, childTasksMap, clientsMap, membersMap, onTaskClick }: Props) {
+export function CronogramaClientBrowser({ tasks, childTasksMap, clientsMap, membersMap, onTaskClick, filterClient }: Props) {
+  const selectedClientId = filterClient;
   const [cursor, setCursor] = useState(() => startOfMonth(new Date()));
-  const [selectedClientId, setSelectedClientId] = useState<string>("__all__");
   const [selectedPost, setSelectedPost] = useState<CronogramaPost | null>(null);
   const [activeTab, setActiveTab] = useState<"calendario" | "layout">("calendario");
   const [dragOverDay, setDragOverDay] = useState<string | null>(null);
