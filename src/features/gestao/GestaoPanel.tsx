@@ -564,11 +564,15 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
                           {abbr}
                         </div>
                         <div className="flex items-center gap-0.5 transition-opacity">
-                          <div
-                            className={cn("h-5 w-5 rounded-full flex items-center justify-center", isDone ? "bg-success text-success-foreground" : "border border-muted-foreground/25")}
-                            title={isDone ? "Concluído" : "Pendente"}>
+                          <button
+                            type="button"
+                            className={cn("h-5 w-5 rounded-full flex items-center justify-center transition",
+                              isDone ? "bg-success text-success-foreground" : "border border-muted-foreground/25 hover:border-success hover:bg-success/10"
+                            )}
+                            title={isDone ? "Concluído" : "Marcar como concluído"}
+                            onClick={(e) => handleMarkDone(t, e)}>
                             {isDone && <CheckCircle2 className="h-3.5 w-3.5" />}
-                          </div>
+                          </button>
                           <button
                             type="button"
                             className="h-5 w-5 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition"
