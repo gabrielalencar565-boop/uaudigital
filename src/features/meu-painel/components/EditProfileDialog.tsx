@@ -187,6 +187,12 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
             )}
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="edit_birth_date">Data de nascimento</Label>
+            <Input id="edit_birth_date" type="date" {...form.register("birth_date")} />
+            <p className="text-xs text-muted-foreground">Seu aniversário aparecerá no calendário e você receberá parabéns no dia.</p>
+          </div>
+
           <DialogFooter>
             <DialogClose asChild>
               <Button variant="outline" type="button">Cancelar</Button>
