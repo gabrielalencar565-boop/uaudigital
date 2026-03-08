@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { format, getDay } from "date-fns";
 import { AlertTriangle, CheckCircle2, Clock } from "lucide-react";
+import confetti from "canvas-confetti";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
