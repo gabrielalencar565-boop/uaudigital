@@ -102,8 +102,8 @@ export function MeuPainelPerformanceRankCard({
           </div>
 
           <div className="flex min-w-0 items-baseline gap-2">
-            <span className={cn("text-2xl font-semibold tracking-tight tabular-nums md:text-4xl text-black")}>
-              {isLoading ? "—" : total ?? 0}
+            <span className={cn("text-2xl font-semibold tracking-tight md:text-4xl text-black")}>
+              {isLoading ? "—" : <AnimatedNumber value={total ?? 0} className="text-2xl font-semibold tracking-tight md:text-4xl" glow={false} />}
             </span>
             <span className={cn("text-sm", style ? "opacity-70 " + (style.text ?? "") : "text-muted-foreground")}>pts</span>
           </div>
