@@ -55,7 +55,7 @@ export function PmTaskCard({ task, clientName, assigneeName, assigneeAvatar, chi
   const dueDateOverdue = task.due_date && isPast(new Date(task.due_date + "T23:59:59")) && !isToday(new Date(task.due_date + "T12:00:00"));
 
   return (
-    <div className="group w-full rounded-xl border border-border/20 bg-card shadow-sm transition-all hover:shadow-md hover:border-border/40 hover:-translate-y-0.5 overflow-hidden">
+    <div className="calendar-card-hover group w-full rounded-xl border border-border/20 bg-card shadow-sm transition-all duration-300 ease-out overflow-hidden">
       {task.cover_url && (
         <div className="w-full h-20 overflow-hidden">
           <img src={task.cover_url} alt="" className="w-full h-full object-cover" />
