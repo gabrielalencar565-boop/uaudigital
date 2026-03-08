@@ -342,48 +342,50 @@ export function MeuPainelPanel() {
       {/* Resumo do mês */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">Tarefas do mês</CardTitle>
-            <CardDescription>Total no mês</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-4xl font-semibold tabular-nums tracking-tight">{summary.total}</div>
+          <CardContent className="flex items-center gap-4 p-5">
+            <div className="h-10 w-10 rounded-xl bg-sidebar/10 flex items-center justify-center shrink-0">
+              <CheckCircle2 className="h-5 w-5 text-sidebar" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Tarefas do mês</p>
+              <div className="text-3xl font-semibold tabular-nums tracking-tight">{summary.total}</div>
+            </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <CheckCircle2 className="h-4 w-4" /> Concluídas
-            </CardTitle>
-            <CardDescription>No mês</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-4xl font-semibold tabular-nums tracking-tight">{summary.done}</div>
+          <CardContent className="flex items-center gap-4 p-5">
+            <div className="h-10 w-10 rounded-xl bg-sidebar/10 flex items-center justify-center shrink-0">
+              <CheckCircle2 className="h-5 w-5 text-sidebar" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Concluídas</p>
+              <div className="text-3xl font-semibold tabular-nums tracking-tight">{summary.done}</div>
+            </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <Clock className="h-4 w-4" /> Pendentes
-            </CardTitle>
-            <CardDescription>No mês</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-4xl font-semibold tabular-nums tracking-tight">{summary.pending}</div>
+          <CardContent className="flex items-center gap-4 p-5">
+            <div className="h-10 w-10 rounded-xl bg-sidebar/10 flex items-center justify-center shrink-0">
+              <Clock className="h-5 w-5 text-sidebar" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Pendentes</p>
+              <div className="text-3xl font-semibold tabular-nums tracking-tight">{summary.pending}</div>
+            </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <AlertTriangle className="h-4 w-4" /> Atrasadas
-            </CardTitle>
-            <CardDescription>No mês</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-4xl font-semibold tabular-nums tracking-tight">{summary.overdue}</div>
+          <CardContent className="flex items-center gap-4 p-5">
+            <div className="h-10 w-10 rounded-xl bg-sidebar/10 flex items-center justify-center shrink-0">
+              <AlertTriangle className="h-5 w-5 text-sidebar" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Atrasadas</p>
+              <div className="text-3xl font-semibold tabular-nums tracking-tight">{summary.overdue}</div>
+            </div>
           </CardContent>
         </Card>
       </div>
