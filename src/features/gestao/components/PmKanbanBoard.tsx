@@ -44,7 +44,10 @@ function DraggableCard({ task, children }: { task: PmTask; children: React.React
 function DroppableColumn({ id, children }: { id: string; children: React.ReactNode }) {
   const { setNodeRef, isOver } = useDroppable({ id });
   return (
-    <div ref={setNodeRef} className={cn("flex flex-col gap-2 px-2 pb-3 transition-colors rounded-xl", isOver && "bg-primary/5")} style={{ minHeight: 60 }}>
+    <div ref={setNodeRef} className={cn(
+      "flex flex-col gap-2 px-2 pb-3 transition-all duration-200 rounded-xl min-h-[60px]",
+      isOver && "bg-primary/10 ring-2 ring-primary/30 ring-inset scale-[1.01]"
+    )}>
       {children}
     </div>
   );
