@@ -77,7 +77,9 @@ export function AnimatedNumber({
     const dot = str.indexOf(".");
     return dot >= 0 ? str.length - dot - 1 : 0;
   })();
-  const formatted = effectiveDecimals > 0 ? display.toFixed(effectiveDecimals) : Math.round(display).toString();
+  const formatted = effectiveDecimals > 0
+    ? display.toLocaleString("pt-BR", { minimumFractionDigits: effectiveDecimals, maximumFractionDigits: effectiveDecimals })
+    : Math.round(display).toLocaleString("pt-BR");
 
   return (
     <span
