@@ -1456,6 +1456,7 @@ export type Database = {
           color: string
           created_at: string
           created_by: string
+          icon: string
           id: string
           leader_id: string | null
           name: string
@@ -1465,6 +1466,7 @@ export type Database = {
           color?: string
           created_at?: string
           created_by: string
+          icon?: string
           id?: string
           leader_id?: string | null
           name: string
@@ -1474,6 +1476,7 @@ export type Database = {
           color?: string
           created_at?: string
           created_by?: string
+          icon?: string
           id?: string
           leader_id?: string | null
           name?: string

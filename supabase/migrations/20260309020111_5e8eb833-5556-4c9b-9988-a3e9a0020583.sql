@@ -1,0 +1,1 @@
+ALTER TABLE public.squads ADD COLUMN icon text NOT NULL DEFAULT 'shield';
