@@ -13,7 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   Plus, Trash2, Settings2, Users, CheckCircle2, Clock, FileText,
   MoreHorizontal, CalendarDays, HeartPulse, Target, ChevronLeft, ChevronRight, Star, Shield,
-  Maximize2, Minimize2, BarChart2, ArrowUpDown, ChevronsUpDown,
+  BarChart2, ChevronsUpDown,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
@@ -64,47 +64,6 @@ function FadeUp({ children, delay = 0, className }: { children: React.ReactNode;
   );
 }
 
-// Widget size types
-type WidgetSize = "sm" | "md" | "lg";
-
-const SIZE_LABELS: Record<WidgetSize, string> = { sm: "P", md: "M", lg: "G" };
-
-function WidgetSizeControl({ size, onChange }: { size: WidgetSize; onChange: (s: WidgetSize) => void }) {
-  const sizes: WidgetSize[] = ["sm", "md", "lg"];
-  return (
-    <div className="flex items-center gap-0.5 rounded-lg bg-muted/60 p-0.5">
-      {sizes.map((s) => (
-        <button
-          key={s}
-          onClick={() => onChange(s)}
-          className={cn(
-            "h-6 w-6 rounded-md text-[10px] font-bold transition-all",
-            size === s
-              ? "bg-sidebar text-sidebar-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          {SIZE_LABELS[s]}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-// Chart height map
-const CHART_HEIGHTS: Record<WidgetSize, string> = {
-  sm: "h-[180px]",
-  md: "h-[280px]",
-  lg: "h-[420px]",
-};
-
-// Squad card cols map
-const SQUAD_COLS: Record<WidgetSize, string> = {
-  sm: "grid-cols-1 md:grid-cols-3 xl:grid-cols-4",
-  md: "grid-cols-1 md:grid-cols-2 xl:grid-cols-3",
-  lg: "grid-cols-1 md:grid-cols-1 xl:grid-cols-2",
-};
-
 // Table sort
 type SortKey = "name" | "contas" | "time" | "health" | "demandas" | "concluidas" | "progresso";
 type SortDir = "asc" | "desc";
@@ -128,12 +87,6 @@ export function VisaoGeralTab() {
   const [showHealthScore, setShowHealthScore] = useState(false);
   const [calMonth, setCalMonth] = useState(new Date());
   const [holidayFilter, setHolidayFilter] = useState<"all" | "comemorativas">("all");
-
-  // Widget sizes
-  const [squadSize, setSquadSize] = useState<WidgetSize>("md");
-  const [chartSize, setChartSize] = useState<WidgetSize>("md");
-  const [tableSize, setTableSize] = useState<WidgetSize>("md");
-  const [calSize, setCalSize] = useState<WidgetSize>("md");
 
   // Table sort
   const [sortKey, setSortKey] = useState<SortKey>("name");
@@ -369,126 +322,149 @@ export function VisaoGeralTab() {
 
       {/* Squad cards row */}
       <FadeUp delay={0.15}>
-        <Card>
-          <CardContent className="py-5 px-5 space-y-4">
-            {/* Widget header */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="h-8 w-8 rounded-xl bg-sidebar/10 flex items-center justify-center">
-                  <Shield className="h-4 w-4 text-sidebar" />
-                </div>
-                <span className="text-sm font-semibold">Squads</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <WidgetSizeControl size={squadSize} onChange={setSquadSize} />
-                {isAdmin && (
-                  <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs rounded-xl" onClick={() => setCreateOpen(true)}>
-                    <Plus className="h-3.5 w-3.5" /> Criar Squad
-                  </Button>
-                )}
-              </div>
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {squads.map((sq: any) => {
+            const st = squadStats[sq.id] ?? { total: 0, done: 0, inProgress: 0, overdue: 0, memberIds: [], clientCount: 0 };
+            const progress = st.total > 0 ? Math.round((st.done / st.total) * 100) : 0;
+            const clientIds = clientsPerSquad[sq.id] ?? [];
+            const healthVals = clientIds.map((c: string) => healthAvgMap[c]).filter((v) => v !== undefined);
+            const avgHealth = healthVals.length > 0 ? Math.round(healthVals.reduce((a, b) => a + b, 0) / healthVals.length) : 0;
+            const healthColor = avgHealth >= 80 ? "text-white" : avgHealth >= 50 ? "text-white" : "text-white/80";
+            const members = st.memberIds.map((uid: string) => teamMap[uid]).filter(Boolean);
 
-            <div className={cn("grid gap-4", SQUAD_COLS[squadSize])}>
-              {squads.map((sq: any) => {
-                const st = squadStats[sq.id] ?? { total: 0, done: 0, inProgress: 0, overdue: 0, memberIds: [], clientCount: 0 };
-                const progress = st.total > 0 ? Math.round((st.done / st.total) * 100) : 0;
-                const clientIds = clientsPerSquad[sq.id] ?? [];
-                const healthVals = clientIds.map((c: string) => healthAvgMap[c]).filter((v) => v !== undefined);
-                const avgHealth = healthVals.length > 0 ? Math.round(healthVals.reduce((a, b) => a + b, 0) / healthVals.length) : 0;
-                const healthColor = avgHealth >= 80 ? "text-success" : avgHealth >= 50 ? "text-warning" : "text-danger";
-                const members = st.memberIds.map((uid: string) => teamMap[uid]).filter(Boolean);
+            return (
+              <Card
+                key={sq.id}
+                className="relative overflow-hidden border-0 group transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl"
+                style={{
+                  background: `linear-gradient(135deg, ${sq.color} 0%, ${sq.color}dd 50%, ${sq.color}aa 100%)`,
+                }}
+              >
+                {/* Shine effect overlay */}
+                <div
+                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+                  style={{
+                    background: "linear-gradient(105deg, transparent 20%, rgba(255,255,255,0.15) 40%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0.15) 60%, transparent 80%)",
+                    transform: "translateX(-100%)",
+                    animation: "none",
+                  }}
+                />
+                <div
+                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-all duration-700 pointer-events-none"
+                  style={{
+                    background: "linear-gradient(105deg, transparent 0%, rgba(255,255,255,0.08) 25%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.08) 75%, transparent 100%)",
+                    backgroundSize: "200% 100%",
+                    animation: "shine 1.5s ease-in-out infinite",
+                  }}
+                />
+                {/* Glow effect on hover */}
+                <div
+                  className="absolute -inset-1 rounded-xl opacity-0 group-hover:opacity-60 blur-xl transition-opacity duration-500 pointer-events-none -z-10"
+                  style={{ backgroundColor: sq.color }}
+                />
 
-                return (
-                  <div
-                    key={sq.id}
-                    className="rounded-xl border border-border bg-muted/30 px-4 py-4 space-y-3 hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <div
-                          className="h-9 w-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                          style={{ backgroundColor: `${sq.color}20` }}
-                        >
-                          <Shield className="h-4 w-4" style={{ color: sq.color }} />
-                        </div>
-                        <span className="text-sm font-semibold truncate">{sq.name}</span>
+                <CardContent className="relative py-5 px-5 space-y-4 z-10">
+                  {/* Header with shield icon */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="h-11 w-11 rounded-xl flex items-center justify-center bg-white/20 backdrop-blur-sm">
+                        <Shield className="h-5 w-5 text-white" />
                       </div>
-                      {isAdmin && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button className="h-6 w-6 flex items-center justify-center rounded-lg hover:bg-muted"><MoreHorizontal className="h-3.5 w-3.5" /></button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => openEdit(sq)}><Settings2 className="h-4 w-4 mr-2" /> Editar Squad</DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive" onClick={() => deleteSquad.mutate(sq.id)}><Trash2 className="h-4 w-4 mr-2" /> Excluir</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
+                      <span className="text-base font-semibold text-white">{sq.name}</span>
                     </div>
+                    {isAdmin && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="h-7 w-7 flex items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 transition-colors">
+                            <MoreHorizontal className="h-4 w-4 text-white" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openEdit(sq)}><Settings2 className="h-4 w-4 mr-2" /> Editar Squad</DropdownMenuItem>
+                          <DropdownMenuItem className="text-destructive" onClick={() => deleteSquad.mutate(sq.id)}><Trash2 className="h-4 w-4 mr-2" /> Excluir</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </div>
 
-                    <div className="flex -space-x-2">
-                      {members.slice(0, squadSize === "sm" ? 4 : 6).map((m: any) => (
-                        <Avatar key={m.user_id} className="h-7 w-7 border-2 border-card">
-                          <AvatarImage src={m.avatar_url ?? undefined} alt={m.display_name} />
-                          <AvatarFallback className="text-[9px] bg-muted">{initials(m.display_name)}</AvatarFallback>
-                        </Avatar>
-                      ))}
-                      {members.length > 6 && (
-                        <div className="h-7 w-7 flex items-center justify-center rounded-full border-2 border-card bg-muted text-muted-foreground text-[9px] font-medium">
-                          +{members.length - 6}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <Progress value={progress} className="h-1.5 flex-1" />
-                        <span className="text-[11px] font-semibold text-foreground">{progress}%</span>
-                      </div>
-                    </div>
-
-                    {squadSize !== "sm" && (
-                      <div className="flex items-center gap-3 text-[11px] text-muted-foreground pt-1 border-t border-border">
-                        <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {members.length}</span>
-                        <span className="flex items-center gap-1"><FileText className="h-3 w-3" /> {st.clientCount}</span>
-                        <span className="flex items-center gap-1 ml-auto"><span className={cn("font-bold text-xs", avgHealth > 0 ? healthColor : "text-muted-foreground")}>{avgHealth > 0 ? avgHealth : "—"}</span> HS</span>
+                  {/* Members avatars */}
+                  <div className="flex -space-x-2">
+                    {members.slice(0, 6).map((m: any) => (
+                      <Avatar key={m.user_id} className="h-8 w-8 border-2 border-white/30">
+                        <AvatarImage src={m.avatar_url ?? undefined} alt={m.display_name} />
+                        <AvatarFallback className="text-[10px] bg-white/20 text-white">{initials(m.display_name)}</AvatarFallback>
+                      </Avatar>
+                    ))}
+                    {members.length > 6 && (
+                      <div className="h-8 w-8 flex items-center justify-center rounded-full border-2 border-white/30 bg-white/20 text-white text-[10px] font-medium">
+                        +{members.length - 6}
                       </div>
                     )}
                   </div>
-                );
-              })}
 
-              {squads.length === 0 && (
-                <div className="col-span-full flex flex-col items-center justify-center py-8 text-muted-foreground text-sm gap-2">
-                  <Shield className="h-8 w-8 opacity-30" />
-                  <span>Nenhum squad criado</span>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                  {/* Progress */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs text-white/80">
+                      <span className="flex items-center gap-1"><Target className="h-3.5 w-3.5" /> Progresso • <Clock className="h-3 w-3" /> {daysLeft} dias restantes</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-2 rounded-full bg-white/20 overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-white/90 transition-all duration-500"
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                      <span className="text-xs font-medium text-white">{progress}%</span>
+                    </div>
+                  </div>
+
+                  {/* Health Score */}
+                  <div className={cn("text-sm font-medium flex items-center gap-1.5", healthColor)}>
+                    <span className={cn("h-2 w-2 rounded-full", avgHealth >= 80 ? "bg-green-300" : avgHealth >= 50 ? "bg-yellow-300" : avgHealth > 0 ? "bg-red-300" : "bg-white/40")} />
+                    <span className="font-bold">{avgHealth > 0 ? avgHealth : "—"}</span>
+                    <span>Health Score</span>
+                  </div>
+
+                  {/* Stats row */}
+                  <div className="flex items-center gap-4 text-xs text-white/70 pt-1 border-t border-white/20">
+                    <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {members.length}</span>
+                    <span className="flex items-center gap-1"><FileText className="h-3.5 w-3.5" /> {st.clientCount}</span>
+                    <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> {st.total}</span>
+                    <span className="flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5 text-green-300" /> {st.done}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+
+          {/* Add squad card */}
+          {isAdmin && (
+            <Card className="border-dashed cursor-pointer hover:border-primary/40 transition-colors" onClick={() => setCreateOpen(true)}>
+              <CardContent className="flex flex-col items-center justify-center py-10 px-5 gap-2 h-full">
+                <Plus className="h-8 w-8 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Criar Squad</span>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </FadeUp>
 
       {/* Contas por Squad chart */}
       <FadeUp delay={0.3}>
         <Card>
           <CardContent className="py-6 px-6 space-y-5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="h-12 w-12 rounded-2xl bg-sidebar/10 flex items-center justify-center">
-                  <Users className="h-6 w-6 text-sidebar" />
-                </div>
-                <div>
-                  <p className="text-xl font-bold leading-none">Contas por Squad</p>
-                  <p className="mt-1.5 text-sm text-muted-foreground">Total: {new Set(allClientSquads.map((cs: any) => cs.client_id)).size} contas ativas</p>
-                </div>
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 rounded-2xl bg-sidebar/10 flex items-center justify-center">
+                <Users className="h-6 w-6 text-sidebar" />
               </div>
-              <WidgetSizeControl size={chartSize} onChange={setChartSize} />
+              <div>
+                <p className="text-xl font-bold leading-none">Contas por Squad</p>
+                <p className="mt-1.5 text-sm text-muted-foreground">Total: {new Set(allClientSquads.map((cs: any) => cs.client_id)).size} contas ativas</p>
+              </div>
             </div>
 
             {chartData.length > 0 ? (
-              <div className={cn("transition-all duration-300", CHART_HEIGHTS[chartSize])}>
+              <div className="h-[280px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData} margin={{ left: 0, right: 12, top: 8, bottom: 8 }}>
                     <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="hsl(var(--border))" />
@@ -510,48 +486,27 @@ export function VisaoGeralTab() {
       <FadeUp delay={0.45}>
         <Card>
           <CardContent className="py-6 px-6 space-y-5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="h-12 w-12 rounded-2xl bg-sidebar/10 flex items-center justify-center">
-                  <BarChart2 className="h-6 w-6 text-sidebar" />
-                </div>
-                <div>
-                  <p className="text-xl font-bold leading-none">Progresso das entregas por squad</p>
-                  <p className="mt-1.5 text-sm text-muted-foreground">{squads.length} squads ativos</p>
-                </div>
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 rounded-2xl bg-sidebar/10 flex items-center justify-center">
+                <BarChart2 className="h-6 w-6 text-sidebar" />
               </div>
-              <WidgetSizeControl size={tableSize} onChange={setTableSize} />
+              <div>
+                <p className="text-xl font-bold leading-none">Progresso das entregas por squad</p>
+                <p className="mt-1.5 text-sm text-muted-foreground">{squads.length} squads ativos</p>
+              </div>
             </div>
 
             <div className="overflow-x-auto rounded-xl border border-border">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-muted/30">
-                    <th className="px-4 py-3 text-left">
-                      <SortHeader label="Squad" col="name" />
-                    </th>
-                    <th className="px-4 py-3 text-center">
-                      <SortHeader label="Contas" col="contas" />
-                    </th>
-                    <th className="px-4 py-3 text-center">
-                      <SortHeader label="Time" col="time" />
-                    </th>
-                    <th className="px-4 py-3 text-center">
-                      <SortHeader label="Health Score" col="health" />
-                    </th>
-                    {tableSize !== "sm" && (
-                      <th className="px-4 py-3 text-center">
-                        <SortHeader label="Demandas" col="demandas" />
-                      </th>
-                    )}
-                    <th className="px-4 py-3 text-center">
-                      <SortHeader label="Concluídas" col="concluidas" />
-                    </th>
-                    {tableSize !== "sm" && (
-                      <th className="px-4 py-3 text-right pr-6">
-                        <SortHeader label="Progresso" col="progresso" />
-                      </th>
-                    )}
+                    <th className="px-4 py-3 text-left"><SortHeader label="Squad" col="name" /></th>
+                    <th className="px-4 py-3 text-center"><SortHeader label="Contas" col="contas" /></th>
+                    <th className="px-4 py-3 text-center"><SortHeader label="Time" col="time" /></th>
+                    <th className="px-4 py-3 text-center"><SortHeader label="Health Score" col="health" /></th>
+                    <th className="px-4 py-3 text-center"><SortHeader label="Demandas" col="demandas" /></th>
+                    <th className="px-4 py-3 text-center"><SortHeader label="Concluídas" col="concluidas" /></th>
+                    <th className="px-4 py-3 text-right pr-6"><SortHeader label="Progresso" col="progresso" /></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -587,10 +542,7 @@ export function VisaoGeralTab() {
                       >
                         <td className="px-4 py-3.5">
                           <div className="flex items-center gap-2.5">
-                            <div
-                              className="h-2 w-2 rounded-full flex-shrink-0"
-                              style={{ backgroundColor: row.color }}
-                            />
+                            <div className="h-2 w-2 rounded-full flex-shrink-0" style={{ backgroundColor: row.color }} />
                             <span className="font-medium text-foreground">{row.name}</span>
                           </div>
                         </td>
@@ -605,29 +557,25 @@ export function VisaoGeralTab() {
                             <span className="text-muted-foreground text-xs">N/A</span>
                           )}
                         </td>
-                        {tableSize !== "sm" && (
-                          <td className="px-4 py-3.5 text-center text-muted-foreground">{row.demandas}</td>
-                        )}
+                        <td className="px-4 py-3.5 text-center text-muted-foreground">{row.demandas}</td>
                         <td className="px-4 py-3.5 text-center">
                           <span className={cn("font-semibold", row.concluidas > 0 ? "text-success" : "text-muted-foreground")}>
                             {row.concluidas}
                           </span>
                         </td>
-                        {tableSize !== "sm" && (
-                          <td className="px-4 py-3.5 pr-6">
-                            <div className="flex items-center gap-2.5 justify-end">
-                              <div className="flex-1 max-w-[120px] h-2 rounded-full bg-muted overflow-hidden">
-                                <div
-                                  className={cn("h-full rounded-full transition-all", progressColor)}
-                                  style={{ width: `${row.progresso}%` }}
-                                />
-                              </div>
-                              <span className={cn("text-xs font-bold px-1.5 py-0.5 rounded-md min-w-[36px] text-center", progressBadgeColor)}>
-                                {row.progresso}%
-                              </span>
+                        <td className="px-4 py-3.5 pr-6">
+                          <div className="flex items-center gap-2.5 justify-end">
+                            <div className="flex-1 max-w-[120px] h-2 rounded-full bg-muted overflow-hidden">
+                              <div
+                                className={cn("h-full rounded-full transition-all", progressColor)}
+                                style={{ width: `${row.progresso}%` }}
+                              />
                             </div>
-                          </td>
-                        )}
+                            <span className={cn("text-xs font-bold px-1.5 py-0.5 rounded-md min-w-[36px] text-center", progressBadgeColor)}>
+                              {row.progresso}%
+                            </span>
+                          </div>
+                        </td>
                       </tr>
                     );
                   })}
@@ -640,100 +588,106 @@ export function VisaoGeralTab() {
 
       {/* Calendar full-width */}
       <FadeUp delay={0.6}>
-        <Card>
-          <CardContent className="py-5 px-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-lg bg-sidebar/10 flex items-center justify-center">
-                  <CalendarDays className="h-4 w-4 text-sidebar" />
-                </div>
-                <p className="text-base font-bold">Calendário & Próximas datas</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <WidgetSizeControl size={calSize} onChange={setCalSize} />
-                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => setCalMonth((d) => startOfMonth(subMonths(d, 1)))}>
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="text-sm font-semibold capitalize min-w-[120px] text-center">
-                  {format(calMonth, "MMMM yyyy", { locale: ptBR })}
-                </span>
-                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => setCalMonth((d) => startOfMonth(addMonths(d, 1)))}>
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-
-            <div className={cn(
-              "grid gap-4",
-              calSize === "sm" ? "grid-cols-1" : calSize === "lg" ? "grid-cols-1 lg:grid-cols-3" : "grid-cols-1 lg:grid-cols-5"
-            )}>
-              {/* Calendar */}
-              <div className={calSize === "sm" ? "" : calSize === "lg" ? "lg:col-span-2" : "lg:col-span-3"}>
-                <div className="grid grid-cols-7 gap-1 text-center mb-1">
-                  {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((d) => (
-                    <div key={d} className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground py-1">{d}</div>
-                  ))}
-                </div>
-                <div className="grid grid-cols-7 gap-1">
-                  {calendarDays.map((d) => {
-                    const key = format(d, "yyyy-MM-dd");
-                    const inMonth = d.getMonth() === calMonth.getMonth();
-                    const today = isToday(d);
-                    const holiday = holidayMap.get(key);
-                    const birthday = birthdayMap.get(key);
-                    return (
-                      <div
-                        key={key}
-                        className={cn(
-                          "relative flex flex-col items-center justify-center rounded-lg py-2 text-xs transition-all",
-                          !inMonth && "opacity-30",
-                          today && "bg-sidebar text-sidebar-foreground font-bold shadow-md",
-                          holiday && !today && "bg-primary/10",
-                          birthday && !today && !holiday && "bg-warning/10"
-                        )}
-                        title={birthday ?? holiday ?? undefined}
-                      >
-                        <span>{format(d, "d")}</span>
-                        {birthday && <span className="mt-0.5 text-[8px]">🎂</span>}
-                        {holiday && !birthday && (
-                          <span className="mt-0.5 text-[8px] leading-tight text-center text-primary truncate max-w-full px-0.5">{holiday}</span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Próximas datas — only shown at md/lg */}
-              {calSize !== "sm" && (
-                <div className={calSize === "lg" ? "lg:col-span-1" : "lg:col-span-2"}>
-                  <Tabs value={holidayFilter} onValueChange={(v) => setHolidayFilter(v as any)}>
-                    <TabsList className="bg-muted/40 h-9 p-1 rounded-full gap-1 w-full mb-3">
-                      <TabsTrigger value="all" className="h-7 rounded-full text-xs data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground flex-1">Todas</TabsTrigger>
-                      <TabsTrigger value="comemorativas" className="h-7 rounded-full text-xs data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground flex-1">Aniversários</TabsTrigger>
-                    </TabsList>
-                  </Tabs>
-                  <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
-                    {filteredDates.length === 0 && (
-                      <p className="text-xs text-muted-foreground text-center py-4">Nenhuma data próxima</p>
-                    )}
-                    {filteredDates.slice(0, 10).map((h, idx) => (
-                      <div key={`${h.date}-${idx}`} className="flex items-start gap-3 rounded-xl border border-sidebar/20 bg-sidebar/5 p-3 hover:bg-sidebar/10 transition-colors">
-                        <div className="h-8 w-8 rounded-full bg-sidebar/15 flex items-center justify-center flex-shrink-0">
-                          {h.type === "Aniversário" ? <span className="text-sm">🎂</span> : <Star className="h-3.5 w-3.5 text-sidebar" />}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-xs font-semibold text-foreground">{h.name}</p>
-                          <p className="text-[10px] text-sidebar mt-0.5">{format(new Date(h.date + "T12:00:00"), "d 'de' MMMM", { locale: ptBR })}</p>
-                        </div>
-                      </div>
-                    ))}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+          {/* Calendar — left 3 cols */}
+          <Card className="lg:col-span-3">
+            <CardContent className="py-5 px-5 space-y-4">
+              {/* Header with month nav */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-lg bg-sidebar/10 flex items-center justify-center">
+                    <CalendarDays className="h-4 w-4 text-sidebar" />
                   </div>
+                  <p className="text-base font-bold">Calendário</p>
                 </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => setCalMonth((d) => startOfMonth(subMonths(d, 1)))}>
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm font-semibold capitalize min-w-[120px] text-center">
+                    {format(calMonth, "MMMM yyyy", { locale: ptBR })}
+                  </span>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => setCalMonth((d) => startOfMonth(addMonths(d, 1)))}>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Day-of-week headers */}
+              <div className="grid grid-cols-7 gap-1 text-center">
+                {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((d) => (
+                  <div key={d} className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground py-1">{d}</div>
+                ))}
+              </div>
+
+              {/* Calendar grid */}
+              <div className="grid grid-cols-7 gap-1">
+                {calendarDays.map((d) => {
+                  const key = format(d, "yyyy-MM-dd");
+                  const inMonth = d.getMonth() === calMonth.getMonth();
+                  const today = isToday(d);
+                  const holiday = holidayMap.get(key);
+                  const birthday = birthdayMap.get(key);
+                  return (
+                    <div
+                      key={key}
+                      className={cn(
+                        "relative flex flex-col items-center justify-center rounded-lg py-2 text-xs transition-all",
+                        !inMonth && "opacity-30",
+                        today && "bg-sidebar text-sidebar-foreground font-bold shadow-md",
+                        holiday && !today && "bg-primary/10",
+                        birthday && !today && !holiday && "bg-warning/10"
+                      )}
+                      title={birthday ?? holiday ?? undefined}
+                    >
+                      <span>{format(d, "d")}</span>
+                      {birthday && (
+                        <span className="mt-0.5 text-[8px] leading-tight text-center truncate max-w-full px-0.5">🎂</span>
+                      )}
+                      {holiday && !birthday && (
+                        <span className="mt-0.5 text-[8px] leading-tight text-center text-primary truncate max-w-full px-0.5">{holiday}</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Próximas datas — right 2 cols */}
+          <Card className="lg:col-span-2">
+            <CardContent className="py-5 px-5 space-y-4">
+              <p className="text-base font-bold">Próximas datas</p>
+
+              <Tabs value={holidayFilter} onValueChange={(v) => setHolidayFilter(v as any)}>
+                <TabsList className="bg-muted/40 h-9 p-1 rounded-full gap-1 w-full">
+                  <TabsTrigger value="all" className="h-7 rounded-full text-xs data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-md flex-1 transition-all">Todas as datas</TabsTrigger>
+                  <TabsTrigger value="comemorativas" className="h-7 rounded-full text-xs data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-md flex-1 transition-all">Aniversários</TabsTrigger>
+                </TabsList>
+              </Tabs>
+
+              <div className="space-y-2.5 max-h-[320px] overflow-y-auto pr-1">
+                {filteredDates.length === 0 && (
+                  <p className="text-xs text-muted-foreground text-center py-4">Nenhuma data próxima</p>
+                )}
+                {filteredDates.slice(0, 10).map((h, idx) => (
+                  <div key={`${h.date}-${idx}`} className="flex items-start gap-3 rounded-xl border border-sidebar/20 bg-sidebar/5 p-3.5 transition-colors hover:bg-sidebar/10">
+                    <div className="h-9 w-9 rounded-full bg-sidebar/15 flex items-center justify-center flex-shrink-0">
+                      {h.type === "Aniversário" ? <span className="text-base">🎂</span> : <Star className="h-4 w-4 text-sidebar" />}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-foreground">{h.name}</p>
+                      <div className="flex items-center gap-3 mt-1">
+                        <span className="text-xs text-sidebar">{format(new Date(h.date + "T12:00:00"), "d 'de' MMMM 'de' yyyy", { locale: ptBR })}</span>
+                        <span className="text-[10px] text-muted-foreground">{h.type}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </FadeUp>
 
       {/* Health Score access */}
@@ -855,6 +809,14 @@ export function VisaoGeralTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Keyframes for shine animation */}
+      <style>{`
+        @keyframes shine {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+      `}</style>
     </div>
   );
 }
