@@ -77,7 +77,6 @@ const NAV: NavEntry[] = [
   landingTab: "visao_do_dia",
   icon: Eye,
   children: [
-  { key: "visao_do_dia", label: "Visão do dia", icon: Eye },
   { key: "magic2", label: "Magic Number", icon: Target },
   { key: "desempenho", label: "Desempenho", icon: Trophy }]
 
