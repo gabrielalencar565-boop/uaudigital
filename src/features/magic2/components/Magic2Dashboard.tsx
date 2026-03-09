@@ -180,7 +180,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
 
         <CardHeader className="relative z-10">
           <CardTitle className={cn(isMobile ? "text-base" : "text-lg", "text-white drop-shadow-sm")}>Visão Geral</CardTitle>
-          <CardDescription className="text-white/60">Percentual concluído no mês selecionado.</CardDescription>
+          <CountdownTo27Badge due={dueDate} now={now} />
         </CardHeader>
         <CardContent className={cn("relative z-10 grid place-items-center flex-1 p-6", isMobile ? "pb-6" : "pb-10")}>
           <ProgressRing
