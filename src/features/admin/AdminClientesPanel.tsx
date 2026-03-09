@@ -245,7 +245,20 @@ export function AdminClientesPanel() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {clients.length === 0 ? (
+          {clientsQ.isLoading ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <Users className="h-12 w-12 text-muted-foreground/50" />
+              <p className="mt-4 text-sm text-muted-foreground">Carregando clientes...</p>
+            </div>
+          ) : clientsQ.isError ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <Users className="h-12 w-12 text-muted-foreground/50" />
+              <p className="mt-4 text-sm text-muted-foreground">Erro ao carregar clientes.</p>
+              <Button variant="outline" className="mt-4" onClick={() => clientsQ.refetch()}>
+                Tentar novamente
+              </Button>
+            </div>
+          ) : clients.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <Users className="h-12 w-12 text-muted-foreground/50" />
               <p className="mt-4 text-sm text-muted-foreground">
