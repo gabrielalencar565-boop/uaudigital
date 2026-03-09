@@ -184,6 +184,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
             tone={dashboard.overallPct === 100 ? "success" : "warning"}
             size={fullscreen ? 400 : isMobile ? 220 : 320}
             stroke={isMobile ? 18 : 24}
+            trackColor="rgba(139,92,246,0.25)"
             label={
               <div className="text-center">
                 <div className={cn("font-semibold tabular-nums tracking-tight text-white drop-shadow-sm", isMobile ? "text-5xl" : "text-6xl")}>
