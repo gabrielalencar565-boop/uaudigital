@@ -109,7 +109,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
       {/* Coluna direita: métricas (linha) + etapas (grade) */}
       <div className={cn("flex flex-col gap-6", fullscreen && "flex-1")}>
         <div className={cn("grid gap-3", isMobile ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-3 xl:grid-cols-4")}>
-          <MetricCard value={deadlineLabel} label="MAGIC NUMBER" />
+          <MetricCard value={deadlineLabel} label="MAGIC NUMBER" highlight />
           <MetricCard value={String(dashboard.totalStages)} label="TOTAL" />
           <MetricCard value={String(dashboard.doneStages)} label="FEITOS" />
           <MetricCard value={String(dashboard.pendingStages)} label="PENDENTES" />
