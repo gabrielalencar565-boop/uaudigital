@@ -43,7 +43,6 @@ export function useCreateHealthScoreToken() {
       if (error) throw error;
       return data as unknown as HealthScoreToken;
     },
-    },
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ["health_score_token", vars.client_id, vars.month, vars.year] });
       toast.success("Link de avaliação criado!");
