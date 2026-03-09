@@ -19,10 +19,12 @@ function MetricCard({ value, label, highlight }: { value: string; label: string;
   return (
     <Card className={cn(
       "overflow-hidden relative",
-      highlight && "bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-500 border-0 shadow-lg shadow-purple-500/20"
-    )}>
+      highlight && "border-0 shadow-lg shadow-purple-500/20"
+    )}
+    style={highlight ? { background: "linear-gradient(135deg, #4C1D95 0%, #6D28D9 25%, #7C3AED 50%, #5B21B6 75%, #4C1D95 100%)", backgroundSize: "300% 300%", animation: "gradientFlow 14s ease-in-out infinite" } : undefined}
+    >
       {highlight && (
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_30%_20%,rgba(255,255,255,0.18)_0%,transparent_60%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_30%_20%,rgba(139,92,246,0.3)_0%,transparent_60%)]" />
       )}
       <CardContent className="relative grid gap-2 p-4">
         <div className={cn(
