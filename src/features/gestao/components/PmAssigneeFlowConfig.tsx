@@ -42,9 +42,15 @@ export function PmAssigneeFlowConfig() {
   }, [localAssignees, defaultFlow]);
 
   const clientsQ = useQuery({
-    queryKey: ["clients_all"],
+    queryKey: ["pm_clients_active"],
     queryFn: async () => {
-      const { data } = await supabase.from("clients").select("id, name").eq("is_active", true).order("name");
+      const { data, error } = await supabase
+        .from("clients")
+        .select("id, name")
+        .eq("is_active", true)
+        .eq("is_freelancer_sentinel", false)
+        .order("name");
+      if (error) throw error;
       return data ?? [];
     },
   });
@@ -52,7 +58,8 @@ export function PmAssigneeFlowConfig() {
   const membersQ = useQuery({
     queryKey: ["team_members"],
     queryFn: async () => {
-      const { data } = await supabase.from("team_members").select("user_id, display_name, avatar_url").eq("is_active", true);
+      const { data, error } = await supabase.from("team_members").select("user_id, display_name, avatar_url").eq("is_active", true);
+      if (error) throw error;
       return data ?? [];
     },
   });
