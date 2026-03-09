@@ -6,6 +6,7 @@ export interface HealthScoreToken {
   id: string;
   client_id: string;
   token: string;
+  slug: string | null;
   month: number;
   year: number;
   used_at: string | null;
