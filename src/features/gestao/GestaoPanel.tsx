@@ -382,6 +382,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
   setCursor: React.Dispatch<React.SetStateAction<Date>>;
   fixedAssigneeClientIds: Set<string>;
 }) {
+  const isMobile = useIsMobile();
   const deleteTask = useDeletePmTask();
   const [moreOpen, setMoreOpen] = useState(false);
   const [moreDayKey, setMoreDayKey] = useState<string | null>(null);
