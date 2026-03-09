@@ -1,6 +1,8 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProgressRing } from "@/components/metrics/ProgressRing";
 import { MAGIC2_STAGES, type Magic2StageKey } from "@/features/magic2/magic2-stages";
+import { CountdownTo27Badge } from "@/features/magic2/components/CountdownTo27Badge";
+import { useNow } from "@/hooks/use-now";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
