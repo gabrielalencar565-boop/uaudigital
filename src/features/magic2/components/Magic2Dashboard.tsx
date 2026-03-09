@@ -15,12 +15,24 @@ type Dashboard = {
   byStage: Record<Magic2StageKey, { done: number; total: number; pct: number }>;
 };
 
-function MetricCard({ value, label }: { value: string; label: string }) {
+function MetricCard({ value, label, highlight }: { value: string; label: string; highlight?: boolean }) {
   return (
-    <Card className="overflow-hidden">
-      <CardContent className="grid gap-2 p-4">
-        <div className="text-4xl font-semibold tabular-nums tracking-tight">{value}</div>
-        <div className="text-xs font-semibold tracking-wide text-muted-foreground">{label}</div>
+    <Card className={cn(
+      "overflow-hidden relative",
+      highlight && "bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-500 border-0 shadow-lg shadow-purple-500/20"
+    )}>
+      {highlight && (
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_30%_20%,rgba(255,255,255,0.18)_0%,transparent_60%)]" />
+      )}
+      <CardContent className="relative grid gap-2 p-4">
+        <div className={cn(
+          "text-4xl font-semibold tabular-nums tracking-tight",
+          highlight && "text-white"
+        )}>{value}</div>
+        <div className={cn(
+          "text-xs font-semibold tracking-wide",
+          highlight ? "text-white/70" : "text-muted-foreground"
+        )}>{label}</div>
       </CardContent>
     </Card>
   );
@@ -97,7 +109,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
       {/* Coluna direita: métricas (linha) + etapas (grade) */}
       <div className={cn("flex flex-col gap-6", fullscreen && "flex-1")}>
         <div className={cn("grid gap-3", isMobile ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-3 xl:grid-cols-4")}>
-          <MetricCard value={deadlineLabel} label="MAGIC NUMBER" />
+          <MetricCard value={deadlineLabel} label="MAGIC NUMBER" highlight />
           <MetricCard value={String(dashboard.totalStages)} label="TOTAL" />
           <MetricCard value={String(dashboard.doneStages)} label="FEITOS" />
           <MetricCard value={String(dashboard.pendingStages)} label="PENDENTES" />
