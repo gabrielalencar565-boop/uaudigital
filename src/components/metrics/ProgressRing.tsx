@@ -18,6 +18,7 @@ export function ProgressRing({
   size = 132,
   stroke = 14,
   tone: toneProp,
+  trackColor,
   className,
 }: {
   value: number; // 0-100
