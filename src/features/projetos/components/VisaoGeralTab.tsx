@@ -41,6 +41,25 @@ const SQUAD_COLOR_PALETTE = [
   "#EC4899", "#8B5CF6", "#06B6D4", "#F97316",
 ];
 
+const SQUAD_ICON_OPTIONS = [
+  { id: "shield", icon: Shield, label: "Escudo" },
+  { id: "sword", icon: Sword, label: "Espada" },
+  { id: "crown", icon: Crown, label: "Coroa" },
+  { id: "flame", icon: Flame, label: "Chama" },
+  { id: "zap", icon: Zap, label: "Raio" },
+  { id: "rocket", icon: Rocket, label: "Foguete" },
+  { id: "diamond", icon: Diamond, label: "Diamante" },
+  { id: "award", icon: Award, label: "Prêmio" },
+  { id: "trophy", icon: Trophy, label: "Troféu" },
+  { id: "star", icon: Star, label: "Estrela" },
+  { id: "heart", icon: Heart, label: "Coração" },
+  { id: "sparkles", icon: Sparkles, label: "Brilhos" },
+];
+
+function getSquadIcon(iconId: string) {
+  return SQUAD_ICON_OPTIONS.find((i) => i.id === iconId)?.icon ?? Shield;
+}
+
 const HOLIDAYS_2026 = [
   { date: "2026-01-01", name: "Confraternização Universal", type: "Feriado Nacional" },
   { date: "2026-02-16", name: "Carnaval", type: "Feriado Nacional" },
