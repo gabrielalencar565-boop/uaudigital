@@ -239,8 +239,8 @@ export function VisaoGeralTab() {
 
   const handleCreate = () => {
     if (!newName.trim() || !user) return;
-    createSquad.mutate({ name: newName.trim(), color: newColor, userId: user.id, leaderId: newLeader || undefined }, {
-      onSuccess: () => { setCreateOpen(false); setNewName(""); setNewLeader(""); },
+    createSquad.mutate({ name: newName.trim(), color: newColor, userId: user.id, leaderId: newLeader || undefined, icon: newIcon }, {
+      onSuccess: () => { setCreateOpen(false); setNewName(""); setNewLeader(""); setNewIcon("shield"); },
     });
   };
 
@@ -251,11 +251,12 @@ export function VisaoGeralTab() {
     setEditName(sq.name);
     setEditColor(sq.color);
     setEditLeader(sq.leader_id ?? "");
+    setEditIcon(sq.icon ?? "shield");
   };
 
   const saveEdit = () => {
     if (!editSquad || !editName.trim()) return;
-    updateSquad.mutate({ id: editSquad.id, name: editName.trim(), color: editColor, leaderId: editLeader || null });
+    updateSquad.mutate({ id: editSquad.id, name: editName.trim(), color: editColor, leaderId: editLeader || null, icon: editIcon });
     updateMembers.mutate({ squadId: editSquad.id, userIds: selectedUsers }, {
       onSuccess: () => setEditSquad(null),
     });
