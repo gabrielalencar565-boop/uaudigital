@@ -65,10 +65,10 @@ export function useCreateSquad() {
 export function useUpdateSquad() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, name, color, leaderId }: { id: string; name: string; color: string; leaderId?: string | null }) => {
+    mutationFn: async ({ id, name, color, leaderId, icon }: { id: string; name: string; color: string; leaderId?: string | null; icon?: string }) => {
       const { error } = await supabase
         .from("squads" as any)
-        .update({ name, color, leader_id: leaderId ?? null } as any)
+        .update({ name, color, leader_id: leaderId ?? null, icon: icon ?? "shield" } as any)
         .eq("id", id);
       if (error) throw error;
     },
