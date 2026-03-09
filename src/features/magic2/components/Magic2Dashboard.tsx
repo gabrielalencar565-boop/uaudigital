@@ -35,7 +35,7 @@ function MetricRingCard({ value, label }: { value: number; label: string }) {
           tone={value === 100 ? "success" : "warning"}
           size={84}
           stroke={10}
-          label={<AnimatedNumber value={value} suffix="%" className="text-xl font-semibold tracking-tight" />}
+          label={<span className="text-xl font-semibold tracking-tight">{value}%</span>}
         />
         <div className="text-center text-xs font-semibold tracking-wide text-muted-foreground">{label}</div>
       </CardContent>
