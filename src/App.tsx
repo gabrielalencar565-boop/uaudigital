@@ -8,6 +8,7 @@ import { ThemeProvider } from "next-themes";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import CronogramaPublic from "./pages/CronogramaPublic";
+import HealthScorePublic from "./pages/HealthScorePublic";
 import Pending from "./pages/Pending";
 import NotFound from "./pages/NotFound";
 import { RequireAuth } from "@/components/auth/RequireAuth";
