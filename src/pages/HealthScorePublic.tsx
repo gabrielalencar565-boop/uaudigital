@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -56,8 +56,7 @@ interface TokenData {
 }
 
 export default function HealthScorePublic() {
-  const [searchParams] = useSearchParams();
-  const token = searchParams.get("token");
+  const { slug } = useParams<{ slug: string }>();
 
   const [loading, setLoading] = useState(true);
   const [tokenData, setTokenData] = useState<TokenData | null>(null);
@@ -81,9 +80,9 @@ export default function HealthScorePublic() {
   });
 
   useEffect(() => {
-    async function validateToken() {
-      if (!token) {
-        setError("Link inválido. Token não encontrado.");
+    async function validateSlug() {
+      if (!slug) {
+        setError("Link inválido.");
         setLoading(false);
         return;
       }
@@ -91,7 +90,7 @@ export default function HealthScorePublic() {
       const { data: tokenRow, error: tokenError } = await supabase
         .from("health_score_tokens" as any)
         .select("id, client_id, month, year, used_at")
-        .eq("token", token)
+        .eq("slug", slug)
         .single();
 
       if (tokenError || !tokenRow) {
@@ -126,8 +125,8 @@ export default function HealthScorePublic() {
       setLoading(false);
     }
 
-    validateToken();
-  }, [token]);
+    validateSlug();
+  }, [slug]);
 
   const average = Math.round(
     (formValues.resultado_percebido +
@@ -149,10 +148,10 @@ export default function HealthScorePublic() {
 
     setSubmitting(true);
 
-    // Insert health score (evaluated_by will be a placeholder UUID for anonymous)
+    // Insert health score
     const { error: insertError } = await supabase.from("health_scores" as any).insert({
       client_id: tokenData.client_id,
-      evaluated_by: "00000000-0000-0000-0000-000000000000", // Anonymous placeholder
+      evaluated_by: "00000000-0000-0000-0000-000000000000",
       month: tokenData.month,
       year: tokenData.year,
       ...formValues,
@@ -220,18 +219,18 @@ export default function HealthScorePublic() {
   return (
     <div className="min-h-screen bg-background py-8 px-4">
       <div className="max-w-2xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="text-center space-y-2">
-        <div className="flex justify-center">
-          <div className="h-14 w-14 rounded-full bg-destructive/10 flex items-center justify-center">
-            <HeartPulse className="h-7 w-7 text-destructive" />
+        {/* Header */}
+        <div className="text-center space-y-2">
+          <div className="flex justify-center">
+            <div className="h-14 w-14 rounded-full bg-destructive/10 flex items-center justify-center">
+              <HeartPulse className="h-7 w-7 text-destructive" />
+            </div>
           </div>
+          <h1 className="text-2xl font-bold">Avaliação de Satisfação</h1>
+          <p className="text-muted-foreground">
+            {tokenData?.client_name} — {monthNames[(tokenData?.month ?? 1) - 1]}/{tokenData?.year}
+          </p>
         </div>
-        <h1 className="text-2xl font-bold">Avaliação de Satisfação</h1>
-        <p className="text-muted-foreground">
-          {tokenData?.client_name} — {monthNames[(tokenData?.month ?? 1) - 1]}/{tokenData?.year}
-        </p>
-      </div>
 
         {/* Overall score preview */}
         <Card>

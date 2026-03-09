@@ -1823,7 +1823,6 @@ export type Database = {
           stage_completed: boolean
         }[]
       }
-      unaccent: { Args: { "": string }; Returns: string }
     }
     Enums: {
       access_request_status: "pending" | "approved" | "rejected"
