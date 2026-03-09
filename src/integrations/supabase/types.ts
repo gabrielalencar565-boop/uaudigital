@@ -619,6 +619,44 @@ export type Database = {
         }
         Relationships: []
       }
+      health_score_tokens: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          month: number
+          token: string
+          used_at: string | null
+          year: number
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          month: number
+          token?: string
+          used_at?: string | null
+          year: number
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          month?: number
+          token?: string
+          used_at?: string | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "health_score_tokens_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       health_scores: {
         Row: {
           alinhamento_estrategico: number

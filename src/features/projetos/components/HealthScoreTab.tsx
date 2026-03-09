@@ -4,13 +4,15 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { useHealthScores, useUpsertHealthScore, type HealthScore } from "../hooks/use-health-scores";
+import { useHealthScoreToken, useCreateHealthScoreToken } from "../hooks/use-health-score-token";
 import { useSession } from "@/hooks/use-session";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { MonthYearNav } from "@/features/magic2/components/MonthYearNav";
-import { ArrowLeft, HeartPulse, ChevronRight } from "lucide-react";
+import { ArrowLeft, HeartPulse, ChevronRight, Link2, Copy, Check, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ProgressRing } from "@/components/metrics/ProgressRing";
+import { toast } from "sonner";
 
 const QUESTIONS = [
   {
@@ -54,9 +56,12 @@ export function HealthScoreTab() {
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const scoresQ = useHealthScores(month, year);
   const upsert = useUpsertHealthScore();
+  const tokenQ = useHealthScoreToken(selectedClientId, month, year);
+  const createToken = useCreateHealthScoreToken();
 
   const clientsQ = useQuery({
     queryKey: ["clients_active"],
@@ -142,7 +147,7 @@ export function HealthScoreTab() {
       <div className="space-y-4 mt-4">
         <div className="flex items-center justify-between flex-wrap gap-2 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0s" }}>
           <h2 className="text-lg font-semibold flex items-center gap-2">
-            <HeartPulse className="h-5 w-5 text-red-500" /> Health Score
+            <HeartPulse className="h-5 w-5 text-destructive" /> Health Score
           </h2>
           <MonthYearNav month={month} year={year} onMonthChange={setMonth} onYearChange={setYear} />
         </div>
@@ -195,6 +200,65 @@ export function HealthScoreTab() {
           <p className="text-xs text-muted-foreground">Avaliação do Health Score</p>
         </div>
       </div>
+
+      {/* Public evaluation link */}
+      <Card>
+        <CardContent className="py-4">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-2">
+              <Link2 className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm">Link de avaliação para o cliente</span>
+            </div>
+            {tokenQ.data ? (
+              <div className="flex items-center gap-2">
+                {tokenQ.data.used_at ? (
+                  <span className="text-xs text-muted-foreground">Já respondido</span>
+                ) : (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const url = `${window.location.origin}/avaliacao?token=${tokenQ.data!.token}`;
+                        navigator.clipboard.writeText(url);
+                        setCopied(true);
+                        toast.success("Link copiado!");
+                        setTimeout(() => setCopied(false), 2000);
+                      }}
+                    >
+                      {copied ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
+                      Copiar link
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const url = `${window.location.origin}/avaliacao?token=${tokenQ.data!.token}`;
+                        window.open(url, "_blank");
+                      }}
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                    </Button>
+                  </>
+                )}
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (!selectedClientId) return;
+                  createToken.mutate({ client_id: selectedClientId, month, year });
+                }}
+                disabled={createToken.isPending}
+              >
+                <Link2 className="h-3 w-3 mr-1" />
+                Gerar link
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Overall score */}
       <Card>
