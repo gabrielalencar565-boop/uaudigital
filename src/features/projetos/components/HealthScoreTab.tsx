@@ -220,7 +220,7 @@ export function HealthScoreTab() {
                       size="sm"
                       onClick={() => {
                         const slug = tokenQ.data!.slug;
-                        const url = `${window.location.origin}/avaliacao/${slug}`;
+                        const url = `https://uaudigital.lovable.app/avaliacao/${slug}`;
                         navigator.clipboard.writeText(url);
                         setCopied(true);
                         toast.success("Link copiado!");
@@ -235,7 +235,7 @@ export function HealthScoreTab() {
                       size="sm"
                       onClick={() => {
                         const slug = tokenQ.data!.slug;
-                        const url = `${window.location.origin}/avaliacao/${slug}`;
+                        const url = `https://uaudigital.lovable.app/avaliacao/${slug}`;
                         window.open(url, "_blank");
                       }}
                     >
