@@ -129,7 +129,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
   })();
 
   return (
-    <section className={cn("grid gap-6 items-stretch", isMobile ? "grid-cols-1" : "lg:grid-cols-[460px_1fr]", fullscreen && "min-h-[calc(100vh-120px)]")}>
+    <section className={cn("grid gap-6 items-stretch grid-cols-1 lg:grid-cols-[minmax(280px,400px)_1fr] xl:grid-cols-[460px_1fr]", fullscreen && "min-h-[calc(100vh-120px)]")}>
       {/* Coluna esquerda: anel grande */}
       <Card className="overflow-hidden flex flex-col relative group border-0"
         style={{
@@ -186,8 +186,8 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
           <ProgressRing
             value={dashboard.overallPct}
             tone={dashboard.overallPct === 100 ? "success" : "warning"}
-            size={fullscreen ? 400 : isMobile ? 220 : 320}
-            stroke={isMobile ? 18 : 24}
+            size={fullscreen ? 400 : isMobile ? 180 : 260}
+            stroke={isMobile ? 16 : 22}
             trackColor="rgba(91,33,182,0.45)"
             label={
               <div className="text-center">
@@ -205,7 +205,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
 
       {/* Coluna direita: métricas (linha) + etapas (grade) */}
       <div className={cn("flex flex-col gap-6", fullscreen && "flex-1")}>
-        <div className={cn("grid gap-3", isMobile ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-3 xl:grid-cols-4")}>
+        <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
           <MetricCard value={deadlineLabel} label="MAGIC NUMBER" highlight />
           <MetricCard value={String(dashboard.totalStages)} label="TOTAL" />
           <MetricCard value={String(dashboard.doneStages)} label="FEITOS" />
@@ -213,7 +213,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
         </div>
 
         {/* 1ª linha (4): Planejamento, Captação, Edição, Design | 2ª linha (4): Alterações, PDF, Agendamento, Clientes 100% */}
-        <div className={cn("grid gap-4 content-start", isMobile ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-3 xl:grid-cols-4", fullscreen && "flex-1 content-center")}>
+        <div className={cn("grid gap-4 content-start grid-cols-2 sm:grid-cols-3 lg:grid-cols-4", fullscreen && "flex-1 content-center")}>
           {stagesForDashboard.map((st) => {
             const item = dashboard.byStage[st.key];
             return (
@@ -221,11 +221,11 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
                 <ProgressRing
                   value={item?.pct ?? 0}
                   tone={(item?.pct ?? 0) === 100 ? "success" : "warning"}
-                  size={fullscreen ? 200 : isMobile ? 120 : 170}
-                  stroke={isMobile ? 12 : 14}
+                  size={fullscreen ? 200 : isMobile ? 90 : 130}
+                  stroke={isMobile ? 10 : 12}
                   className="animate-fade-in"
                   label={
-                    <div className={cn("font-semibold tabular-nums", isMobile ? "text-2xl" : "text-3xl")}>
+                    <div className={cn("font-semibold tabular-nums", isMobile ? "text-xl" : "text-2xl")}>
                       {item?.pct ?? 0}%
                     </div>
                   }
@@ -247,11 +247,11 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
             <ProgressRing
               value={clients100Pct}
               tone={clients100Pct === 100 ? "success" : "warning"}
-              size={fullscreen ? 200 : isMobile ? 120 : 170}
-              stroke={isMobile ? 12 : 14}
+              size={fullscreen ? 200 : isMobile ? 90 : 130}
+              stroke={isMobile ? 10 : 12}
               className="animate-fade-in"
               label={
-                <div className={cn("font-semibold tabular-nums", isMobile ? "text-2xl" : "text-3xl")}>
+                <div className={cn("font-semibold tabular-nums", isMobile ? "text-xl" : "text-2xl")}>
                   {dashboard.clients100}
                 </div>
               }
