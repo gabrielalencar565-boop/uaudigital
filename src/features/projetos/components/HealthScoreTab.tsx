@@ -147,7 +147,7 @@ export function HealthScoreTab() {
       <div className="space-y-4 mt-4">
         <div className="flex items-center justify-between flex-wrap gap-2 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0s" }}>
           <h2 className="text-lg font-semibold flex items-center gap-2">
-            <HeartPulse className="h-5 w-5 text-red-500" /> Health Score
+            <HeartPulse className="h-5 w-5 text-destructive" /> Health Score
           </h2>
           <MonthYearNav month={month} year={year} onMonthChange={setMonth} onYearChange={setYear} />
         </div>
