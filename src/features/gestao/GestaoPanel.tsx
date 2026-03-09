@@ -570,8 +570,59 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
             })}
           </div>
         </div>
+      ) : isMobile ? (
+        /* ── MOBILE MONTH LIST VIEW ── */
+        <div className="space-y-2">
+          {days.filter(d => d.getMonth() === cursor.getMonth()).map((d) => {
+            const key = format(d, "yyyy-MM-dd");
+            const dayTasks = tasksByDay.get(key) ?? [];
+            const holiday = holidays.get(key);
+            const isToday = key === todayKey;
+            if (!dayTasks.length && !holiday) return null;
+
+            return (
+              <div
+                key={key}
+                className={cn(
+                  "rounded-xl border p-3 space-y-2",
+                  isToday ? "border-primary/40 bg-primary/5" : "border-border/30 bg-card/20"
+                )}>
+                <div className="flex items-center gap-2">
+                  <div className={cn(
+                    "grid h-7 w-7 place-items-center rounded-lg text-xs font-bold",
+                    isToday ? "bg-sidebar text-sidebar-foreground shadow-sm" : "text-muted-foreground/70"
+                  )}>
+                    {format(d, "d")}
+                  </div>
+                  <span className="text-xs text-muted-foreground capitalize">
+                    {format(d, "EEEE", { locale: ptBR })}
+                  </span>
+                  {dayTasks.length > 0 && (
+                    <Badge variant="secondary" className="ml-auto text-[10px]">{dayTasks.length}</Badge>
+                  )}
+                </div>
+                {holiday && (
+                  <div className="w-full rounded-xl bg-primary/5 px-2.5 py-1.5">
+                    <span className="text-[10px] font-medium text-primary/50">{holiday}</span>
+                  </div>
+                )}
+                <div className="space-y-1.5">
+                  {dayTasks.map(renderTaskCard)}
+                </div>
+              </div>
+            );
+          })}
+          {days.filter(d => d.getMonth() === cursor.getMonth()).every(d => {
+            const key = format(d, "yyyy-MM-dd");
+            return (tasksByDay.get(key) ?? []).length === 0 && !holidays.get(key);
+          }) && (
+            <div className="rounded-xl border border-dashed border-border/40 p-8 text-center">
+              <p className="text-sm text-muted-foreground">Nenhuma tarefa neste mês.</p>
+            </div>
+          )}
+        </div>
       ) : (
-        /* ── MONTH VIEW ── */
+        /* ── DESKTOP MONTH GRID VIEW ── */
         <>
           <div className="grid grid-cols-7 gap-2">
             {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((d) =>
