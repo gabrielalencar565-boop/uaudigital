@@ -307,16 +307,16 @@ export function UauSidebarShell({
 
           <div
             className={cn(
-              "w-full pb-10 pt-14",
+              "w-full pb-10 pt-14 transition-[padding] duration-300",
               isMobile ?
               "px-4" :
               collapsed ?
-              "pl-[4rem] pr-4 pt-[4.5rem]" :
-              "pl-[14rem] pr-4 pt-[4.5rem] xl:pl-[16rem] xl:pr-8"
+              "pl-[5rem] pr-6 pt-[4.5rem]" :
+              "pl-[15rem] pr-6 pt-[4.5rem] xl:pl-[17rem] xl:pr-8"
             )}>
             
-            <div className="mx-auto w-full 2xl:max-w-[1600px]">
-              <div className="animate-fade-in overflow-x-auto p-4 sm:p-6 lg:p-8 2xl:p-10 px-[10px] py-[10px]">
+            <div className="mx-auto w-full">
+              <div className="animate-fade-in overflow-x-auto p-2 sm:p-4 lg:p-6 2xl:p-8">
                 {children}
               </div>
             </div>

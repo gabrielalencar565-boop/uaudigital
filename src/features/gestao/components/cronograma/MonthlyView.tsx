@@ -4,9 +4,11 @@ import { ptBR } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { POST_TYPE_META, type CronogramaViewProps } from "./types";
 
 export function MonthlyView({ posts, selectedPost, onSelectPost, onDateChange }: CronogramaViewProps) {
+  const isMobile = useIsMobile();
   const [cursor, setCursor] = useState(() => {
     const first = posts.find(t => t.posting_date);
     return startOfMonth(first?.posting_date ? parseISO(first.posting_date) : new Date());
@@ -37,6 +39,92 @@ export function MonthlyView({ posts, selectedPost, onSelectPost, onDateChange }:
     setDragOverDay(null);
   }, [onDateChange]);
 
+  // Mobile: list view grouped by day
+  if (isMobile) {
+    const daysWithPosts = days.filter(d => {
+      const key = format(d, "yyyy-MM-dd");
+      return (postsByDay.get(key) ?? []).length > 0;
+    });
+
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => setCursor(d => startOfMonth(subMonths(d, 1)))}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <h3 className="text-sm font-bold capitalize flex-1 text-center">
+            {format(cursor, "MMMM yyyy", { locale: ptBR })}
+          </h3>
+          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => setCursor(d => startOfMonth(addMonths(d, 1)))}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {daysWithPosts.length === 0 && (
+          <p className="text-sm text-muted-foreground text-center py-8">Nenhuma postagem neste mês.</p>
+        )}
+
+        {daysWithPosts.map(day => {
+          const key = format(day, "yyyy-MM-dd");
+          const dayPosts = postsByDay.get(key) ?? [];
+          const isToday = isSameDay(day, new Date());
+
+          return (
+            <div key={key} className={cn(
+              "rounded-xl border p-3 space-y-2",
+              isToday ? "border-primary/40 bg-primary/5" : "border-border/30 bg-card/20"
+            )}>
+              <div className="flex items-center gap-2">
+                <span className={cn("text-sm font-bold", isToday && "text-primary")}>
+                  {format(day, "dd")}
+                </span>
+                <span className="text-xs text-muted-foreground capitalize">
+                  {format(day, "EEEE", { locale: ptBR })}
+                </span>
+              </div>
+              {dayPosts.map(post => {
+                const meta = POST_TYPE_META[post.post_type ?? "post"] ?? POST_TYPE_META.post;
+                const Icon = meta.icon;
+                const imgUrl = post.attachment_url || post.cover_url;
+                const isSelected = selectedPost?.id === post.id;
+
+                return (
+                  <div
+                    key={post.id}
+                    className={cn(
+                      "rounded-lg border p-2 transition-all",
+                      isSelected ? "ring-2 ring-primary border-primary/40" : "border-border/30",
+                    )}
+                    onClick={() => onSelectPost(post)}
+                  >
+                    <div className="flex items-center gap-2">
+                      {imgUrl && (
+                        <img src={imgUrl} alt="" className="h-10 w-10 rounded object-cover shrink-0" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <Icon className="h-3 w-3 shrink-0" />
+                          <span className="text-xs font-medium truncate">{post.title}</span>
+                        </div>
+                        {post.posting_time && (
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <Clock className="h-2.5 w-2.5 text-muted-foreground" />
+                            <span className="text-[10px] text-muted-foreground">{post.posting_time}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // Desktop: grid calendar
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-3">

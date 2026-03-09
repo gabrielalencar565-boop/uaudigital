@@ -129,7 +129,7 @@ export function PmCronogramaTab({ parentTask, childTasks, clientName, membersMap
         </div>
       </div>
 
-      <div className="flex gap-4">
+      <div className="flex flex-col md:flex-row gap-4">
         <div className="flex-1 min-w-0">
           <Tabs defaultValue="semanal" className="w-full">
             <TabsList className="mb-4">
