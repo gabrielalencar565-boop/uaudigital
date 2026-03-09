@@ -12,14 +12,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { Progress } from "@/components/ui/progress";
 import {
   Plus, Trash2, Settings2, Users, CheckCircle2, Clock, FileText,
-  MoreHorizontal, CalendarDays, HeartPulse, Target, ChevronLeft, ChevronRight, Star, Shield
+  MoreHorizontal, CalendarDays, HeartPulse, Target, ChevronLeft, ChevronRight, Star, Shield,
+  Maximize2, Minimize2, BarChart2, ArrowUpDown, ChevronsUpDown,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   format, startOfMonth, endOfMonth, differenceInDays, startOfWeek, endOfWeek,
-  eachDayOfInterval, isSameDay, isToday, subMonths, addMonths
+  eachDayOfInterval, isToday, subMonths, addMonths
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -63,6 +64,51 @@ function FadeUp({ children, delay = 0, className }: { children: React.ReactNode;
   );
 }
 
+// Widget size types
+type WidgetSize = "sm" | "md" | "lg";
+
+const SIZE_LABELS: Record<WidgetSize, string> = { sm: "P", md: "M", lg: "G" };
+
+function WidgetSizeControl({ size, onChange }: { size: WidgetSize; onChange: (s: WidgetSize) => void }) {
+  const sizes: WidgetSize[] = ["sm", "md", "lg"];
+  return (
+    <div className="flex items-center gap-0.5 rounded-lg bg-muted/60 p-0.5">
+      {sizes.map((s) => (
+        <button
+          key={s}
+          onClick={() => onChange(s)}
+          className={cn(
+            "h-6 w-6 rounded-md text-[10px] font-bold transition-all",
+            size === s
+              ? "bg-sidebar text-sidebar-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          {SIZE_LABELS[s]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// Chart height map
+const CHART_HEIGHTS: Record<WidgetSize, string> = {
+  sm: "h-[180px]",
+  md: "h-[280px]",
+  lg: "h-[420px]",
+};
+
+// Squad card cols map
+const SQUAD_COLS: Record<WidgetSize, string> = {
+  sm: "grid-cols-1 md:grid-cols-3 xl:grid-cols-4",
+  md: "grid-cols-1 md:grid-cols-2 xl:grid-cols-3",
+  lg: "grid-cols-1 md:grid-cols-1 xl:grid-cols-2",
+};
+
+// Table sort
+type SortKey = "name" | "contas" | "time" | "health" | "demandas" | "concluidas" | "progresso";
+type SortDir = "asc" | "desc";
+
 export function VisaoGeralTab() {
   const { user } = useSession();
   const { isAdmin } = useRole(user?.id);
@@ -82,6 +128,16 @@ export function VisaoGeralTab() {
   const [showHealthScore, setShowHealthScore] = useState(false);
   const [calMonth, setCalMonth] = useState(new Date());
   const [holidayFilter, setHolidayFilter] = useState<"all" | "comemorativas">("all");
+
+  // Widget sizes
+  const [squadSize, setSquadSize] = useState<WidgetSize>("md");
+  const [chartSize, setChartSize] = useState<WidgetSize>("md");
+  const [tableSize, setTableSize] = useState<WidgetSize>("md");
+  const [calSize, setCalSize] = useState<WidgetSize>("md");
+
+  // Table sort
+  const [sortKey, setSortKey] = useState<SortKey>("name");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
 
   // Edit squad dialog
   const [editSquad, setEditSquad] = useState<any>(null);
@@ -137,7 +193,6 @@ export function VisaoGeralTab() {
     return m;
   }, [healthScores]);
 
-  // Clients per squad from client_squads table
   const clientsPerSquad = useMemo(() => {
     const m: Record<string, string[]> = {};
     allClientSquads.forEach((cs: any) => {
@@ -147,7 +202,6 @@ export function VisaoGeralTab() {
     return m;
   }, [allClientSquads]);
 
-  // Stats per squad
   const squadStats = useMemo(() => {
     const stats: Record<string, { total: number; done: number; inProgress: number; overdue: number; memberIds: string[]; clientCount: number }> = {};
     squads.forEach((sq: any) => {
@@ -162,13 +216,51 @@ export function VisaoGeralTab() {
     return stats;
   }, [squads, allSquadMembers, allTasks, clientsPerSquad]);
 
-
   const chartData = useMemo(() => {
     return squads.map((sq: any) => ({
       name: sq.name,
       contas: (clientsPerSquad[sq.id] ?? []).length,
     }));
   }, [squads, clientsPerSquad]);
+
+  // Table rows with all metrics
+  const tableRows = useMemo(() => {
+    return squads.map((sq: any) => {
+      const st = squadStats[sq.id] ?? { total: 0, done: 0, inProgress: 0, overdue: 0, memberIds: [], clientCount: 0 };
+      const clientIds = clientsPerSquad[sq.id] ?? [];
+      const healthVals = clientIds.map((c: string) => healthAvgMap[c]).filter((v) => v !== undefined);
+      const avgHealth = healthVals.length > 0 ? Math.round(healthVals.reduce((a, b) => a + b, 0) / healthVals.length) : null;
+      const members = st.memberIds.map((uid: string) => teamMap[uid]).filter(Boolean);
+      const progress = st.total > 0 ? Math.round((st.done / st.total) * 100) : 0;
+      return {
+        id: sq.id,
+        name: sq.name,
+        color: sq.color,
+        contas: st.clientCount,
+        time: members.length,
+        health: avgHealth,
+        demandas: st.total,
+        concluidas: st.done,
+        progresso: progress,
+      };
+    });
+  }, [squads, squadStats, clientsPerSquad, healthAvgMap, teamMap]);
+
+  const sortedTableRows = useMemo(() => {
+    return [...tableRows].sort((a, b) => {
+      const valA = a[sortKey] ?? -1;
+      const valB = b[sortKey] ?? -1;
+      if (typeof valA === "string" && typeof valB === "string") {
+        return sortDir === "asc" ? valA.localeCompare(valB) : valB.localeCompare(valA);
+      }
+      return sortDir === "asc" ? (valA as number) - (valB as number) : (valB as number) - (valA as number);
+    });
+  }, [tableRows, sortKey, sortDir]);
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) setSortDir((d) => d === "asc" ? "desc" : "asc");
+    else { setSortKey(key); setSortDir("asc"); }
+  };
 
   const handleCreate = () => {
     if (!newName.trim() || !user) return;
@@ -188,13 +280,11 @@ export function VisaoGeralTab() {
 
   const saveEdit = () => {
     if (!editSquad || !editName.trim()) return;
-    // Save squad info + members in parallel
     updateSquad.mutate({ id: editSquad.id, name: editName.trim(), color: editColor, leaderId: editLeader || null });
     updateMembers.mutate({ squadId: editSquad.id, userIds: selectedUsers }, {
       onSuccess: () => setEditSquad(null),
     });
   };
-
 
   const toggleUser = (uid: string) => {
     setSelectedUsers((prev) => prev.includes(uid) ? prev.filter((u) => u !== uid) : [...prev, uid]);
@@ -208,11 +298,9 @@ export function VisaoGeralTab() {
     end: endOfWeek(calendarEnd, { weekStartsOn: 0 }),
   });
 
-  const weekDays = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
   const holidayMap = new Map(HOLIDAYS_2026.map((h) => [h.date, h.name]));
   const upcomingHolidays = HOLIDAYS_2026.filter((h) => new Date(h.date) >= now);
 
-  // Birthdays from team members
   const teamBirthdays = useMemo(() => {
     return allTeam
       .filter((m) => m.birth_date)
@@ -229,7 +317,6 @@ export function VisaoGeralTab() {
       .sort((a, b) => a.date.localeCompare(b.date));
   }, [allTeam, now]);
 
-  // Birthday map for calendar highlighting
   const birthdayMap = useMemo(() => {
     const map = new Map<string, string>();
     allTeam.filter((m) => m.birth_date).forEach((m) => {
@@ -241,7 +328,6 @@ export function VisaoGeralTab() {
     return map;
   }, [allTeam, calMonth]);
 
-  // Combined dates for "Próximas datas" widget
   const filteredDates = useMemo(() => {
     if (holidayFilter === "comemorativas") return teamBirthdays;
     return [...upcomingHolidays, ...teamBirthdays].sort((a, b) => a.date.localeCompare(b.date));
@@ -258,7 +344,15 @@ export function VisaoGeralTab() {
     );
   }
 
-  
+  const SortHeader = ({ label, col }: { label: string; col: SortKey }) => (
+    <button
+      onClick={() => handleSort(col)}
+      className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors group"
+    >
+      {label}
+      <ChevronsUpDown className={cn("h-3 w-3 opacity-40 group-hover:opacity-100 transition-opacity", sortKey === col && "opacity-100 text-sidebar")} />
+    </button>
+  );
 
   return (
     <div className="space-y-6">
@@ -275,118 +369,128 @@ export function VisaoGeralTab() {
 
       {/* Squad cards row */}
       <FadeUp delay={0.15}>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {squads.map((sq: any, idx: number) => {
-            const st = squadStats[sq.id] ?? { total: 0, done: 0, inProgress: 0, overdue: 0, memberIds: [], clientCount: 0 };
-            const progress = st.total > 0 ? Math.round((st.done / st.total) * 100) : 0;
-            const clientIds = clientsPerSquad[sq.id] ?? [];
-            const healthVals = clientIds.map((c: string) => healthAvgMap[c]).filter((v) => v !== undefined);
-            const avgHealth = healthVals.length > 0 ? Math.round(healthVals.reduce((a, b) => a + b, 0) / healthVals.length) : 0;
-            const healthColor = avgHealth >= 80 ? "text-success" : avgHealth >= 50 ? "text-warning" : "text-danger";
-            const members = st.memberIds.map((uid: string) => teamMap[uid]).filter(Boolean);
-
-            return (
-              <Card key={sq.id}>
-                <CardContent className="py-5 px-5 space-y-4">
-                  {/* Header with shield icon */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="h-11 w-11 rounded-xl flex items-center justify-center"
-                        style={{ backgroundColor: `${sq.color}20` }}
-                      >
-                        <Shield className="h-5 w-5" style={{ color: sq.color }} />
-                      </div>
-                      <span className="text-base font-semibold">{sq.name}</span>
-                    </div>
-                    {isAdmin && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button className="h-7 w-7 flex items-center justify-center rounded-xl hover:bg-muted"><MoreHorizontal className="h-4 w-4" /></button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openEdit(sq)}><Settings2 className="h-4 w-4 mr-2" /> Editar Squad</DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive" onClick={() => deleteSquad.mutate(sq.id)}><Trash2 className="h-4 w-4 mr-2" /> Excluir</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
-                  </div>
-
-                  {/* Members avatars only */}
-                  <div className="flex -space-x-2">
-                    {members.slice(0, 6).map((m: any) => (
-                      <Avatar key={m.user_id} className="h-8 w-8 border-2 border-card">
-                        <AvatarImage src={m.avatar_url ?? undefined} alt={m.display_name} />
-                        <AvatarFallback className="text-[10px] bg-muted">{initials(m.display_name)}</AvatarFallback>
-                      </Avatar>
-                    ))}
-                    {members.length > 6 && (
-                      <div className="h-8 w-8 flex items-center justify-center rounded-full border-2 border-card bg-muted text-muted-foreground text-[10px] font-medium">
-                        +{members.length - 6}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Progress */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1"><Target className="h-3.5 w-3.5" /> Progresso • <Clock className="h-3 w-3" /> {daysLeft} dias restantes</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Progress value={progress} className="h-2 flex-1" />
-                      <span className="text-xs font-medium text-foreground">{progress}%</span>
-                    </div>
-                  </div>
-
-                  {/* Health Score */}
-                  <div className={cn("text-sm font-medium flex items-center gap-1.5", avgHealth > 0 ? healthColor : "text-muted-foreground")}>
-                    <span className={cn("h-2 w-2 rounded-full", avgHealth >= 80 ? "bg-success" : avgHealth >= 50 ? "bg-warning" : avgHealth > 0 ? "bg-destructive" : "bg-muted-foreground")} />
-                    <span className="font-bold">{avgHealth > 0 ? avgHealth : "—"}</span>
-                    <span>Health Score</span>
-                  </div>
-
-                  {/* Stats row */}
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1 border-t border-border">
-                    <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {members.length}</span>
-                    <span className="flex items-center gap-1"><FileText className="h-3.5 w-3.5" /> {st.clientCount}</span>
-                    <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> {st.total}</span>
-                    <span className="flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5 text-success" /> {st.done}</span>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-
-          {/* Add squad card */}
-          {isAdmin && (
-            <Card className="border-dashed cursor-pointer hover:border-primary/40 transition-colors" onClick={() => setCreateOpen(true)}>
-              <CardContent className="flex flex-col items-center justify-center py-10 px-5 gap-2 h-full">
-                <Plus className="h-8 w-8 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">Criar Squad</span>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      </FadeUp>
-
-      {/* Contas por Squad */}
-      <FadeUp delay={0.3}>
         <Card>
-          <CardContent className="py-6 px-6 space-y-5">
-            <div className="flex items-center gap-4">
-              <div className="h-14 w-14 rounded-2xl bg-sidebar/10 flex items-center justify-center">
-                <Users className="h-7 w-7 text-sidebar" />
+          <CardContent className="py-5 px-5 space-y-4">
+            {/* Widget header */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="h-8 w-8 rounded-xl bg-sidebar/10 flex items-center justify-center">
+                  <Shield className="h-4 w-4 text-sidebar" />
+                </div>
+                <span className="text-sm font-semibold">Squads</span>
               </div>
-              <div>
-                <p className="text-3xl font-bold leading-none">Contas por Squad</p>
-                <p className="mt-2 text-sm text-muted-foreground">Total: {new Set(allClientSquads.map((cs: any) => cs.client_id)).size} contas ativas</p>
+              <div className="flex items-center gap-2">
+                <WidgetSizeControl size={squadSize} onChange={setSquadSize} />
+                {isAdmin && (
+                  <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs rounded-xl" onClick={() => setCreateOpen(true)}>
+                    <Plus className="h-3.5 w-3.5" /> Criar Squad
+                  </Button>
+                )}
               </div>
             </div>
 
+            <div className={cn("grid gap-4", SQUAD_COLS[squadSize])}>
+              {squads.map((sq: any) => {
+                const st = squadStats[sq.id] ?? { total: 0, done: 0, inProgress: 0, overdue: 0, memberIds: [], clientCount: 0 };
+                const progress = st.total > 0 ? Math.round((st.done / st.total) * 100) : 0;
+                const clientIds = clientsPerSquad[sq.id] ?? [];
+                const healthVals = clientIds.map((c: string) => healthAvgMap[c]).filter((v) => v !== undefined);
+                const avgHealth = healthVals.length > 0 ? Math.round(healthVals.reduce((a, b) => a + b, 0) / healthVals.length) : 0;
+                const healthColor = avgHealth >= 80 ? "text-success" : avgHealth >= 50 ? "text-warning" : "text-danger";
+                const members = st.memberIds.map((uid: string) => teamMap[uid]).filter(Boolean);
+
+                return (
+                  <div
+                    key={sq.id}
+                    className="rounded-xl border border-border bg-muted/30 px-4 py-4 space-y-3 hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <div
+                          className="h-9 w-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                          style={{ backgroundColor: `${sq.color}20` }}
+                        >
+                          <Shield className="h-4 w-4" style={{ color: sq.color }} />
+                        </div>
+                        <span className="text-sm font-semibold truncate">{sq.name}</span>
+                      </div>
+                      {isAdmin && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button className="h-6 w-6 flex items-center justify-center rounded-lg hover:bg-muted"><MoreHorizontal className="h-3.5 w-3.5" /></button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => openEdit(sq)}><Settings2 className="h-4 w-4 mr-2" /> Editar Squad</DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive" onClick={() => deleteSquad.mutate(sq.id)}><Trash2 className="h-4 w-4 mr-2" /> Excluir</DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </div>
+
+                    <div className="flex -space-x-2">
+                      {members.slice(0, squadSize === "sm" ? 4 : 6).map((m: any) => (
+                        <Avatar key={m.user_id} className="h-7 w-7 border-2 border-card">
+                          <AvatarImage src={m.avatar_url ?? undefined} alt={m.display_name} />
+                          <AvatarFallback className="text-[9px] bg-muted">{initials(m.display_name)}</AvatarFallback>
+                        </Avatar>
+                      ))}
+                      {members.length > 6 && (
+                        <div className="h-7 w-7 flex items-center justify-center rounded-full border-2 border-card bg-muted text-muted-foreground text-[9px] font-medium">
+                          +{members.length - 6}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Progress value={progress} className="h-1.5 flex-1" />
+                        <span className="text-[11px] font-semibold text-foreground">{progress}%</span>
+                      </div>
+                    </div>
+
+                    {squadSize !== "sm" && (
+                      <div className="flex items-center gap-3 text-[11px] text-muted-foreground pt-1 border-t border-border">
+                        <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {members.length}</span>
+                        <span className="flex items-center gap-1"><FileText className="h-3 w-3" /> {st.clientCount}</span>
+                        <span className="flex items-center gap-1 ml-auto"><span className={cn("font-bold text-xs", avgHealth > 0 ? healthColor : "text-muted-foreground")}>{avgHealth > 0 ? avgHealth : "—"}</span> HS</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {squads.length === 0 && (
+                <div className="col-span-full flex flex-col items-center justify-center py-8 text-muted-foreground text-sm gap-2">
+                  <Shield className="h-8 w-8 opacity-30" />
+                  <span>Nenhum squad criado</span>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </FadeUp>
+
+      {/* Contas por Squad chart */}
+      <FadeUp delay={0.3}>
+        <Card>
+          <CardContent className="py-6 px-6 space-y-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-2xl bg-sidebar/10 flex items-center justify-center">
+                  <Users className="h-6 w-6 text-sidebar" />
+                </div>
+                <div>
+                  <p className="text-xl font-bold leading-none">Contas por Squad</p>
+                  <p className="mt-1.5 text-sm text-muted-foreground">Total: {new Set(allClientSquads.map((cs: any) => cs.client_id)).size} contas ativas</p>
+                </div>
+              </div>
+              <WidgetSizeControl size={chartSize} onChange={setChartSize} />
+            </div>
+
             {chartData.length > 0 ? (
-              <div className="h-[320px]">
+              <div className={cn("transition-all duration-300", CHART_HEIGHTS[chartSize])}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData} margin={{ left: 0, right: 12, top: 12, bottom: 8 }}>
+                  <BarChart data={chartData} margin={{ left: 0, right: 12, top: 8, bottom: 8 }}>
                     <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="hsl(var(--border))" />
                     <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
                     <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" allowDecimals={false} tickLine={false} axisLine={false} />
@@ -402,109 +506,236 @@ export function VisaoGeralTab() {
         </Card>
       </FadeUp>
 
+      {/* Progresso das entregas por squad — table widget */}
+      <FadeUp delay={0.45}>
+        <Card>
+          <CardContent className="py-6 px-6 space-y-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-2xl bg-sidebar/10 flex items-center justify-center">
+                  <BarChart2 className="h-6 w-6 text-sidebar" />
+                </div>
+                <div>
+                  <p className="text-xl font-bold leading-none">Progresso das entregas por squad</p>
+                  <p className="mt-1.5 text-sm text-muted-foreground">{squads.length} squads ativos</p>
+                </div>
+              </div>
+              <WidgetSizeControl size={tableSize} onChange={setTableSize} />
+            </div>
+
+            <div className="overflow-x-auto rounded-xl border border-border">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-muted/30">
+                    <th className="px-4 py-3 text-left">
+                      <SortHeader label="Squad" col="name" />
+                    </th>
+                    <th className="px-4 py-3 text-center">
+                      <SortHeader label="Contas" col="contas" />
+                    </th>
+                    <th className="px-4 py-3 text-center">
+                      <SortHeader label="Time" col="time" />
+                    </th>
+                    <th className="px-4 py-3 text-center">
+                      <SortHeader label="Health Score" col="health" />
+                    </th>
+                    {tableSize !== "sm" && (
+                      <th className="px-4 py-3 text-center">
+                        <SortHeader label="Demandas" col="demandas" />
+                      </th>
+                    )}
+                    <th className="px-4 py-3 text-center">
+                      <SortHeader label="Concluídas" col="concluidas" />
+                    </th>
+                    {tableSize !== "sm" && (
+                      <th className="px-4 py-3 text-right pr-6">
+                        <SortHeader label="Progresso" col="progresso" />
+                      </th>
+                    )}
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedTableRows.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="text-center py-8 text-muted-foreground text-xs">Nenhum squad encontrado</td>
+                    </tr>
+                  )}
+                  {sortedTableRows.map((row, idx) => {
+                    const healthColor =
+                      row.health === null ? "text-muted-foreground" :
+                      row.health >= 80 ? "text-success border-success/40 bg-success/10" :
+                      row.health >= 50 ? "text-warning border-warning/40 bg-warning/10" :
+                      "text-destructive border-destructive/40 bg-destructive/10";
+
+                    const progressColor =
+                      row.progresso === 0 ? "bg-destructive/70" :
+                      row.progresso < 50 ? "bg-warning" :
+                      "bg-success";
+
+                    const progressBadgeColor =
+                      row.progresso === 0 ? "bg-destructive/10 text-destructive" :
+                      row.progresso < 50 ? "bg-warning/10 text-warning" :
+                      "bg-success/10 text-success";
+
+                    return (
+                      <tr
+                        key={row.id}
+                        className={cn(
+                          "border-b border-border last:border-0 transition-colors hover:bg-muted/30",
+                          idx % 2 === 1 && "bg-muted/10"
+                        )}
+                      >
+                        <td className="px-4 py-3.5">
+                          <div className="flex items-center gap-2.5">
+                            <div
+                              className="h-2 w-2 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: row.color }}
+                            />
+                            <span className="font-medium text-foreground">{row.name}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3.5 text-center text-muted-foreground">{row.contas}</td>
+                        <td className="px-4 py-3.5 text-center text-muted-foreground">{row.time}</td>
+                        <td className="px-4 py-3.5 text-center">
+                          {row.health !== null ? (
+                            <span className={cn("inline-flex items-center justify-center h-7 w-10 rounded-full border text-xs font-bold", healthColor)}>
+                              {row.health}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">N/A</span>
+                          )}
+                        </td>
+                        {tableSize !== "sm" && (
+                          <td className="px-4 py-3.5 text-center text-muted-foreground">{row.demandas}</td>
+                        )}
+                        <td className="px-4 py-3.5 text-center">
+                          <span className={cn("font-semibold", row.concluidas > 0 ? "text-success" : "text-muted-foreground")}>
+                            {row.concluidas}
+                          </span>
+                        </td>
+                        {tableSize !== "sm" && (
+                          <td className="px-4 py-3.5 pr-6">
+                            <div className="flex items-center gap-2.5 justify-end">
+                              <div className="flex-1 max-w-[120px] h-2 rounded-full bg-muted overflow-hidden">
+                                <div
+                                  className={cn("h-full rounded-full transition-all", progressColor)}
+                                  style={{ width: `${row.progresso}%` }}
+                                />
+                              </div>
+                              <span className={cn("text-xs font-bold px-1.5 py-0.5 rounded-md min-w-[36px] text-center", progressBadgeColor)}>
+                                {row.progresso}%
+                              </span>
+                            </div>
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      </FadeUp>
+
       {/* Calendar full-width */}
       <FadeUp delay={0.6}>
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-          {/* Calendar — left 3 cols */}
-          <Card className="lg:col-span-3">
-            <CardContent className="py-5 px-5 space-y-4">
-              {/* Header with month nav */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-lg bg-sidebar/10 flex items-center justify-center">
-                    <CalendarDays className="h-4 w-4 text-sidebar" />
-                  </div>
-                  <p className="text-base font-bold">Calendário</p>
+        <Card>
+          <CardContent className="py-5 px-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-lg bg-sidebar/10 flex items-center justify-center">
+                  <CalendarDays className="h-4 w-4 text-sidebar" />
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => setCalMonth((d) => startOfMonth(subMonths(d, 1)))}>
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <span className="text-sm font-semibold capitalize min-w-[120px] text-center">
-                    {format(calMonth, "MMMM yyyy", { locale: ptBR })}
-                  </span>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => setCalMonth((d) => startOfMonth(addMonths(d, 1)))}>
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
+                <p className="text-base font-bold">Calendário & Próximas datas</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <WidgetSizeControl size={calSize} onChange={setCalSize} />
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => setCalMonth((d) => startOfMonth(subMonths(d, 1)))}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm font-semibold capitalize min-w-[120px] text-center">
+                  {format(calMonth, "MMMM yyyy", { locale: ptBR })}
+                </span>
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => setCalMonth((d) => startOfMonth(addMonths(d, 1)))}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            <div className={cn(
+              "grid gap-4",
+              calSize === "sm" ? "grid-cols-1" : calSize === "lg" ? "grid-cols-1 lg:grid-cols-3" : "grid-cols-1 lg:grid-cols-5"
+            )}>
+              {/* Calendar */}
+              <div className={calSize === "sm" ? "" : calSize === "lg" ? "lg:col-span-2" : "lg:col-span-3"}>
+                <div className="grid grid-cols-7 gap-1 text-center mb-1">
+                  {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((d) => (
+                    <div key={d} className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground py-1">{d}</div>
+                  ))}
                 </div>
-              </div>
-
-              {/* Day-of-week headers */}
-              <div className="grid grid-cols-7 gap-1 text-center">
-                {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((d) => (
-                  <div key={d} className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground py-1">{d}</div>
-                ))}
-              </div>
-
-              {/* Calendar grid */}
-              <div className="grid grid-cols-7 gap-1">
-                {calendarDays.map((d) => {
-                  const key = format(d, "yyyy-MM-dd");
-                  const inMonth = d.getMonth() === calMonth.getMonth();
-                  const today = isToday(d);
-                  const holiday = holidayMap.get(key);
-                  const birthday = birthdayMap.get(key);
-                  return (
-                    <div
-                      key={key}
-                      className={cn(
-                        "relative flex flex-col items-center justify-center rounded-lg py-2 text-xs transition-all",
-                        !inMonth && "opacity-30",
-                        today && "bg-sidebar text-sidebar-foreground font-bold shadow-md",
-                        holiday && !today && "bg-primary/10",
-                        birthday && !today && !holiday && "bg-warning/10"
-                      )}
-                      title={birthday ?? holiday ?? undefined}
-                    >
-                      <span>{format(d, "d")}</span>
-                      {birthday && (
-                        <span className="mt-0.5 text-[8px] leading-tight text-center truncate max-w-full px-0.5">🎂</span>
-                      )}
-                      {holiday && !birthday && (
-                        <span className="mt-0.5 text-[8px] leading-tight text-center text-primary truncate max-w-full px-0.5">{holiday}</span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Próximas datas — right 2 cols */}
-          <Card className="lg:col-span-2">
-            <CardContent className="py-5 px-5 space-y-4">
-              <p className="text-base font-bold">Próximas datas</p>
-
-              <Tabs value={holidayFilter} onValueChange={(v) => setHolidayFilter(v as any)}>
-                <TabsList className="bg-muted/40 h-9 p-1 rounded-full gap-1 w-full">
-                  <TabsTrigger value="all" className="h-7 rounded-full text-xs data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-md flex-1 transition-all">Todas as datas</TabsTrigger>
-                  <TabsTrigger value="comemorativas" className="h-7 rounded-full text-xs data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-md flex-1 transition-all">Aniversários</TabsTrigger>
-                </TabsList>
-              </Tabs>
-
-              <div className="space-y-2.5 max-h-[320px] overflow-y-auto pr-1">
-                {filteredDates.length === 0 && (
-                  <p className="text-xs text-muted-foreground text-center py-4">Nenhuma data próxima</p>
-                )}
-                {filteredDates.slice(0, 10).map((h, idx) => (
-                  <div key={`${h.date}-${idx}`} className="flex items-start gap-3 rounded-xl border border-sidebar/20 bg-sidebar/5 p-3.5 transition-colors hover:bg-sidebar/10">
-                    <div className="h-9 w-9 rounded-full bg-sidebar/15 flex items-center justify-center flex-shrink-0">
-                      {h.type === "Aniversário" ? <span className="text-base">🎂</span> : <Star className="h-4 w-4 text-sidebar" />}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-foreground">{h.name}</p>
-                      <div className="flex items-center gap-3 mt-1">
-                        <span className="text-xs text-sidebar">{format(new Date(h.date + "T12:00:00"), "d 'de' MMMM 'de' yyyy", { locale: ptBR })}</span>
-                        <span className="text-[10px] text-muted-foreground">{h.type}</span>
+                <div className="grid grid-cols-7 gap-1">
+                  {calendarDays.map((d) => {
+                    const key = format(d, "yyyy-MM-dd");
+                    const inMonth = d.getMonth() === calMonth.getMonth();
+                    const today = isToday(d);
+                    const holiday = holidayMap.get(key);
+                    const birthday = birthdayMap.get(key);
+                    return (
+                      <div
+                        key={key}
+                        className={cn(
+                          "relative flex flex-col items-center justify-center rounded-lg py-2 text-xs transition-all",
+                          !inMonth && "opacity-30",
+                          today && "bg-sidebar text-sidebar-foreground font-bold shadow-md",
+                          holiday && !today && "bg-primary/10",
+                          birthday && !today && !holiday && "bg-warning/10"
+                        )}
+                        title={birthday ?? holiday ?? undefined}
+                      >
+                        <span>{format(d, "d")}</span>
+                        {birthday && <span className="mt-0.5 text-[8px]">🎂</span>}
+                        {holiday && !birthday && (
+                          <span className="mt-0.5 text-[8px] leading-tight text-center text-primary truncate max-w-full px-0.5">{holiday}</span>
+                        )}
                       </div>
-                    </div>
-                  </div>
-                ))}
+                    );
+                  })}
+                </div>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+
+              {/* Próximas datas — only shown at md/lg */}
+              {calSize !== "sm" && (
+                <div className={calSize === "lg" ? "lg:col-span-1" : "lg:col-span-2"}>
+                  <Tabs value={holidayFilter} onValueChange={(v) => setHolidayFilter(v as any)}>
+                    <TabsList className="bg-muted/40 h-9 p-1 rounded-full gap-1 w-full mb-3">
+                      <TabsTrigger value="all" className="h-7 rounded-full text-xs data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground flex-1">Todas</TabsTrigger>
+                      <TabsTrigger value="comemorativas" className="h-7 rounded-full text-xs data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground flex-1">Aniversários</TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                  <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+                    {filteredDates.length === 0 && (
+                      <p className="text-xs text-muted-foreground text-center py-4">Nenhuma data próxima</p>
+                    )}
+                    {filteredDates.slice(0, 10).map((h, idx) => (
+                      <div key={`${h.date}-${idx}`} className="flex items-start gap-3 rounded-xl border border-sidebar/20 bg-sidebar/5 p-3 hover:bg-sidebar/10 transition-colors">
+                        <div className="h-8 w-8 rounded-full bg-sidebar/15 flex items-center justify-center flex-shrink-0">
+                          {h.type === "Aniversário" ? <span className="text-sm">🎂</span> : <Star className="h-3.5 w-3.5 text-sidebar" />}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-foreground">{h.name}</p>
+                          <p className="text-[10px] text-sidebar mt-0.5">{format(new Date(h.date + "T12:00:00"), "d 'de' MMMM", { locale: ptBR })}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </FadeUp>
+
       {/* Health Score access */}
       <FadeUp delay={0.75}>
         <Card className="cursor-pointer hover:border-primary/40 transition-colors" onClick={() => setShowHealthScore(true)}>
@@ -518,7 +749,7 @@ export function VisaoGeralTab() {
         </Card>
       </FadeUp>
 
-      {/* Create dialog */}
+      {/* Create squad dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
