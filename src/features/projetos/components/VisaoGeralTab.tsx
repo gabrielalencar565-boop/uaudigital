@@ -369,69 +369,35 @@ export function VisaoGeralTab() {
         </div>
       </FadeUp>
 
-      {/* Middle row */}
+      {/* Contas por Squad */}
       <FadeUp delay={0.3}>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <Card>
-            <CardContent className="py-5 px-5 space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-sidebar/10 flex items-center justify-center"><FileText className="h-5 w-5 text-sidebar" /></div>
-                <div>
-                  <p className="text-sm font-semibold">Planejamentos gerais</p>
-                  <p className="text-xs text-muted-foreground">Planejamentos a serem entregues</p>
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xl font-bold">{globalStats.done}/{globalStats.total}</span>
-                <span className="text-sm text-muted-foreground">{progressPct}% completado</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="py-5 px-5 space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-sidebar/10 flex items-center justify-center"><Users className="h-5 w-5 text-sidebar" /></div>
-                <div>
-                  <p className="text-sm font-semibold">Contas por Squad</p>
-                  <p className="text-xs text-muted-foreground">Total: {new Set(allClientSquads.map((cs: any) => cs.client_id)).size} contas atribuídas</p>
-                </div>
-              </div>
-              {chartData.length > 0 ? (
-                <div className="h-32">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                      <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-                      <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" allowDecimals={false} />
-                      <Tooltip />
-                      <Bar dataKey="contas" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground">Crie squads para ver o gráfico</p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </FadeUp>
-
-      {/* Tarefas gerais */}
-      <FadeUp delay={0.45}>
         <Card>
-          <CardContent className="py-5 px-5 space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-sidebar/10 flex items-center justify-center"><CheckCircle2 className="h-5 w-5 text-sidebar" /></div>
+          <CardContent className="py-6 px-6 space-y-5">
+            <div className="flex items-center gap-4">
+              <div className="h-14 w-14 rounded-2xl bg-sidebar/10 flex items-center justify-center">
+                <Users className="h-7 w-7 text-sidebar" />
+              </div>
               <div>
-                <p className="text-sm font-semibold">Tarefas gerais</p>
-                <p className="text-xs text-muted-foreground">Tarefas em andamento</p>
+                <p className="text-3xl font-bold leading-none">Contas por Squad</p>
+                <p className="mt-2 text-sm text-muted-foreground">Total: {new Set(allClientSquads.map((cs: any) => cs.client_id)).size} contas ativas</p>
               </div>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xl font-bold">{globalStats.done}/{globalStats.total}</span>
-              <span className="text-sm text-muted-foreground">{progressPct}% completado</span>
-            </div>
+
+            {chartData.length > 0 ? (
+              <div className="h-[320px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData} margin={{ left: 0, right: 12, top: 12, bottom: 8 }}>
+                    <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="hsl(var(--border))" />
+                    <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
+                    <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" allowDecimals={false} tickLine={false} axisLine={false} />
+                    <Tooltip />
+                    <Bar dataKey="contas" fill="hsl(var(--sidebar))" radius={[8, 8, 0, 0]} maxBarSize={72} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">Crie squads para ver o gráfico</p>
+            )}
           </CardContent>
         </Card>
       </FadeUp>
