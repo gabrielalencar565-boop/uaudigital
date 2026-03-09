@@ -100,7 +100,9 @@ export default function HealthScorePublic() {
         return;
       }
 
-      if (tokenRow.used_at) {
+      const row = tokenRow as unknown as { id: string; client_id: string; month: number; year: number; used_at: string | null };
+
+      if (row.used_at) {
         setError("Esta avaliação já foi respondida.");
         setLoading(false);
         return;
@@ -110,13 +112,17 @@ export default function HealthScorePublic() {
       const { data: client } = await supabase
         .from("clients")
         .select("name")
-        .eq("id", tokenRow.client_id)
+        .eq("id", row.client_id)
         .single();
 
       setTokenData({
-        ...tokenRow,
+        id: row.id,
+        client_id: row.client_id,
+        month: row.month,
+        year: row.year,
+        used_at: row.used_at,
         client_name: client?.name ?? "Cliente",
-      } as TokenData);
+      });
       setLoading(false);
     }
 
