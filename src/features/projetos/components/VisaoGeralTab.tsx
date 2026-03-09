@@ -732,27 +732,50 @@ export function VisaoGeralTab() {
 
       {/* Create squad dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-md overflow-hidden">
           <DialogHeader>
             <DialogTitle>Criar Squad</DialogTitle>
-            <DialogDescription>Defina o nome, cor e líder do squad.</DialogDescription>
+            <DialogDescription>Defina o nome, cor, ícone e líder do squad.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 overflow-y-auto max-h-[60vh]">
             <div>
               <label className="text-sm font-medium">Nome *</label>
               <Input placeholder="Nome do squad" value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={60} className="mt-1" />
             </div>
             <div>
               <label className="text-sm font-medium">Cor</label>
-              <div className="flex items-center gap-2.5 mt-2">
+              <div className="flex flex-wrap items-center gap-2 mt-2">
                 {SQUAD_COLOR_PALETTE.map((c) => (
                   <button
                     key={c}
                     onClick={() => setNewColor(c)}
-                    className={cn("h-9 w-9 rounded-full transition-all", newColor === c ? "ring-2 ring-offset-2 ring-foreground" : "")}
+                    className={cn("h-9 w-9 rounded-full transition-all flex-shrink-0", newColor === c ? "ring-2 ring-offset-2 ring-foreground" : "")}
                     style={{ backgroundColor: c }}
                   />
                 ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Ícone</label>
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                {SQUAD_ICON_OPTIONS.map((opt) => {
+                  const IconComp = opt.icon;
+                  return (
+                    <button
+                      key={opt.id}
+                      onClick={() => setNewIcon(opt.id)}
+                      className={cn(
+                        "h-9 w-9 rounded-xl transition-all flex-shrink-0 flex items-center justify-center border",
+                        newIcon === opt.id 
+                          ? "ring-2 ring-offset-2 ring-foreground border-foreground bg-muted" 
+                          : "border-border hover:bg-muted/50"
+                      )}
+                      title={opt.label}
+                    >
+                      <IconComp className="h-4 w-4 text-foreground" />
+                    </button>
+                  );
+                })}
               </div>
             </div>
             <div>
@@ -778,27 +801,50 @@ export function VisaoGeralTab() {
 
       {/* Edit squad dialog */}
       <Dialog open={!!editSquad} onOpenChange={(v) => !v && setEditSquad(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md overflow-hidden">
           <DialogHeader>
             <DialogTitle>Editar Squad</DialogTitle>
             <DialogDescription>Altere os dados do squad.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 overflow-y-auto max-h-[60vh]">
             <div>
               <label className="text-sm font-medium">Nome *</label>
               <Input value={editName} onChange={(e) => setEditName(e.target.value)} maxLength={60} className="mt-1" />
             </div>
             <div>
               <label className="text-sm font-medium">Cor</label>
-              <div className="flex items-center gap-2.5 mt-2">
+              <div className="flex flex-wrap items-center gap-2 mt-2">
                 {SQUAD_COLOR_PALETTE.map((c) => (
                   <button
                     key={c}
                     onClick={() => setEditColor(c)}
-                    className={cn("h-9 w-9 rounded-full transition-all", editColor === c ? "ring-2 ring-offset-2 ring-foreground" : "")}
+                    className={cn("h-9 w-9 rounded-full transition-all flex-shrink-0", editColor === c ? "ring-2 ring-offset-2 ring-foreground" : "")}
                     style={{ backgroundColor: c }}
                   />
                 ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Ícone</label>
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                {SQUAD_ICON_OPTIONS.map((opt) => {
+                  const IconComp = opt.icon;
+                  return (
+                    <button
+                      key={opt.id}
+                      onClick={() => setEditIcon(opt.id)}
+                      className={cn(
+                        "h-9 w-9 rounded-xl transition-all flex-shrink-0 flex items-center justify-center border",
+                        editIcon === opt.id 
+                          ? "ring-2 ring-offset-2 ring-foreground border-foreground bg-muted" 
+                          : "border-border hover:bg-muted/50"
+                      )}
+                      title={opt.label}
+                    >
+                      <IconComp className="h-4 w-4 text-foreground" />
+                    </button>
+                  );
+                })}
               </div>
             </div>
             <div>
