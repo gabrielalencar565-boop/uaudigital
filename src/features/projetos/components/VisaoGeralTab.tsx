@@ -439,7 +439,7 @@ export function VisaoGeralTab() {
 
           {/* Add squad card */}
           {isAdmin && (
-            <Card className="border-dashed cursor-pointer hover:border-primary/40 transition-colors" onClick={() => setCreateOpen(true)}>
+            <Card className="border-dashed cursor-pointer hover:border-primary/40 transition-colors" onClick={() => { setNewName(""); setNewColor("#7C5CFF"); setNewLeader(""); setCreateOpen(true); }}>
               <CardContent className="flex flex-col items-center justify-center py-10 px-5 gap-2 h-full">
                 <Plus className="h-8 w-8 text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">Criar Squad</span>
