@@ -3,7 +3,7 @@ import { ProgressRing } from "@/components/metrics/ProgressRing";
 import { MAGIC2_STAGES, type Magic2StageKey } from "@/features/magic2/magic2-stages";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
-import { AnimatedNumber } from "@/components/ui/animated-number";
+
 
 type Dashboard = {
   totalClients: number;
