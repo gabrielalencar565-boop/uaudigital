@@ -206,7 +206,7 @@ export default function HealthScorePublic() {
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="max-w-md w-full">
           <CardContent className="flex flex-col items-center gap-4 py-12">
-            <CheckCircle2 className="h-12 w-12 text-green-500" />
+            <CheckCircle2 className="h-12 w-12 text-primary" />
             <h2 className="text-xl font-semibold">Obrigado!</h2>
             <p className="text-center text-muted-foreground">
               Sua avaliação foi enviada com sucesso. Agradecemos seu feedback!
