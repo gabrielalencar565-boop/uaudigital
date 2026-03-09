@@ -656,14 +656,6 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
               </div>
             );
           })}
-          {days.filter(d => d.getMonth() === cursor.getMonth()).every(d => {
-            const key = format(d, "yyyy-MM-dd");
-            return (tasksByDay.get(key) ?? []).length === 0 && !holidays.get(key);
-          }) && (
-            <div className="rounded-xl border border-dashed border-border/40 p-8 text-center">
-              <p className="text-sm text-muted-foreground">Nenhuma tarefa neste mês.</p>
-            </div>
-          )}
         </div>
       ) : (
         /* ── DESKTOP MONTH GRID VIEW ── */
