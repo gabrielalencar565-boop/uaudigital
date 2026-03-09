@@ -4,9 +4,11 @@ import { ptBR } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { POST_TYPE_META, type CronogramaViewProps } from "./types";
 
 export function WeeklyView({ posts, selectedPost, onSelectPost, onDateChange }: CronogramaViewProps) {
+  const isMobile = useIsMobile();
   const [cursor, setCursor] = useState(() => {
     const first = posts.find(t => t.posting_date);
     return startOfWeek(first?.posting_date ? parseISO(first.posting_date) : new Date(), { weekStartsOn: 0 });
@@ -48,85 +50,164 @@ export function WeeklyView({ posts, selectedPost, onSelectPost, onDateChange }: 
         <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => setCursor(d => subWeeks(d, 1))}>
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        <h3 className="text-sm font-bold capitalize min-w-[200px] text-center">{weekLabel}</h3>
+        <h3 className="text-sm font-bold capitalize flex-1 text-center">{weekLabel}</h3>
         <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => setCursor(d => addWeeks(d, 1))}>
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
 
-      <div className="grid grid-cols-7 gap-2">
-        {days.map(day => {
-          const key = format(day, "yyyy-MM-dd");
-          const dayPosts = postsByDay.get(key) ?? [];
-          const isToday = isSameDay(day, new Date());
-          const isDragOver = dragOverDay === key;
+      {isMobile ? (
+        /* Mobile: vertical stack of days */
+        <div className="space-y-2">
+          {days.map(day => {
+            const key = format(day, "yyyy-MM-dd");
+            const dayPosts = postsByDay.get(key) ?? [];
+            const isToday = isSameDay(day, new Date());
 
-          return (
-            <div
-              key={key}
-              className={cn(
-                "rounded-xl border p-2 min-h-[160px] transition-all",
-                isToday ? "border-primary/40 bg-primary/5" : "border-border/20 bg-card/20",
-                isDragOver && "border-primary ring-2 ring-primary/30 bg-primary/10",
-              )}
-              onDragOver={(e) => { e.preventDefault(); setDragOverDay(key); }}
-              onDragLeave={() => setDragOverDay(null)}
-              onDrop={(e) => { e.preventDefault(); handleDrop(key); }}
-            >
-              <div className="text-center mb-2">
-                <div className="text-[10px] uppercase font-semibold text-muted-foreground/60">
-                  {format(day, "EEE", { locale: ptBR })}
+            return (
+              <div
+                key={key}
+                className={cn(
+                  "rounded-xl border p-3 transition-all",
+                  isToday ? "border-primary/40 bg-primary/5" : "border-border/20 bg-card/20",
+                )}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <div className={cn(
+                    "text-xs uppercase font-semibold",
+                    isToday ? "text-primary" : "text-muted-foreground/60"
+                  )}>
+                    {format(day, "EEE", { locale: ptBR })}
+                  </div>
+                  <div className={cn(
+                    "text-base font-bold",
+                    isToday ? "text-primary" : ""
+                  )}>
+                    {format(day, "d")}
+                  </div>
                 </div>
-                <div className={cn(
-                  "text-lg font-bold mx-auto w-8 h-8 flex items-center justify-center rounded-full",
-                  isToday ? "bg-primary text-primary-foreground" : ""
-                )}>
-                  {format(day, "d")}
-                </div>
-              </div>
 
-              <div className="space-y-1.5">
-                {dayPosts.map(post => {
-                  const meta = POST_TYPE_META[post.post_type ?? "post"] ?? POST_TYPE_META.post;
-                  const Icon = meta.icon;
-                  const imgUrl = post.attachment_url || post.cover_url;
-                  const isSelected = selectedPost?.id === post.id;
+                {dayPosts.length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-2">Sem postagens</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {dayPosts.map(post => {
+                      const meta = POST_TYPE_META[post.post_type ?? "post"] ?? POST_TYPE_META.post;
+                      const Icon = meta.icon;
+                      const imgUrl = post.attachment_url || post.cover_url;
+                      const isSelected = selectedPost?.id === post.id;
 
-                  return (
-                    <div
-                      key={post.id}
-                      draggable
-                      onDragStart={() => handleDragStart(post.id)}
-                      className={cn(
-                        "rounded-lg border p-1.5 cursor-grab active:cursor-grabbing transition-all hover:scale-[1.02]",
-                        isSelected ? "ring-2 ring-primary border-primary/40" : "border-border/30",
-                        meta.color.replace("text-", "").includes("pink") ? "bg-pink-500/5" :
-                        meta.color.includes("blue") ? "bg-blue-500/5" :
-                        meta.color.includes("emerald") ? "bg-emerald-500/5" : "bg-amber-500/5"
-                      )}
-                      onClick={() => onSelectPost(post)}
-                    >
-                      {imgUrl && (
-                        <img src={imgUrl} alt="" className="w-full aspect-square rounded-md object-cover mb-1" />
-                      )}
-                      <div className="flex items-center gap-1">
-                        <Icon className="h-2.5 w-2.5 shrink-0" />
-                        <span className="text-[9px] font-medium truncate">{post.title}</span>
-                      </div>
-                      {post.posting_time && (
-                        <div className="flex items-center gap-0.5 mt-0.5">
-                          <Clock className="h-2 w-2 text-muted-foreground" />
-                          <span className="text-[8px] text-muted-foreground">{post.posting_time}</span>
+                      return (
+                        <div
+                          key={post.id}
+                          className={cn(
+                            "rounded-lg border p-2 transition-all",
+                            isSelected ? "ring-2 ring-primary border-primary/40" : "border-border/30",
+                          )}
+                          onClick={() => onSelectPost(post)}
+                        >
+                          <div className="flex items-center gap-2">
+                            {imgUrl && (
+                              <img src={imgUrl} alt="" className="h-10 w-10 rounded-md object-cover shrink-0" />
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5">
+                                <Icon className="h-3 w-3 shrink-0" />
+                                <span className="text-xs font-medium truncate">{post.title}</span>
+                              </div>
+                              {post.posting_time && (
+                                <div className="flex items-center gap-1 mt-0.5">
+                                  <Clock className="h-2.5 w-2.5 text-muted-foreground" />
+                                  <span className="text-[10px] text-muted-foreground">{post.posting_time}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      ) : (
+        /* Desktop: 7-column grid */
+        <div className="grid grid-cols-7 gap-2">
+          {days.map(day => {
+            const key = format(day, "yyyy-MM-dd");
+            const dayPosts = postsByDay.get(key) ?? [];
+            const isToday = isSameDay(day, new Date());
+            const isDragOver = dragOverDay === key;
+
+            return (
+              <div
+                key={key}
+                className={cn(
+                  "rounded-xl border p-2 min-h-[160px] transition-all",
+                  isToday ? "border-primary/40 bg-primary/5" : "border-border/20 bg-card/20",
+                  isDragOver && "border-primary ring-2 ring-primary/30 bg-primary/10",
+                )}
+                onDragOver={(e) => { e.preventDefault(); setDragOverDay(key); }}
+                onDragLeave={() => setDragOverDay(null)}
+                onDrop={(e) => { e.preventDefault(); handleDrop(key); }}
+              >
+                <div className="text-center mb-2">
+                  <div className="text-[10px] uppercase font-semibold text-muted-foreground/60">
+                    {format(day, "EEE", { locale: ptBR })}
+                  </div>
+                  <div className={cn(
+                    "text-lg font-bold mx-auto w-8 h-8 flex items-center justify-center rounded-full",
+                    isToday ? "bg-primary text-primary-foreground" : ""
+                  )}>
+                    {format(day, "d")}
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  {dayPosts.map(post => {
+                    const meta = POST_TYPE_META[post.post_type ?? "post"] ?? POST_TYPE_META.post;
+                    const Icon = meta.icon;
+                    const imgUrl = post.attachment_url || post.cover_url;
+                    const isSelected = selectedPost?.id === post.id;
+
+                    return (
+                      <div
+                        key={post.id}
+                        draggable
+                        onDragStart={() => handleDragStart(post.id)}
+                        className={cn(
+                          "rounded-lg border p-1.5 cursor-grab active:cursor-grabbing transition-all hover:scale-[1.02]",
+                          isSelected ? "ring-2 ring-primary border-primary/40" : "border-border/30",
+                          meta.color.replace("text-", "").includes("pink") ? "bg-pink-500/5" :
+                          meta.color.includes("blue") ? "bg-blue-500/5" :
+                          meta.color.includes("emerald") ? "bg-emerald-500/5" : "bg-amber-500/5"
+                        )}
+                        onClick={() => onSelectPost(post)}
+                      >
+                        {imgUrl && (
+                          <img src={imgUrl} alt="" className="w-full aspect-square rounded-md object-cover mb-1" />
+                        )}
+                        <div className="flex items-center gap-1">
+                          <Icon className="h-2.5 w-2.5 shrink-0" />
+                          <span className="text-[9px] font-medium truncate">{post.title}</span>
+                        </div>
+                        {post.posting_time && (
+                          <div className="flex items-center gap-0.5 mt-0.5">
+                            <Clock className="h-2 w-2 text-muted-foreground" />
+                            <span className="text-[8px] text-muted-foreground">{post.posting_time}</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
