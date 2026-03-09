@@ -98,20 +98,20 @@ export function DayViewPanel() {
 
   // ─── Realtime sync para agenda do dia ───
   useRealtimeSync([
-    "tasks",
-    "task_assignees",
-    "cleaning_completions",
-    "cleaning_schedules",
-    "cleaning_categories",
-    "performance_scores",
-    "clients",
-    "client_cycles",
-    "client_cycle_stages",
-    "magic2_cycles",
-    "magic2_cycle_stages",
-    "team_members",
-    "profiles",
-  ]);
+  "tasks",
+  "task_assignees",
+  "cleaning_completions",
+  "cleaning_schedules",
+  "cleaning_categories",
+  "performance_scores",
+  "clients",
+  "client_cycles",
+  "client_cycle_stages",
+  "magic2_cycles",
+  "magic2_cycle_stages",
+  "team_members",
+  "profiles"]
+  );
 
   const todayDow = getDay(today); // 0=dom, 6=sab
 
@@ -391,20 +391,20 @@ export function DayViewPanel() {
       {/* Header em uma única linha */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
         <div className="flex items-center gap-3">
-          <h2 className="text-2xl font-semibold tracking-tight">Visão do Dia</h2>
-          <span className={cn(
-          "inline-flex items-center rounded-full px-4 py-1.5 text-sm font-semibold text-white",
-          daysUntilDeadline > 0 && "bg-success",
-          daysUntilDeadline === 0 && "bg-warning text-warning-foreground",
-          daysUntilDeadline < 0 && "bg-destructive"
-        )}>
-            {daysUntilDeadline > 0 ?
-          `Faltam ${daysUntilDeadline} ${daysUntilDeadline === 1 ? "dia" : "dias"}` :
-          daysUntilDeadline === 0 ?
-          "É hoje!" :
-          `Atrasado ${Math.abs(daysUntilDeadline)} ${Math.abs(daysUntilDeadline) === 1 ? "dia" : "dias"}`
-          }
-          </span>
+          <h2 className="font-semibold tracking-tight text-3xl">Visão do Dia</h2>
+          
+
+
+
+
+
+
+
+
+
+
+
+        
         </div>
         
         {/* Controles à direita */}
