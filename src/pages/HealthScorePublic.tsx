@@ -220,18 +220,18 @@ export default function HealthScorePublic() {
   return (
     <div className="min-h-screen bg-background py-8 px-4">
       <div className="max-w-2xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="text-center space-y-2">
-          <div className="flex justify-center">
-            <div className="h-14 w-14 rounded-full bg-red-500/10 flex items-center justify-center">
-              <HeartPulse className="h-7 w-7 text-red-500" />
-            </div>
+      {/* Header */}
+      <div className="text-center space-y-2">
+        <div className="flex justify-center">
+          <div className="h-14 w-14 rounded-full bg-destructive/10 flex items-center justify-center">
+            <HeartPulse className="h-7 w-7 text-destructive" />
           </div>
-          <h1 className="text-2xl font-bold">Avaliação de Satisfação</h1>
-          <p className="text-muted-foreground">
-            {tokenData?.client_name} — {monthNames[(tokenData?.month ?? 1) - 1]}/{tokenData?.year}
-          </p>
         </div>
+        <h1 className="text-2xl font-bold">Avaliação de Satisfação</h1>
+        <p className="text-muted-foreground">
+          {tokenData?.client_name} — {monthNames[(tokenData?.month ?? 1) - 1]}/{tokenData?.year}
+        </p>
+      </div>
 
         {/* Overall score preview */}
         <Card>

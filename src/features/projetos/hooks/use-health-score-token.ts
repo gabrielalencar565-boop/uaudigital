@@ -37,11 +37,12 @@ export function useCreateHealthScoreToken() {
     mutationFn: async (params: { client_id: string; month: number; year: number }) => {
       const { data, error } = await supabase
         .from("health_score_tokens" as any)
-        .insert(params)
+        .insert(params as any)
         .select()
         .single();
       if (error) throw error;
-      return data as HealthScoreToken;
+      return data as unknown as HealthScoreToken;
+    },
     },
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ["health_score_token", vars.client_id, vars.month, vars.year] });
