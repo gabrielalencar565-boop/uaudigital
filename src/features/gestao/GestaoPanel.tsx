@@ -523,8 +523,8 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
 
       {agendaView === "week" ? (
         /* ── WEEK VIEW ── */
-        <div className="overflow-x-auto pb-4">
-          <div className="flex gap-4 min-w-max">
+        isMobile ? (
+          <div className="space-y-2">
             {weekDays.map((d) => {
               const key = format(d, "yyyy-MM-dd");
               const dayTasks = tasksByDay.get(key) ?? [];
@@ -537,39 +537,84 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
                 <div
                   key={key}
                   className={cn(
-                    "w-[280px] flex-shrink-0 rounded-xl border bg-card/10 p-4 transition",
-                    isToday ? "border-primary ring-2 ring-primary/40" : "border-border/60"
+                    "rounded-xl border p-3 transition",
+                    isToday ? "border-primary/40 bg-primary/5" : "border-border/30 bg-card/20"
                   )}>
-                  <div className="flex items-start justify-between gap-2 mb-4">
-                    <div className="min-w-0">
-                      <p className={cn("text-sm font-medium", isToday && "text-primary")}>{dowTitle}</p>
-                      <p className={cn("mt-1 text-3xl font-semibold leading-none tracking-tight", isToday && "text-primary")}>
-                        {format(d, "dd")}
-                      </p>
-                      {dayTasks.length > 0 && (
-                        <p className="mt-2 text-xs text-muted-foreground">
-                          {doneCount}/{dayTasks.length} concluída(s)
-                        </p>
-                      )}
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className={cn(
+                      "grid h-7 w-7 place-items-center rounded-lg text-xs font-bold",
+                      isToday ? "bg-sidebar text-sidebar-foreground shadow-sm" : "text-muted-foreground/70"
+                    )}>
+                      {format(d, "dd")}
                     </div>
-                  </div>
-                  <div className="space-y-2.5 max-h-[500px] overflow-y-auto">
-                    {holidays.get(key) && (
-                      <div className="w-full rounded-xl bg-primary/5 px-3 py-2">
-                        <span className="text-sm font-medium text-primary/50">{holidays.get(key)}</span>
-                      </div>
+                    <span className={cn("text-xs capitalize", isToday && "text-primary font-medium")}>{dowTitle}</span>
+                    {dayTasks.length > 0 && (
+                      <Badge variant="secondary" className="ml-auto text-[10px]">{doneCount}/{dayTasks.length}</Badge>
                     )}
+                  </div>
+                  {holidays.get(key) && (
+                    <div className="w-full rounded-xl bg-primary/5 px-2.5 py-1.5 mb-1.5">
+                      <span className="text-[10px] font-medium text-primary/50">{holidays.get(key)}</span>
+                    </div>
+                  )}
+                  <div className="space-y-1.5">
                     {dayTasks.length ? dayTasks.map(renderTaskCard) : !holidays.get(key) ? (
-                      <div className="grid min-h-[120px] place-items-center rounded-lg border border-dashed border-border/60 bg-card/5 p-4">
-                        <p className="text-sm text-muted-foreground">Sem tarefas</p>
-                      </div>
+                      <p className="text-xs text-muted-foreground py-2">Sem tarefas</p>
                     ) : null}
                   </div>
                 </div>
               );
             })}
           </div>
-        </div>
+        ) : (
+          <div className="overflow-x-auto pb-4">
+            <div className="flex gap-4 min-w-max">
+              {weekDays.map((d) => {
+                const key = format(d, "yyyy-MM-dd");
+                const dayTasks = tasksByDay.get(key) ?? [];
+                const dow = format(d, "EEEE", { locale: ptBR });
+                const dowTitle = dow.charAt(0).toUpperCase() + dow.slice(1);
+                const isToday = key === todayKey;
+                const doneCount = dayTasks.filter((t) => t.status_global === "concluido").length;
+
+                return (
+                  <div
+                    key={key}
+                    className={cn(
+                      "w-[280px] flex-shrink-0 rounded-xl border bg-card/10 p-4 transition",
+                      isToday ? "border-primary ring-2 ring-primary/40" : "border-border/60"
+                    )}>
+                    <div className="flex items-start justify-between gap-2 mb-4">
+                      <div className="min-w-0">
+                        <p className={cn("text-sm font-medium", isToday && "text-primary")}>{dowTitle}</p>
+                        <p className={cn("mt-1 text-3xl font-semibold leading-none tracking-tight", isToday && "text-primary")}>
+                          {format(d, "dd")}
+                        </p>
+                        {dayTasks.length > 0 && (
+                          <p className="mt-2 text-xs text-muted-foreground">
+                            {doneCount}/{dayTasks.length} concluída(s)
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="space-y-2.5 max-h-[500px] overflow-y-auto">
+                      {holidays.get(key) && (
+                        <div className="w-full rounded-xl bg-primary/5 px-3 py-2">
+                          <span className="text-sm font-medium text-primary/50">{holidays.get(key)}</span>
+                        </div>
+                      )}
+                      {dayTasks.length ? dayTasks.map(renderTaskCard) : !holidays.get(key) ? (
+                        <div className="grid min-h-[120px] place-items-center rounded-lg border border-dashed border-border/60 bg-card/5 p-4">
+                          <p className="text-sm text-muted-foreground">Sem tarefas</p>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )
       ) : isMobile ? (
         /* ── MOBILE MONTH LIST VIEW ── */
         <div className="space-y-2">
