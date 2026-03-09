@@ -623,7 +623,6 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
             const dayTasks = tasksByDay.get(key) ?? [];
             const holiday = holidays.get(key);
             const isToday = key === todayKey;
-            if (!dayTasks.length && !holiday) return null;
 
             return (
               <div
