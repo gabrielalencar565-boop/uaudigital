@@ -201,6 +201,65 @@ export function HealthScoreTab() {
         </div>
       </div>
 
+      {/* Public evaluation link */}
+      <Card>
+        <CardContent className="py-4">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-2">
+              <Link2 className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm">Link de avaliação para o cliente</span>
+            </div>
+            {tokenQ.data ? (
+              <div className="flex items-center gap-2">
+                {tokenQ.data.used_at ? (
+                  <span className="text-xs text-muted-foreground">Já respondido</span>
+                ) : (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const url = `${window.location.origin}/avaliacao?token=${tokenQ.data!.token}`;
+                        navigator.clipboard.writeText(url);
+                        setCopied(true);
+                        toast.success("Link copiado!");
+                        setTimeout(() => setCopied(false), 2000);
+                      }}
+                    >
+                      {copied ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
+                      Copiar link
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const url = `${window.location.origin}/avaliacao?token=${tokenQ.data!.token}`;
+                        window.open(url, "_blank");
+                      }}
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                    </Button>
+                  </>
+                )}
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (!selectedClientId) return;
+                  createToken.mutate({ client_id: selectedClientId, month, year });
+                }}
+                disabled={createToken.isPending}
+              >
+                <Link2 className="h-3 w-3 mr-1" />
+                Gerar link
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Overall score */}
       <Card>
         <CardContent className="flex items-center gap-6 py-6">
