@@ -625,6 +625,7 @@ export type Database = {
           created_at: string
           id: string
           month: number
+          slug: string | null
           token: string
           used_at: string | null
           year: number
@@ -634,6 +635,7 @@ export type Database = {
           created_at?: string
           id?: string
           month: number
+          slug?: string | null
           token?: string
           used_at?: string | null
           year: number
@@ -643,6 +645,7 @@ export type Database = {
           created_at?: string
           id?: string
           month?: number
+          slug?: string | null
           token?: string
           used_at?: string | null
           year?: number

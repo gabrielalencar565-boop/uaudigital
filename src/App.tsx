@@ -26,7 +26,7 @@ function AppRoutes() {
         <Route path="/auth" element={<Auth />} />
         <Route path="/pending" element={<Pending />} />
         <Route path="/cronograma/:taskId" element={<CronogramaPublic />} />
-        <Route path="/avaliacao" element={<HealthScorePublic />} />
+        <Route path="/avaliacao/:slug" element={<HealthScorePublic />} />
         <Route
           path="/"
           element={
