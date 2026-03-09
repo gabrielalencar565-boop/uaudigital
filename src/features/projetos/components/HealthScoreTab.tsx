@@ -219,7 +219,8 @@ export function HealthScoreTab() {
                       variant="outline"
                       size="sm"
                       onClick={() => {
-                        const url = `${window.location.origin}/avaliacao?token=${tokenQ.data!.token}`;
+                        const slug = tokenQ.data!.slug;
+                        const url = `${window.location.origin}/avaliacao/${slug}`;
                         navigator.clipboard.writeText(url);
                         setCopied(true);
                         toast.success("Link copiado!");
@@ -233,7 +234,8 @@ export function HealthScoreTab() {
                       variant="ghost"
                       size="sm"
                       onClick={() => {
-                        const url = `${window.location.origin}/avaliacao?token=${tokenQ.data!.token}`;
+                        const slug = tokenQ.data!.slug;
+                        const url = `${window.location.origin}/avaliacao/${slug}`;
                         window.open(url, "_blank");
                       }}
                     >
