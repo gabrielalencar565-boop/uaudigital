@@ -25,6 +25,7 @@ export function ProgressRing({
   size?: number;
   stroke?: number;
   tone?: RingTone | "auto";
+  trackColor?: string;
   className?: string;
 }) {
   const normalized = clamp(value / 100, 0, 1);
