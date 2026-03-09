@@ -13,7 +13,8 @@ import { Progress } from "@/components/ui/progress";
 import {
   Plus, Trash2, Settings2, Users, CheckCircle2, Clock, FileText,
   MoreHorizontal, CalendarDays, HeartPulse, Target, ChevronLeft, ChevronRight, Star, Shield,
-  BarChart2, ChevronsUpDown,
+  BarChart2, ChevronsUpDown, Sword, Crown, Flame, Zap, Rocket, Diamond, Award, Trophy,
+  Heart, Sparkles, Sun, Moon,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
@@ -39,6 +40,25 @@ const SQUAD_COLOR_PALETTE = [
   "#7C5CFF", "#3B82F6", "#10B981", "#F59E0B", "#EF4444",
   "#EC4899", "#8B5CF6", "#06B6D4", "#F97316",
 ];
+
+const SQUAD_ICON_OPTIONS = [
+  { id: "shield", icon: Shield, label: "Escudo" },
+  { id: "sword", icon: Sword, label: "Espada" },
+  { id: "crown", icon: Crown, label: "Coroa" },
+  { id: "flame", icon: Flame, label: "Chama" },
+  { id: "zap", icon: Zap, label: "Raio" },
+  { id: "rocket", icon: Rocket, label: "Foguete" },
+  { id: "diamond", icon: Diamond, label: "Diamante" },
+  { id: "award", icon: Award, label: "Prêmio" },
+  { id: "trophy", icon: Trophy, label: "Troféu" },
+  { id: "star", icon: Star, label: "Estrela" },
+  { id: "heart", icon: Heart, label: "Coração" },
+  { id: "sparkles", icon: Sparkles, label: "Brilhos" },
+];
+
+function getSquadIcon(iconId: string) {
+  return SQUAD_ICON_OPTIONS.find((i) => i.id === iconId)?.icon ?? Shield;
+}
 
 const HOLIDAYS_2026 = [
   { date: "2026-01-01", name: "Confraternização Universal", type: "Feriado Nacional" },
@@ -83,6 +103,7 @@ export function VisaoGeralTab() {
   const [newName, setNewName] = useState("");
   const [newColor, setNewColor] = useState("#7C5CFF");
   const [newLeader, setNewLeader] = useState<string>("");
+  const [newIcon, setNewIcon] = useState("shield");
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [showHealthScore, setShowHealthScore] = useState(false);
   const [calMonth, setCalMonth] = useState(new Date());
@@ -97,6 +118,7 @@ export function VisaoGeralTab() {
   const [editName, setEditName] = useState("");
   const [editColor, setEditColor] = useState("#7C5CFF");
   const [editLeader, setEditLeader] = useState<string>("");
+  const [editIcon, setEditIcon] = useState("shield");
 
   const teamQ = useQuery({
     queryKey: ["team_members"],
@@ -217,8 +239,8 @@ export function VisaoGeralTab() {
 
   const handleCreate = () => {
     if (!newName.trim() || !user) return;
-    createSquad.mutate({ name: newName.trim(), color: newColor, userId: user.id, leaderId: newLeader || undefined }, {
-      onSuccess: () => { setCreateOpen(false); setNewName(""); setNewLeader(""); },
+    createSquad.mutate({ name: newName.trim(), color: newColor, userId: user.id, leaderId: newLeader || undefined, icon: newIcon }, {
+      onSuccess: () => { setCreateOpen(false); setNewName(""); setNewLeader(""); setNewIcon("shield"); },
     });
   };
 
@@ -229,11 +251,12 @@ export function VisaoGeralTab() {
     setEditName(sq.name);
     setEditColor(sq.color);
     setEditLeader(sq.leader_id ?? "");
+    setEditIcon(sq.icon ?? "shield");
   };
 
   const saveEdit = () => {
     if (!editSquad || !editName.trim()) return;
-    updateSquad.mutate({ id: editSquad.id, name: editName.trim(), color: editColor, leaderId: editLeader || null });
+    updateSquad.mutate({ id: editSquad.id, name: editName.trim(), color: editColor, leaderId: editLeader || null, icon: editIcon });
     updateMembers.mutate({ squadId: editSquad.id, userIds: selectedUsers }, {
       onSuccess: () => setEditSquad(null),
     });
@@ -322,7 +345,7 @@ export function VisaoGeralTab() {
 
       {/* Squad cards row */}
       <FadeUp delay={0.15}>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="flex flex-wrap gap-4">
           {squads.map((sq: any) => {
             const st = squadStats[sq.id] ?? { total: 0, done: 0, inProgress: 0, overdue: 0, memberIds: [], clientCount: 0 };
             const progress = st.total > 0 ? Math.round((st.done / st.total) * 100) : 0;
@@ -331,11 +354,12 @@ export function VisaoGeralTab() {
             const avgHealth = healthVals.length > 0 ? Math.round(healthVals.reduce((a, b) => a + b, 0) / healthVals.length) : 0;
             const healthColor = avgHealth >= 80 ? "text-white" : avgHealth >= 50 ? "text-white" : "text-white/80";
             const members = st.memberIds.map((uid: string) => teamMap[uid]).filter(Boolean);
+            const SquadIcon = getSquadIcon(sq.icon ?? "shield");
 
             return (
               <Card
                 key={sq.id}
-                className="relative overflow-hidden border-0 group transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl"
+                className="relative overflow-hidden border-0 group transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl flex-1 min-w-[280px] max-w-[400px]"
                 style={{
                   background: `linear-gradient(135deg, ${sq.color} 0%, ${sq.color}dd 50%, ${sq.color}aa 100%)`,
                 }}
@@ -364,11 +388,11 @@ export function VisaoGeralTab() {
                 />
 
                 <CardContent className="relative py-5 px-5 space-y-4 z-10">
-                  {/* Header with shield icon */}
+                  {/* Header with dynamic icon */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="h-11 w-11 rounded-xl flex items-center justify-center bg-white/20 backdrop-blur-sm">
-                        <Shield className="h-5 w-5 text-white" />
+                        <SquadIcon className="h-5 w-5 text-white" />
                       </div>
                       <span className="text-base font-semibold text-white">{sq.name}</span>
                     </div>
@@ -420,7 +444,7 @@ export function VisaoGeralTab() {
 
                   {/* Health Score */}
                   <div className={cn("text-sm font-medium flex items-center gap-1.5", healthColor)}>
-                    <span className={cn("h-2 w-2 rounded-full", avgHealth >= 80 ? "bg-green-300" : avgHealth >= 50 ? "bg-yellow-300" : avgHealth > 0 ? "bg-red-300" : "bg-white/40")} />
+                    <span className={cn("h-2 w-2 rounded-full", avgHealth >= 80 ? "bg-emerald-300" : avgHealth >= 50 ? "bg-amber-300" : avgHealth > 0 ? "bg-rose-300" : "bg-white/40")} />
                     <span className="font-bold">{avgHealth > 0 ? avgHealth : "—"}</span>
                     <span>Health Score</span>
                   </div>
@@ -430,17 +454,20 @@ export function VisaoGeralTab() {
                     <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {members.length}</span>
                     <span className="flex items-center gap-1"><FileText className="h-3.5 w-3.5" /> {st.clientCount}</span>
                     <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> {st.total}</span>
-                    <span className="flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5 text-green-300" /> {st.done}</span>
+                    <span className="flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5 text-emerald-300" /> {st.done}</span>
                   </div>
                 </CardContent>
               </Card>
             );
           })}
 
-          {/* Add squad card */}
+          {/* Add squad card - always at end */}
           {isAdmin && (
-            <Card className="border-dashed cursor-pointer hover:border-primary/40 transition-colors" onClick={() => { setNewName(""); setNewColor("#7C5CFF"); setNewLeader(""); setCreateOpen(true); }}>
-              <CardContent className="flex flex-col items-center justify-center py-10 px-5 gap-2 h-full">
+            <Card 
+              className="border-dashed cursor-pointer hover:border-primary/40 transition-colors flex-shrink-0 w-[160px]" 
+              onClick={() => { setNewName(""); setNewColor("#7C5CFF"); setNewLeader(""); setNewIcon("shield"); setCreateOpen(true); }}
+            >
+              <CardContent className="flex flex-col items-center justify-center py-10 px-5 gap-2 h-full min-h-[200px]">
                 <Plus className="h-8 w-8 text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">Criar Squad</span>
               </CardContent>
@@ -705,27 +732,50 @@ export function VisaoGeralTab() {
 
       {/* Create squad dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-md overflow-hidden">
           <DialogHeader>
             <DialogTitle>Criar Squad</DialogTitle>
-            <DialogDescription>Defina o nome, cor e líder do squad.</DialogDescription>
+            <DialogDescription>Defina o nome, cor, ícone e líder do squad.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 overflow-y-auto max-h-[60vh]">
             <div>
               <label className="text-sm font-medium">Nome *</label>
               <Input placeholder="Nome do squad" value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={60} className="mt-1" />
             </div>
             <div>
               <label className="text-sm font-medium">Cor</label>
-              <div className="flex items-center gap-2.5 mt-2">
+              <div className="flex flex-wrap items-center gap-2 mt-2">
                 {SQUAD_COLOR_PALETTE.map((c) => (
                   <button
                     key={c}
                     onClick={() => setNewColor(c)}
-                    className={cn("h-9 w-9 rounded-full transition-all", newColor === c ? "ring-2 ring-offset-2 ring-foreground" : "")}
+                    className={cn("h-9 w-9 rounded-full transition-all flex-shrink-0", newColor === c ? "ring-2 ring-offset-2 ring-foreground" : "")}
                     style={{ backgroundColor: c }}
                   />
                 ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Ícone</label>
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                {SQUAD_ICON_OPTIONS.map((opt) => {
+                  const IconComp = opt.icon;
+                  return (
+                    <button
+                      key={opt.id}
+                      onClick={() => setNewIcon(opt.id)}
+                      className={cn(
+                        "h-9 w-9 rounded-xl transition-all flex-shrink-0 flex items-center justify-center border",
+                        newIcon === opt.id 
+                          ? "ring-2 ring-offset-2 ring-foreground border-foreground bg-muted" 
+                          : "border-border hover:bg-muted/50"
+                      )}
+                      title={opt.label}
+                    >
+                      <IconComp className="h-4 w-4 text-foreground" />
+                    </button>
+                  );
+                })}
               </div>
             </div>
             <div>
@@ -751,27 +801,50 @@ export function VisaoGeralTab() {
 
       {/* Edit squad dialog */}
       <Dialog open={!!editSquad} onOpenChange={(v) => !v && setEditSquad(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md overflow-hidden">
           <DialogHeader>
             <DialogTitle>Editar Squad</DialogTitle>
             <DialogDescription>Altere os dados do squad.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 overflow-y-auto max-h-[60vh]">
             <div>
               <label className="text-sm font-medium">Nome *</label>
               <Input value={editName} onChange={(e) => setEditName(e.target.value)} maxLength={60} className="mt-1" />
             </div>
             <div>
               <label className="text-sm font-medium">Cor</label>
-              <div className="flex items-center gap-2.5 mt-2">
+              <div className="flex flex-wrap items-center gap-2 mt-2">
                 {SQUAD_COLOR_PALETTE.map((c) => (
                   <button
                     key={c}
                     onClick={() => setEditColor(c)}
-                    className={cn("h-9 w-9 rounded-full transition-all", editColor === c ? "ring-2 ring-offset-2 ring-foreground" : "")}
+                    className={cn("h-9 w-9 rounded-full transition-all flex-shrink-0", editColor === c ? "ring-2 ring-offset-2 ring-foreground" : "")}
                     style={{ backgroundColor: c }}
                   />
                 ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Ícone</label>
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                {SQUAD_ICON_OPTIONS.map((opt) => {
+                  const IconComp = opt.icon;
+                  return (
+                    <button
+                      key={opt.id}
+                      onClick={() => setEditIcon(opt.id)}
+                      className={cn(
+                        "h-9 w-9 rounded-xl transition-all flex-shrink-0 flex items-center justify-center border",
+                        editIcon === opt.id 
+                          ? "ring-2 ring-offset-2 ring-foreground border-foreground bg-muted" 
+                          : "border-border hover:bg-muted/50"
+                      )}
+                      title={opt.label}
+                    >
+                      <IconComp className="h-4 w-4 text-foreground" />
+                    </button>
+                  );
+                })}
               </div>
             </div>
             <div>

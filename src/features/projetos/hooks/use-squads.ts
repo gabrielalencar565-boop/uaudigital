@@ -45,10 +45,10 @@ export function useClientSquads() {
 export function useCreateSquad() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ name, color, userId, leaderId }: { name: string; color: string; userId: string; leaderId?: string }) => {
+    mutationFn: async ({ name, color, userId, leaderId, icon }: { name: string; color: string; userId: string; leaderId?: string; icon?: string }) => {
       const { data, error } = await supabase
         .from("squads" as any)
-        .insert({ name, color, created_by: userId, leader_id: leaderId ?? null } as any)
+        .insert({ name, color, created_by: userId, leader_id: leaderId ?? null, icon: icon ?? "shield" } as any)
         .select()
         .single();
       if (error) throw error;
@@ -65,10 +65,10 @@ export function useCreateSquad() {
 export function useUpdateSquad() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, name, color, leaderId }: { id: string; name: string; color: string; leaderId?: string | null }) => {
+    mutationFn: async ({ id, name, color, leaderId, icon }: { id: string; name: string; color: string; leaderId?: string | null; icon?: string }) => {
       const { error } = await supabase
         .from("squads" as any)
-        .update({ name, color, leader_id: leaderId ?? null } as any)
+        .update({ name, color, leader_id: leaderId ?? null, icon: icon ?? "shield" } as any)
         .eq("id", id);
       if (error) throw error;
     },
