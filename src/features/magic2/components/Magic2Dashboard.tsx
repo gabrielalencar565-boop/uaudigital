@@ -16,16 +16,10 @@ type Dashboard = {
 };
 
 function MetricCard({ value, label }: { value: string; label: string }) {
-  const num = parseFloat(value);
-  const isNumeric = !isNaN(num) && value.trim() !== "";
   return (
     <Card className="overflow-hidden">
       <CardContent className="grid gap-2 p-4">
-        {isNumeric ? (
-          <AnimatedNumber value={num} className="text-4xl font-semibold tracking-tight" />
-        ) : (
-          <div className="text-4xl font-semibold tabular-nums tracking-tight">{value}</div>
-        )}
+        <div className="text-4xl font-semibold tabular-nums tracking-tight">{value}</div>
         <div className="text-xs font-semibold tracking-wide text-muted-foreground">{label}</div>
       </CardContent>
     </Card>
