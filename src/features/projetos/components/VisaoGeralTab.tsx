@@ -103,6 +103,7 @@ export function VisaoGeralTab() {
   const [newName, setNewName] = useState("");
   const [newColor, setNewColor] = useState("#7C5CFF");
   const [newLeader, setNewLeader] = useState<string>("");
+  const [newIcon, setNewIcon] = useState("shield");
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [showHealthScore, setShowHealthScore] = useState(false);
   const [calMonth, setCalMonth] = useState(new Date());
@@ -117,6 +118,7 @@ export function VisaoGeralTab() {
   const [editName, setEditName] = useState("");
   const [editColor, setEditColor] = useState("#7C5CFF");
   const [editLeader, setEditLeader] = useState<string>("");
+  const [editIcon, setEditIcon] = useState("shield");
 
   const teamQ = useQuery({
     queryKey: ["team_members"],
