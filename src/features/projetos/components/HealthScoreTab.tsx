@@ -4,13 +4,15 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { useHealthScores, useUpsertHealthScore, type HealthScore } from "../hooks/use-health-scores";
+import { useHealthScoreToken, useCreateHealthScoreToken } from "../hooks/use-health-score-token";
 import { useSession } from "@/hooks/use-session";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { MonthYearNav } from "@/features/magic2/components/MonthYearNav";
-import { ArrowLeft, HeartPulse, ChevronRight } from "lucide-react";
+import { ArrowLeft, HeartPulse, ChevronRight, Link2, Copy, Check, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ProgressRing } from "@/components/metrics/ProgressRing";
+import { toast } from "sonner";
 
 const QUESTIONS = [
   {
