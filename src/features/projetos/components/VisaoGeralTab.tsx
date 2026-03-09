@@ -162,13 +162,6 @@ export function VisaoGeralTab() {
     return stats;
   }, [squads, allSquadMembers, allTasks, clientsPerSquad]);
 
-  // Global stats
-  const globalStats = useMemo(() => {
-    const total = allTasks.length;
-    const done = allTasks.filter((t) => t.status_global === "concluido").length;
-    const inProgress = allTasks.filter((t) => t.status_global === "em_andamento").length;
-    return { total, done, inProgress };
-  }, [allTasks]);
 
   const chartData = useMemo(() => {
     return squads.map((sq: any) => ({
