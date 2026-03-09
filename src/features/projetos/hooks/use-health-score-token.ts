@@ -25,7 +25,7 @@ export function useHealthScoreToken(clientId: string | null, month: number, year
         .eq("year", year)
         .maybeSingle();
       if (error) throw error;
-      return data as HealthScoreToken | null;
+      return (data ?? null) as unknown as HealthScoreToken | null;
     },
     enabled: !!clientId,
   });
