@@ -1,6 +1,8 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProgressRing } from "@/components/metrics/ProgressRing";
 import { MAGIC2_STAGES, type Magic2StageKey } from "@/features/magic2/magic2-stages";
+import { CountdownTo27Badge } from "@/features/magic2/components/CountdownTo27Badge";
+import { useNow } from "@/hooks/use-now";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
@@ -103,6 +105,8 @@ function MetricRingCard({ value, label }: { value: number; label: string }) {
 
 export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashboard: Dashboard; year: number; month: number; fullscreen?: boolean }) {
   const isMobile = useIsMobile();
+  const now = useNow();
+  const dueDate = new Date(year, month - 1, 27);
 
   const deadlineLabel = `27/${String(month).padStart(2, "0")}`;
   const clients100Pct = dashboard.totalClients
@@ -176,7 +180,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
 
         <CardHeader className="relative z-10">
           <CardTitle className={cn(isMobile ? "text-base" : "text-lg", "text-white drop-shadow-sm")}>Visão Geral</CardTitle>
-          <CardDescription className="text-white/60">Percentual concluído no mês selecionado.</CardDescription>
+          <CountdownTo27Badge due={dueDate} now={now} />
         </CardHeader>
         <CardContent className={cn("relative z-10 grid place-items-center flex-1 p-6", isMobile ? "pb-6" : "pb-10")}>
           <ProgressRing
