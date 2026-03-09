@@ -345,7 +345,7 @@ export function VisaoGeralTab() {
 
       {/* Squad cards row */}
       <FadeUp delay={0.15}>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="flex flex-wrap gap-4">
           {squads.map((sq: any) => {
             const st = squadStats[sq.id] ?? { total: 0, done: 0, inProgress: 0, overdue: 0, memberIds: [], clientCount: 0 };
             const progress = st.total > 0 ? Math.round((st.done / st.total) * 100) : 0;
@@ -354,11 +354,12 @@ export function VisaoGeralTab() {
             const avgHealth = healthVals.length > 0 ? Math.round(healthVals.reduce((a, b) => a + b, 0) / healthVals.length) : 0;
             const healthColor = avgHealth >= 80 ? "text-white" : avgHealth >= 50 ? "text-white" : "text-white/80";
             const members = st.memberIds.map((uid: string) => teamMap[uid]).filter(Boolean);
+            const SquadIcon = getSquadIcon(sq.icon ?? "shield");
 
             return (
               <Card
                 key={sq.id}
-                className="relative overflow-hidden border-0 group transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl"
+                className="relative overflow-hidden border-0 group transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl flex-1 min-w-[280px] max-w-[400px]"
                 style={{
                   background: `linear-gradient(135deg, ${sq.color} 0%, ${sq.color}dd 50%, ${sq.color}aa 100%)`,
                 }}
@@ -387,11 +388,11 @@ export function VisaoGeralTab() {
                 />
 
                 <CardContent className="relative py-5 px-5 space-y-4 z-10">
-                  {/* Header with shield icon */}
+                  {/* Header with dynamic icon */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="h-11 w-11 rounded-xl flex items-center justify-center bg-white/20 backdrop-blur-sm">
-                        <Shield className="h-5 w-5 text-white" />
+                        <SquadIcon className="h-5 w-5 text-white" />
                       </div>
                       <span className="text-base font-semibold text-white">{sq.name}</span>
                     </div>
@@ -443,7 +444,7 @@ export function VisaoGeralTab() {
 
                   {/* Health Score */}
                   <div className={cn("text-sm font-medium flex items-center gap-1.5", healthColor)}>
-                    <span className={cn("h-2 w-2 rounded-full", avgHealth >= 80 ? "bg-green-300" : avgHealth >= 50 ? "bg-yellow-300" : avgHealth > 0 ? "bg-red-300" : "bg-white/40")} />
+                    <span className={cn("h-2 w-2 rounded-full", avgHealth >= 80 ? "bg-emerald-300" : avgHealth >= 50 ? "bg-amber-300" : avgHealth > 0 ? "bg-rose-300" : "bg-white/40")} />
                     <span className="font-bold">{avgHealth > 0 ? avgHealth : "—"}</span>
                     <span>Health Score</span>
                   </div>
@@ -453,17 +454,20 @@ export function VisaoGeralTab() {
                     <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {members.length}</span>
                     <span className="flex items-center gap-1"><FileText className="h-3.5 w-3.5" /> {st.clientCount}</span>
                     <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> {st.total}</span>
-                    <span className="flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5 text-green-300" /> {st.done}</span>
+                    <span className="flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5 text-emerald-300" /> {st.done}</span>
                   </div>
                 </CardContent>
               </Card>
             );
           })}
 
-          {/* Add squad card */}
+          {/* Add squad card - always at end */}
           {isAdmin && (
-            <Card className="border-dashed cursor-pointer hover:border-primary/40 transition-colors" onClick={() => { setNewName(""); setNewColor("#7C5CFF"); setNewLeader(""); setCreateOpen(true); }}>
-              <CardContent className="flex flex-col items-center justify-center py-10 px-5 gap-2 h-full">
+            <Card 
+              className="border-dashed cursor-pointer hover:border-primary/40 transition-colors flex-shrink-0 w-[160px]" 
+              onClick={() => { setNewName(""); setNewColor("#7C5CFF"); setNewLeader(""); setNewIcon("shield"); setCreateOpen(true); }}
+            >
+              <CardContent className="flex flex-col items-center justify-center py-10 px-5 gap-2 h-full min-h-[200px]">
                 <Plus className="h-8 w-8 text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">Criar Squad</span>
               </CardContent>
