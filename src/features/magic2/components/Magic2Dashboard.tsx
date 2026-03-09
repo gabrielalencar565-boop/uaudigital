@@ -105,6 +105,8 @@ function MetricRingCard({ value, label }: { value: number; label: string }) {
 
 export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashboard: Dashboard; year: number; month: number; fullscreen?: boolean }) {
   const isMobile = useIsMobile();
+  const now = useNow();
+  const dueDate = new Date(year, month - 1, 27);
 
   const deadlineLabel = `27/${String(month).padStart(2, "0")}`;
   const clients100Pct = dashboard.totalClients
