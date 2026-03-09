@@ -56,9 +56,12 @@ export function HealthScoreTab() {
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const scoresQ = useHealthScores(month, year);
   const upsert = useUpsertHealthScore();
+  const tokenQ = useHealthScoreToken(selectedClientId, month, year);
+  const createToken = useCreateHealthScoreToken();
 
   const clientsQ = useQuery({
     queryKey: ["clients_active"],
