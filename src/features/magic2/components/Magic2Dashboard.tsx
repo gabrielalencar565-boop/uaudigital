@@ -3,7 +3,7 @@ import { ProgressRing } from "@/components/metrics/ProgressRing";
 import { MAGIC2_STAGES, type Magic2StageKey } from "@/features/magic2/magic2-stages";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
-import { AnimatedNumber } from "@/components/ui/animated-number";
+
 
 type Dashboard = {
   totalClients: number;
@@ -16,16 +16,10 @@ type Dashboard = {
 };
 
 function MetricCard({ value, label }: { value: string; label: string }) {
-  const num = parseFloat(value);
-  const isNumeric = !isNaN(num) && value.trim() !== "";
   return (
     <Card className="overflow-hidden">
       <CardContent className="grid gap-2 p-4">
-        {isNumeric ? (
-          <AnimatedNumber value={num} className="text-4xl font-semibold tracking-tight" />
-        ) : (
-          <div className="text-4xl font-semibold tabular-nums tracking-tight">{value}</div>
-        )}
+        <div className="text-4xl font-semibold tabular-nums tracking-tight">{value}</div>
         <div className="text-xs font-semibold tracking-wide text-muted-foreground">{label}</div>
       </CardContent>
     </Card>
@@ -41,7 +35,7 @@ function MetricRingCard({ value, label }: { value: number; label: string }) {
           tone={value === 100 ? "success" : "warning"}
           size={84}
           stroke={10}
-          label={<AnimatedNumber value={value} suffix="%" className="text-xl font-semibold tracking-tight" />}
+          label={<span className="text-xl font-semibold tracking-tight">{value}%</span>}
         />
         <div className="text-center text-xs font-semibold tracking-wide text-muted-foreground">{label}</div>
       </CardContent>
