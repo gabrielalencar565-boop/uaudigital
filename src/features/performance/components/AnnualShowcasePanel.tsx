@@ -111,14 +111,14 @@ export function AnnualShowcasePanel({
         return (
           <div
             key={item.user_id}
-            className={`relative flex flex-col items-center gap-2 rounded-xl border p-4 pt-6 text-center transition-all ${
+             className={`relative flex flex-col items-center gap-1.5 rounded-xl border p-4 pt-8 text-center transition-all ${
               isTop3
-                ? "border-primary/30 bg-primary/5 shadow-sm"
+                ? "border-border/40 bg-card shadow-sm"
                 : "border-border/50 bg-card/30"
             }`}
           >
-            {/* Rank badge */}
-            <div className="absolute top-2 left-1/2 -translate-x-1/2">
+            {/* Rank badge — above card */}
+            <div className="absolute -top-4 left-1/2 -translate-x-1/2">
               {medal ? (
                 <span className="text-2xl leading-none drop-shadow-sm">{medal}</span>
               ) : (
