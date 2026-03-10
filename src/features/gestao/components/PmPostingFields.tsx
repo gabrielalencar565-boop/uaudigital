@@ -74,11 +74,12 @@ export function PmPostingFields({ task }: Props) {
 
       <div className="space-y-1">
         <Label className="text-[11px]">Legenda</Label>
-        <Textarea
+        <SmartCaptionEditor
           value={task.caption ?? ""}
-          onChange={(e) => handleUpdate("caption", e.target.value)}
+          onChange={(val) => handleUpdate("caption", val)}
           placeholder="Escreva a legenda do post..."
-          className="text-xs min-h-[80px] rounded-lg resize-none"
+          className="text-xs"
+          minHeight="80px"
         />
       </div>
     </div>
