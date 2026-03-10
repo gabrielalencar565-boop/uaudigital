@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { Users, Building2, SprayCan, Trophy } from "lucide-react";
+import { Users, Building2, SprayCan, Trophy, Palette } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AdminPanel } from "./AdminPanel";
 import { AdminClientesPanel } from "./AdminClientesPanel";
 import { AdminLimpezaPanel } from "./AdminLimpezaPanel";
 import { AdminPontuacaoPanel } from "./AdminPontuacaoPanel";
+import { AdminAparenciaPanel } from "./AdminAparenciaPanel";
 
-type AdminSubTab = "usuarios" | "clientes" | "limpeza" | "pontuacao";
+type AdminSubTab = "usuarios" | "clientes" | "limpeza" | "pontuacao" | "aparencia";
 
 export function AdminContainer() {
   const [subTab, setSubTab] = useState<AdminSubTab>("usuarios");
@@ -43,6 +44,10 @@ export function AdminContainer() {
             <Trophy className="h-4 w-4" />
             Pontuação
           </TabsTrigger>
+          <TabsTrigger value="aparencia" className="gap-2">
+            <Palette className="h-4 w-4" />
+            Aparência
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="usuarios" className="mt-6">
@@ -59,6 +64,10 @@ export function AdminContainer() {
 
         <TabsContent value="pontuacao" className="mt-6">
           <AdminPontuacaoPanel />
+        </TabsContent>
+
+        <TabsContent value="aparencia" className="mt-6">
+          <AdminAparenciaPanel />
         </TabsContent>
       </Tabs>
     </div>
