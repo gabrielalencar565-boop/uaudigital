@@ -214,11 +214,11 @@ const TOTAL_POINTS = 27;
  
   const podiumStyle = (idx: number) => {
     if (idx === 0) return {
-      background: "linear-gradient(135deg, #D4A017, #B8860B, #E8C840, #A67C00, #D4A017)",
+      background: "linear-gradient(135deg, #F5D76E, #D4A843, #FFFBE6, #C9973E, #F5D76E)",
       backgroundSize: "300% 300%",
       animation: "gradientFlow 20s ease-in-out infinite",
-      border: "1px solid rgba(180,134,11,0.6)",
-      boxShadow: "0 4px 20px -4px rgba(180,134,11,0.4)",
+      border: "1px solid rgba(212,168,67,0.5)",
+      boxShadow: "0 4px 20px -4px rgba(212,168,67,0.3)",
     };
     if (idx === 1) return {
       background: "linear-gradient(135deg, #E8E8E8, #B8B8B8, #F5F5F5, #A8A8A8, #E8E8E8)",
