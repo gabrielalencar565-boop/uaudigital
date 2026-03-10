@@ -50,6 +50,9 @@ export type Database = {
           login_bg_images: Json
           login_bg_object_fit: string
           login_bg_opacity: number
+          login_bg_position_x: number
+          login_bg_position_y: number
+          login_bg_zoom: number
           logo_shape: Database["public"]["Enums"]["logo_shape_type"]
           logo_url: string | null
           updated_at: string
@@ -61,6 +64,9 @@ export type Database = {
           login_bg_images?: Json
           login_bg_object_fit?: string
           login_bg_opacity?: number
+          login_bg_position_x?: number
+          login_bg_position_y?: number
+          login_bg_zoom?: number
           logo_shape?: Database["public"]["Enums"]["logo_shape_type"]
           logo_url?: string | null
           updated_at?: string
@@ -72,6 +78,9 @@ export type Database = {
           login_bg_images?: Json
           login_bg_object_fit?: string
           login_bg_opacity?: number
+          login_bg_position_x?: number
+          login_bg_position_y?: number
+          login_bg_zoom?: number
           logo_shape?: Database["public"]["Enums"]["logo_shape_type"]
           logo_url?: string | null
           updated_at?: string
