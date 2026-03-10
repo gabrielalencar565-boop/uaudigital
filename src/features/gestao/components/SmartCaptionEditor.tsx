@@ -44,6 +44,7 @@ interface Props {
   placeholder?: string;
   className?: string;
   minHeight?: string;
+  onExpand?: () => void;
 }
 
 export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqui...", className, minHeight = "80px" }: Props) {
