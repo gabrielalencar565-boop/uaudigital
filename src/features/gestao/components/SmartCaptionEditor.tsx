@@ -47,7 +47,7 @@ interface Props {
   onExpand?: () => void;
 }
 
-export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqui...", className, minHeight = "80px" }: Props) {
+export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqui...", className, minHeight = "80px", onExpand }: Props) {
   const editorRef = useRef<HTMLDivElement>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
   const [toolbarPos, setToolbarPos] = useState<{ top: number; left: number } | null>(null);
@@ -55,6 +55,9 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
   const [headingMenuOpen, setHeadingMenuOpen] = useState(false);
   const [currentBlock, setCurrentBlock] = useState("p");
   const [aiLoading, setAiLoading] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [history, setHistory] = useState<{ html: string; time: Date }[]>([]);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   // Init content
@@ -62,14 +65,25 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
     if (editorRef.current && !editorRef.current.innerHTML && value) {
       editorRef.current.innerHTML = value;
     }
+    if (value) {
+      setHistory([{ html: value, time: new Date() }]);
+    }
   }, []);
 
   // Debounced auto-save
   const handleInput = useCallback(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    setSaveStatus("saving");
     debounceRef.current = setTimeout(() => {
       if (editorRef.current) {
-        onChange(editorRef.current.innerHTML);
+        const html = editorRef.current.innerHTML;
+        onChange(html);
+        setHistory(prev => {
+          const last = prev[prev.length - 1];
+          if (last?.html === html) return prev;
+          return [...prev.slice(-19), { html, time: new Date() }];
+        });
+        setSaveStatus("saved");
       }
     }, 600);
   }, [onChange]);
