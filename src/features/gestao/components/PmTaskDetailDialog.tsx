@@ -20,6 +20,7 @@ import {
   useUpdatePmTask, useCreatePmTask, usePmTasks, usePmChildTasks,
   usePmComments, usePmAttachments, usePmSyncStageCompletion,
 } from "../hooks/use-pm-data";
+import { usePmTags, useCreatePmTag, useDeletePmTag } from "../hooks/use-pm-tags";
 import { useDefaultFlowWithDates, getNextStages, getFixedAssignee } from "./PmStageFlowConfig";
 import { PmSubtaskList } from "./PmSubtaskList";
 import { PmCommentsSection } from "./PmCommentsSection";
