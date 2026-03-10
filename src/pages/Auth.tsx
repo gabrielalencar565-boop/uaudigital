@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useSession } from "@/hooks/use-session";
-import { useAppSettings } from "@/features/data/queries";
+import { useAppSettings, useTeamMembers } from "@/features/data/queries";
 
 /* ── Schemas ── */
 const loginSignupSchema = z.object({
@@ -34,44 +34,83 @@ type ForgotValues = z.infer<typeof forgotSchema>;
 type ResetValues = z.infer<typeof resetSchema>;
 type AuthMode = "login" | "signup" | "forgot" | "reset";
 
-/* ── Background slideshow with slow zoom + pan ── */
-function BgSlideshow({ images }: { images: { url: string; posX: number; posY: number; zoom: number; opacity: number }[] }) {
-  const [current, setCurrent] = useState(0);
+/* ── Masonry Gallery ── */
+function MasonryGallery({ avatars }: { avatars: string[] }) {
+  // Split avatars into 3 columns, repeating to fill
+  const cols = useMemo(() => {
+    if (avatars.length === 0) return [[], [], []];
+    const col1: string[] = [];
+    const col2: string[] = [];
+    const col3: string[] = [];
+    // Fill at least 8 items per column for seamless loop
+    const minItems = Math.max(8, avatars.length);
+    for (let i = 0; i < minItems; i++) {
+      const url = avatars[i % avatars.length];
+      if (i % 3 === 0) col1.push(url);
+      else if (i % 3 === 1) col2.push(url);
+      else col3.push(url);
+    }
+    return [col1, col2, col3];
+  }, [avatars]);
 
-  useEffect(() => {
-    if (images.length <= 1) return;
-    const interval = setInterval(() => {
-      setCurrent((prev) => (prev + 1) % images.length);
-    }, 6000);
-    return () => clearInterval(interval);
-  }, [images.length]);
+  if (avatars.length === 0) {
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <div
+          className="h-full w-full"
+          style={{
+            background: "linear-gradient(135deg, #7C3AED 0%, #6D28D9 40%, #9333EA 70%, #7C3AED 100%)",
+            backgroundSize: "300% 300%",
+            animation: "gradientFlow 8s ease-in-out infinite",
+          }}
+        />
+      </div>
+    );
+  }
 
-  if (images.length === 0) return null;
+  const directions = ["up", "down", "up"] as const;
+  const speeds = ["28s", "32s", "26s"];
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-      {images.map((img, i) => (
-        <div
-          key={img.url}
-          className="absolute inset-0 transition-opacity duration-[2000ms] ease-in-out"
-          style={{ opacity: i === current ? 1 : 0 }}
-        >
-          <div
-            className="absolute inset-[-10%]"
-            style={{
-              backgroundImage: `url(${img.url})`,
-              backgroundSize: "cover",
-              backgroundPosition: `${img.posX}% ${img.posY}%`,
-              transform: `scale(${img.zoom})`,
-              transformOrigin: `${img.posX}% ${img.posY}%`,
-              animation: `authBgZoom 18s ease-in-out infinite alternate`,
-              animationDelay: `${i * -6}s`,
-            }}
-          />
-          {/* Per-image overlay */}
-          <div className="absolute inset-0 bg-black" style={{ opacity: 1 - img.opacity }} />
-        </div>
-      ))}
+    <div className="flex h-full w-full gap-3 overflow-hidden p-4">
+      {cols.map((col, colIdx) => {
+        const dir = directions[colIdx];
+        const items = [...col, ...col]; // duplicate for seamless loop
+        return (
+          <div key={colIdx} className="relative flex-1 overflow-hidden rounded-2xl">
+            <div
+              className="flex flex-col gap-3"
+              style={{
+                animation: `masonry-${dir} ${speeds[colIdx]} linear infinite`,
+              }}
+            >
+              {items.map((url, i) => (
+                <div
+                  key={`${colIdx}-${i}`}
+                  className="group relative overflow-hidden rounded-2xl"
+                  style={{
+                    aspectRatio: colIdx === 1 && i % 3 === 0 ? "3/4" : i % 2 === 0 ? "4/5" : "3/4",
+                  }}
+                >
+                  <img
+                    src={url}
+                    alt=""
+                    className="h-full w-full object-cover transition-all duration-500 group-hover:scale-[1.03]"
+                    loading="lazy"
+                  />
+                  {/* Subtle gradient overlay */}
+                  <div
+                    className="pointer-events-none absolute inset-0 opacity-20 transition-opacity duration-500 group-hover:opacity-10"
+                    style={{
+                      background: "linear-gradient(180deg, transparent 40%, rgba(0,0,0,0.4) 100%)",
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -82,7 +121,14 @@ export default function Auth() {
   const location = useLocation();
   const { user } = useSession();
   const appSettings = useAppSettings();
-  const bgImages = appSettings.data?.login_bg_images ?? [];
+  const teamQ = useTeamMembers();
+
+  const logoUrl = appSettings.data?.logo_url ?? null;
+  const teamAvatars = useMemo(() => {
+    return (teamQ.data ?? [])
+      .filter((m) => m.avatar_url)
+      .map((m) => m.avatar_url!);
+  }, [teamQ.data]);
 
   const [mode, setMode] = useState<AuthMode>("login");
   const [hasRecoverySession, setHasRecoverySession] = useState<boolean | null>(null);
@@ -195,158 +241,221 @@ export default function Auth() {
     if (mode === "signup") return "Crie sua conta para começar.";
     if (mode === "forgot") return "Vamos te enviar um link de recuperação.";
     if (mode === "reset") return "Defina sua nova senha para entrar novamente.";
-    return "";
+    return null;
   }, [mode]);
 
   return (
-    <div className="relative min-h-screen overflow-hidden">
-      <BgSlideshow images={bgImages} />
-
-      {/* Fallback dark bg when no images */}
-      {bgImages.length === 0 && (
-        <div className="pointer-events-none fixed inset-0 z-0 bg-[hsl(263,70%,8%)]" />
-      )}
-
-      <div className="relative z-10 flex min-h-screen items-center justify-center px-4 py-10">
-        {/* Login widget — parallax gradient style */}
+    <div className="flex min-h-screen">
+      {/* ─── Left Column: Login ─── */}
+      <div
+        className="relative z-10 flex w-full flex-col items-center justify-center px-8 py-10 md:w-[42%] md:min-w-[400px]"
+        style={{ background: "#0B0B0B" }}
+      >
+        {/* Subtle gradient accent */}
         <div
-          className="w-full max-w-md overflow-hidden rounded-2xl animate-fade-in"
+          className="pointer-events-none absolute inset-0 opacity-30"
           style={{
-            boxShadow: "0 24px 60px -12px rgba(105, 50, 201, 0.4), 0 0 0 1px rgba(139, 92, 246, 0.15)",
+            background: "radial-gradient(ellipse at 30% 0%, rgba(124,58,237,0.15), transparent 60%)",
           }}
-        >
-          {/* Parallax gradient header */}
-          <div className="relative overflow-hidden px-6 pt-8 pb-6">
-            {/* Layer 1 — base gradient */}
-            <div
-              className="absolute inset-0"
-              style={{
-                background: "linear-gradient(135deg, #7C3AED 0%, #6D28D9 30%, #8B5CF6 60%, #7C3AED 100%)",
-                backgroundSize: "300% 300%",
-                animation: "gradientFlow 8s ease-in-out infinite",
-              }}
-            />
-            {/* Layer 2 — parallax blob */}
-            <div
-              className="absolute inset-0 opacity-40"
-              style={{
-                background: "radial-gradient(600px circle at 20% 40%, rgba(167,139,250,0.6), transparent 60%)",
-                animation: "parallaxLayer2 12s ease-in-out infinite",
-              }}
-            />
-            {/* Layer 3 — secondary blob */}
-            <div
-              className="absolute inset-0 opacity-30"
-              style={{
-                background: "radial-gradient(400px circle at 80% 60%, rgba(196,181,253,0.5), transparent 50%)",
-                animation: "parallaxLayer3 15s ease-in-out infinite",
-              }}
-            />
-            {/* Grid overlay */}
-            <div
-              className="absolute inset-0 opacity-[0.08]"
-              style={{
-                backgroundImage:
-                  "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)",
-                backgroundSize: "40px 40px",
-                animation: "gridDrift 20s linear infinite",
-              }}
-            />
+        />
 
-            {/* Text content */}
-            <div className="relative z-10 text-center">
-              <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
-                Que bom ter você aqui!
-              </h1>
-              <p className="mt-2 text-sm text-white/80 font-medium">
-                Bora fazer acontecer — é Uau ou nada! 🚀
-              </p>
-            </div>
+        <div className="relative z-10 w-full max-w-sm space-y-8">
+          {/* Logo */}
+          <div className="flex justify-center">
+            {logoUrl ? (
+              <img src={logoUrl} alt="Logo" className="h-12 w-auto object-contain" />
+            ) : (
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
+                <span className="text-lg font-bold text-primary-foreground">U</span>
+              </div>
+            )}
           </div>
 
-          {/* Form area */}
-          <div className="bg-card px-6 pb-6 pt-5">
-            {subtitle && (
-              <p className="mb-4 text-center text-sm text-muted-foreground">{subtitle}</p>
-            )}
+          {/* Title */}
+          <div className="space-y-2 text-center">
+            <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
+              {mode === "login" && "Bem-vindo de volta"}
+              {mode === "signup" && "Crie sua conta"}
+              {mode === "forgot" && "Recuperar senha"}
+              {mode === "reset" && "Nova senha"}
+            </h1>
+            <p className="text-sm text-white/50">
+              {subtitle ?? "Acesse o painel da Uau"}
+            </p>
+          </div>
 
-            {(mode === "login" || mode === "signup") && (
-              <form onSubmit={loginSignupForm.handleSubmit(onLoginSignup)} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" autoComplete="email" {...loginSignupForm.register("email")} />
-                  {loginSignupForm.formState.errors.email && (
-                    <p className="text-sm text-destructive">{loginSignupForm.formState.errors.email.message}</p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Senha</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    autoComplete={mode === "login" ? "current-password" : "new-password"}
-                    {...loginSignupForm.register("password")}
-                  />
-                  {loginSignupForm.formState.errors.password && (
-                    <p className="text-sm text-destructive">{loginSignupForm.formState.errors.password.message}</p>
-                  )}
-                  {mode === "login" && (
-                    <Button type="button" variant="link" className="h-auto p-0 text-sm" onClick={() => setMode("forgot")}>
-                      Esqueci minha senha
-                    </Button>
-                  )}
-                </div>
-                <Button type="submit" variant="hero" className="w-full">
-                  {mode === "login" ? "Entrar" : "Criar conta"}
-                </Button>
-                <Button type="button" variant="ghost" className="w-full" onClick={() => setMode((m) => (m === "login" ? "signup" : "login"))}>
-                  {mode === "login" ? "Não tem conta? Criar agora" : "Já tem conta? Entrar"}
-                </Button>
-              </form>
-            )}
-
-            {mode === "forgot" && (
-              <form onSubmit={forgotForm.handleSubmit(onForgot)} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="forgot_email">Email</Label>
-                  <Input id="forgot_email" type="email" autoComplete="email" {...forgotForm.register("email")} />
-                  {forgotForm.formState.errors.email && (
-                    <p className="text-sm text-destructive">{forgotForm.formState.errors.email.message}</p>
-                  )}
-                </div>
-                <Button type="submit" variant="hero" className="w-full">Enviar link</Button>
-                <Button type="button" variant="ghost" className="w-full" onClick={() => setMode("login")}>Voltar para login</Button>
-              </form>
-            )}
-
-            {mode === "reset" && (
-              <form onSubmit={resetForm.handleSubmit(onReset)} className="space-y-4">
-                {hasRecoverySession === false && (
-                  <div className="rounded-lg border border-border/60 bg-muted/30 p-3 text-sm text-muted-foreground">
-                    <p className="font-medium text-foreground">Link inválido ou expirado</p>
-                    <p>Volte e solicite um novo link de recuperação.</p>
-                  </div>
+          {/* Forms */}
+          {(mode === "login" || mode === "signup") && (
+            <form onSubmit={loginSignupForm.handleSubmit(onLoginSignup)} className="space-y-5">
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-white/70 text-xs uppercase tracking-wider">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="seu@email.com"
+                  className="h-11 border-white/10 bg-white/5 text-white placeholder:text-white/25 focus:border-purple-500/50 focus:ring-purple-500/20"
+                  {...loginSignupForm.register("email")}
+                />
+                {loginSignupForm.formState.errors.email && (
+                  <p className="text-sm text-red-400">{loginSignupForm.formState.errors.email.message}</p>
                 )}
-                <div className="space-y-2">
-                  <Label htmlFor="new_password">Nova senha</Label>
-                  <Input id="new_password" type="password" autoComplete="new-password" {...resetForm.register("password")} />
-                  {resetForm.formState.errors.password && (
-                    <p className="text-sm text-destructive">{resetForm.formState.errors.password.message}</p>
-                  )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-white/70 text-xs uppercase tracking-wider">Senha</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  autoComplete={mode === "login" ? "current-password" : "new-password"}
+                  placeholder="••••••••"
+                  className="h-11 border-white/10 bg-white/5 text-white placeholder:text-white/25 focus:border-purple-500/50 focus:ring-purple-500/20"
+                  {...loginSignupForm.register("password")}
+                />
+                {loginSignupForm.formState.errors.password && (
+                  <p className="text-sm text-red-400">{loginSignupForm.formState.errors.password.message}</p>
+                )}
+              </div>
+
+              {mode === "login" && (
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    className="text-xs text-white/40 transition-colors hover:text-white/70"
+                    onClick={() => setMode("forgot")}
+                  >
+                    Esqueci minha senha
+                  </button>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="confirm_password">Confirmar nova senha</Label>
-                  <Input id="confirm_password" type="password" autoComplete="new-password" {...resetForm.register("confirm_password")} />
-                  {resetForm.formState.errors.confirm_password && (
-                    <p className="text-sm text-destructive">{resetForm.formState.errors.confirm_password.message}</p>
-                  )}
+              )}
+
+              <Button
+                type="submit"
+                className="h-11 w-full rounded-xl font-semibold text-white shadow-lg"
+                style={{
+                  background: "linear-gradient(135deg, #7C3AED 0%, #9333EA 50%, #7C3AED 100%)",
+                  backgroundSize: "200% 200%",
+                  animation: "gradientFlow 4s ease-in-out infinite",
+                }}
+              >
+                {mode === "login" ? "Entrar" : "Criar conta"}
+              </Button>
+
+              <button
+                type="button"
+                className="w-full text-center text-sm text-white/40 transition-colors hover:text-white/60"
+                onClick={() => setMode((m) => (m === "login" ? "signup" : "login"))}
+              >
+                {mode === "login" ? "Não tem conta? Criar agora" : "Já tem conta? Entrar"}
+              </button>
+            </form>
+          )}
+
+          {mode === "forgot" && (
+            <form onSubmit={forgotForm.handleSubmit(onForgot)} className="space-y-5">
+              <div className="space-y-2">
+                <Label htmlFor="forgot_email" className="text-white/70 text-xs uppercase tracking-wider">Email</Label>
+                <Input
+                  id="forgot_email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="seu@email.com"
+                  className="h-11 border-white/10 bg-white/5 text-white placeholder:text-white/25 focus:border-purple-500/50 focus:ring-purple-500/20"
+                  {...forgotForm.register("email")}
+                />
+                {forgotForm.formState.errors.email && (
+                  <p className="text-sm text-red-400">{forgotForm.formState.errors.email.message}</p>
+                )}
+              </div>
+              <Button
+                type="submit"
+                className="h-11 w-full rounded-xl font-semibold text-white shadow-lg"
+                style={{
+                  background: "linear-gradient(135deg, #7C3AED 0%, #9333EA 50%, #7C3AED 100%)",
+                  backgroundSize: "200% 200%",
+                  animation: "gradientFlow 4s ease-in-out infinite",
+                }}
+              >
+                Enviar link
+              </Button>
+              <button
+                type="button"
+                className="w-full text-center text-sm text-white/40 transition-colors hover:text-white/60"
+                onClick={() => setMode("login")}
+              >
+                Voltar para login
+              </button>
+            </form>
+          )}
+
+          {mode === "reset" && (
+            <form onSubmit={resetForm.handleSubmit(onReset)} className="space-y-5">
+              {hasRecoverySession === false && (
+                <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-300">
+                  <p className="font-medium">Link inválido ou expirado</p>
+                  <p className="text-red-300/70">Volte e solicite um novo link de recuperação.</p>
                 </div>
-                <Button type="submit" variant="hero" className="w-full" disabled={hasRecoverySession === false}>Salvar nova senha</Button>
-                <Button type="button" variant="ghost" className="w-full" onClick={() => setMode("forgot")}>Solicitar novo link</Button>
-              </form>
-            )}
-          </div>
+              )}
+              <div className="space-y-2">
+                <Label htmlFor="new_password" className="text-white/70 text-xs uppercase tracking-wider">Nova senha</Label>
+                <Input
+                  id="new_password"
+                  type="password"
+                  autoComplete="new-password"
+                  placeholder="••••••••"
+                  className="h-11 border-white/10 bg-white/5 text-white placeholder:text-white/25 focus:border-purple-500/50 focus:ring-purple-500/20"
+                  {...resetForm.register("password")}
+                />
+                {resetForm.formState.errors.password && (
+                  <p className="text-sm text-red-400">{resetForm.formState.errors.password.message}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirm_password" className="text-white/70 text-xs uppercase tracking-wider">Confirmar nova senha</Label>
+                <Input
+                  id="confirm_password"
+                  type="password"
+                  autoComplete="new-password"
+                  placeholder="••••••••"
+                  className="h-11 border-white/10 bg-white/5 text-white placeholder:text-white/25 focus:border-purple-500/50 focus:ring-purple-500/20"
+                  {...resetForm.register("confirm_password")}
+                />
+                {resetForm.formState.errors.confirm_password && (
+                  <p className="text-sm text-red-400">{resetForm.formState.errors.confirm_password.message}</p>
+                )}
+              </div>
+              <Button
+                type="submit"
+                className="h-11 w-full rounded-xl font-semibold text-white shadow-lg"
+                disabled={hasRecoverySession === false}
+                style={{
+                  background: "linear-gradient(135deg, #7C3AED 0%, #9333EA 50%, #7C3AED 100%)",
+                  backgroundSize: "200% 200%",
+                  animation: "gradientFlow 4s ease-in-out infinite",
+                }}
+              >
+                Salvar nova senha
+              </Button>
+              <button
+                type="button"
+                className="w-full text-center text-sm text-white/40 transition-colors hover:text-white/60"
+                onClick={() => setMode("forgot")}
+              >
+                Solicitar novo link
+              </button>
+            </form>
+          )}
         </div>
+
+        {/* Bottom credit */}
+        <p className="absolute bottom-4 text-[10px] text-white/20">© Uau Digital</p>
+      </div>
+
+      {/* ─── Right Column: Photo Gallery ─── */}
+      <div
+        className="relative hidden flex-1 overflow-hidden md:block"
+        style={{ background: "#0B0B0B" }}
+      >
+        <MasonryGallery avatars={teamAvatars} />
       </div>
     </div>
   );
