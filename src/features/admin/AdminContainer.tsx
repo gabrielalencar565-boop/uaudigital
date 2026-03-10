@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { Users, Building2, SprayCan, Trophy } from "lucide-react";
+import { Users, Building2, SprayCan, Trophy, Paintbrush } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AdminPanel } from "./AdminPanel";
 import { AdminClientesPanel } from "./AdminClientesPanel";
 import { AdminLimpezaPanel } from "./AdminLimpezaPanel";
 import { AdminPontuacaoPanel } from "./AdminPontuacaoPanel";
+import { AdminBrandingPanel } from "./AdminBrandingPanel";
 
-type AdminSubTab = "usuarios" | "clientes" | "limpeza" | "pontuacao";
+type AdminSubTab = "usuarios" | "clientes" | "limpeza" | "pontuacao" | "branding";
 
 export function AdminContainer() {
   const [subTab, setSubTab] = useState<AdminSubTab>("usuarios");
@@ -20,7 +21,7 @@ export function AdminContainer() {
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Administração</h2>
           <p className="text-sm text-muted-foreground">
-            Gerencie usuários e clientes do sistema.
+            Gerencie usuários, clientes e identidade visual do sistema.
           </p>
         </div>
       </div>
@@ -34,6 +35,10 @@ export function AdminContainer() {
           <TabsTrigger value="clientes" className="gap-2">
             <Building2 className="h-4 w-4" />
             Clientes
+          </TabsTrigger>
+          <TabsTrigger value="branding" className="gap-2">
+            <Paintbrush className="h-4 w-4" />
+            Branding
           </TabsTrigger>
           <TabsTrigger value="limpeza" className="gap-2">
             <SprayCan className="h-4 w-4" />
@@ -51,6 +56,10 @@ export function AdminContainer() {
 
         <TabsContent value="clientes" className="mt-6">
           <AdminClientesPanel />
+        </TabsContent>
+
+        <TabsContent value="branding" className="mt-6">
+          <AdminBrandingPanel />
         </TabsContent>
 
         <TabsContent value="limpeza" className="mt-6">
