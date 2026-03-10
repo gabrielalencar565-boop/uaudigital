@@ -5,9 +5,9 @@ import { Calendar, X, Clock, Instagram, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { POST_TYPE_META, type CronogramaPost } from "./types";
+import { SmartCaptionEditor } from "../SmartCaptionEditor";
 
 interface Props {
   post: CronogramaPost & { all_attachment_urls?: string[] };
@@ -141,27 +141,16 @@ export function PostDetailSidebar({ post, onClose, onUpdate, onRename }: Props) 
         </div>
       </div>
 
-      {/* Caption — click to edit */}
+      {/* Caption — auto-save with AI */}
       <div>
         <h4 className="text-xs font-bold mb-1">Legenda:</h4>
-        {editingField === "caption" ? (
-          <Textarea
-            autoFocus
-            value={tempValue}
-            onChange={(e) => setTempValue(e.target.value)}
-            onBlur={() => saveField("caption")}
-            placeholder="Escreva a legenda..."
-            className="text-xs min-h-[80px] rounded-lg resize-none"
-          />
-        ) : (
-          <div
-            className="text-sm text-muted-foreground whitespace-pre-wrap cursor-pointer group rounded-lg p-2 hover:bg-muted/50 transition-colors min-h-[40px]"
-            onClick={() => startEditing("caption", post.caption ?? "")}
-          >
-            {post.caption || <span className="italic text-muted-foreground/50">Clique para adicionar legenda...</span>}
-            <Pencil className="h-3 w-3 inline-block ml-1 opacity-0 group-hover:opacity-60 transition-opacity" />
-          </div>
-        )}
+        <SmartCaptionEditor
+          value={post.caption ?? ""}
+          onChange={(val) => onUpdate("caption", val || null)}
+          placeholder="Escreva a legenda..."
+          className="text-xs"
+          minHeight="80px"
+        />
       </div>
     </div>
   );
