@@ -233,6 +233,11 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
         )}
       </div>
 
+      {/* Backdrop to close history on outside click */}
+      {historyOpen && (
+        <div className="fixed inset-0 z-30" onClick={() => { setHistoryOpen(false); setHistoryExpanded(false); }} />
+      )}
+
       {/* History panel */}
       {historyOpen && !historyExpanded && (
         <div className="absolute top-8 right-1.5 z-40 w-64 max-h-48 overflow-hidden rounded-xl border border-border/40 bg-popover shadow-xl animate-in fade-in-0 slide-in-from-top-2 duration-150">
