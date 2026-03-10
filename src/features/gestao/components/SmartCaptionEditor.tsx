@@ -186,6 +186,12 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
     }
   }, [onChange]);
 
+  const stripHtml = (html: string) => {
+    const tmp = document.createElement("div");
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || "";
+  };
+
   const formatTime = (d: Date) =>
     d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
