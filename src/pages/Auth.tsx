@@ -200,7 +200,7 @@ export default function Auth() {
 
   return (
     <div className="relative min-h-screen overflow-hidden">
-      <BgSlideshow images={bgImages} opacity={appSettings.data?.login_bg_opacity ?? 0.2} posX={appSettings.data?.login_bg_position_x ?? 50} posY={appSettings.data?.login_bg_position_y ?? 50} zoom={appSettings.data?.login_bg_zoom ?? 1} />
+      <BgSlideshow images={bgImages} />
 
       {/* Fallback dark bg when no images */}
       {bgImages.length === 0 && (
