@@ -234,40 +234,50 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
       </div>
 
       {/* History panel */}
-      {historyOpen && (
-        <div className={cn(
-          "absolute top-8 right-1.5 z-40 overflow-hidden rounded-xl border border-border/40 bg-popover shadow-xl animate-in fade-in-0 slide-in-from-top-2 duration-150",
-          historyExpanded ? "w-96 max-h-80" : "w-64 max-h-48"
-        )}>
+      {historyOpen && !historyExpanded && (
+        <div className="absolute top-8 right-1.5 z-40 w-64 max-h-48 overflow-hidden rounded-xl border border-border/40 bg-popover shadow-xl animate-in fade-in-0 slide-in-from-top-2 duration-150">
           <div className="flex items-center justify-between px-3 py-2 border-b border-border/30">
-            <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">
-              Histórico de edições
-            </p>
-            <button
-              type="button"
-              onClick={() => setHistoryExpanded(v => !v)}
-              className="inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-              title={historyExpanded ? "Reduzir" : "Expandir"}
-            >
+            <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Histórico de edições</p>
+            <button type="button" onClick={() => setHistoryExpanded(true)} className="inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Expandir">
               <Maximize2 className="h-3 w-3" />
             </button>
           </div>
-          <div className={cn("overflow-y-auto", historyExpanded ? "max-h-[272px]" : "max-h-[136px]")}>
+          <div className="overflow-y-auto max-h-[136px]">
             {history.length === 0 ? (
               <p className="px-3 py-3 text-xs text-muted-foreground">Nenhuma edição ainda</p>
             ) : (
               [...history].reverse().map((entry, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => restoreFromHistory(entry)}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-accent transition-colors border-b border-border/10 last:border-0"
-                >
+                <button key={i} type="button" onClick={() => restoreFromHistory(entry)} className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-accent transition-colors border-b border-border/10 last:border-0">
                   <Clock className="h-3 w-3 text-muted-foreground shrink-0" />
                   <span className="text-muted-foreground whitespace-nowrap">{formatTime(entry.time)}</span>
-                  <span className="text-foreground truncate flex-1 text-left">
-                    {stripHtml(entry.html).slice(0, historyExpanded ? 60 : 30) || "(vazio)"}
-                  </span>
+                  <span className="text-foreground truncate flex-1 text-left">{stripHtml(entry.html).slice(0, 30) || "(vazio)"}</span>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Expanded history - full overlay */}
+      {historyOpen && historyExpanded && (
+        <div className="absolute inset-0 z-40 rounded-lg border border-border/40 bg-popover shadow-xl animate-in fade-in-0 duration-150 flex flex-col overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border/30">
+            <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Histórico de edições</p>
+            <button type="button" onClick={() => setHistoryExpanded(false)} className="inline-flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Reduzir">
+              <Maximize2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            {history.length === 0 ? (
+              <p className="px-4 py-4 text-sm text-muted-foreground">Nenhuma edição ainda</p>
+            ) : (
+              [...history].reverse().map((entry, i) => (
+                <button key={i} type="button" onClick={() => restoreFromHistory(entry)} className="flex w-full items-start gap-3 px-4 py-3 text-sm hover:bg-accent transition-colors border-b border-border/10 last:border-0">
+                  <Clock className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                  <div className="flex-1 text-left">
+                    <span className="text-muted-foreground text-xs block mb-1">{formatTime(entry.time)}</span>
+                    <span className="text-foreground line-clamp-3">{stripHtml(entry.html) || "(vazio)"}</span>
+                  </div>
                 </button>
               ))
             )}
