@@ -29,7 +29,7 @@ import { PmCronogramaTab } from "./PmCronogramaTab";
 import { PmPostingFields } from "./PmPostingFields";
 import type { PmTask } from "../pm-types";
 import { toast } from "sonner";
-import { RichDescriptionEditor, ExpandableDescription } from "./RichDescriptionEditor";
+import { SmartCaptionEditor } from "./SmartCaptionEditor";
 
 function initials(n: string) {
   return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
