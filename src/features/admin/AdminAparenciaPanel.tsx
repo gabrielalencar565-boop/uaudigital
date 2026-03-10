@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Images, Plus, Trash2, Settings2 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Images, Plus, Trash2, Settings2, Move, ZoomIn, RotateCcw } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -16,10 +16,83 @@ export function AdminAparenciaPanel() {
   const [uploading, setUploading] = useState(false);
 
   const images: string[] = appSettingsQ.data?.login_bg_images ?? [];
-  const opacity = appSettingsQ.data?.login_bg_opacity ?? 0.2;
-  const posX = appSettingsQ.data?.login_bg_position_x ?? 50;
-  const posY = appSettingsQ.data?.login_bg_position_y ?? 50;
-  const zoom = appSettingsQ.data?.login_bg_zoom ?? 1;
+  const savedOpacity = appSettingsQ.data?.login_bg_opacity ?? 0.2;
+  const savedPosX = appSettingsQ.data?.login_bg_position_x ?? 50;
+  const savedPosY = appSettingsQ.data?.login_bg_position_y ?? 50;
+  const savedZoom = appSettingsQ.data?.login_bg_zoom ?? 1;
+
+  // Local state for interactive preview
+  const [localPosX, setLocalPosX] = useState(savedPosX);
+  const [localPosY, setLocalPosY] = useState(savedPosY);
+  const [localZoom, setLocalZoom] = useState(savedZoom);
+  const [localOpacity, setLocalOpacity] = useState(savedOpacity);
+  const [dirty, setDirty] = useState(false);
+
+  // Sync local state when saved values change
+  useEffect(() => { setLocalPosX(savedPosX); }, [savedPosX]);
+  useEffect(() => { setLocalPosY(savedPosY); }, [savedPosY]);
+  useEffect(() => { setLocalZoom(savedZoom); }, [savedZoom]);
+  useEffect(() => { setLocalOpacity(savedOpacity); }, [savedOpacity]);
+
+  // Drag state
+  const previewRef = useRef<HTMLDivElement>(null);
+  const dragging = useRef(false);
+  const dragStart = useRef({ x: 0, y: 0, posX: 0, posY: 0 });
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    dragging.current = true;
+    dragStart.current = { x: e.clientX, y: e.clientY, posX: localPosX, posY: localPosY };
+  }, [localPosX, localPosY]);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!dragging.current || !previewRef.current) return;
+      const rect = previewRef.current.getBoundingClientRect();
+      const dx = ((e.clientX - dragStart.current.x) / rect.width) * -100;
+      const dy = ((e.clientY - dragStart.current.y) / rect.height) * -100;
+      setLocalPosX(Math.min(100, Math.max(0, dragStart.current.posX + dx)));
+      setLocalPosY(Math.min(100, Math.max(0, dragStart.current.posY + dy)));
+      setDirty(true);
+    };
+    const handleMouseUp = () => { dragging.current = false; };
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, []);
+
+  // Wheel zoom on preview
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+    setLocalZoom((z) => Math.min(3, Math.max(0.5, z + (e.deltaY > 0 ? -0.05 : 0.05))));
+    setDirty(true);
+  }, []);
+
+  const handleSaveAll = async () => {
+    try {
+      await updateAppSettings.mutateAsync({
+        login_bg_position_x: Math.round(localPosX),
+        login_bg_position_y: Math.round(localPosY),
+        login_bg_zoom: Math.round(localZoom * 100) / 100,
+        login_bg_opacity: Math.round(localOpacity * 100) / 100,
+      } as any);
+      setDirty(false);
+      toast.success("Ajustes salvos!");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao salvar");
+    }
+  };
+
+  const handleReset = () => {
+    setLocalPosX(50);
+    setLocalPosY(50);
+    setLocalZoom(1);
+    setLocalOpacity(0.2);
+    setDirty(true);
+  };
 
   const handleUpload = async (file: File) => {
     if (!user) return;
@@ -51,14 +124,6 @@ export function AdminAparenciaPanel() {
       toast.success("Imagem removida");
     } catch (e: any) {
       toast.error(e?.message ?? "Erro ao remover");
-    }
-  };
-
-  const save = async (field: string, value: number) => {
-    try {
-      await updateAppSettings.mutateAsync({ [field]: value } as any);
-    } catch (e: any) {
-      toast.error(e?.message ?? "Erro ao salvar");
     }
   };
 
@@ -122,101 +187,110 @@ export function AdminAparenciaPanel() {
         </CardContent>
       </Card>
 
-      {/* Ajustes */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Settings2 className="h-5 w-5" />
-            Ajustes da imagem de fundo
-          </CardTitle>
-          <CardDescription>
-            Posicione, dê zoom e controle a opacidade da imagem.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Posição horizontal */}
-          <div className="space-y-2">
-            <Label>Posição horizontal — {posX}%</Label>
-            <Slider
-              value={[posX]}
-              min={0}
-              max={100}
-              step={1}
-              onValueCommit={(v) => save("login_bg_position_x", v[0])}
-              className="max-w-sm"
-            />
-            <p className="text-xs text-muted-foreground">0% = esquerda, 50% = centro, 100% = direita</p>
-          </div>
-
-          {/* Posição vertical */}
-          <div className="space-y-2">
-            <Label>Posição vertical — {posY}%</Label>
-            <Slider
-              value={[posY]}
-              min={0}
-              max={100}
-              step={1}
-              onValueCommit={(v) => save("login_bg_position_y", v[0])}
-              className="max-w-sm"
-            />
-            <p className="text-xs text-muted-foreground">0% = topo, 50% = centro, 100% = embaixo</p>
-          </div>
-
-          {/* Zoom */}
-          <div className="space-y-2">
-            <Label>Zoom — {Math.round(zoom * 100)}%</Label>
-            <Slider
-              value={[zoom]}
-              min={0.5}
-              max={3}
-              step={0.05}
-              onValueCommit={(v) => save("login_bg_zoom", v[0])}
-              className="max-w-sm"
-            />
-            <p className="text-xs text-muted-foreground">50% = afastado, 100% = normal, 300% = bem próximo</p>
-          </div>
-
-          {/* Opacidade */}
-          <div className="space-y-2">
-            <Label>Opacidade da imagem — {Math.round(opacity * 100)}%</Label>
-            <Slider
-              value={[opacity]}
-              min={0.05}
-              max={1}
-              step={0.05}
-              onValueCommit={(v) => save("login_bg_opacity", v[0])}
-              className="max-w-sm"
-            />
-            <p className="text-xs text-muted-foreground">Quanto maior, mais visível a imagem.</p>
-          </div>
-
-          {/* Preview */}
-          {images.length > 0 && (
+      {/* Ajustes interativos */}
+      {images.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Settings2 className="h-5 w-5" />
+              Ajustes da imagem de fundo
+            </CardTitle>
+            <CardDescription>
+              Arraste a imagem para reposicionar. Use o scroll do mouse para dar zoom. Ajuste a opacidade abaixo.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            {/* Interactive preview */}
             <div className="space-y-2">
-              <Label>Pré-visualização</Label>
-              <div className="relative aspect-video w-full max-w-md overflow-hidden rounded-lg border border-border bg-black">
+              <div className="flex items-center gap-2">
+                <Label>Pré-visualização interativa</Label>
+                <span className="flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                  <Move className="h-3 w-3" /> Arraste
+                </span>
+                <span className="flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                  <ZoomIn className="h-3 w-3" /> Scroll = Zoom
+                </span>
+              </div>
+              <div
+                ref={previewRef}
+                className="relative aspect-video w-full max-w-lg cursor-grab overflow-hidden rounded-lg border-2 border-primary/30 bg-black active:cursor-grabbing select-none"
+                onMouseDown={handleMouseDown}
+                onWheel={handleWheel}
+              >
                 <div
-                  className="absolute inset-0"
+                  className="absolute inset-0 pointer-events-none"
                   style={{
                     backgroundImage: `url(${images[0]})`,
                     backgroundSize: "cover",
-                    backgroundPosition: `${posX}% ${posY}%`,
-                    transform: `scale(${zoom})`,
-                    transformOrigin: `${posX}% ${posY}%`,
+                    backgroundPosition: `${localPosX}% ${localPosY}%`,
+                    transform: `scale(${localZoom})`,
+                    transformOrigin: `${localPosX}% ${localPosY}%`,
+                    transition: dragging.current ? "none" : "transform 0.2s ease-out",
                   }}
                 />
                 <div
-                  className="absolute inset-0 bg-black"
-                  style={{ opacity: 1 - opacity }}
+                  className="absolute inset-0 bg-black pointer-events-none"
+                  style={{ opacity: 1 - localOpacity }}
                 />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-sm font-medium text-white/80">Preview do fundo</span>
+                {/* Center crosshair */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="h-8 w-px bg-white/30" />
+                </div>
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="h-px w-8 bg-white/30" />
+                </div>
+                {/* Info overlay */}
+                <div className="absolute bottom-2 left-2 flex gap-2 pointer-events-none">
+                  <span className="rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white/80 font-mono">
+                    X:{Math.round(localPosX)}% Y:{Math.round(localPosY)}%
+                  </span>
+                  <span className="rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white/80 font-mono">
+                    Zoom:{Math.round(localZoom * 100)}%
+                  </span>
                 </div>
               </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
+
+            {/* Opacity slider */}
+            <div className="space-y-2">
+              <Label>Opacidade da imagem — {Math.round(localOpacity * 100)}%</Label>
+              <Slider
+                value={[localOpacity]}
+                min={0.05}
+                max={1}
+                step={0.05}
+                onValueChange={(v) => { setLocalOpacity(v[0]); setDirty(true); }}
+                className="max-w-sm"
+              />
+              <p className="text-xs text-muted-foreground">Quanto maior, mais visível a imagem de fundo.</p>
+            </div>
+
+            {/* Zoom slider (alternative to scroll) */}
+            <div className="space-y-2">
+              <Label>Zoom — {Math.round(localZoom * 100)}%</Label>
+              <Slider
+                value={[localZoom]}
+                min={0.5}
+                max={3}
+                step={0.05}
+                onValueChange={(v) => { setLocalZoom(v[0]); setDirty(true); }}
+                className="max-w-sm"
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3">
+              <Button onClick={handleSaveAll} disabled={!dirty} className="gap-2">
+                Salvar ajustes
+              </Button>
+              <Button variant="outline" onClick={handleReset} className="gap-2">
+                <RotateCcw className="h-4 w-4" />
+                Resetar
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
