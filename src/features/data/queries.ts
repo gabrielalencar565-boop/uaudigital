@@ -135,6 +135,7 @@ export type AppSettingsRow = {
   logo_url: string | null;
   logo_shape: "circle" | "square";
   workspace_name: string;
+  login_bg_images: string[];
   updated_at: string;
   updated_by: string | null;
 };
@@ -145,11 +146,11 @@ export function useAppSettings() {
     queryFn: async (): Promise<AppSettingsRow | null> => {
       const { data, error } = await supabase
         .from("app_settings")
-        .select("id, logo_url, logo_shape, workspace_name, updated_at, updated_by")
+        .select("id, logo_url, logo_shape, workspace_name, login_bg_images, updated_at, updated_by")
         .eq("id", 1)
         .maybeSingle();
       if (error) throw error;
-      return data as AppSettingsRow | null;
+      return { ...data, login_bg_images: (data as any)?.login_bg_images ?? [] } as AppSettingsRow | null;
     },
   });
 }
@@ -157,10 +158,10 @@ export function useAppSettings() {
 export function useUpdateAppSettings() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (updates: { logo_url?: string | null; logo_shape?: "circle" | "square"; workspace_name?: string }) => {
+    mutationFn: async (updates: { logo_url?: string | null; logo_shape?: "circle" | "square"; workspace_name?: string; login_bg_images?: string[] }) => {
       const { data, error } = await supabase
         .from("app_settings")
-        .update(updates)
+        .update(updates as any)
         .eq("id", 1)
         .select()
         .single();
