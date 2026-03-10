@@ -454,7 +454,7 @@ export default function Auth() {
         className="relative hidden flex-1 overflow-hidden md:block"
         style={{ background: "#0B0B0B" }}
       >
-        <MasonryGallery avatars={teamAvatars} />
+        <MasonryGallery avatars={galleryPhotos} />
       </div>
     </div>
   );
