@@ -294,7 +294,8 @@ const TOTAL_POINTS = 27;
                return (
                   <Card
                     key={row.user_id}
-                    className={`overflow-hidden border ${podiumCardClass(realIdx)} ${orderClass} ${isFirst ? "" : "md:mt-6"}`}
+                    className={`overflow-hidden ${orderClass} ${isFirst ? "" : "md:mt-6"}`}
+                    style={podiumStyle(realIdx)}
                   >
                     <CardContent className={`flex flex-col items-center text-center ${isFirst ? "p-7" : "p-4"}`}>
                       <div className="mb-4 grid place-items-center">
