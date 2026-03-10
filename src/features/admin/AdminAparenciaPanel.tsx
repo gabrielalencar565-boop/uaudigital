@@ -3,7 +3,6 @@ import { Images, Plus, Trash2, Settings2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
@@ -17,8 +16,10 @@ export function AdminAparenciaPanel() {
   const [uploading, setUploading] = useState(false);
 
   const images: string[] = appSettingsQ.data?.login_bg_images ?? [];
-  const objectFit = appSettingsQ.data?.login_bg_object_fit ?? "cover";
   const opacity = appSettingsQ.data?.login_bg_opacity ?? 0.2;
+  const posX = appSettingsQ.data?.login_bg_position_x ?? 50;
+  const posY = appSettingsQ.data?.login_bg_position_y ?? 50;
+  const zoom = appSettingsQ.data?.login_bg_zoom ?? 1;
 
   const handleUpload = async (file: File) => {
     if (!user) return;
@@ -53,18 +54,9 @@ export function AdminAparenciaPanel() {
     }
   };
 
-  const handleObjectFitChange = async (value: string) => {
+  const save = async (field: string, value: number) => {
     try {
-      await updateAppSettings.mutateAsync({ login_bg_object_fit: value } as any);
-      toast.success("Modo de exibição atualizado");
-    } catch (e: any) {
-      toast.error(e?.message ?? "Erro ao salvar");
-    }
-  };
-
-  const handleOpacityChange = async (value: number[]) => {
-    try {
-      await updateAppSettings.mutateAsync({ login_bg_opacity: value[0] } as any);
+      await updateAppSettings.mutateAsync({ [field]: value } as any);
     } catch (e: any) {
       toast.error(e?.message ?? "Erro ao salvar");
     }
@@ -103,7 +95,7 @@ export function AdminAparenciaPanel() {
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
-              Nenhuma imagem adicionada. O fundo da tela de login ficará com a cor padrão.
+              Nenhuma imagem adicionada. O fundo ficará com a cor padrão.
             </p>
           )}
 
@@ -130,35 +122,61 @@ export function AdminAparenciaPanel() {
         </CardContent>
       </Card>
 
-      {/* Dimensões e opacidade */}
+      {/* Ajustes */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Settings2 className="h-5 w-5" />
-            Configurações da imagem de fundo
+            Ajustes da imagem de fundo
           </CardTitle>
           <CardDescription>
-            Ajuste como as imagens são exibidas e a opacidade na tela de login.
+            Posicione, dê zoom e controle a opacidade da imagem.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Posição horizontal */}
           <div className="space-y-2">
-            <Label>Modo de exibição</Label>
-            <Select value={objectFit} onValueChange={handleObjectFitChange}>
-              <SelectTrigger className="w-full max-w-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="cover">Cobrir (preenche toda a tela, pode cortar)</SelectItem>
-                <SelectItem value="contain">Conter (mostra a imagem inteira, pode ter barras)</SelectItem>
-                <SelectItem value="fill">Esticar (distorce para preencher)</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">
-              Define como a imagem se ajusta à tela.
-            </p>
+            <Label>Posição horizontal — {posX}%</Label>
+            <Slider
+              value={[posX]}
+              min={0}
+              max={100}
+              step={1}
+              onValueCommit={(v) => save("login_bg_position_x", v[0])}
+              className="max-w-sm"
+            />
+            <p className="text-xs text-muted-foreground">0% = esquerda, 50% = centro, 100% = direita</p>
           </div>
 
+          {/* Posição vertical */}
+          <div className="space-y-2">
+            <Label>Posição vertical — {posY}%</Label>
+            <Slider
+              value={[posY]}
+              min={0}
+              max={100}
+              step={1}
+              onValueCommit={(v) => save("login_bg_position_y", v[0])}
+              className="max-w-sm"
+            />
+            <p className="text-xs text-muted-foreground">0% = topo, 50% = centro, 100% = embaixo</p>
+          </div>
+
+          {/* Zoom */}
+          <div className="space-y-2">
+            <Label>Zoom — {Math.round(zoom * 100)}%</Label>
+            <Slider
+              value={[zoom]}
+              min={0.5}
+              max={3}
+              step={0.05}
+              onValueCommit={(v) => save("login_bg_zoom", v[0])}
+              className="max-w-sm"
+            />
+            <p className="text-xs text-muted-foreground">50% = afastado, 100% = normal, 300% = bem próximo</p>
+          </div>
+
+          {/* Opacidade */}
           <div className="space-y-2">
             <Label>Opacidade da imagem — {Math.round(opacity * 100)}%</Label>
             <Slider
@@ -166,24 +184,26 @@ export function AdminAparenciaPanel() {
               min={0.05}
               max={1}
               step={0.05}
-              onValueCommit={handleOpacityChange}
-              className="max-w-xs"
+              onValueCommit={(v) => save("login_bg_opacity", v[0])}
+              className="max-w-sm"
             />
-            <p className="text-xs text-muted-foreground">
-              Quanto maior, mais visível a imagem de fundo. O overlay escuro será ajustado automaticamente.
-            </p>
+            <p className="text-xs text-muted-foreground">Quanto maior, mais visível a imagem.</p>
           </div>
 
           {/* Preview */}
           {images.length > 0 && (
             <div className="space-y-2">
               <Label>Pré-visualização</Label>
-              <div className="relative aspect-video w-full max-w-md overflow-hidden rounded-lg border border-border">
-                <img
-                  src={images[0]}
-                  alt="Preview"
-                  className="h-full w-full"
-                  style={{ objectFit: objectFit as any }}
+              <div className="relative aspect-video w-full max-w-md overflow-hidden rounded-lg border border-border bg-black">
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    backgroundImage: `url(${images[0]})`,
+                    backgroundSize: "cover",
+                    backgroundPosition: `${posX}% ${posY}%`,
+                    transform: `scale(${zoom})`,
+                    transformOrigin: `${posX}% ${posY}%`,
+                  }}
                 />
                 <div
                   className="absolute inset-0 bg-black"

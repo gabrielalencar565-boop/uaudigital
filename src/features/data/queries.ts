@@ -138,6 +138,9 @@ export type AppSettingsRow = {
   login_bg_images: string[];
   login_bg_object_fit: string;
   login_bg_opacity: number;
+  login_bg_position_x: number;
+  login_bg_position_y: number;
+  login_bg_zoom: number;
   updated_at: string;
   updated_by: string | null;
 };
@@ -148,15 +151,19 @@ export function useAppSettings() {
     queryFn: async (): Promise<AppSettingsRow | null> => {
       const { data, error } = await supabase
         .from("app_settings")
-        .select("id, logo_url, logo_shape, workspace_name, login_bg_images, login_bg_object_fit, login_bg_opacity, updated_at, updated_by")
+        .select("id, logo_url, logo_shape, workspace_name, login_bg_images, login_bg_object_fit, login_bg_opacity, login_bg_position_x, login_bg_position_y, login_bg_zoom, updated_at, updated_by")
         .eq("id", 1)
         .maybeSingle();
       if (error) throw error;
+      const d = data as any;
       return {
         ...data,
-        login_bg_images: (data as any)?.login_bg_images ?? [],
-        login_bg_object_fit: (data as any)?.login_bg_object_fit ?? "cover",
-        login_bg_opacity: (data as any)?.login_bg_opacity ?? 0.2,
+        login_bg_images: d?.login_bg_images ?? [],
+        login_bg_object_fit: d?.login_bg_object_fit ?? "cover",
+        login_bg_opacity: d?.login_bg_opacity ?? 0.2,
+        login_bg_position_x: d?.login_bg_position_x ?? 50,
+        login_bg_position_y: d?.login_bg_position_y ?? 50,
+        login_bg_zoom: d?.login_bg_zoom ?? 1,
       } as AppSettingsRow | null;
     },
   });
@@ -165,7 +172,7 @@ export function useAppSettings() {
 export function useUpdateAppSettings() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (updates: { logo_url?: string | null; logo_shape?: "circle" | "square"; workspace_name?: string; login_bg_images?: string[]; login_bg_object_fit?: string; login_bg_opacity?: number }) => {
+    mutationFn: async (updates: { logo_url?: string | null; logo_shape?: "circle" | "square"; workspace_name?: string; login_bg_images?: string[]; login_bg_object_fit?: string; login_bg_opacity?: number; login_bg_position_x?: number; login_bg_position_y?: number; login_bg_zoom?: number }) => {
       const { data, error } = await supabase
         .from("app_settings")
         .update(updates as any)

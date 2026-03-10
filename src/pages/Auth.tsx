@@ -35,7 +35,7 @@ type ResetValues = z.infer<typeof resetSchema>;
 type AuthMode = "login" | "signup" | "forgot" | "reset";
 
 /* ── Background slideshow with slow zoom + pan ── */
-function BgSlideshow({ images, objectFit, opacity }: { images: string[]; objectFit: string; opacity: number }) {
+function BgSlideshow({ images, opacity, posX, posY, zoom }: { images: string[]; opacity: number; posX: number; posY: number; zoom: number }) {
   const [current, setCurrent] = useState(0);
 
   useEffect(() => {
@@ -47,8 +47,6 @@ function BgSlideshow({ images, objectFit, opacity }: { images: string[]; objectF
   }, [images.length]);
 
   if (images.length === 0) return null;
-
-  const overlayOpacity = 1 - opacity;
 
   return (
     <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
@@ -62,9 +60,10 @@ function BgSlideshow({ images, objectFit, opacity }: { images: string[]; objectF
             className="absolute inset-[-10%]"
             style={{
               backgroundImage: `url(${url})`,
-              backgroundSize: objectFit === "contain" ? "contain" : objectFit === "fill" ? "100% 100%" : "cover",
-              backgroundPosition: "center",
-              backgroundRepeat: "no-repeat",
+              backgroundSize: "cover",
+              backgroundPosition: `${posX}% ${posY}%`,
+              transform: `scale(${zoom})`,
+              transformOrigin: `${posX}% ${posY}%`,
               animation: `authBgZoom 18s ease-in-out infinite alternate`,
               animationDelay: `${i * -6}s`,
             }}
@@ -72,7 +71,7 @@ function BgSlideshow({ images, objectFit, opacity }: { images: string[]; objectF
         </div>
       ))}
       {/* Dark overlay */}
-      <div className="absolute inset-0 bg-black" style={{ opacity: overlayOpacity }} />
+      <div className="absolute inset-0 bg-black" style={{ opacity: 1 - opacity }} />
     </div>
   );
 }
@@ -201,7 +200,7 @@ export default function Auth() {
 
   return (
     <div className="relative min-h-screen overflow-hidden">
-      <BgSlideshow images={bgImages} objectFit={appSettings.data?.login_bg_object_fit ?? "cover"} opacity={appSettings.data?.login_bg_opacity ?? 0.2} />
+      <BgSlideshow images={bgImages} opacity={appSettings.data?.login_bg_opacity ?? 0.2} posX={appSettings.data?.login_bg_position_x ?? 50} posY={appSettings.data?.login_bg_position_y ?? 50} zoom={appSettings.data?.login_bg_zoom ?? 1} />
 
       {/* Fallback dark bg when no images */}
       {bgImages.length === 0 && (
