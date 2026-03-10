@@ -69,7 +69,7 @@ function MasonryGallery({ avatars }: { avatars: string[] }) {
   }
 
   const directions = ["up", "down", "up"] as const;
-  const speeds = ["28s", "32s", "26s"];
+  const speeds = ["60s", "70s", "55s"];
 
   return (
     <div className="flex h-full w-full gap-3 overflow-hidden p-4">
