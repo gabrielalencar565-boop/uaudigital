@@ -67,7 +67,7 @@ function BgSlideshow({ images }: { images: string[] }) {
         </div>
       ))}
       {/* Dark overlay */}
-      <div className="absolute inset-0 bg-black/75" />
+      <div className="absolute inset-0 bg-black/80" />
     </div>
   );
 }
