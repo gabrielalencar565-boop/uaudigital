@@ -444,7 +444,7 @@ function LoginBgImagesCard() {
   const { user } = useSession();
   const [uploading, setUploading] = useState(false);
 
-  const images: string[] = appSettingsQ.data?.login_bg_images ?? [];
+  const images = appSettingsQ.data?.login_bg_images ?? [];
 
   const handleUpload = async (file: File) => {
     if (!user) return;
@@ -458,7 +458,8 @@ function LoginBgImagesCard() {
       if (up.error) throw up.error;
       const pub = supabase.storage.from("app-assets").getPublicUrl(path);
       const url = pub.data.publicUrl;
-      await updateAppSettings.mutateAsync({ login_bg_images: [...images, url] } as any);
+      const newImg = { url, posX: 50, posY: 50, zoom: 1, opacity: 0.2 };
+      await updateAppSettings.mutateAsync({ login_bg_images: [...images, newImg] } as any);
       toast.success("Imagem adicionada!");
     } catch (e: any) {
       toast.error(e?.message ?? "Erro ao enviar imagem");
@@ -469,7 +470,7 @@ function LoginBgImagesCard() {
 
   const handleRemove = async (url: string) => {
     try {
-      await updateAppSettings.mutateAsync({ login_bg_images: images.filter((u) => u !== url) } as any);
+      await updateAppSettings.mutateAsync({ login_bg_images: images.filter((u) => u.url !== url) } as any);
       toast.success("Imagem removida");
     } catch (e: any) {
       toast.error(e?.message ?? "Erro ao remover");
