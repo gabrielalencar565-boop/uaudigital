@@ -212,11 +212,22 @@ const TOTAL_POINTS = 27;
      saveMut.mutate(editValues as ScoreRow);
    };
  
-  const podiumCardClass = (idx: number) => {
-    // usa apenas tokens (primary/secondary/muted/border)
-    if (idx === 0) return "bg-primary/5 border-primary/25 shadow-sm";
-    if (idx === 1) return "bg-muted/20 border-border/60";
-    return "bg-secondary/20 border-border/60";
+  const podiumStyle = (idx: number) => {
+    if (idx === 0) return {
+      background: "linear-gradient(135deg, #F5D76E, #D4A843, #FFFBE6, #C9973E, #F5D76E)",
+      backgroundSize: "300% 300%",
+      animation: "gradientFlow 20s ease-in-out infinite",
+      border: "1px solid rgba(212,168,67,0.5)",
+      boxShadow: "0 4px 20px -4px rgba(212,168,67,0.3)",
+    };
+    if (idx === 1) return {
+      background: "linear-gradient(135deg, #E8E8E8, #B8B8B8, #F5F5F5, #A8A8A8, #E8E8E8)",
+      backgroundSize: "300% 300%",
+      animation: "gradientFlow 20s ease-in-out infinite",
+      border: "1px solid rgba(180,180,180,0.5)",
+      boxShadow: "0 4px 20px -4px rgba(160,160,160,0.25)",
+    };
+    return {};
   };
 
   const podiumMedal = (idx: number) => {
