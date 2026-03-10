@@ -101,7 +101,7 @@ export function AnnualShowcasePanel({
   return (
     <div className="space-y-3">
       <h3 className="text-2xl font-semibold tracking-tight">Painel Anual</h3>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 pt-5">
       {showcase.map((item, idx) => {
         const member = teamById.get(item.user_id);
         const rank = idx + 1;
