@@ -136,6 +136,8 @@ export type AppSettingsRow = {
   logo_shape: "circle" | "square";
   workspace_name: string;
   login_bg_images: string[];
+  login_bg_object_fit: string;
+  login_bg_opacity: number;
   updated_at: string;
   updated_by: string | null;
 };
