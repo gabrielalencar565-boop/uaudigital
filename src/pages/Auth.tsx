@@ -244,7 +244,7 @@ export default function Auth() {
   }, [mode]);
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex h-screen overflow-hidden">
       {/* ─── Left Column: Login ─── */}
       <div
         className="relative z-10 flex w-full flex-col items-center justify-center px-8 py-10 md:w-[42%] md:min-w-[400px]"
