@@ -314,53 +314,33 @@ export function AnnualDashboard({
       {/* Category ranking — who leads each competency */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm uppercase text-center">Líder por Competência</CardTitle>
+          <CardTitle className="text-sm uppercase text-center">Líder de Cada Categoria</CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={categoryRanking} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-              <XAxis type="number" className="text-xs" />
-              <YAxis
-                dataKey="category"
-                type="category"
-                className="text-xs"
-                width={100}
-              />
-              <Tooltip
-                contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
-                content={({ active, payload }) => {
-                  if (!active || !payload?.length) return null;
-                  const d = payload[0]?.payload;
-                  const member = teamById.get(d?.user_id);
-                  return (
-                    <div className="rounded-lg border border-border/50 bg-card px-3 py-2 shadow-xl text-xs">
-                      <div className="flex items-center gap-2">
-                        <Avatar className="h-6 w-6">
-                          <AvatarImage src={member?.avatar_url ?? undefined} />
-                          <AvatarFallback className="text-[8px]">{initials(member?.display_name ?? "?")}</AvatarFallback>
-                        </Avatar>
-                        <span className="font-semibold">{member?.display_name?.split(" ")[0] ?? d?.name}</span>
-                        <span className="ml-auto font-bold tabular-nums text-primary">{d?.total} pts</span>
-                      </div>
-                    </div>
-                  );
-                }}
-              />
-              <Bar dataKey="total" name="Pontos" fill="#8B5CF6" radius={[0, 6, 6, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-          {/* Avatars under chart */}
-          <div className="flex flex-wrap items-center justify-center gap-4 mt-3">
+          <div className="space-y-3">
             {categoryRanking.map((c) => {
               const member = teamById.get(c.user_id);
+              const maxTotal = Math.max(...categoryRanking.map((r) => r.total), 1);
+              const pct = (c.total / maxTotal) * 100;
               return (
-                <div key={c.category} className="flex items-center gap-1.5">
-                  <Avatar className="h-5 w-5 border border-primary/40">
+                <div key={c.category} className="flex items-center gap-3">
+                  <Avatar className="h-8 w-8 shrink-0 border-2 border-primary/40">
                     <AvatarImage src={member?.avatar_url ?? undefined} />
-                    <AvatarFallback className="text-[8px]">{initials(member?.display_name ?? "?")}</AvatarFallback>
+                    <AvatarFallback className="text-[10px] font-bold">{initials(member?.display_name ?? "?")}</AvatarFallback>
                   </Avatar>
-                  <span className="text-[11px] text-muted-foreground">{c.category}: <span className="font-semibold text-foreground">{c.name}</span></span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="text-xs font-medium text-foreground truncate">{c.category}</span>
+                      <span className="text-xs font-bold tabular-nums text-primary ml-2">{c.total} pts</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{ width: `${pct}%`, background: "linear-gradient(90deg, #7C3AED, #A78BFA)" }}
+                      />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">{member?.display_name?.split(" ")[0] ?? "—"}</p>
+                  </div>
                 </div>
               );
             })}
