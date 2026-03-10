@@ -29,7 +29,7 @@ import { PmCronogramaTab } from "./PmCronogramaTab";
 import { PmPostingFields } from "./PmPostingFields";
 import type { PmTask } from "../pm-types";
 import { toast } from "sonner";
-import { RichDescriptionEditor, ExpandableDescription } from "./RichDescriptionEditor";
+import { SmartCaptionEditor } from "./SmartCaptionEditor";
 
 function initials(n: string) {
   return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
@@ -213,8 +213,6 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
-  const [editingDesc, setEditingDesc] = useState(false);
-  const [descDraft, setDescDraft] = useState("");
   const [newTagName, setNewTagName] = useState("");
   const [newTagColor, setNewTagColor] = useState("blue");
   const [stageChoiceOpen, setStageChoiceOpen] = useState(false);
@@ -368,7 +366,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     if (titleDraft.trim() && titleDraft.trim() !== task.title) updateTask.mutate({ id: task.id, title: titleDraft.trim() });
     setEditingTitle(false);
   };
-  const saveDesc = () => { updateTask.mutate({ id: task.id, description: descDraft }); setEditingDesc(false); };
+  
 
   const handleSetCover = (url: string) => { updateTask.mutate({ id: task.id, cover_url: url } as any); toast.success("Capa definida!"); };
   const handleRemoveCover = () => { updateTask.mutate({ id: task.id, cover_url: null } as any); toast.success("Capa removida!"); };
@@ -672,19 +670,16 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
         {/* Description */}
         <div className="border-t border-border/20 pt-4">
-          {editingDesc ? (
-            <RichDescriptionEditor
-              value={descDraft}
-              onChange={setDescDraft}
-              onSave={() => { updateTask.mutate({ id: task.id, description: descDraft }); setEditingDesc(false); }}
-              onCancel={() => setEditingDesc(false)}
-            />
-          ) : (
-            <ExpandableDescription
-              html={task.description}
-              onEdit={() => { setDescDraft(task.description ?? ""); setEditingDesc(true); }}
-            />
-          )}
+          <div className="flex items-center gap-2 mb-2">
+            <FileText className="h-4 w-4 text-muted-foreground" />
+            <h3 className="text-sm font-bold">Descrição</h3>
+          </div>
+          <SmartCaptionEditor
+            value={task.description ?? ""}
+            onChange={(val) => updateTask.mutate({ id: task.id, description: val })}
+            placeholder="Adicione uma descrição..."
+            minHeight="80px"
+          />
         </div>
 
         {/* Posting Fields (for subtasks - all stages) */}
