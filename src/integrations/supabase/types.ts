@@ -47,6 +47,7 @@ export type Database = {
       app_settings: {
         Row: {
           id: number
+          login_bg_images: Json
           logo_shape: Database["public"]["Enums"]["logo_shape_type"]
           logo_url: string | null
           updated_at: string
@@ -55,6 +56,7 @@ export type Database = {
         }
         Insert: {
           id?: number
+          login_bg_images?: Json
           logo_shape?: Database["public"]["Enums"]["logo_shape_type"]
           logo_url?: string | null
           updated_at?: string
@@ -63,6 +65,7 @@ export type Database = {
         }
         Update: {
           id?: number
+          login_bg_images?: Json
           logo_shape?: Database["public"]["Enums"]["logo_shape_type"]
           logo_url?: string | null
           updated_at?: string
