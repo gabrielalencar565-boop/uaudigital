@@ -13,7 +13,10 @@ export function WorkspaceDropdown() {
         <img
           src={logoUrl}
           alt="Logo"
-          className="h-8 w-auto max-w-[40px] object-contain"
+          className={cn(
+            "h-8 w-auto max-w-[40px] object-contain",
+            logoShape === "circle" ? "rounded-full" : "rounded-xl"
+          )}
         />
       ) : (
         <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10">
