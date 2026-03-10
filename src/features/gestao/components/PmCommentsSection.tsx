@@ -128,7 +128,7 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
   );
 
   return (
-    <div className="flex flex-col gap-3 h-full">
+    <div className="flex flex-col gap-3 h-full rounded-xl p-4 bg-gradient-to-br from-sidebar/10 via-sidebar/5 to-transparent border border-sidebar/15">
       <div className="flex-1 space-y-3 min-h-0 overflow-y-auto pr-1">
         {timeline.map((item, idx) => {
           if (item.type === "comment") {
