@@ -187,8 +187,8 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
               type="button"
               onMouseDown={(e) => { e.preventDefault(); setAiMenuOpen(v => !v); }}
               className={cn(
-                "inline-flex h-7 items-center gap-1 rounded-md px-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
-                aiMenuOpen && "bg-accent text-accent-foreground"
+                "inline-flex h-7 items-center gap-1 rounded-md px-1.5 text-white/70 transition-colors hover:bg-white/15 hover:text-white",
+                aiMenuOpen && "bg-white/20 text-white"
               )}
               title="Melhorar com IA"
             >
