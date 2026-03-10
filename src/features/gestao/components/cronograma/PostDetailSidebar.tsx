@@ -5,9 +5,9 @@ import { Calendar, X, Clock, Instagram, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { POST_TYPE_META, type CronogramaPost } from "./types";
+import { SmartCaptionEditor } from "../SmartCaptionEditor";
 
 interface Props {
   post: CronogramaPost & { all_attachment_urls?: string[] };
