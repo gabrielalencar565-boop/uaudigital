@@ -494,11 +494,11 @@ function LoginBgImagesCard() {
       <CardContent className="space-y-4">
         {images.length > 0 ? (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-            {images.map((url) => (
-              <div key={url} className="group relative aspect-video overflow-hidden rounded-lg border border-border">
-                <img src={url} alt="" className="h-full w-full object-cover" />
+            {images.map((img) => (
+              <div key={img.url} className="group relative aspect-video overflow-hidden rounded-lg border border-border">
+                <img src={img.url} alt="" className="h-full w-full object-cover" />
                 <button
-                  onClick={() => handleRemove(url)}
+                  onClick={() => handleRemove(img.url)}
                   className="absolute right-1 top-1 rounded-full bg-background/80 p-1 opacity-0 transition-opacity group-hover:opacity-100"
                 >
                   <Trash2 className="h-4 w-4 text-destructive" />
