@@ -1,0 +1,1 @@
+ALTER TABLE public.app_settings ADD COLUMN workspace_name text NOT NULL DEFAULT '';
