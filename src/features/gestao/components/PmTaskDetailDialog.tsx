@@ -387,11 +387,19 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     }
   };
 
-  const addTag = () => {
+  const createGlobalTag = useCreatePmTag();
+  const deleteGlobalTag = useDeletePmTag();
+
+  const addTag = async () => {
     if (!newTagName.trim()) return;
     const tagValue = `${newTagName.trim()}:${newTagColor}`;
     const existing = task.tags ?? [];
     if (!existing.some(t => parseTag(t).name === newTagName.trim())) {
+      // Create global tag if it doesn't exist
+      const alreadyGlobal = globalTags.some(gt => gt.name.toLowerCase() === newTagName.trim().toLowerCase());
+      if (!alreadyGlobal) {
+        await createGlobalTag.mutateAsync({ name: newTagName.trim(), color_key: newTagColor });
+      }
       updateTask.mutate({ id: task.id, tags: [...existing, tagValue] } as any);
     }
     setNewTagName("");
@@ -399,9 +407,15 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   const removeTag = (tag: string) => { updateTask.mutate({ id: task.id, tags: (task.tags ?? []).filter(t => t !== tag) } as any); };
   const toggleGlobalTag = (tag: string) => {
     const existing = task.tags ?? [];
-    if (!existing.includes(tag)) {
+    if (existing.includes(tag)) {
+      removeTag(tag);
+    } else {
       updateTask.mutate({ id: task.id, tags: [...existing, tag] } as any);
     }
+  };
+  const handleDeleteGlobalTag = (globalTag: { id: string; name: string; color_key: string }) => {
+    const tagValue = `${globalTag.name}:${globalTag.color_key}`;
+    deleteGlobalTag.mutate({ tagId: globalTag.id, tagValue });
   };
 
   return (
