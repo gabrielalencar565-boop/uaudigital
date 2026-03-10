@@ -1,7 +1,10 @@
 import { useState } from "react";
-import { Images, Plus, Trash2 } from "lucide-react";
+import { Images, Plus, Trash2, Settings2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
 import { useAppSettings, useUpdateAppSettings } from "@/features/data/queries";
@@ -14,6 +17,8 @@ export function AdminAparenciaPanel() {
   const [uploading, setUploading] = useState(false);
 
   const images: string[] = appSettingsQ.data?.login_bg_images ?? [];
+  const objectFit = appSettingsQ.data?.login_bg_object_fit ?? "cover";
+  const opacity = appSettingsQ.data?.login_bg_opacity ?? 0.2;
 
   const handleUpload = async (file: File) => {
     if (!user) return;
@@ -48,8 +53,26 @@ export function AdminAparenciaPanel() {
     }
   };
 
+  const handleObjectFitChange = async (value: string) => {
+    try {
+      await updateAppSettings.mutateAsync({ login_bg_object_fit: value } as any);
+      toast.success("Modo de exibição atualizado");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao salvar");
+    }
+  };
+
+  const handleOpacityChange = async (value: number[]) => {
+    try {
+      await updateAppSettings.mutateAsync({ login_bg_opacity: value[0] } as any);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao salvar");
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* Imagens */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -57,7 +80,7 @@ export function AdminAparenciaPanel() {
             Imagens de fundo do login
           </CardTitle>
           <CardDescription>
-            As imagens passam em slideshow no fundo da tela de login com opacidade baixa.
+            As imagens passam em slideshow no fundo da tela de login.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -104,6 +127,74 @@ export function AdminAparenciaPanel() {
             <Plus className="h-4 w-4" />
             {uploading ? "Enviando..." : "Adicionar imagens"}
           </Button>
+        </CardContent>
+      </Card>
+
+      {/* Dimensões e opacidade */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Settings2 className="h-5 w-5" />
+            Configurações da imagem de fundo
+          </CardTitle>
+          <CardDescription>
+            Ajuste como as imagens são exibidas e a opacidade na tela de login.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-2">
+            <Label>Modo de exibição</Label>
+            <Select value={objectFit} onValueChange={handleObjectFitChange}>
+              <SelectTrigger className="w-full max-w-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="cover">Cobrir (preenche toda a tela, pode cortar)</SelectItem>
+                <SelectItem value="contain">Conter (mostra a imagem inteira, pode ter barras)</SelectItem>
+                <SelectItem value="fill">Esticar (distorce para preencher)</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Define como a imagem se ajusta à tela.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Opacidade da imagem — {Math.round(opacity * 100)}%</Label>
+            <Slider
+              value={[opacity]}
+              min={0.05}
+              max={1}
+              step={0.05}
+              onValueCommit={handleOpacityChange}
+              className="max-w-xs"
+            />
+            <p className="text-xs text-muted-foreground">
+              Quanto maior, mais visível a imagem de fundo. O overlay escuro será ajustado automaticamente.
+            </p>
+          </div>
+
+          {/* Preview */}
+          {images.length > 0 && (
+            <div className="space-y-2">
+              <Label>Pré-visualização</Label>
+              <div className="relative aspect-video w-full max-w-md overflow-hidden rounded-lg border border-border">
+                <img
+                  src={images[0]}
+                  alt="Preview"
+                  className="h-full w-full"
+                  style={{ objectFit: objectFit as any }}
+                />
+                <div
+                  className="absolute inset-0 bg-black"
+                  style={{ opacity: 1 - opacity }}
+                />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-sm font-medium text-white/80">Preview do fundo</span>
+                </div>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
