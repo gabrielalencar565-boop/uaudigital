@@ -366,7 +366,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     if (titleDraft.trim() && titleDraft.trim() !== task.title) updateTask.mutate({ id: task.id, title: titleDraft.trim() });
     setEditingTitle(false);
   };
-  const saveDesc = () => { updateTask.mutate({ id: task.id, description: descDraft }); setEditingDesc(false); };
+  
 
   const handleSetCover = (url: string) => { updateTask.mutate({ id: task.id, cover_url: url } as any); toast.success("Capa definida!"); };
   const handleRemoveCover = () => { updateTask.mutate({ id: task.id, cover_url: null } as any); toast.success("Capa removida!"); };
