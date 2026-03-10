@@ -197,8 +197,11 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
             </button>
 
             {aiMenuOpen && (
-              <div className="absolute top-full left-0 mt-1 w-64 rounded-lg border border-border/60 bg-popover shadow-xl p-1 z-50 animate-in fade-in-0 slide-in-from-top-2 duration-150">
-                <p className="px-2 py-1.5 text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">
+              <div
+                className="absolute top-full left-0 mt-1 w-64 rounded-xl border border-white/10 shadow-2xl p-1 z-50 animate-in fade-in-0 slide-in-from-top-2 duration-150"
+                style={{ background: "linear-gradient(160deg, hsl(270 55% 24%), hsl(290 45% 18%))" }}
+              >
+                <p className="px-2 py-1.5 text-[10px] text-white/50 font-semibold uppercase tracking-wider">
                   Melhorar com IA
                 </p>
                 {AI_ACTIONS.map((a) => {
@@ -208,10 +211,10 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
                       key={a.key}
                       type="button"
                       onMouseDown={(e) => { e.preventDefault(); handleAiAction(a.key); }}
-                      className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-sm transition-colors hover:bg-accent"
+                      className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-white/10"
                     >
-                      <Ico className="h-4 w-4 shrink-0 text-muted-foreground" />
-                      <span className="flex-1 text-left font-medium">{a.label}</span>
+                      <Ico className="h-4 w-4 shrink-0 text-white/50" />
+                      <span className="flex-1 text-left font-medium text-white/90">{a.label}</span>
                     </button>
                   );
                 })}
