@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useSession } from "@/hooks/use-session";
-import { useAppSettings, useTeamMembers } from "@/features/data/queries";
+import { useAppSettings } from "@/features/data/queries";
 
 /* ── Schemas ── */
 const loginSignupSchema = z.object({
