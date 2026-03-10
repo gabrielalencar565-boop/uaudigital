@@ -101,7 +101,7 @@ export function AnnualShowcasePanel({
   return (
     <div className="space-y-3">
       <h3 className="text-2xl font-semibold tracking-tight">Painel Anual</h3>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 pt-5">
       {showcase.map((item, idx) => {
         const member = teamById.get(item.user_id);
         const rank = idx + 1;
@@ -111,16 +111,16 @@ export function AnnualShowcasePanel({
         return (
           <div
             key={item.user_id}
-            className={`relative flex flex-col items-center gap-2 rounded-xl border p-4 pt-6 text-center transition-all ${
+             className={`relative flex flex-col items-center gap-1.5 rounded-xl border p-4 pt-8 text-center transition-all ${
               isTop3
-                ? "border-primary/30 bg-primary/5 shadow-sm"
+                ? "border-border/40 bg-card shadow-sm"
                 : "border-border/50 bg-card/30"
             }`}
           >
-            {/* Rank badge */}
-            <div className="absolute top-2 left-1/2 -translate-x-1/2">
+            {/* Rank badge — above card */}
+            <div className="absolute -top-4 left-1/2 -translate-x-1/2">
               {medal ? (
-                <span className="text-2xl leading-none drop-shadow-sm">{medal}</span>
+                <span className="text-3xl leading-none drop-shadow-sm">{medal}</span>
               ) : (
                 <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-muted px-1.5 text-xs font-bold tabular-nums text-muted-foreground">
                   {rank}º
@@ -129,7 +129,7 @@ export function AnnualShowcasePanel({
             </div>
 
             {/* Avatar */}
-            <Avatar className={`${isTop3 ? "h-16 w-16" : "h-14 w-14"} mt-2 shadow-sm`}>
+            <Avatar className={`${isTop3 ? "h-16 w-16" : "h-14 w-14"} shadow-sm`}>
               <AvatarImage src={member?.avatar_url ?? undefined} />
               <AvatarFallback className="text-sm font-semibold">
                 {initials(member?.display_name ?? "?")}
@@ -143,7 +143,7 @@ export function AnnualShowcasePanel({
 
             {/* Total points */}
             <div className="flex items-baseline gap-1">
-              <span className={`${isTop3 ? "text-2xl" : "text-xl"} font-bold tabular-nums text-primary`}>
+              <span className={`${isTop3 ? "text-2xl" : "text-xl"} font-bold tabular-nums`}>
                 {item.total}
               </span>
               <span className="text-[10px] text-muted-foreground">pts</span>
