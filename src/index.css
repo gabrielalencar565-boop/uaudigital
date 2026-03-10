@@ -370,3 +370,13 @@ All colors MUST be HSL.
   50%  { opacity: 1; }
   100% { opacity: 1; transform: scale(1); color: inherit; }
 }
+
+@keyframes masonry-up {
+  0%   { transform: translateY(0); }
+  100% { transform: translateY(-50%); }
+}
+
+@keyframes masonry-down {
+  0%   { transform: translateY(-50%); }
+  100% { transform: translateY(0); }
+}
