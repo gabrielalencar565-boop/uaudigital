@@ -123,6 +123,7 @@ export default function Auth() {
   const appSettings = useAppSettings();
   const teamQ = useTeamMembers();
 
+  const logoUrl = appSettings.data?.logo_url ?? null;
   const bgImages = appSettings.data?.login_bg_images ?? [];
   const galleryPhotos = useMemo(() => {
     return bgImages.map((img: any) => img.url as string).filter(Boolean);
