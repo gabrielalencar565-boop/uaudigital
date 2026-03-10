@@ -120,7 +120,7 @@ export function AnnualShowcasePanel({
             {/* Rank badge — above card */}
             <div className="absolute -top-4 left-1/2 -translate-x-1/2">
               {medal ? (
-                <span className="text-2xl leading-none drop-shadow-sm">{medal}</span>
+                <span className="text-3xl leading-none drop-shadow-sm">{medal}</span>
               ) : (
                 <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-muted px-1.5 text-xs font-bold tabular-nums text-muted-foreground">
                   {rank}º
