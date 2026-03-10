@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ProgressRing } from "@/components/metrics/ProgressRing";
 import {
-  BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+  BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend, RadarChart, Radar, PolarGrid,
   PolarAngleAxis, PolarRadiusAxis,
 } from "recharts";
@@ -250,7 +250,15 @@ export function AnnualDashboard({
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={320}>
-            <LineChart data={monthlyEvolution}>
+            <AreaChart data={monthlyEvolution}>
+              <defs>
+                {topUsersForChart.map((u, idx) => (
+                  <linearGradient key={u.user_id} id={`grad-${idx}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={CHART_COLORS[idx % CHART_COLORS.length]} stopOpacity={0.35} />
+                    <stop offset="100%" stopColor={CHART_COLORS[idx % CHART_COLORS.length]} stopOpacity={0.02} />
+                  </linearGradient>
+                ))}
+              </defs>
               <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
               <XAxis dataKey="month" className="text-xs" />
               <YAxis className="text-xs" />
@@ -298,12 +306,14 @@ export function AnnualDashboard({
                 )}
               />
               {topUsersForChart.map((u, idx) => (
-                <Line
+                <Area
                   key={u.user_id}
+                  type="monotone"
                   dataKey={u.user_id}
                   name={u.display_name?.split(" ")[0] ?? "?"}
                   stroke={CHART_COLORS[idx % CHART_COLORS.length]}
                   strokeWidth={2}
+                  fill={`url(#grad-${idx})`}
                   dot={(props: any) => {
                     const { cx, cy, value } = props;
                     if (value == null || cx == null || cy == null) return <g />;
@@ -344,7 +354,7 @@ export function AnnualDashboard({
                   connectNulls
                 />
               ))}
-            </LineChart>
+            </AreaChart>
           </ResponsiveContainer>
         </CardContent>
       </Card>
