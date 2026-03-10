@@ -143,7 +143,7 @@ export function AnnualShowcasePanel({
 
             {/* Total points */}
             <div className="flex items-baseline gap-1">
-              <span className={`${isTop3 ? "text-2xl" : "text-xl"} font-bold tabular-nums text-primary`}>
+              <span className={`${isTop3 ? "text-2xl" : "text-xl"} font-bold tabular-nums`}>
                 {item.total}
               </span>
               <span className="text-[10px] text-muted-foreground">pts</span>
