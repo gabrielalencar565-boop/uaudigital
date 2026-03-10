@@ -148,11 +148,16 @@ export function useAppSettings() {
     queryFn: async (): Promise<AppSettingsRow | null> => {
       const { data, error } = await supabase
         .from("app_settings")
-        .select("id, logo_url, logo_shape, workspace_name, login_bg_images, updated_at, updated_by")
+        .select("id, logo_url, logo_shape, workspace_name, login_bg_images, login_bg_object_fit, login_bg_opacity, updated_at, updated_by")
         .eq("id", 1)
         .maybeSingle();
       if (error) throw error;
-      return { ...data, login_bg_images: (data as any)?.login_bg_images ?? [] } as AppSettingsRow | null;
+      return {
+        ...data,
+        login_bg_images: (data as any)?.login_bg_images ?? [],
+        login_bg_object_fit: (data as any)?.login_bg_object_fit ?? "cover",
+        login_bg_opacity: (data as any)?.login_bg_opacity ?? 0.2,
+      } as AppSettingsRow | null;
     },
   });
 }
