@@ -1,9 +1,9 @@
 import { Film, Image, LayoutGrid, Camera } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useUpdatePmTask } from "../hooks/use-pm-data";
+import { SmartCaptionEditor } from "./SmartCaptionEditor";
 import type { PmTask } from "../pm-types";
 
 const POST_TYPES = [
