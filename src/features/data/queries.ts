@@ -138,6 +138,9 @@ export type AppSettingsRow = {
   login_bg_images: string[];
   login_bg_object_fit: string;
   login_bg_opacity: number;
+  login_bg_position_x: number;
+  login_bg_position_y: number;
+  login_bg_zoom: number;
   updated_at: string;
   updated_by: string | null;
 };
