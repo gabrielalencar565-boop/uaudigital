@@ -564,29 +564,36 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                       ))}
                     </div>
                   )}
-                  {newTagName.trim() && !allTags.some(t => parseTag(t).name.toLowerCase() === newTagName.trim().toLowerCase()) && (
+                  {newTagName.trim() && !globalTags.some(gt => gt.name.toLowerCase() === newTagName.trim().toLowerCase()) && (
                     <Button size="sm" className="mt-2 h-7 text-xs w-full" onClick={addTag}>
                       <Plus className="h-3 w-3 mr-1" /> Criar "{newTagName.trim()}"
                     </Button>
                   )}
                 </div>
-                {allTags.length > 0 && (
+                {globalTags.length > 0 && (
                   <div className="p-2 space-y-0.5">
                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold px-2 py-1">Etiquetas disponíveis</p>
-                    {allTags
-                      .filter(t => !newTagName.trim() || parseTag(t).name.toLowerCase().includes(newTagName.trim().toLowerCase()))
-                      .map(rawTag => {
+                    {globalTags
+                      .filter(gt => !newTagName.trim() || gt.name.toLowerCase().includes(newTagName.trim().toLowerCase()))
+                      .map(gt => {
+                      const rawTag = `${gt.name}:${gt.color_key}`;
                       const tc = tagColor(rawTag);
-                      const name = tagDisplay(rawTag);
                       const isActive = (task.tags ?? []).includes(rawTag);
                       return (
-                        <button key={rawTag} className={cn("flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-accent/50 transition text-left", isActive && "bg-accent/30")} onClick={() => {
-                          if (isActive) { removeTag(rawTag); } else { toggleGlobalTag(rawTag); }
-                        }}>
-                          <span className={cn("h-3 w-3 rounded shrink-0", tc.dot)} />
-                          <span className="text-xs flex-1">{name}</span>
-                          {isActive && <Check className="h-3 w-3 text-primary shrink-0" />}
-                        </button>
+                        <div key={gt.id} className={cn("flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent/50 transition group", isActive && "bg-accent/30")}>
+                          <button className="flex items-center gap-2 flex-1 text-left" onClick={() => toggleGlobalTag(rawTag)}>
+                            <span className={cn("h-3 w-3 rounded shrink-0", tc.dot)} />
+                            <span className="text-xs flex-1">{gt.name}</span>
+                            {isActive && <Check className="h-3 w-3 text-primary shrink-0" />}
+                          </button>
+                          <button
+                            className="h-4 w-4 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 hover:bg-destructive/20 transition-all shrink-0"
+                            onClick={(e) => { e.stopPropagation(); handleDeleteGlobalTag(gt); }}
+                            title="Apagar etiqueta de todas as tarefas"
+                          >
+                            <X className="h-3 w-3 text-destructive" />
+                          </button>
+                        </div>
                       );
                     })}
                   </div>
