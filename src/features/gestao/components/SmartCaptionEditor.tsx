@@ -163,7 +163,7 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
         >
           {TOOLBAR_BUTTONS.map((item, i) => {
             if ("divider" in item) {
-              return <div key={`d-${i}`} className="mx-0.5 h-5 w-px bg-border/40" />;
+              return <div key={`d-${i}`} className="mx-0.5 h-5 w-px bg-white/15" />;
             }
             const Ico = item.icon;
             return (
@@ -171,7 +171,7 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
                 key={item.cmd}
                 type="button"
                 onMouseDown={(e) => { e.preventDefault(); execCmd(item.cmd); }}
-                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-white/70 transition-colors hover:bg-white/15 hover:text-white"
                 title={item.label}
               >
                 <Ico className="h-3.5 w-3.5" />
@@ -179,7 +179,7 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
             );
           })}
 
-          <div className="mx-0.5 h-5 w-px bg-border/40" />
+          <div className="mx-0.5 h-5 w-px bg-white/15" />
 
           {/* AI button */}
           <div className="relative">
