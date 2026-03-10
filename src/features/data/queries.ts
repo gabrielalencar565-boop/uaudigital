@@ -130,17 +130,34 @@ export function useTeamMembers() {
   });
 }
 
+export type BgImageConfig = {
+  url: string;
+  posX: number;
+  posY: number;
+  zoom: number;
+  opacity: number;
+};
+
+function normalizeBgImages(raw: any): BgImageConfig[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((item: any) => {
+    if (typeof item === "string") return { url: item, posX: 50, posY: 50, zoom: 1, opacity: 0.2 };
+    return {
+      url: item.url ?? "",
+      posX: item.posX ?? 50,
+      posY: item.posY ?? 50,
+      zoom: item.zoom ?? 1,
+      opacity: item.opacity ?? 0.2,
+    };
+  });
+}
+
 export type AppSettingsRow = {
   id: number;
   logo_url: string | null;
   logo_shape: "circle" | "square";
   workspace_name: string;
-  login_bg_images: string[];
-  login_bg_object_fit: string;
-  login_bg_opacity: number;
-  login_bg_position_x: number;
-  login_bg_position_y: number;
-  login_bg_zoom: number;
+  login_bg_images: BgImageConfig[];
   updated_at: string;
   updated_by: string | null;
 };
@@ -151,19 +168,14 @@ export function useAppSettings() {
     queryFn: async (): Promise<AppSettingsRow | null> => {
       const { data, error } = await supabase
         .from("app_settings")
-        .select("id, logo_url, logo_shape, workspace_name, login_bg_images, login_bg_object_fit, login_bg_opacity, login_bg_position_x, login_bg_position_y, login_bg_zoom, updated_at, updated_by")
+        .select("id, logo_url, logo_shape, workspace_name, login_bg_images, updated_at, updated_by")
         .eq("id", 1)
         .maybeSingle();
       if (error) throw error;
       const d = data as any;
       return {
         ...data,
-        login_bg_images: d?.login_bg_images ?? [],
-        login_bg_object_fit: d?.login_bg_object_fit ?? "cover",
-        login_bg_opacity: d?.login_bg_opacity ?? 0.2,
-        login_bg_position_x: d?.login_bg_position_x ?? 50,
-        login_bg_position_y: d?.login_bg_position_y ?? 50,
-        login_bg_zoom: d?.login_bg_zoom ?? 1,
+        login_bg_images: normalizeBgImages(d?.login_bg_images),
       } as AppSettingsRow | null;
     },
   });
@@ -172,7 +184,7 @@ export function useAppSettings() {
 export function useUpdateAppSettings() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (updates: { logo_url?: string | null; logo_shape?: "circle" | "square"; workspace_name?: string; login_bg_images?: string[]; login_bg_object_fit?: string; login_bg_opacity?: number; login_bg_position_x?: number; login_bg_position_y?: number; login_bg_zoom?: number }) => {
+    mutationFn: async (updates: { logo_url?: string | null; logo_shape?: "circle" | "square"; workspace_name?: string; login_bg_images?: BgImageConfig[] }) => {
       const { data, error } = await supabase
         .from("app_settings")
         .update(updates as any)
