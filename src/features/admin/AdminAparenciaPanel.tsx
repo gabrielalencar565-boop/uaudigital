@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Images, Plus, Trash2, Settings2, Move, ZoomIn, RotateCcw, Check } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,92 @@ import { useAppSettings, useUpdateAppSettings, type BgImageConfig } from "@/feat
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
+/* ── Mini masonry preview (matches Auth login layout) ── */
+function MiniMasonryPreview({ images, selectedIdx, onSelect }: {
+  images: BgImageConfig[];
+  selectedIdx: number | null;
+  onSelect: (idx: number | null) => void;
+}) {
+  const urls = images.map((img) => img.url);
+
+  const cols = useMemo(() => {
+    if (urls.length === 0) return [[], [], []];
+    const col1: { url: string; idx: number }[] = [];
+    const col2: { url: string; idx: number }[] = [];
+    const col3: { url: string; idx: number }[] = [];
+    const minItems = Math.max(6, urls.length);
+    for (let i = 0; i < minItems; i++) {
+      const realIdx = i % urls.length;
+      const item = { url: urls[realIdx], idx: realIdx };
+      if (i % 3 === 0) col1.push(item);
+      else if (i % 3 === 1) col2.push(item);
+      else col3.push(item);
+    }
+    return [col1, col2, col3];
+  }, [urls]);
+
+  if (urls.length === 0) {
+    return (
+      <div className="flex h-64 items-center justify-center rounded-xl border-2 border-dashed border-border bg-muted/30">
+        <p className="text-sm text-muted-foreground">Nenhuma imagem adicionada</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative overflow-hidden rounded-xl border-2 border-border bg-[#0B0B0B]" style={{ height: 340 }}>
+      {/* Simulated login left panel */}
+      <div className="absolute left-0 top-0 bottom-0 flex items-center justify-center" style={{ width: "38%", background: "#0B0B0B", zIndex: 2 }}>
+        <div className="space-y-2 text-center px-4">
+          <div className="mx-auto h-6 w-6 rounded-lg bg-primary flex items-center justify-center">
+            <span className="text-[8px] font-bold text-primary-foreground">U</span>
+          </div>
+          <p className="text-[9px] font-semibold text-white/80">Bem-vindo de volta</p>
+          <div className="mx-auto space-y-1.5 w-24">
+            <div className="h-3 rounded bg-white/10" />
+            <div className="h-3 rounded bg-white/10" />
+            <div className="h-4 rounded bg-primary/60" />
+          </div>
+        </div>
+      </div>
+      {/* Masonry gallery */}
+      <div className="absolute right-0 top-0 bottom-0 flex gap-1.5 overflow-hidden p-2" style={{ left: "38%" }}>
+        {cols.map((col, colIdx) => (
+          <div key={colIdx} className="flex flex-1 flex-col gap-1.5">
+            {col.map((item, i) => {
+              const isSelected = selectedIdx === item.idx;
+              return (
+                <div
+                  key={`${colIdx}-${i}`}
+                  className={cn(
+                    "relative overflow-hidden rounded-lg cursor-pointer transition-all border-2",
+                    isSelected ? "border-primary ring-1 ring-primary/40" : "border-transparent hover:border-white/30"
+                  )}
+                  style={{
+                    aspectRatio: colIdx === 1 && i % 3 === 0 ? "3/4" : i % 2 === 0 ? "4/5" : "3/4",
+                  }}
+                  onClick={() => onSelect(isSelected ? null : item.idx)}
+                >
+                  <img src={item.url} alt="" className="h-full w-full object-cover" />
+                  <div
+                    className="pointer-events-none absolute inset-0 opacity-20"
+                    style={{ background: "linear-gradient(180deg, transparent 40%, rgba(0,0,0,0.4) 100%)" }}
+                  />
+                  {isSelected && (
+                    <div className="absolute left-1 top-1 rounded-full bg-primary p-0.5">
+                      <Check className="h-2.5 w-2.5 text-primary-foreground" />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function AdminAparenciaPanel() {
   const appSettingsQ = useAppSettings();
   const updateAppSettings = useUpdateAppSettings();
@@ -19,7 +105,6 @@ export function AdminAparenciaPanel() {
 
   const images: BgImageConfig[] = appSettingsQ.data?.login_bg_images ?? [];
 
-  // Local state for the selected image editing
   const selected = selectedIdx !== null ? images[selectedIdx] : null;
   const [localPosX, setLocalPosX] = useState(50);
   const [localPosY, setLocalPosY] = useState(50);
@@ -27,7 +112,6 @@ export function AdminAparenciaPanel() {
   const [localOpacity, setLocalOpacity] = useState(0.2);
   const [dirty, setDirty] = useState(false);
 
-  // Load selected image settings
   useEffect(() => {
     if (selected) {
       setLocalPosX(selected.posX);
@@ -112,7 +196,7 @@ export function AdminAparenciaPanel() {
       const newImg: BgImageConfig = { url: pub.data.publicUrl, posX: 50, posY: 50, zoom: 1, opacity: 0.2 };
       await updateAppSettings.mutateAsync({ login_bg_images: [...images, newImg] } as any);
       toast.success("Imagem adicionada!");
-      setSelectedIdx(images.length); // select the new one
+      setSelectedIdx(images.length);
     } catch (e: any) {
       toast.error(e?.message ?? "Erro ao enviar imagem");
     } finally {
@@ -134,78 +218,54 @@ export function AdminAparenciaPanel() {
 
   return (
     <div className="space-y-6">
-      {/* Imagens */}
+      {/* Preview masonry — replica do login */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Images className="h-5 w-5" />
-            Imagens de fundo do login
+            Preview da tela de login
           </CardTitle>
           <CardDescription>
-            Clique em uma imagem para ajustar posição, zoom e opacidade individualmente.
+            Clique em uma foto na galeria para editá-la. Este preview simula o layout real do login.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {images.length > 0 ? (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-              {images.map((img, idx) => (
-                <div
-                  key={img.url}
-                  className={cn(
-                    "group relative aspect-video overflow-hidden rounded-lg border-2 cursor-pointer transition-all",
-                    selectedIdx === idx
-                      ? "border-primary ring-2 ring-primary/30"
-                      : "border-border hover:border-primary/50"
-                  )}
-                  onClick={() => setSelectedIdx(selectedIdx === idx ? null : idx)}
-                >
-                  <img src={img.url} alt="" className="h-full w-full object-cover" />
-                  {selectedIdx === idx && (
-                    <div className="absolute left-1 top-1 rounded-full bg-primary p-0.5">
-                      <Check className="h-3 w-3 text-primary-foreground" />
-                    </div>
-                  )}
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleRemove(idx); }}
-                    className="absolute right-1 top-1 rounded-full bg-background/80 p-1 opacity-0 transition-opacity group-hover:opacity-100"
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </button>
-                  {/* Mini indicators */}
-                  <div className="absolute bottom-1 left-1 flex gap-1 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
-                    <span className="rounded bg-black/60 px-1 py-0.5 text-[9px] text-white/80 font-mono">
-                      {Math.round(img.zoom * 100)}%
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Nenhuma imagem adicionada. O fundo ficará com a cor padrão.
-            </p>
-          )}
+          <MiniMasonryPreview images={images} selectedIdx={selectedIdx} onSelect={setSelectedIdx} />
 
-          <Button
-            type="button"
-            variant="outline"
-            className="gap-2"
-            disabled={uploading}
-            onClick={() => {
-              const input = document.createElement("input");
-              input.type = "file";
-              input.accept = "image/*";
-              input.multiple = true;
-              input.onchange = async () => {
-                const files = Array.from(input.files ?? []);
-                for (const f of files) await handleUpload(f);
-              };
-              input.click();
-            }}
-          >
-            <Plus className="h-4 w-4" />
-            {uploading ? "Enviando..." : "Adicionar imagens"}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="gap-2"
+              disabled={uploading}
+              onClick={() => {
+                const input = document.createElement("input");
+                input.type = "file";
+                input.accept = "image/*";
+                input.multiple = true;
+                input.onchange = async () => {
+                  const files = Array.from(input.files ?? []);
+                  for (const f of files) await handleUpload(f);
+                };
+                input.click();
+              }}
+            >
+              <Plus className="h-4 w-4" />
+              {uploading ? "Enviando..." : "Adicionar imagens"}
+            </Button>
+
+            {selectedIdx !== null && (
+              <Button
+                variant="destructive"
+                size="sm"
+                className="gap-2"
+                onClick={() => handleRemove(selectedIdx)}
+              >
+                <Trash2 className="h-4 w-4" />
+                Remover selecionada
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -222,10 +282,10 @@ export function AdminAparenciaPanel() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
-            {/* Interactive preview */}
+            {/* Interactive preview — uses card aspect ratio from masonry */}
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Label>Pré-visualização interativa</Label>
+                <Label>Pré-visualização no card</Label>
                 <span className="flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                   <Move className="h-3 w-3" /> Arraste
                 </span>
@@ -235,7 +295,8 @@ export function AdminAparenciaPanel() {
               </div>
               <div
                 ref={previewRef}
-                className="relative aspect-video w-full max-w-lg cursor-grab overflow-hidden rounded-lg border-2 border-primary/30 bg-black active:cursor-grabbing select-none"
+                className="relative w-full max-w-xs cursor-grab overflow-hidden rounded-2xl border-2 border-primary/30 bg-black active:cursor-grabbing select-none"
+                style={{ aspectRatio: "3/4" }}
                 onMouseDown={handleMouseDown}
                 onWheel={handleWheel}
               >
