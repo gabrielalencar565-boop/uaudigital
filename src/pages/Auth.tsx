@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useSession } from "@/hooks/use-session";
-import { useAppSettings, useTeamMembers } from "@/features/data/queries";
+import { useAppSettings } from "@/features/data/queries";
 
 /* ── Schemas ── */
 const loginSignupSchema = z.object({
@@ -121,14 +121,13 @@ export default function Auth() {
   const location = useLocation();
   const { user } = useSession();
   const appSettings = useAppSettings();
-  const teamQ = useTeamMembers();
+  
 
   const logoUrl = appSettings.data?.logo_url ?? null;
-  const teamAvatars = useMemo(() => {
-    return (teamQ.data ?? [])
-      .filter((m) => m.avatar_url)
-      .map((m) => m.avatar_url!);
-  }, [teamQ.data]);
+  const bgImages = appSettings.data?.login_bg_images ?? [];
+  const galleryPhotos = useMemo(() => {
+    return bgImages.map((img: any) => img.url as string).filter(Boolean);
+  }, [bgImages]);
 
   const [mode, setMode] = useState<AuthMode>("login");
   const [hasRecoverySession, setHasRecoverySession] = useState<boolean | null>(null);
@@ -455,7 +454,7 @@ export default function Auth() {
         className="relative hidden flex-1 overflow-hidden md:block"
         style={{ background: "#0B0B0B" }}
       >
-        <MasonryGallery avatars={teamAvatars} />
+        <MasonryGallery avatars={galleryPhotos} />
       </div>
     </div>
   );
