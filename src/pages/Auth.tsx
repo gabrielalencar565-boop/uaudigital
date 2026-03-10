@@ -121,7 +121,7 @@ export default function Auth() {
   const location = useLocation();
   const { user } = useSession();
   const appSettings = useAppSettings();
-  const teamQ = useTeamMembers();
+  
 
   const logoUrl = appSettings.data?.logo_url ?? null;
   const bgImages = appSettings.data?.login_bg_images ?? [];
