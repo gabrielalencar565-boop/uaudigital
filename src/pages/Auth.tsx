@@ -35,7 +35,7 @@ type ResetValues = z.infer<typeof resetSchema>;
 type AuthMode = "login" | "signup" | "forgot" | "reset";
 
 /* ── Background slideshow with slow zoom + pan ── */
-function BgSlideshow({ images, opacity, posX, posY, zoom }: { images: string[]; opacity: number; posX: number; posY: number; zoom: number }) {
+function BgSlideshow({ images }: { images: { url: string; posX: number; posY: number; zoom: number; opacity: number }[] }) {
   const [current, setCurrent] = useState(0);
 
   useEffect(() => {
@@ -50,28 +50,28 @@ function BgSlideshow({ images, opacity, posX, posY, zoom }: { images: string[]; 
 
   return (
     <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-      {images.map((url, i) => (
+      {images.map((img, i) => (
         <div
-          key={url}
+          key={img.url}
           className="absolute inset-0 transition-opacity duration-[2000ms] ease-in-out"
           style={{ opacity: i === current ? 1 : 0 }}
         >
           <div
             className="absolute inset-[-10%]"
             style={{
-              backgroundImage: `url(${url})`,
+              backgroundImage: `url(${img.url})`,
               backgroundSize: "cover",
-              backgroundPosition: `${posX}% ${posY}%`,
-              transform: `scale(${zoom})`,
-              transformOrigin: `${posX}% ${posY}%`,
+              backgroundPosition: `${img.posX}% ${img.posY}%`,
+              transform: `scale(${img.zoom})`,
+              transformOrigin: `${img.posX}% ${img.posY}%`,
               animation: `authBgZoom 18s ease-in-out infinite alternate`,
               animationDelay: `${i * -6}s`,
             }}
           />
+          {/* Per-image overlay */}
+          <div className="absolute inset-0 bg-black" style={{ opacity: 1 - img.opacity }} />
         </div>
       ))}
-      {/* Dark overlay */}
-      <div className="absolute inset-0 bg-black" style={{ opacity: 1 - opacity }} />
     </div>
   );
 }

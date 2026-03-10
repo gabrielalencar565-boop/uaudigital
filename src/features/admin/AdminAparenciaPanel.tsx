@@ -1,38 +1,42 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Images, Plus, Trash2, Settings2, Move, ZoomIn, RotateCcw } from "lucide-react";
+import { Images, Plus, Trash2, Settings2, Move, ZoomIn, RotateCcw, Check } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
-import { useAppSettings, useUpdateAppSettings } from "@/features/data/queries";
+import { useAppSettings, useUpdateAppSettings, type BgImageConfig } from "@/features/data/queries";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 export function AdminAparenciaPanel() {
   const appSettingsQ = useAppSettings();
   const updateAppSettings = useUpdateAppSettings();
   const { user } = useSession();
   const [uploading, setUploading] = useState(false);
+  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
 
-  const images: string[] = appSettingsQ.data?.login_bg_images ?? [];
-  const savedOpacity = appSettingsQ.data?.login_bg_opacity ?? 0.2;
-  const savedPosX = appSettingsQ.data?.login_bg_position_x ?? 50;
-  const savedPosY = appSettingsQ.data?.login_bg_position_y ?? 50;
-  const savedZoom = appSettingsQ.data?.login_bg_zoom ?? 1;
+  const images: BgImageConfig[] = appSettingsQ.data?.login_bg_images ?? [];
 
-  // Local state for interactive preview
-  const [localPosX, setLocalPosX] = useState(savedPosX);
-  const [localPosY, setLocalPosY] = useState(savedPosY);
-  const [localZoom, setLocalZoom] = useState(savedZoom);
-  const [localOpacity, setLocalOpacity] = useState(savedOpacity);
+  // Local state for the selected image editing
+  const selected = selectedIdx !== null ? images[selectedIdx] : null;
+  const [localPosX, setLocalPosX] = useState(50);
+  const [localPosY, setLocalPosY] = useState(50);
+  const [localZoom, setLocalZoom] = useState(1);
+  const [localOpacity, setLocalOpacity] = useState(0.2);
   const [dirty, setDirty] = useState(false);
 
-  // Sync local state when saved values change
-  useEffect(() => { setLocalPosX(savedPosX); }, [savedPosX]);
-  useEffect(() => { setLocalPosY(savedPosY); }, [savedPosY]);
-  useEffect(() => { setLocalZoom(savedZoom); }, [savedZoom]);
-  useEffect(() => { setLocalOpacity(savedOpacity); }, [savedOpacity]);
+  // Load selected image settings
+  useEffect(() => {
+    if (selected) {
+      setLocalPosX(selected.posX);
+      setLocalPosY(selected.posY);
+      setLocalZoom(selected.zoom);
+      setLocalOpacity(selected.opacity);
+      setDirty(false);
+    }
+  }, [selectedIdx, selected?.url]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Drag state
   const previewRef = useRef<HTMLDivElement>(null);
@@ -64,23 +68,23 @@ export function AdminAparenciaPanel() {
     };
   }, []);
 
-  // Wheel zoom on preview
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
     setLocalZoom((z) => Math.min(3, Math.max(0.5, z + (e.deltaY > 0 ? -0.05 : 0.05))));
     setDirty(true);
   }, []);
 
-  const handleSaveAll = async () => {
+  const handleSaveSelected = async () => {
+    if (selectedIdx === null) return;
+    const updated = images.map((img, i) =>
+      i === selectedIdx
+        ? { ...img, posX: Math.round(localPosX), posY: Math.round(localPosY), zoom: Math.round(localZoom * 100) / 100, opacity: Math.round(localOpacity * 100) / 100 }
+        : img
+    );
     try {
-      await updateAppSettings.mutateAsync({
-        login_bg_position_x: Math.round(localPosX),
-        login_bg_position_y: Math.round(localPosY),
-        login_bg_zoom: Math.round(localZoom * 100) / 100,
-        login_bg_opacity: Math.round(localOpacity * 100) / 100,
-      } as any);
+      await updateAppSettings.mutateAsync({ login_bg_images: updated } as any);
       setDirty(false);
-      toast.success("Ajustes salvos!");
+      toast.success("Ajustes da imagem salvos!");
     } catch (e: any) {
       toast.error(e?.message ?? "Erro ao salvar");
     }
@@ -102,15 +106,13 @@ export function AdminAparenciaPanel() {
     try {
       const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
       const path = `login-bg/${crypto.randomUUID()}.${ext}`;
-      const up = await supabase.storage.from("app-assets").upload(path, file, {
-        upsert: true,
-        contentType: file.type,
-      });
+      const up = await supabase.storage.from("app-assets").upload(path, file, { upsert: true, contentType: file.type });
       if (up.error) throw up.error;
       const pub = supabase.storage.from("app-assets").getPublicUrl(path);
-      const url = pub.data.publicUrl;
-      await updateAppSettings.mutateAsync({ login_bg_images: [...images, url] } as any);
+      const newImg: BgImageConfig = { url: pub.data.publicUrl, posX: 50, posY: 50, zoom: 1, opacity: 0.2 };
+      await updateAppSettings.mutateAsync({ login_bg_images: [...images, newImg] } as any);
       toast.success("Imagem adicionada!");
+      setSelectedIdx(images.length); // select the new one
     } catch (e: any) {
       toast.error(e?.message ?? "Erro ao enviar imagem");
     } finally {
@@ -118,9 +120,12 @@ export function AdminAparenciaPanel() {
     }
   };
 
-  const handleRemove = async (url: string) => {
+  const handleRemove = async (idx: number) => {
     try {
-      await updateAppSettings.mutateAsync({ login_bg_images: images.filter((u) => u !== url) } as any);
+      const updated = images.filter((_, i) => i !== idx);
+      await updateAppSettings.mutateAsync({ login_bg_images: updated } as any);
+      if (selectedIdx === idx) setSelectedIdx(null);
+      else if (selectedIdx !== null && selectedIdx > idx) setSelectedIdx(selectedIdx - 1);
       toast.success("Imagem removida");
     } catch (e: any) {
       toast.error(e?.message ?? "Erro ao remover");
@@ -137,24 +142,41 @@ export function AdminAparenciaPanel() {
             Imagens de fundo do login
           </CardTitle>
           <CardDescription>
-            As imagens passam em slideshow no fundo da tela de login.
+            Clique em uma imagem para ajustar posição, zoom e opacidade individualmente.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {images.length > 0 ? (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-              {images.map((url) => (
+              {images.map((img, idx) => (
                 <div
-                  key={url}
-                  className="group relative aspect-video overflow-hidden rounded-lg border border-border"
+                  key={img.url}
+                  className={cn(
+                    "group relative aspect-video overflow-hidden rounded-lg border-2 cursor-pointer transition-all",
+                    selectedIdx === idx
+                      ? "border-primary ring-2 ring-primary/30"
+                      : "border-border hover:border-primary/50"
+                  )}
+                  onClick={() => setSelectedIdx(selectedIdx === idx ? null : idx)}
                 >
-                  <img src={url} alt="" className="h-full w-full object-cover" />
+                  <img src={img.url} alt="" className="h-full w-full object-cover" />
+                  {selectedIdx === idx && (
+                    <div className="absolute left-1 top-1 rounded-full bg-primary p-0.5">
+                      <Check className="h-3 w-3 text-primary-foreground" />
+                    </div>
+                  )}
                   <button
-                    onClick={() => handleRemove(url)}
+                    onClick={(e) => { e.stopPropagation(); handleRemove(idx); }}
                     className="absolute right-1 top-1 rounded-full bg-background/80 p-1 opacity-0 transition-opacity group-hover:opacity-100"
                   >
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </button>
+                  {/* Mini indicators */}
+                  <div className="absolute bottom-1 left-1 flex gap-1 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="rounded bg-black/60 px-1 py-0.5 text-[9px] text-white/80 font-mono">
+                      {Math.round(img.zoom * 100)}%
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -187,16 +209,16 @@ export function AdminAparenciaPanel() {
         </CardContent>
       </Card>
 
-      {/* Ajustes interativos */}
-      {images.length > 0 && (
+      {/* Per-image editor */}
+      {selected && selectedIdx !== null && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Settings2 className="h-5 w-5" />
-              Ajustes da imagem de fundo
+              Ajustar imagem {selectedIdx + 1}
             </CardTitle>
             <CardDescription>
-              Arraste a imagem para reposicionar. Use o scroll do mouse para dar zoom. Ajuste a opacidade abaixo.
+              Arraste para reposicionar, scroll para zoom. Ajuste a opacidade pelo slider.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
@@ -220,7 +242,7 @@ export function AdminAparenciaPanel() {
                 <div
                   className="absolute inset-0 pointer-events-none"
                   style={{
-                    backgroundImage: `url(${images[0]})`,
+                    backgroundImage: `url(${selected.url})`,
                     backgroundSize: "cover",
                     backgroundPosition: `${localPosX}% ${localPosY}%`,
                     transform: `scale(${localZoom})`,
@@ -232,14 +254,12 @@ export function AdminAparenciaPanel() {
                   className="absolute inset-0 bg-black pointer-events-none"
                   style={{ opacity: 1 - localOpacity }}
                 />
-                {/* Center crosshair */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                   <div className="h-8 w-px bg-white/30" />
                 </div>
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                   <div className="h-px w-8 bg-white/30" />
                 </div>
-                {/* Info overlay */}
                 <div className="absolute bottom-2 left-2 flex gap-2 pointer-events-none">
                   <span className="rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white/80 font-mono">
                     X:{Math.round(localPosX)}% Y:{Math.round(localPosY)}%
@@ -247,13 +267,16 @@ export function AdminAparenciaPanel() {
                   <span className="rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white/80 font-mono">
                     Zoom:{Math.round(localZoom * 100)}%
                   </span>
+                  <span className="rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white/80 font-mono">
+                    Opac:{Math.round(localOpacity * 100)}%
+                  </span>
                 </div>
               </div>
             </div>
 
             {/* Opacity slider */}
             <div className="space-y-2">
-              <Label>Opacidade da imagem — {Math.round(localOpacity * 100)}%</Label>
+              <Label>Opacidade — {Math.round(localOpacity * 100)}%</Label>
               <Slider
                 value={[localOpacity]}
                 min={0.05}
@@ -262,10 +285,10 @@ export function AdminAparenciaPanel() {
                 onValueChange={(v) => { setLocalOpacity(v[0]); setDirty(true); }}
                 className="max-w-sm"
               />
-              <p className="text-xs text-muted-foreground">Quanto maior, mais visível a imagem de fundo.</p>
+              <p className="text-xs text-muted-foreground">Quanto maior, mais visível a imagem.</p>
             </div>
 
-            {/* Zoom slider (alternative to scroll) */}
+            {/* Zoom slider */}
             <div className="space-y-2">
               <Label>Zoom — {Math.round(localZoom * 100)}%</Label>
               <Slider
@@ -280,7 +303,7 @@ export function AdminAparenciaPanel() {
 
             {/* Actions */}
             <div className="flex gap-3">
-              <Button onClick={handleSaveAll} disabled={!dirty} className="gap-2">
+              <Button onClick={handleSaveSelected} disabled={!dirty} className="gap-2">
                 Salvar ajustes
               </Button>
               <Button variant="outline" onClick={handleReset} className="gap-2">
