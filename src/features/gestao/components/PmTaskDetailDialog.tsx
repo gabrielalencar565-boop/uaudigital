@@ -73,12 +73,12 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
     return childTasksQ.data?.find(t => t.id === lastId) ?? null;
   }, [resolvedRootTask, taskStack, rootChildTasksQ.data, childTasksQ.data]);
 
+  const globalTagsQ = usePmTags();
+
   const allTags = useMemo(() => {
-    const tagSet = new Set<string>();
-    (tasksQ.data ?? []).forEach(t => (t.tags ?? []).forEach((tag: string) => tagSet.add(tag)));
-    (rootChildTasksQ.data ?? []).forEach(t => (t.tags ?? []).forEach((tag: string) => tagSet.add(tag)));
-    return Array.from(tagSet);
-  }, [tasksQ.data, rootChildTasksQ.data]);
+    // Global tags are the source of truth
+    return (globalTagsQ.data ?? []).map(t => `${t.name}:${t.color_key}`);
+  }, [globalTagsQ.data]);
 
   if (!task || !currentTask || !resolvedRootTask) return null;
 
