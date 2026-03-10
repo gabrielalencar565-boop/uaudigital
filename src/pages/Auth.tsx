@@ -35,7 +35,7 @@ type ResetValues = z.infer<typeof resetSchema>;
 type AuthMode = "login" | "signup" | "forgot" | "reset";
 
 /* ── Background slideshow with slow zoom + pan ── */
-function BgSlideshow({ images }: { images: string[] }) {
+function BgSlideshow({ images, objectFit, opacity }: { images: string[]; objectFit: string; opacity: number }) {
   const [current, setCurrent] = useState(0);
 
   useEffect(() => {
@@ -48,6 +48,8 @@ function BgSlideshow({ images }: { images: string[] }) {
 
   if (images.length === 0) return null;
 
+  const overlayOpacity = 1 - opacity;
+
   return (
     <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
       {images.map((url, i) => (
@@ -57,9 +59,12 @@ function BgSlideshow({ images }: { images: string[] }) {
           style={{ opacity: i === current ? 1 : 0 }}
         >
           <div
-            className="absolute inset-[-10%] bg-cover bg-center"
+            className="absolute inset-[-10%]"
             style={{
               backgroundImage: `url(${url})`,
+              backgroundSize: objectFit === "contain" ? "contain" : objectFit === "fill" ? "100% 100%" : "cover",
+              backgroundPosition: "center",
+              backgroundRepeat: "no-repeat",
               animation: `authBgZoom 18s ease-in-out infinite alternate`,
               animationDelay: `${i * -6}s`,
             }}
@@ -67,7 +72,7 @@ function BgSlideshow({ images }: { images: string[] }) {
         </div>
       ))}
       {/* Dark overlay */}
-      <div className="absolute inset-0 bg-black/80" />
+      <div className="absolute inset-0 bg-black" style={{ opacity: overlayOpacity }} />
     </div>
   );
 }
