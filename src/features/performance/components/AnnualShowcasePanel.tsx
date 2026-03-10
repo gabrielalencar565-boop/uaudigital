@@ -111,11 +111,34 @@ export function AnnualShowcasePanel({
         return (
           <div
             key={item.user_id}
-            className={`relative flex flex-col items-center gap-2 rounded-xl border p-4 text-center transition-all ${
-              isTop3
-                ? "border-primary/30 bg-primary/5 shadow-sm"
-                : "border-border/50 bg-card/30"
-            }`}
+            className="relative flex flex-col items-center gap-2 rounded-xl border p-4 text-center transition-all overflow-hidden"
+            style={{
+              ...(rank === 1
+                ? {
+                    background: "linear-gradient(135deg, #F5D76E, #D4A843, #FFFBE6, #C9973E, #F5D76E)",
+                    backgroundSize: "300% 300%",
+                    animation: "gradientFlow 20s ease-in-out infinite",
+                    borderColor: "rgba(212,168,67,0.5)",
+                    boxShadow: "0 4px 20px -4px rgba(212,168,67,0.3)",
+                  }
+                : rank === 2
+                ? {
+                    background: "linear-gradient(135deg, #E8E8E8, #B8B8B8, #F5F5F5, #A8A8A8, #E8E8E8)",
+                    backgroundSize: "300% 300%",
+                    animation: "gradientFlow 20s ease-in-out infinite",
+                    borderColor: "rgba(180,180,180,0.5)",
+                    boxShadow: "0 4px 20px -4px rgba(160,160,160,0.25)",
+                  }
+                : rank === 3
+                ? {
+                    borderColor: "rgba(194,126,58,0.4)",
+                    background: "linear-gradient(135deg, #E2A76F, #C27E3A, #F0D0A8, #A86B2D, #E2A76F)",
+                    backgroundSize: "300% 300%",
+                    animation: "gradientFlow 20s ease-in-out infinite",
+                    boxShadow: "0 4px 20px -4px rgba(178,111,47,0.25)",
+                  }
+                : {}),
+            }}
           >
             {/* Rank badge */}
             <div className="absolute -top-3 left-1/2 -translate-x-1/2">
