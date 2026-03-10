@@ -3,9 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ProgressRing } from "@/components/metrics/ProgressRing";
 import {
-  BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Legend, RadarChart, Radar, PolarGrid,
-  PolarAngleAxis, PolarRadiusAxis,
+  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, Legend,
 } from "recharts";
 
 function initials(name: string) {
@@ -42,13 +41,13 @@ const CRITERIA = [
   { key: "aprendizado_continuo" as const, label: "Aprendizado", max: 3 },
 ];
 
-const CHART_COLORS = [
-  "hsl(var(--primary))",
-  "hsl(var(--primary) / 0.6)",
-  "hsl(var(--primary) / 0.35)",
-  "hsl(var(--accent-foreground) / 0.7)",
-  "hsl(var(--muted-foreground) / 0.6)",
-  "hsl(var(--destructive) / 0.6)",
+const PURPLE_COLORS = [
+  "#8B5CF6",
+  "#A78BFA",
+  "#7C3AED",
+  "#C4B5FD",
+  "#6D28D9",
+  "#DDD6FE",
 ];
 
 function totalPoints(s: ScoreRow) {
@@ -73,12 +72,10 @@ export function AnnualDashboard({
 
     const totalAll = scores.reduce((s, r) => s + totalPoints(r), 0);
     const months = new Set(scores.map((s) => s.month));
-    const avgPerMonth = months.size > 0 ? totalAll / months.size : 0;
     const avgPerPerson = team.length > 0 && months.size > 0
       ? totalAll / team.length / months.size
       : 0;
 
-    // Best month
     const monthTotals = Array.from({ length: 12 }, (_, i) => {
       const m = i + 1;
       return scores.filter((s) => s.month === m).reduce((acc, s) => acc + totalPoints(s), 0);
@@ -87,42 +84,19 @@ export function AnnualDashboard({
     const bestMonth = MONTH_SHORT[bestMonthIdx];
     const bestMonthVal = monthTotals[bestMonthIdx];
 
-    // Total bonuses
     const totalVideo = scores.reduce((s, r) => s + (r.video_destaque > 0 ? 1 : 0), 0);
-    const totalSquad = scores.reduce((s, r) => s + (r.squad_destaque > 0 ? 1 : 0), 0);
 
-    // Consistency: % of months with high performance per person
     const highPerformance = scores.filter((s) => {
       const base = s.aprendizado_continuo + s.padrao_qualidade_uau + s.metas_prazos +
         s.ambiente_organizado + s.comprometimento;
-      return base >= 12; // ~70% of 17 max base
+      return base >= 12;
     }).length;
     const consistencyPct = scores.length > 0 ? (highPerformance / scores.length) * 100 : 0;
 
-    return { totalAll, avgPerMonth, avgPerPerson, bestMonth, bestMonthVal, totalVideo, totalSquad, consistencyPct, monthsEvaluated: months.size };
+    return { totalAll, avgPerPerson, bestMonth, bestMonthVal, totalVideo, consistencyPct, monthsEvaluated: months.size };
   }, [scores, team]);
 
-  // --- Monthly evolution (line chart) ---
-  const monthlyEvolution = useMemo(() => {
-    const topUsers = [...team]
-      .map((t) => ({
-        ...t,
-        total: scores.filter((s) => s.user_id === t.user_id).reduce((acc, s) => acc + totalPoints(s), 0),
-      }))
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 5);
-
-    return Array.from({ length: 12 }, (_, i) => {
-      const m = i + 1;
-      const row: Record<string, any> = { month: MONTH_SHORT[i] };
-      for (const u of topUsers) {
-        const s = scores.find((sc) => sc.user_id === u.user_id && sc.month === m);
-        row[u.user_id] = s ? totalPoints(s) : null;
-      }
-      return row;
-    });
-  }, [scores, team]);
-
+  // --- Monthly evolution (area chart) ---
   const topUsersForChart = useMemo(() => {
     return [...team]
       .map((t) => ({
@@ -133,58 +107,37 @@ export function AnnualDashboard({
       .slice(0, 5);
   }, [scores, team]);
 
-  // --- Category average (bar chart) ---
-  const categoryAvg = useMemo(() => {
-    if (!scores.length) return [];
-    const count = scores.length;
-    return CRITERIA.map((c) => ({
-      category: c.label,
-      media: Math.round((scores.reduce((s, r) => s + r[c.key], 0) / count) * 100) / 100,
-      max: c.max,
-    }));
-  }, [scores]);
-
-  // --- Radar top 3 ---
-  const radarData = useMemo(() => {
-    const top3 = [...team]
-      .map((t) => ({
-        ...t,
-        total: scores.filter((s) => s.user_id === t.user_id).reduce((acc, s) => acc + totalPoints(s), 0),
-      }))
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 3);
-
-    return CRITERIA.map((c) => {
-      const row: Record<string, any> = { category: c.label };
-      for (const u of top3) {
-        const userScores = scores.filter((s) => s.user_id === u.user_id);
-        const avg = userScores.length > 0
-          ? userScores.reduce((s, r) => s + r[c.key], 0) / userScores.length
-          : 0;
-        row[u.user_id] = Math.round(avg * 100) / 100;
+  const monthlyEvolution = useMemo(() => {
+    return Array.from({ length: 12 }, (_, i) => {
+      const m = i + 1;
+      const row: Record<string, any> = { month: MONTH_SHORT[i] };
+      for (const u of topUsersForChart) {
+        const s = scores.find((sc) => sc.user_id === u.user_id && sc.month === m);
+        row[u.user_id] = s ? totalPoints(s) : null;
       }
       return row;
     });
-  }, [scores, team]);
+  }, [scores, topUsersForChart]);
 
-  const top3Users = useMemo(() => {
-    return [...team]
-      .map((t) => ({
-        ...t,
-        total: scores.filter((s) => s.user_id === t.user_id).reduce((acc, s) => acc + totalPoints(s), 0),
-      }))
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 3);
-  }, [scores, team]);
-
-  // --- Monthly team total bar chart ---
-  const monthlyTeamTotal = useMemo(() => {
-    return Array.from({ length: 12 }, (_, i) => {
-      const m = i + 1;
-      const total = scores.filter((s) => s.month === m).reduce((acc, s) => acc + totalPoints(s), 0);
-      return { month: MONTH_SHORT[i], total };
+  // --- Category ranking (bar chart) ---
+  const categoryRanking = useMemo(() => {
+    return CRITERIA.map((c) => {
+      const userTotals = team.map((t) => {
+        const userScores = scores.filter((s) => s.user_id === t.user_id);
+        const total = userScores.reduce((acc, s) => acc + s[c.key], 0);
+        return { ...t, total };
+      }).sort((a, b) => b.total - a.total);
+      
+      const top = userTotals[0];
+      return {
+        category: c.label,
+        name: top?.display_name?.split(" ")[0] ?? "—",
+        total: top?.total ?? 0,
+        user_id: top?.user_id ?? "",
+        avatar_url: top?.avatar_url ?? null,
+      };
     });
-  }, [scores]);
+  }, [scores, team]);
 
   if (!scores.length) return null;
 
@@ -243,7 +196,7 @@ export function AnnualDashboard({
         </div>
       )}
 
-      {/* Monthly evolution line chart — full width */}
+      {/* Monthly evolution area chart */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm uppercase text-center">Evolução Mensal — Top 5</CardTitle>
@@ -254,8 +207,8 @@ export function AnnualDashboard({
               <defs>
                 {topUsersForChart.map((u, idx) => (
                   <linearGradient key={u.user_id} id={`grad-${idx}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={CHART_COLORS[idx % CHART_COLORS.length]} stopOpacity={0.35} />
-                    <stop offset="100%" stopColor={CHART_COLORS[idx % CHART_COLORS.length]} stopOpacity={0.02} />
+                    <stop offset="0%" stopColor={PURPLE_COLORS[idx % PURPLE_COLORS.length]} stopOpacity={0.45} />
+                    <stop offset="100%" stopColor={PURPLE_COLORS[idx % PURPLE_COLORS.length]} stopOpacity={0.03} />
                   </linearGradient>
                 ))}
               </defs>
@@ -264,7 +217,6 @@ export function AnnualDashboard({
               <YAxis className="text-xs" />
               <Tooltip
                 contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
-                labelStyle={{ fontWeight: 600 }}
                 content={({ active, payload, label }) => {
                   if (!active || !payload?.length) return null;
                   return (
@@ -289,7 +241,7 @@ export function AnnualDashboard({
               />
               <Legend
                 content={({ payload }) => (
-                  <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                  <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
                     {payload?.map((entry: any) => {
                       const member = teamById.get(entry.dataKey);
                       return (
@@ -311,7 +263,7 @@ export function AnnualDashboard({
                   type="monotone"
                   dataKey={u.user_id}
                   name={u.display_name?.split(" ")[0] ?? "?"}
-                  stroke={CHART_COLORS[idx % CHART_COLORS.length]}
+                  stroke={PURPLE_COLORS[idx % PURPLE_COLORS.length]}
                   strokeWidth={2}
                   fill={`url(#grad-${idx})`}
                   dot={(props: any) => {
@@ -328,7 +280,7 @@ export function AnnualDashboard({
                             <circle cx={cx} cy={cy} r={r} />
                           </clipPath>
                         </defs>
-                        <circle cx={cx} cy={cy} r={r + 1} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
+                        <circle cx={cx} cy={cy} r={r + 1} fill={PURPLE_COLORS[idx % PURPLE_COLORS.length]} />
                         {member?.avatar_url ? (
                           <image
                             href={member.avatar_url}
@@ -350,7 +302,7 @@ export function AnnualDashboard({
                       </g>
                     );
                   }}
-                  activeDot={{ r: 14, strokeWidth: 2, stroke: CHART_COLORS[idx % CHART_COLORS.length] }}
+                  activeDot={{ r: 14, strokeWidth: 2, stroke: PURPLE_COLORS[idx % PURPLE_COLORS.length] }}
                   connectNulls
                 />
               ))}
@@ -359,118 +311,62 @@ export function AnnualDashboard({
         </CardContent>
       </Card>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Monthly team total bar chart */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm uppercase text-center">Total da Equipe por Mês</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={monthlyTeamTotal}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis dataKey="month" className="text-xs" />
-                <YAxis className="text-xs" />
-                <Tooltip
-                  contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
-                  formatter={(v: number) => [`${v} pts`, "Total"]}
-                />
-                <Bar dataKey="total" name="Total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Category average bar chart */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm uppercase text-center">Média por Competência</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={categoryAvg} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis type="number" className="text-xs" domain={[0, 4]} />
-                <YAxis dataKey="category" type="category" className="text-xs" width={100} />
-                <Tooltip
-                  contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
-                  formatter={(v: number) => [v.toFixed(2), "Média"]}
-                />
-                <Bar dataKey="media" name="Média" fill="hsl(var(--primary) / 0.7)" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Radar chart top 3 */}
-        {top3Users.length >= 2 && (
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm uppercase text-center">Perfil de Competências — Top 3</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={280}>
-                <RadarChart data={radarData}>
-                  <PolarGrid className="stroke-border" />
-                  <PolarAngleAxis dataKey="category" className="text-xs" />
-                  <PolarRadiusAxis className="text-xs" domain={[0, 4]} />
-                  {top3Users.map((u, idx) => (
-                    <Radar
-                      key={u.user_id}
-                      dataKey={u.user_id}
-                      name={u.display_name?.split(" ")[0] ?? "?"}
-                      stroke={CHART_COLORS[idx]}
-                      fill={CHART_COLORS[idx]}
-                      fillOpacity={0.15}
-                    />
-                  ))}
-                  <Legend
-                    content={({ payload }) => (
-                      <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-                        {payload?.map((entry: any) => {
-                          const member = teamById.get(entry.dataKey);
-                          return (
-                            <div key={entry.dataKey} className="flex items-center gap-1.5">
-                              <Avatar className="h-5 w-5 border" style={{ borderColor: entry.color }}>
-                                <AvatarImage src={member?.avatar_url ?? undefined} />
-                                <AvatarFallback className="text-[8px]">{initials(member?.display_name ?? "?")}</AvatarFallback>
-                              </Avatar>
-                              <span className="text-xs text-muted-foreground">{member?.display_name?.split(" ")[0] ?? "?"}</span>
-                            </div>
-                          );
-                        })}
+      {/* Category ranking — who leads each competency */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm uppercase text-center">Líder por Competência</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={categoryRanking} layout="vertical">
+              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+              <XAxis type="number" className="text-xs" />
+              <YAxis
+                dataKey="category"
+                type="category"
+                className="text-xs"
+                width={100}
+              />
+              <Tooltip
+                contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
+                content={({ active, payload }) => {
+                  if (!active || !payload?.length) return null;
+                  const d = payload[0]?.payload;
+                  const member = teamById.get(d?.user_id);
+                  return (
+                    <div className="rounded-lg border border-border/50 bg-card px-3 py-2 shadow-xl text-xs">
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-6 w-6">
+                          <AvatarImage src={member?.avatar_url ?? undefined} />
+                          <AvatarFallback className="text-[8px]">{initials(member?.display_name ?? "?")}</AvatarFallback>
+                        </Avatar>
+                        <span className="font-semibold">{member?.display_name?.split(" ")[0] ?? d?.name}</span>
+                        <span className="ml-auto font-bold tabular-nums text-primary">{d?.total} pts</span>
                       </div>
-                    )}
-                  />
-                  <Tooltip
-                    content={({ active, payload }) => {
-                      if (!active || !payload?.length) return null;
-                      return (
-                        <div className="rounded-lg border border-border/50 bg-card px-3 py-2 shadow-xl text-xs">
-                          <p className="font-semibold mb-1.5">{(payload[0] as any)?.payload?.category}</p>
-                          {payload.map((p: any) => {
-                            const member = teamById.get(p.dataKey);
-                            return (
-                              <div key={p.dataKey} className="flex items-center gap-2 py-0.5">
-                                <Avatar className="h-5 w-5">
-                                  <AvatarImage src={member?.avatar_url ?? undefined} />
-                                  <AvatarFallback className="text-[8px]">{initials(member?.display_name ?? "?")}</AvatarFallback>
-                                </Avatar>
-                                <span className="text-muted-foreground">{member?.display_name?.split(" ")[0] ?? "?"}</span>
-                                <span className="ml-auto font-bold tabular-nums" style={{ color: p.stroke }}>{p.value}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      );
-                    }}
-                  />
-                </RadarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+                    </div>
+                  );
+                }}
+              />
+              <Bar dataKey="total" name="Pontos" fill="#8B5CF6" radius={[0, 6, 6, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+          {/* Avatars under chart */}
+          <div className="flex flex-wrap items-center justify-center gap-4 mt-3">
+            {categoryRanking.map((c) => {
+              const member = teamById.get(c.user_id);
+              return (
+                <div key={c.category} className="flex items-center gap-1.5">
+                  <Avatar className="h-5 w-5 border border-primary/40">
+                    <AvatarImage src={member?.avatar_url ?? undefined} />
+                    <AvatarFallback className="text-[8px]">{initials(member?.display_name ?? "?")}</AvatarFallback>
+                  </Avatar>
+                  <span className="text-[11px] text-muted-foreground">{c.category}: <span className="font-semibold text-foreground">{c.name}</span></span>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
