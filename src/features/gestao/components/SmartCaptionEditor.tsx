@@ -176,8 +176,82 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
   const currentHeading = HEADING_OPTIONS.find(h => h.tag === currentBlock) ?? HEADING_OPTIONS[0];
   const CurrentHeadingIcon = currentHeading.icon;
 
+  const restoreFromHistory = useCallback((entry: { html: string; time: Date }) => {
+    if (editorRef.current) {
+      editorRef.current.innerHTML = entry.html;
+      onChange(entry.html);
+      setSaveStatus("saved");
+      setHistoryOpen(false);
+    }
+  }, [onChange]);
+
+  const formatTime = (d: Date) =>
+    d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+
   return (
     <div className={cn("relative", className)}>
+      {/* Top-right status bar */}
+      <div className="absolute top-1.5 right-1.5 z-40 flex items-center gap-1 rounded-lg border border-border/30 bg-muted/80 backdrop-blur-sm px-1.5 py-0.5">
+        {/* Saved status */}
+        {saveStatus === "saved" && (
+          <div className="flex items-center gap-1 text-[11px] text-muted-foreground pr-1 border-r border-border/30">
+            <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+            <span>Salvo</span>
+          </div>
+        )}
+
+        {/* History toggle */}
+        <button
+          type="button"
+          onClick={() => setHistoryOpen(v => !v)}
+          className={cn(
+            "inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+            historyOpen && "bg-accent text-foreground"
+          )}
+          title="Histórico de edições"
+        >
+          <Clock className="h-3.5 w-3.5" />
+        </button>
+
+        {/* Expand */}
+        {onExpand && (
+          <button
+            type="button"
+            onClick={onExpand}
+            className="inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            title="Expandir"
+          >
+            <Maximize2 className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+
+      {/* History panel */}
+      {historyOpen && (
+        <div className="absolute top-8 right-1.5 z-40 w-64 max-h-48 overflow-y-auto rounded-xl border border-border/40 bg-popover shadow-xl animate-in fade-in-0 slide-in-from-top-2 duration-150">
+          <p className="px-3 py-2 text-[10px] text-muted-foreground font-semibold uppercase tracking-wider border-b border-border/30">
+            Histórico de edições
+          </p>
+          {history.length === 0 ? (
+            <p className="px-3 py-3 text-xs text-muted-foreground">Nenhuma edição ainda</p>
+          ) : (
+            [...history].reverse().map((entry, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => restoreFromHistory(entry)}
+                className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-accent transition-colors border-b border-border/10 last:border-0"
+              >
+                <Clock className="h-3 w-3 text-muted-foreground shrink-0" />
+                <span className="text-muted-foreground">{formatTime(entry.time)}</span>
+                <span className="text-foreground truncate flex-1 text-left">
+                  {entry.html.replace(/<[^>]*>/g, "").slice(0, 30)}…
+                </span>
+              </button>
+            ))
+          )}
+        </div>
+      )}
       {/* Editor */}
       <div
         ref={editorRef}
