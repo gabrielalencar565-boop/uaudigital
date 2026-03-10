@@ -57,6 +57,7 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
   const [aiLoading, setAiLoading] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyExpanded, setHistoryExpanded] = useState(false);
   const [history, setHistory] = useState<{ html: string; time: Date }[]>([]);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
