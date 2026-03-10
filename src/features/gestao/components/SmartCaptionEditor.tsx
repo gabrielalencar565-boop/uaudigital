@@ -57,6 +57,7 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
   const [aiLoading, setAiLoading] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyExpanded, setHistoryExpanded] = useState(false);
   const [history, setHistory] = useState<{ html: string; time: Date }[]>([]);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
@@ -185,6 +186,12 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
     }
   }, [onChange]);
 
+  const stripHtml = (html: string) => {
+    const tmp = document.createElement("div");
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || "";
+  };
+
   const formatTime = (d: Date) =>
     d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
@@ -228,28 +235,43 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
 
       {/* History panel */}
       {historyOpen && (
-        <div className="absolute top-8 right-1.5 z-40 w-64 max-h-48 overflow-y-auto rounded-xl border border-border/40 bg-popover shadow-xl animate-in fade-in-0 slide-in-from-top-2 duration-150">
-          <p className="px-3 py-2 text-[10px] text-muted-foreground font-semibold uppercase tracking-wider border-b border-border/30">
-            Histórico de edições
-          </p>
-          {history.length === 0 ? (
-            <p className="px-3 py-3 text-xs text-muted-foreground">Nenhuma edição ainda</p>
-          ) : (
-            [...history].reverse().map((entry, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => restoreFromHistory(entry)}
-                className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-accent transition-colors border-b border-border/10 last:border-0"
-              >
-                <Clock className="h-3 w-3 text-muted-foreground shrink-0" />
-                <span className="text-muted-foreground">{formatTime(entry.time)}</span>
-                <span className="text-foreground truncate flex-1 text-left">
-                  {entry.html.replace(/<[^>]*>/g, "").slice(0, 30)}…
-                </span>
-              </button>
-            ))
-          )}
+        <div className={cn(
+          "absolute top-8 right-1.5 z-40 overflow-hidden rounded-xl border border-border/40 bg-popover shadow-xl animate-in fade-in-0 slide-in-from-top-2 duration-150",
+          historyExpanded ? "w-96 max-h-80" : "w-64 max-h-48"
+        )}>
+          <div className="flex items-center justify-between px-3 py-2 border-b border-border/30">
+            <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">
+              Histórico de edições
+            </p>
+            <button
+              type="button"
+              onClick={() => setHistoryExpanded(v => !v)}
+              className="inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              title={historyExpanded ? "Reduzir" : "Expandir"}
+            >
+              <Maximize2 className="h-3 w-3" />
+            </button>
+          </div>
+          <div className={cn("overflow-y-auto", historyExpanded ? "max-h-[272px]" : "max-h-[136px]")}>
+            {history.length === 0 ? (
+              <p className="px-3 py-3 text-xs text-muted-foreground">Nenhuma edição ainda</p>
+            ) : (
+              [...history].reverse().map((entry, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => restoreFromHistory(entry)}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-accent transition-colors border-b border-border/10 last:border-0"
+                >
+                  <Clock className="h-3 w-3 text-muted-foreground shrink-0" />
+                  <span className="text-muted-foreground whitespace-nowrap">{formatTime(entry.time)}</span>
+                  <span className="text-foreground truncate flex-1 text-left">
+                    {stripHtml(entry.html).slice(0, historyExpanded ? 60 : 30) || "(vazio)"}
+                  </span>
+                </button>
+              ))
+            )}
+          </div>
         </div>
       )}
       {/* Editor */}
