@@ -123,12 +123,10 @@ export default function Auth() {
   const appSettings = useAppSettings();
   const teamQ = useTeamMembers();
 
-  const logoUrl = appSettings.data?.logo_url ?? null;
-  const teamAvatars = useMemo(() => {
-    return (teamQ.data ?? [])
-      .filter((m) => m.avatar_url)
-      .map((m) => m.avatar_url!);
-  }, [teamQ.data]);
+  const bgImages = appSettings.data?.login_bg_images ?? [];
+  const galleryPhotos = useMemo(() => {
+    return bgImages.map((img: any) => img.url as string).filter(Boolean);
+  }, [bgImages]);
 
   const [mode, setMode] = useState<AuthMode>("login");
   const [hasRecoverySession, setHasRecoverySession] = useState<boolean | null>(null);
