@@ -172,7 +172,7 @@ export function useAppSettings() {
 export function useUpdateAppSettings() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (updates: { logo_url?: string | null; logo_shape?: "circle" | "square"; workspace_name?: string; login_bg_images?: string[]; login_bg_object_fit?: string; login_bg_opacity?: number }) => {
+    mutationFn: async (updates: { logo_url?: string | null; logo_shape?: "circle" | "square"; workspace_name?: string; login_bg_images?: string[]; login_bg_object_fit?: string; login_bg_opacity?: number; login_bg_position_x?: number; login_bg_position_y?: number; login_bg_zoom?: number }) => {
       const { data, error } = await supabase
         .from("app_settings")
         .update(updates as any)
