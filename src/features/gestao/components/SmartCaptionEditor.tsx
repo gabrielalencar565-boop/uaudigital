@@ -157,8 +157,8 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
       {toolbarPos && !aiLoading && (
         <div
           ref={toolbarRef}
-          className="absolute z-50 flex items-center gap-0.5 rounded-lg border border-border/60 bg-popover shadow-lg p-1 animate-in fade-in-0 zoom-in-95 duration-150"
-          style={{ top: toolbarPos.top, left: toolbarPos.left }}
+          className="absolute z-50 flex items-center gap-0.5 rounded-xl border border-white/10 shadow-2xl p-1 animate-in fade-in-0 zoom-in-95 duration-150"
+          style={{ top: toolbarPos.top, left: toolbarPos.left, background: "linear-gradient(135deg, hsl(270 60% 28%), hsl(290 50% 22%))" }}
           onMouseDown={(e) => e.preventDefault()}
         >
           {TOOLBAR_BUTTONS.map((item, i) => {
