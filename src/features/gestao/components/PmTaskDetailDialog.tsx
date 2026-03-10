@@ -165,10 +165,10 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
           </div>
 
           {/* RIGHT: Comments sidebar */}
-          <div className="w-80 shrink-0 flex-col hidden sm:flex relative overflow-hidden bg-gradient-to-br from-sidebar/15 via-sidebar/8 to-sidebar/3 border-l border-sidebar/20">
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-sidebar/20 shrink-0">
-              <MessageSquare className="h-4 w-4 text-sidebar" />
-              <span className="text-sm font-semibold text-sidebar">Atividade</span>
+          <div className="w-80 shrink-0 flex-col bg-card/10 border-l border-border/30 hidden sm:flex">
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-border/30 shrink-0">
+              <MessageSquare className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-semibold">Atividade</span>
             </div>
             <div className="flex-1 overflow-y-auto px-4 py-3 min-h-0">
               <PmCommentsSection taskId={currentTask.id} comments={comments} membersMap={membersMap} members={members} />
