@@ -20,6 +20,7 @@ import {
   useUpdatePmTask, useCreatePmTask, usePmTasks, usePmChildTasks,
   usePmComments, usePmAttachments, usePmSyncStageCompletion,
 } from "../hooks/use-pm-data";
+import { usePmTags, useCreatePmTag, useDeletePmTag } from "../hooks/use-pm-tags";
 import { useDefaultFlowWithDates, getNextStages, getFixedAssignee } from "./PmStageFlowConfig";
 import { PmSubtaskList } from "./PmSubtaskList";
 import { PmCommentsSection } from "./PmCommentsSection";
@@ -72,12 +73,12 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
     return childTasksQ.data?.find(t => t.id === lastId) ?? null;
   }, [resolvedRootTask, taskStack, rootChildTasksQ.data, childTasksQ.data]);
 
+  const globalTagsQ = usePmTags();
+
   const allTags = useMemo(() => {
-    const tagSet = new Set<string>();
-    (tasksQ.data ?? []).forEach(t => (t.tags ?? []).forEach((tag: string) => tagSet.add(tag)));
-    (rootChildTasksQ.data ?? []).forEach(t => (t.tags ?? []).forEach((tag: string) => tagSet.add(tag)));
-    return Array.from(tagSet);
-  }, [tasksQ.data, rootChildTasksQ.data]);
+    // Global tags are the source of truth
+    return (globalTagsQ.data ?? []).map(t => `${t.name}:${t.color_key}`);
+  }, [globalTagsQ.data]);
 
   if (!task || !currentTask || !resolvedRootTask) return null;
 
@@ -161,7 +162,7 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
 
           {/* CENTER: Task detail */}
           <div className="flex-1 overflow-y-auto min-h-0">
-            <TaskContentView task={currentTask} childTasks={childTasks} attachments={attachments} membersMap={membersMap} members={members} isAdmin={isAdmin} onSelectSubtask={handleSelectSubtask} activeSubtaskId={null} onClose={handleClose} clientsMap={clientsMap} allTags={allTags} parentStageCurrent={isSubtaskView ? resolvedRootTask.stage_current : undefined} />
+            <TaskContentView task={currentTask} childTasks={childTasks} attachments={attachments} membersMap={membersMap} members={members} isAdmin={isAdmin} onSelectSubtask={handleSelectSubtask} activeSubtaskId={null} onClose={handleClose} clientsMap={clientsMap} allTags={allTags} parentStageCurrent={isSubtaskView ? resolvedRootTask.stage_current : undefined} globalTags={globalTagsQ.data ?? []} />
           </div>
 
           {/* RIGHT: Comments sidebar */}
@@ -194,12 +195,13 @@ function StageCircle({ stageKey, size = "md" }: { stageKey: string; size?: "xs" 
 
 // ─── Task Content View ───
 
-function TaskContentView({ task, childTasks, attachments, membersMap, members, isAdmin, onSelectSubtask, activeSubtaskId, onClose, clientsMap, allTags, parentStageCurrent }: {
+function TaskContentView({ task, childTasks, attachments, membersMap, members, isAdmin, onSelectSubtask, activeSubtaskId, onClose, clientsMap, allTags, parentStageCurrent, globalTags }: {
   task: PmTask; childTasks: PmTask[]; attachments: any[];
   membersMap: Record<string, { name: string; avatar?: string }>; members: { id: string; name: string }[];
   isAdmin: boolean; onSelectSubtask: (sub: PmTask) => void; activeSubtaskId: string | null;
   onClose: () => void; clientsMap: Record<string, string>; allTags: string[];
   parentStageCurrent?: string;
+  globalTags: { id: string; name: string; color_key: string; created_by: string; created_at: string }[];
 }) {
   const updateTask = useUpdatePmTask();
   const createTask = useCreatePmTask();
@@ -385,11 +387,19 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     }
   };
 
-  const addTag = () => {
+  const createGlobalTag = useCreatePmTag();
+  const deleteGlobalTag = useDeletePmTag();
+
+  const addTag = async () => {
     if (!newTagName.trim()) return;
     const tagValue = `${newTagName.trim()}:${newTagColor}`;
     const existing = task.tags ?? [];
     if (!existing.some(t => parseTag(t).name === newTagName.trim())) {
+      // Create global tag if it doesn't exist
+      const alreadyGlobal = globalTags.some(gt => gt.name.toLowerCase() === newTagName.trim().toLowerCase());
+      if (!alreadyGlobal) {
+        await createGlobalTag.mutateAsync({ name: newTagName.trim(), color_key: newTagColor });
+      }
       updateTask.mutate({ id: task.id, tags: [...existing, tagValue] } as any);
     }
     setNewTagName("");
@@ -397,9 +407,15 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   const removeTag = (tag: string) => { updateTask.mutate({ id: task.id, tags: (task.tags ?? []).filter(t => t !== tag) } as any); };
   const toggleGlobalTag = (tag: string) => {
     const existing = task.tags ?? [];
-    if (!existing.includes(tag)) {
+    if (existing.includes(tag)) {
+      removeTag(tag);
+    } else {
       updateTask.mutate({ id: task.id, tags: [...existing, tag] } as any);
     }
+  };
+  const handleDeleteGlobalTag = (globalTag: { id: string; name: string; color_key: string }) => {
+    const tagValue = `${globalTag.name}:${globalTag.color_key}`;
+    deleteGlobalTag.mutate({ tagId: globalTag.id, tagValue });
   };
 
   return (
@@ -548,29 +564,36 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                       ))}
                     </div>
                   )}
-                  {newTagName.trim() && !allTags.some(t => parseTag(t).name.toLowerCase() === newTagName.trim().toLowerCase()) && (
+                  {newTagName.trim() && !globalTags.some(gt => gt.name.toLowerCase() === newTagName.trim().toLowerCase()) && (
                     <Button size="sm" className="mt-2 h-7 text-xs w-full" onClick={addTag}>
                       <Plus className="h-3 w-3 mr-1" /> Criar "{newTagName.trim()}"
                     </Button>
                   )}
                 </div>
-                {allTags.length > 0 && (
+                {globalTags.length > 0 && (
                   <div className="p-2 space-y-0.5">
                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold px-2 py-1">Etiquetas disponíveis</p>
-                    {allTags
-                      .filter(t => !newTagName.trim() || parseTag(t).name.toLowerCase().includes(newTagName.trim().toLowerCase()))
-                      .map(rawTag => {
+                    {globalTags
+                      .filter(gt => !newTagName.trim() || gt.name.toLowerCase().includes(newTagName.trim().toLowerCase()))
+                      .map(gt => {
+                      const rawTag = `${gt.name}:${gt.color_key}`;
                       const tc = tagColor(rawTag);
-                      const name = tagDisplay(rawTag);
                       const isActive = (task.tags ?? []).includes(rawTag);
                       return (
-                        <button key={rawTag} className={cn("flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-accent/50 transition text-left", isActive && "bg-accent/30")} onClick={() => {
-                          if (isActive) { removeTag(rawTag); } else { toggleGlobalTag(rawTag); }
-                        }}>
-                          <span className={cn("h-3 w-3 rounded shrink-0", tc.dot)} />
-                          <span className="text-xs flex-1">{name}</span>
-                          {isActive && <Check className="h-3 w-3 text-primary shrink-0" />}
-                        </button>
+                        <div key={gt.id} className={cn("flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent/50 transition group", isActive && "bg-accent/30")}>
+                          <button className="flex items-center gap-2 flex-1 text-left" onClick={() => toggleGlobalTag(rawTag)}>
+                            <span className={cn("h-3 w-3 rounded shrink-0", tc.dot)} />
+                            <span className="text-xs flex-1">{gt.name}</span>
+                            {isActive && <Check className="h-3 w-3 text-primary shrink-0" />}
+                          </button>
+                          <button
+                            className="h-4 w-4 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 hover:bg-destructive/20 transition-all shrink-0"
+                            onClick={(e) => { e.stopPropagation(); handleDeleteGlobalTag(gt); }}
+                            title="Apagar etiqueta de todas as tarefas"
+                          >
+                            <X className="h-3 w-3 text-destructive" />
+                          </button>
+                        </div>
                       );
                     })}
                   </div>

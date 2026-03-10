@@ -1315,6 +1315,30 @@ export type Database = {
           },
         ]
       }
+      pm_tags: {
+        Row: {
+          color_key: string
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+        }
+        Insert: {
+          color_key?: string
+          created_at?: string
+          created_by: string
+          id?: string
+          name: string
+        }
+        Update: {
+          color_key?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       pm_tasks: {
         Row: {
           assignee_id: string | null
