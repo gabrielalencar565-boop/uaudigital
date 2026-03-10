@@ -1,0 +1,1 @@
+ALTER TABLE public.app_settings ADD COLUMN login_bg_images jsonb NOT NULL DEFAULT '[]'::jsonb;
