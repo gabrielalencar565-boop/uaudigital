@@ -34,8 +34,8 @@ const TOOLBAR_BUTTONS = [
   { cmd: "insertOrderedList", icon: ListOrdered, label: "Lista numerada" },
 ] as const;
 
-const GRADIENT_TOOLBAR = "linear-gradient(135deg, #6b33b5, #ffba01)";
-const GRADIENT_MENU = "linear-gradient(160deg, #5a2b9a, #d49e00)";
+const GRADIENT_TOOLBAR = "linear-gradient(135deg, hsl(263 70% 50%), hsl(263 70% 36%))";
+const GRADIENT_MENU = "linear-gradient(160deg, hsl(263 70% 42%), hsl(263 70% 30%))";
 
 interface Props {
   value: string;
