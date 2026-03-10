@@ -134,6 +134,7 @@ export type AppSettingsRow = {
   id: number;
   logo_url: string | null;
   logo_shape: "circle" | "square";
+  workspace_name: string;
   updated_at: string;
   updated_by: string | null;
 };
@@ -144,7 +145,7 @@ export function useAppSettings() {
     queryFn: async (): Promise<AppSettingsRow | null> => {
       const { data, error } = await supabase
         .from("app_settings")
-        .select("id, logo_url, logo_shape, updated_at, updated_by")
+        .select("id, logo_url, logo_shape, workspace_name, updated_at, updated_by")
         .eq("id", 1)
         .maybeSingle();
       if (error) throw error;
@@ -156,7 +157,7 @@ export function useAppSettings() {
 export function useUpdateAppSettings() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (updates: { logo_url?: string | null; logo_shape?: "circle" | "square" }) => {
+    mutationFn: async (updates: { logo_url?: string | null; logo_shape?: "circle" | "square"; workspace_name?: string }) => {
       const { data, error } = await supabase
         .from("app_settings")
         .update(updates)

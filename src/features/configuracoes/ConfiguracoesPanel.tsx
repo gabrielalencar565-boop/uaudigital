@@ -260,6 +260,27 @@ export function ConfiguracoesPanel() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
+              <Label htmlFor="workspace-name">Nome do workspace</Label>
+              <Input
+                id="workspace-name"
+                placeholder="Ex.: agencyflow"
+                defaultValue={appSettingsQ.data?.workspace_name ?? ""}
+                onBlur={async (e) => {
+                  const val = e.target.value.trim();
+                  if (val !== (appSettingsQ.data?.workspace_name ?? "")) {
+                    try {
+                      await updateAppSettings.mutateAsync({ workspace_name: val });
+                      toast.success("Nome atualizado!");
+                    } catch (err: any) {
+                      toast.error(err?.message ?? "Erro ao atualizar nome");
+                    }
+                  }
+                }}
+              />
+              <p className="text-xs text-muted-foreground">Texto exibido ao lado da logo no topo.</p>
+            </div>
+
+            <div className="space-y-2">
               <Label>Logo atual</Label>
               {appSettingsQ.data?.logo_url ? (
                 <div className="flex items-start gap-3">
