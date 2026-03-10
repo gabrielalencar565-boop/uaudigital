@@ -129,7 +129,7 @@ export function AnnualShowcasePanel({
             </div>
 
             {/* Avatar */}
-            <Avatar className={`${isTop3 ? "h-16 w-16" : "h-14 w-14"} mt-2 shadow-sm`}>
+            <Avatar className={`${isTop3 ? "h-16 w-16" : "h-14 w-14"} shadow-sm`}>
               <AvatarImage src={member?.avatar_url ?? undefined} />
               <AvatarFallback className="text-sm font-semibold">
                 {initials(member?.display_name ?? "?")}
