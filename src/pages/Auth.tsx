@@ -279,7 +279,7 @@ export default function Auth() {
               {mode === "reset" && "Nova senha"}
             </h1>
             <p className="text-sm text-white/50">
-              {subtitle ?? "Bora fazer acontecer — é Uau ou nada! 🚀"}
+              {subtitle ?? "Bora fazer acontecer é Uau ou nada! 🚀"}
             </p>
           </div>
 
