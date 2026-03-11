@@ -285,7 +285,7 @@ export default function Auth() {
 
           {/* Forms */}
           {(mode === "login" || mode === "signup") && (
-            <form onSubmit={loginSignupForm.handleSubmit(onLoginSignup)} className="space-y-5">
+            <form onSubmit={loginSignupForm.handleSubmit(onLoginSignup)} className="space-y-5 w-full">
               <div className="space-y-2 text-center">
                 <Label htmlFor="email" className="text-white/70 text-xs uppercase tracking-wider">Email</Label>
                 <Input
