@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
 import { usePmTasks, usePmAllChildTasks } from "@/features/gestao/hooks/use-pm-data";
+import { getStageCircleColor, stageLabel } from "@/features/gestao/pm-constants";
 import type { PmTask } from "@/features/gestao/pm-types";
 
 const PRIORITY_FLAG: Record<string, string> = {
@@ -16,15 +17,6 @@ const PRIORITY_FLAG: Record<string, string> = {
   alta: "text-warning",
   media: "text-foreground/60",
   baixa: "text-muted-foreground/40",
-};
-
-const STATUS_DOT: Record<string, string> = {
-  backlog: "border-muted-foreground/50 bg-transparent",
-  em_andamento: "border-warning bg-warning/30",
-  em_aprovacao: "border-primary bg-primary/30",
-  concluido: "border-success bg-success",
-  pausado: "border-muted-foreground bg-muted-foreground/30",
-  cancelado: "border-destructive bg-destructive/30",
 };
 
 function dueDateLabel(dueDate: string | null, todayKey: string) {
@@ -84,14 +76,25 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
     return m;
   }, [commentsQ.data]);
 
-  // Child tasks count per parent
-  const childCounts = useMemo(() => {
-    const m: Record<string, number> = {};
+  // Child tasks grouped by parent
+  const childTasksByParent = useMemo(() => {
+    const m: Record<string, PmTask[]> = {};
     (allChildQ.data ?? []).forEach(t => {
-      if (t.parent_task_id) m[t.parent_task_id] = (m[t.parent_task_id] ?? 0) + 1;
+      if (t.parent_task_id) {
+        if (!m[t.parent_task_id]) m[t.parent_task_id] = [];
+        m[t.parent_task_id].push(t);
+      }
     });
     return m;
   }, [allChildQ.data]);
+
+  const childCounts = useMemo(() => {
+    const m: Record<string, number> = {};
+    Object.entries(childTasksByParent).forEach(([parentId, children]) => {
+      m[parentId] = children.length;
+    });
+    return m;
+  }, [childTasksByParent]);
 
   // My tasks (assigned to me, not completed/cancelled)
   const myTasks = useMemo(() => {
@@ -124,6 +127,16 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
   const [openOverdue, setOpenOverdue] = useState(true);
   const [openToday, setOpenToday] = useState(true);
   const [openUpcoming, setOpenUpcoming] = useState(false);
+  const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
+
+  const toggleExpand = (taskId: string) => {
+    setExpandedTasks(prev => {
+      const next = new Set(prev);
+      if (next.has(taskId)) next.delete(taskId);
+      else next.add(taskId);
+      return next;
+    });
+  };
 
   const renderHeader = () => (
     <div className="grid grid-cols-[1fr_100px_140px_100px] gap-2 px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground border-b border-border/30">
@@ -135,57 +148,115 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
   );
 
   const renderRow = (t: PmTask) => {
-    const clientName = clientsMap[t.client_id] ?? "";
     const due = dueDateLabel(t.due_date, todayKey);
     const commentCount = commentCounts[t.id] ?? 0;
     const childCount = childCounts[t.id] ?? 0;
-    const dotClass = STATUS_DOT[t.status_global] ?? STATUS_DOT.backlog;
+    const stageColor = getStageCircleColor(t.stage_current);
+    const isDone = t.stage_current === "entrega";
     const flagClass = PRIORITY_FLAG[t.priority] ?? PRIORITY_FLAG.baixa;
+    const isExpanded = expandedTasks.has(t.id);
+    const children = childTasksByParent[t.id] ?? [];
 
     return (
-      <button
-        key={t.id}
-        type="button"
-        onClick={() => onOpenTask(t.id)}
-        className="group grid w-full grid-cols-[1fr_100px_140px_100px] items-center gap-2 border-b border-border/20 px-3 py-2 text-left transition hover:bg-accent/30"
-      >
-        {/* Name */}
-        <div className="flex min-w-0 items-center gap-2">
-          {childCount > 0 && (
-            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-          )}
-          <span className={cn("h-3 w-3 shrink-0 rounded-full border-2", dotClass)} />
-          <span className="min-w-0 truncate text-[13px] font-medium text-foreground">
-            {t.title}
-          </span>
-          {t.description && (
-            <FileText className="h-3 w-3 shrink-0 text-muted-foreground/50" />
-          )}
-          {childCount > 0 && (
-            <span className="flex shrink-0 items-center gap-0.5 text-[11px] text-muted-foreground">
-              <GitBranch className="h-3 w-3" /> {childCount}
+      <div key={t.id}>
+        <button
+          type="button"
+          onClick={() => onOpenTask(t.id)}
+          className="group grid w-full grid-cols-[1fr_100px_140px_100px] items-center gap-2 border-b border-border/20 px-3 py-2 text-left transition hover:bg-accent/30"
+        >
+          {/* Name */}
+          <div className="flex min-w-0 items-center gap-2">
+            {childCount > 0 && (
+              <button
+                type="button"
+                className="shrink-0 p-0.5 rounded hover:bg-accent transition"
+                onClick={(e) => { e.stopPropagation(); toggleExpand(t.id); }}
+              >
+                <ChevronRight className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", isExpanded && "rotate-90")} />
+              </button>
+            )}
+            <span className={cn(
+              "h-3 w-3 shrink-0 rounded-full border-2",
+              stageColor.border,
+              isDone && stageColor.bg,
+            )} />
+            <span className="min-w-0 truncate text-[13px] font-medium text-foreground">
+              {t.title}
             </span>
-          )}
-        </div>
+            {t.description && (
+              <FileText className="h-3 w-3 shrink-0 text-muted-foreground/50" />
+            )}
+            {childCount > 0 && (
+              <span className="flex shrink-0 items-center gap-0.5 text-[11px] text-muted-foreground">
+                <GitBranch className="h-3 w-3" /> {childCount}
+              </span>
+            )}
+          </div>
 
-        {/* Priority */}
-        <div>
-          <Flag className={cn("h-3.5 w-3.5", flagClass)} />
-        </div>
+          {/* Priority */}
+          <div>
+            <Flag className={cn("h-3.5 w-3.5", flagClass)} />
+          </div>
 
-        {/* Due date */}
-        <div className={cn("text-[13px] font-medium", due.color)}>
-          {due.text}
-        </div>
+          {/* Due date */}
+          <div className={cn("text-[13px] font-medium", due.color)}>
+            {due.text}
+          </div>
 
-        {/* Comments */}
-        <div className="flex items-center gap-1.5 text-muted-foreground">
-          <MessageSquare className="h-3.5 w-3.5" />
-          {commentCount > 0 && (
-            <span className="text-[12px] font-medium text-foreground">{commentCount}</span>
-          )}
-        </div>
-      </button>
+          {/* Comments */}
+          <div className="flex items-center gap-1.5 text-muted-foreground">
+            <MessageSquare className="h-3.5 w-3.5" />
+            {commentCount > 0 && (
+              <span className="text-[12px] font-medium text-foreground">{commentCount}</span>
+            )}
+          </div>
+        </button>
+
+        {/* Expanded subtasks */}
+        {isExpanded && children.length > 0 && (
+          <div className="border-b border-border/20">
+            {children.map(sub => {
+              const subDue = dueDateLabel(sub.due_date, todayKey);
+              const subStageColor = getStageCircleColor(sub.stage_current);
+              const subIsDone = sub.stage_current === "entrega";
+              const subFlagClass = PRIORITY_FLAG[sub.priority] ?? PRIORITY_FLAG.baixa;
+              const subCommentCount = commentCounts[sub.id] ?? 0;
+
+              return (
+                <button
+                  key={sub.id}
+                  type="button"
+                  onClick={() => onOpenTask(sub.id)}
+                  className="group grid w-full grid-cols-[1fr_100px_140px_100px] items-center gap-2 px-3 py-1.5 text-left transition hover:bg-accent/30 pl-10"
+                >
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className={cn(
+                      "h-2.5 w-2.5 shrink-0 rounded-full border-2",
+                      subStageColor.border,
+                      subIsDone && subStageColor.bg,
+                    )} />
+                    <span className={cn("min-w-0 truncate text-[12px] font-medium text-foreground/80", subIsDone && "line-through text-muted-foreground")}>
+                      {sub.title}
+                    </span>
+                  </div>
+                  <div>
+                    <Flag className={cn("h-3 w-3", subFlagClass)} />
+                  </div>
+                  <div className={cn("text-[12px] font-medium", subDue.color)}>
+                    {subDue.text}
+                  </div>
+                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                    <MessageSquare className="h-3 w-3" />
+                    {subCommentCount > 0 && (
+                      <span className="text-[11px] font-medium text-foreground">{subCommentCount}</span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
     );
   };
 
