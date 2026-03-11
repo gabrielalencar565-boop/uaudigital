@@ -316,7 +316,16 @@ export default function Auth() {
               </div>
 
               {mode === "login" && (
-                <div className="flex justify-end">
+                <div className="flex items-center justify-between">
+                  <label className="flex cursor-pointer items-center gap-2 select-none">
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="h-4 w-4 rounded border-white/20 bg-white/5 text-purple-500 focus:ring-purple-500/30"
+                    />
+                    <span className="text-xs text-white/40">Manter conectado</span>
+                  </label>
                   <button
                     type="button"
                     className="text-xs text-white/40 transition-colors hover:text-white/70"
