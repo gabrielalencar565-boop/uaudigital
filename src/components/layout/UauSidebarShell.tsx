@@ -308,8 +308,8 @@ export function UauSidebarShell({
               isMobile ?
               "px-4" :
               collapsed ?
-              "pl-[5rem] pr-6 pt-[4.5rem]" :
-              "pl-[15rem] pr-6 pt-[4.5rem] xl:pl-[17rem] xl:pr-8"
+              "pl-[4.5rem] pr-4 pt-[4.5rem]" :
+              "pl-[13rem] pr-4 pt-[4.5rem]"
             )}>
             
             <div className="mx-auto w-full">
