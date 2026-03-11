@@ -387,7 +387,7 @@ export default function Auth() {
           )}
 
           {mode === "reset" && (
-            <form onSubmit={resetForm.handleSubmit(onReset)} className="space-y-5">
+            <form onSubmit={resetForm.handleSubmit(onReset)} className="space-y-5 w-full">
               {hasRecoverySession === false && (
                 <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-300">
                   <p className="font-medium">Link inválido ou expirado</p>
