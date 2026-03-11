@@ -610,8 +610,8 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
             <>
               <Popover open={stageChoiceOpen} onOpenChange={setStageChoiceOpen}>
                 <PopoverTrigger asChild>
-                  <Button size="sm" className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={handleConcluido}>
-                    <CheckCircle2 className="h-4 w-4" /> Concluído
+              <Button size="sm" className={cn("gap-1.5 text-white", getStageCircleColor(task.stage_current).bg, `hover:${getStageCircleColor(task.stage_current).bg}/80`)} onClick={handleConcluido}>
+                    <CheckCircle2 className="h-4 w-4" /> {stageLabel(task.stage_current)} <ChevronRight className="h-3.5 w-3.5" />
                   </Button>
                 </PopoverTrigger>
                 {stageChoiceOptions.length > 1 && (

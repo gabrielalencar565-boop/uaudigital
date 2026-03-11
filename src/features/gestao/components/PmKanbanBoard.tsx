@@ -126,7 +126,7 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, on
               {/* Column header */}
               <div className="flex items-center justify-between px-4 py-3">
                 <div className="flex items-center gap-2.5">
-                  <span className={cn("h-2.5 w-2.5 rounded-full ring-2 ring-offset-1 ring-offset-muted/40", circleColor.bg, circleColor.border.replace("border-", "ring-"))} />
+                  <span className={cn("h-2.5 w-2.5 rounded-full", circleColor.bg)} />
                   <span className="text-[11px] font-bold uppercase tracking-wider text-foreground/70">{col.label}</span>
                   <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-foreground/8 text-[10px] font-semibold text-foreground/50 px-1.5">
                     {col.tasks.length}
