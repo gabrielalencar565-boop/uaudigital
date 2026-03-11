@@ -97,14 +97,9 @@ export function PostDetailSidebar({ post, onClose, onUpdate, onRename }: Props) 
         <div className="flex items-center gap-2">
           <Calendar className="h-3.5 w-3.5 text-primary shrink-0" />
           {editingField === "posting_date" ? (
-            <Input
-              type="date"
-              autoFocus
+            <DatePickerInline
               value={tempValue}
-              onChange={(e) => setTempValue(e.target.value)}
-              onBlur={() => saveField("posting_date")}
-              onKeyDown={(e) => e.key === "Enter" && saveField("posting_date")}
-              className="h-7 text-xs flex-1"
+              onChange={(v) => { setTempValue(v); saveField("posting_date"); }}
             />
           ) : (
             <div
