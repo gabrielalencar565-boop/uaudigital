@@ -113,14 +113,22 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
     setShowMentions(false);
   };
 
-  const insertMention = (name: string) => {
+  const insertMention = (memberId: string, name: string) => {
     const lastAtIdx = content.lastIndexOf("@");
     if (lastAtIdx >= 0) {
       const before = content.slice(0, lastAtIdx);
-      setContent(`${before}@${name} `);
+      setContent(`${before}@${memberId} `);
     }
     setShowMentions(false);
     textareaRef.current?.focus();
+  };
+
+  /** Replace @userId with @Name for display */
+  const formatMentions = (text: string) => {
+    return text.replace(/@([a-f0-9-]{36})/gi, (_, id) => {
+      const m = membersMap[id];
+      return m ? `@${m.name}` : "@alguém";
+    });
   };
 
   const filteredMembers = members.filter(m =>
