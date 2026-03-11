@@ -394,7 +394,7 @@ export default function Auth() {
                   <p className="text-red-300/70">Volte e solicite um novo link de recuperação.</p>
                 </div>
               )}
-              <div className="space-y-2">
+              <div className="space-y-2 text-center">
                 <Label htmlFor="new_password" className="text-white/70 text-xs uppercase tracking-wider">Nova senha</Label>
                 <Input
                   id="new_password"
@@ -408,7 +408,7 @@ export default function Auth() {
                   <p className="text-sm text-red-400">{resetForm.formState.errors.password.message}</p>
                 )}
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 text-center">
                 <Label htmlFor="confirm_password" className="text-white/70 text-xs uppercase tracking-wider">Confirmar nova senha</Label>
                 <Input
                   id="confirm_password"
