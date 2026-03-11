@@ -11,10 +11,10 @@ export function WorkspaceDropdown() {
         <img
           src={sidebarLogoUrl}
           alt="Logo"
-          className="h-14 w-auto max-w-[72px] object-contain"
+          className="h-10 w-auto max-w-[200px] object-contain"
         />
       ) : (
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
+        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10">
           <span className="text-lg font-bold text-primary">U</span>
         </div>
       )}
