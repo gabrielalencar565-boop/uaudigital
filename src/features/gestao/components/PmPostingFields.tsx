@@ -1,5 +1,6 @@
 import { Film, Image, LayoutGrid, Camera } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useUpdatePmTask } from "../hooks/use-pm-data";
@@ -53,12 +54,7 @@ export function PmPostingFields({ task }: Props) {
 
         <div className="space-y-1">
           <Label className="text-[11px]">Data de Postagem</Label>
-          <Input
-            type="date"
-            value={task.posting_date ?? ""}
-            onChange={(e) => handleUpdate("posting_date", e.target.value)}
-            className="h-8 text-xs rounded-lg"
-          />
+          <DatePicker value={task.posting_date ?? ""} onChange={(v) => handleUpdate("posting_date", v)} className="h-8 text-xs rounded-lg w-full" />
         </div>
 
         <div className="space-y-1">

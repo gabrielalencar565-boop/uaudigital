@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { PM_ACTIVE_STAGES, getStageCircleColor, stageLabel } from "../pm-constants";
@@ -395,7 +396,7 @@ function PautaCreateDialog({ open, onClose, dayKey, clients, members, membersMap
           </div>
           <div className="space-y-1">
             <label className="text-xs font-medium">Data</label>
-            <Input type="date" value={effectiveDueDate} onChange={e => setDueDate(e.target.value)} className="h-8 text-xs" />
+            <DatePicker value={effectiveDueDate} onChange={(v) => setDueDate(v)} className="h-8 text-xs w-full" />
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button size="sm" variant="ghost" onClick={() => { reset(); onClose(); }}>Cancelar</Button>

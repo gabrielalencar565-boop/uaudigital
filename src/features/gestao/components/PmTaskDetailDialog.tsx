@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker, DatePickerInline } from "@/components/ui/date-picker";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import {
@@ -491,7 +492,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           </PropertyRow>
 
           <PropertyRow icon={<Calendar className="h-3.5 w-3.5" />} label="Entrega">
-            <Input type="date" value={task.due_date ?? ""} onChange={(e) => updateTask.mutate({ id: task.id, due_date: e.target.value || null })} className="h-7 w-36 text-xs border-0 bg-transparent shadow-none p-0" />
+            <DatePickerInline value={task.due_date ?? ""} onChange={(v) => updateTask.mutate({ id: task.id, due_date: v || null })} />
           </PropertyRow>
 
           <PropertyRow icon={<Flag className="h-3.5 w-3.5" />} label="Demanda Extra">
@@ -639,12 +640,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                     <p className="text-xs text-muted-foreground">
                       Defina a data de entrega para a próxima etapa.
                     </p>
-                    <Input
-                      type="date"
-                      value={completionDate}
-                      onChange={(e) => setCompletionDate(e.target.value)}
-                      className="h-9"
-                    />
+                    <DatePicker value={completionDate} onChange={(v) => setCompletionDate(v)} className="w-full h-9" />
                     <div className="flex justify-end gap-2">
                       <Button size="sm" variant="ghost" onClick={() => setCompletionDateOpen(false)}>Cancelar</Button>
                       <Button size="sm" onClick={handleConfirmCompletionDate} className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white">

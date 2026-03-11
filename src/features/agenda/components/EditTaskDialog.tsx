@@ -4,6 +4,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { ChevronDown, Trash2 } from "lucide-react";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   Dialog,
   DialogContent,
@@ -331,10 +332,11 @@ export function EditTaskDialog({
 
               <div className="space-y-2">
                 <Label>Data</Label>
-                <Input
-                  type="date"
-                  {...form.register("due_date")}
+                <DatePicker
+                  value={form.watch("due_date")}
+                  onChange={(v) => form.setValue("due_date", v)}
                   disabled={!canManageTasks}
+                  className="w-full"
                 />
               </div>
             </div>

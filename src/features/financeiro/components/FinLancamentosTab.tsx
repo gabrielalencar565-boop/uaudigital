@@ -3,6 +3,7 @@ import { Plus, Upload, ArrowUpCircle, ArrowDownCircle, Eye, Pencil, Trash2, File
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { DatePicker, DatePickerInline } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -58,9 +59,7 @@ function InlineDateCell({ tx, isEditing, onStartEdit, onSave }: {
   );
   return (
     <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-      <Input type="date" value={val} onChange={e => setVal(e.target.value)} className="h-7 w-32 text-xs" autoFocus
-        onKeyDown={e => { if (e.key === "Enter") onSave(val); if (e.key === "Escape") onSave(tx.date); }}
-        onBlur={() => onSave(val)} />
+      <DatePickerInline value={val} onChange={(v) => { setVal(v); onSave(v); }} />
     </div>
   );
 }
@@ -520,7 +519,7 @@ export function FinLancamentosTab() {
         <DialogContent>
           <DialogHeader><DialogTitle>{editingTx ? "Editar Lançamento" : "Novo Lançamento"}</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2"><Label>Data</Label><Input type="date" value={form.date} onChange={(e) => setForm((p) => ({ ...p, date: e.target.value }))} /></div>
+            <div className="space-y-2"><Label>Data</Label><DatePicker value={form.date} onChange={(v) => setForm((p) => ({ ...p, date: v }))} className="w-full" /></div>
             <div className="space-y-2"><Label>Descrição *</Label><Input value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} /></div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2"><Label>Valor (R$)</Label><Input type="number" step="0.01" value={form.amount} onChange={(e) => setForm((p) => ({ ...p, amount: e.target.value }))} /></div>

@@ -5,6 +5,7 @@ import { Calendar, X, Clock, Instagram, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { DatePickerInline } from "@/components/ui/date-picker";
 import { cn } from "@/lib/utils";
 import { POST_TYPE_META, type CronogramaPost } from "./types";
 import { SmartCaptionEditor } from "../SmartCaptionEditor";
@@ -97,14 +98,9 @@ export function PostDetailSidebar({ post, onClose, onUpdate, onRename }: Props) 
         <div className="flex items-center gap-2">
           <Calendar className="h-3.5 w-3.5 text-primary shrink-0" />
           {editingField === "posting_date" ? (
-            <Input
-              type="date"
-              autoFocus
+            <DatePickerInline
               value={tempValue}
-              onChange={(e) => setTempValue(e.target.value)}
-              onBlur={() => saveField("posting_date")}
-              onKeyDown={(e) => e.key === "Enter" && saveField("posting_date")}
-              className="h-7 text-xs flex-1"
+              onChange={(v) => { onUpdate("posting_date", v || null); setEditingField(null); }}
             />
           ) : (
             <div

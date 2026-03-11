@@ -7,6 +7,7 @@ import { UserRound, Save, ImageIcon, Circle, Square, Trash2, Plus, Images } from
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -232,7 +233,7 @@ export function ConfiguracoesPanel() {
 
             <div className="space-y-2">
               <Label htmlFor="birth_date">Data de nascimento</Label>
-              <Input id="birth_date" type="date" {...form.register("birth_date")} />
+              <DatePicker value={form.watch("birth_date") ?? ""} onChange={(v) => form.setValue("birth_date", v)} className="w-full" />
               <p className="text-xs text-muted-foreground">Sua data de aniversário aparecerá no calendário e você receberá parabéns no dia.</p>
             </div>
           </CardContent>
