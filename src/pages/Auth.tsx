@@ -300,7 +300,7 @@ export default function Auth() {
                   <p className="text-sm text-red-400">{loginSignupForm.formState.errors.email.message}</p>
                 )}
               </div>
-              <div className="space-y-2 text-center">
+              <div className="space-y-2">
                 <Label htmlFor="password" className="text-white/70 text-xs uppercase tracking-wider">Senha</Label>
                 <Input
                   id="password"
