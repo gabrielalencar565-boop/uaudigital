@@ -304,7 +304,7 @@ export function UauSidebarShell({
 
           <div
             className={cn(
-              "w-full pb-10 pt-14 transition-[padding] duration-300",
+              "w-full pb-10 pt-18 transition-[padding] duration-300",
               isMobile ?
               "px-4" :
               collapsed ?
