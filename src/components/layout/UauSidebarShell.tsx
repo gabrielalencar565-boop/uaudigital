@@ -159,7 +159,7 @@ export function UauSidebarShell({
           className={cn(
             !isMobile &&
             "fixed left-0 top-[3.5rem] z-40 h-[calc(100svh-3.5rem)] border-r border-sidebar-border bg-sidebar",
-            !isMobile && (collapsed ? "w-16" : "w-56 xl:w-64")
+            !isMobile && (collapsed ? "w-14" : "w-48")
           )}>
           
           {/* Header: logo + collapse toggle */}
