@@ -491,7 +491,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           </PropertyRow>
 
           <PropertyRow icon={<Calendar className="h-3.5 w-3.5" />} label="Entrega">
-            <Input type="date" value={task.due_date ?? ""} onChange={(e) => updateTask.mutate({ id: task.id, due_date: e.target.value || null })} className="h-7 w-36 text-xs border-0 bg-transparent shadow-none p-0" />
+            <DatePickerInline value={task.due_date ?? ""} onChange={(v) => updateTask.mutate({ id: task.id, due_date: v || null })} />
           </PropertyRow>
 
           <PropertyRow icon={<Flag className="h-3.5 w-3.5" />} label="Demanda Extra">
