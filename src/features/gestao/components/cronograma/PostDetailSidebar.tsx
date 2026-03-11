@@ -5,6 +5,7 @@ import { Calendar, X, Clock, Instagram, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { DatePickerInline } from "@/components/ui/date-picker";
 import { cn } from "@/lib/utils";
 import { POST_TYPE_META, type CronogramaPost } from "./types";
 import { SmartCaptionEditor } from "../SmartCaptionEditor";

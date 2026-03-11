@@ -232,7 +232,7 @@ export function ConfiguracoesPanel() {
 
             <div className="space-y-2">
               <Label htmlFor="birth_date">Data de nascimento</Label>
-              <Input id="birth_date" type="date" {...form.register("birth_date")} />
+              <DatePicker value={form.watch("birth_date") ?? ""} onChange={(v) => form.setValue("birth_date", v)} className="w-full" />
               <p className="text-xs text-muted-foreground">Sua data de aniversário aparecerá no calendário e você receberá parabéns no dia.</p>
             </div>
           </CardContent>
