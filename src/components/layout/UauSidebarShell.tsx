@@ -8,6 +8,7 @@ import { useAppSettings } from "@/features/data/queries";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useRealtimeSyncAll } from "@/hooks/use-realtime-sync";
+import { useNotificationSound } from "@/hooks/use-notification-sound";
 import { TopBar } from "@/components/layout/TopBar";
 import { EditProfileDialog } from "@/features/meu-painel/components/EditProfileDialog";
 import { usePmTasks } from "@/features/gestao/hooks/use-pm-data";
@@ -114,6 +115,7 @@ export function UauSidebarShell({
   const logoClass = logoShape === "circle" ? "rounded-full" : "rounded-md";
 
   useRealtimeSyncAll();
+  useNotificationSound();
 
   // Which groups are open
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
