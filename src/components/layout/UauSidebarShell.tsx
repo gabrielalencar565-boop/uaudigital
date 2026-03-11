@@ -159,7 +159,7 @@ export function UauSidebarShell({
           className={cn(
             !isMobile &&
             "fixed left-0 top-[3.5rem] z-40 h-[calc(100svh-3.5rem)] border-r border-sidebar-border bg-sidebar",
-            !isMobile && (collapsed ? "w-16" : "w-56 xl:w-64")
+            !isMobile && (collapsed ? "w-14" : "w-48")
           )}>
           
           {/* Header: logo + collapse toggle */}
@@ -308,8 +308,8 @@ export function UauSidebarShell({
               isMobile ?
               "px-4" :
               collapsed ?
-              "pl-[5rem] pr-6 pt-[4.5rem]" :
-              "pl-[15rem] pr-6 pt-[4.5rem] xl:pl-[17rem] xl:pr-8"
+              "pl-[4.5rem] pr-4 pt-[4.5rem]" :
+              "pl-[13rem] pr-4 pt-[4.5rem]"
             )}>
             
             <div className="mx-auto w-full">
