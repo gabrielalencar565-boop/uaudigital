@@ -408,7 +408,7 @@ export default function Auth() {
                   <p className="text-sm text-red-400">{resetForm.formState.errors.password.message}</p>
                 )}
               </div>
-              <div className="space-y-2 text-center">
+              <div className="space-y-2">
                 <Label htmlFor="confirm_password" className="text-white/70 text-xs uppercase tracking-wider">Confirmar nova senha</Label>
                 <Input
                   id="confirm_password"
