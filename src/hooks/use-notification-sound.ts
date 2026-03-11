@@ -3,54 +3,29 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
 
 /**
- * Plays a ClickUp-style notification pop sound using Web Audio API.
- * Bright, quick two-tone "pop-ding" sound.
+ * Soft digital ping — UI notification sound.
+ * ~200ms, gentle chime, low volume, non-intrusive.
  */
 function playNotificationSound() {
   try {
     const ctx = new AudioContext();
     const now = ctx.currentTime;
 
-    // --- Pop layer (percussive attack) ---
-    const popOsc = ctx.createOscillator();
-    const popGain = ctx.createGain();
-    popOsc.type = "sine";
-    popOsc.frequency.setValueAtTime(1200, now);
-    popOsc.frequency.exponentialRampToValueAtTime(600, now + 0.08);
-    popGain.gain.setValueAtTime(0.3, now);
-    popGain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
-    popOsc.connect(popGain);
-    popGain.connect(ctx.destination);
-    popOsc.start(now);
-    popOsc.stop(now + 0.1);
+    // Soft sine ping — E6 (1318 Hz)
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(1318, now);
+    osc.frequency.exponentialRampToValueAtTime(1100, now + 0.2);
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.08, now + 0.015);  // soft attack
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.25);
 
-    // --- Ding layer (tonal body) ---
-    const dingOsc = ctx.createOscillator();
-    const dingGain = ctx.createGain();
-    dingOsc.type = "sine";
-    dingOsc.frequency.setValueAtTime(880, now + 0.03);
-    dingGain.gain.setValueAtTime(0, now);
-    dingGain.gain.linearRampToValueAtTime(0.2, now + 0.04);
-    dingGain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
-    dingOsc.connect(dingGain);
-    dingGain.connect(ctx.destination);
-    dingOsc.start(now + 0.03);
-    dingOsc.stop(now + 0.25);
-
-    // --- Second ding (higher, delayed) ---
-    const ding2Osc = ctx.createOscillator();
-    const ding2Gain = ctx.createGain();
-    ding2Osc.type = "sine";
-    ding2Osc.frequency.setValueAtTime(1175, now + 0.1); // D6
-    ding2Gain.gain.setValueAtTime(0, now + 0.1);
-    ding2Gain.gain.linearRampToValueAtTime(0.15, now + 0.12);
-    ding2Gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
-    ding2Osc.connect(ding2Gain);
-    ding2Gain.connect(ctx.destination);
-    ding2Osc.start(now + 0.1);
-    ding2Osc.stop(now + 0.35);
-
-    setTimeout(() => ctx.close(), 600);
+    setTimeout(() => ctx.close(), 400);
   } catch {
     // Audio not available
   }
