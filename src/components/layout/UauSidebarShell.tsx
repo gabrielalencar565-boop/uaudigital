@@ -115,6 +115,7 @@ export function UauSidebarShell({
   const logoClass = logoShape === "circle" ? "rounded-full" : "rounded-md";
 
   useRealtimeSyncAll();
+  useNotificationSound();
 
   // Which groups are open
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
