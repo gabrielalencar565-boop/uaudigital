@@ -1,23 +1,21 @@
-import { cn } from "@/lib/utils";
 import { useAppSettings } from "@/features/data/queries";
 
 export function WorkspaceDropdown() {
   const appSettingsQ = useAppSettings();
-  const logoUrl = appSettingsQ.data?.logo_url;
-  const logoShape = appSettingsQ.data?.logo_shape ?? "square";
+  const sidebarLogoUrl = appSettingsQ.data?.sidebar_logo_url;
   const workspaceName = appSettingsQ.data?.workspace_name ?? "";
 
   return (
-    <div className="flex items-center gap-2">
-      {logoUrl ? (
+    <div className="flex items-center gap-3">
+      {sidebarLogoUrl ? (
         <img
-          src={logoUrl}
+          src={sidebarLogoUrl}
           alt="Logo"
-          className="h-10 w-auto max-w-[56px] object-contain"
+          className="h-14 w-auto max-w-[72px] object-contain"
         />
       ) : (
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-          <span className="text-base font-bold text-primary">U</span>
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
+          <span className="text-lg font-bold text-primary">U</span>
         </div>
       )}
       {workspaceName && (
