@@ -294,7 +294,7 @@ export function UauSidebarShell({
 
         <SidebarInset>
           {isMobile &&
-          <header className="sticky top-12 z-30 border-b border-border/60 bg-background/60 backdrop-blur">
+          <header className="sticky top-16 z-30 border-b border-border/60 bg-background/60 backdrop-blur">
               <div className="flex items-center gap-3 px-4 py-3">
                 <SidebarTrigger />
                 <p className="truncate text-sm font-medium">{currentTabLabel}</p>
@@ -304,7 +304,7 @@ export function UauSidebarShell({
 
           <div
             className={cn(
-              "w-full pb-10 pt-14 transition-[padding] duration-300",
+              "w-full pb-10 pt-18 transition-[padding] duration-300",
               isMobile ?
               "px-4" :
               collapsed ?
