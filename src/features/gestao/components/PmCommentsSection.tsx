@@ -113,14 +113,22 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
     setShowMentions(false);
   };
 
-  const insertMention = (name: string) => {
+  const insertMention = (memberId: string, name: string) => {
     const lastAtIdx = content.lastIndexOf("@");
     if (lastAtIdx >= 0) {
       const before = content.slice(0, lastAtIdx);
-      setContent(`${before}@${name} `);
+      setContent(`${before}@${memberId} `);
     }
     setShowMentions(false);
     textareaRef.current?.focus();
+  };
+
+  /** Replace @userId with @Name for display */
+  const formatMentions = (text: string) => {
+    return text.replace(/@([a-f0-9-]{36})/gi, (_, id) => {
+      const m = membersMap[id];
+      return m ? `@${m.name}` : "@alguém";
+    });
   };
 
   const filteredMembers = members.filter(m =>
@@ -147,7 +155,7 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
                       {format(new Date(c.created_at), "MMM d 'às' HH:mm", { locale: ptBR })}
                     </span>
                   </div>
-                  <p className="mt-1 whitespace-pre-wrap text-[13px] text-foreground/90 leading-relaxed">{c.content}</p>
+                  <p className="mt-1 whitespace-pre-wrap text-[13px] text-foreground/90 leading-relaxed">{formatMentions(c.content)}</p>
                 </div>
               </div>
             );
@@ -195,7 +203,7 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
                 <button
                   key={m.id}
                   className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent transition text-left"
-                  onMouseDown={(e) => { e.preventDefault(); insertMention(m.name); }}
+                  onMouseDown={(e) => { e.preventDefault(); insertMention(m.id, m.name); }}
                 >
                   <Avatar className="h-5 w-5">
                     <AvatarImage src={info?.avatar} />
