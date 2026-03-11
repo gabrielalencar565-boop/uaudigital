@@ -55,6 +55,7 @@ export type Database = {
           login_bg_zoom: number
           logo_shape: Database["public"]["Enums"]["logo_shape_type"]
           logo_url: string | null
+          sidebar_logo_url: string | null
           updated_at: string
           updated_by: string | null
           workspace_name: string
@@ -69,6 +70,7 @@ export type Database = {
           login_bg_zoom?: number
           logo_shape?: Database["public"]["Enums"]["logo_shape_type"]
           logo_url?: string | null
+          sidebar_logo_url?: string | null
           updated_at?: string
           updated_by?: string | null
           workspace_name?: string
@@ -83,6 +85,7 @@ export type Database = {
           login_bg_zoom?: number
           logo_shape?: Database["public"]["Enums"]["logo_shape_type"]
           logo_url?: string | null
+          sidebar_logo_url?: string | null
           updated_at?: string
           updated_by?: string | null
           workspace_name?: string
