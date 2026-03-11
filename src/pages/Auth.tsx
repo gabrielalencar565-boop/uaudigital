@@ -273,13 +273,13 @@ export default function Auth() {
           {/* Title */}
           <div className="space-y-2 text-center">
             <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
-              {mode === "login" && "Bem-vindo de volta"}
+              {mode === "login" && "Que bom ter você aqui!"}
               {mode === "signup" && "Crie sua conta"}
               {mode === "forgot" && "Recuperar senha"}
               {mode === "reset" && "Nova senha"}
             </h1>
             <p className="text-sm text-white/50">
-              {subtitle ?? "Acesse o painel da Uau"}
+              {subtitle ?? "Bora fazer acontecer — é Uau ou nada! 🚀"}
             </p>
           </div>
 
