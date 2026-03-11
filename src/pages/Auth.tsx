@@ -286,7 +286,7 @@ export default function Auth() {
           {/* Forms */}
           {(mode === "login" || mode === "signup") && (
             <form onSubmit={loginSignupForm.handleSubmit(onLoginSignup)} className="space-y-5">
-              <div className="space-y-2">
+              <div className="space-y-2 text-center">
                 <Label htmlFor="email" className="text-white/70 text-xs uppercase tracking-wider">Email</Label>
                 <Input
                   id="email"
@@ -300,7 +300,7 @@ export default function Auth() {
                   <p className="text-sm text-red-400">{loginSignupForm.formState.errors.email.message}</p>
                 )}
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 text-center">
                 <Label htmlFor="password" className="text-white/70 text-xs uppercase tracking-wider">Senha</Label>
                 <Input
                   id="password"
