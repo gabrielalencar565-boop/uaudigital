@@ -351,7 +351,7 @@ export default function Auth() {
 
           {mode === "forgot" && (
             <form onSubmit={forgotForm.handleSubmit(onForgot)} className="space-y-5 w-full">
-              <div className="space-y-2 text-center">
+              <div className="space-y-2">
                 <Label htmlFor="forgot_email" className="text-white/70 text-xs uppercase tracking-wider">Email</Label>
                 <Input
                   id="forgot_email"
