@@ -1,8 +1,8 @@
 import { PropsWithChildren, useMemo, useState } from "react";
 import {
-  CalendarDays, ChevronDown, ChevronLeft, ClipboardList, DollarSign,
+  CalendarDays, ChevronDown, ClipboardList, DollarSign,
   Eye, FolderOpen, LayoutGrid, Settings, Target, TrendingUp, Trophy,
-  UserRound, Workflow, CalendarRange, PieChart } from
+  UserRound, Workflow, CalendarRange, PieChart, PanelLeftClose } from
 "lucide-react";
 import { useAppSettings } from "@/features/data/queries";
 import { cn } from "@/lib/utils";
@@ -180,7 +180,7 @@ export function UauSidebarShell({
                 )}
                 aria-label={collapsed ? "Expandir" : "Recolher"}>
                 
-                  <ChevronLeft className={cn("h-4 w-4 transition-transform", collapsed && "rotate-180")} />
+                  <PanelLeftClose className={cn("h-4 w-4 transition-transform", collapsed && "rotate-180")} />
                 </button>
               }
             </div>
