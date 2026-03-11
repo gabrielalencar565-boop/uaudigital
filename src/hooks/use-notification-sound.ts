@@ -3,31 +3,31 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
 
 /**
- * Soft digital ping — UI notification sound.
- * ~200ms, gentle chime, low volume, non-intrusive.
+ * Plays a short notification chime using Web Audio API.
  */
 function playNotificationSound() {
   try {
     const ctx = new AudioContext();
     const now = ctx.currentTime;
 
-    // Soft sine ping — E6 (1318 Hz)
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(1318, now);
-    osc.frequency.exponentialRampToValueAtTime(1100, now + 0.2);
-    gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.08, now + 0.015);  // soft attack
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start(now);
-    osc.stop(now + 0.25);
+    // Two-tone chime
+    [660, 880].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.15, now + i * 0.15);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.15 + 0.3);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now + i * 0.15);
+      osc.stop(now + i * 0.15 + 0.3);
+    });
 
-    setTimeout(() => ctx.close(), 400);
+    // Clean up context after sound finishes
+    setTimeout(() => ctx.close(), 1000);
   } catch {
-    // Audio not available
+    // Audio not available (e.g. SSR or blocked by browser)
   }
 }
 
