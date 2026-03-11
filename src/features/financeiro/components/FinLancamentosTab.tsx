@@ -58,9 +58,7 @@ function InlineDateCell({ tx, isEditing, onStartEdit, onSave }: {
   );
   return (
     <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-      <Input type="date" value={val} onChange={e => setVal(e.target.value)} className="h-7 w-32 text-xs" autoFocus
-        onKeyDown={e => { if (e.key === "Enter") onSave(val); if (e.key === "Escape") onSave(tx.date); }}
-        onBlur={() => onSave(val)} />
+      <DatePickerInline value={val} onChange={(v) => { setVal(v); onSave(v); }} />
     </div>
   );
 }
