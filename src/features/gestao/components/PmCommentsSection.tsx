@@ -155,7 +155,7 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
                       {format(new Date(c.created_at), "MMM d 'às' HH:mm", { locale: ptBR })}
                     </span>
                   </div>
-                  <p className="mt-1 whitespace-pre-wrap text-[13px] text-foreground/90 leading-relaxed">{c.content}</p>
+                  <p className="mt-1 whitespace-pre-wrap text-[13px] text-foreground/90 leading-relaxed">{formatMentions(c.content)}</p>
                 </div>
               </div>
             );
