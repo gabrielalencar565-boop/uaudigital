@@ -216,8 +216,92 @@ export function AdminAparenciaPanel() {
     }
   };
 
+  /* ── Logo upload ── */
+  const logoUrl = appSettingsQ.data?.logo_url ?? null;
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+
+  const handleLogoUpload = async (file: File) => {
+    if (!user) return;
+    if (!file.type.startsWith("image/")) { toast.error("Envie uma imagem"); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error("Máximo 5MB"); return; }
+    setUploadingLogo(true);
+    try {
+      const ext = (file.name.split(".").pop() || "png").toLowerCase();
+      const path = `logo/${crypto.randomUUID()}.${ext}`;
+      const up = await supabase.storage.from("app-assets").upload(path, file, { upsert: true, contentType: file.type });
+      if (up.error) throw up.error;
+      const pub = supabase.storage.from("app-assets").getPublicUrl(path);
+      await updateAppSettings.mutateAsync({ logo_url: pub.data.publicUrl } as any);
+      toast.success("Logo atualizada!");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao enviar logo");
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
+  const handleRemoveLogo = async () => {
+    try {
+      await updateAppSettings.mutateAsync({ logo_url: null } as any);
+      toast.success("Logo removida");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao remover logo");
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* Logo */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Images className="h-5 w-5" />
+            Logo da empresa
+          </CardTitle>
+          <CardDescription>
+            A logo aparece na tela de login e na barra lateral. Use preferencialmente uma imagem com fundo transparente (PNG).
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-6">
+            {/* Preview */}
+            <div className="flex h-24 w-48 items-center justify-center rounded-xl border-2 border-dashed border-border bg-muted/30">
+              {logoUrl ? (
+                <img src={logoUrl} alt="Logo" className="max-h-20 max-w-[180px] object-contain" />
+              ) : (
+                <span className="text-xs text-muted-foreground">Sem logo</span>
+              )}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="gap-2"
+              disabled={uploadingLogo}
+              onClick={() => {
+                const input = document.createElement("input");
+                input.type = "file";
+                input.accept = "image/*";
+                input.onchange = async () => {
+                  const f = input.files?.[0];
+                  if (f) await handleLogoUpload(f);
+                };
+                input.click();
+              }}
+            >
+              <Plus className="h-4 w-4" />
+              {uploadingLogo ? "Enviando..." : logoUrl ? "Trocar logo" : "Enviar logo"}
+            </Button>
+            {logoUrl && (
+              <Button variant="destructive" size="sm" className="gap-2" onClick={handleRemoveLogo}>
+                <Trash2 className="h-4 w-4" />
+                Remover logo
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
       {/* Preview masonry — replica do login */}
       <Card>
         <CardHeader>
