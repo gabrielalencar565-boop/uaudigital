@@ -100,7 +100,7 @@ export function PostDetailSidebar({ post, onClose, onUpdate, onRename }: Props) 
           {editingField === "posting_date" ? (
             <DatePickerInline
               value={tempValue}
-              onChange={(v) => { setTempValue(v); saveField("posting_date"); }}
+              onChange={(v) => { onUpdate("posting_date", v || null); setEditingField(null); }}
             />
           ) : (
             <div
