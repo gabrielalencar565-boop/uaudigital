@@ -203,7 +203,7 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
                 <button
                   key={m.id}
                   className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent transition text-left"
-                  onMouseDown={(e) => { e.preventDefault(); insertMention(m.name); }}
+                  onMouseDown={(e) => { e.preventDefault(); insertMention(m.id, m.name); }}
                 >
                   <Avatar className="h-5 w-5">
                     <AvatarImage src={info?.avatar} />
