@@ -130,6 +130,7 @@ export default function Auth() {
   }, [bgImages]);
 
   const [mode, setMode] = useState<AuthMode>("login");
+  const [rememberMe, setRememberMe] = useState(true);
   const [hasRecoverySession, setHasRecoverySession] = useState<boolean | null>(null);
 
   const loginSignupForm = useForm<LoginSignupValues>({
