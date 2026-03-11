@@ -165,11 +165,8 @@ export function UauSidebarShell({
           {/* Header: logo + collapse toggle */}
           <div className={cn("px-3 pb-1 pt-3", collapsed && !isMobile && "px-2")}>
             <div className={cn("flex items-center gap-2", collapsed && !isMobile && "justify-center")}>
-              {logoUrl && (!collapsed || isMobile) ?
-              <img src={logoUrl} alt="Logo" className={cn("h-7 w-7 object-cover", logoClass)} /> :
-              null}
               {(!collapsed || isMobile) &&
-              <span className="text-sm font-bold text-sidebar-foreground truncate">Uau Digital</span>
+              <span className="text-sm font-bold text-sidebar-foreground truncate">{appSettingsQ.data?.workspace_name ?? "Uau Digital"}</span>
               }
               {!isMobile &&
               <button

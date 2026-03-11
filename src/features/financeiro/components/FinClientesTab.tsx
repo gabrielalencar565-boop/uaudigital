@@ -249,7 +249,7 @@ export function FinClientesTab() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Início do contrato</Label>
-                <Input type="date" value={form.contract_start} onChange={(e) => setForm((p) => ({ ...p, contract_start: e.target.value }))} />
+                <DatePicker value={form.contract_start} onChange={(v) => setForm((p) => ({ ...p, contract_start: v }))} className="w-full" />
               </div>
               <div className="space-y-2">
                 <Label>Dia de vencimento</Label>

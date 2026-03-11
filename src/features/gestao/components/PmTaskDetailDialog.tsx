@@ -639,12 +639,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                     <p className="text-xs text-muted-foreground">
                       Defina a data de entrega para a próxima etapa.
                     </p>
-                    <Input
-                      type="date"
-                      value={completionDate}
-                      onChange={(e) => setCompletionDate(e.target.value)}
-                      className="h-9"
-                    />
+                    <DatePicker value={completionDate} onChange={(v) => setCompletionDate(v)} className="w-full h-9" />
                     <div className="flex justify-end gap-2">
                       <Button size="sm" variant="ghost" onClick={() => setCompletionDateOpen(false)}>Cancelar</Button>
                       <Button size="sm" onClick={handleConfirmCompletionDate} className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white">
