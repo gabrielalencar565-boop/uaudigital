@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { getIconById } from "@/features/agenda/components/IconPicker";
+import { useTeamMembers } from "@/features/data/queries";
+import { useAgendaSpecialDates } from "@/features/agenda/hooks/use-agenda-dates";
 import { POST_TYPE_META, type CronogramaViewProps } from "./types";
 
 function SpecialDatesBadges({ dates }: { dates: import("@/features/agenda/hooks/use-agenda-dates").SpecialDate[] }) {
