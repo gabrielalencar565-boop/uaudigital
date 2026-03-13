@@ -481,6 +481,11 @@ export function AgendaPanel() {
               <FileText className="h-4 w-4" /> Relatório
             </Button>
           )}
+          {isAdmin && (
+            <Button variant="outline" size="sm" onClick={() => setInternalDatesOpen(true)} className="gap-2 rounded-xl">
+              <CalendarPlus className="h-4 w-4" /> Datas
+            </Button>
+          )}
           {canManageTasks && (
             <Button variant="outline" size="sm" onClick={() => setTrashOpen(true)} className="gap-2 rounded-xl">
               <Trash2 className="h-4 w-4" /> Lixeira
