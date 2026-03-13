@@ -1,13 +1,14 @@
 import { useState } from "react";
-import { Users, Building2, SprayCan, Trophy, Palette } from "lucide-react";
+import { Users, Building2, SprayCan, Trophy, Palette, CalendarPlus } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AdminPanel } from "./AdminPanel";
 import { AdminClientesPanel } from "./AdminClientesPanel";
 import { AdminLimpezaPanel } from "./AdminLimpezaPanel";
 import { AdminPontuacaoPanel } from "./AdminPontuacaoPanel";
 import { AdminAparenciaPanel } from "./AdminAparenciaPanel";
+import { AdminDatasInternasPanel } from "./AdminDatasInternasPanel";
 
-type AdminSubTab = "usuarios" | "clientes" | "limpeza" | "pontuacao" | "aparencia";
+type AdminSubTab = "usuarios" | "clientes" | "limpeza" | "pontuacao" | "aparencia" | "datas";
 
 export function AdminContainer() {
   const [subTab, setSubTab] = useState<AdminSubTab>("usuarios");
@@ -36,6 +37,10 @@ export function AdminContainer() {
             <Building2 className="h-4 w-4" />
             Clientes
           </TabsTrigger>
+          <TabsTrigger value="datas" className="gap-2">
+            <CalendarPlus className="h-4 w-4" />
+            Datas internas
+          </TabsTrigger>
           <TabsTrigger value="limpeza" className="gap-2">
             <SprayCan className="h-4 w-4" />
             Limpeza
@@ -56,6 +61,10 @@ export function AdminContainer() {
 
         <TabsContent value="clientes" className="mt-6">
           <AdminClientesPanel />
+        </TabsContent>
+
+        <TabsContent value="datas" className="mt-6">
+          <AdminDatasInternasPanel />
         </TabsContent>
 
         <TabsContent value="limpeza" className="mt-6">

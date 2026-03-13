@@ -13,7 +13,7 @@ import {
   type InternalDate,
 } from "../hooks/use-agenda-dates";
 
-const ICON_OPTIONS = [
+export const ICON_OPTIONS = [
   { id: "calendar", icon: Calendar, label: "Calendário" },
   { id: "star", icon: Star, label: "Estrela" },
   { id: "users", icon: Users, label: "Reunião" },
@@ -23,7 +23,7 @@ const ICON_OPTIONS = [
   { id: "cake", icon: Cake, label: "Comemoração" },
 ];
 
-const COLOR_OPTIONS = [
+export const COLOR_OPTIONS = [
   "#7C5CFF", "#3B82F6", "#10B981", "#F59E0B", "#EF4444",
   "#EC4899", "#06B6D4", "#F97316",
 ];

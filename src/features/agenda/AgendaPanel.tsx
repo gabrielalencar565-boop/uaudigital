@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { addDays, addMonths, subMonths, endOfMonth, format, startOfMonth, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Filter, TriangleAlert, Calendar, Trash2, FileText, Cake, Star, CalendarPlus } from "lucide-react";
+import { CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Filter, TriangleAlert, Calendar, Trash2, FileText, Cake, Star } from "lucide-react";
 import { z } from "zod";
 import { useAgendaSpecialDates, type SpecialDate } from "@/features/agenda/hooks/use-agenda-dates";
-import { ManageInternalDatesDialog, getInternalDateIcon } from "@/features/agenda/components/ManageInternalDatesDialog";
+import { getInternalDateIcon } from "@/features/agenda/components/ManageInternalDatesDialog";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { DndContext, DragEndEvent, DragOverlay, closestCenter } from "@dnd-kit/core";
@@ -235,7 +235,6 @@ export function AgendaPanel() {
   const [editOpen, setEditOpen] = useState(false);
   const [trashOpen, setTrashOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
-  const [internalDatesOpen, setInternalDatesOpen] = useState(false);
 
   // Special dates (holidays, birthdays, internal recurring)
   const specialDatesMap = useAgendaSpecialDates(
@@ -481,11 +480,6 @@ export function AgendaPanel() {
               <FileText className="h-4 w-4" /> Relatório
             </Button>
           )}
-          {isAdmin && (
-            <Button variant="outline" size="sm" onClick={() => setInternalDatesOpen(true)} className="gap-2 rounded-xl">
-              <CalendarPlus className="h-4 w-4" /> Datas
-            </Button>
-          )}
           {canManageTasks && (
             <Button variant="outline" size="sm" onClick={() => setTrashOpen(true)} className="gap-2 rounded-xl">
               <Trash2 className="h-4 w-4" /> Lixeira
@@ -507,14 +501,6 @@ export function AgendaPanel() {
         </Dialog>
       )}
 
-      {/* Dialog de datas internas */}
-      {isAdmin && user && (
-        <ManageInternalDatesDialog
-          open={internalDatesOpen}
-          onOpenChange={setInternalDatesOpen}
-          userId={user.id}
-        />
-      )}
 
       {/* Dialog da lixeira */}
       <Dialog open={trashOpen} onOpenChange={setTrashOpen}>
@@ -866,9 +852,10 @@ export function AgendaPanel() {
             {view === "week" ? <div className="-mx-6 overflow-x-auto px-6">
                 <div className="flex gap-3">
                   {weekDays.map(d => {
-              const key = format(d, "yyyy-MM-dd");
+            const key = format(d, "yyyy-MM-dd");
               const dayTasks = tasksByDay.get(key) ?? [];
               const selected = selectedWeekDayKey ? key === selectedWeekDayKey : key === todayKey;
+              const mobileWeekSpecialDates = specialDatesMap.get(key) ?? [];
               const dow = format(d, "EEEE", {
                 locale: ptBR
               });
@@ -888,6 +875,37 @@ export function AgendaPanel() {
                               </button>
                             </span> : null}
                         </div>
+
+                        {/* Special dates in mobile week view */}
+                        {mobileWeekSpecialDates.length > 0 && (
+                          <div className="mt-2 space-y-1">
+                            {mobileWeekSpecialDates.map((sd, idx) => {
+                              if (sd.type === "birthday") {
+                                return (
+                                  <div key={`mwsd-${idx}`} className="flex items-center gap-1.5 rounded-lg bg-warning/10 px-2 py-1">
+                                    <Cake className="h-3.5 w-3.5 text-warning flex-shrink-0" />
+                                    <span className="text-xs font-medium text-warning">{sd.personName}</span>
+                                  </div>
+                                );
+                              }
+                              if (sd.type === "holiday") {
+                                return (
+                                  <div key={`mwsd-${idx}`} className="flex items-center gap-1.5 rounded-lg bg-primary/10 px-2 py-1">
+                                    <Star className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                                    <span className="text-xs font-medium text-primary">{sd.label}</span>
+                                  </div>
+                                );
+                              }
+                              const MWIcon = getInternalDateIcon(sd.icon ?? "calendar");
+                              return (
+                                <div key={`mwsd-${idx}`} className="flex items-center gap-1.5 rounded-lg px-2 py-1" style={{ backgroundColor: (sd.color ?? "#7C5CFF") + "15" }}>
+                                  <MWIcon className="h-3.5 w-3.5 flex-shrink-0" style={{ color: sd.color }} />
+                                  <span className="text-xs font-medium" style={{ color: sd.color }}>{sd.label}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
 
                         <div className="mt-4 space-y-2">
                           {dayTasks.length ? dayTasks.map(t => {
@@ -913,8 +931,9 @@ export function AgendaPanel() {
               </div> : (days.filter(d => d.getMonth() === cursor.getMonth())).map(d => {
           const key = format(d, "yyyy-MM-dd");
           const dayTasks = tasksByDay.get(key) ?? [];
+          const mobileMonthSpecialDates = specialDatesMap.get(key) ?? [];
           const hasOverdue = key < todayKey && dayTasks.some(t => t.status !== "concluido");
-          if (!dayTasks.length) return null;
+          if (!dayTasks.length && !mobileMonthSpecialDates.length) return null;
           return <div key={key} className={cn("space-y-2 rounded-lg border border-border/60 bg-card/10 p-3", hasOverdue && "ring-1 ring-danger/40")}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -929,6 +948,37 @@ export function AgendaPanel() {
                         {dayTasks.length}
                       </Badge>
                     </div>
+
+                    {/* Special dates in mobile month view */}
+                    {mobileMonthSpecialDates.length > 0 && (
+                      <div className="space-y-1">
+                        {mobileMonthSpecialDates.map((sd, idx) => {
+                          if (sd.type === "birthday") {
+                            return (
+                              <div key={`mmsd-${idx}`} className="flex items-center gap-1.5 rounded-lg bg-warning/10 px-2 py-1">
+                                <Cake className="h-3.5 w-3.5 text-warning flex-shrink-0" />
+                                <span className="text-xs font-medium text-warning">{sd.personName}</span>
+                              </div>
+                            );
+                          }
+                          if (sd.type === "holiday") {
+                            return (
+                              <div key={`mmsd-${idx}`} className="flex items-center gap-1.5 rounded-lg bg-primary/10 px-2 py-1">
+                                <Star className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                                <span className="text-xs font-medium text-primary">{sd.label}</span>
+                              </div>
+                            );
+                          }
+                          const MMIcon = getInternalDateIcon(sd.icon ?? "calendar");
+                          return (
+                            <div key={`mmsd-${idx}`} className="flex items-center gap-1.5 rounded-lg px-2 py-1" style={{ backgroundColor: (sd.color ?? "#7C5CFF") + "15" }}>
+                              <MMIcon className="h-3.5 w-3.5 flex-shrink-0" style={{ color: sd.color }} />
+                              <span className="text-xs font-medium" style={{ color: sd.color }}>{sd.label}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
 
                     <div className="space-y-2">
                       {dayTasks.map(t => {
