@@ -1097,6 +1097,37 @@ export function AgendaPanel() {
                   </span> : null}
               </div>
 
+              {/* Special dates in week view */}
+              {weekSpecialDates.length > 0 && (
+                <div className="space-y-1 mb-3">
+                  {weekSpecialDates.map((sd, idx) => {
+                    if (sd.type === "birthday") {
+                      return (
+                        <div key={`wsd-${idx}`} className="flex items-center gap-1.5 rounded-lg bg-warning/10 px-2 py-1.5">
+                          <Cake className="h-3.5 w-3.5 text-warning flex-shrink-0" />
+                          <span className="text-xs font-medium text-warning">{sd.personName}</span>
+                        </div>
+                      );
+                    }
+                    if (sd.type === "holiday") {
+                      return (
+                        <div key={`wsd-${idx}`} className="flex items-center gap-1.5 rounded-lg bg-primary/10 px-2 py-1.5">
+                          <Star className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                          <span className="text-xs font-medium text-primary">{sd.label}</span>
+                        </div>
+                      );
+                    }
+                    const WIcon = getInternalDateIcon(sd.icon ?? "calendar");
+                    return (
+                      <div key={`wsd-${idx}`} className="flex items-center gap-1.5 rounded-lg px-2 py-1.5" style={{ backgroundColor: (sd.color ?? "#7C5CFF") + "15" }}>
+                        <WIcon className="h-3.5 w-3.5 flex-shrink-0" style={{ color: sd.color }} />
+                        <span className="text-xs font-medium" style={{ color: sd.color }}>{sd.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
               {/* Lista de tarefas com mais espaço */}
               <div className="space-y-3 max-h-[500px] overflow-y-auto">
                 {dayTasks.length ? dayTasks.map(t => {
