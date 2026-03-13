@@ -1197,6 +1197,38 @@ export function AgendaPanel() {
                           </div>
                         )}
 
+                        {/* Special dates: holidays, birthdays, internal */}
+                        {specialDates.length > 0 && (
+                          <div className="mt-1.5 space-y-1">
+                            {specialDates.map((sd, idx) => {
+                              if (sd.type === "birthday") {
+                                return (
+                                  <div key={`sd-${idx}`} className="flex items-center gap-1 rounded-md bg-warning/10 px-1.5 py-0.5">
+                                    <Cake className="h-3 w-3 text-warning flex-shrink-0" />
+                                    <span className="text-[10px] font-medium text-warning truncate">{sd.personName}</span>
+                                  </div>
+                                );
+                              }
+                              if (sd.type === "holiday") {
+                                return (
+                                  <div key={`sd-${idx}`} className="flex items-center gap-1 rounded-md bg-primary/10 px-1.5 py-0.5">
+                                    <Star className="h-3 w-3 text-primary flex-shrink-0" />
+                                    <span className="text-[10px] font-medium text-primary truncate">{sd.label}</span>
+                                  </div>
+                                );
+                              }
+                              // internal
+                              const InternalIcon = getInternalDateIcon(sd.icon ?? "calendar");
+                              return (
+                                <div key={`sd-${idx}`} className="flex items-center gap-1 rounded-md px-1.5 py-0.5" style={{ backgroundColor: (sd.color ?? "#7C5CFF") + "15" }}>
+                                  <InternalIcon className="h-3 w-3 flex-shrink-0" style={{ color: sd.color }} />
+                                  <span className="text-[10px] font-medium truncate" style={{ color: sd.color }}>{sd.label}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+
                         <div className="mt-2 space-y-2">
                           {dayTasks.slice(0, 4).map(t => {
                             const stageLabel = t.stage === "planejamento" ? "Planej." : STAGES.find(s => s.key === t.stage)?.label ?? "Etapa";
