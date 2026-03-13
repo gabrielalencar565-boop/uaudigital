@@ -852,9 +852,10 @@ export function AgendaPanel() {
             {view === "week" ? <div className="-mx-6 overflow-x-auto px-6">
                 <div className="flex gap-3">
                   {weekDays.map(d => {
-              const key = format(d, "yyyy-MM-dd");
+            const key = format(d, "yyyy-MM-dd");
               const dayTasks = tasksByDay.get(key) ?? [];
               const selected = selectedWeekDayKey ? key === selectedWeekDayKey : key === todayKey;
+              const mobileWeekSpecialDates = specialDatesMap.get(key) ?? [];
               const dow = format(d, "EEEE", {
                 locale: ptBR
               });
