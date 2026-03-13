@@ -502,14 +502,6 @@ export function AgendaPanel() {
         </Dialog>
       )}
 
-      {/* Dialog de datas internas */}
-      {isAdmin && user && (
-        <ManageInternalDatesDialog
-          open={internalDatesOpen}
-          onOpenChange={setInternalDatesOpen}
-          userId={user.id}
-        />
-      )}
 
       {/* Dialog da lixeira */}
       <Dialog open={trashOpen} onOpenChange={setTrashOpen}>
