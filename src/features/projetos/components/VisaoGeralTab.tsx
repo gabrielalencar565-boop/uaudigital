@@ -652,8 +652,10 @@ export function VisaoGeralTab() {
 
               <Tabs value={holidayFilter} onValueChange={(v) => setHolidayFilter(v as any)}>
                 <TabsList className="bg-muted/40 h-9 p-1 rounded-full gap-1 w-full">
-                  <TabsTrigger value="all" className="h-7 rounded-full text-xs data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-md flex-1 transition-all">Todas as datas</TabsTrigger>
-                  <TabsTrigger value="comemorativas" className="h-7 rounded-full text-xs data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-md flex-1 transition-all">Aniversários</TabsTrigger>
+                  <TabsTrigger value="all" className="h-7 rounded-full text-[10px] data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-md flex-1 transition-all px-2">Todas</TabsTrigger>
+                  <TabsTrigger value="feriados" className="h-7 rounded-full text-[10px] data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-md flex-1 transition-all px-2">Feriados</TabsTrigger>
+                  <TabsTrigger value="internas" className="h-7 rounded-full text-[10px] data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-md flex-1 transition-all px-2">Internas</TabsTrigger>
+                  <TabsTrigger value="aniversarios" className="h-7 rounded-full text-[10px] data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-md flex-1 transition-all px-2">Aniv.</TabsTrigger>
                 </TabsList>
               </Tabs>
 
