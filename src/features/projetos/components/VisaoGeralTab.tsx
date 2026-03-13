@@ -476,38 +476,6 @@ export function VisaoGeralTab() {
         </div>
       </FadeUp>
 
-      {/* Contas por Squad chart */}
-      <FadeUp delay={0.3}>
-        <Card>
-          <CardContent className="py-6 px-6 space-y-5">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-2xl bg-sidebar/10 flex items-center justify-center">
-                <Users className="h-6 w-6 text-sidebar" />
-              </div>
-              <div>
-                <p className="text-xl font-bold leading-none">Contas por Squad</p>
-                <p className="mt-1.5 text-sm text-muted-foreground">Total: {new Set(allClientSquads.map((cs: any) => cs.client_id)).size} contas ativas</p>
-              </div>
-            </div>
-
-            {chartData.length > 0 ? (
-              <div className="h-[280px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData} margin={{ left: 0, right: 12, top: 8, bottom: 8 }}>
-                    <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="hsl(var(--border))" />
-                    <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
-                    <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" allowDecimals={false} tickLine={false} axisLine={false} />
-                    <Tooltip />
-                    <Bar dataKey="contas" fill="hsl(var(--sidebar))" radius={[8, 8, 0, 0]} maxBarSize={72} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            ) : (
-              <p className="text-xs text-muted-foreground">Crie squads para ver o gráfico</p>
-            )}
-          </CardContent>
-        </Card>
-      </FadeUp>
 
       {/* Progresso das entregas por squad — table widget */}
       <FadeUp delay={0.45}>
