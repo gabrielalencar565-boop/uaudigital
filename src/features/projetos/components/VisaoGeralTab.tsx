@@ -612,9 +612,6 @@ export function VisaoGeralTab() {
                         "relative flex flex-col items-start rounded-lg p-1.5 text-xs transition-all min-h-[52px]",
                         !inMonth && "opacity-30",
                         today && "bg-sidebar text-sidebar-foreground font-bold shadow-md",
-                        hasHoliday && !today && "bg-primary/5",
-                        hasBirthday && !today && !hasHoliday && "bg-warning/5",
-                        hasInternal && !today && !hasHoliday && !hasBirthday && "bg-accent/10"
                       )}
                     >
                       <span className="text-center w-full">{format(d, "d")}</span>
@@ -627,9 +624,9 @@ export function VisaoGeralTab() {
                             const label = isBirthday ? sd.personName : sd.label;
                             const color = isBirthday ? "hsl(var(--warning))" : isHoliday ? "hsl(var(--primary))" : (sd.color ?? "hsl(var(--accent-foreground))");
                             return (
-                              <div key={i} className="flex items-center gap-0.5 w-full" title={label}>
-                                <IconComp className="h-2.5 w-2.5 shrink-0" style={{ color }} />
-                                <span className="text-[7px] font-medium truncate" style={{ color }}>{label}</span>
+                              <div key={i} className="flex items-center gap-0.5 w-full rounded-md bg-background/80 border border-border/10 px-1 py-0.5 opacity-50" title={label}>
+                                <IconComp className="h-2 w-2 shrink-0" style={{ color }} />
+                                <span className="text-[6px] font-medium truncate" style={{ color }}>{label}</span>
                               </div>
                             );
                           })}
