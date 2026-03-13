@@ -62,21 +62,7 @@ function getSquadIcon(iconId: string) {
   return SQUAD_ICON_OPTIONS.find((i) => i.id === iconId)?.icon ?? Shield;
 }
 
-const HOLIDAYS_2026 = [
-  { date: "2026-01-01", name: "Confraternização Universal", type: "Feriado Nacional" },
-  { date: "2026-02-16", name: "Carnaval", type: "Feriado Nacional" },
-  { date: "2026-02-17", name: "Carnaval", type: "Feriado Nacional" },
-  { date: "2026-04-03", name: "Sexta-feira Santa", type: "Feriado Nacional" },
-  { date: "2026-04-21", name: "Tiradentes", type: "Feriado Nacional" },
-  { date: "2026-05-01", name: "Dia do Trabalho", type: "Feriado Nacional" },
-  { date: "2026-06-04", name: "Corpus Christi", type: "Feriado Nacional" },
-  { date: "2026-09-07", name: "Independência do Brasil", type: "Feriado Nacional" },
-  { date: "2026-10-12", name: "Nossa Senhora Aparecida", type: "Feriado Nacional" },
-  { date: "2026-11-02", name: "Finados", type: "Feriado Nacional" },
-  { date: "2026-11-15", name: "Proclamação da República", type: "Feriado Nacional" },
-  { date: "2026-11-20", name: "Dia da Consciência Negra", type: "Feriado Nacional" },
-  { date: "2026-12-25", name: "Natal", type: "Feriado Nacional" },
-];
+// Holidays are now provided by useAgendaSpecialDates
 
 function FadeUp({ children, delay = 0, className }: { children: React.ReactNode; delay?: number; className?: string }) {
   return (
