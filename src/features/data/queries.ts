@@ -76,6 +76,7 @@ export type TeamMemberRow = {
   role_title: string;
   avatar_url: string | null;
   is_active: boolean;
+  birth_date: string | null;
 };
 
 export type PerfRow = {
