@@ -601,8 +601,11 @@ export function VisaoGeralTab() {
                   const key = format(d, "yyyy-MM-dd");
                   const inMonth = d.getMonth() === calMonth.getMonth();
                   const today = isToday(d);
-                  const holiday = holidayMap.get(key);
-                  const birthday = birthdayMap.get(key);
+                  const daySpecial = specialDatesMap.get(key) ?? [];
+                  const hasHoliday = daySpecial.some(s => s.type === "holiday");
+                  const hasBirthday = daySpecial.some(s => s.type === "birthday");
+                  const hasInternal = daySpecial.some(s => s.type === "internal");
+                  const titleText = daySpecial.map(s => s.type === "birthday" ? s.personName : s.label).join(", ");
                   return (
                     <div
                       key={key}
@@ -610,17 +613,23 @@ export function VisaoGeralTab() {
                         "relative flex flex-col items-center justify-center rounded-lg py-2 text-xs transition-all",
                         !inMonth && "opacity-30",
                         today && "bg-sidebar text-sidebar-foreground font-bold shadow-md",
-                        holiday && !today && "bg-primary/10",
-                        birthday && !today && !holiday && "bg-warning/10"
+                        hasHoliday && !today && "bg-primary/10",
+                        hasBirthday && !today && !hasHoliday && "bg-warning/10",
+                        hasInternal && !today && !hasHoliday && !hasBirthday && "bg-accent/30"
                       )}
-                      title={birthday ?? holiday ?? undefined}
+                      title={titleText || undefined}
                     >
                       <span>{format(d, "d")}</span>
-                      {birthday && (
-                        <span className="mt-0.5 text-[8px] leading-tight text-center truncate max-w-full px-0.5">🎂</span>
-                      )}
-                      {holiday && !birthday && (
-                        <span className="mt-0.5 text-[8px] leading-tight text-center text-primary truncate max-w-full px-0.5">{holiday}</span>
+                      {daySpecial.length > 0 && (
+                        <div className="flex items-center gap-0.5 mt-0.5">
+                          {hasBirthday && <Cake className="h-2.5 w-2.5 text-warning" />}
+                          {hasHoliday && <Star className="h-2.5 w-2.5 text-primary" />}
+                          {hasInternal && (() => {
+                            const internalItem = daySpecial.find(s => s.type === "internal");
+                            const IconComp = internalItem?.icon ? getIconById(internalItem.icon) : null;
+                            return IconComp ? <IconComp className="h-2.5 w-2.5" style={{ color: internalItem?.color ?? "hsl(var(--accent-foreground))" }} /> : null;
+                          })()}
+                        </div>
                       )}
                     </div>
                   );
