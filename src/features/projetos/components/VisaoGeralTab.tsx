@@ -656,7 +656,10 @@ export function VisaoGeralTab() {
                 )}
                 {filteredDates.slice(0, 10).map((h, idx) => (
                   <div key={`${h.date}-${idx}`} className="flex items-start gap-3 rounded-xl border border-sidebar/20 bg-sidebar/5 p-3.5 transition-colors hover:bg-sidebar/10">
-                    <div className="h-9 w-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: h.type === "Data Interna" && h.color ? h.color + "20" : undefined }} className={cn("h-9 w-9 rounded-full flex items-center justify-center flex-shrink-0", h.type !== "Data Interna" && "bg-sidebar/15")}>
+                    <div
+                      className={cn("h-9 w-9 rounded-full flex items-center justify-center flex-shrink-0", h.type !== "Data Interna" && "bg-sidebar/15")}
+                      style={h.type === "Data Interna" && h.color ? { backgroundColor: h.color + "20" } : undefined}
+                    >
                       {h.type === "Aniversário" ? <Cake className="h-4 w-4 text-warning" /> : h.type === "Data Interna" && h.icon ? (() => { const IC = getIconById(h.icon); return <IC className="h-4 w-4" style={{ color: h.color }} />; })() : <Star className="h-4 w-4 text-sidebar" />}
                     </div>
                     <div className="min-w-0">
