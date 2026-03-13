@@ -235,7 +235,6 @@ export function AgendaPanel() {
   const [editOpen, setEditOpen] = useState(false);
   const [trashOpen, setTrashOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
-  const [internalDatesOpen, setInternalDatesOpen] = useState(false);
 
   // Special dates (holidays, birthdays, internal recurring)
   const specialDatesMap = useAgendaSpecialDates(
