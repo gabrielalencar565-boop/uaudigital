@@ -752,6 +752,48 @@ export type Database = {
           },
         ]
       }
+      internal_dates: {
+        Row: {
+          color: string
+          created_at: string
+          created_by: string
+          day_of_month: number
+          icon: string
+          id: string
+          is_active: boolean
+          is_recurring: boolean
+          specific_date: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          created_by: string
+          day_of_month?: number
+          icon?: string
+          id?: string
+          is_active?: boolean
+          is_recurring?: boolean
+          specific_date?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          created_by?: string
+          day_of_month?: number
+          icon?: string
+          id?: string
+          is_active?: boolean
+          is_recurring?: boolean
+          specific_date?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       magic2_client_links: {
         Row: {
           agenda_client_id: string
