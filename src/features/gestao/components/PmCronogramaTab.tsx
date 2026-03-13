@@ -32,6 +32,13 @@ interface Props {
 export function PmCronogramaTab({ parentTask, childTasks, clientName, membersMap }: Props) {
   const [selectedPost, setSelectedPost] = useState<CronogramaPost | null>(null);
   const updateTask = useUpdatePmTask();
+  const teamQ = useTeamMembers();
+  const now = new Date();
+  const specialDatesMap = useAgendaSpecialDates(
+    now.getFullYear(),
+    now.getMonth() + 1,
+    (teamQ.data ?? []).map(m => ({ user_id: m.user_id, display_name: m.display_name, birth_date: m.birth_date ?? null }))
+  );
 
   const childIds = useMemo(() => childTasks.map(t => t.id), [childTasks]);
   const attachmentsQ = useQuery({
