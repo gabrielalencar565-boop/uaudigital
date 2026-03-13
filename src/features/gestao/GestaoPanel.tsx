@@ -134,7 +134,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
   const membersQ = useQuery({
     queryKey: ["team_members"],
     queryFn: async () => {
-      const { data } = await supabase.from("team_members").select("user_id, display_name, avatar_url").eq("is_active", true);
+      const { data } = await supabase.from("team_members").select("user_id, display_name, avatar_url, birth_date").eq("is_active", true);
       return data ?? [];
     }
   });
@@ -144,6 +144,10 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
     return m;
   }, [membersQ.data]);
   const membersList = useMemo(() => (membersQ.data ?? []).map((m) => ({ id: m.user_id, name: m.display_name })), [membersQ.data]);
+  const membersForSpecialDates = useMemo(
+    () => (membersQ.data ?? []).map((m) => ({ user_id: m.user_id, display_name: m.display_name, birth_date: m.birth_date ?? null })),
+    [membersQ.data]
+  );
 
   const filters = { clientId: filterClient === "__all__" ? undefined : filterClient, assigneeId: filterAssignee === "__all__" ? undefined : filterAssignee, search: search || undefined, fixedAssigneeClientIds };
 
