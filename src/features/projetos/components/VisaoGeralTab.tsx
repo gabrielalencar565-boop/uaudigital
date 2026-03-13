@@ -95,7 +95,7 @@ export function VisaoGeralTab() {
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [showHealthScore, setShowHealthScore] = useState(false);
   const [calMonth, setCalMonth] = useState(new Date());
-  const [holidayFilter, setHolidayFilter] = useState<"all" | "comemorativas">("all");
+  const [holidayFilter, setHolidayFilter] = useState<"all" | "feriados" | "internas" | "aniversarios">("all");
 
   // Table sort
   const [sortKey, setSortKey] = useState<SortKey>("name");
@@ -274,7 +274,6 @@ export function VisaoGeralTab() {
     const entries: Array<{ date: string; name: string; type: string; icon?: string; color?: string }> = [];
     specialDatesMap.forEach((dates, key) => {
       for (const sd of dates) {
-        if (holidayFilter === "comemorativas" && sd.type !== "birthday") continue;
         entries.push({
           date: key,
           name: sd.type === "birthday" ? `🎂 ${sd.personName}` : sd.label,
@@ -285,7 +284,14 @@ export function VisaoGeralTab() {
       }
     });
     return entries
-      .filter(e => new Date(e.date + "T12:00:00") >= now)
+      .filter(e => {
+        if (new Date(e.date + "T12:00:00") < now) return false;
+        if (holidayFilter === "all") return true;
+        if (holidayFilter === "feriados") return e.type === "Feriado Nacional";
+        if (holidayFilter === "internas") return e.type === "Data Interna";
+        if (holidayFilter === "aniversarios") return e.type === "Aniversário";
+        return true;
+      })
       .sort((a, b) => a.date.localeCompare(b.date));
   }, [specialDatesMap, holidayFilter, now]);
 
@@ -646,8 +652,10 @@ export function VisaoGeralTab() {
 
               <Tabs value={holidayFilter} onValueChange={(v) => setHolidayFilter(v as any)}>
                 <TabsList className="bg-muted/40 h-9 p-1 rounded-full gap-1 w-full">
-                  <TabsTrigger value="all" className="h-7 rounded-full text-xs data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-md flex-1 transition-all">Todas as datas</TabsTrigger>
-                  <TabsTrigger value="comemorativas" className="h-7 rounded-full text-xs data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-md flex-1 transition-all">Aniversários</TabsTrigger>
+                  <TabsTrigger value="all" className="h-7 rounded-full text-[10px] data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-md flex-1 transition-all px-2">Todas</TabsTrigger>
+                  <TabsTrigger value="feriados" className="h-7 rounded-full text-[10px] data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-md flex-1 transition-all px-2">Feriados</TabsTrigger>
+                  <TabsTrigger value="internas" className="h-7 rounded-full text-[10px] data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-md flex-1 transition-all px-2">Internas</TabsTrigger>
+                  <TabsTrigger value="aniversarios" className="h-7 rounded-full text-[10px] data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-md flex-1 transition-all px-2">Aniv.</TabsTrigger>
                 </TabsList>
               </Tabs>
 
