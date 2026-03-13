@@ -1149,13 +1149,16 @@ export function AgendaPanel() {
                   const inMonth = d.getMonth() === cursor.getMonth();
                   const dayTasks = tasksByDay.get(key) ?? [];
                   const hasOverdue = key < todayKey && dayTasks.some(t => t.status !== "concluido");
+                  const specialDates = specialDatesMap.get(key) ?? [];
+                  const hasHoliday = specialDates.some((s) => s.type === "holiday");
                   
                   return (
                     <DayDropZone key={key} dayKey={key} isToday={key === todayKey} disabled={!canManageTasks}>
                       <div className={cn(
-                        "relative min-h-28 rounded-xl border border-[#d9d9d9] bg-card/20 p-2 transition calendar-card-hover",
+                        "relative min-h-28 rounded-xl border border-border/40 bg-card/20 p-2 transition calendar-card-hover",
                         inMonth ? "opacity-100" : "opacity-50",
-                        hasOverdue && "ring-1 ring-danger/40"
+                        hasOverdue && "ring-1 ring-danger/40",
+                        hasHoliday && "bg-primary/5 border-primary/30"
                       )}>
                         <div className="flex items-center justify-between">
                           <div className={cn(
