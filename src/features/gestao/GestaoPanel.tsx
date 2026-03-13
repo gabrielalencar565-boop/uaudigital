@@ -604,13 +604,9 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
                       <Badge variant="secondary" className="ml-auto text-[10px]">{doneCount}/{dayTasks.length}</Badge>
                     )}
                   </div>
-                  {holidays.get(key) && (
-                    <div className="w-full rounded-xl bg-primary/5 px-2.5 py-1.5 mb-1.5">
-                      <span className="text-[10px] font-medium text-primary/50">{holidays.get(key)}</span>
-                    </div>
-                  )}
+                  {renderSpecialDates(key, true)}
                   <div className="space-y-1.5">
-                    {dayTasks.length ? dayTasks.map(renderTaskCard) : !holidays.get(key) ? (
+                    {dayTasks.length ? dayTasks.map(renderTaskCard) : daySpecialDates(key).length === 0 ? (
                       <p className="text-xs text-muted-foreground py-2">Sem tarefas</p>
                     ) : null}
                   </div>
