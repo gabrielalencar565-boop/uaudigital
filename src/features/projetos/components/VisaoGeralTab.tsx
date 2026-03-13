@@ -605,30 +605,34 @@ export function VisaoGeralTab() {
                   const hasHoliday = daySpecial.some(s => s.type === "holiday");
                   const hasBirthday = daySpecial.some(s => s.type === "birthday");
                   const hasInternal = daySpecial.some(s => s.type === "internal");
-                  const titleText = daySpecial.map(s => s.type === "birthday" ? s.personName : s.label).join(", ");
                   return (
                     <div
                       key={key}
                       className={cn(
-                        "relative flex flex-col items-center justify-center rounded-lg py-2 text-xs transition-all",
+                        "relative flex flex-col items-start rounded-lg p-1.5 text-xs transition-all min-h-[52px]",
                         !inMonth && "opacity-30",
                         today && "bg-sidebar text-sidebar-foreground font-bold shadow-md",
-                        hasHoliday && !today && "bg-primary/10",
-                        hasBirthday && !today && !hasHoliday && "bg-warning/10",
-                        hasInternal && !today && !hasHoliday && !hasBirthday && "bg-accent/30"
+                        hasHoliday && !today && "bg-primary/5",
+                        hasBirthday && !today && !hasHoliday && "bg-warning/5",
+                        hasInternal && !today && !hasHoliday && !hasBirthday && "bg-accent/10"
                       )}
-                      title={titleText || undefined}
                     >
-                      <span>{format(d, "d")}</span>
+                      <span className="text-center w-full">{format(d, "d")}</span>
                       {daySpecial.length > 0 && (
-                        <div className="flex items-center gap-0.5 mt-0.5">
-                          {hasBirthday && <Cake className="h-2.5 w-2.5 text-warning" />}
-                          {hasHoliday && <Star className="h-2.5 w-2.5 text-primary" />}
-                          {hasInternal && (() => {
-                            const internalItem = daySpecial.find(s => s.type === "internal");
-                            const IconComp = internalItem?.icon ? getIconById(internalItem.icon) : null;
-                            return IconComp ? <IconComp className="h-2.5 w-2.5" style={{ color: internalItem?.color ?? "hsl(var(--accent-foreground))" }} /> : null;
-                          })()}
+                        <div className="flex flex-col gap-0.5 mt-0.5 w-full">
+                          {daySpecial.map((sd, i) => {
+                            const isBirthday = sd.type === "birthday";
+                            const isHoliday = sd.type === "holiday";
+                            const IconComp = isBirthday ? Cake : sd.icon ? getIconById(sd.icon) : Star;
+                            const label = isBirthday ? sd.personName : sd.label;
+                            const color = isBirthday ? "hsl(var(--warning))" : isHoliday ? "hsl(var(--primary))" : (sd.color ?? "hsl(var(--accent-foreground))");
+                            return (
+                              <div key={i} className="flex items-center gap-0.5 w-full" title={label}>
+                                <IconComp className="h-2.5 w-2.5 shrink-0" style={{ color }} />
+                                <span className="text-[7px] font-medium truncate" style={{ color }}>{label}</span>
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
                     </div>
@@ -650,23 +654,23 @@ export function VisaoGeralTab() {
                 </TabsList>
               </Tabs>
 
-              <div className="space-y-2.5 max-h-[320px] overflow-y-auto pr-1">
+              <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
                 {filteredDates.length === 0 && (
                   <p className="text-xs text-muted-foreground text-center py-4">Nenhuma data próxima</p>
                 )}
                 {filteredDates.slice(0, 10).map((h, idx) => (
-                  <div key={`${h.date}-${idx}`} className="flex items-start gap-3 rounded-xl border border-sidebar/20 bg-sidebar/5 p-3.5 transition-colors hover:bg-sidebar/10">
+                  <div key={`${h.date}-${idx}`} className="flex items-start gap-3 rounded-xl border border-border/15 bg-muted/20 p-3 transition-colors hover:bg-muted/40 opacity-70 hover:opacity-100">
                     <div
-                      className={cn("h-9 w-9 rounded-full flex items-center justify-center flex-shrink-0", h.type !== "Data Interna" && "bg-sidebar/15")}
-                      style={h.type === "Data Interna" && h.color ? { backgroundColor: h.color + "20" } : undefined}
+                      className={cn("h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 bg-muted/40")}
+                      style={h.type === "Data Interna" && h.color ? { backgroundColor: h.color + "15" } : undefined}
                     >
-                      {h.type === "Aniversário" ? <Cake className="h-4 w-4 text-warning" /> : h.type === "Data Interna" && h.icon ? (() => { const IC = getIconById(h.icon); return <IC className="h-4 w-4" style={{ color: h.color }} />; })() : <Star className="h-4 w-4 text-sidebar" />}
+                      {h.type === "Aniversário" ? <Cake className="h-3.5 w-3.5 text-warning/70" /> : h.type === "Data Interna" && h.icon ? (() => { const IC = getIconById(h.icon); return <IC className="h-3.5 w-3.5" style={{ color: h.color, opacity: 0.7 }} />; })() : <Star className="h-3.5 w-3.5 text-muted-foreground" />}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-foreground">{h.name}</p>
-                      <div className="flex items-center gap-3 mt-1">
-                        <span className="text-xs text-sidebar">{format(new Date(h.date + "T12:00:00"), "d 'de' MMMM 'de' yyyy", { locale: ptBR })}</span>
-                        <span className="text-[10px] text-muted-foreground">{h.type}</span>
+                      <p className="text-sm font-medium text-foreground/70">{h.name}</p>
+                      <div className="flex items-center gap-3 mt-0.5">
+                        <span className="text-xs text-muted-foreground">{format(new Date(h.date + "T12:00:00"), "d 'de' MMMM", { locale: ptBR })}</span>
+                        <span className="text-[10px] text-muted-foreground/50">{h.type}</span>
                       </div>
                     </div>
                   </div>
