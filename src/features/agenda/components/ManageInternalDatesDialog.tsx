@@ -23,7 +23,7 @@ export const ICON_OPTIONS = [
   { id: "cake", icon: Cake, label: "Comemoração" },
 ];
 
-const COLOR_OPTIONS = [
+export const COLOR_OPTIONS = [
   "#7C5CFF", "#3B82F6", "#10B981", "#F59E0B", "#EF4444",
   "#EC4899", "#06B6D4", "#F97316",
 ];
