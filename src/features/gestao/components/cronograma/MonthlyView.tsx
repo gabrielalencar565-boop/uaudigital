@@ -73,7 +73,7 @@ export function MonthlyView({ posts, selectedPost, onSelectPost, onDateChange }:
   if (isMobile) {
     const daysWithPosts = days.filter(d => {
       const key = format(d, "yyyy-MM-dd");
-      return (postsByDay.get(key) ?? []).length > 0;
+      return (postsByDay.get(key) ?? []).length > 0 || (specialDatesMap.get(key) ?? []).length > 0;
     });
 
     return (
