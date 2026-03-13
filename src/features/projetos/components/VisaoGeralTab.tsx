@@ -14,7 +14,7 @@ import {
   Plus, Trash2, Settings2, Users, CheckCircle2, Clock, FileText,
   MoreHorizontal, CalendarDays, HeartPulse, Target, ChevronLeft, ChevronRight, Star, Shield,
   BarChart2, ChevronsUpDown, Sword, Crown, Flame, Zap, Rocket, Diamond, Award, Trophy,
-  Heart, Sparkles, Sun, Moon,
+  Heart, Sparkles, Sun, Moon, Cake,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
@@ -31,6 +31,8 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from "recharts";
 import { HealthScoreTab } from "./HealthScoreTab";
+import { useAgendaSpecialDates, type SpecialDate } from "@/features/agenda/hooks/use-agenda-dates";
+import { getIconById } from "@/features/agenda/components/IconPicker";
 
 function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join("");
@@ -60,21 +62,7 @@ function getSquadIcon(iconId: string) {
   return SQUAD_ICON_OPTIONS.find((i) => i.id === iconId)?.icon ?? Shield;
 }
 
-const HOLIDAYS_2026 = [
-  { date: "2026-01-01", name: "Confraternização Universal", type: "Feriado Nacional" },
-  { date: "2026-02-16", name: "Carnaval", type: "Feriado Nacional" },
-  { date: "2026-02-17", name: "Carnaval", type: "Feriado Nacional" },
-  { date: "2026-04-03", name: "Sexta-feira Santa", type: "Feriado Nacional" },
-  { date: "2026-04-21", name: "Tiradentes", type: "Feriado Nacional" },
-  { date: "2026-05-01", name: "Dia do Trabalho", type: "Feriado Nacional" },
-  { date: "2026-06-04", name: "Corpus Christi", type: "Feriado Nacional" },
-  { date: "2026-09-07", name: "Independência do Brasil", type: "Feriado Nacional" },
-  { date: "2026-10-12", name: "Nossa Senhora Aparecida", type: "Feriado Nacional" },
-  { date: "2026-11-02", name: "Finados", type: "Feriado Nacional" },
-  { date: "2026-11-15", name: "Proclamação da República", type: "Feriado Nacional" },
-  { date: "2026-11-20", name: "Dia da Consciência Negra", type: "Feriado Nacional" },
-  { date: "2026-12-25", name: "Natal", type: "Feriado Nacional" },
-];
+// Holidays are now provided by useAgendaSpecialDates
 
 function FadeUp({ children, delay = 0, className }: { children: React.ReactNode; delay?: number; className?: string }) {
   return (
@@ -274,40 +262,32 @@ export function VisaoGeralTab() {
     end: endOfWeek(calendarEnd, { weekStartsOn: 0 }),
   });
 
-  const holidayMap = new Map(HOLIDAYS_2026.map((h) => [h.date, h.name]));
-  const upcomingHolidays = HOLIDAYS_2026.filter((h) => new Date(h.date) >= now);
+  // Special dates (holidays, birthdays, internal dates) via unified hook
+  const specialDatesMap = useAgendaSpecialDates(
+    calMonth.getFullYear(),
+    calMonth.getMonth() + 1,
+    allTeam.map(m => ({ user_id: m.user_id, display_name: m.display_name, birth_date: m.birth_date }))
+  );
 
-  const teamBirthdays = useMemo(() => {
-    return allTeam
-      .filter((m) => m.birth_date)
-      .map((m) => {
-        const bd = new Date(m.birth_date + "T12:00:00");
-        const thisYear = new Date(now.getFullYear(), bd.getMonth(), bd.getDate());
-        const nextBirthday = thisYear >= now ? thisYear : new Date(now.getFullYear() + 1, bd.getMonth(), bd.getDate());
-        return {
-          date: format(nextBirthday, "yyyy-MM-dd"),
-          name: `🎂 ${m.display_name}`,
-          type: "Aniversário",
-        };
-      })
-      .sort((a, b) => a.date.localeCompare(b.date));
-  }, [allTeam, now]);
-
-  const birthdayMap = useMemo(() => {
-    const map = new Map<string, string>();
-    allTeam.filter((m) => m.birth_date).forEach((m) => {
-      const bd = new Date(m.birth_date + "T12:00:00");
-      const key = format(new Date(calMonth.getFullYear(), bd.getMonth(), bd.getDate()), "yyyy-MM-dd");
-      const existing = map.get(key);
-      map.set(key, existing ? `${existing}, ${m.display_name}` : `🎂 ${m.display_name}`);
-    });
-    return map;
-  }, [allTeam, calMonth]);
-
+  // Build flat list for "Próximas datas" sidebar
   const filteredDates = useMemo(() => {
-    if (holidayFilter === "comemorativas") return teamBirthdays;
-    return [...upcomingHolidays, ...teamBirthdays].sort((a, b) => a.date.localeCompare(b.date));
-  }, [holidayFilter, upcomingHolidays, teamBirthdays]);
+    const entries: Array<{ date: string; name: string; type: string; icon?: string; color?: string }> = [];
+    specialDatesMap.forEach((dates, key) => {
+      for (const sd of dates) {
+        if (holidayFilter === "comemorativas" && sd.type !== "birthday") continue;
+        entries.push({
+          date: key,
+          name: sd.type === "birthday" ? `🎂 ${sd.personName}` : sd.label,
+          type: sd.type === "birthday" ? "Aniversário" : sd.type === "holiday" ? "Feriado Nacional" : "Data Interna",
+          icon: sd.icon,
+          color: sd.color,
+        });
+      }
+    });
+    return entries
+      .filter(e => new Date(e.date + "T12:00:00") >= now)
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [specialDatesMap, holidayFilter, now]);
 
   if (showHealthScore) {
     return (
@@ -621,8 +601,11 @@ export function VisaoGeralTab() {
                   const key = format(d, "yyyy-MM-dd");
                   const inMonth = d.getMonth() === calMonth.getMonth();
                   const today = isToday(d);
-                  const holiday = holidayMap.get(key);
-                  const birthday = birthdayMap.get(key);
+                  const daySpecial = specialDatesMap.get(key) ?? [];
+                  const hasHoliday = daySpecial.some(s => s.type === "holiday");
+                  const hasBirthday = daySpecial.some(s => s.type === "birthday");
+                  const hasInternal = daySpecial.some(s => s.type === "internal");
+                  const titleText = daySpecial.map(s => s.type === "birthday" ? s.personName : s.label).join(", ");
                   return (
                     <div
                       key={key}
@@ -630,17 +613,23 @@ export function VisaoGeralTab() {
                         "relative flex flex-col items-center justify-center rounded-lg py-2 text-xs transition-all",
                         !inMonth && "opacity-30",
                         today && "bg-sidebar text-sidebar-foreground font-bold shadow-md",
-                        holiday && !today && "bg-primary/10",
-                        birthday && !today && !holiday && "bg-warning/10"
+                        hasHoliday && !today && "bg-primary/10",
+                        hasBirthday && !today && !hasHoliday && "bg-warning/10",
+                        hasInternal && !today && !hasHoliday && !hasBirthday && "bg-accent/30"
                       )}
-                      title={birthday ?? holiday ?? undefined}
+                      title={titleText || undefined}
                     >
                       <span>{format(d, "d")}</span>
-                      {birthday && (
-                        <span className="mt-0.5 text-[8px] leading-tight text-center truncate max-w-full px-0.5">🎂</span>
-                      )}
-                      {holiday && !birthday && (
-                        <span className="mt-0.5 text-[8px] leading-tight text-center text-primary truncate max-w-full px-0.5">{holiday}</span>
+                      {daySpecial.length > 0 && (
+                        <div className="flex items-center gap-0.5 mt-0.5">
+                          {hasBirthday && <Cake className="h-2.5 w-2.5 text-warning" />}
+                          {hasHoliday && <Star className="h-2.5 w-2.5 text-primary" />}
+                          {hasInternal && (() => {
+                            const internalItem = daySpecial.find(s => s.type === "internal");
+                            const IconComp = internalItem?.icon ? getIconById(internalItem.icon) : null;
+                            return IconComp ? <IconComp className="h-2.5 w-2.5" style={{ color: internalItem?.color ?? "hsl(var(--accent-foreground))" }} /> : null;
+                          })()}
+                        </div>
                       )}
                     </div>
                   );
@@ -667,8 +656,11 @@ export function VisaoGeralTab() {
                 )}
                 {filteredDates.slice(0, 10).map((h, idx) => (
                   <div key={`${h.date}-${idx}`} className="flex items-start gap-3 rounded-xl border border-sidebar/20 bg-sidebar/5 p-3.5 transition-colors hover:bg-sidebar/10">
-                    <div className="h-9 w-9 rounded-full bg-sidebar/15 flex items-center justify-center flex-shrink-0">
-                      {h.type === "Aniversário" ? <span className="text-base">🎂</span> : <Star className="h-4 w-4 text-sidebar" />}
+                    <div
+                      className={cn("h-9 w-9 rounded-full flex items-center justify-center flex-shrink-0", h.type !== "Data Interna" && "bg-sidebar/15")}
+                      style={h.type === "Data Interna" && h.color ? { backgroundColor: h.color + "20" } : undefined}
+                    >
+                      {h.type === "Aniversário" ? <Cake className="h-4 w-4 text-warning" /> : h.type === "Data Interna" && h.icon ? (() => { const IC = getIconById(h.icon); return <IC className="h-4 w-4" style={{ color: h.color }} />; })() : <Star className="h-4 w-4 text-sidebar" />}
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-foreground">{h.name}</p>
