@@ -689,11 +689,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
                     <Badge variant="secondary" className="ml-auto text-[10px]">{dayTasks.length}</Badge>
                   )}
                 </div>
-                {holiday && (
-                  <div className="w-full rounded-xl bg-primary/5 px-2.5 py-1.5">
-                    <span className="text-[10px] font-medium text-primary/50">{holiday}</span>
-                  </div>
-                )}
+                {renderSpecialDates(key, true)}
                 <div className="space-y-1.5">
                   {dayTasks.map(renderTaskCard)}
                 </div>
