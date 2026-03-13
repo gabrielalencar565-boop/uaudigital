@@ -103,6 +103,11 @@ export function MonthlyView({ posts, selectedPost, onSelectPost, onDateChange, s
                   {format(day, "EEEE", { locale: ptBR })}
                 </span>
               </div>
+              {(specialDatesMap?.get(key) ?? []).length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  <SpecialDatesBadges dates={specialDatesMap!.get(key)!} />
+                </div>
+              )}
               {dayPosts.map(post => {
                 const meta = POST_TYPE_META[post.post_type ?? "post"] ?? POST_TYPE_META.post;
                 const Icon = meta.icon;
