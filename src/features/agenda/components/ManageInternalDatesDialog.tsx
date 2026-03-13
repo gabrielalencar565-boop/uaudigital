@@ -3,33 +3,24 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Trash2, Plus, Calendar, Repeat, Star, Users, Coffee, Presentation, Cake } from "lucide-react";
+import { Trash2, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
   useInternalDates,
   useCreateInternalDate,
   useDeleteInternalDate,
-  type InternalDate,
 } from "../hooks/use-agenda-dates";
-
-export const ICON_OPTIONS = [
-  { id: "calendar", icon: Calendar, label: "Calendário" },
-  { id: "star", icon: Star, label: "Estrela" },
-  { id: "users", icon: Users, label: "Reunião" },
-  { id: "coffee", icon: Coffee, label: "Café" },
-  { id: "presentation", icon: Presentation, label: "Apresentação" },
-  { id: "repeat", icon: Repeat, label: "Recorrente" },
-  { id: "cake", icon: Cake, label: "Comemoração" },
-];
+import { getIconById, IconPicker } from "./IconPicker";
 
 export const COLOR_OPTIONS = [
   "#7C5CFF", "#3B82F6", "#10B981", "#F59E0B", "#EF4444",
   "#EC4899", "#06B6D4", "#F97316",
 ];
 
+/** @deprecated Use getIconById from IconPicker instead */
 export function getInternalDateIcon(iconId: string) {
-  return ICON_OPTIONS.find((o) => o.id === iconId)?.icon ?? Calendar;
+  return getIconById(iconId);
 }
 
 export function ManageInternalDatesDialog({
@@ -98,7 +89,7 @@ export function ManageInternalDatesDialog({
               </p>
             )}
             {(datesQ.data ?? []).map((d) => {
-              const IconComp = getInternalDateIcon(d.icon);
+              const IconComp = getIconById(d.icon);
               return (
                 <div
                   key={d.id}
@@ -156,27 +147,7 @@ export function ManageInternalDatesDialog({
 
             <div className="space-y-2">
               <Label>Ícone</Label>
-              <div className="flex flex-wrap gap-2">
-                {ICON_OPTIONS.map((opt) => {
-                  const IconComp = opt.icon;
-                  return (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => setIcon(opt.id)}
-                      className={cn(
-                        "h-9 w-9 rounded-xl flex items-center justify-center border transition-all",
-                        icon === opt.id
-                          ? "ring-2 ring-offset-2 ring-foreground border-foreground bg-muted"
-                          : "border-border hover:bg-muted/50"
-                      )}
-                      title={opt.label}
-                    >
-                      <IconComp className="h-4 w-4" />
-                    </button>
-                  );
-                })}
-              </div>
+              <IconPicker value={icon} onChange={setIcon} color={color} />
             </div>
 
             <div className="space-y-2">
