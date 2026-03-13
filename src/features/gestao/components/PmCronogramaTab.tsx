@@ -10,8 +10,6 @@ import { cn } from "@/lib/utils";
 import type { PmTask } from "../pm-types";
 import { useUpdatePmTask } from "../hooks/use-pm-data";
 import { toast } from "sonner";
-import { useTeamMembers } from "@/features/data/queries";
-import { useAgendaSpecialDates } from "@/features/agenda/hooks/use-agenda-dates";
 
 import { POST_TYPE_META, type CronogramaPost } from "./cronograma/types";
 import { MonthlyView } from "./cronograma/MonthlyView";
