@@ -489,9 +489,9 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
             : undefined;
 
           return (
-            <div key={`${dayKey}-${sd.type}-${idx}`} className={cn("w-full rounded-lg bg-primary/5 px-2 py-1 text-primary flex items-center gap-1.5", compact && "px-2 py-1 text-[10px]")} style={style}>
-              <IconComp className={cn(compact ? "h-3 w-3" : "h-3.5 w-3.5", "shrink-0")} />
-              <span className={cn("truncate font-medium", compact ? "text-[10px]" : "text-xs")}>{label}</span>
+            <div key={`${dayKey}-${sd.type}-${idx}`} className={cn("w-full rounded-md bg-background/60 border border-border/10 px-1.5 py-0.5 flex items-center gap-1 opacity-40", compact && "px-1 py-0.5")} style={style}>
+              <IconComp className={cn(compact ? "h-2.5 w-2.5" : "h-3 w-3", "shrink-0")} />
+              <span className={cn("truncate font-medium", compact ? "text-[9px]" : "text-[10px]")}>{label}</span>
             </div>
           );
         })}
