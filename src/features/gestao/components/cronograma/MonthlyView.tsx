@@ -41,6 +41,13 @@ export function MonthlyView({ posts, selectedPost, onSelectPost, onDateChange }:
 
   const days = useMemo(() => eachDayOfInterval({ start: startOfMonth(cursor), end: endOfMonth(cursor) }), [cursor]);
 
+  const teamQ = useTeamMembers();
+  const specialDatesMap = useAgendaSpecialDates(
+    cursor.getFullYear(),
+    cursor.getMonth() + 1,
+    (teamQ.data ?? []).map((m) => ({ user_id: m.user_id, display_name: m.display_name, birth_date: m.birth_date ?? null }))
+  );
+
   const postsByDay = useMemo(() => {
     const map = new Map<string, typeof posts>();
     posts.forEach(p => {
