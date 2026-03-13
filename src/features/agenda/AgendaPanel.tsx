@@ -876,6 +876,37 @@ export function AgendaPanel() {
                             </span> : null}
                         </div>
 
+                        {/* Special dates in mobile week view */}
+                        {mobileWeekSpecialDates.length > 0 && (
+                          <div className="mt-2 space-y-1">
+                            {mobileWeekSpecialDates.map((sd, idx) => {
+                              if (sd.type === "birthday") {
+                                return (
+                                  <div key={`mwsd-${idx}`} className="flex items-center gap-1.5 rounded-lg bg-warning/10 px-2 py-1">
+                                    <Cake className="h-3.5 w-3.5 text-warning flex-shrink-0" />
+                                    <span className="text-xs font-medium text-warning">{sd.personName}</span>
+                                  </div>
+                                );
+                              }
+                              if (sd.type === "holiday") {
+                                return (
+                                  <div key={`mwsd-${idx}`} className="flex items-center gap-1.5 rounded-lg bg-primary/10 px-2 py-1">
+                                    <Star className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                                    <span className="text-xs font-medium text-primary">{sd.label}</span>
+                                  </div>
+                                );
+                              }
+                              const MWIcon = getInternalDateIcon(sd.icon ?? "calendar");
+                              return (
+                                <div key={`mwsd-${idx}`} className="flex items-center gap-1.5 rounded-lg px-2 py-1" style={{ backgroundColor: (sd.color ?? "#7C5CFF") + "15" }}>
+                                  <MWIcon className="h-3.5 w-3.5 flex-shrink-0" style={{ color: sd.color }} />
+                                  <span className="text-xs font-medium" style={{ color: sd.color }}>{sd.label}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+
                         <div className="mt-4 space-y-2">
                           {dayTasks.length ? dayTasks.map(t => {
                     const stageLabel = STAGES.find(s => s.key === t.stage)?.label ?? "Etapa";
