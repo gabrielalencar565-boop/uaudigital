@@ -295,6 +295,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
           tasks={tasks}
           clientsMap={clientsMap}
           membersMap={membersMap}
+          teamMembers={membersForSpecialDates}
           onTaskClick={(t) => setSelectedTaskId(t.id)}
           filterClient={filterClient}
           filterAssignee={filterAssignee}
