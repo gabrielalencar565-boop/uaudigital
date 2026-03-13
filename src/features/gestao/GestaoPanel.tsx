@@ -471,6 +471,34 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
     return map;
   }, [filteredTasks]);
 
+  const daySpecialDates = (dayKey: string) => specialDatesMap.get(dayKey) ?? [];
+
+  const renderSpecialDates = (dayKey: string, compact = false) => {
+    const items = daySpecialDates(dayKey);
+    if (!items.length) return null;
+
+    return (
+      <div className={cn("space-y-1", compact && "space-y-0.5")}>
+        {items.map((sd, idx) => {
+          const isBirthday = sd.type === "birthday";
+          const isHoliday = sd.type === "holiday";
+          const label = isBirthday ? sd.personName ?? sd.label : sd.label;
+          const IconComp = isBirthday ? Cake : sd.icon ? getIconById(sd.icon) : Star;
+          const style = sd.type === "internal" && sd.color
+            ? { backgroundColor: `${sd.color}1F`, color: sd.color }
+            : undefined;
+
+          return (
+            <div key={`${dayKey}-${sd.type}-${idx}`} className={cn("w-full rounded-lg bg-primary/5 px-2 py-1 text-primary flex items-center gap-1.5", compact && "px-2 py-1 text-[10px]")} style={style}>
+              <IconComp className={cn(compact ? "h-3 w-3" : "h-3.5 w-3.5", "shrink-0")} />
+              <span className={cn("truncate font-medium", compact ? "text-[10px]" : "text-xs")}>{label}</span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   const renderTaskCard = (t: PmTask) => {
     const isDone = t.status_global === "concluido";
     const stageBg = STAGE_BADGE_BG[t.stage_current] ?? "bg-muted";
