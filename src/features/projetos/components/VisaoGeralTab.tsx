@@ -655,16 +655,16 @@ export function VisaoGeralTab() {
                 {filteredDates.length === 0 && (
                   <p className="text-xs text-muted-foreground text-center py-4">Nenhuma data próxima</p>
                 )}
-                {filteredDates.slice(0, 10).map((h, idx) => (
-                  <div key={`${h.date}-${idx}`} className="flex items-start gap-3 rounded-xl border border-border/15 bg-muted/20 p-3 transition-colors hover:bg-muted/40 opacity-70 hover:opacity-100">
+{filteredDates.slice(0, 10).map((h, idx) => (
+                  <div key={`${h.date}-${idx}`} className="flex items-start gap-3 rounded-xl border border-border/15 bg-muted/20 p-3 transition-colors hover:bg-muted/40">
                     <div
                       className={cn("h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 bg-muted/40")}
                       style={h.type === "Data Interna" && h.color ? { backgroundColor: h.color + "15" } : undefined}
                     >
-                      {h.type === "Aniversário" ? <Cake className="h-3.5 w-3.5 text-warning/70" /> : h.type === "Data Interna" && h.icon ? (() => { const IC = getIconById(h.icon); return <IC className="h-3.5 w-3.5" style={{ color: h.color, opacity: 0.7 }} />; })() : <Star className="h-3.5 w-3.5 text-muted-foreground" />}
+                      {h.type === "Aniversário" ? <Cake className="h-3.5 w-3.5 text-warning/70" /> : h.type === "Data Interna" && h.icon ? (() => { const IC = getIconById(h.icon); return <IC className="h-3.5 w-3.5" style={{ color: h.color }} />; })() : <Star className="h-3.5 w-3.5 text-muted-foreground" />}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground/70">{h.name}</p>
+                      <p className="text-sm font-medium text-foreground">{h.name}</p>
                       <div className="flex items-center gap-3 mt-0.5">
                         <span className="text-xs text-muted-foreground">{format(new Date(h.date + "T12:00:00"), "d 'de' MMMM", { locale: ptBR })}</span>
                         <span className="text-[10px] text-muted-foreground/50">{h.type}</span>
