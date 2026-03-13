@@ -1,13 +1,34 @@
 import { useState, useMemo, useCallback, useRef } from "react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isSameDay, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, Cake, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { getIconById } from "@/features/agenda/components/IconPicker";
 import { POST_TYPE_META, type CronogramaViewProps } from "./types";
 
-export function MonthlyView({ posts, selectedPost, onSelectPost, onDateChange }: CronogramaViewProps) {
+function SpecialDatesBadges({ dates }: { dates: import("@/features/agenda/hooks/use-agenda-dates").SpecialDate[] }) {
+  return (
+    <>
+      {dates.map((sd, i) => {
+        const isBirthday = sd.type === "birthday";
+        const isHoliday = sd.type === "holiday";
+        const IconComp = sd.icon ? getIconById(sd.icon) : isHoliday ? Star : null;
+        return (
+          <div key={i} className="flex items-center gap-1 rounded-md px-1 py-0.5" style={{ backgroundColor: isBirthday ? "hsl(var(--warning) / 0.15)" : isHoliday ? "hsl(var(--accent) / 0.3)" : (sd.color ?? "#7C5CFF") + "15" }}>
+            {isBirthday ? <Cake className="h-2.5 w-2.5" style={{ color: "hsl(var(--warning))" }} /> : IconComp ? <IconComp className="h-2.5 w-2.5" style={{ color: sd.color ?? "hsl(var(--accent-foreground))" }} /> : null}
+            <span className="text-[7px] font-medium truncate" style={{ color: isBirthday ? "hsl(var(--warning))" : sd.color ?? "hsl(var(--accent-foreground))" }}>
+              {isBirthday ? sd.personName : sd.label}
+            </span>
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+export function MonthlyView({ posts, selectedPost, onSelectPost, onDateChange, specialDatesMap }: CronogramaViewProps) {
   const isMobile = useIsMobile();
   const [cursor, setCursor] = useState(() => {
     const first = posts.find(t => t.posting_date);
@@ -82,6 +103,11 @@ export function MonthlyView({ posts, selectedPost, onSelectPost, onDateChange }:
                   {format(day, "EEEE", { locale: ptBR })}
                 </span>
               </div>
+              {(specialDatesMap?.get(key) ?? []).length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  <SpecialDatesBadges dates={specialDatesMap!.get(key)!} />
+                </div>
+              )}
               {dayPosts.map(post => {
                 const meta = POST_TYPE_META[post.post_type ?? "post"] ?? POST_TYPE_META.post;
                 const Icon = meta.icon;
@@ -172,6 +198,11 @@ export function MonthlyView({ posts, selectedPost, onSelectPost, onDateChange }:
               <div className={cn("text-[10px] font-bold mb-1", isToday ? "text-primary" : "text-muted-foreground/60")}>
                 {format(day, "d")}
               </div>
+              {(specialDatesMap?.get(key) ?? []).length > 0 && (
+                <div className="flex flex-wrap gap-0.5 mb-1">
+                  <SpecialDatesBadges dates={specialDatesMap!.get(key)!} />
+                </div>
+              )}
               <div className="space-y-1">
                 {dayPosts.map(post => {
                   const meta = POST_TYPE_META[post.post_type ?? "post"] ?? POST_TYPE_META.post;
