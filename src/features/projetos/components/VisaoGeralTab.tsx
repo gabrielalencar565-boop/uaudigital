@@ -274,7 +274,6 @@ export function VisaoGeralTab() {
     const entries: Array<{ date: string; name: string; type: string; icon?: string; color?: string }> = [];
     specialDatesMap.forEach((dates, key) => {
       for (const sd of dates) {
-        if (holidayFilter === "comemorativas" && sd.type !== "birthday") continue;
         entries.push({
           date: key,
           name: sd.type === "birthday" ? `🎂 ${sd.personName}` : sd.label,
@@ -285,7 +284,14 @@ export function VisaoGeralTab() {
       }
     });
     return entries
-      .filter(e => new Date(e.date + "T12:00:00") >= now)
+      .filter(e => {
+        if (new Date(e.date + "T12:00:00") < now) return false;
+        if (holidayFilter === "all") return true;
+        if (holidayFilter === "feriados") return e.type === "Feriado Nacional";
+        if (holidayFilter === "internas") return e.type === "Data Interna";
+        if (holidayFilter === "aniversarios") return e.type === "Aniversário";
+        return true;
+      })
       .sort((a, b) => a.date.localeCompare(b.date));
   }, [specialDatesMap, holidayFilter, now]);
 
