@@ -8,7 +8,27 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { getIconById } from "@/features/agenda/components/IconPicker";
 import { POST_TYPE_META, type CronogramaViewProps } from "./types";
 
-export function MonthlyView({ posts, selectedPost, onSelectPost, onDateChange }: CronogramaViewProps) {
+function SpecialDatesBadges({ dates }: { dates: ReturnType<typeof import("@/features/agenda/hooks/use-agenda-dates").useAgendaSpecialDates> extends Map<string, infer V> ? V : never }) {
+  return (
+    <>
+      {dates.map((sd, i) => {
+        const isBirthday = sd.type === "birthday";
+        const isHoliday = sd.type === "holiday";
+        const IconComp = sd.icon ? getIconById(sd.icon) : isHoliday ? Star : null;
+        return (
+          <div key={i} className="flex items-center gap-1 rounded-md px-1 py-0.5" style={{ backgroundColor: isBirthday ? "hsl(var(--warning) / 0.15)" : isHoliday ? "hsl(var(--accent) / 0.3)" : (sd.color ?? "#7C5CFF") + "15" }}>
+            {isBirthday ? <Cake className="h-2.5 w-2.5" style={{ color: "hsl(var(--warning))" }} /> : IconComp ? <IconComp className="h-2.5 w-2.5" style={{ color: sd.color ?? "hsl(var(--accent-foreground))" }} /> : null}
+            <span className="text-[7px] font-medium truncate" style={{ color: isBirthday ? "hsl(var(--warning))" : sd.color ?? "hsl(var(--accent-foreground))" }}>
+              {isBirthday ? sd.personName : sd.label}
+            </span>
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+export function MonthlyView({ posts, selectedPost, onSelectPost, onDateChange, specialDatesMap }: CronogramaViewProps) {
   const isMobile = useIsMobile();
   const [cursor, setCursor] = useState(() => {
     const first = posts.find(t => t.posting_date);
