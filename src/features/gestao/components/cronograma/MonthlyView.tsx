@@ -8,7 +8,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { getIconById } from "@/features/agenda/components/IconPicker";
 import { POST_TYPE_META, type CronogramaViewProps } from "./types";
 
-function SpecialDatesBadges({ dates }: { dates: ReturnType<typeof import("@/features/agenda/hooks/use-agenda-dates").useAgendaSpecialDates> extends Map<string, infer V> ? V : never }) {
+function SpecialDatesBadges({ dates }: { dates: import("@/features/agenda/hooks/use-agenda-dates").SpecialDate[] }) {
   return (
     <>
       {dates.map((sd, i) => {
