@@ -95,7 +95,7 @@ export function VisaoGeralTab() {
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [showHealthScore, setShowHealthScore] = useState(false);
   const [calMonth, setCalMonth] = useState(new Date());
-  const [holidayFilter, setHolidayFilter] = useState<"all" | "comemorativas">("all");
+  const [holidayFilter, setHolidayFilter] = useState<"all" | "feriados" | "internas" | "aniversarios">("all");
 
   // Table sort
   const [sortKey, setSortKey] = useState<SortKey>("name");
