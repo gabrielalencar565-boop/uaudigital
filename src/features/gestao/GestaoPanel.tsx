@@ -375,10 +375,11 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
 }
 
 // ─── Agenda Calendar View (matches main Agenda module) ───
-function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filterClient, filterAssignee, search, cursor, setCursor, fixedAssigneeClientIds }: {
+function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTaskClick, filterClient, filterAssignee, search, cursor, setCursor, fixedAssigneeClientIds }: {
   tasks: PmTask[];
   clientsMap: Record<string, string>;
   membersMap: Record<string, { name: string; avatar?: string }>;
+  teamMembers: Array<{ user_id: string; display_name: string; birth_date: string | null }>;
   onTaskClick: (t: PmTask) => void;
   filterClient: string;
   filterAssignee: string;
