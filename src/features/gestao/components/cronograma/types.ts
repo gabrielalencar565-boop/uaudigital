@@ -1,6 +1,5 @@
 import { Film, Image, LayoutGrid, Camera } from "lucide-react";
 import type { PmTask } from "../../pm-types";
-import type { SpecialDate } from "@/features/agenda/hooks/use-agenda-dates";
 
 export const POST_TYPE_META: Record<string, { label: string; icon: typeof Film; color: string }> = {
   reels: { label: "Reels", icon: Film, color: "bg-pink-500/20 text-pink-500" },
@@ -21,5 +20,4 @@ export interface CronogramaViewProps {
   selectedPost: CronogramaPost | null;
   onSelectPost: (post: CronogramaPost | null) => void;
   onDateChange?: (postId: string, newDate: string) => void;
-  specialDatesMap?: Map<string, SpecialDate[]>;
 }

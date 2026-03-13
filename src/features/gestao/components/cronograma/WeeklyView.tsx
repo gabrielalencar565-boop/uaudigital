@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { getIconById } from "@/features/agenda/components/IconPicker";
+import { useTeamMembers } from "@/features/data/queries";
+import { useAgendaSpecialDates } from "@/features/agenda/hooks/use-agenda-dates";
 import { POST_TYPE_META, type CronogramaViewProps } from "./types";
 
 function SpecialDatesBadges({ dates }: { dates: import("@/features/agenda/hooks/use-agenda-dates").SpecialDate[] }) {
@@ -28,7 +30,7 @@ function SpecialDatesBadges({ dates }: { dates: import("@/features/agenda/hooks/
   );
 }
 
-export function WeeklyView({ posts, selectedPost, onSelectPost, onDateChange, specialDatesMap }: CronogramaViewProps) {
+export function WeeklyView({ posts, selectedPost, onSelectPost, onDateChange }: CronogramaViewProps) {
   const isMobile = useIsMobile();
   const [cursor, setCursor] = useState(() => {
     const first = posts.find(t => t.posting_date);
@@ -41,6 +43,31 @@ export function WeeklyView({ posts, selectedPost, onSelectPost, onDateChange, sp
     start: startOfWeek(cursor, { weekStartsOn: 0 }),
     end: endOfWeek(cursor, { weekStartsOn: 0 }),
   }), [cursor]);
+
+  const teamQ = useTeamMembers();
+  const firstDay = days[0];
+  const lastDay = days[days.length - 1];
+
+  const specialDatesStartMonth = useAgendaSpecialDates(
+    firstDay.getFullYear(),
+    firstDay.getMonth() + 1,
+    (teamQ.data ?? []).map((m) => ({ user_id: m.user_id, display_name: m.display_name, birth_date: m.birth_date ?? null }))
+  );
+  const specialDatesEndMonth = useAgendaSpecialDates(
+    lastDay.getFullYear(),
+    lastDay.getMonth() + 1,
+    (teamQ.data ?? []).map((m) => ({ user_id: m.user_id, display_name: m.display_name, birth_date: m.birth_date ?? null }))
+  );
+
+  const specialDatesMap = useMemo(() => {
+    const merged = new Map<string, import("@/features/agenda/hooks/use-agenda-dates").SpecialDate[]>();
+    specialDatesStartMonth.forEach((value, key) => merged.set(key, value));
+    specialDatesEndMonth.forEach((value, key) => {
+      const prev = merged.get(key) ?? [];
+      merged.set(key, [...prev, ...value]);
+    });
+    return merged;
+  }, [specialDatesStartMonth, specialDatesEndMonth]);
 
   const postsByDay = useMemo(() => {
     const map = new Map<string, typeof posts>();

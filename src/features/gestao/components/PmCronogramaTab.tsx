@@ -10,8 +10,6 @@ import { cn } from "@/lib/utils";
 import type { PmTask } from "../pm-types";
 import { useUpdatePmTask } from "../hooks/use-pm-data";
 import { toast } from "sonner";
-import { useTeamMembers } from "@/features/data/queries";
-import { useAgendaSpecialDates } from "@/features/agenda/hooks/use-agenda-dates";
 
 import { POST_TYPE_META, type CronogramaPost } from "./cronograma/types";
 import { MonthlyView } from "./cronograma/MonthlyView";
@@ -32,13 +30,6 @@ interface Props {
 export function PmCronogramaTab({ parentTask, childTasks, clientName, membersMap }: Props) {
   const [selectedPost, setSelectedPost] = useState<CronogramaPost | null>(null);
   const updateTask = useUpdatePmTask();
-  const teamQ = useTeamMembers();
-  const now = new Date();
-  const specialDatesMap = useAgendaSpecialDates(
-    now.getFullYear(),
-    now.getMonth() + 1,
-    (teamQ.data ?? []).map(m => ({ user_id: m.user_id, display_name: m.display_name, birth_date: m.birth_date ?? null }))
-  );
 
   const childIds = useMemo(() => childTasks.map(t => t.id), [childTasks]);
   const attachmentsQ = useQuery({
@@ -154,10 +145,10 @@ export function PmCronogramaTab({ parentTask, childTasks, clientName, membersMap
             </TabsList>
 
             <TabsContent value="semanal">
-              <WeeklyView posts={scheduledPosts} selectedPost={resolvedSelected} onSelectPost={setSelectedPost} onDateChange={handleDateChange} specialDatesMap={specialDatesMap} />
+              <WeeklyView posts={scheduledPosts} selectedPost={resolvedSelected} onSelectPost={setSelectedPost} onDateChange={handleDateChange} />
             </TabsContent>
             <TabsContent value="mensal">
-              <MonthlyView posts={scheduledPosts} selectedPost={resolvedSelected} onSelectPost={setSelectedPost} onDateChange={handleDateChange} specialDatesMap={specialDatesMap} />
+              <MonthlyView posts={scheduledPosts} selectedPost={resolvedSelected} onSelectPost={setSelectedPost} onDateChange={handleDateChange} />
             </TabsContent>
             <TabsContent value="feed">
               <FeedView posts={scheduledPosts} selectedPost={resolvedSelected} onSelectPost={setSelectedPost} />

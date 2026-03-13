@@ -1,8 +1,7 @@
 import { useMemo, useState } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Plus, Search, LayoutGrid, CalendarDays, FolderOpen, Settings2, CheckCircle2, FileSpreadsheet, Trash2, Users, ChevronLeft, ChevronRight, CalendarRange } from "lucide-react";
+import { Plus, Search, LayoutGrid, CalendarDays, FolderOpen, Settings2, CheckCircle2, FileSpreadsheet, Trash2, Users, ChevronLeft, ChevronRight, CalendarRange, Cake, Star } from "lucide-react";
 import { addDays, addMonths, subMonths, endOfMonth, format, startOfMonth, startOfWeek } from "date-fns";
-import { getBrazilianHolidays } from "@/lib/holidays";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +28,8 @@ import { stageLabel, getStageCircleColor, tagColor, tagDisplay } from "./pm-cons
 import { cn } from "@/lib/utils";
 import type { PmTask } from "./pm-types";
 import { toast } from "sonner";
-
+import { useAgendaSpecialDates } from "@/features/agenda/hooks/use-agenda-dates";
+import { getIconById } from "@/features/agenda/components/IconPicker";
 function initials(n: string) {
   return n.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("");
 }
@@ -134,7 +134,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
   const membersQ = useQuery({
     queryKey: ["team_members"],
     queryFn: async () => {
-      const { data } = await supabase.from("team_members").select("user_id, display_name, avatar_url").eq("is_active", true);
+      const { data } = await supabase.from("team_members").select("user_id, display_name, avatar_url, birth_date").eq("is_active", true);
       return data ?? [];
     }
   });
@@ -144,6 +144,10 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
     return m;
   }, [membersQ.data]);
   const membersList = useMemo(() => (membersQ.data ?? []).map((m) => ({ id: m.user_id, name: m.display_name })), [membersQ.data]);
+  const membersForSpecialDates = useMemo(
+    () => (membersQ.data ?? []).map((m) => ({ user_id: m.user_id, display_name: m.display_name, birth_date: m.birth_date ?? null })),
+    [membersQ.data]
+  );
 
   const filters = { clientId: filterClient === "__all__" ? undefined : filterClient, assigneeId: filterAssignee === "__all__" ? undefined : filterAssignee, search: search || undefined, fixedAssigneeClientIds };
 
@@ -291,6 +295,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
           tasks={tasks}
           clientsMap={clientsMap}
           membersMap={membersMap}
+          teamMembers={membersForSpecialDates}
           onTaskClick={(t) => setSelectedTaskId(t.id)}
           filterClient={filterClient}
           filterAssignee={filterAssignee}
@@ -370,10 +375,11 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
 }
 
 // ─── Agenda Calendar View (matches main Agenda module) ───
-function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filterClient, filterAssignee, search, cursor, setCursor, fixedAssigneeClientIds }: {
+function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTaskClick, filterClient, filterAssignee, search, cursor, setCursor, fixedAssigneeClientIds }: {
   tasks: PmTask[];
   clientsMap: Record<string, string>;
   membersMap: Record<string, { name: string; avatar?: string }>;
+  teamMembers: Array<{ user_id: string; display_name: string; birth_date: string | null }>;
   onTaskClick: (t: PmTask) => void;
   filterClient: string;
   filterAssignee: string;
@@ -390,16 +396,34 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
 
   const todayKey = format(new Date(), "yyyy-MM-dd");
 
-  // Holidays for visible years
-  const holidays = useMemo(() => {
-    const y = cursor.getFullYear();
-    const map = new Map<string, string>();
-    for (const [k, v] of getBrazilianHolidays(y)) map.set(k, v);
-    // also load adjacent year in case week view crosses year boundary
-    for (const [k, v] of getBrazilianHolidays(y - 1)) map.set(k, v);
-    for (const [k, v] of getBrazilianHolidays(y + 1)) map.set(k, v);
-    return map;
-  }, [cursor]);
+  const prevMonth = subMonths(startOfMonth(cursor), 1);
+  const nextMonth = addMonths(startOfMonth(cursor), 1);
+
+  const specialDatesPrev = useAgendaSpecialDates(prevMonth.getFullYear(), prevMonth.getMonth() + 1, teamMembers);
+  const specialDatesCurrent = useAgendaSpecialDates(cursor.getFullYear(), cursor.getMonth() + 1, teamMembers);
+  const specialDatesNext = useAgendaSpecialDates(nextMonth.getFullYear(), nextMonth.getMonth() + 1, teamMembers);
+
+  const specialDatesMap = useMemo(() => {
+    const merged = new Map<string, import("@/features/agenda/hooks/use-agenda-dates").SpecialDate[]>();
+
+    const append = (source: Map<string, import("@/features/agenda/hooks/use-agenda-dates").SpecialDate[]>) => {
+      source.forEach((items, key) => {
+        const prev = merged.get(key) ?? [];
+        const combined = [...prev, ...items];
+        const deduped = combined.filter((item, idx, arr) => {
+          const id = `${item.type}|${item.label}|${item.personName ?? ""}|${item.icon ?? ""}`;
+          return arr.findIndex((x) => `${x.type}|${x.label}|${x.personName ?? ""}|${x.icon ?? ""}` === id) === idx;
+        });
+        merged.set(key, deduped);
+      });
+    };
+
+    append(specialDatesPrev);
+    append(specialDatesCurrent);
+    append(specialDatesNext);
+
+    return merged;
+  }, [specialDatesPrev, specialDatesCurrent, specialDatesNext]);
 
   const handleDelete = (taskId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -446,6 +470,34 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
     }
     return map;
   }, [filteredTasks]);
+
+  const daySpecialDates = (dayKey: string) => specialDatesMap.get(dayKey) ?? [];
+
+  const renderSpecialDates = (dayKey: string, compact = false) => {
+    const items = daySpecialDates(dayKey);
+    if (!items.length) return null;
+
+    return (
+      <div className={cn("space-y-1", compact && "space-y-0.5")}>
+        {items.map((sd, idx) => {
+          const isBirthday = sd.type === "birthday";
+          const isHoliday = sd.type === "holiday";
+          const label = isBirthday ? sd.personName ?? sd.label : sd.label;
+          const IconComp = isBirthday ? Cake : sd.icon ? getIconById(sd.icon) : Star;
+          const style = sd.type === "internal" && sd.color
+            ? { backgroundColor: `${sd.color}1F`, color: sd.color }
+            : undefined;
+
+          return (
+            <div key={`${dayKey}-${sd.type}-${idx}`} className={cn("w-full rounded-lg bg-primary/5 px-2 py-1 text-primary flex items-center gap-1.5", compact && "px-2 py-1 text-[10px]")} style={style}>
+              <IconComp className={cn(compact ? "h-3 w-3" : "h-3.5 w-3.5", "shrink-0")} />
+              <span className={cn("truncate font-medium", compact ? "text-[10px]" : "text-xs")}>{label}</span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   const renderTaskCard = (t: PmTask) => {
     const isDone = t.status_global === "concluido";
@@ -552,13 +604,9 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
                       <Badge variant="secondary" className="ml-auto text-[10px]">{doneCount}/{dayTasks.length}</Badge>
                     )}
                   </div>
-                  {holidays.get(key) && (
-                    <div className="w-full rounded-xl bg-primary/5 px-2.5 py-1.5 mb-1.5">
-                      <span className="text-[10px] font-medium text-primary/50">{holidays.get(key)}</span>
-                    </div>
-                  )}
+                  {renderSpecialDates(key, true)}
                   <div className="space-y-1.5">
-                    {dayTasks.length ? dayTasks.map(renderTaskCard) : !holidays.get(key) ? (
+                    {dayTasks.length ? dayTasks.map(renderTaskCard) : daySpecialDates(key).length === 0 ? (
                       <p className="text-xs text-muted-foreground py-2">Sem tarefas</p>
                     ) : null}
                   </div>
@@ -598,12 +646,8 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
                       </div>
                     </div>
                     <div className="space-y-2.5 max-h-[500px] overflow-y-auto">
-                      {holidays.get(key) && (
-                        <div className="w-full rounded-xl bg-primary/5 px-3 py-2">
-                          <span className="text-sm font-medium text-primary/50">{holidays.get(key)}</span>
-                        </div>
-                      )}
-                      {dayTasks.length ? dayTasks.map(renderTaskCard) : !holidays.get(key) ? (
+                      {renderSpecialDates(key)}
+                      {dayTasks.length ? dayTasks.map(renderTaskCard) : daySpecialDates(key).length === 0 ? (
                         <div className="grid min-h-[120px] place-items-center rounded-lg border border-dashed border-border/60 bg-card/5 p-4">
                           <p className="text-sm text-muted-foreground">Sem tarefas</p>
                         </div>
@@ -621,7 +665,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
           {days.filter(d => d.getMonth() === cursor.getMonth()).map((d) => {
             const key = format(d, "yyyy-MM-dd");
             const dayTasks = tasksByDay.get(key) ?? [];
-            const holiday = holidays.get(key);
+            const daySpecialCount = daySpecialDates(key).length;
             const isToday = key === todayKey;
 
             return (
@@ -645,11 +689,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
                     <Badge variant="secondary" className="ml-auto text-[10px]">{dayTasks.length}</Badge>
                   )}
                 </div>
-                {holiday && (
-                  <div className="w-full rounded-xl bg-primary/5 px-2.5 py-1.5">
-                    <span className="text-[10px] font-medium text-primary/50">{holiday}</span>
-                  </div>
-                )}
+                {renderSpecialDates(key, true)}
                 <div className="space-y-1.5">
                   {dayTasks.map(renderTaskCard)}
                 </div>
@@ -688,11 +728,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, onTaskClick, filter
                     </div>
                   </div>
                   <div className="space-y-1.5 max-h-[520px] overflow-y-auto">
-                    {holidays.get(key) && (
-                      <div className="w-full rounded-xl bg-primary/5 px-2.5 py-1.5 mb-1">
-                        <span className="text-[10px] font-medium text-primary/50">{holidays.get(key)}</span>
-                      </div>
-                    )}
+                    {renderSpecialDates(key, true)}
                     {dayTasks.slice(0, 5).map(renderTaskCard)}
                     {dayTasks.length > 5 &&
                       <button

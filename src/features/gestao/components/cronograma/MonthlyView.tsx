@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { getIconById } from "@/features/agenda/components/IconPicker";
+import { useTeamMembers } from "@/features/data/queries";
+import { useAgendaSpecialDates } from "@/features/agenda/hooks/use-agenda-dates";
 import { POST_TYPE_META, type CronogramaViewProps } from "./types";
 
 function SpecialDatesBadges({ dates }: { dates: import("@/features/agenda/hooks/use-agenda-dates").SpecialDate[] }) {
@@ -28,7 +30,7 @@ function SpecialDatesBadges({ dates }: { dates: import("@/features/agenda/hooks/
   );
 }
 
-export function MonthlyView({ posts, selectedPost, onSelectPost, onDateChange, specialDatesMap }: CronogramaViewProps) {
+export function MonthlyView({ posts, selectedPost, onSelectPost, onDateChange }: CronogramaViewProps) {
   const isMobile = useIsMobile();
   const [cursor, setCursor] = useState(() => {
     const first = posts.find(t => t.posting_date);
@@ -38,6 +40,13 @@ export function MonthlyView({ posts, selectedPost, onSelectPost, onDateChange, s
   const dragPostId = useRef<string | null>(null);
 
   const days = useMemo(() => eachDayOfInterval({ start: startOfMonth(cursor), end: endOfMonth(cursor) }), [cursor]);
+
+  const teamQ = useTeamMembers();
+  const specialDatesMap = useAgendaSpecialDates(
+    cursor.getFullYear(),
+    cursor.getMonth() + 1,
+    (teamQ.data ?? []).map((m) => ({ user_id: m.user_id, display_name: m.display_name, birth_date: m.birth_date ?? null }))
+  );
 
   const postsByDay = useMemo(() => {
     const map = new Map<string, typeof posts>();
@@ -64,7 +73,7 @@ export function MonthlyView({ posts, selectedPost, onSelectPost, onDateChange, s
   if (isMobile) {
     const daysWithPosts = days.filter(d => {
       const key = format(d, "yyyy-MM-dd");
-      return (postsByDay.get(key) ?? []).length > 0;
+      return (postsByDay.get(key) ?? []).length > 0 || (specialDatesMap.get(key) ?? []).length > 0;
     });
 
     return (
