@@ -1060,6 +1060,7 @@ export function AgendaPanel() {
             });
             const dowTitle = dow ? dow.charAt(0).toUpperCase() + dow.slice(1) : "";
             const isToday = key === todayKey;
+            const weekSpecialDates = specialDatesMap.get(key) ?? [];
             
             return <div 
               key={key} 
