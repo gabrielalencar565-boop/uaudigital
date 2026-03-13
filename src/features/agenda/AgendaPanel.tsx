@@ -4,7 +4,7 @@ import { ptBR } from "date-fns/locale";
 import { CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Filter, TriangleAlert, Calendar, Trash2, FileText, Cake, Star } from "lucide-react";
 import { z } from "zod";
 import { useAgendaSpecialDates, type SpecialDate } from "@/features/agenda/hooks/use-agenda-dates";
-import { ManageInternalDatesDialog, getInternalDateIcon } from "@/features/agenda/components/ManageInternalDatesDialog";
+import { getInternalDateIcon } from "@/features/agenda/components/ManageInternalDatesDialog";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { DndContext, DragEndEvent, DragOverlay, closestCenter } from "@dnd-kit/core";
