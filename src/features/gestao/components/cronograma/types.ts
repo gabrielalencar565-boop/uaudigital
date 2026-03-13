@@ -20,5 +20,4 @@ export interface CronogramaViewProps {
   selectedPost: CronogramaPost | null;
   onSelectPost: (post: CronogramaPost | null) => void;
   onDateChange?: (postId: string, newDate: string) => void;
-  specialDatesMap?: Map<string, SpecialDate[]>;
 }

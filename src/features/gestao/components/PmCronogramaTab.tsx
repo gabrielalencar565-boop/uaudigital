@@ -145,10 +145,10 @@ export function PmCronogramaTab({ parentTask, childTasks, clientName, membersMap
             </TabsList>
 
             <TabsContent value="semanal">
-              <WeeklyView posts={scheduledPosts} selectedPost={resolvedSelected} onSelectPost={setSelectedPost} onDateChange={handleDateChange} specialDatesMap={specialDatesMap} />
+              <WeeklyView posts={scheduledPosts} selectedPost={resolvedSelected} onSelectPost={setSelectedPost} onDateChange={handleDateChange} />
             </TabsContent>
             <TabsContent value="mensal">
-              <MonthlyView posts={scheduledPosts} selectedPost={resolvedSelected} onSelectPost={setSelectedPost} onDateChange={handleDateChange} specialDatesMap={specialDatesMap} />
+              <MonthlyView posts={scheduledPosts} selectedPost={resolvedSelected} onSelectPost={setSelectedPost} onDateChange={handleDateChange} />
             </TabsContent>
             <TabsContent value="feed">
               <FeedView posts={scheduledPosts} selectedPost={resolvedSelected} onSelectPost={setSelectedPost} />
