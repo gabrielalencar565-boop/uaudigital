@@ -1,10 +1,11 @@
 import { useState, useMemo, useCallback, useRef } from "react";
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, addWeeks, subWeeks, isSameDay, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, Cake, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { getIconById } from "@/features/agenda/components/IconPicker";
 import { POST_TYPE_META, type CronogramaViewProps } from "./types";
 
 export function WeeklyView({ posts, selectedPost, onSelectPost, onDateChange }: CronogramaViewProps) {
