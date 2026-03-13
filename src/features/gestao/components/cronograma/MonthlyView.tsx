@@ -30,7 +30,7 @@ function SpecialDatesBadges({ dates }: { dates: import("@/features/agenda/hooks/
   );
 }
 
-export function MonthlyView({ posts, selectedPost, onSelectPost, onDateChange, specialDatesMap }: CronogramaViewProps) {
+export function MonthlyView({ posts, selectedPost, onSelectPost, onDateChange }: CronogramaViewProps) {
   const isMobile = useIsMobile();
   const [cursor, setCursor] = useState(() => {
     const first = posts.find(t => t.posting_date);
