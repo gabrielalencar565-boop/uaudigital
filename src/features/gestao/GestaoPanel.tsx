@@ -28,7 +28,8 @@ import { stageLabel, getStageCircleColor, tagColor, tagDisplay } from "./pm-cons
 import { cn } from "@/lib/utils";
 import type { PmTask } from "./pm-types";
 import { toast } from "sonner";
-
+import { useAgendaSpecialDates } from "@/features/agenda/hooks/use-agenda-dates";
+import { getIconById } from "@/features/agenda/components/IconPicker";
 function initials(n: string) {
   return n.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("");
 }
