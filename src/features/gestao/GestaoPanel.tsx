@@ -665,7 +665,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
           {days.filter(d => d.getMonth() === cursor.getMonth()).map((d) => {
             const key = format(d, "yyyy-MM-dd");
             const dayTasks = tasksByDay.get(key) ?? [];
-            const holiday = holidays.get(key);
+            const daySpecialCount = daySpecialDates(key).length;
             const isToday = key === todayKey;
 
             return (
