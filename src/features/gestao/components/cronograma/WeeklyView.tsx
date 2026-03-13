@@ -108,6 +108,12 @@ export function WeeklyView({ posts, selectedPost, onSelectPost, onDateChange, sp
                   </div>
                 </div>
 
+                {(specialDatesMap?.get(key) ?? []).length > 0 && (
+                  <div className="flex flex-wrap gap-1 mb-1.5">
+                    <SpecialDatesBadges dates={specialDatesMap!.get(key)!} />
+                  </div>
+                )}
+
                 {dayPosts.length === 0 ? (
                   <p className="text-xs text-muted-foreground py-2">Sem postagens</p>
                 ) : (
