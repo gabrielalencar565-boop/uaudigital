@@ -6,9 +6,6 @@ import { AdminClientesPanel } from "./AdminClientesPanel";
 import { AdminLimpezaPanel } from "./AdminLimpezaPanel";
 import { AdminPontuacaoPanel } from "./AdminPontuacaoPanel";
 import { AdminAparenciaPanel } from "./AdminAparenciaPanel";
-import { ManageInternalDatesDialog } from "@/features/agenda/components/ManageInternalDatesDialog";
-import { useSession } from "@/hooks/use-session";
-import { useInternalDates, useCreateInternalDate, useDeleteInternalDate } from "@/features/agenda/hooks/use-agenda-dates";
 import { AdminDatasInternasPanel } from "./AdminDatasInternasPanel";
 
 type AdminSubTab = "usuarios" | "clientes" | "limpeza" | "pontuacao" | "aparencia" | "datas";
