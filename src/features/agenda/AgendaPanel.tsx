@@ -235,6 +235,15 @@ export function AgendaPanel() {
   const [editOpen, setEditOpen] = useState(false);
   const [trashOpen, setTrashOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [internalDatesOpen, setInternalDatesOpen] = useState(false);
+
+  // Special dates (holidays, birthdays, internal recurring)
+  const specialDatesMap = useAgendaSpecialDates(
+    cursor.getFullYear(),
+    cursor.getMonth() + 1,
+    team.map((m) => ({ user_id: m.user_id, display_name: m.display_name, birth_date: m.birth_date ?? null }))
+  );
+
   const form = useForm<CreateTaskValues>({
     resolver: zodResolver(createTaskSchema),
     defaultValues: {
