@@ -931,8 +931,9 @@ export function AgendaPanel() {
               </div> : (days.filter(d => d.getMonth() === cursor.getMonth())).map(d => {
           const key = format(d, "yyyy-MM-dd");
           const dayTasks = tasksByDay.get(key) ?? [];
+          const mobileMonthSpecialDates = specialDatesMap.get(key) ?? [];
           const hasOverdue = key < todayKey && dayTasks.some(t => t.status !== "concluido");
-          if (!dayTasks.length) return null;
+          if (!dayTasks.length && !mobileMonthSpecialDates.length) return null;
           return <div key={key} className={cn("space-y-2 rounded-lg border border-border/60 bg-card/10 p-3", hasOverdue && "ring-1 ring-danger/40")}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
