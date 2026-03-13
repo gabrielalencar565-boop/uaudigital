@@ -396,16 +396,34 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
 
   const todayKey = format(new Date(), "yyyy-MM-dd");
 
-  // Holidays for visible years
-  const holidays = useMemo(() => {
-    const y = cursor.getFullYear();
-    const map = new Map<string, string>();
-    for (const [k, v] of getBrazilianHolidays(y)) map.set(k, v);
-    // also load adjacent year in case week view crosses year boundary
-    for (const [k, v] of getBrazilianHolidays(y - 1)) map.set(k, v);
-    for (const [k, v] of getBrazilianHolidays(y + 1)) map.set(k, v);
-    return map;
-  }, [cursor]);
+  const prevMonth = subMonths(startOfMonth(cursor), 1);
+  const nextMonth = addMonths(startOfMonth(cursor), 1);
+
+  const specialDatesPrev = useAgendaSpecialDates(prevMonth.getFullYear(), prevMonth.getMonth() + 1, teamMembers);
+  const specialDatesCurrent = useAgendaSpecialDates(cursor.getFullYear(), cursor.getMonth() + 1, teamMembers);
+  const specialDatesNext = useAgendaSpecialDates(nextMonth.getFullYear(), nextMonth.getMonth() + 1, teamMembers);
+
+  const specialDatesMap = useMemo(() => {
+    const merged = new Map<string, import("@/features/agenda/hooks/use-agenda-dates").SpecialDate[]>();
+
+    const append = (source: Map<string, import("@/features/agenda/hooks/use-agenda-dates").SpecialDate[]>) => {
+      source.forEach((items, key) => {
+        const prev = merged.get(key) ?? [];
+        const combined = [...prev, ...items];
+        const deduped = combined.filter((item, idx, arr) => {
+          const id = `${item.type}|${item.label}|${item.personName ?? ""}|${item.icon ?? ""}`;
+          return arr.findIndex((x) => `${x.type}|${x.label}|${x.personName ?? ""}|${x.icon ?? ""}` === id) === idx;
+        });
+        merged.set(key, deduped);
+      });
+    };
+
+    append(specialDatesPrev);
+    append(specialDatesCurrent);
+    append(specialDatesNext);
+
+    return merged;
+  }, [specialDatesPrev, specialDatesCurrent, specialDatesNext]);
 
   const handleDelete = (taskId: string, e: React.MouseEvent) => {
     e.stopPropagation();
