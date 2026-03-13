@@ -192,6 +192,12 @@ export function WeeklyView({ posts, selectedPost, onSelectPost, onDateChange, sp
                   </div>
                 </div>
 
+                {(specialDatesMap?.get(key) ?? []).length > 0 && (
+                  <div className="flex flex-wrap gap-0.5 mb-1">
+                    <SpecialDatesBadges dates={specialDatesMap!.get(key)!} />
+                  </div>
+                )}
+
                 <div className="space-y-1.5">
                   {dayPosts.map(post => {
                     const meta = POST_TYPE_META[post.post_type ?? "post"] ?? POST_TYPE_META.post;
