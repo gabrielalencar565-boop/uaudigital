@@ -12,7 +12,8 @@ import {
   useCreateInternalDate,
   useDeleteInternalDate,
 } from "@/features/agenda/hooks/use-agenda-dates";
-import { getInternalDateIcon, ICON_OPTIONS, COLOR_OPTIONS } from "@/features/agenda/components/ManageInternalDatesDialog";
+import { getIconById, IconPicker } from "@/features/agenda/components/IconPicker";
+import { COLOR_OPTIONS } from "@/features/agenda/components/ManageInternalDatesDialog";
 
 export function AdminDatasInternasPanel() {
   const { user } = useSession();
@@ -78,7 +79,7 @@ export function AdminDatasInternasPanel() {
             )}
             <div className="grid gap-2 sm:grid-cols-2">
               {(datesQ.data ?? []).map((d) => {
-                const IconComp = getInternalDateIcon(d.icon);
+                const IconComp = getIconById(d.icon);
                 return (
                   <div
                     key={d.id}
@@ -139,27 +140,7 @@ export function AdminDatasInternasPanel() {
 
             <div className="space-y-2">
               <Label>Ícone</Label>
-              <div className="flex flex-wrap gap-2">
-                {ICON_OPTIONS.map((opt) => {
-                  const IconComp = opt.icon;
-                  return (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => setIcon(opt.id)}
-                      className={cn(
-                        "h-9 w-9 rounded-xl flex items-center justify-center border transition-all",
-                        icon === opt.id
-                          ? "ring-2 ring-offset-2 ring-foreground border-foreground bg-muted"
-                          : "border-border hover:bg-muted/50"
-                      )}
-                      title={opt.label}
-                    >
-                      <IconComp className="h-4 w-4" />
-                    </button>
-                  );
-                })}
-              </div>
+              <IconPicker value={icon} onChange={setIcon} color={color} />
             </div>
 
             <div className="space-y-2">
