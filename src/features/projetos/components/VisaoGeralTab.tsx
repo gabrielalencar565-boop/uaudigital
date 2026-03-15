@@ -687,6 +687,11 @@ export function VisaoGeralTab() {
         </div>
       </FadeUp>
 
+      {/* Análise Mensal da Operação */}
+      <FadeUp delay={0.7}>
+        <MonthlyAnalysisSection tasks={allTasks} />
+      </FadeUp>
+
       {/* Health Score access */}
       <FadeUp delay={0.75}>
         <Card className="cursor-pointer hover:border-primary/40 transition-colors" onClick={() => setShowHealthScore(true)}>
