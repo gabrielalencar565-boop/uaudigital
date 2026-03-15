@@ -689,7 +689,7 @@ export function VisaoGeralTab() {
 
       {/* Análise Mensal da Operação */}
       <FadeUp delay={0.7}>
-        <MonthlyAnalysisSection tasks={allTasks} />
+        <MonthlyAnalysisSection />
       </FadeUp>
 
       {/* Health Score access */}
