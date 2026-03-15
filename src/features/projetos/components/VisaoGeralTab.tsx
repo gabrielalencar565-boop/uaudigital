@@ -31,6 +31,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from "recharts";
 import { HealthScoreTab } from "./HealthScoreTab";
+import { MonthlyAnalysisSection } from "./MonthlyAnalysisSection";
 import { useAgendaSpecialDates, type SpecialDate } from "@/features/agenda/hooks/use-agenda-dates";
 import { getIconById } from "@/features/agenda/components/IconPicker";
 
@@ -684,6 +685,11 @@ export function VisaoGeralTab() {
             </CardContent>
           </Card>
         </div>
+      </FadeUp>
+
+      {/* Análise Mensal da Operação */}
+      <FadeUp delay={0.7}>
+        <MonthlyAnalysisSection tasks={allTasks} />
       </FadeUp>
 
       {/* Health Score access */}
