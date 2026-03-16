@@ -406,6 +406,7 @@ export function useCreateClient() {
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["clients"] }),
         qc.invalidateQueries({ queryKey: ["clients_all"] }),
+        qc.invalidateQueries({ queryKey: ["clients_admin_all"] }),
         // Atualiza Checklist/Dashboard imediatamente
         ...(Number.isFinite(year)
           ? [
