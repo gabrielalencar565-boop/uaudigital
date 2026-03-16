@@ -6,9 +6,9 @@ import { AnimatedNumber } from "@/components/ui/animated-number";
 import { ProgressRing } from "@/components/metrics/ProgressRing";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip as RechartsTooltip,
-  BarChart, Bar,
+  BarChart, Bar, LineChart, Line, Cell,
 } from "recharts";
-import { TrendingUp, Clock, Zap, BarChart3, Info, CalendarCheck, ArrowUp, ArrowDown } from "lucide-react";
+import { TrendingUp, Clock, Zap, BarChart3, Info, CalendarCheck, ArrowUp, ArrowDown, Trophy, AlertTriangle, TrendingDown, Target } from "lucide-react";
 import {
   format, getDaysInMonth,
 } from "date-fns";
@@ -19,21 +19,8 @@ import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-function getClassification(score: number) {
-  if (score >= 90) return { label: "Excelente", tone: "success" as const };
-  if (score >= 75) return { label: "Saudável", tone: "primary" as const };
-  if (score >= 60) return { label: "Atenção", tone: "warning" as const };
-  return { label: "Crítico", tone: "danger" as const };
-}
+import { getClassification, toneColor, barColor, MONTH_SHORT, computeAnnualScores } from "@/features/projetos/utils/score-utils";
 
-function toneColor(tone: "success" | "primary" | "warning" | "danger") {
-  switch (tone) {
-    case "success": return "hsl(var(--success))";
-    case "warning": return "hsl(var(--warning))";
-    case "danger": return "hsl(var(--danger))";
-    default: return "hsl(var(--primary))";
-  }
-}
 
 const INDICATOR_TOOLTIPS: Record<string, string> = {
   "Prazo": "Avalia se a operação foi concluída dentro do prazo ideal (dia 25). Quanto antes finalizar, maior a pontuação.",
@@ -102,32 +89,22 @@ export function MonthlyAnalysisSection() {
     });
   }, [stages, prevStages, now, totalStages, prevTotalStages, currentDay, year, month, prevYear, prevMonth]);
 
-  // ── Annual progress data ──
-  const annualData = useMemo(() => {
-    const MONTH_SHORT = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
-    if (!yearData?.monthly) return [];
-    return yearData.monthly.map(m => {
-      const total = m.totalClients * MAGIC2_STAGES.length;
-      const done = m.doneOnTime + m.doneLate;
-      // done here counts completed clients, we need stage-level data
-      // Use the stages array filtered per month
-      const monthStages = (yearData.stages ?? []).filter(s => {
-        const cycle = (yearData.cycles ?? []).find(c => c.id === s.cycle_id);
-        return cycle && cycle.month === m.month;
-      });
-      const completedStages = monthStages.filter(s => s.completed).length;
-      const totalStagesMonth = m.totalClients * MAGIC2_STAGES.length;
-      const pct = totalStagesMonth > 0 ? Math.round((completedStages / totalStagesMonth) * 100) : 0;
-      return {
-        mes: MONTH_SHORT[m.month - 1],
-        monthNum: m.month,
-        percentual: pct,
-        clientes: m.totalClients,
-        etapas: `${completedStages}/${totalStagesMonth}`,
-        isCurrent: m.month === month,
-      };
-    });
-  }, [yearData, month]);
+  // ── Annual score data (Uau Score per month) ──
+  const annualScoreData = useMemo(() => {
+    return computeAnnualScores(yearData, year, month);
+  }, [yearData, year, month]);
+
+  const annualStats = useMemo(() => {
+    const active = annualScoreData.filter(m => m.hasData && m.score > 0);
+    if (active.length === 0) return null;
+    const scores = active.map(m => m.score);
+    const avg = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+    const best = active.reduce((a, b) => a.score > b.score ? a : b);
+    const worst = active.reduce((a, b) => a.score < b.score ? a : b);
+    const healthy = active.filter(m => m.score >= 75).length;
+    const critical = active.filter(m => m.score < 60).length;
+    return { avg, best, worst, healthy, critical };
+  }, [annualScoreData]);
 
 
   const { prazo, eficiencia, consistencia, uauScore } = useMemo(() => {
@@ -411,16 +388,17 @@ export function MonthlyAnalysisSection() {
                 </>
               ) : (
                 <>
+                  {/* Line chart - Uau Score evolution */}
                   <div className="h-[220px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={annualData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                      <LineChart data={annualScoreData.filter(m => m.hasData)} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
                         <defs>
-                          <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="hsl(var(--sidebar))" stopOpacity={0.9} />
-                            <stop offset="100%" stopColor="hsl(var(--sidebar))" stopOpacity={0.4} />
+                          <linearGradient id="annualLineGrad" x1="0" y1="0" x2="1" y2="0">
+                            <stop offset="0%" stopColor="hsl(var(--sidebar))" stopOpacity={0.6} />
+                            <stop offset="100%" stopColor="hsl(var(--sidebar))" stopOpacity={1} />
                           </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} vertical={false} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} />
                         <XAxis
                           dataKey="mes"
                           tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
@@ -432,49 +410,96 @@ export function MonthlyAnalysisSection() {
                           tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
                           axisLine={false}
                           tickLine={false}
-                          tickFormatter={(v) => `${v}%`}
                         />
                         <RechartsTooltip
                           content={({ active, payload }) => {
                             if (active && payload?.length) {
                               const d = payload[0].payload;
+                              if (!d.hasData) return null;
+                              const cls = getClassification(d.score);
                               return (
                                 <div className="bg-card border border-border rounded-xl px-3 py-2 shadow-lg text-xs space-y-0.5">
                                   <p className="font-semibold text-foreground">{d.mes} {year}</p>
-                                  <p className="text-muted-foreground">Conclusão: <strong className="text-foreground">{d.percentual}%</strong></p>
-                                  <p className="text-muted-foreground">Etapas: {d.etapas}</p>
-                                  <p className="text-muted-foreground">Clientes: {d.clientes}</p>
+                                  <p>Score: <strong style={{ color: toneColor(cls.tone) }}>{d.score}</strong> — {cls.label}</p>
+                                  {d.magicDiff !== null && (
+                                    <p className={cn(
+                                      "font-medium",
+                                      d.magicDiff > 0 ? "text-success" : d.magicDiff < 0 ? "text-destructive" : "text-foreground"
+                                    )}>
+                                      {d.magicDiff > 0 ? `+${d.magicDiff} dias de folga` : d.magicDiff < 0 ? `${d.magicDiff} dias de atraso` : "No prazo exato"}
+                                    </p>
+                                  )}
                                 </div>
                               );
                             }
                             return null;
                           }}
                         />
-                        <Bar
-                          dataKey="percentual"
-                          fill="url(#barGradient)"
-                          radius={[4, 4, 0, 0]}
-                          maxBarSize={40}
+                        <Line
+                          type="monotone"
+                          dataKey="score"
+                          stroke="url(#annualLineGrad)"
+                          strokeWidth={2.5}
+                          dot={({ cx, cy, payload }: any) => {
+                            const color = payload.hasData ? barColor(payload.score) : "hsl(var(--muted))";
+                            return <circle cx={cx} cy={cy} r={4} fill={color} stroke="hsl(var(--background))" strokeWidth={2} />;
+                          }}
+                          activeDot={{ r: 6, stroke: "hsl(var(--background))", strokeWidth: 2 }}
                         />
-                      </BarChart>
+                      </LineChart>
                     </ResponsiveContainer>
                   </div>
 
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1 border-t border-border/50 flex-wrap">
-                    {(() => {
-                      const completedMonths = annualData.filter(m => m.percentual === 100).length;
-                      const avgPct = annualData.length > 0
-                        ? Math.round(annualData.reduce((sum, m) => sum + m.percentual, 0) / annualData.filter(m => m.monthNum <= month).length)
-                        : 0;
-                      return (
-                        <>
-                          <span>Média: <strong className="text-foreground">{avgPct}%</strong></span>
-                          <span>Meses 100%: <strong className="text-foreground">{completedMonths}</strong></span>
-                          <span className="ml-auto">{year}</span>
-                        </>
-                      );
-                    })()}
+                  {/* Heatmap */}
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Saúde do Ano</p>
+                    <div className="grid grid-cols-12 gap-1">
+                      {annualScoreData.map(m => {
+                        const bg = m.hasData && m.score > 0 ? barColor(m.score) : "hsl(var(--muted))";
+                        const cls = m.hasData && m.score > 0 ? getClassification(m.score) : null;
+                        return (
+                          <Tooltip key={m.monthNum}>
+                            <TooltipTrigger asChild>
+                              <div className="flex flex-col items-center gap-0.5 cursor-default">
+                                <div
+                                  className="h-5 w-full rounded-sm transition-colors"
+                                  style={{ backgroundColor: bg, opacity: m.hasData ? 1 : 0.3 }}
+                                />
+                                <span className="text-[9px] text-muted-foreground leading-none">{m.mes}</span>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="text-xs">
+                              {m.hasData && m.score > 0
+                                ? <>{m.mes}: <strong>{m.score}</strong> — {cls?.label}</>
+                                : <>{m.mes}: sem dados</>
+                              }
+                            </TooltipContent>
+                          </Tooltip>
+                        );
+                      })}
+                    </div>
                   </div>
+
+                  {/* Stats footer */}
+                  {annualStats && (
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground pt-1 border-t border-border/50 flex-wrap">
+                      <span className="flex items-center gap-1">
+                        <Target className="h-3 w-3" /> Média: <strong className="text-foreground">{annualStats.avg}</strong>
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Trophy className="h-3 w-3" /> Melhor: <strong className="text-foreground">{annualStats.best.mes} ({annualStats.best.score})</strong>
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" /> Pior: <strong className="text-foreground">{annualStats.worst.mes} ({annualStats.worst.score})</strong>
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <TrendingUp className="h-3 w-3 text-success" /> Saudáveis: <strong className="text-foreground">{annualStats.healthy}</strong>
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <TrendingDown className="h-3 w-3 text-destructive" /> Críticos: <strong className="text-foreground">{annualStats.critical}</strong>
+                      </span>
+                    </div>
+                  )}
                 </>
               )}
             </CardContent>
