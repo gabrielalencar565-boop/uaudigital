@@ -39,10 +39,10 @@ const INDICATOR_TOOLTIPS: Record<string, string> = {
 };
 
 const SCORE_RANGES = [
-  { min: 90, max: 100, label: "Excelente", tone: "success" as const },
-  { min: 75, max: 89, label: "Saudável", tone: "primary" as const },
-  { min: 60, max: 74, label: "Atenção", tone: "warning" as const },
-  { min: 0, max: 59, label: "Crítico", tone: "danger" as const },
+  { min: 90, max: 100, label: "Excelente", tone: "success" as const, desc: "Operação impecável, tudo no prazo e bem distribuído." },
+  { min: 75, max: 89, label: "Saudável", tone: "primary" as const, desc: "Boa performance, com pequenos pontos de melhoria." },
+  { min: 60, max: 74, label: "Atenção", tone: "warning" as const, desc: "Atrasos ou acúmulos que precisam de correção." },
+  { min: 0, max: 59, label: "Crítico", tone: "danger" as const, desc: "Performance abaixo do aceitável, ação urgente necessária." },
 ];
 
 export function MonthlyAnalysisSection() {
