@@ -164,32 +164,27 @@ export function MonthlyAnalysisSection() {
       const totalStagesMonth = totalClients * MAGIC2_STAGES.length;
       const completedStages = monthStages.filter((s: any) => s.completed);
 
-      if (m > currentMonth || totalClients === 0) {
+      if (m > currentMonth || totalClients === 0 || completedStages.length === 0) {
         return { mes: MONTH_SHORT[i], monthNum: m, proatividade: 0, totalTarefas: 0, antes20Pct: 0, hasData: false };
       }
 
       // Weighted proactivity: days 1-10 = weight 1.0, 11-20 = 0.6, 21-27 = 0.3
       let weightedSum = 0;
-      let maxPossible = completedStages.length; // each task max weight = 1.0
-      let before20 = 0;
 
       for (const s of completedStages) {
         const day = s.completed_at ? new Date(s.completed_at).getDate() : 28;
         if (day <= 10) weightedSum += 1.0;
-        else if (day <= 20) { weightedSum += 0.6; before20++; }
+        else if (day <= 20) weightedSum += 0.6;
         else if (day <= 27) weightedSum += 0.3;
-        // after 27 = 0
-        if (day <= 10) before20++;
-        if (day <= 20 && day > 10) {} // already counted
       }
-      // Fix before20 count: days 1-20
-      before20 = completedStages.filter((s: any) => {
+
+      const before20 = completedStages.filter((s: any) => {
         const day = s.completed_at ? new Date(s.completed_at).getDate() : 28;
         return day <= 20;
       }).length;
 
-      const proatividade = maxPossible > 0 ? Math.round((weightedSum / maxPossible) * 100) : 0;
-      const antes20Pct = completedStages.length > 0 ? Math.round((before20 / completedStages.length) * 100) : 0;
+      const proatividade = Math.round((weightedSum / completedStages.length) * 100);
+      const antes20Pct = Math.round((before20 / completedStages.length) * 100);
 
       return {
         mes: MONTH_SHORT[i],
@@ -507,113 +502,8 @@ export function MonthlyAnalysisSection() {
                 </>
               ) : (
                 <>
-                  {/* Proactive month highlight card */}
-                  {bestProactiveMonth && bestProactiveMonth.percentual > 0 && (
-                    <div className="flex items-center gap-3 p-2.5 rounded-lg bg-sidebar/5 border border-sidebar/20">
-                      <div className="h-8 w-8 rounded-lg bg-sidebar/10 flex items-center justify-center shrink-0">
-                        <Star className="h-4 w-4 text-sidebar" />
-                      </div>
-                      <div className="text-xs">
-                        <p className="text-muted-foreground">Mês mais proativo do ano</p>
-                        <p className="font-bold text-foreground">
-                          {bestProactiveMonth.mes} — {bestProactiveMonth.percentual}% das etapas concluídas antes do Magic Number
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Bar chart - progress before Magic Number */}
-                  <div className="h-[220px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={annualProgressData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-                        <defs>
-                          <linearGradient id="proBarGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="hsl(var(--sidebar))" stopOpacity={0.9} />
-                            <stop offset="100%" stopColor="hsl(var(--sidebar))" stopOpacity={0.4} />
-                          </linearGradient>
-                          <linearGradient id="proBarBestGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="hsl(142, 71%, 45%)" stopOpacity={1} />
-                            <stop offset="100%" stopColor="hsl(142, 71%, 45%)" stopOpacity={0.5} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} vertical={false} />
-                        <XAxis
-                          dataKey="mes"
-                          tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
-                          axisLine={false}
-                          tickLine={false}
-                        />
-                        <YAxis
-                          domain={[0, 100]}
-                          tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
-                          axisLine={false}
-                          tickLine={false}
-                          tickFormatter={(v) => `${v}%`}
-                        />
-                        <RechartsTooltip
-                          content={({ active, payload }) => {
-                            if (active && payload?.length) {
-                              const d = payload[0].payload;
-                              if (!d.hasData) return null;
-                              return (
-                                <div className="bg-card border border-border rounded-xl px-3 py-2 shadow-lg text-xs space-y-0.5">
-                                  <p className="font-semibold text-foreground flex items-center gap-1">
-                                    {d.mes} {year}
-                                    {bestProactiveMonth && d.monthNum === bestProactiveMonth.monthNum && (
-                                      <Star className="h-3 w-3 text-sidebar fill-sidebar" />
-                                    )}
-                                  </p>
-                                  <p className="text-muted-foreground">Progresso: <strong className="text-foreground">{d.percentual}%</strong></p>
-                                  <p className="text-muted-foreground">Etapas: <strong className="text-foreground">{d.totalEtapas}/{d.totalEtapasMonth}</strong></p>
-                                  {d.magicDiff !== null && (
-                                    <p className={cn(
-                                      "font-medium",
-                                      d.magicDiff > 0 ? "text-success" : d.magicDiff < 0 ? "text-destructive" : "text-foreground"
-                                    )}>
-                                      {d.magicDiff > 0
-                                        ? `+${d.magicDiff} dia${d.magicDiff > 1 ? "s" : ""} de folga`
-                                        : d.magicDiff < 0
-                                          ? `${d.magicDiff} dia${Math.abs(d.magicDiff) > 1 ? "s" : ""} de atraso`
-                                          : "No prazo exato"}
-                                    </p>
-                                  )}
-                                </div>
-                              );
-                            }
-                            return null;
-                          }}
-                        />
-                        <Bar dataKey="percentual" radius={[4, 4, 0, 0]} maxBarSize={40}>
-                          {annualProgressData.map((entry, index) => (
-                            <Cell
-                              key={index}
-                              fill={
-                                !entry.hasData
-                                  ? "hsl(var(--muted))"
-                                  : bestProactiveMonth && entry.monthNum === bestProactiveMonth.monthNum
-                                    ? "url(#proBarBestGrad)"
-                                    : "url(#proBarGrad)"
-                              }
-                              fillOpacity={entry.hasData ? 1 : 0.3}
-                            />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-
-                  {/* Stats footer */}
-                  {annualProgressStats && (
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground pt-1 border-t border-border/50 flex-wrap">
-                      <span>Média: <strong className="text-foreground">{annualProgressStats.avg}%</strong></span>
-                      <span>Etapas concluídas: <strong className="text-foreground">{annualProgressStats.totalEtapas}</strong></span>
-                      <span>Clientes: <strong className="text-foreground">{annualProgressStats.totalClientes}</strong></span>
-                      <span className="ml-auto">{year}</span>
-                    </div>
-                  )}
-
                   {/* ── Proactivity Index Chart ── */}
-                  <div className="space-y-3 pt-4 border-t border-border/50">
+                  <div className="space-y-3">
                     <div>
                       <p className="text-sm font-bold text-foreground">Índice de Proatividade Mensal</p>
                       <p className="text-xs text-muted-foreground mt-0.5">
