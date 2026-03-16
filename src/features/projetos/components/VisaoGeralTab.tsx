@@ -808,209 +808,298 @@ export function VisaoGeralTab() {
         </Card>
       </FadeUp>
 
-      {/* Squad delivery speed — general overview */}
+      {/* ═══ GRÁFICO 1 — RANKING DE SQUADS ═══ */}
       {squadSpeedData.length > 0 && (
         <FadeUp delay={0.52}>
           <Card>
             <CardContent className="py-6 px-6 space-y-5">
               <div className="flex items-center gap-4">
                 <div className="h-12 w-12 rounded-2xl bg-sidebar/10 flex items-center justify-center">
-                  <Zap className="h-6 w-6 text-sidebar" />
+                  <Trophy className="h-6 w-6 text-sidebar" />
                 </div>
                 <div>
-                  <p className="text-xl font-bold leading-none">Desempenho por Squad</p>
-                  <p className="mt-1.5 text-sm text-muted-foreground">Progresso das etapas do Magic Number — {format(now, "MMMM yyyy", { locale: ptBR })}</p>
+                  <p className="text-xl font-bold leading-none">Ranking de Squads</p>
+                  <p className="mt-1.5 text-sm text-muted-foreground">Progresso geral das etapas — {format(now, "MMMM yyyy", { locale: ptBR })}</p>
                 </div>
               </div>
 
-              {/* KPI cards row */}
-              {(() => {
-                const activeSquads = squadSpeedData.filter(s => s.hasData);
-                const totalCompleted = activeSquads.reduce((a, s) => a + s.completedEtapas, 0);
-                const totalAll = activeSquads.reduce((a, s) => a + s.totalEtapas, 0);
-                const overallPercent = totalAll > 0 ? Math.round((totalCompleted / totalAll) * 100) : 0;
-                const avgSpeed = activeSquads.length > 0 ? Math.round(activeSquads.reduce((a, s) => a + s.speed, 0) / activeSquads.length) : 0;
-                return (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="bg-accent/30 rounded-xl p-3 text-center">
-                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Conclusão geral</p>
-                      <p className="text-2xl font-bold text-foreground mt-1">{overallPercent}%</p>
-                      <p className="text-[10px] text-muted-foreground">{totalCompleted}/{totalAll} etapas</p>
-                    </div>
-                    <div className="bg-accent/30 rounded-xl p-3 text-center">
-                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Velocidade média</p>
-                      <p className="text-2xl font-bold text-foreground mt-1">{avgSpeed}%</p>
-                      <p className="text-[10px] text-muted-foreground">proatividade</p>
-                    </div>
-                    <div className="bg-accent/30 rounded-xl p-3 text-center">
-                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Squads ativos</p>
-                      <p className="text-2xl font-bold text-foreground mt-1">{activeSquads.length}</p>
-                      <p className="text-[10px] text-muted-foreground">de {squadSpeedData.length}</p>
-                    </div>
-                    <div className="bg-accent/30 rounded-xl p-3 text-center">
-                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Dias restantes</p>
-                      <p className="text-2xl font-bold text-foreground mt-1">{Math.max(0, 27 - now.getDate())}</p>
-                      <p className="text-[10px] text-muted-foreground">até dia 27</p>
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* Squad progress rows */}
               <div className="space-y-3">
-                {squadSpeedData.map((sq) => {
+                {squadSpeedData.map((sq, idx) => {
                   const SquadIcon = getSquadIcon(sq.icon);
                   const diff = sq.speed - sq.prevSpeed;
-
                   return (
-                    <div key={sq.id}>
-                      <div
-                        className="flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all bg-accent/20 hover:bg-accent/30"
-                        onClick={() => setExpandedSquadId(sq.id)}
-                      >
-                        <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: sq.color + "20" }}>
-                          <SquadIcon className="h-4 w-4" style={{ color: sq.color }} />
+                    <div
+                      key={sq.id}
+                      className="flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all bg-accent/20 hover:bg-accent/30"
+                      onClick={() => setExpandedSquadId(sq.id)}
+                    >
+                      <div className="flex items-center justify-center h-8 w-8 rounded-lg text-sm font-bold" style={{ backgroundColor: sq.color + "20", color: sq.color }}>
+                        {idx + 1}º
+                      </div>
+                      <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: sq.color + "20" }}>
+                        <SquadIcon className="h-4 w-4" style={{ color: sq.color }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-foreground truncate">{sq.name}</span>
+                          {bestSquad?.id === sq.id && <Trophy className="h-3.5 w-3.5 text-sidebar shrink-0" />}
+                          {sq.prevSpeed > 0 && (
+                            <span className={cn("flex items-center gap-0.5 text-[10px] font-medium shrink-0",
+                              diff > 0 ? "text-emerald-500" : diff < 0 ? "text-red-400" : "text-muted-foreground"
+                            )}>
+                              {diff > 0 ? <TrendingUp className="h-2.5 w-2.5" /> : diff < 0 ? <TrendingDown className="h-2.5 w-2.5" /> : <Minus className="h-2.5 w-2.5" />}
+                              {diff > 0 ? "+" : ""}{diff}%
+                            </span>
+                          )}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold text-foreground truncate">{sq.name}</span>
-                            {bestSquad?.id === sq.id && <Trophy className="h-3.5 w-3.5 text-sidebar shrink-0" />}
-                            {sq.prevSpeed > 0 && (
-                              <span className={cn("flex items-center gap-0.5 text-[10px] font-medium shrink-0",
-                                diff > 0 ? "text-emerald-500" : diff < 0 ? "text-red-400" : "text-muted-foreground"
-                              )}>
-                                {diff > 0 ? <TrendingUp className="h-2.5 w-2.5" /> : diff < 0 ? <TrendingDown className="h-2.5 w-2.5" /> : <Minus className="h-2.5 w-2.5" />}
-                                {diff > 0 ? "+" : ""}{diff}%
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-3 mt-1">
-                            <div className="flex-1">
-                              <div className="h-2 rounded-full bg-border/30 overflow-hidden">
-                                <div
-                                  className="h-full rounded-full transition-all duration-700"
-                                  style={{ width: `${sq.percentComplete}%`, backgroundColor: sq.color }}
-                                />
-                              </div>
+                        <div className="flex items-center gap-3 mt-1">
+                          <div className="flex-1">
+                            <div className="h-2.5 rounded-full bg-border/30 overflow-hidden">
+                              <div className="h-full rounded-full transition-all duration-700" style={{ width: `${sq.percentComplete}%`, backgroundColor: sq.color }} />
                             </div>
-                            <span className="text-xs text-muted-foreground tabular-nums shrink-0">{sq.completedEtapas}/{sq.totalEtapas}</span>
                           </div>
+                          <span className="text-xs text-muted-foreground tabular-nums shrink-0">{sq.completedEtapas}/{sq.totalEtapas}</span>
                         </div>
-                        <div className="text-right shrink-0">
-                          <p className="text-lg font-bold tabular-nums" style={{ color: sq.color }}>{sq.hasData ? `${sq.percentComplete}%` : "—"}</p>
-                          <p className="text-[10px] text-muted-foreground">vel. {sq.speed}%</p>
-                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-lg font-bold tabular-nums" style={{ color: sq.color }}>{sq.hasData ? `${sq.percentComplete}%` : "—"}</p>
                       </div>
                     </div>
                   );
                 })}
+              </div>
 
-                {/* Squad detail modal */}
-                {expandedSquadDetail && (
-                  <Dialog open={!!expandedSquadId} onOpenChange={(open) => { if (!open) setExpandedSquadId(null); }}>
-                    <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
-                      <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                          {(() => {
-                            const SquadIcon = getSquadIcon(expandedSquadDetail.squad.icon);
-                            return (
-                              <>
-                                <div className="h-8 w-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: expandedSquadDetail.sqData?.color + "20" }}>
-                                  <SquadIcon className="h-4 w-4" style={{ color: expandedSquadDetail.sqData?.color }} />
-                                </div>
-                                {expandedSquadDetail.squad.name}
-                              </>
-                            );
-                          })()}
-                        </DialogTitle>
-                        <DialogDescription>
-                          Desempenho detalhado por cliente no mês
-                        </DialogDescription>
-                      </DialogHeader>
-
-                      <div className="space-y-3">
-                        {/* Squad KPIs */}
-                        {expandedSquadDetail.sqData && (
-                          <div className="grid grid-cols-3 gap-2">
-                            <div className="bg-accent/20 rounded-lg p-2.5 text-center">
-                              <p className="text-lg font-bold tabular-nums" style={{ color: expandedSquadDetail.sqData.color }}>{expandedSquadDetail.sqData.percentComplete}%</p>
-                              <p className="text-[10px] text-muted-foreground">Conclusão</p>
-                            </div>
-                            <div className="bg-accent/20 rounded-lg p-2.5 text-center">
-                              <p className="text-lg font-bold tabular-nums" style={{ color: expandedSquadDetail.sqData.color }}>{expandedSquadDetail.sqData.speed}%</p>
-                              <p className="text-[10px] text-muted-foreground">Velocidade</p>
-                            </div>
-                            <div className="bg-accent/20 rounded-lg p-2.5 text-center">
-                              <p className="text-lg font-bold tabular-nums">{expandedSquadDetail.clients.length}</p>
-                              <p className="text-[10px] text-muted-foreground">Clientes</p>
-                            </div>
-                          </div>
-                        )}
-
-                        {expandedSquadDetail.squadInsights.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5">
-                            {expandedSquadDetail.squadInsights.map((insight, i) => (
-                              <span key={i} className="flex items-center gap-1 text-[10px] bg-accent/40 rounded-md px-2 py-1">
-                                <Lightbulb className="h-2.5 w-2.5 text-sidebar" />
-                                {insight}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Client performance list */}
-                        {expandedSquadDetail.clients.map((client) => {
-                          const diff = client.percent - client.prevPercent;
-                          const speedDiff = client.speed - client.prevSpeed;
+              {/* Squad detail modal */}
+              {expandedSquadDetail && (
+                <Dialog open={!!expandedSquadId} onOpenChange={(open) => { if (!open) setExpandedSquadId(null); }}>
+                  <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2">
+                        {(() => {
+                          const SquadIcon = getSquadIcon(expandedSquadDetail.squad.icon);
                           return (
-                            <div key={client.clientId} className="bg-accent/20 rounded-lg p-3 space-y-2">
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm font-semibold text-foreground">{client.name}</span>
-                                <span className="text-sm font-bold tabular-nums" style={{ color: expandedSquadDetail.sqData?.color }}>{client.percent}%</span>
+                            <>
+                              <div className="h-8 w-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: expandedSquadDetail.sqData?.color + "20" }}>
+                                <SquadIcon className="h-4 w-4" style={{ color: expandedSquadDetail.sqData?.color }} />
                               </div>
-
-                              {/* Progress bar */}
-                              <div className="h-2 rounded-full bg-border/30 overflow-hidden">
-                                <div
-                                  className="h-full rounded-full transition-all duration-500"
-                                  style={{ width: `${client.percent}%`, backgroundColor: expandedSquadDetail.sqData?.color }}
-                                />
-                              </div>
-
-                              {/* Metrics row */}
-                              <div className="flex items-center justify-between text-[11px]">
-                                <span className="text-muted-foreground">
-                                  {client.completed}/{client.total} etapas
-                                </span>
-                                <div className="flex items-center gap-3">
-                                  <span className="text-muted-foreground">vel. {client.speed}%</span>
-                                  {client.prevPercent > 0 && (
-                                    <span className={cn("flex items-center gap-0.5 font-medium",
-                                      diff > 0 ? "text-emerald-500" : diff < 0 ? "text-red-400" : "text-muted-foreground"
-                                    )}>
-                                      {diff > 0 ? <TrendingUp className="h-3 w-3" /> : diff < 0 ? <TrendingDown className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
-                                      {diff > 0 ? "+" : ""}{diff}% vs anterior
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* Insights */}
-                              {client.insights.length > 0 && (
-                                <div className="flex flex-wrap gap-1.5 pt-0.5">
-                                  {client.insights.map((ins, i) => (
-                                    <span key={i} className="text-[10px] bg-background/60 rounded px-1.5 py-0.5 text-muted-foreground">{ins}</span>
-                                  ))}
-                                </div>
-                              )}
+                              {expandedSquadDetail.squad.name}
+                            </>
+                          );
+                        })()}
+                      </DialogTitle>
+                      <DialogDescription>Desempenho detalhado por cliente no mês</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-3">
+                      {expandedSquadDetail.sqData && (
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="bg-accent/20 rounded-lg p-2.5 text-center">
+                            <p className="text-lg font-bold tabular-nums" style={{ color: expandedSquadDetail.sqData.color }}>{expandedSquadDetail.sqData.percentComplete}%</p>
+                            <p className="text-[10px] text-muted-foreground">Conclusão</p>
+                          </div>
+                          <div className="bg-accent/20 rounded-lg p-2.5 text-center">
+                            <p className="text-lg font-bold tabular-nums" style={{ color: expandedSquadDetail.sqData.color }}>{expandedSquadDetail.sqData.speed}%</p>
+                            <p className="text-[10px] text-muted-foreground">Velocidade</p>
+                          </div>
+                          <div className="bg-accent/20 rounded-lg p-2.5 text-center">
+                            <p className="text-lg font-bold tabular-nums">{expandedSquadDetail.clients.length}</p>
+                            <p className="text-[10px] text-muted-foreground">Clientes</p>
+                          </div>
+                        </div>
+                      )}
+                      {expandedSquadDetail.squadInsights.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {expandedSquadDetail.squadInsights.map((insight, i) => (
+                            <span key={i} className="flex items-center gap-1 text-[10px] bg-accent/40 rounded-md px-2 py-1">
+                              <Lightbulb className="h-2.5 w-2.5 text-sidebar" /> {insight}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {expandedSquadDetail.clients.map((client) => {
+                        const diff = client.percent - client.prevPercent;
+                        return (
+                          <div key={client.clientId} className="bg-accent/20 rounded-lg p-3 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-semibold text-foreground">{client.name}</span>
+                              <span className="text-sm font-bold tabular-nums" style={{ color: expandedSquadDetail.sqData?.color }}>{client.percent}%</span>
                             </div>
+                            <div className="h-2 rounded-full bg-border/30 overflow-hidden">
+                              <div className="h-full rounded-full transition-all duration-500" style={{ width: `${client.percent}%`, backgroundColor: expandedSquadDetail.sqData?.color }} />
+                            </div>
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="text-muted-foreground">{client.completed}/{client.total} etapas</span>
+                              <div className="flex items-center gap-3">
+                                <span className="text-muted-foreground">vel. {client.speed}%</span>
+                                {client.prevPercent > 0 && (
+                                  <span className={cn("flex items-center gap-0.5 font-medium",
+                                    diff > 0 ? "text-emerald-500" : diff < 0 ? "text-red-400" : "text-muted-foreground"
+                                  )}>
+                                    {diff > 0 ? <TrendingUp className="h-3 w-3" /> : diff < 0 ? <TrendingDown className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
+                                    {diff > 0 ? "+" : ""}{diff}% vs anterior
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            {client.insights.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5 pt-0.5">
+                                {client.insights.map((ins, i) => (
+                                  <span key={i} className="text-[10px] bg-background/60 rounded px-1.5 py-0.5 text-muted-foreground">{ins}</span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              )}
+            </CardContent>
+          </Card>
+        </FadeUp>
+      )}
+
+      {/* ═══ GRÁFICO 2 — PIPELINE DE PRODUÇÃO ═══ */}
+      {pipelineData.length > 0 && (
+        <FadeUp delay={0.56}>
+          <Card>
+            <CardContent className="py-6 px-6 space-y-5">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-2xl bg-sidebar/10 flex items-center justify-center">
+                  <BarChart2 className="h-6 w-6 text-sidebar" />
+                </div>
+                <div>
+                  <p className="text-xl font-bold leading-none">Pipeline de Produção</p>
+                  <p className="mt-1.5 text-sm text-muted-foreground">Clientes pendentes por etapa — identifique gargalos</p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                {pipelineData.map((item) => {
+                  const pct = item.total > 0 ? Math.round((item.pending / item.total) * 100) : 0;
+                  const isBottleneck = pct > 60;
+                  return (
+                    <div key={item.stage} className="flex items-center gap-3">
+                      <span className="text-xs font-medium text-muted-foreground w-28 text-right shrink-0">{item.label}</span>
+                      <div className="flex-1 h-7 rounded-lg bg-border/20 overflow-hidden relative">
+                        <div
+                          className={cn("h-full rounded-lg transition-all duration-700", isBottleneck ? "bg-destructive/70" : "bg-sidebar/60")}
+                          style={{ width: `${Math.max(pct, 4)}%` }}
+                        />
+                        <span className="absolute inset-0 flex items-center px-3 text-xs font-semibold text-foreground">
+                          {item.pending} {item.pending === 1 ? "cliente" : "clientes"} pendentes
+                        </span>
+                      </div>
+                      {isBottleneck && <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {(() => {
+                const worst = [...pipelineData].sort((a, b) => b.pending - a.pending)[0];
+                if (worst && worst.pending > 0) {
+                  return (
+                    <div className="flex items-center gap-2 text-xs bg-accent/30 rounded-lg px-3 py-2">
+                      <Lightbulb className="h-3.5 w-3.5 text-sidebar shrink-0" />
+                      <span className="text-muted-foreground">
+                        <strong className="text-foreground">{worst.label}</strong> é a etapa com mais clientes pendentes ({worst.pending}). Considere priorizar essa fase.
+                      </span>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+            </CardContent>
+          </Card>
+        </FadeUp>
+      )}
+
+      {/* ═══ GRÁFICO 3 — HEATMAP DE PERFORMANCE ═══ */}
+      {heatmapData.length > 0 && (
+        <FadeUp delay={0.6}>
+          <Card>
+            <CardContent className="py-6 px-6 space-y-5">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-2xl bg-sidebar/10 flex items-center justify-center">
+                  <Target className="h-6 w-6 text-sidebar" />
+                </div>
+                <div>
+                  <p className="text-xl font-bold leading-none">Heatmap de Performance</p>
+                  <p className="mt-1.5 text-sm text-muted-foreground">Squad × Etapa — verde (alto), amarelo (médio), vermelho (baixo)</p>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto -mx-2">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr>
+                      <th className="text-left py-2 px-2 font-semibold text-muted-foreground">Etapa</th>
+                      {heatmapData.map((sq) => (
+                        <th key={sq.id} className="text-center py-2 px-2 font-semibold text-muted-foreground min-w-[80px]">
+                          <div className="flex flex-col items-center gap-1">
+                            <div className="h-5 w-5 rounded flex items-center justify-center" style={{ backgroundColor: sq.color + "20" }}>
+                              {(() => { const I = getSquadIcon(sq.icon); return <I className="h-3 w-3" style={{ color: sq.color }} />; })()}
+                            </div>
+                            <span className="truncate max-w-[70px]">{sq.name}</span>
+                          </div>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {STAGE_ORDER.map((stageKey) => (
+                      <tr key={stageKey} className="border-t border-border/20">
+                        <td className="py-2 px-2 font-medium text-foreground">{STAGE_LABELS[stageKey]}</td>
+                        {heatmapData.map((sq) => {
+                          const perf = sq.stagePerf[stageKey];
+                          if (!perf || perf.percent === -1) {
+                            return <td key={sq.id} className="text-center py-2 px-2"><span className="text-muted-foreground">—</span></td>;
+                          }
+                          const bg = perf.percent >= 80 ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+                            : perf.percent >= 50 ? "bg-yellow-500/20 text-yellow-600 dark:text-yellow-400"
+                            : "bg-red-500/20 text-red-600 dark:text-red-400";
+                          return (
+                            <td key={sq.id} className="text-center py-2 px-2">
+                              <div className={cn("inline-flex items-center justify-center rounded-md px-2 py-1 font-bold tabular-nums min-w-[48px]", bg)}>
+                                {perf.percent}%
+                              </div>
+                            </td>
                           );
                         })}
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
+
+              {(() => {
+                // Find worst performing squad×stage combos
+                const weakSpots: { squad: string; stage: string; percent: number }[] = [];
+                heatmapData.forEach(sq => {
+                  STAGE_ORDER.forEach(stageKey => {
+                    const p = sq.stagePerf[stageKey];
+                    if (p && p.percent >= 0 && p.percent < 50) {
+                      weakSpots.push({ squad: sq.name, stage: STAGE_LABELS[stageKey], percent: p.percent });
+                    }
+                  });
+                });
+                weakSpots.sort((a, b) => a.percent - b.percent);
+                if (weakSpots.length === 0) return null;
+                const top3 = weakSpots.slice(0, 3);
+                return (
+                  <div className="space-y-1.5">
+                    {top3.map((ws, i) => (
+                      <div key={i} className="flex items-center gap-2 text-xs bg-accent/30 rounded-lg px-3 py-2">
+                        <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />
+                        <span className="text-muted-foreground">
+                          <strong className="text-foreground">{ws.squad}</strong> está com apenas <strong className="text-foreground">{ws.percent}%</strong> em <strong className="text-foreground">{ws.stage}</strong>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
         </FadeUp>
