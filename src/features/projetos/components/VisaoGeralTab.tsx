@@ -664,22 +664,19 @@ export function VisaoGeralTab() {
                       }}
                     />
                     <Bar dataKey="speed" radius={[4, 4, 0, 0]} maxBarSize={50}>
-                      {squadSpeedData.map((entry, index) => {
-                        const { Cell: RCell } = require("recharts");
-                        return (
-                          <RCell
-                            key={index}
-                            fill={
-                              !entry.hasData
-                                ? "hsl(var(--muted))"
-                                : bestSquad && entry.name === bestSquad.name
-                                  ? "url(#squadBarBestGrad)"
-                                  : "url(#squadBarGrad)"
-                            }
-                            fillOpacity={entry.hasData ? 1 : 0.3}
-                          />
-                        );
-                      })}
+                      {squadSpeedData.map((entry, index) => (
+                        <Cell
+                          key={index}
+                          fill={
+                            !entry.hasData
+                              ? "hsl(var(--muted))"
+                              : bestSquad && entry.name === bestSquad.name
+                                ? "url(#squadBarBestGrad)"
+                                : "url(#squadBarGrad)"
+                          }
+                          fillOpacity={entry.hasData ? 1 : 0.3}
+                        />
+                      ))}
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
