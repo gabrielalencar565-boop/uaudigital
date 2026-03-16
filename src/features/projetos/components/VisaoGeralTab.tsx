@@ -14,7 +14,7 @@ import {
   Plus, Trash2, Settings2, Users, CheckCircle2, Clock, FileText,
   MoreHorizontal, CalendarDays, HeartPulse, Target, ChevronLeft, ChevronRight, Star, Shield,
   BarChart2, ChevronsUpDown, Sword, Crown, Flame, Zap, Rocket, Diamond, Award, Trophy,
-  Heart, Sparkles, Sun, Moon, Cake,
+  Heart, Sparkles, Sun, Moon, Cake, TrendingUp, TrendingDown, Minus, ArrowLeft, AlertTriangle, Lightbulb,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
