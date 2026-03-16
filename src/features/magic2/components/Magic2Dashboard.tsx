@@ -129,9 +129,9 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
   })();
 
   return (
-    <section className={cn("grid gap-6 items-stretch grid-cols-1 lg:grid-cols-[minmax(280px,400px)_1fr] xl:grid-cols-[460px_1fr]", fullscreen && "min-h-[calc(100vh-120px)]")}>
+    <section className={cn("grid gap-6 items-stretch grid-cols-1 lg:grid-cols-[minmax(280px,400px)_1fr] xl:grid-cols-[460px_1fr]", fullscreen && "min-h-[calc(100vh-120px)] lg:grid-cols-[minmax(280px,520px)_1fr] xl:grid-cols-[560px_1fr] items-center")}>
       {/* Coluna esquerda: anel grande */}
-      <Card className="overflow-hidden flex flex-col relative group border-0"
+      <Card className={cn("overflow-hidden flex flex-col relative group border-0", fullscreen && "self-stretch")}
         style={{
           borderRadius: 16,
           boxShadow: "0 8px 32px -8px rgba(124,58,237,0.18), 0 0 0 1px rgba(139,92,246,0.12), inset 0 0 0 1px rgba(255,255,255,0.06)",
@@ -204,7 +204,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
       </Card>
 
       {/* Coluna direita: métricas (linha) + etapas (grade) */}
-      <div className={cn("flex flex-col gap-6", fullscreen && "flex-1")}>
+      <div className={cn("flex flex-col gap-6", fullscreen && "flex-1 justify-center")}>
         <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
           <MetricCard value={deadlineLabel} label="MAGIC NUMBER" highlight />
           <MetricCard value={String(dashboard.totalStages)} label="TOTAL" />
