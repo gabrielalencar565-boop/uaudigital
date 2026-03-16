@@ -203,6 +203,92 @@ export function MonthlyAnalysisSection() {
     return active.reduce((a, b) => a.proatividade > b.proatividade ? a : b);
   }, [proactivityData]);
 
+  // ── IDO (Índice de Disciplina Operacional) per month ──
+  const idoData = useMemo(() => {
+    if (!yearData) return [];
+    const now2 = new Date();
+    const currentMonth = now2.getFullYear() === year ? now2.getMonth() + 1 : 12;
+
+    return Array.from({ length: 12 }, (_, i) => {
+      const m = i + 1;
+      const monthCycles = (yearData.cycles ?? []).filter((c: any) => c.month === m && c.is_active);
+      const monthStages = (yearData.stages ?? []).filter((s: any) =>
+        monthCycles.some((c: any) => c.id === s.cycle_id)
+      );
+      const totalClients = monthCycles.length;
+      const totalStagesMonth = totalClients * MAGIC2_STAGES.length;
+      const completedStages = monthStages.filter((s: any) => s.completed);
+
+      if (m > currentMonth || totalClients === 0 || completedStages.length === 0) {
+        return { mes: MONTH_SHORT[i], monthNum: m, ido: 0, proatividade: 0, prazo: 0, consistencia: 0, hasData: false };
+      }
+
+      // 1. Proatividade (weight: 0.4)
+      let weightedSum = 0;
+      for (const s of completedStages) {
+        const day = s.completed_at ? new Date(s.completed_at).getDate() : 28;
+        if (day <= 10) weightedSum += 1.0;
+        else if (day <= 20) weightedSum += 0.6;
+        else if (day <= 27) weightedSum += 0.3;
+      }
+      const proatividade = Math.round((weightedSum / completedStages.length) * 100);
+
+      // 2. Prazo (weight: 0.3) — based on last completion day vs Magic Number
+      const completedDays = completedStages
+        .filter((s: any) => s.completed_at)
+        .map((s: any) => new Date(s.completed_at).getDate());
+      const lastDay = completedDays.length > 0 ? Math.max(...completedDays) : 28;
+      const allDone = completedStages.length === totalStagesMonth;
+      let prazoScore: number;
+      if (allDone) {
+        if (lastDay <= 24) prazoScore = 100;
+        else if (lastDay <= 27) prazoScore = 75;
+        else prazoScore = 40;
+      } else {
+        prazoScore = 30;
+      }
+
+      // 3. Consistência (weight: 0.3) — weekly distribution
+      const weekBuckets = [0, 0, 0, 0]; // week1(1-7), week2(8-14), week3(15-21), week4(22+)
+      for (const s of completedStages) {
+        const day = s.completed_at ? new Date(s.completed_at).getDate() : 28;
+        if (day <= 7) weekBuckets[0]++;
+        else if (day <= 14) weekBuckets[1]++;
+        else if (day <= 21) weekBuckets[2]++;
+        else weekBuckets[3]++;
+      }
+      const activeWeeks = weekBuckets.filter(w => w > 0).length;
+      const avgWeek = completedStages.length / 4;
+      const weekVariance = weekBuckets.reduce((sum, w) => sum + Math.pow(w - avgWeek, 2), 0) / 4;
+      const weekCv = avgWeek > 0 ? Math.sqrt(weekVariance) / avgWeek : 0;
+      let consistenciaScore = Math.max(0, Math.min(100, Math.round(100 - weekCv * 35)));
+      // Bonus for spreading across weeks
+      consistenciaScore = Math.round(consistenciaScore * 0.7 + (activeWeeks / 4) * 100 * 0.3);
+      consistenciaScore = Math.max(0, Math.min(100, consistenciaScore));
+
+      const ido = Math.round(proatividade * 0.4 + prazoScore * 0.3 + consistenciaScore * 0.3);
+
+      return {
+        mes: MONTH_SHORT[i],
+        monthNum: m,
+        ido,
+        proatividade,
+        prazo: prazoScore,
+        consistencia: consistenciaScore,
+        hasData: true,
+      };
+    });
+  }, [yearData, year]);
+
+  const idoStats = useMemo(() => {
+    const active = idoData.filter(m => m.hasData && m.ido > 0);
+    if (active.length === 0) return null;
+    const best = active.reduce((a, b) => a.ido > b.ido ? a : b);
+    const worst = active.reduce((a, b) => a.ido < b.ido ? a : b);
+    const avg = Math.round(active.reduce((s, m) => s + m.ido, 0) / active.length);
+    return { best, worst, avg };
+  }, [idoData]);
+
   // ── Annual score data (Uau Score per month) ──
   const annualScoreData = useMemo(() => {
     return computeAnnualScores(yearData, year, month);
@@ -585,6 +671,95 @@ export function MonthlyAnalysisSection() {
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
+                  </div>
+
+                  {/* ── IDO Line Chart ── */}
+                  <div className="space-y-3 pt-4 border-t border-border/50">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-bold text-foreground">Índice de Disciplina Operacional (IDO)</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Proatividade (40%) + Prazo (30%) + Consistência (30%)
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Best / Worst cards */}
+                    {idoStats && (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-sidebar/5 border border-sidebar/20">
+                          <Trophy className="h-4 w-4 text-success shrink-0" />
+                          <div className="text-xs">
+                            <p className="text-muted-foreground">Melhor mês</p>
+                            <p className="font-bold text-foreground">{idoStats.best.mes} — <span className="text-success">{idoStats.best.ido}</span></p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-destructive/5 border border-destructive/20">
+                          <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+                          <div className="text-xs">
+                            <p className="text-muted-foreground">Pior mês</p>
+                            <p className="font-bold text-foreground">{idoStats.worst.mes} — <span className="text-destructive">{idoStats.worst.ido}</span></p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="h-[180px] w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={idoData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} />
+                          <XAxis dataKey="mes" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                          <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                          <RechartsTooltip
+                            content={({ active, payload }) => {
+                              if (active && payload?.length) {
+                                const d = payload[0].payload;
+                                if (!d.hasData) return null;
+                                const cls = getClassification(d.ido);
+                                return (
+                                  <div className="bg-card border border-border rounded-xl px-3 py-2 shadow-lg text-xs space-y-0.5">
+                                    <p className="font-semibold text-foreground">{d.mes} {year}</p>
+                                    <p>IDO: <strong style={{ color: toneColor(cls.tone) }}>{d.ido}</strong> — {cls.label}</p>
+                                    <p className="text-muted-foreground">Proatividade: {d.proatividade} · Prazo: {d.prazo} · Consistência: {d.consistencia}</p>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            }}
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="ido"
+                            stroke="hsl(var(--sidebar))"
+                            strokeWidth={2.5}
+                            dot={(props: any) => {
+                              const { cx, cy, payload } = props;
+                              if (!payload.hasData) return <circle key={props.key} cx={cx} cy={cy} r={0} />;
+                              return (
+                                <circle
+                                  key={props.key}
+                                  cx={cx}
+                                  cy={cy}
+                                  r={4}
+                                  fill={barColor(payload.ido)}
+                                  stroke="hsl(var(--background))"
+                                  strokeWidth={2}
+                                />
+                              );
+                            }}
+                            activeDot={{ r: 6, fill: "hsl(var(--sidebar))", stroke: "hsl(var(--background))", strokeWidth: 2 }}
+                            connectNulls={false}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+
+                    {idoStats && (
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground pt-1 border-t border-border/50">
+                        <span>Média IDO: <strong className="text-foreground">{idoStats.avg}</strong></span>
+                        <span className="ml-auto">{year}</span>
+                      </div>
+                    )}
                   </div>
                 </>
               )}
