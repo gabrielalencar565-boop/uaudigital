@@ -8,7 +8,7 @@ import {
 } from "recharts";
 import { TrendingUp, Clock, Zap, BarChart3, Info } from "lucide-react";
 import {
-  format, startOfMonth, endOfMonth, eachDayOfInterval, getDaysInMonth,
+  format, getDaysInMonth,
 } from "date-fns";
 import { useMagic2Month } from "@/features/magic2/hooks/use-magic2";
 import { MAGIC2_STAGES } from "@/features/magic2/magic2-stages";
