@@ -203,6 +203,92 @@ export function MonthlyAnalysisSection() {
     return active.reduce((a, b) => a.proatividade > b.proatividade ? a : b);
   }, [proactivityData]);
 
+  // ── IDO (Índice de Disciplina Operacional) per month ──
+  const idoData = useMemo(() => {
+    if (!yearData) return [];
+    const now2 = new Date();
+    const currentMonth = now2.getFullYear() === year ? now2.getMonth() + 1 : 12;
+
+    return Array.from({ length: 12 }, (_, i) => {
+      const m = i + 1;
+      const monthCycles = (yearData.cycles ?? []).filter((c: any) => c.month === m && c.is_active);
+      const monthStages = (yearData.stages ?? []).filter((s: any) =>
+        monthCycles.some((c: any) => c.id === s.cycle_id)
+      );
+      const totalClients = monthCycles.length;
+      const totalStagesMonth = totalClients * MAGIC2_STAGES.length;
+      const completedStages = monthStages.filter((s: any) => s.completed);
+
+      if (m > currentMonth || totalClients === 0 || completedStages.length === 0) {
+        return { mes: MONTH_SHORT[i], monthNum: m, ido: 0, proatividade: 0, prazo: 0, consistencia: 0, hasData: false };
+      }
+
+      // 1. Proatividade (weight: 0.4)
+      let weightedSum = 0;
+      for (const s of completedStages) {
+        const day = s.completed_at ? new Date(s.completed_at).getDate() : 28;
+        if (day <= 10) weightedSum += 1.0;
+        else if (day <= 20) weightedSum += 0.6;
+        else if (day <= 27) weightedSum += 0.3;
+      }
+      const proatividade = Math.round((weightedSum / completedStages.length) * 100);
+
+      // 2. Prazo (weight: 0.3) — based on last completion day vs Magic Number
+      const completedDays = completedStages
+        .filter((s: any) => s.completed_at)
+        .map((s: any) => new Date(s.completed_at).getDate());
+      const lastDay = completedDays.length > 0 ? Math.max(...completedDays) : 28;
+      const allDone = completedStages.length === totalStagesMonth;
+      let prazoScore: number;
+      if (allDone) {
+        if (lastDay <= 24) prazoScore = 100;
+        else if (lastDay <= 27) prazoScore = 75;
+        else prazoScore = 40;
+      } else {
+        prazoScore = 30;
+      }
+
+      // 3. Consistência (weight: 0.3) — weekly distribution
+      const weekBuckets = [0, 0, 0, 0]; // week1(1-7), week2(8-14), week3(15-21), week4(22+)
+      for (const s of completedStages) {
+        const day = s.completed_at ? new Date(s.completed_at).getDate() : 28;
+        if (day <= 7) weekBuckets[0]++;
+        else if (day <= 14) weekBuckets[1]++;
+        else if (day <= 21) weekBuckets[2]++;
+        else weekBuckets[3]++;
+      }
+      const activeWeeks = weekBuckets.filter(w => w > 0).length;
+      const avgWeek = completedStages.length / 4;
+      const weekVariance = weekBuckets.reduce((sum, w) => sum + Math.pow(w - avgWeek, 2), 0) / 4;
+      const weekCv = avgWeek > 0 ? Math.sqrt(weekVariance) / avgWeek : 0;
+      let consistenciaScore = Math.max(0, Math.min(100, Math.round(100 - weekCv * 35)));
+      // Bonus for spreading across weeks
+      consistenciaScore = Math.round(consistenciaScore * 0.7 + (activeWeeks / 4) * 100 * 0.3);
+      consistenciaScore = Math.max(0, Math.min(100, consistenciaScore));
+
+      const ido = Math.round(proatividade * 0.4 + prazoScore * 0.3 + consistenciaScore * 0.3);
+
+      return {
+        mes: MONTH_SHORT[i],
+        monthNum: m,
+        ido,
+        proatividade,
+        prazo: prazoScore,
+        consistencia: consistenciaScore,
+        hasData: true,
+      };
+    });
+  }, [yearData, year]);
+
+  const idoStats = useMemo(() => {
+    const active = idoData.filter(m => m.hasData && m.ido > 0);
+    if (active.length === 0) return null;
+    const best = active.reduce((a, b) => a.ido > b.ido ? a : b);
+    const worst = active.reduce((a, b) => a.ido < b.ido ? a : b);
+    const avg = Math.round(active.reduce((s, m) => s + m.ido, 0) / active.length);
+    return { best, worst, avg };
+  }, [idoData]);
+
   // ── Annual score data (Uau Score per month) ──
   const annualScoreData = useMemo(() => {
     return computeAnnualScores(yearData, year, month);
