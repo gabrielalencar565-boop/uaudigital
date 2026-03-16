@@ -504,13 +504,6 @@ export function MonthlyAnalysisSection() {
                 <>
                   {/* ── Proactivity Index Chart ── */}
                   <div className="space-y-3">
-                    <div>
-                      <p className="text-sm font-bold text-foreground">Índice de Proatividade Mensal</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        Quanto mais cedo as tarefas foram concluídas no mês, maior o índice.
-                      </p>
-                    </div>
-
                     {bestProactivityMonth && bestProactivityMonth.proatividade > 0 && (
                       <div className="flex items-center gap-3 p-2.5 rounded-lg bg-sidebar/5 border border-sidebar/20">
                         <div className="h-8 w-8 rounded-lg bg-sidebar/10 flex items-center justify-center shrink-0">
