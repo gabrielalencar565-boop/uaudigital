@@ -21,9 +21,6 @@ import {
 
 import { getClassification, toneColor, barColor, MONTH_SHORT, computeAnnualScores } from "@/features/projetos/utils/score-utils";
 
-function localToneColor(tone: "success" | "primary" | "warning" | "danger") {
-  return toneColor(tone);
-}
 
 const INDICATOR_TOOLTIPS: Record<string, string> = {
   "Prazo": "Avalia se a operação foi concluída dentro do prazo ideal (dia 25). Quanto antes finalizar, maior a pontuação.",
