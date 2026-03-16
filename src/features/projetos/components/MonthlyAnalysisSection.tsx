@@ -611,6 +611,98 @@ export function MonthlyAnalysisSection() {
                       <span className="ml-auto">{year}</span>
                     </div>
                   )}
+
+                  {/* ── Proactivity Index Chart ── */}
+                  <div className="space-y-3 pt-4 border-t border-border/50">
+                    <div>
+                      <p className="text-sm font-bold text-foreground">Índice de Proatividade Mensal</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Quanto mais cedo as tarefas foram concluídas no mês, maior o índice.
+                      </p>
+                    </div>
+
+                    {bestProactivityMonth && bestProactivityMonth.proatividade > 0 && (
+                      <div className="flex items-center gap-3 p-2.5 rounded-lg bg-sidebar/5 border border-sidebar/20">
+                        <div className="h-8 w-8 rounded-lg bg-sidebar/10 flex items-center justify-center shrink-0">
+                          <Star className="h-4 w-4 text-sidebar fill-sidebar" />
+                        </div>
+                        <div className="text-xs">
+                          <p className="text-muted-foreground">Mês mais proativo do ano</p>
+                          <p className="font-bold text-foreground">
+                            {bestProactivityMonth.mes} — {bestProactivityMonth.proatividade}% de proatividade operacional
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="h-[200px] w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={proactivityData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                          <defs>
+                            <linearGradient id="proactBarGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="hsl(var(--sidebar))" stopOpacity={0.85} />
+                              <stop offset="100%" stopColor="hsl(var(--sidebar))" stopOpacity={0.35} />
+                            </linearGradient>
+                            <linearGradient id="proactBarBestGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="hsl(142, 71%, 45%)" stopOpacity={1} />
+                              <stop offset="100%" stopColor="hsl(142, 71%, 45%)" stopOpacity={0.45} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} vertical={false} />
+                          <XAxis
+                            dataKey="mes"
+                            tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                            axisLine={false}
+                            tickLine={false}
+                          />
+                          <YAxis
+                            domain={[0, 100]}
+                            tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                            axisLine={false}
+                            tickLine={false}
+                            tickFormatter={(v) => `${v}%`}
+                          />
+                          <RechartsTooltip
+                            content={({ active, payload }) => {
+                              if (active && payload?.length) {
+                                const d = payload[0].payload;
+                                if (!d.hasData) return null;
+                                return (
+                                  <div className="bg-card border border-border rounded-xl px-3 py-2 shadow-lg text-xs space-y-0.5">
+                                    <p className="font-semibold text-foreground flex items-center gap-1">
+                                      {d.mes} {year}
+                                      {bestProactivityMonth && d.monthNum === bestProactivityMonth.monthNum && (
+                                        <Star className="h-3 w-3 text-sidebar fill-sidebar" />
+                                      )}
+                                    </p>
+                                    <p className="text-muted-foreground">Proatividade: <strong className="text-foreground">{d.proatividade}%</strong></p>
+                                    <p className="text-muted-foreground">Tarefas concluídas: <strong className="text-foreground">{d.totalTarefas}</strong></p>
+                                    <p className="text-muted-foreground">Concluídas antes do dia 20: <strong className="text-foreground">{d.antes20Pct}%</strong></p>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            }}
+                          />
+                          <Bar dataKey="proatividade" radius={[4, 4, 0, 0]} maxBarSize={36}>
+                            {proactivityData.map((entry, index) => (
+                              <Cell
+                                key={index}
+                                fill={
+                                  !entry.hasData
+                                    ? "hsl(var(--muted))"
+                                    : bestProactivityMonth && entry.monthNum === bestProactivityMonth.monthNum
+                                      ? "url(#proactBarBestGrad)"
+                                      : "url(#proactBarGrad)"
+                                }
+                                fillOpacity={entry.hasData ? 1 : 0.3}
+                              />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
                 </>
               )}
             </CardContent>
