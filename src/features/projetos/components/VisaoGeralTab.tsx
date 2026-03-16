@@ -126,7 +126,7 @@ export function VisaoGeralTab() {
     queryKey: ["pm_tasks_overview", monthStart],
     queryFn: async () => {
       const { data } = await supabase.from("pm_tasks")
-        .select("id, assignee_id, status_global, stage_current, due_date, client_id, title")
+        .select("id, assignee_id, status_global, stage_current, due_date, client_id, title, updated_at")
         .eq("is_draft", false)
         .gte("due_date", monthStart)
         .lte("due_date", monthEnd);
