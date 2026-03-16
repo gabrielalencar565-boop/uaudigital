@@ -225,7 +225,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
                   stroke={isMobile ? 12 : 18}
                   className="animate-fade-in"
                   label={
-                    <div className={cn("font-semibold tabular-nums", isMobile ? "text-xl" : fullscreen ? "text-3xl" : "text-3xl")}>
+                    <div className={cn("font-semibold tabular-nums", isMobile ? "text-xl" : "text-2xl")}>
                       {item?.pct ?? 0}%
                     </div>
                   }
