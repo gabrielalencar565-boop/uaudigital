@@ -134,6 +134,48 @@ export function VisaoGeralTab() {
     },
   });
 
+  // Fetch Magic Number completed stages for current month (for squad speed)
+  const magic2StagesQ = useQuery({
+    queryKey: ["magic2_squad_speed", now.getFullYear(), now.getMonth() + 1],
+    queryFn: async () => {
+      const year = now.getFullYear();
+      const month = now.getMonth() + 1;
+      // Get cycles for this month
+      const { data: cycles } = await supabase
+        .from("magic2_cycles")
+        .select("id, client_id")
+        .eq("year", year)
+        .eq("month", month)
+        .eq("is_active", true);
+      if (!cycles?.length) return { stages: [] as any[], clientLinks: [] as any[] };
+
+      const cycleIds = cycles.map(c => c.id);
+      const { data: stages } = await supabase
+        .from("magic2_cycle_stages")
+        .select("id, cycle_id, stage, completed, completed_at")
+        .in("cycle_id", cycleIds)
+        .eq("completed", true);
+
+      // Get magic2_client_links to map magic2_client_id -> agenda_client_id
+      const magic2ClientIds = [...new Set(cycles.map(c => c.client_id))];
+      const { data: links } = await supabase
+        .from("magic2_client_links")
+        .select("magic2_client_id, agenda_client_id")
+        .in("magic2_client_id", magic2ClientIds);
+
+      // Build cycle_id -> agenda_client_id map
+      const cycleToAgenda: Record<string, string> = {};
+      const m2ToAgenda: Record<string, string> = {};
+      (links ?? []).forEach((l: any) => { m2ToAgenda[l.magic2_client_id] = l.agenda_client_id; });
+      (cycles ?? []).forEach((c: any) => { if (m2ToAgenda[c.client_id]) cycleToAgenda[c.id] = m2ToAgenda[c.client_id]; });
+
+      return {
+        stages: (stages ?? []).map((s: any) => ({ ...s, agenda_client_id: cycleToAgenda[s.cycle_id] ?? null })),
+        clientLinks: links ?? [],
+      };
+    },
+  });
+
   const healthQ = useHealthScores(now.getMonth() + 1, now.getFullYear());
 
   const squads = squadsQ.data ?? [];
@@ -187,31 +229,36 @@ export function VisaoGeralTab() {
     }));
   }, [squads, clientsPerSquad]);
 
-  // Squad delivery speed data
+  const magic2Stages = magic2StagesQ.data?.stages ?? [];
+
+  // Squad delivery speed data based on Magic Number completed stages
   const squadSpeedData = useMemo(() => {
     return squads.map((sq: any) => {
-      const memberIds = allSquadMembers.filter((sm: any) => sm.squad_id === sq.id).map((sm: any) => sm.user_id);
-      const doneTasks = allTasks.filter((t: any) => t.assignee_id && memberIds.includes(t.assignee_id) && t.status_global === "concluido");
+      // Get clients belonging to this squad
+      const squadClientIds = (clientsPerSquad[sq.id] ?? []);
 
-      if (doneTasks.length === 0) {
+      // Filter completed magic2 stages for this squad's clients
+      const squadStages = magic2Stages.filter((s: any) => s.agenda_client_id && squadClientIds.includes(s.agenda_client_id));
+
+      if (squadStages.length === 0) {
         return { name: sq.name, color: sq.color, icon: sq.icon ?? "shield", speed: 0, totalTarefas: 0, avgDaysBeforeMagic: 0, hasData: false };
       }
 
       let weightedSum = 0;
       let totalDaysBefore = 0;
-      for (const t of doneTasks) {
-        const day = new Date(t.updated_at).getDate();
+      for (const s of squadStages) {
+        const day = new Date(s.completed_at).getDate();
         if (day <= 10) weightedSum += 1.0;
         else if (day <= 20) weightedSum += 0.6;
         else if (day <= 27) weightedSum += 0.3;
         totalDaysBefore += Math.max(0, 27 - day);
       }
-      const speed = Math.round((weightedSum / doneTasks.length) * 100);
-      const avgDaysBeforeMagic = Math.round(totalDaysBefore / doneTasks.length);
+      const speed = Math.round((weightedSum / squadStages.length) * 100);
+      const avgDaysBeforeMagic = Math.round(totalDaysBefore / squadStages.length);
 
-      return { name: sq.name, color: sq.color, icon: sq.icon ?? "shield", speed, totalTarefas: doneTasks.length, avgDaysBeforeMagic, hasData: true };
+      return { name: sq.name, color: sq.color, icon: sq.icon ?? "shield", speed, totalTarefas: squadStages.length, avgDaysBeforeMagic, hasData: true };
     }).sort((a, b) => b.speed - a.speed);
-  }, [squads, allSquadMembers, allTasks]);
+  }, [squads, clientsPerSquad, magic2Stages]);
 
   const bestSquad = useMemo(() => {
     const active = squadSpeedData.filter(s => s.hasData);
@@ -610,7 +657,7 @@ export function VisaoGeralTab() {
                 </div>
                 <div>
                   <p className="text-xl font-bold leading-none">Desempenho por Squad</p>
-                  <p className="mt-1.5 text-sm text-muted-foreground">Velocidade de entrega das tarefas no mês atual</p>
+                  <p className="mt-1.5 text-sm text-muted-foreground">Velocidade de conclusão das etapas do Magic Number no mês atual</p>
                 </div>
               </div>
 
@@ -655,7 +702,7 @@ export function VisaoGeralTab() {
                                 )}
                               </p>
                               <p className="text-muted-foreground">Velocidade: <strong className="text-foreground">{d.speed}%</strong></p>
-                              <p className="text-muted-foreground">Tarefas concluídas: <strong className="text-foreground">{d.totalTarefas}</strong></p>
+                              <p className="text-muted-foreground">Etapas concluídas: <strong className="text-foreground">{d.totalTarefas}</strong></p>
                               <p className="text-muted-foreground">Média dias antes do Magic: <strong className="text-foreground">{d.avgDaysBeforeMagic}</strong></p>
                             </div>
                           );
