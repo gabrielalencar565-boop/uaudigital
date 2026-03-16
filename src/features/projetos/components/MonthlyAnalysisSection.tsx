@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { AnnualScoreAnalysis } from "./AnnualScoreAnalysis";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { AnimatedNumber } from "@/components/ui/animated-number";
@@ -54,6 +55,7 @@ export function MonthlyAnalysisSection() {
   const month = now.getMonth() + 1;
 
   const [chartMode, setChartMode] = useState<"mensal" | "anual">("mensal");
+  const [annualDialogOpen, setAnnualDialogOpen] = useState(false);
 
   const prevMonth = month === 1 ? 12 : month - 1;
   const prevYear = month === 1 ? year - 1 : year;
@@ -482,11 +484,19 @@ export function MonthlyAnalysisSection() {
           <Card>
             <CardContent className="py-5 px-5 space-y-4">
               {/* Header */}
-              <div>
-                <p className="text-base font-bold text-foreground">Uau Score do Mês</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Indicador de saúde da operação em relação ao Magic Number.
-                </p>
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-base font-bold text-foreground">Uau Score do Mês</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Indicador de saúde da operação em relação ao Magic Number.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setAnnualDialogOpen(true)}
+                  className="text-xs font-medium text-sidebar hover:underline shrink-0 mt-0.5"
+                >
+                  Ver desempenho anual →
+                </button>
               </div>
 
               {/* Score + Faixas */}
@@ -680,6 +690,7 @@ export function MonthlyAnalysisSection() {
             </CardContent>
           </Card>
         </div>
+        <AnnualScoreAnalysis open={annualDialogOpen} onOpenChange={setAnnualDialogOpen} year={year} />
       </div>
     </TooltipProvider>
   );
