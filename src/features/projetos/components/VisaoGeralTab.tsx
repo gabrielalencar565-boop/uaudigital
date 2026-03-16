@@ -261,41 +261,121 @@ export function VisaoGeralTab() {
     }));
   }, [squads, clientsPerSquad]);
 
-  const magic2Stages = magic2StagesQ.data?.stages ?? [];
+  const magic2AllStages = magic2StagesQ.data?.stages ?? [];
+  const magic2PrevStages = magic2StagesQ.data?.prevStages ?? [];
+  const magic2Stages = magic2AllStages.filter((s: any) => s.completed);
+
+  const STAGE_LABELS: Record<string, string> = {
+    planejamento: "Planejamento", captacao: "Captação", edicao_videos: "Vídeo",
+    design: "Design", pdf: "PDF", alteracoes: "Alterações", agendamento: "Agendamento",
+  };
+
+  const computeSpeed = (stages: any[]) => {
+    if (stages.length === 0) return { speed: 0, avgDays: 0 };
+    let weightedSum = 0;
+    let totalDaysBefore = 0;
+    for (const s of stages) {
+      const day = new Date(s.completed_at).getDate();
+      if (day <= 10) weightedSum += 1.0;
+      else if (day <= 20) weightedSum += 0.6;
+      else if (day <= 27) weightedSum += 0.3;
+      totalDaysBefore += Math.max(0, 27 - day);
+    }
+    return { speed: Math.round((weightedSum / stages.length) * 100), avgDays: Math.round(totalDaysBefore / stages.length) };
+  };
 
   // Squad delivery speed data based on Magic Number completed stages
   const squadSpeedData = useMemo(() => {
     return squads.map((sq: any) => {
-      // Get clients belonging to this squad
       const squadClientIds = (clientsPerSquad[sq.id] ?? []);
-
-      // Filter completed magic2 stages for this squad's clients
       const squadStages = magic2Stages.filter((s: any) => s.agenda_client_id && squadClientIds.includes(s.agenda_client_id));
+      const prevSquadStages = magic2PrevStages.filter((s: any) => s.completed && s.agenda_client_id && squadClientIds.includes(s.agenda_client_id));
+      const allSquadStages = magic2AllStages.filter((s: any) => s.agenda_client_id && squadClientIds.includes(s.agenda_client_id));
 
-      if (squadStages.length === 0) {
-        return { name: sq.name, color: sq.color, icon: sq.icon ?? "shield", speed: 0, totalTarefas: 0, avgDaysBeforeMagic: 0, hasData: false };
+      const { speed, avgDays } = computeSpeed(squadStages);
+      const { speed: prevSpeed } = computeSpeed(prevSquadStages);
+      const totalEtapas = allSquadStages.length;
+      const completedEtapas = squadStages.length;
+
+      if (totalEtapas === 0) {
+        return { id: sq.id, name: sq.name, color: sq.color, icon: sq.icon ?? "shield", speed: 0, totalTarefas: 0, avgDaysBeforeMagic: 0, hasData: false, prevSpeed: 0, totalEtapas: 0, completedEtapas: 0, percentComplete: 0 };
       }
 
-      let weightedSum = 0;
-      let totalDaysBefore = 0;
-      for (const s of squadStages) {
-        const day = new Date(s.completed_at).getDate();
-        if (day <= 10) weightedSum += 1.0;
-        else if (day <= 20) weightedSum += 0.6;
-        else if (day <= 27) weightedSum += 0.3;
-        totalDaysBefore += Math.max(0, 27 - day);
-      }
-      const speed = Math.round((weightedSum / squadStages.length) * 100);
-      const avgDaysBeforeMagic = Math.round(totalDaysBefore / squadStages.length);
-
-      return { name: sq.name, color: sq.color, icon: sq.icon ?? "shield", speed, totalTarefas: squadStages.length, avgDaysBeforeMagic, hasData: true };
+      return {
+        id: sq.id, name: sq.name, color: sq.color, icon: sq.icon ?? "shield",
+        speed, totalTarefas: completedEtapas, avgDaysBeforeMagic: avgDays, hasData: true,
+        prevSpeed, totalEtapas, completedEtapas, percentComplete: Math.round((completedEtapas / totalEtapas) * 100),
+      };
     }).sort((a, b) => b.speed - a.speed);
-  }, [squads, clientsPerSquad, magic2Stages]);
+  }, [squads, clientsPerSquad, magic2Stages, magic2PrevStages, magic2AllStages]);
 
   const bestSquad = useMemo(() => {
     const active = squadSpeedData.filter(s => s.hasData);
     return active.length > 0 ? active[0] : null;
   }, [squadSpeedData]);
+
+  // Detailed per-client data for expanded squad
+  const expandedSquadDetail = useMemo(() => {
+    if (!expandedSquadId) return null;
+    const sq = squads.find((s: any) => s.id === expandedSquadId);
+    if (!sq) return null;
+    const squadClientIds = (clientsPerSquad[sq.id] ?? []);
+    const squadAllStages = magic2AllStages.filter((s: any) => s.agenda_client_id && squadClientIds.includes(s.agenda_client_id));
+    const prevStages = magic2PrevStages.filter((s: any) => s.agenda_client_id && squadClientIds.includes(s.agenda_client_id));
+
+    // Group by client
+    const clientMap: Record<string, { name: string; stages: any[]; prevStages: any[] }> = {};
+    for (const s of squadAllStages) {
+      if (!clientMap[s.agenda_client_id]) clientMap[s.agenda_client_id] = { name: s.client_name, stages: [], prevStages: [] };
+      clientMap[s.agenda_client_id].stages.push(s);
+    }
+    for (const s of prevStages) {
+      if (!clientMap[s.agenda_client_id]) clientMap[s.agenda_client_id] = { name: s.client_name, stages: [], prevStages: [] };
+      clientMap[s.agenda_client_id].prevStages.push(s);
+    }
+
+    const clients = Object.entries(clientMap).map(([clientId, data]) => {
+      const completed = data.stages.filter((s: any) => s.completed);
+      const total = data.stages.length;
+      const percent = total > 0 ? Math.round((completed.length / total) * 100) : 0;
+      const prevCompleted = data.prevStages.filter((s: any) => s.completed);
+      const prevTotal = data.prevStages.length;
+      const prevPercent = prevTotal > 0 ? Math.round((prevCompleted.length / prevTotal) * 100) : 0;
+      const { speed } = computeSpeed(completed);
+      const { speed: prevSpd } = computeSpeed(prevCompleted);
+
+      // Insights
+      const insights: string[] = [];
+      if (percent === 100) insights.push("✅ Todas etapas concluídas");
+      else if (percent === 0) insights.push("⚠️ Nenhuma etapa iniciada");
+      else if (percent < 50 && new Date().getDate() > 15) insights.push("🔴 Atenção: menos da metade concluída na 2ª quinzena");
+      if (prevPercent > 0 && percent > prevPercent) insights.push("📈 Melhor que o mês anterior");
+      else if (prevPercent > 0 && percent < prevPercent) insights.push("📉 Abaixo do mês anterior");
+      const earlyStages = completed.filter((s: any) => new Date(s.completed_at).getDate() <= 10);
+      if (earlyStages.length >= 3) insights.push("⚡ Alta proatividade (3+ etapas nos primeiros 10 dias)");
+
+      return {
+        clientId, name: data.name, stages: data.stages, completed: completed.length, total, percent,
+        prevPercent, speed, prevSpeed: prevSpd, insights,
+      };
+    }).sort((a, b) => b.percent - a.percent);
+
+    // Squad-level insights
+    const sqData = squadSpeedData.find(s => s.id === expandedSquadId);
+    const squadInsights: string[] = [];
+    if (sqData) {
+      const diff = sqData.speed - sqData.prevSpeed;
+      if (diff > 10) squadInsights.push(`📈 Velocidade subiu ${diff}% em relação ao mês anterior`);
+      else if (diff < -10) squadInsights.push(`📉 Velocidade caiu ${Math.abs(diff)}% em relação ao mês anterior`);
+      else if (sqData.prevSpeed > 0) squadInsights.push("➡️ Velocidade estável em relação ao mês anterior");
+      const allDone = clients.every(c => c.percent === 100);
+      if (allDone) squadInsights.push("🏆 Todos os clientes 100% concluídos!");
+      const lagging = clients.filter(c => c.percent < 50 && c.total > 0);
+      if (lagging.length > 0) squadInsights.push(`⚠️ ${lagging.length} cliente(s) com menos de 50% das etapas`);
+    }
+
+    return { squad: sq, clients, squadInsights, sqData };
+  }, [expandedSquadId, squads, clientsPerSquad, magic2AllStages, magic2PrevStages, squadSpeedData]);
 
   // Table rows with all metrics
   const tableRows = useMemo(() => {
