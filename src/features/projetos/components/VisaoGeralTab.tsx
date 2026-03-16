@@ -315,6 +315,55 @@ export function VisaoGeralTab() {
     return active.length > 0 ? active[0] : null;
   }, [squadSpeedData]);
 
+  // Pipeline data: how many clients are "at" each stage (last completed stage)
+  const pipelineData = useMemo(() => {
+    // For each client with stages, find the last completed stage (or "not started")
+    const clientMap: Record<string, { stages: any[] }> = {};
+    for (const s of magic2AllStages) {
+      if (!s.agenda_client_id) continue;
+      if (!clientMap[s.agenda_client_id]) clientMap[s.agenda_client_id] = { stages: [] };
+      clientMap[s.agenda_client_id].stages.push(s);
+    }
+
+    const stageCounts: Record<string, number> = {};
+    STAGE_ORDER.forEach(k => { stageCounts[k] = 0; });
+
+    for (const [, data] of Object.entries(clientMap)) {
+      const completedStages = data.stages.filter((s: any) => s.completed).map((s: any) => s.stage);
+      // Count clients that have NOT completed each stage (i.e., still pending at that stage)
+      for (const stageKey of STAGE_ORDER) {
+        if (!completedStages.includes(stageKey)) {
+          stageCounts[stageKey]++;
+        }
+      }
+    }
+
+    return STAGE_ORDER.map(k => ({
+      stage: k,
+      label: STAGE_LABELS[k],
+      pending: stageCounts[k],
+      total: Object.keys(clientMap).length,
+    }));
+  }, [magic2AllStages]);
+
+  // Heatmap data: squad × stage completion percentage
+  const heatmapData = useMemo(() => {
+    return squads.map((sq: any) => {
+      const squadClientIds = clientsPerSquad[sq.id] ?? [];
+      const squadAllSt = magic2AllStages.filter((s: any) => s.agenda_client_id && squadClientIds.includes(s.agenda_client_id));
+
+      const stagePerf: Record<string, { completed: number; total: number; percent: number }> = {};
+      for (const stageKey of STAGE_ORDER) {
+        const stageItems = squadAllSt.filter((s: any) => s.stage === stageKey);
+        const completed = stageItems.filter((s: any) => s.completed).length;
+        const total = stageItems.length;
+        stagePerf[stageKey] = { completed, total, percent: total > 0 ? Math.round((completed / total) * 100) : -1 };
+      }
+
+      return { id: sq.id, name: sq.name, color: sq.color, icon: sq.icon ?? "shield", stagePerf };
+    });
+  }, [squads, clientsPerSquad, magic2AllStages]);
+
   // Detailed per-client data for expanded squad
   const expandedSquadDetail = useMemo(() => {
     if (!expandedSquadId) return null;
