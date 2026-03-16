@@ -690,6 +690,7 @@ export function MonthlyAnalysisSection() {
             </CardContent>
           </Card>
         </div>
+        <AnnualScoreAnalysis open={annualDialogOpen} onOpenChange={setAnnualDialogOpen} year={year} />
       </div>
     </TooltipProvider>
   );
