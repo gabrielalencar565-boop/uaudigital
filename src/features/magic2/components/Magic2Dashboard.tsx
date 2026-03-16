@@ -186,15 +186,15 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
           <ProgressRing
             value={dashboard.overallPct}
             tone={dashboard.overallPct === 100 ? "success" : "warning"}
-            size={fullscreen ? 400 : isMobile ? 180 : 260}
-            stroke={isMobile ? 16 : 22}
+            size={fullscreen ? 480 : isMobile ? 220 : 320}
+            stroke={isMobile ? 18 : 26}
             trackColor="rgba(91,33,182,0.45)"
             label={
               <div className="text-center">
-                <div className={cn("font-semibold tabular-nums tracking-tight text-white drop-shadow-sm", isMobile ? "text-5xl" : "text-6xl")}>
+                <div className={cn("font-semibold tabular-nums tracking-tight text-white drop-shadow-sm", isMobile ? "text-5xl" : "text-7xl")}>
                   {dashboard.overallPct}%
                 </div>
-                <div className={cn("mt-2 text-white/60", isMobile ? "text-[11px]" : "text-xs")}>
+                <div className={cn("mt-2 text-white/60", isMobile ? "text-xs" : "text-sm")}>
                   {dashboard.doneStages}/{dashboard.totalStages} etapas
                 </div>
               </div>
