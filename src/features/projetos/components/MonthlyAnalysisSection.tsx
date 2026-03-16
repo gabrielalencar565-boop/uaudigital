@@ -8,7 +8,7 @@ import {
 } from "recharts";
 import { TrendingUp, Clock, Zap, BarChart3, Info } from "lucide-react";
 import {
-  format, startOfMonth, endOfMonth, eachDayOfInterval, getDaysInMonth,
+  format, getDaysInMonth,
 } from "date-fns";
 import { useMagic2Month } from "@/features/magic2/hooks/use-magic2";
 import { MAGIC2_STAGES } from "@/features/magic2/magic2-stages";
@@ -51,7 +51,11 @@ export function MonthlyAnalysisSection() {
   const year = now.getFullYear();
   const month = now.getMonth() + 1;
 
+  const prevMonth = month === 1 ? 12 : month - 1;
+  const prevYear = month === 1 ? year - 1 : year;
+
   const { data: magic2Data } = useMagic2Month(year, month);
+  const { data: prevMagic2Data } = useMagic2Month(prevYear, prevMonth);
 
   const cycles = magic2Data?.cycles ?? [];
   const stages = magic2Data?.stages ?? [];
@@ -59,22 +63,37 @@ export function MonthlyAnalysisSection() {
   const totalStages = cycles.length * MAGIC2_STAGES.length;
   const doneStages = stages.filter(s => s.completed).length;
 
-  // ── Progress line chart data (based on magic2 completed_at) ──
-  const progressData = useMemo(() => {
-    const days = eachDayOfInterval({
-      start: startOfMonth(now),
-      end: new Date(Math.min(now.getTime(), endOfMonth(now).getTime())),
-    });
+  const prevCycles = prevMagic2Data?.cycles ?? [];
+  const prevStages = prevMagic2Data?.stages ?? [];
+  const prevTotalStages = prevCycles.length * MAGIC2_STAGES.length;
 
-    return days.map(d => {
-      const dateStr = format(d, "yyyy-MM-dd");
-      const doneUpToDay = stages.filter(s =>
-        s.completed && s.completed_at && s.completed_at.slice(0, 10) <= dateStr
-      ).length;
-      const pct = totalStages > 0 ? Math.round((doneUpToDay / totalStages) * 100) : 0;
-      return { dia: d.getDate(), percentual: pct };
+  // ── Progress line chart data (current + previous month) ──
+  const progressData = useMemo(() => {
+    const totalDays = getDaysInMonth(now);
+    const prevTotalDays = getDaysInMonth(new Date(prevYear, prevMonth - 1, 1));
+
+    return Array.from({ length: totalDays }, (_, i) => {
+      const dia = i + 1;
+
+      // Current month
+      const dateStr = format(new Date(year, month - 1, dia), "yyyy-MM-dd");
+      const doneUpToDay = dia <= currentDay
+        ? stages.filter(s => s.completed && s.completed_at && s.completed_at.slice(0, 10) <= dateStr).length
+        : undefined;
+      const pct = doneUpToDay !== undefined && totalStages > 0 ? Math.round((doneUpToDay / totalStages) * 100) : undefined;
+
+      // Previous month
+      const prevDateStr = dia <= prevTotalDays
+        ? format(new Date(prevYear, prevMonth - 1, dia), "yyyy-MM-dd")
+        : null;
+      const prevDoneUpToDay = prevDateStr
+        ? prevStages.filter(s => s.completed && s.completed_at && s.completed_at.slice(0, 10) <= prevDateStr).length
+        : undefined;
+      const prevPct = prevDoneUpToDay !== undefined && prevTotalStages > 0 ? Math.round((prevDoneUpToDay / prevTotalStages) * 100) : undefined;
+
+      return { dia, percentual: pct, anterior: prevPct };
     });
-  }, [stages, now, totalStages]);
+  }, [stages, prevStages, now, totalStages, prevTotalStages, currentDay, year, month, prevYear, prevMonth]);
 
   // ── Uau Score calculation ──
   const { prazo, eficiencia, consistencia, uauScore } = useMemo(() => {
@@ -135,12 +154,20 @@ export function MonthlyAnalysisSection() {
     { label: "Consistência", value: consistencia, icon: BarChart3 },
   ];
 
+  const MONTH_NAMES = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+  const prevMonthLabel = MONTH_NAMES[prevMonth - 1];
+  const currentMonthLabel = MONTH_NAMES[month - 1];
+
   const CustomChartTooltip = ({ active, payload, label }: any) => {
     if (active && payload?.length) {
       return (
-        <div className="bg-card border border-border rounded-xl px-3 py-2 shadow-lg text-xs">
+        <div className="bg-card border border-border rounded-xl px-3 py-2 shadow-lg text-xs space-y-0.5">
           <p className="font-semibold text-foreground">Dia {label}</p>
-          <p className="text-muted-foreground">{payload[0].value}% concluído</p>
+          {payload.map((p: any) => (
+            <p key={p.dataKey} style={{ color: p.color }}>
+              {p.dataKey === "percentual" ? currentMonthLabel : prevMonthLabel}: {p.value ?? "—"}%
+            </p>
+          ))}
         </div>
       );
     }
@@ -197,21 +224,39 @@ export function MonthlyAnalysisSection() {
                     <RechartsTooltip content={<CustomChartTooltip />} />
                     <Area
                       type="monotone"
+                      dataKey="anterior"
+                      stroke="hsl(var(--muted-foreground))"
+                      strokeWidth={1.5}
+                      strokeDasharray="5 3"
+                      fill="transparent"
+                      dot={false}
+                      activeDot={{ r: 3, fill: "hsl(var(--muted-foreground))", stroke: "hsl(var(--background))", strokeWidth: 2 }}
+                      connectNulls
+                    />
+                    <Area
+                      type="monotone"
                       dataKey="percentual"
                       stroke="hsl(var(--sidebar))"
                       strokeWidth={2.5}
                       fill="url(#progressGradient)"
                       dot={false}
                       activeDot={{ r: 4, fill: "hsl(var(--sidebar))", stroke: "hsl(var(--background))", strokeWidth: 2 }}
+                      connectNulls
                     />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
 
-              <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1 border-t border-border/50">
-                <span>Dia atual: <strong className="text-foreground">{currentDay}</strong></span>
-                <span>Progresso: <strong className="text-foreground">{totalStages > 0 ? Math.round((doneStages / totalStages) * 100) : 0}%</strong></span>
-                <span>{doneStages}/{totalStages} etapas</span>
+              <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1 border-t border-border/50 flex-wrap">
+                <span className="flex items-center gap-1.5">
+                  <span className="inline-block w-4 h-0.5 rounded-full" style={{ backgroundColor: "hsl(var(--sidebar))" }} />
+                  {currentMonthLabel} (atual)
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="inline-block w-4 h-0.5 rounded-full border-t border-dashed" style={{ borderColor: "hsl(var(--muted-foreground))" }} />
+                  {prevMonthLabel} (anterior)
+                </span>
+                <span className="ml-auto">{doneStages}/{totalStages} etapas</span>
                 <span>{cycles.length} clientes</span>
               </div>
             </CardContent>
