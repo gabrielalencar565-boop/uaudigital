@@ -253,6 +253,10 @@ export function MonthlyAnalysisSection() {
                         <stop offset="0%" stopColor="hsl(var(--sidebar))" stopOpacity={0.4} />
                         <stop offset="95%" stopColor="hsl(var(--sidebar))" stopOpacity={0.02} />
                       </linearGradient>
+                      <linearGradient id="prevGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="hsl(var(--muted-foreground))" stopOpacity={0.15} />
+                        <stop offset="95%" stopColor="hsl(var(--muted-foreground))" stopOpacity={0.01} />
+                      </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} />
                     <XAxis
