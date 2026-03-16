@@ -1,16 +1,18 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { ProgressRing } from "@/components/metrics/ProgressRing";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip as RechartsTooltip,
+  BarChart, Bar,
 } from "recharts";
 import { TrendingUp, Clock, Zap, BarChart3, Info } from "lucide-react";
 import {
   format, getDaysInMonth,
 } from "date-fns";
 import { useMagic2Month } from "@/features/magic2/hooks/use-magic2";
+import { useMagic2Year } from "@/features/magic2/hooks/use-magic2-year";
 import { MAGIC2_STAGES } from "@/features/magic2/magic2-stages";
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
@@ -51,11 +53,14 @@ export function MonthlyAnalysisSection() {
   const year = now.getFullYear();
   const month = now.getMonth() + 1;
 
+  const [chartMode, setChartMode] = useState<"mensal" | "anual">("mensal");
+
   const prevMonth = month === 1 ? 12 : month - 1;
   const prevYear = month === 1 ? year - 1 : year;
 
   const { data: magic2Data } = useMagic2Month(year, month);
   const { data: prevMagic2Data } = useMagic2Month(prevYear, prevMonth);
+  const { data: yearData } = useMagic2Year(year);
 
   const cycles = magic2Data?.cycles ?? [];
   const stages = magic2Data?.stages ?? [];
@@ -95,7 +100,34 @@ export function MonthlyAnalysisSection() {
     });
   }, [stages, prevStages, now, totalStages, prevTotalStages, currentDay, year, month, prevYear, prevMonth]);
 
-  // ── Uau Score calculation ──
+  // ── Annual progress data ──
+  const annualData = useMemo(() => {
+    const MONTH_SHORT = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+    if (!yearData?.monthly) return [];
+    return yearData.monthly.map(m => {
+      const total = m.totalClients * MAGIC2_STAGES.length;
+      const done = m.doneOnTime + m.doneLate;
+      // done here counts completed clients, we need stage-level data
+      // Use the stages array filtered per month
+      const monthStages = (yearData.stages ?? []).filter(s => {
+        const cycle = (yearData.cycles ?? []).find(c => c.id === s.cycle_id);
+        return cycle && cycle.month === m.month;
+      });
+      const completedStages = monthStages.filter(s => s.completed).length;
+      const totalStagesMonth = m.totalClients * MAGIC2_STAGES.length;
+      const pct = totalStagesMonth > 0 ? Math.round((completedStages / totalStagesMonth) * 100) : 0;
+      return {
+        mes: MONTH_SHORT[m.month - 1],
+        monthNum: m.month,
+        percentual: pct,
+        clientes: m.totalClients,
+        etapas: `${completedStages}/${totalStagesMonth}`,
+        isCurrent: m.month === month,
+      };
+    });
+  }, [yearData, month]);
+
+
   const { prazo, eficiencia, consistencia, uauScore } = useMemo(() => {
     // Prazo
     const completedDates = stages
@@ -238,111 +270,211 @@ export function MonthlyAnalysisSection() {
           {/* ── Chart 1: Progresso da Operação ── */}
           <Card>
             <CardContent className="py-5 px-5 space-y-4">
-              <div>
-                <p className="text-base font-bold text-foreground">Progresso da Operação no Mês</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Evolução baseada nas etapas do Magic Number concluídas ao longo do mês.
-                </p>
-              </div>
-
-              <div className="h-[220px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={progressData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="progressGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="hsl(var(--sidebar))" stopOpacity={0.4} />
-                        <stop offset="95%" stopColor="hsl(var(--sidebar))" stopOpacity={0.02} />
-                      </linearGradient>
-                      <linearGradient id="prevGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="hsl(var(--muted-foreground))" stopOpacity={0.15} />
-                        <stop offset="95%" stopColor="hsl(var(--muted-foreground))" stopOpacity={0.01} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} />
-                    <XAxis
-                      dataKey="dia"
-                      tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <YAxis
-                      domain={[0, 100]}
-                      tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
-                      axisLine={false}
-                      tickLine={false}
-                      tickFormatter={(v) => `${v}%`}
-                    />
-                    <RechartsTooltip content={<CustomChartTooltip />} />
-                    <Area
-                      type="monotone"
-                      dataKey="anterior"
-                      stroke="hsl(var(--muted-foreground))"
-                      strokeWidth={1.5}
-                      strokeDasharray="5 3"
-                      fill="url(#prevGradient)"
-                      dot={false}
-                      activeDot={{ r: 3, fill: "hsl(var(--muted-foreground))", stroke: "hsl(var(--background))", strokeWidth: 2 }}
-                      connectNulls
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="percentual"
-                      stroke="hsl(var(--sidebar))"
-                      strokeWidth={2.5}
-                      fill="url(#progressGradient)"
-                      dot={false}
-                      activeDot={{ r: 4, fill: "hsl(var(--sidebar))", stroke: "hsl(var(--background))", strokeWidth: 2 }}
-                      connectNulls
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-
-              <div className="flex flex-col gap-2 pt-1 border-t border-border/50">
-                <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
-                  <span className="flex items-center gap-1.5">
-                    <span className="inline-block w-4 h-0.5 rounded-full" style={{ backgroundColor: "hsl(var(--sidebar))" }} />
-                    {currentMonthLabel} (atual)
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <span className="inline-block w-4 h-0.5 rounded-full border-t border-dashed" style={{ borderColor: "hsl(var(--muted-foreground))" }} />
-                    {prevMonthLabel} (anterior)
-                  </span>
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-base font-bold text-foreground">
+                    Progresso da Operação {chartMode === "mensal" ? "no Mês" : "Anual"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {chartMode === "mensal"
+                      ? "Evolução baseada nas etapas do Magic Number concluídas ao longo do mês."
+                      : `Percentual de conclusão de cada mês em ${year}.`}
+                  </p>
                 </div>
-
-                {(() => {
-                  const currentPct = totalStages > 0 ? Math.round((doneStages / totalStages) * 100) : 0;
-                  const prevDoneStages = prevStages.filter(s => s.completed).length;
-                  const prevPct = prevTotalStages > 0 ? Math.round((prevDoneStages / prevTotalStages) * 100) : 0;
-
-                  // Compare same day progress
-                  const prevSameDayDone = prevStages.filter(s => {
-                    if (!s.completed || !s.completed_at) return false;
-                    const d = new Date(s.completed_at).getDate();
-                    return d <= currentDay;
-                  }).length;
-                  const prevSameDayPct = prevTotalStages > 0 ? Math.round((prevSameDayDone / prevTotalStages) * 100) : 0;
-                  const delta = currentPct - prevSameDayPct;
-
-                  return (
-                    <div className="flex items-center gap-4 text-xs flex-wrap">
-                      <span className="text-muted-foreground">
-                        Progresso atual: <strong className="text-foreground">{currentPct}%</strong>
-                      </span>
-                      <span className="text-muted-foreground">
-                        {prevMonthLabel} dia {currentDay}: <strong className="text-foreground">{prevSameDayPct}%</strong>
-                      </span>
-                      <span className={cn(
-                        "font-bold tabular-nums",
-                        delta > 0 ? "text-success" : delta < 0 ? "text-destructive" : "text-muted-foreground"
-                      )}>
-                        {delta > 0 ? "+" : ""}{delta}pp {delta > 0 ? "↑" : delta < 0 ? "↓" : "="}
-                      </span>
-                      <span className="ml-auto text-muted-foreground">{doneStages}/{totalStages} etapas · {cycles.length} clientes</span>
-                    </div>
-                  );
-                })()}
+                <div className="flex rounded-lg border border-border overflow-hidden shrink-0">
+                  <button
+                    onClick={() => setChartMode("mensal")}
+                    className={cn(
+                      "px-3 py-1 text-xs font-medium transition-colors",
+                      chartMode === "mensal"
+                        ? "bg-sidebar text-sidebar-foreground"
+                        : "bg-transparent text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    Mensal
+                  </button>
+                  <button
+                    onClick={() => setChartMode("anual")}
+                    className={cn(
+                      "px-3 py-1 text-xs font-medium transition-colors",
+                      chartMode === "anual"
+                        ? "bg-sidebar text-sidebar-foreground"
+                        : "bg-transparent text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    Anual
+                  </button>
+                </div>
               </div>
+
+              {chartMode === "mensal" ? (
+                <>
+                  <div className="h-[220px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={progressData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="progressGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="hsl(var(--sidebar))" stopOpacity={0.4} />
+                            <stop offset="95%" stopColor="hsl(var(--sidebar))" stopOpacity={0.02} />
+                          </linearGradient>
+                          <linearGradient id="prevGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="hsl(var(--muted-foreground))" stopOpacity={0.15} />
+                            <stop offset="95%" stopColor="hsl(var(--muted-foreground))" stopOpacity={0.01} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} />
+                        <XAxis
+                          dataKey="dia"
+                          tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                          axisLine={false}
+                          tickLine={false}
+                        />
+                        <YAxis
+                          domain={[0, 100]}
+                          tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                          axisLine={false}
+                          tickLine={false}
+                          tickFormatter={(v) => `${v}%`}
+                        />
+                        <RechartsTooltip content={<CustomChartTooltip />} />
+                        <Area
+                          type="monotone"
+                          dataKey="anterior"
+                          stroke="hsl(var(--muted-foreground))"
+                          strokeWidth={1.5}
+                          strokeDasharray="5 3"
+                          fill="url(#prevGradient)"
+                          dot={false}
+                          activeDot={{ r: 3, fill: "hsl(var(--muted-foreground))", stroke: "hsl(var(--background))", strokeWidth: 2 }}
+                          connectNulls
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="percentual"
+                          stroke="hsl(var(--sidebar))"
+                          strokeWidth={2.5}
+                          fill="url(#progressGradient)"
+                          dot={false}
+                          activeDot={{ r: 4, fill: "hsl(var(--sidebar))", stroke: "hsl(var(--background))", strokeWidth: 2 }}
+                          connectNulls
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  <div className="flex flex-col gap-2 pt-1 border-t border-border/50">
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
+                      <span className="flex items-center gap-1.5">
+                        <span className="inline-block w-4 h-0.5 rounded-full" style={{ backgroundColor: "hsl(var(--sidebar))" }} />
+                        {currentMonthLabel} (atual)
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="inline-block w-4 h-0.5 rounded-full border-t border-dashed" style={{ borderColor: "hsl(var(--muted-foreground))" }} />
+                        {prevMonthLabel} (anterior)
+                      </span>
+                    </div>
+
+                    {(() => {
+                      const currentPct = totalStages > 0 ? Math.round((doneStages / totalStages) * 100) : 0;
+                      const prevDoneStages = prevStages.filter(s => s.completed).length;
+                      const prevPct = prevTotalStages > 0 ? Math.round((prevDoneStages / prevTotalStages) * 100) : 0;
+
+                      const prevSameDayDone = prevStages.filter(s => {
+                        if (!s.completed || !s.completed_at) return false;
+                        const d = new Date(s.completed_at).getDate();
+                        return d <= currentDay;
+                      }).length;
+                      const prevSameDayPct = prevTotalStages > 0 ? Math.round((prevSameDayDone / prevTotalStages) * 100) : 0;
+                      const delta = currentPct - prevSameDayPct;
+
+                      return (
+                        <div className="flex items-center gap-4 text-xs flex-wrap">
+                          <span className="text-muted-foreground">
+                            Progresso atual: <strong className="text-foreground">{currentPct}%</strong>
+                          </span>
+                          <span className="text-muted-foreground">
+                            {prevMonthLabel} dia {currentDay}: <strong className="text-foreground">{prevSameDayPct}%</strong>
+                          </span>
+                          <span className={cn(
+                            "font-bold tabular-nums",
+                            delta > 0 ? "text-success" : delta < 0 ? "text-destructive" : "text-muted-foreground"
+                          )}>
+                            {delta > 0 ? "+" : ""}{delta}pp {delta > 0 ? "↑" : delta < 0 ? "↓" : "="}
+                          </span>
+                          <span className="ml-auto text-muted-foreground">{doneStages}/{totalStages} etapas · {cycles.length} clientes</span>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="h-[220px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={annualData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="hsl(var(--sidebar))" stopOpacity={0.9} />
+                            <stop offset="100%" stopColor="hsl(var(--sidebar))" stopOpacity={0.4} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} vertical={false} />
+                        <XAxis
+                          dataKey="mes"
+                          tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                          axisLine={false}
+                          tickLine={false}
+                        />
+                        <YAxis
+                          domain={[0, 100]}
+                          tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                          axisLine={false}
+                          tickLine={false}
+                          tickFormatter={(v) => `${v}%`}
+                        />
+                        <RechartsTooltip
+                          content={({ active, payload }) => {
+                            if (active && payload?.length) {
+                              const d = payload[0].payload;
+                              return (
+                                <div className="bg-card border border-border rounded-xl px-3 py-2 shadow-lg text-xs space-y-0.5">
+                                  <p className="font-semibold text-foreground">{d.mes} {year}</p>
+                                  <p className="text-muted-foreground">Conclusão: <strong className="text-foreground">{d.percentual}%</strong></p>
+                                  <p className="text-muted-foreground">Etapas: {d.etapas}</p>
+                                  <p className="text-muted-foreground">Clientes: {d.clientes}</p>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                        <Bar
+                          dataKey="percentual"
+                          fill="url(#barGradient)"
+                          radius={[4, 4, 0, 0]}
+                          maxBarSize={40}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1 border-t border-border/50 flex-wrap">
+                    {(() => {
+                      const completedMonths = annualData.filter(m => m.percentual === 100).length;
+                      const avgPct = annualData.length > 0
+                        ? Math.round(annualData.reduce((sum, m) => sum + m.percentual, 0) / annualData.filter(m => m.monthNum <= month).length)
+                        : 0;
+                      return (
+                        <>
+                          <span>Média: <strong className="text-foreground">{avgPct}%</strong></span>
+                          <span>Meses 100%: <strong className="text-foreground">{completedMonths}</strong></span>
+                          <span className="ml-auto">{year}</span>
+                        </>
+                      );
+                    })()}
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
 
