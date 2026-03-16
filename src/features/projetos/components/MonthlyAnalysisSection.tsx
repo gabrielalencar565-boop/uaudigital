@@ -672,6 +672,95 @@ export function MonthlyAnalysisSection() {
                       </ResponsiveContainer>
                     </div>
                   </div>
+
+                  {/* ── IDO Line Chart ── */}
+                  <div className="space-y-3 pt-4 border-t border-border/50">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-bold text-foreground">Índice de Disciplina Operacional (IDO)</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Proatividade (40%) + Prazo (30%) + Consistência (30%)
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Best / Worst cards */}
+                    {idoStats && (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-sidebar/5 border border-sidebar/20">
+                          <Trophy className="h-4 w-4 text-success shrink-0" />
+                          <div className="text-xs">
+                            <p className="text-muted-foreground">Melhor mês</p>
+                            <p className="font-bold text-foreground">{idoStats.best.mes} — <span className="text-success">{idoStats.best.ido}</span></p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-destructive/5 border border-destructive/20">
+                          <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+                          <div className="text-xs">
+                            <p className="text-muted-foreground">Pior mês</p>
+                            <p className="font-bold text-foreground">{idoStats.worst.mes} — <span className="text-destructive">{idoStats.worst.ido}</span></p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="h-[180px] w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={idoData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} />
+                          <XAxis dataKey="mes" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                          <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                          <RechartsTooltip
+                            content={({ active, payload }) => {
+                              if (active && payload?.length) {
+                                const d = payload[0].payload;
+                                if (!d.hasData) return null;
+                                const cls = getClassification(d.ido);
+                                return (
+                                  <div className="bg-card border border-border rounded-xl px-3 py-2 shadow-lg text-xs space-y-0.5">
+                                    <p className="font-semibold text-foreground">{d.mes} {year}</p>
+                                    <p>IDO: <strong style={{ color: toneColor(cls.tone) }}>{d.ido}</strong> — {cls.label}</p>
+                                    <p className="text-muted-foreground">Proatividade: {d.proatividade} · Prazo: {d.prazo} · Consistência: {d.consistencia}</p>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            }}
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="ido"
+                            stroke="hsl(var(--sidebar))"
+                            strokeWidth={2.5}
+                            dot={(props: any) => {
+                              const { cx, cy, payload } = props;
+                              if (!payload.hasData) return <circle key={props.key} cx={cx} cy={cy} r={0} />;
+                              return (
+                                <circle
+                                  key={props.key}
+                                  cx={cx}
+                                  cy={cy}
+                                  r={4}
+                                  fill={barColor(payload.ido)}
+                                  stroke="hsl(var(--background))"
+                                  strokeWidth={2}
+                                />
+                              );
+                            }}
+                            activeDot={{ r: 6, fill: "hsl(var(--sidebar))", stroke: "hsl(var(--background))", strokeWidth: 2 }}
+                            connectNulls={false}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+
+                    {idoStats && (
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground pt-1 border-t border-border/50">
+                        <span>Média IDO: <strong className="text-foreground">{idoStats.avg}</strong></span>
+                        <span className="ml-auto">{year}</span>
+                      </div>
+                    )}
+                  </div>
                 </>
               )}
             </CardContent>
