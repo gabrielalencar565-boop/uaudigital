@@ -186,15 +186,15 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
           <ProgressRing
             value={dashboard.overallPct}
             tone={dashboard.overallPct === 100 ? "success" : "warning"}
-            size={fullscreen ? 400 : isMobile ? 180 : 260}
-            stroke={isMobile ? 16 : 22}
+            size={fullscreen ? 480 : isMobile ? 220 : 320}
+            stroke={isMobile ? 18 : 26}
             trackColor="rgba(91,33,182,0.45)"
             label={
               <div className="text-center">
-                <div className={cn("font-semibold tabular-nums tracking-tight text-white drop-shadow-sm", isMobile ? "text-5xl" : "text-6xl")}>
+                <div className={cn("font-semibold tabular-nums tracking-tight text-white drop-shadow-sm", isMobile ? "text-5xl" : "text-7xl")}>
                   {dashboard.overallPct}%
                 </div>
-                <div className={cn("mt-2 text-white/60", isMobile ? "text-[11px]" : "text-xs")}>
+                <div className={cn("mt-2 text-white/60", isMobile ? "text-xs" : "text-sm")}>
                   {dashboard.doneStages}/{dashboard.totalStages} etapas
                 </div>
               </div>
@@ -221,11 +221,11 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
                 <ProgressRing
                   value={item?.pct ?? 0}
                   tone={(item?.pct ?? 0) === 100 ? "success" : "warning"}
-                  size={fullscreen ? 200 : isMobile ? 90 : 130}
-                  stroke={isMobile ? 10 : 12}
+                  size={fullscreen ? 240 : isMobile ? 110 : 160}
+                  stroke={isMobile ? 12 : 14}
                   className="animate-fade-in"
                   label={
-                    <div className={cn("font-semibold tabular-nums", isMobile ? "text-xl" : "text-2xl")}>
+                    <div className={cn("font-semibold tabular-nums", isMobile ? "text-2xl" : "text-3xl")}>
                       {item?.pct ?? 0}%
                     </div>
                   }
@@ -247,11 +247,11 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
             <ProgressRing
               value={clients100Pct}
               tone={clients100Pct === 100 ? "success" : "warning"}
-              size={fullscreen ? 200 : isMobile ? 90 : 130}
-              stroke={isMobile ? 10 : 12}
+              size={fullscreen ? 240 : isMobile ? 110 : 160}
+              stroke={isMobile ? 12 : 14}
               className="animate-fade-in"
               label={
-                <div className={cn("font-semibold tabular-nums", isMobile ? "text-xl" : "text-2xl")}>
+                <div className={cn("font-semibold tabular-nums", isMobile ? "text-2xl" : "text-3xl")}>
                   {dashboard.clients100}
                 </div>
               }
