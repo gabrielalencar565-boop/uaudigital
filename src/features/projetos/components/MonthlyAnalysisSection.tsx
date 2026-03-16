@@ -224,21 +224,39 @@ export function MonthlyAnalysisSection() {
                     <RechartsTooltip content={<CustomChartTooltip />} />
                     <Area
                       type="monotone"
+                      dataKey="anterior"
+                      stroke="hsl(var(--muted-foreground))"
+                      strokeWidth={1.5}
+                      strokeDasharray="5 3"
+                      fill="transparent"
+                      dot={false}
+                      activeDot={{ r: 3, fill: "hsl(var(--muted-foreground))", stroke: "hsl(var(--background))", strokeWidth: 2 }}
+                      connectNulls
+                    />
+                    <Area
+                      type="monotone"
                       dataKey="percentual"
                       stroke="hsl(var(--sidebar))"
                       strokeWidth={2.5}
                       fill="url(#progressGradient)"
                       dot={false}
                       activeDot={{ r: 4, fill: "hsl(var(--sidebar))", stroke: "hsl(var(--background))", strokeWidth: 2 }}
+                      connectNulls
                     />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
 
-              <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1 border-t border-border/50">
-                <span>Dia atual: <strong className="text-foreground">{currentDay}</strong></span>
-                <span>Progresso: <strong className="text-foreground">{totalStages > 0 ? Math.round((doneStages / totalStages) * 100) : 0}%</strong></span>
-                <span>{doneStages}/{totalStages} etapas</span>
+              <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1 border-t border-border/50 flex-wrap">
+                <span className="flex items-center gap-1.5">
+                  <span className="inline-block w-4 h-0.5 rounded-full" style={{ backgroundColor: "hsl(var(--sidebar))" }} />
+                  {currentMonthLabel} (atual)
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="inline-block w-4 h-0.5 rounded-full border-t border-dashed" style={{ borderColor: "hsl(var(--muted-foreground))" }} />
+                  {prevMonthLabel} (anterior)
+                </span>
+                <span className="ml-auto">{doneStages}/{totalStages} etapas</span>
                 <span>{cycles.length} clientes</span>
               </div>
             </CardContent>
