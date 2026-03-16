@@ -148,6 +148,66 @@ export function MonthlyAnalysisSection() {
     return { avg, totalEtapas, totalClientes };
   }, [annualProgressData, yearData]);
 
+  // ── Proactivity Index per month ──
+  const proactivityData = useMemo(() => {
+    if (!yearData) return [];
+    const now2 = new Date();
+    const currentMonth = now2.getFullYear() === year ? now2.getMonth() + 1 : 12;
+
+    return Array.from({ length: 12 }, (_, i) => {
+      const m = i + 1;
+      const monthCycles = (yearData.cycles ?? []).filter((c: any) => c.month === m && c.is_active);
+      const monthStages = (yearData.stages ?? []).filter((s: any) =>
+        monthCycles.some((c: any) => c.id === s.cycle_id)
+      );
+      const totalClients = monthCycles.length;
+      const totalStagesMonth = totalClients * MAGIC2_STAGES.length;
+      const completedStages = monthStages.filter((s: any) => s.completed);
+
+      if (m > currentMonth || totalClients === 0) {
+        return { mes: MONTH_SHORT[i], monthNum: m, proatividade: 0, totalTarefas: 0, antes20Pct: 0, hasData: false };
+      }
+
+      // Weighted proactivity: days 1-10 = weight 1.0, 11-20 = 0.6, 21-27 = 0.3
+      let weightedSum = 0;
+      let maxPossible = completedStages.length; // each task max weight = 1.0
+      let before20 = 0;
+
+      for (const s of completedStages) {
+        const day = s.completed_at ? new Date(s.completed_at).getDate() : 28;
+        if (day <= 10) weightedSum += 1.0;
+        else if (day <= 20) { weightedSum += 0.6; before20++; }
+        else if (day <= 27) weightedSum += 0.3;
+        // after 27 = 0
+        if (day <= 10) before20++;
+        if (day <= 20 && day > 10) {} // already counted
+      }
+      // Fix before20 count: days 1-20
+      before20 = completedStages.filter((s: any) => {
+        const day = s.completed_at ? new Date(s.completed_at).getDate() : 28;
+        return day <= 20;
+      }).length;
+
+      const proatividade = maxPossible > 0 ? Math.round((weightedSum / maxPossible) * 100) : 0;
+      const antes20Pct = completedStages.length > 0 ? Math.round((before20 / completedStages.length) * 100) : 0;
+
+      return {
+        mes: MONTH_SHORT[i],
+        monthNum: m,
+        proatividade,
+        totalTarefas: completedStages.length,
+        antes20Pct,
+        hasData: true,
+      };
+    });
+  }, [yearData, year]);
+
+  const bestProactivityMonth = useMemo(() => {
+    const active = proactivityData.filter(m => m.hasData && m.proatividade > 0);
+    if (active.length === 0) return null;
+    return active.reduce((a, b) => a.proatividade > b.proatividade ? a : b);
+  }, [proactivityData]);
+
   // ── Annual score data (Uau Score per month) ──
   const annualScoreData = useMemo(() => {
     return computeAnnualScores(yearData, year, month);
@@ -551,6 +611,98 @@ export function MonthlyAnalysisSection() {
                       <span className="ml-auto">{year}</span>
                     </div>
                   )}
+
+                  {/* ── Proactivity Index Chart ── */}
+                  <div className="space-y-3 pt-4 border-t border-border/50">
+                    <div>
+                      <p className="text-sm font-bold text-foreground">Índice de Proatividade Mensal</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Quanto mais cedo as tarefas foram concluídas no mês, maior o índice.
+                      </p>
+                    </div>
+
+                    {bestProactivityMonth && bestProactivityMonth.proatividade > 0 && (
+                      <div className="flex items-center gap-3 p-2.5 rounded-lg bg-sidebar/5 border border-sidebar/20">
+                        <div className="h-8 w-8 rounded-lg bg-sidebar/10 flex items-center justify-center shrink-0">
+                          <Star className="h-4 w-4 text-sidebar fill-sidebar" />
+                        </div>
+                        <div className="text-xs">
+                          <p className="text-muted-foreground">Mês mais proativo do ano</p>
+                          <p className="font-bold text-foreground">
+                            {bestProactivityMonth.mes} — {bestProactivityMonth.proatividade}% de proatividade operacional
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="h-[200px] w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={proactivityData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                          <defs>
+                            <linearGradient id="proactBarGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="hsl(var(--sidebar))" stopOpacity={0.85} />
+                              <stop offset="100%" stopColor="hsl(var(--sidebar))" stopOpacity={0.35} />
+                            </linearGradient>
+                            <linearGradient id="proactBarBestGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="hsl(142, 71%, 45%)" stopOpacity={1} />
+                              <stop offset="100%" stopColor="hsl(142, 71%, 45%)" stopOpacity={0.45} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} vertical={false} />
+                          <XAxis
+                            dataKey="mes"
+                            tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                            axisLine={false}
+                            tickLine={false}
+                          />
+                          <YAxis
+                            domain={[0, 100]}
+                            tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                            axisLine={false}
+                            tickLine={false}
+                            tickFormatter={(v) => `${v}%`}
+                          />
+                          <RechartsTooltip
+                            content={({ active, payload }) => {
+                              if (active && payload?.length) {
+                                const d = payload[0].payload;
+                                if (!d.hasData) return null;
+                                return (
+                                  <div className="bg-card border border-border rounded-xl px-3 py-2 shadow-lg text-xs space-y-0.5">
+                                    <p className="font-semibold text-foreground flex items-center gap-1">
+                                      {d.mes} {year}
+                                      {bestProactivityMonth && d.monthNum === bestProactivityMonth.monthNum && (
+                                        <Star className="h-3 w-3 text-sidebar fill-sidebar" />
+                                      )}
+                                    </p>
+                                    <p className="text-muted-foreground">Proatividade: <strong className="text-foreground">{d.proatividade}%</strong></p>
+                                    <p className="text-muted-foreground">Tarefas concluídas: <strong className="text-foreground">{d.totalTarefas}</strong></p>
+                                    <p className="text-muted-foreground">Concluídas antes do dia 20: <strong className="text-foreground">{d.antes20Pct}%</strong></p>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            }}
+                          />
+                          <Bar dataKey="proatividade" radius={[4, 4, 0, 0]} maxBarSize={36}>
+                            {proactivityData.map((entry, index) => (
+                              <Cell
+                                key={index}
+                                fill={
+                                  !entry.hasData
+                                    ? "hsl(var(--muted))"
+                                    : bestProactivityMonth && entry.monthNum === bestProactivityMonth.monthNum
+                                      ? "url(#proactBarBestGrad)"
+                                      : "url(#proactBarGrad)"
+                                }
+                                fillOpacity={entry.hasData ? 1 : 0.3}
+                              />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
                 </>
               )}
             </CardContent>
