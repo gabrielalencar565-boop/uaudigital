@@ -194,7 +194,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
                 <div className={cn("font-semibold tabular-nums tracking-tight text-white drop-shadow-sm", isMobile ? "text-5xl" : fullscreen ? "text-6xl" : "text-7xl")}>
                   {dashboard.overallPct}%
                 </div>
-                <div className={cn("mt-2 text-white/60", isMobile ? "text-xs" : fullscreen ? "text-lg" : "text-sm")}>
+                <div className={cn("mt-2 text-white/60", isMobile ? "text-xs" : fullscreen ? "text-sm" : "text-sm")}>
                   {dashboard.doneStages}/{dashboard.totalStages} etapas
                 </div>
               </div>
