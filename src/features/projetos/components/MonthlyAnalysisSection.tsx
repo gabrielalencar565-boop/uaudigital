@@ -247,17 +247,50 @@ export function MonthlyAnalysisSection() {
                 </ResponsiveContainer>
               </div>
 
-              <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1 border-t border-border/50 flex-wrap">
-                <span className="flex items-center gap-1.5">
-                  <span className="inline-block w-4 h-0.5 rounded-full" style={{ backgroundColor: "hsl(var(--sidebar))" }} />
-                  {currentMonthLabel} (atual)
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="inline-block w-4 h-0.5 rounded-full border-t border-dashed" style={{ borderColor: "hsl(var(--muted-foreground))" }} />
-                  {prevMonthLabel} (anterior)
-                </span>
-                <span className="ml-auto">{doneStages}/{totalStages} etapas</span>
-                <span>{cycles.length} clientes</span>
+              <div className="flex flex-col gap-2 pt-1 border-t border-border/50">
+                <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
+                  <span className="flex items-center gap-1.5">
+                    <span className="inline-block w-4 h-0.5 rounded-full" style={{ backgroundColor: "hsl(var(--sidebar))" }} />
+                    {currentMonthLabel} (atual)
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="inline-block w-4 h-0.5 rounded-full border-t border-dashed" style={{ borderColor: "hsl(var(--muted-foreground))" }} />
+                    {prevMonthLabel} (anterior)
+                  </span>
+                </div>
+
+                {(() => {
+                  const currentPct = totalStages > 0 ? Math.round((doneStages / totalStages) * 100) : 0;
+                  const prevDoneStages = prevStages.filter(s => s.completed).length;
+                  const prevPct = prevTotalStages > 0 ? Math.round((prevDoneStages / prevTotalStages) * 100) : 0;
+
+                  // Compare same day progress
+                  const prevSameDayDone = prevStages.filter(s => {
+                    if (!s.completed || !s.completed_at) return false;
+                    const d = new Date(s.completed_at).getDate();
+                    return d <= currentDay;
+                  }).length;
+                  const prevSameDayPct = prevTotalStages > 0 ? Math.round((prevSameDayDone / prevTotalStages) * 100) : 0;
+                  const delta = currentPct - prevSameDayPct;
+
+                  return (
+                    <div className="flex items-center gap-4 text-xs flex-wrap">
+                      <span className="text-muted-foreground">
+                        Progresso atual: <strong className="text-foreground">{currentPct}%</strong>
+                      </span>
+                      <span className="text-muted-foreground">
+                        {prevMonthLabel} dia {currentDay}: <strong className="text-foreground">{prevSameDayPct}%</strong>
+                      </span>
+                      <span className={cn(
+                        "font-bold tabular-nums",
+                        delta > 0 ? "text-success" : delta < 0 ? "text-destructive" : "text-muted-foreground"
+                      )}>
+                        {delta > 0 ? "+" : ""}{delta}pp {delta > 0 ? "↑" : delta < 0 ? "↓" : "="}
+                      </span>
+                      <span className="ml-auto text-muted-foreground">{doneStages}/{totalStages} etapas · {cycles.length} clientes</span>
+                    </div>
+                  );
+                })()}
               </div>
             </CardContent>
           </Card>
