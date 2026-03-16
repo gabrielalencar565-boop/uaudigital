@@ -283,7 +283,7 @@ export function MonthlyAnalysisSection() {
                       </span>
                       <span className={cn(
                         "font-bold tabular-nums",
-                        delta > 0 ? "text-emerald-500" : delta < 0 ? "text-red-500" : "text-muted-foreground"
+                        delta > 0 ? "text-success" : delta < 0 ? "text-destructive" : "text-muted-foreground"
                       )}>
                         {delta > 0 ? "+" : ""}{delta}pp {delta > 0 ? "↑" : delta < 0 ? "↓" : "="}
                       </span>
