@@ -92,32 +92,22 @@ export function MonthlyAnalysisSection() {
     });
   }, [stages, prevStages, now, totalStages, prevTotalStages, currentDay, year, month, prevYear, prevMonth]);
 
-  // ── Annual progress data ──
-  const annualData = useMemo(() => {
-    const MONTH_SHORT = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
-    if (!yearData?.monthly) return [];
-    return yearData.monthly.map(m => {
-      const total = m.totalClients * MAGIC2_STAGES.length;
-      const done = m.doneOnTime + m.doneLate;
-      // done here counts completed clients, we need stage-level data
-      // Use the stages array filtered per month
-      const monthStages = (yearData.stages ?? []).filter(s => {
-        const cycle = (yearData.cycles ?? []).find(c => c.id === s.cycle_id);
-        return cycle && cycle.month === m.month;
-      });
-      const completedStages = monthStages.filter(s => s.completed).length;
-      const totalStagesMonth = m.totalClients * MAGIC2_STAGES.length;
-      const pct = totalStagesMonth > 0 ? Math.round((completedStages / totalStagesMonth) * 100) : 0;
-      return {
-        mes: MONTH_SHORT[m.month - 1],
-        monthNum: m.month,
-        percentual: pct,
-        clientes: m.totalClients,
-        etapas: `${completedStages}/${totalStagesMonth}`,
-        isCurrent: m.month === month,
-      };
-    });
-  }, [yearData, month]);
+  // ── Annual score data (Uau Score per month) ──
+  const annualScoreData = useMemo(() => {
+    return computeAnnualScores(yearData, year, month);
+  }, [yearData, year, month]);
+
+  const annualStats = useMemo(() => {
+    const active = annualScoreData.filter(m => m.hasData && m.score > 0);
+    if (active.length === 0) return null;
+    const scores = active.map(m => m.score);
+    const avg = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+    const best = active.reduce((a, b) => a.score > b.score ? a : b);
+    const worst = active.reduce((a, b) => a.score < b.score ? a : b);
+    const healthy = active.filter(m => m.score >= 75).length;
+    const critical = active.filter(m => m.score < 60).length;
+    return { avg, best, worst, healthy, critical };
+  }, [annualScoreData]);
 
 
   const { prazo, eficiencia, consistencia, uauScore } = useMemo(() => {
