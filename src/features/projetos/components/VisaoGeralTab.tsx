@@ -758,7 +758,7 @@ export function VisaoGeralTab() {
         </Card>
       </FadeUp>
 
-      {/* Squad delivery speed chart */}
+      {/* Squad delivery speed — general overview */}
       {squadSpeedData.length > 0 && (
         <FadeUp delay={0.52}>
           <Card>
@@ -769,200 +769,150 @@ export function VisaoGeralTab() {
                 </div>
                 <div>
                   <p className="text-xl font-bold leading-none">Desempenho por Squad</p>
-                  <p className="mt-1.5 text-sm text-muted-foreground">Conclusão das etapas do Magic Number por squad — clique para detalhar</p>
+                  <p className="mt-1.5 text-sm text-muted-foreground">Progresso das etapas do Magic Number — {format(now, "MMMM yyyy", { locale: ptBR })}</p>
                 </div>
               </div>
 
-              {/* Chart */}
-              <div className="h-[220px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={squadSpeedData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }} layout="horizontal">
-                    <defs>
-                      {squadSpeedData.map((sq, i) => (
-                        <linearGradient key={`sqGrad-${i}`} id={`sqGrad-${i}`} x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor={sq.color} stopOpacity={0.95} />
-                          <stop offset="100%" stopColor={sq.color} stopOpacity={0.4} />
-                        </linearGradient>
-                      ))}
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.4} />
-                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-                    <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}%`} />
-                    <Tooltip
-                      content={({ active, payload }: any) => {
-                        if (active && payload?.length) {
-                          const d = payload[0].payload;
-                          if (!d.hasData) return null;
-                          const diff = d.speed - d.prevSpeed;
-                          return (
-                            <div className="bg-card border border-border rounded-xl px-3 py-2 shadow-lg text-xs space-y-0.5">
-                              <p className="font-semibold text-foreground flex items-center gap-1">
-                                {d.name}
-                                {bestSquad && d.name === bestSquad.name && <Trophy className="h-3 w-3 text-sidebar" />}
-                              </p>
-                              <p className="text-muted-foreground">Velocidade: <strong className="text-foreground">{d.speed}%</strong></p>
-                              <p className="text-muted-foreground">Progresso: <strong className="text-foreground">{d.completedEtapas}/{d.totalEtapas} etapas ({d.percentComplete}%)</strong></p>
-                              <p className="text-muted-foreground">Média dias antes do Magic: <strong className="text-foreground">{d.avgDaysBeforeMagic}</strong></p>
-                              {d.prevSpeed > 0 && (
-                                <p className="text-muted-foreground flex items-center gap-1">
-                                  vs mês anterior:
-                                  <strong className={cn("text-foreground", diff > 0 ? "text-emerald-500" : diff < 0 ? "text-red-400" : "")}>
-                                    {diff > 0 ? "+" : ""}{diff}%
-                                  </strong>
-                                  {diff > 0 ? <TrendingUp className="h-3 w-3 text-emerald-500" /> : diff < 0 ? <TrendingDown className="h-3 w-3 text-red-400" /> : <Minus className="h-3 w-3" />}
-                                </p>
-                              )}
-                            </div>
-                          );
-                        }
-                        return null;
-                      }}
-                    />
-                    <Bar dataKey="speed" radius={[4, 4, 0, 0]} maxBarSize={50} cursor="pointer"
-                      onClick={(_: any, index: number) => {
-                        const sq = squadSpeedData[index];
-                        if (sq?.hasData) setExpandedSquadId(prev => prev === sq.id ? null : sq.id);
-                      }}
-                    >
-                      {squadSpeedData.map((entry, index) => (
-                        <Cell key={index} fill={!entry.hasData ? "hsl(var(--muted))" : `url(#sqGrad-${index})`} fillOpacity={entry.hasData ? 1 : 0.3} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+              {/* KPI cards row */}
+              {(() => {
+                const activeSquads = squadSpeedData.filter(s => s.hasData);
+                const totalCompleted = activeSquads.reduce((a, s) => a + s.completedEtapas, 0);
+                const totalAll = activeSquads.reduce((a, s) => a + s.totalEtapas, 0);
+                const overallPercent = totalAll > 0 ? Math.round((totalCompleted / totalAll) * 100) : 0;
+                const avgSpeed = activeSquads.length > 0 ? Math.round(activeSquads.reduce((a, s) => a + s.speed, 0) / activeSquads.length) : 0;
+                return (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="bg-accent/30 rounded-xl p-3 text-center">
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Conclusão geral</p>
+                      <p className="text-2xl font-bold text-foreground mt-1">{overallPercent}%</p>
+                      <p className="text-[10px] text-muted-foreground">{totalCompleted}/{totalAll} etapas</p>
+                    </div>
+                    <div className="bg-accent/30 rounded-xl p-3 text-center">
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Velocidade média</p>
+                      <p className="text-2xl font-bold text-foreground mt-1">{avgSpeed}%</p>
+                      <p className="text-[10px] text-muted-foreground">proatividade</p>
+                    </div>
+                    <div className="bg-accent/30 rounded-xl p-3 text-center">
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Squads ativos</p>
+                      <p className="text-2xl font-bold text-foreground mt-1">{activeSquads.length}</p>
+                      <p className="text-[10px] text-muted-foreground">de {squadSpeedData.length}</p>
+                    </div>
+                    <div className="bg-accent/30 rounded-xl p-3 text-center">
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Dias restantes</p>
+                      <p className="text-2xl font-bold text-foreground mt-1">{Math.max(0, 27 - now.getDate())}</p>
+                      <p className="text-[10px] text-muted-foreground">até dia 27</p>
+                    </div>
+                  </div>
+                );
+              })()}
 
-              {/* Ranking with comparison */}
-              {squadSpeedData.filter(s => s.hasData).length > 0 && (
-                <div className="pt-2 border-t border-border/50 space-y-1.5">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Ranking de Velocidade</p>
-                  {squadSpeedData.filter(s => s.hasData).map((sq, i) => {
-                    const SquadIcon = getSquadIcon(sq.icon);
-                    const diff = sq.speed - sq.prevSpeed;
-                    return (
+              {/* Squad progress rows */}
+              <div className="space-y-3">
+                {squadSpeedData.map((sq) => {
+                  const SquadIcon = getSquadIcon(sq.icon);
+                  const diff = sq.speed - sq.prevSpeed;
+                  const isExpanded = expandedSquadId === sq.id;
+                  const detail = isExpanded ? expandedSquadDetail : null;
+
+                  return (
+                    <div key={sq.id} className="space-y-0">
                       <div
-                        key={sq.name}
                         className={cn(
-                          "flex items-center gap-3 text-xs py-2 px-2 rounded-lg cursor-pointer transition-colors",
-                          expandedSquadId === sq.id ? "bg-accent/50" : "hover:bg-accent/30"
+                          "flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all",
+                          isExpanded ? "bg-accent/50 rounded-b-none" : "bg-accent/20 hover:bg-accent/30"
                         )}
                         onClick={() => setExpandedSquadId(prev => prev === sq.id ? null : sq.id)}
                       >
-                        <span className={cn("font-bold tabular-nums w-5 text-center", i === 0 ? "text-sidebar" : "text-muted-foreground")}>
-                          {i + 1}º
-                        </span>
-                        <div className="h-5 w-5 rounded flex items-center justify-center" style={{ backgroundColor: sq.color + "20" }}>
-                          <SquadIcon className="h-3 w-3" style={{ color: sq.color }} />
+                        <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: sq.color + "20" }}>
+                          <SquadIcon className="h-4 w-4" style={{ color: sq.color }} />
                         </div>
-                        <span className={cn("font-medium", i === 0 ? "text-foreground" : "text-muted-foreground")}>{sq.name}</span>
-                        {i === 0 && <Trophy className="h-3.5 w-3.5 text-sidebar" />}
-                        <span className="text-muted-foreground ml-1">{sq.completedEtapas}/{sq.totalEtapas}</span>
-                        {sq.prevSpeed > 0 && (
-                          <span className={cn("flex items-center gap-0.5 text-[10px]", diff > 0 ? "text-emerald-500" : diff < 0 ? "text-red-400" : "text-muted-foreground")}>
-                            {diff > 0 ? <TrendingUp className="h-2.5 w-2.5" /> : diff < 0 ? <TrendingDown className="h-2.5 w-2.5" /> : <Minus className="h-2.5 w-2.5" />}
-                            {diff > 0 ? "+" : ""}{diff}%
-                          </span>
-                        )}
-                        <span className="ml-auto font-bold tabular-nums" style={{ color: sq.color }}>
-                          {sq.speed}%
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Expanded squad detail */}
-              {expandedSquadDetail && (
-                <div className="pt-4 border-t border-border/50 space-y-4" style={{ animation: "fadeUp 0.4s ease-out" }}>
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => setExpandedSquadId(null)}
-                      className="h-7 w-7 rounded-lg bg-accent/50 flex items-center justify-center hover:bg-accent transition-colors"
-                    >
-                      <ArrowLeft className="h-3.5 w-3.5 text-muted-foreground" />
-                    </button>
-                    <div className="h-8 w-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: expandedSquadDetail.squad.color + "20" }}>
-                      {(() => { const I = getSquadIcon(expandedSquadDetail.squad.icon ?? "shield"); return <I className="h-4 w-4" style={{ color: expandedSquadDetail.squad.color }} />; })()}
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-foreground">{expandedSquadDetail.squad.name}</p>
-                      <p className="text-[11px] text-muted-foreground">Detalhe por cliente — {format(now, "MMMM yyyy", { locale: ptBR })}</p>
-                    </div>
-                  </div>
-
-                  {/* Squad-level insights */}
-                  {expandedSquadDetail.squadInsights.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {expandedSquadDetail.squadInsights.map((insight, i) => (
-                        <div key={i} className="flex items-center gap-1.5 text-[11px] bg-accent/40 rounded-lg px-2.5 py-1.5">
-                          <Lightbulb className="h-3 w-3 text-sidebar shrink-0" />
-                          <span className="text-foreground">{insight}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Per-client breakdown */}
-                  <div className="space-y-3">
-                    {expandedSquadDetail.clients.map((client) => (
-                      <div key={client.clientId} className="bg-accent/20 rounded-xl p-3 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm font-semibold text-foreground">{client.name}</p>
+                        <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            {client.prevPercent > 0 && (
-                              <span className={cn(
-                                "flex items-center gap-0.5 text-[10px] font-medium",
-                                client.percent > client.prevPercent ? "text-emerald-500" : client.percent < client.prevPercent ? "text-red-400" : "text-muted-foreground"
+                            <span className="text-sm font-semibold text-foreground truncate">{sq.name}</span>
+                            {bestSquad?.id === sq.id && <Trophy className="h-3.5 w-3.5 text-sidebar shrink-0" />}
+                            {sq.prevSpeed > 0 && (
+                              <span className={cn("flex items-center gap-0.5 text-[10px] font-medium shrink-0",
+                                diff > 0 ? "text-emerald-500" : diff < 0 ? "text-red-400" : "text-muted-foreground"
                               )}>
-                                {client.percent > client.prevPercent ? <TrendingUp className="h-2.5 w-2.5" /> : client.percent < client.prevPercent ? <TrendingDown className="h-2.5 w-2.5" /> : <Minus className="h-2.5 w-2.5" />}
-                                {client.prevPercent}% → {client.percent}%
+                                {diff > 0 ? <TrendingUp className="h-2.5 w-2.5" /> : diff < 0 ? <TrendingDown className="h-2.5 w-2.5" /> : <Minus className="h-2.5 w-2.5" />}
+                                {diff > 0 ? "+" : ""}{diff}%
                               </span>
                             )}
-                            <span className="text-xs font-bold tabular-nums" style={{ color: expandedSquadDetail.squad.color }}>
-                              {client.completed}/{client.total}
-                            </span>
+                          </div>
+                          <div className="flex items-center gap-3 mt-1">
+                            <div className="flex-1">
+                              <div className="h-2 rounded-full bg-border/30 overflow-hidden">
+                                <div
+                                  className="h-full rounded-full transition-all duration-700"
+                                  style={{ width: `${sq.percentComplete}%`, backgroundColor: sq.color }}
+                                />
+                              </div>
+                            </div>
+                            <span className="text-xs text-muted-foreground tabular-nums shrink-0">{sq.completedEtapas}/{sq.totalEtapas}</span>
                           </div>
                         </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-lg font-bold tabular-nums" style={{ color: sq.color }}>{sq.hasData ? `${sq.percentComplete}%` : "—"}</p>
+                          <p className="text-[10px] text-muted-foreground">vel. {sq.speed}%</p>
+                        </div>
+                      </div>
 
-                        {/* Stage pills */}
-                        <div className="flex flex-wrap gap-1.5">
-                          {client.stages.map((s: any) => (
-                            <div
-                              key={s.id}
-                              className={cn(
-                                "px-2 py-1 rounded-md text-[10px] font-medium border transition-all",
-                                s.completed
-                                  ? "border-transparent text-white"
-                                  : "border-border/50 text-muted-foreground bg-background"
-                              )}
-                              style={s.completed ? { backgroundColor: expandedSquadDetail.squad.color } : {}}
-                              title={s.completed ? `Concluída em ${format(new Date(s.completed_at), "dd/MM")}` : "Pendente"}
-                            >
-                              {STAGE_LABELS[s.stage] ?? s.stage}
-                              {s.completed && (
-                                <span className="ml-1 opacity-70">{format(new Date(s.completed_at), "dd/MM")}</span>
+                      {/* Expanded client detail */}
+                      {isExpanded && detail && (
+                        <div className="bg-accent/30 rounded-b-xl px-3 pb-3 pt-1 space-y-2" style={{ animation: "fadeUp 0.3s ease-out" }}>
+                          {detail.squadInsights.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 pb-1">
+                              {detail.squadInsights.map((insight, i) => (
+                                <span key={i} className="flex items-center gap-1 text-[10px] bg-background/60 rounded-md px-2 py-1">
+                                  <Lightbulb className="h-2.5 w-2.5 text-sidebar" />
+                                  {insight}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          {detail.clients.map((client) => (
+                            <div key={client.clientId} className="bg-background/50 rounded-lg p-2.5 space-y-1.5">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-semibold text-foreground">{client.name}</span>
+                                <div className="flex items-center gap-2">
+                                  {client.prevPercent > 0 && (
+                                    <span className={cn("text-[10px]",
+                                      client.percent > client.prevPercent ? "text-emerald-500" : client.percent < client.prevPercent ? "text-red-400" : "text-muted-foreground"
+                                    )}>
+                                      {client.prevPercent}% → {client.percent}%
+                                    </span>
+                                  )}
+                                  <span className="text-[10px] font-bold tabular-nums" style={{ color: sq.color }}>{client.completed}/{client.total}</span>
+                                </div>
+                              </div>
+                              <div className="flex flex-wrap gap-1">
+                                {client.stages.map((s: any) => (
+                                  <span
+                                    key={s.id}
+                                    className={cn("px-1.5 py-0.5 rounded text-[9px] font-medium",
+                                      s.completed ? "text-white" : "text-muted-foreground bg-border/30"
+                                    )}
+                                    style={s.completed ? { backgroundColor: sq.color } : {}}
+                                  >
+                                    {STAGE_LABELS[s.stage] ?? s.stage}
+                                  </span>
+                                ))}
+                              </div>
+                              {client.insights.length > 0 && (
+                                <div className="flex flex-wrap gap-1">
+                                  {client.insights.map((ins, i) => (
+                                    <span key={i} className="text-[9px] text-muted-foreground">{ins}</span>
+                                  ))}
+                                </div>
                               )}
                             </div>
                           ))}
                         </div>
-
-                        {/* Progress bar */}
-                        <Progress value={client.percent} className="h-1.5" />
-
-                        {/* Client insights */}
-                        {client.insights.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5 pt-0.5">
-                            {client.insights.map((ins, i) => (
-                              <span key={i} className="text-[10px] text-muted-foreground">{ins}</span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </CardContent>
           </Card>
         </FadeUp>
