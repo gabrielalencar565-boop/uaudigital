@@ -447,17 +447,36 @@ export function MonthlyAnalysisSection() {
                 </>
               ) : (
                 <>
-                  {/* Line chart - Uau Score evolution */}
+                  {/* Proactive month highlight card */}
+                  {bestProactiveMonth && bestProactiveMonth.percentual > 0 && (
+                    <div className="flex items-center gap-3 p-2.5 rounded-lg bg-sidebar/5 border border-sidebar/20">
+                      <div className="h-8 w-8 rounded-lg bg-sidebar/10 flex items-center justify-center shrink-0">
+                        <Star className="h-4 w-4 text-sidebar" />
+                      </div>
+                      <div className="text-xs">
+                        <p className="text-muted-foreground">Mês mais proativo do ano</p>
+                        <p className="font-bold text-foreground">
+                          {bestProactiveMonth.mes} — {bestProactiveMonth.percentual}% das etapas concluídas antes do Magic Number
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Bar chart - progress before Magic Number */}
                   <div className="h-[220px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={annualScoreData.filter(m => m.hasData)} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                      <BarChart data={annualProgressData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
                         <defs>
-                          <linearGradient id="annualLineGrad" x1="0" y1="0" x2="1" y2="0">
-                            <stop offset="0%" stopColor="hsl(var(--sidebar))" stopOpacity={0.6} />
-                            <stop offset="100%" stopColor="hsl(var(--sidebar))" stopOpacity={1} />
+                          <linearGradient id="proBarGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="hsl(var(--sidebar))" stopOpacity={0.9} />
+                            <stop offset="100%" stopColor="hsl(var(--sidebar))" stopOpacity={0.4} />
+                          </linearGradient>
+                          <linearGradient id="proBarBestGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="hsl(142, 71%, 45%)" stopOpacity={1} />
+                            <stop offset="100%" stopColor="hsl(142, 71%, 45%)" stopOpacity={0.5} />
                           </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} vertical={false} />
                         <XAxis
                           dataKey="mes"
                           tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
@@ -469,23 +488,33 @@ export function MonthlyAnalysisSection() {
                           tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
                           axisLine={false}
                           tickLine={false}
+                          tickFormatter={(v) => `${v}%`}
                         />
                         <RechartsTooltip
                           content={({ active, payload }) => {
                             if (active && payload?.length) {
                               const d = payload[0].payload;
                               if (!d.hasData) return null;
-                              const cls = getClassification(d.score);
                               return (
                                 <div className="bg-card border border-border rounded-xl px-3 py-2 shadow-lg text-xs space-y-0.5">
-                                  <p className="font-semibold text-foreground">{d.mes} {year}</p>
-                                  <p>Score: <strong style={{ color: toneColor(cls.tone) }}>{d.score}</strong> — {cls.label}</p>
+                                  <p className="font-semibold text-foreground flex items-center gap-1">
+                                    {d.mes} {year}
+                                    {bestProactiveMonth && d.monthNum === bestProactiveMonth.monthNum && (
+                                      <Star className="h-3 w-3 text-sidebar fill-sidebar" />
+                                    )}
+                                  </p>
+                                  <p className="text-muted-foreground">Progresso: <strong className="text-foreground">{d.percentual}%</strong></p>
+                                  <p className="text-muted-foreground">Etapas: <strong className="text-foreground">{d.totalEtapas}/{d.totalEtapasMonth}</strong></p>
                                   {d.magicDiff !== null && (
                                     <p className={cn(
                                       "font-medium",
                                       d.magicDiff > 0 ? "text-success" : d.magicDiff < 0 ? "text-destructive" : "text-foreground"
                                     )}>
-                                      {d.magicDiff > 0 ? `+${d.magicDiff} dias de folga` : d.magicDiff < 0 ? `${d.magicDiff} dias de atraso` : "No prazo exato"}
+                                      {d.magicDiff > 0
+                                        ? `+${d.magicDiff} dia${d.magicDiff > 1 ? "s" : ""} de folga`
+                                        : d.magicDiff < 0
+                                          ? `${d.magicDiff} dia${Math.abs(d.magicDiff) > 1 ? "s" : ""} de atraso`
+                                          : "No prazo exato"}
                                     </p>
                                   )}
                                 </div>
@@ -494,69 +523,32 @@ export function MonthlyAnalysisSection() {
                             return null;
                           }}
                         />
-                        <Line
-                          type="monotone"
-                          dataKey="score"
-                          stroke="url(#annualLineGrad)"
-                          strokeWidth={2.5}
-                          dot={({ cx, cy, payload }: any) => {
-                            const color = payload.hasData ? barColor(payload.score) : "hsl(var(--muted))";
-                            return <circle cx={cx} cy={cy} r={4} fill={color} stroke="hsl(var(--background))" strokeWidth={2} />;
-                          }}
-                          activeDot={{ r: 6, stroke: "hsl(var(--background))", strokeWidth: 2 }}
-                        />
-                      </LineChart>
+                        <Bar dataKey="percentual" radius={[4, 4, 0, 0]} maxBarSize={40}>
+                          {annualProgressData.map((entry, index) => (
+                            <Cell
+                              key={index}
+                              fill={
+                                !entry.hasData
+                                  ? "hsl(var(--muted))"
+                                  : bestProactiveMonth && entry.monthNum === bestProactiveMonth.monthNum
+                                    ? "url(#proBarBestGrad)"
+                                    : "url(#proBarGrad)"
+                              }
+                              fillOpacity={entry.hasData ? 1 : 0.3}
+                            />
+                          ))}
+                        </Bar>
+                      </BarChart>
                     </ResponsiveContainer>
                   </div>
 
-                  {/* Heatmap */}
-                  <div className="space-y-1.5">
-                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Saúde do Ano</p>
-                    <div className="grid grid-cols-12 gap-1">
-                      {annualScoreData.map(m => {
-                        const bg = m.hasData && m.score > 0 ? barColor(m.score) : "hsl(var(--muted))";
-                        const cls = m.hasData && m.score > 0 ? getClassification(m.score) : null;
-                        return (
-                          <Tooltip key={m.monthNum}>
-                            <TooltipTrigger asChild>
-                              <div className="flex flex-col items-center gap-0.5 cursor-default">
-                                <div
-                                  className="h-5 w-full rounded-sm transition-colors"
-                                  style={{ backgroundColor: bg, opacity: m.hasData ? 1 : 0.3 }}
-                                />
-                                <span className="text-[9px] text-muted-foreground leading-none">{m.mes}</span>
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent side="top" className="text-xs">
-                              {m.hasData && m.score > 0
-                                ? <>{m.mes}: <strong>{m.score}</strong> — {cls?.label}</>
-                                : <>{m.mes}: sem dados</>
-                              }
-                            </TooltipContent>
-                          </Tooltip>
-                        );
-                      })}
-                    </div>
-                  </div>
-
                   {/* Stats footer */}
-                  {annualStats && (
+                  {annualProgressStats && (
                     <div className="flex items-center gap-3 text-xs text-muted-foreground pt-1 border-t border-border/50 flex-wrap">
-                      <span className="flex items-center gap-1">
-                        <Target className="h-3 w-3" /> Média: <strong className="text-foreground">{annualStats.avg}</strong>
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Trophy className="h-3 w-3" /> Melhor: <strong className="text-foreground">{annualStats.best.mes} ({annualStats.best.score})</strong>
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <AlertTriangle className="h-3 w-3" /> Pior: <strong className="text-foreground">{annualStats.worst.mes} ({annualStats.worst.score})</strong>
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <TrendingUp className="h-3 w-3 text-success" /> Saudáveis: <strong className="text-foreground">{annualStats.healthy}</strong>
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <TrendingDown className="h-3 w-3 text-destructive" /> Críticos: <strong className="text-foreground">{annualStats.critical}</strong>
-                      </span>
+                      <span>Média: <strong className="text-foreground">{annualProgressStats.avg}%</strong></span>
+                      <span>Etapas concluídas: <strong className="text-foreground">{annualProgressStats.totalEtapas}</strong></span>
+                      <span>Clientes: <strong className="text-foreground">{annualProgressStats.totalClientes}</strong></span>
+                      <span className="ml-auto">{year}</span>
                     </div>
                   )}
                 </>
