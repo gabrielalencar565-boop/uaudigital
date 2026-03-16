@@ -811,17 +811,12 @@ export function VisaoGeralTab() {
                 {squadSpeedData.map((sq) => {
                   const SquadIcon = getSquadIcon(sq.icon);
                   const diff = sq.speed - sq.prevSpeed;
-                  const isExpanded = expandedSquadId === sq.id;
-                  const detail = isExpanded ? expandedSquadDetail : null;
 
                   return (
-                    <div key={sq.id} className="space-y-0">
+                    <div key={sq.id}>
                       <div
-                        className={cn(
-                          "flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all",
-                          isExpanded ? "bg-accent/50 rounded-b-none" : "bg-accent/20 hover:bg-accent/30"
-                        )}
-                        onClick={() => setExpandedSquadId(prev => prev === sq.id ? null : sq.id)}
+                        className="flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all bg-accent/20 hover:bg-accent/30"
+                        onClick={() => setExpandedSquadId(sq.id)}
                       >
                         <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: sq.color + "20" }}>
                           <SquadIcon className="h-4 w-4" style={{ color: sq.color }} />
@@ -856,62 +851,85 @@ export function VisaoGeralTab() {
                           <p className="text-[10px] text-muted-foreground">vel. {sq.speed}%</p>
                         </div>
                       </div>
-
-                      {/* Expanded client detail */}
-                      {isExpanded && detail && (
-                        <div className="bg-accent/30 rounded-b-xl px-3 pb-3 pt-1 space-y-2" style={{ animation: "fadeUp 0.3s ease-out" }}>
-                          {detail.squadInsights.length > 0 && (
-                            <div className="flex flex-wrap gap-1.5 pb-1">
-                              {detail.squadInsights.map((insight, i) => (
-                                <span key={i} className="flex items-center gap-1 text-[10px] bg-background/60 rounded-md px-2 py-1">
-                                  <Lightbulb className="h-2.5 w-2.5 text-sidebar" />
-                                  {insight}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                          {detail.clients.map((client) => (
-                            <div key={client.clientId} className="bg-background/50 rounded-lg p-2.5 space-y-1.5">
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs font-semibold text-foreground">{client.name}</span>
-                                <div className="flex items-center gap-2">
-                                  {client.prevPercent > 0 && (
-                                    <span className={cn("text-[10px]",
-                                      client.percent > client.prevPercent ? "text-emerald-500" : client.percent < client.prevPercent ? "text-red-400" : "text-muted-foreground"
-                                    )}>
-                                      {client.prevPercent}% → {client.percent}%
-                                    </span>
-                                  )}
-                                  <span className="text-[10px] font-bold tabular-nums" style={{ color: sq.color }}>{client.completed}/{client.total}</span>
-                                </div>
-                              </div>
-                              <div className="flex flex-wrap gap-1">
-                                {client.stages.map((s: any) => (
-                                  <span
-                                    key={s.id}
-                                    className={cn("px-1.5 py-0.5 rounded text-[9px] font-medium",
-                                      s.completed ? "text-white" : "text-muted-foreground bg-border/30"
-                                    )}
-                                    style={s.completed ? { backgroundColor: sq.color } : {}}
-                                  >
-                                    {STAGE_LABELS[s.stage] ?? s.stage}
-                                  </span>
-                                ))}
-                              </div>
-                              {client.insights.length > 0 && (
-                                <div className="flex flex-wrap gap-1">
-                                  {client.insights.map((ins, i) => (
-                                    <span key={i} className="text-[9px] text-muted-foreground">{ins}</span>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
                     </div>
                   );
                 })}
+
+                {/* Squad detail modal */}
+                {expandedSquadDetail && (
+                  <Dialog open={!!expandedSquadId} onOpenChange={(open) => { if (!open) setExpandedSquadId(null); }}>
+                    <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                          {(() => {
+                            const SquadIcon = getSquadIcon(expandedSquadDetail.squad.icon);
+                            return (
+                              <>
+                                <div className="h-8 w-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: expandedSquadDetail.sqData?.color + "20" }}>
+                                  <SquadIcon className="h-4 w-4" style={{ color: expandedSquadDetail.sqData?.color }} />
+                                </div>
+                                {expandedSquadDetail.squad.name}
+                              </>
+                            );
+                          })()}
+                        </DialogTitle>
+                        <DialogDescription>
+                          Desempenho detalhado por cliente no mês
+                        </DialogDescription>
+                      </DialogHeader>
+
+                      <div className="space-y-3">
+                        {expandedSquadDetail.squadInsights.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5">
+                            {expandedSquadDetail.squadInsights.map((insight, i) => (
+                              <span key={i} className="flex items-center gap-1 text-[10px] bg-accent/40 rounded-md px-2 py-1">
+                                <Lightbulb className="h-2.5 w-2.5 text-sidebar" />
+                                {insight}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {expandedSquadDetail.clients.map((client) => (
+                          <div key={client.clientId} className="bg-accent/20 rounded-lg p-3 space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-semibold text-foreground">{client.name}</span>
+                              <div className="flex items-center gap-2">
+                                {client.prevPercent > 0 && (
+                                  <span className={cn("text-[10px]",
+                                    client.percent > client.prevPercent ? "text-emerald-500" : client.percent < client.prevPercent ? "text-red-400" : "text-muted-foreground"
+                                  )}>
+                                    {client.prevPercent}% → {client.percent}%
+                                  </span>
+                                )}
+                                <span className="text-[10px] font-bold tabular-nums" style={{ color: expandedSquadDetail.sqData?.color }}>{client.completed}/{client.total}</span>
+                              </div>
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                              {client.stages.map((s: any) => (
+                                <span
+                                  key={s.id}
+                                  className={cn("px-1.5 py-0.5 rounded text-[9px] font-medium",
+                                    s.completed ? "text-white" : "text-muted-foreground bg-border/30"
+                                  )}
+                                  style={s.completed ? { backgroundColor: expandedSquadDetail.sqData?.color } : {}}
+                                >
+                                  {STAGE_LABELS[s.stage] ?? s.stage}
+                                </span>
+                              ))}
+                            </div>
+                            {client.insights.length > 0 && (
+                              <div className="flex flex-wrap gap-1">
+                                {client.insights.map((ins, i) => (
+                                  <span key={i} className="text-[9px] text-muted-foreground">{ins}</span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                )}
               </div>
             </CardContent>
           </Card>
