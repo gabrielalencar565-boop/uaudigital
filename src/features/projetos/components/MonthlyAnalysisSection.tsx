@@ -12,6 +12,7 @@ import {
   format, getDaysInMonth,
 } from "date-fns";
 import { useMagic2Month } from "@/features/magic2/hooks/use-magic2";
+import { useMagic2Year } from "@/features/magic2/hooks/use-magic2-year";
 import { MAGIC2_STAGES } from "@/features/magic2/magic2-stages";
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
