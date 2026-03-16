@@ -135,44 +135,75 @@ export function VisaoGeralTab() {
     },
   });
 
-  // Fetch Magic Number completed stages for current month (for squad speed)
+  // Fetch Magic Number stages for current AND previous month (for squad speed + comparison)
   const magic2StagesQ = useQuery({
-    queryKey: ["magic2_squad_speed", now.getFullYear(), now.getMonth() + 1],
+    queryKey: ["magic2_squad_speed_v2", now.getFullYear(), now.getMonth() + 1],
     queryFn: async () => {
       const year = now.getFullYear();
       const month = now.getMonth() + 1;
-      // Get cycles for this month
-      const { data: cycles } = await supabase
-        .from("magic2_cycles")
-        .select("id, client_id")
-        .eq("year", year)
-        .eq("month", month)
-        .eq("is_active", true);
-      if (!cycles?.length) return { stages: [] as any[], clientLinks: [] as any[] };
+      const prevDate = subMonths(now, 1);
+      const prevYear = prevDate.getFullYear();
+      const prevMonth = prevDate.getMonth() + 1;
 
-      const cycleIds = cycles.map(c => c.id);
-      const { data: stages } = await supabase
+      // Get cycles for both months
+      const { data: allCycles } = await supabase
+        .from("magic2_cycles")
+        .select("id, client_id, year, month")
+        .eq("is_active", true)
+        .or(`and(year.eq.${year},month.eq.${month}),and(year.eq.${prevYear},month.eq.${prevMonth})`);
+
+      if (!allCycles?.length) return { stages: [] as any[], prevStages: [] as any[], clientNames: {} as Record<string, string> };
+
+      const currentCycles = allCycles.filter(c => c.year === year && c.month === month);
+      const prevCycles = allCycles.filter(c => c.year === prevYear && c.month === prevMonth);
+
+      const allCycleIds = allCycles.map(c => c.id);
+      const { data: allStages } = await supabase
         .from("magic2_cycle_stages")
         .select("id, cycle_id, stage, completed, completed_at")
-        .in("cycle_id", cycleIds)
-        .eq("completed", true);
+        .in("cycle_id", allCycleIds);
 
-      // Get magic2_client_links to map magic2_client_id -> agenda_client_id
-      const magic2ClientIds = [...new Set(cycles.map(c => c.client_id))];
+      // Get magic2_client_links
+      const magic2ClientIds = [...new Set(allCycles.map(c => c.client_id))];
       const { data: links } = await supabase
         .from("magic2_client_links")
         .select("magic2_client_id, agenda_client_id")
         .in("magic2_client_id", magic2ClientIds);
 
-      // Build cycle_id -> agenda_client_id map
-      const cycleToAgenda: Record<string, string> = {};
+      // Get client names
+      const { data: m2Clients } = await supabase
+        .from("magic2_clients")
+        .select("id, name")
+        .in("id", magic2ClientIds);
+
+      const clientNameMap: Record<string, string> = {};
+      (m2Clients ?? []).forEach((c: any) => { clientNameMap[c.id] = c.name; });
+
+      // Build maps
       const m2ToAgenda: Record<string, string> = {};
       (links ?? []).forEach((l: any) => { m2ToAgenda[l.magic2_client_id] = l.agenda_client_id; });
-      (cycles ?? []).forEach((c: any) => { if (m2ToAgenda[c.client_id]) cycleToAgenda[c.id] = m2ToAgenda[c.client_id]; });
+
+      const buildStageList = (cycles: typeof allCycles, stages: typeof allStages) => {
+        const cycleToAgenda: Record<string, string> = {};
+        const cycleToM2Client: Record<string, string> = {};
+        cycles.forEach((c: any) => {
+          if (m2ToAgenda[c.client_id]) cycleToAgenda[c.id] = m2ToAgenda[c.client_id];
+          cycleToM2Client[c.id] = c.client_id;
+        });
+        const cycleIds = new Set(cycles.map(c => c.id));
+        return (stages ?? [])
+          .filter((s: any) => cycleIds.has(s.cycle_id))
+          .map((s: any) => ({
+            ...s,
+            agenda_client_id: cycleToAgenda[s.cycle_id] ?? null,
+            client_name: clientNameMap[cycleToM2Client[s.cycle_id]] ?? "—",
+          }));
+      };
 
       return {
-        stages: (stages ?? []).map((s: any) => ({ ...s, agenda_client_id: cycleToAgenda[s.cycle_id] ?? null })),
-        clientLinks: links ?? [],
+        stages: buildStageList(currentCycles, allStages ?? []),
+        prevStages: buildStageList(prevCycles, allStages ?? []),
+        clientNames: clientNameMap,
       };
     },
   });
