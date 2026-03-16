@@ -247,7 +247,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
             <ProgressRing
               value={clients100Pct}
               tone={clients100Pct === 100 ? "success" : "warning"}
-              size={fullscreen ? 220 : isMobile ? 110 : 160}
+              size={fullscreen ? 160 : isMobile ? 110 : 160}
               stroke={isMobile ? 12 : 18}
               className="animate-fade-in"
               label={
