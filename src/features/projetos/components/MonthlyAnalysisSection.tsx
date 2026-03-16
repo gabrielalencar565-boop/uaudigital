@@ -39,10 +39,10 @@ const INDICATOR_TOOLTIPS: Record<string, string> = {
 };
 
 const SCORE_RANGES = [
-  { min: 90, max: 100, label: "Excelente", tone: "success" as const },
-  { min: 75, max: 89, label: "Saudável", tone: "primary" as const },
-  { min: 60, max: 74, label: "Atenção", tone: "warning" as const },
-  { min: 0, max: 59, label: "Crítico", tone: "danger" as const },
+  { min: 90, max: 100, label: "Excelente", tone: "success" as const, desc: "Operação impecável, tudo no prazo e bem distribuído." },
+  { min: 75, max: 89, label: "Saudável", tone: "primary" as const, desc: "Boa performance, com pequenos pontos de melhoria." },
+  { min: 60, max: 74, label: "Atenção", tone: "warning" as const, desc: "Atrasos ou acúmulos que precisam de correção." },
+  { min: 0, max: 59, label: "Crítico", tone: "danger" as const, desc: "Performance abaixo do aceitável, ação urgente necessária." },
 ];
 
 export function MonthlyAnalysisSection() {
@@ -145,6 +145,53 @@ export function MonthlyAnalysisSection() {
     return { prazo: prazoScore, eficiencia: eficienciaScore, consistencia: consistenciaScore, uauScore: score };
   }, [stages, currentDay, doneStages, totalStages]);
 
+  // ── Previous month Uau Score ──
+  const prevUauScore = useMemo(() => {
+    const prevDone = prevStages.filter(s => s.completed).length;
+    const prevEficiencia = prevTotalStages > 0 ? Math.round((prevDone / prevTotalStages) * 100) : 0;
+
+    const prevCompletedDates = prevStages
+      .filter(s => s.completed && s.completed_at)
+      .map(s => new Date(s.completed_at!).getDate());
+    const prevLastDay = prevCompletedDates.length > 0 ? Math.max(...prevCompletedDates) : 28;
+
+    let prevPrazo: number;
+    if (prevDone === prevTotalStages && prevTotalStages > 0) {
+      if (prevLastDay <= 25) prevPrazo = 100;
+      else if (prevLastDay <= 27) prevPrazo = 85;
+      else if (prevLastDay <= 30) prevPrazo = 60;
+      else prevPrazo = 40;
+    } else {
+      prevPrazo = 35;
+    }
+
+    let prevConsistencia = 50;
+    if (prevDone > 0) {
+      const dayBuckets: Record<number, number> = {};
+      prevStages.filter(s => s.completed && s.completed_at).forEach(s => {
+        const d = new Date(s.completed_at!).getDate();
+        dayBuckets[d] = (dayBuckets[d] ?? 0) + 1;
+      });
+      const counts = Object.values(dayBuckets);
+      if (counts.length > 1) {
+        const avg = counts.reduce((a, b) => a + b, 0) / counts.length;
+        const variance = counts.reduce((sum, c) => sum + Math.pow(c - avg, 2), 0) / counts.length;
+        const cv = avg > 0 ? Math.sqrt(variance) / avg : 0;
+        prevConsistencia = Math.max(20, Math.min(100, Math.round(100 - cv * 40)));
+      } else if (counts.length === 1) {
+        prevConsistencia = prevDone <= 3 ? 70 : 30;
+      }
+      const prevTotalDaysInMonth = getDaysInMonth(new Date(prevYear, prevMonth - 1, 1));
+      const spreadRatio = counts.length / Math.min(prevTotalDaysInMonth, 27);
+      prevConsistencia = Math.round(prevConsistencia * 0.7 + spreadRatio * 100 * 0.3);
+      prevConsistencia = Math.max(0, Math.min(100, prevConsistencia));
+    }
+
+    return Math.round((prevPrazo + prevEficiencia + prevConsistencia) / 3);
+  }, [prevStages, prevTotalStages, prevYear, prevMonth]);
+
+  const uauDelta = uauScore - prevUauScore;
+
   const classification = getClassification(uauScore);
   const scoreColor = toneColor(classification.tone);
 
@@ -206,6 +253,10 @@ export function MonthlyAnalysisSection() {
                         <stop offset="0%" stopColor="hsl(var(--sidebar))" stopOpacity={0.4} />
                         <stop offset="95%" stopColor="hsl(var(--sidebar))" stopOpacity={0.02} />
                       </linearGradient>
+                      <linearGradient id="prevGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="hsl(var(--muted-foreground))" stopOpacity={0.15} />
+                        <stop offset="95%" stopColor="hsl(var(--muted-foreground))" stopOpacity={0.01} />
+                      </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} />
                     <XAxis
@@ -228,7 +279,7 @@ export function MonthlyAnalysisSection() {
                       stroke="hsl(var(--muted-foreground))"
                       strokeWidth={1.5}
                       strokeDasharray="5 3"
-                      fill="transparent"
+                      fill="url(#prevGradient)"
                       dot={false}
                       activeDot={{ r: 3, fill: "hsl(var(--muted-foreground))", stroke: "hsl(var(--background))", strokeWidth: 2 }}
                       connectNulls
@@ -330,8 +381,8 @@ export function MonthlyAnalysisSection() {
                 </div>
 
                 {/* Score range legend */}
-                <div className="flex flex-col gap-2 pt-2">
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Faixas</p>
+                <div className="flex flex-col gap-2.5 pt-2">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">Faixas</p>
                   {SCORE_RANGES.map(range => {
                     const color = toneColor(range.tone);
                     const isActive = uauScore >= range.min && uauScore <= range.max;
@@ -339,27 +390,49 @@ export function MonthlyAnalysisSection() {
                       <div
                         key={range.label}
                         className={cn(
-                          "flex items-center gap-2 text-xs transition-opacity",
-                          isActive ? "opacity-100" : "opacity-50"
+                          "flex flex-col gap-0.5 transition-opacity",
+                          isActive ? "opacity-100" : "opacity-40"
                         )}
                       >
-                        <div
-                          className="h-2.5 w-2.5 rounded-full shrink-0"
-                          style={{ backgroundColor: color }}
-                        />
-                        <span className="text-muted-foreground whitespace-nowrap">
-                          {range.min}–{range.max}
-                        </span>
-                        <span
-                          className={cn("font-semibold", isActive && "underline")}
-                          style={{ color }}
-                        >
-                          {range.label}
-                        </span>
+                        <div className="flex items-center gap-2 text-xs">
+                          <div
+                            className="h-2.5 w-2.5 rounded-full shrink-0"
+                            style={{ backgroundColor: color }}
+                          />
+                          <span className="text-muted-foreground whitespace-nowrap">
+                            {range.min}–{range.max}
+                          </span>
+                          <span
+                            className={cn("font-semibold", isActive && "underline")}
+                            style={{ color }}
+                          >
+                            {range.label}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground pl-[18px] leading-tight">
+                          {range.desc}
+                        </p>
                       </div>
                     );
                   })}
                 </div>
+              </div>
+
+              {/* Previous month comparison */}
+              <div className="flex items-center gap-3 text-xs pt-2 border-t border-border/50">
+                <span className="text-muted-foreground">
+                  {prevMonthLabel}: <strong className="text-foreground">{prevUauScore}</strong>
+                </span>
+                <span className="text-muted-foreground">→</span>
+                <span className="text-muted-foreground">
+                  {currentMonthLabel}: <strong className="text-foreground">{uauScore}</strong>
+                </span>
+                <span className={cn(
+                  "font-bold tabular-nums ml-auto",
+                  uauDelta > 0 ? "text-success" : uauDelta < 0 ? "text-destructive" : "text-muted-foreground"
+                )}>
+                  {uauDelta > 0 ? "+" : ""}{uauDelta}pts {uauDelta > 0 ? "↑" : uauDelta < 0 ? "↓" : "="}
+                </span>
               </div>
 
               {/* Indicators with info tooltips */}
