@@ -222,7 +222,7 @@ export function useClients() {
 // Hook para admin ver TODOS os clientes (ativos e inativos), exceto sentinela freelancer
 export function useAllClients() {
   return useQuery({
-    queryKey: ["clients_all"],
+    queryKey: ["clients_admin_all"],
     queryFn: async (): Promise<ClientRow[]> => {
       const { data, error } = await supabase
         .from("clients")
