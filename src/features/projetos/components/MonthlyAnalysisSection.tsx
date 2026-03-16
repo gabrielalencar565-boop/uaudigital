@@ -51,7 +51,11 @@ export function MonthlyAnalysisSection() {
   const year = now.getFullYear();
   const month = now.getMonth() + 1;
 
+  const prevMonth = month === 1 ? 12 : month - 1;
+  const prevYear = month === 1 ? year - 1 : year;
+
   const { data: magic2Data } = useMagic2Month(year, month);
+  const { data: prevMagic2Data } = useMagic2Month(prevYear, prevMonth);
 
   const cycles = magic2Data?.cycles ?? [];
   const stages = magic2Data?.stages ?? [];
@@ -59,22 +63,37 @@ export function MonthlyAnalysisSection() {
   const totalStages = cycles.length * MAGIC2_STAGES.length;
   const doneStages = stages.filter(s => s.completed).length;
 
-  // ── Progress line chart data (based on magic2 completed_at) ──
-  const progressData = useMemo(() => {
-    const days = eachDayOfInterval({
-      start: startOfMonth(now),
-      end: new Date(Math.min(now.getTime(), endOfMonth(now).getTime())),
-    });
+  const prevCycles = prevMagic2Data?.cycles ?? [];
+  const prevStages = prevMagic2Data?.stages ?? [];
+  const prevTotalStages = prevCycles.length * MAGIC2_STAGES.length;
 
-    return days.map(d => {
-      const dateStr = format(d, "yyyy-MM-dd");
-      const doneUpToDay = stages.filter(s =>
-        s.completed && s.completed_at && s.completed_at.slice(0, 10) <= dateStr
-      ).length;
-      const pct = totalStages > 0 ? Math.round((doneUpToDay / totalStages) * 100) : 0;
-      return { dia: d.getDate(), percentual: pct };
+  // ── Progress line chart data (current + previous month) ──
+  const progressData = useMemo(() => {
+    const totalDays = getDaysInMonth(now);
+    const prevTotalDays = getDaysInMonth(new Date(prevYear, prevMonth - 1, 1));
+
+    return Array.from({ length: totalDays }, (_, i) => {
+      const dia = i + 1;
+
+      // Current month
+      const dateStr = format(new Date(year, month - 1, dia), "yyyy-MM-dd");
+      const doneUpToDay = dia <= currentDay
+        ? stages.filter(s => s.completed && s.completed_at && s.completed_at.slice(0, 10) <= dateStr).length
+        : undefined;
+      const pct = doneUpToDay !== undefined && totalStages > 0 ? Math.round((doneUpToDay / totalStages) * 100) : undefined;
+
+      // Previous month
+      const prevDateStr = dia <= prevTotalDays
+        ? format(new Date(prevYear, prevMonth - 1, dia), "yyyy-MM-dd")
+        : null;
+      const prevDoneUpToDay = prevDateStr
+        ? prevStages.filter(s => s.completed && s.completed_at && s.completed_at.slice(0, 10) <= prevDateStr).length
+        : undefined;
+      const prevPct = prevDoneUpToDay !== undefined && prevTotalStages > 0 ? Math.round((prevDoneUpToDay / prevTotalStages) * 100) : undefined;
+
+      return { dia, percentual: pct, anterior: prevPct };
     });
-  }, [stages, now, totalStages]);
+  }, [stages, prevStages, now, totalStages, prevTotalStages, currentDay, year, month, prevYear, prevMonth]);
 
   // ── Uau Score calculation ──
   const { prazo, eficiencia, consistencia, uauScore } = useMemo(() => {
