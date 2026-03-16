@@ -154,12 +154,20 @@ export function MonthlyAnalysisSection() {
     { label: "Consistência", value: consistencia, icon: BarChart3 },
   ];
 
+  const MONTH_NAMES = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+  const prevMonthLabel = MONTH_NAMES[prevMonth - 1];
+  const currentMonthLabel = MONTH_NAMES[month - 1];
+
   const CustomChartTooltip = ({ active, payload, label }: any) => {
     if (active && payload?.length) {
       return (
-        <div className="bg-card border border-border rounded-xl px-3 py-2 shadow-lg text-xs">
+        <div className="bg-card border border-border rounded-xl px-3 py-2 shadow-lg text-xs space-y-0.5">
           <p className="font-semibold text-foreground">Dia {label}</p>
-          <p className="text-muted-foreground">{payload[0].value}% concluído</p>
+          {payload.map((p: any) => (
+            <p key={p.dataKey} style={{ color: p.color }}>
+              {p.dataKey === "percentual" ? currentMonthLabel : prevMonthLabel}: {p.value ?? "—"}%
+            </p>
+          ))}
         </div>
       );
     }
