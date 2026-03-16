@@ -879,6 +879,24 @@ export function VisaoGeralTab() {
                       </DialogHeader>
 
                       <div className="space-y-3">
+                        {/* Squad KPIs */}
+                        {expandedSquadDetail.sqData && (
+                          <div className="grid grid-cols-3 gap-2">
+                            <div className="bg-accent/20 rounded-lg p-2.5 text-center">
+                              <p className="text-lg font-bold tabular-nums" style={{ color: expandedSquadDetail.sqData.color }}>{expandedSquadDetail.sqData.percentComplete}%</p>
+                              <p className="text-[10px] text-muted-foreground">Conclusão</p>
+                            </div>
+                            <div className="bg-accent/20 rounded-lg p-2.5 text-center">
+                              <p className="text-lg font-bold tabular-nums" style={{ color: expandedSquadDetail.sqData.color }}>{expandedSquadDetail.sqData.speed}%</p>
+                              <p className="text-[10px] text-muted-foreground">Velocidade</p>
+                            </div>
+                            <div className="bg-accent/20 rounded-lg p-2.5 text-center">
+                              <p className="text-lg font-bold tabular-nums">{expandedSquadDetail.clients.length}</p>
+                              <p className="text-[10px] text-muted-foreground">Clientes</p>
+                            </div>
+                          </div>
+                        )}
+
                         {expandedSquadDetail.squadInsights.length > 0 && (
                           <div className="flex flex-wrap gap-1.5">
                             {expandedSquadDetail.squadInsights.map((insight, i) => (
@@ -889,43 +907,55 @@ export function VisaoGeralTab() {
                             ))}
                           </div>
                         )}
-                        {expandedSquadDetail.clients.map((client) => (
-                          <div key={client.clientId} className="bg-accent/20 rounded-lg p-3 space-y-1.5">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-semibold text-foreground">{client.name}</span>
-                              <div className="flex items-center gap-2">
-                                {client.prevPercent > 0 && (
-                                  <span className={cn("text-[10px]",
-                                    client.percent > client.prevPercent ? "text-emerald-500" : client.percent < client.prevPercent ? "text-red-400" : "text-muted-foreground"
-                                  )}>
-                                    {client.prevPercent}% → {client.percent}%
-                                  </span>
-                                )}
-                                <span className="text-[10px] font-bold tabular-nums" style={{ color: expandedSquadDetail.sqData?.color }}>{client.completed}/{client.total}</span>
+
+                        {/* Client performance list */}
+                        {expandedSquadDetail.clients.map((client) => {
+                          const diff = client.percent - client.prevPercent;
+                          const speedDiff = client.speed - client.prevSpeed;
+                          return (
+                            <div key={client.clientId} className="bg-accent/20 rounded-lg p-3 space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-semibold text-foreground">{client.name}</span>
+                                <span className="text-sm font-bold tabular-nums" style={{ color: expandedSquadDetail.sqData?.color }}>{client.percent}%</span>
                               </div>
-                            </div>
-                            <div className="flex flex-wrap gap-1">
-                              {client.stages.map((s: any) => (
-                                <span
-                                  key={s.id}
-                                  className={cn("px-1.5 py-0.5 rounded text-[9px] font-medium",
-                                    s.completed ? "text-white" : "text-muted-foreground bg-border/30"
-                                  )}
-                                  style={s.completed ? { backgroundColor: expandedSquadDetail.sqData?.color } : {}}
-                                >
-                                  {STAGE_LABELS[s.stage] ?? s.stage}
+
+                              {/* Progress bar */}
+                              <div className="h-2 rounded-full bg-border/30 overflow-hidden">
+                                <div
+                                  className="h-full rounded-full transition-all duration-500"
+                                  style={{ width: `${client.percent}%`, backgroundColor: expandedSquadDetail.sqData?.color }}
+                                />
+                              </div>
+
+                              {/* Metrics row */}
+                              <div className="flex items-center justify-between text-[11px]">
+                                <span className="text-muted-foreground">
+                                  {client.completed}/{client.total} etapas
                                 </span>
-                              ))}
-                            </div>
-                            {client.insights.length > 0 && (
-                              <div className="flex flex-wrap gap-1">
-                                {client.insights.map((ins, i) => (
-                                  <span key={i} className="text-[9px] text-muted-foreground">{ins}</span>
-                                ))}
+                                <div className="flex items-center gap-3">
+                                  <span className="text-muted-foreground">vel. {client.speed}%</span>
+                                  {client.prevPercent > 0 && (
+                                    <span className={cn("flex items-center gap-0.5 font-medium",
+                                      diff > 0 ? "text-emerald-500" : diff < 0 ? "text-red-400" : "text-muted-foreground"
+                                    )}>
+                                      {diff > 0 ? <TrendingUp className="h-3 w-3" /> : diff < 0 ? <TrendingDown className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
+                                      {diff > 0 ? "+" : ""}{diff}% vs anterior
+                                    </span>
+                                  )}
+                                </div>
                               </div>
-                            )}
-                          </div>
-                        ))}
+
+                              {/* Insights */}
+                              {client.insights.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5 pt-0.5">
+                                  {client.insights.map((ins, i) => (
+                                    <span key={i} className="text-[10px] bg-background/60 rounded px-1.5 py-0.5 text-muted-foreground">{ins}</span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </DialogContent>
                   </Dialog>
