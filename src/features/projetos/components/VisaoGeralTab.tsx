@@ -723,13 +723,13 @@ export function VisaoGeralTab() {
               <div className="flex flex-wrap gap-3">
                 {heatmapData.map((sq) => (
                   <div key={sq.id} className="flex items-center gap-1.5 text-xs">
-                    <div className="h-3 w-3 rounded-sm" style={{ backgroundColor: sq.color }} />
+                    <div className="h-3 w-3 rounded-sm" style={{ background: `linear-gradient(135deg, ${sq.color}, ${sq.color}99)` }} />
                     <span className="font-medium text-foreground">{sq.name}</span>
                   </div>
                 ))}
               </div>
 
-              {/* Grouped Bar Chart */}
+              {/* Grouped Bar Chart with gradient fills */}
               <div className="h-[320px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
@@ -745,6 +745,14 @@ export function VisaoGeralTab() {
                     barGap={2}
                     barCategoryGap="20%"
                   >
+                    <defs>
+                      {heatmapData.map((sq) => (
+                        <linearGradient key={sq.id} id={`grad-${sq.id}`} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={sq.color} stopOpacity={1} />
+                          <stop offset="100%" stopColor={sq.color} stopOpacity={0.45} />
+                        </linearGradient>
+                      ))}
+                    </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.4} />
                     <XAxis
                       dataKey="stage"
@@ -772,7 +780,7 @@ export function VisaoGeralTab() {
                               const total = entry.payload[sq.id + "_total"] ?? 0;
                               return (
                                 <div key={entry.dataKey} className="flex items-center gap-2 text-xs">
-                                  <div className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: sq.color }} />
+                                  <div className="h-2.5 w-2.5 rounded-sm" style={{ background: `linear-gradient(135deg, ${sq.color}, ${sq.color}99)` }} />
                                   <span className="text-muted-foreground">{sq.name}:</span>
                                   <span className="font-bold text-foreground">{entry.value}/{total} clientes</span>
                                 </div>
@@ -786,7 +794,7 @@ export function VisaoGeralTab() {
                       <Bar
                         key={sq.id}
                         dataKey={sq.id}
-                        fill={sq.color}
+                        fill={`url(#grad-${sq.id})`}
                         radius={[4, 4, 0, 0]}
                         maxBarSize={32}
                         animationDuration={800}
@@ -822,6 +830,126 @@ export function VisaoGeralTab() {
                 }
                 return null;
               })()}
+            </CardContent>
+          </Card>
+        </FadeUp>
+      )}
+
+      {/* ═══ RANKING DE AGILIDADE ═══ */}
+      {squadSpeedData.filter(s => s.hasData).length > 0 && (
+        <FadeUp delay={0.55}>
+          <Card>
+            <CardContent className="py-6 px-6 space-y-5">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-2xl bg-sidebar/10 flex items-center justify-center">
+                  <Zap className="h-6 w-6 text-sidebar" />
+                </div>
+                <div>
+                  <p className="text-xl font-bold leading-none">Ranking de Agilidade</p>
+                  <p className="mt-1.5 text-sm text-muted-foreground">Quem entrega mais rápido no mês — quanto antes as etapas são concluídas, maior o score</p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {squadSpeedData.filter(s => s.hasData).map((sq, idx) => {
+                  const SquadIcon = getSquadIcon(sq.icon);
+                  const isFirst = idx === 0;
+                  const diff = sq.speed - sq.prevSpeed;
+                  const medals = ["🥇", "🥈", "🥉"];
+                  const medal = idx < 3 ? medals[idx] : `${idx + 1}º`;
+
+                  // Speed interpretation
+                  let speedLabel = "";
+                  let speedTone = "";
+                  if (sq.speed >= 80) { speedLabel = "Excepcional"; speedTone = "text-emerald-500"; }
+                  else if (sq.speed >= 60) { speedLabel = "Boa velocidade"; speedTone = "text-sky-500"; }
+                  else if (sq.speed >= 40) { speedLabel = "Moderada"; speedTone = "text-amber-500"; }
+                  else { speedLabel = "Precisa acelerar"; speedTone = "text-rose-500"; }
+
+                  // Reason
+                  let reason = "";
+                  if (sq.speed >= 80) reason = "Maioria das etapas concluídas nos primeiros 10 dias";
+                  else if (sq.speed >= 60) reason = "Bom ritmo — etapas sendo fechadas antes do dia 20";
+                  else if (sq.speed >= 40) reason = "Entregas concentradas na segunda quinzena";
+                  else reason = "Etapas concluídas apenas próximo ao fechamento";
+
+                  const gradientBg = isFirst
+                    ? `linear-gradient(135deg, ${sq.color}18 0%, ${sq.color}08 100%)`
+                    : undefined;
+
+                  return (
+                    <div
+                      key={sq.id}
+                      className={cn(
+                        "relative rounded-xl border p-4 transition-all duration-300",
+                        isFirst ? "border-transparent shadow-md" : "border-border/30 hover:border-border/60",
+                      )}
+                      style={gradientBg ? { background: gradientBg } : undefined}
+                    >
+                      {isFirst && (
+                        <div className="absolute -top-3 right-4 bg-sidebar text-sidebar-foreground text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-sm flex items-center gap-1">
+                          <Trophy className="h-3 w-3" /> Mais ágil
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-4">
+                        {/* Position */}
+                        <span className="text-xl font-bold min-w-[36px] text-center">{medal}</span>
+
+                        {/* Squad icon */}
+                        <div
+                          className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0"
+                          style={{ background: `linear-gradient(135deg, ${sq.color}, ${sq.color}aa)` }}
+                        >
+                          <SquadIcon className="h-5 w-5 text-white" />
+                        </div>
+
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-sm text-foreground">{sq.name}</span>
+                            <span className={cn("text-xs font-bold", speedTone)}>{speedLabel}</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5">{reason}</p>
+                        </div>
+
+                        {/* Speed score */}
+                        <div className="text-right shrink-0">
+                          <div className="text-2xl font-bold text-foreground">{sq.speed}<span className="text-sm font-normal text-muted-foreground">%</span></div>
+                          <div className="flex items-center justify-end gap-1 text-xs">
+                            {diff > 0 && <TrendingUp className="h-3 w-3 text-emerald-500" />}
+                            {diff < 0 && <TrendingDown className="h-3 w-3 text-rose-500" />}
+                            {diff === 0 && sq.prevSpeed > 0 && <Minus className="h-3 w-3 text-muted-foreground" />}
+                            {sq.prevSpeed > 0 && (
+                              <span className={cn("font-medium", diff > 0 ? "text-emerald-500" : diff < 0 ? "text-rose-500" : "text-muted-foreground")}>
+                                {diff > 0 ? "+" : ""}{diff}% vs mês anterior
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Speed bar */}
+                      <div className="mt-3 h-2 rounded-full bg-border/20 overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-700"
+                          style={{
+                            width: `${sq.speed}%`,
+                            background: `linear-gradient(90deg, ${sq.color}, ${sq.color}88)`,
+                          }}
+                        />
+                      </div>
+
+                      {/* Etapas info */}
+                      <div className="mt-2 flex items-center gap-4 text-[11px] text-muted-foreground">
+                        <span>{sq.completedEtapas}/{sq.totalEtapas} etapas concluídas</span>
+                        <span>{sq.percentComplete}% do ciclo</span>
+                        {sq.avgDaysBeforeMagic > 0 && <span>~{sq.avgDaysBeforeMagic}d antes do dia 27</span>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </CardContent>
           </Card>
         </FadeUp>
