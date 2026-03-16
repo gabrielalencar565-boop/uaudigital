@@ -657,7 +657,7 @@ export function VisaoGeralTab() {
                 </div>
                 <div>
                   <p className="text-xl font-bold leading-none">Desempenho por Squad</p>
-                  <p className="mt-1.5 text-sm text-muted-foreground">Velocidade de entrega das tarefas no mês atual</p>
+                  <p className="mt-1.5 text-sm text-muted-foreground">Velocidade de conclusão das etapas do Magic Number no mês atual</p>
                 </div>
               </div>
 
