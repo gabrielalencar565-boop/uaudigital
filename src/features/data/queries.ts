@@ -250,6 +250,7 @@ export function useToggleClientActive() {
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["clients"] }),
         qc.invalidateQueries({ queryKey: ["clients_all"] }),
+        qc.invalidateQueries({ queryKey: ["clients_admin_all"] }),
       ]);
     },
   });
