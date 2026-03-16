@@ -134,6 +134,48 @@ export function VisaoGeralTab() {
     },
   });
 
+  // Fetch Magic Number completed stages for current month (for squad speed)
+  const magic2StagesQ = useQuery({
+    queryKey: ["magic2_squad_speed", now.getFullYear(), now.getMonth() + 1],
+    queryFn: async () => {
+      const year = now.getFullYear();
+      const month = now.getMonth() + 1;
+      // Get cycles for this month
+      const { data: cycles } = await supabase
+        .from("magic2_cycles")
+        .select("id, client_id")
+        .eq("year", year)
+        .eq("month", month)
+        .eq("is_active", true);
+      if (!cycles?.length) return { stages: [] as any[], clientLinks: [] as any[] };
+
+      const cycleIds = cycles.map(c => c.id);
+      const { data: stages } = await supabase
+        .from("magic2_cycle_stages")
+        .select("id, cycle_id, stage, completed, completed_at")
+        .in("cycle_id", cycleIds)
+        .eq("completed", true);
+
+      // Get magic2_client_links to map magic2_client_id -> agenda_client_id
+      const magic2ClientIds = [...new Set(cycles.map(c => c.client_id))];
+      const { data: links } = await supabase
+        .from("magic2_client_links")
+        .select("magic2_client_id, agenda_client_id")
+        .in("magic2_client_id", magic2ClientIds);
+
+      // Build cycle_id -> agenda_client_id map
+      const cycleToAgenda: Record<string, string> = {};
+      const m2ToAgenda: Record<string, string> = {};
+      (links ?? []).forEach((l: any) => { m2ToAgenda[l.magic2_client_id] = l.agenda_client_id; });
+      (cycles ?? []).forEach((c: any) => { if (m2ToAgenda[c.client_id]) cycleToAgenda[c.id] = m2ToAgenda[c.client_id]; });
+
+      return {
+        stages: (stages ?? []).map((s: any) => ({ ...s, agenda_client_id: cycleToAgenda[s.cycle_id] ?? null })),
+        clientLinks: links ?? [],
+      };
+    },
+  });
+
   const healthQ = useHealthScores(now.getMonth() + 1, now.getFullYear());
 
   const squads = squadsQ.data ?? [];
