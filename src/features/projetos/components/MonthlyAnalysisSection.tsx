@@ -148,6 +148,66 @@ export function MonthlyAnalysisSection() {
     return { avg, totalEtapas, totalClientes };
   }, [annualProgressData, yearData]);
 
+  // ── Proactivity Index per month ──
+  const proactivityData = useMemo(() => {
+    if (!yearData) return [];
+    const now2 = new Date();
+    const currentMonth = now2.getFullYear() === year ? now2.getMonth() + 1 : 12;
+
+    return Array.from({ length: 12 }, (_, i) => {
+      const m = i + 1;
+      const monthCycles = (yearData.cycles ?? []).filter((c: any) => c.month === m && c.is_active);
+      const monthStages = (yearData.stages ?? []).filter((s: any) =>
+        monthCycles.some((c: any) => c.id === s.cycle_id)
+      );
+      const totalClients = monthCycles.length;
+      const totalStagesMonth = totalClients * MAGIC2_STAGES.length;
+      const completedStages = monthStages.filter((s: any) => s.completed);
+
+      if (m > currentMonth || totalClients === 0) {
+        return { mes: MONTH_SHORT[i], monthNum: m, proatividade: 0, totalTarefas: 0, antes20Pct: 0, hasData: false };
+      }
+
+      // Weighted proactivity: days 1-10 = weight 1.0, 11-20 = 0.6, 21-27 = 0.3
+      let weightedSum = 0;
+      let maxPossible = completedStages.length; // each task max weight = 1.0
+      let before20 = 0;
+
+      for (const s of completedStages) {
+        const day = s.completed_at ? new Date(s.completed_at).getDate() : 28;
+        if (day <= 10) weightedSum += 1.0;
+        else if (day <= 20) { weightedSum += 0.6; before20++; }
+        else if (day <= 27) weightedSum += 0.3;
+        // after 27 = 0
+        if (day <= 10) before20++;
+        if (day <= 20 && day > 10) {} // already counted
+      }
+      // Fix before20 count: days 1-20
+      before20 = completedStages.filter((s: any) => {
+        const day = s.completed_at ? new Date(s.completed_at).getDate() : 28;
+        return day <= 20;
+      }).length;
+
+      const proatividade = maxPossible > 0 ? Math.round((weightedSum / maxPossible) * 100) : 0;
+      const antes20Pct = completedStages.length > 0 ? Math.round((before20 / completedStages.length) * 100) : 0;
+
+      return {
+        mes: MONTH_SHORT[i],
+        monthNum: m,
+        proatividade,
+        totalTarefas: completedStages.length,
+        antes20Pct,
+        hasData: true,
+      };
+    });
+  }, [yearData, year]);
+
+  const bestProactivityMonth = useMemo(() => {
+    const active = proactivityData.filter(m => m.hasData && m.proatividade > 0);
+    if (active.length === 0) return null;
+    return active.reduce((a, b) => a.proatividade > b.proatividade ? a : b);
+  }, [proactivityData]);
+
   // ── Annual score data (Uau Score per month) ──
   const annualScoreData = useMemo(() => {
     return computeAnnualScores(yearData, year, month);
