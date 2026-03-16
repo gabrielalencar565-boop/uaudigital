@@ -381,8 +381,8 @@ export function MonthlyAnalysisSection() {
                 </div>
 
                 {/* Score range legend */}
-                <div className="flex flex-col gap-2 pt-2">
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Faixas</p>
+                <div className="flex flex-col gap-2.5 pt-2">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">Faixas</p>
                   {SCORE_RANGES.map(range => {
                     const color = toneColor(range.tone);
                     const isActive = uauScore >= range.min && uauScore <= range.max;
@@ -390,27 +390,49 @@ export function MonthlyAnalysisSection() {
                       <div
                         key={range.label}
                         className={cn(
-                          "flex items-center gap-2 text-xs transition-opacity",
-                          isActive ? "opacity-100" : "opacity-50"
+                          "flex flex-col gap-0.5 transition-opacity",
+                          isActive ? "opacity-100" : "opacity-40"
                         )}
                       >
-                        <div
-                          className="h-2.5 w-2.5 rounded-full shrink-0"
-                          style={{ backgroundColor: color }}
-                        />
-                        <span className="text-muted-foreground whitespace-nowrap">
-                          {range.min}–{range.max}
-                        </span>
-                        <span
-                          className={cn("font-semibold", isActive && "underline")}
-                          style={{ color }}
-                        >
-                          {range.label}
-                        </span>
+                        <div className="flex items-center gap-2 text-xs">
+                          <div
+                            className="h-2.5 w-2.5 rounded-full shrink-0"
+                            style={{ backgroundColor: color }}
+                          />
+                          <span className="text-muted-foreground whitespace-nowrap">
+                            {range.min}–{range.max}
+                          </span>
+                          <span
+                            className={cn("font-semibold", isActive && "underline")}
+                            style={{ color }}
+                          >
+                            {range.label}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground pl-[18px] leading-tight">
+                          {range.desc}
+                        </p>
                       </div>
                     );
                   })}
                 </div>
+              </div>
+
+              {/* Previous month comparison */}
+              <div className="flex items-center gap-3 text-xs pt-2 border-t border-border/50">
+                <span className="text-muted-foreground">
+                  {prevMonthLabel}: <strong className="text-foreground">{prevUauScore}</strong>
+                </span>
+                <span className="text-muted-foreground">→</span>
+                <span className="text-muted-foreground">
+                  {currentMonthLabel}: <strong className="text-foreground">{uauScore}</strong>
+                </span>
+                <span className={cn(
+                  "font-bold tabular-nums ml-auto",
+                  uauDelta > 0 ? "text-success" : uauDelta < 0 ? "text-destructive" : "text-muted-foreground"
+                )}>
+                  {uauDelta > 0 ? "+" : ""}{uauDelta}pts {uauDelta > 0 ? "↑" : uauDelta < 0 ? "↓" : "="}
+                </span>
               </div>
 
               {/* Indicators with info tooltips */}
