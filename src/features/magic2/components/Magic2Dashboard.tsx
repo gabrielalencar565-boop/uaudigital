@@ -131,7 +131,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
   return (
     <section className={cn("grid gap-6 items-stretch grid-cols-1 lg:grid-cols-[minmax(280px,400px)_1fr] xl:grid-cols-[460px_1fr]", fullscreen && "min-h-[calc(100vh-120px)] lg:grid-cols-[minmax(280px,520px)_1fr] xl:grid-cols-[560px_1fr] items-center")}>
       {/* Coluna esquerda: anel grande */}
-      <Card className="overflow-hidden flex flex-col relative group border-0"
+      <Card className={cn("overflow-hidden flex flex-col relative group border-0", fullscreen && "self-stretch")}
         style={{
           borderRadius: 16,
           boxShadow: "0 8px 32px -8px rgba(124,58,237,0.18), 0 0 0 1px rgba(139,92,246,0.12), inset 0 0 0 1px rgba(255,255,255,0.06)",
