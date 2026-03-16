@@ -702,7 +702,7 @@ export function VisaoGeralTab() {
                                 )}
                               </p>
                               <p className="text-muted-foreground">Velocidade: <strong className="text-foreground">{d.speed}%</strong></p>
-                              <p className="text-muted-foreground">Tarefas concluídas: <strong className="text-foreground">{d.totalTarefas}</strong></p>
+                              <p className="text-muted-foreground">Etapas concluídas: <strong className="text-foreground">{d.totalTarefas}</strong></p>
                               <p className="text-muted-foreground">Média dias antes do Magic: <strong className="text-foreground">{d.avgDaysBeforeMagic}</strong></p>
                             </div>
                           );
