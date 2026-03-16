@@ -187,6 +187,37 @@ export function VisaoGeralTab() {
     }));
   }, [squads, clientsPerSquad]);
 
+  // Squad delivery speed data
+  const squadSpeedData = useMemo(() => {
+    return squads.map((sq: any) => {
+      const memberIds = allSquadMembers.filter((sm: any) => sm.squad_id === sq.id).map((sm: any) => sm.user_id);
+      const doneTasks = allTasks.filter((t: any) => t.assignee_id && memberIds.includes(t.assignee_id) && t.status_global === "concluido");
+
+      if (doneTasks.length === 0) {
+        return { name: sq.name, color: sq.color, icon: sq.icon ?? "shield", speed: 0, totalTarefas: 0, avgDaysBeforeMagic: 0, hasData: false };
+      }
+
+      let weightedSum = 0;
+      let totalDaysBefore = 0;
+      for (const t of doneTasks) {
+        const day = new Date(t.updated_at).getDate();
+        if (day <= 10) weightedSum += 1.0;
+        else if (day <= 20) weightedSum += 0.6;
+        else if (day <= 27) weightedSum += 0.3;
+        totalDaysBefore += Math.max(0, 27 - day);
+      }
+      const speed = Math.round((weightedSum / doneTasks.length) * 100);
+      const avgDaysBeforeMagic = Math.round(totalDaysBefore / doneTasks.length);
+
+      return { name: sq.name, color: sq.color, icon: sq.icon ?? "shield", speed, totalTarefas: doneTasks.length, avgDaysBeforeMagic, hasData: true };
+    }).sort((a, b) => b.speed - a.speed);
+  }, [squads, allSquadMembers, allTasks]);
+
+  const bestSquad = useMemo(() => {
+    const active = squadSpeedData.filter(s => s.hasData);
+    return active.length > 0 ? active[0] : null;
+  }, [squadSpeedData]);
+
   // Table rows with all metrics
   const tableRows = useMemo(() => {
     return squads.map((sq: any) => {
