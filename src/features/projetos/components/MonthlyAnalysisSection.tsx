@@ -19,20 +19,10 @@ import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-function getClassification(score: number) {
-  if (score >= 90) return { label: "Excelente", tone: "success" as const };
-  if (score >= 75) return { label: "Saudável", tone: "primary" as const };
-  if (score >= 60) return { label: "Atenção", tone: "warning" as const };
-  return { label: "Crítico", tone: "danger" as const };
-}
+import { getClassification, toneColor, barColor, MONTH_SHORT, computeAnnualScores } from "@/features/projetos/utils/score-utils";
 
-function toneColor(tone: "success" | "primary" | "warning" | "danger") {
-  switch (tone) {
-    case "success": return "hsl(var(--success))";
-    case "warning": return "hsl(var(--warning))";
-    case "danger": return "hsl(var(--danger))";
-    default: return "hsl(var(--primary))";
-  }
+function localToneColor(tone: "success" | "primary" | "warning" | "danger") {
+  return toneColor(tone);
 }
 
 const INDICATOR_TOOLTIPS: Record<string, string> = {
