@@ -599,6 +599,124 @@ export function VisaoGeralTab() {
         </Card>
       </FadeUp>
 
+      {/* Squad delivery speed chart */}
+      {squadSpeedData.length > 0 && (
+        <FadeUp delay={0.52}>
+          <Card>
+            <CardContent className="py-6 px-6 space-y-5">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-2xl bg-sidebar/10 flex items-center justify-center">
+                  <Zap className="h-6 w-6 text-sidebar" />
+                </div>
+                <div>
+                  <p className="text-xl font-bold leading-none">Desempenho por Squad</p>
+                  <p className="mt-1.5 text-sm text-muted-foreground">Velocidade de entrega das tarefas no mês atual</p>
+                </div>
+              </div>
+
+              <div className="h-[220px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={squadSpeedData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }} layout="horizontal">
+                    <defs>
+                      <linearGradient id="squadBarGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="hsl(var(--sidebar))" stopOpacity={0.85} />
+                        <stop offset="100%" stopColor="hsl(var(--sidebar))" stopOpacity={0.35} />
+                      </linearGradient>
+                      <linearGradient id="squadBarBestGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="hsl(142, 71%, 45%)" stopOpacity={1} />
+                        <stop offset="100%" stopColor="hsl(142, 71%, 45%)" stopOpacity={0.45} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} vertical={false} />
+                    <XAxis
+                      dataKey="name"
+                      tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      domain={[0, 100]}
+                      tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                      axisLine={false}
+                      tickLine={false}
+                      tickFormatter={(v) => `${v}%`}
+                    />
+                    <Tooltip
+                      content={({ active, payload }: any) => {
+                        if (active && payload?.length) {
+                          const d = payload[0].payload;
+                          if (!d.hasData) return null;
+                          return (
+                            <div className="bg-card border border-border rounded-xl px-3 py-2 shadow-lg text-xs space-y-0.5">
+                              <p className="font-semibold text-foreground flex items-center gap-1">
+                                {d.name}
+                                {bestSquad && d.name === bestSquad.name && (
+                                  <Trophy className="h-3 w-3 text-sidebar" />
+                                )}
+                              </p>
+                              <p className="text-muted-foreground">Velocidade: <strong className="text-foreground">{d.speed}%</strong></p>
+                              <p className="text-muted-foreground">Tarefas concluídas: <strong className="text-foreground">{d.totalTarefas}</strong></p>
+                              <p className="text-muted-foreground">Média dias antes do Magic: <strong className="text-foreground">{d.avgDaysBeforeMagic}</strong></p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    <Bar dataKey="speed" radius={[4, 4, 0, 0]} maxBarSize={50}>
+                      {squadSpeedData.map((entry, index) => {
+                        const { Cell: RCell } = require("recharts");
+                        return (
+                          <RCell
+                            key={index}
+                            fill={
+                              !entry.hasData
+                                ? "hsl(var(--muted))"
+                                : bestSquad && entry.name === bestSquad.name
+                                  ? "url(#squadBarBestGrad)"
+                                  : "url(#squadBarGrad)"
+                            }
+                            fillOpacity={entry.hasData ? 1 : 0.3}
+                          />
+                        );
+                      })}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Ranking */}
+              {squadSpeedData.filter(s => s.hasData).length > 0 && (
+                <div className="pt-2 border-t border-border/50 space-y-1.5">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Ranking de Velocidade</p>
+                  {squadSpeedData.filter(s => s.hasData).map((sq, i) => {
+                    const SquadIcon = getSquadIcon(sq.icon);
+                    return (
+                      <div key={sq.name} className="flex items-center gap-3 text-xs py-1.5">
+                        <span className={cn(
+                          "font-bold tabular-nums w-5 text-center",
+                          i === 0 ? "text-sidebar" : "text-muted-foreground"
+                        )}>
+                          {i + 1}º
+                        </span>
+                        <div className="h-5 w-5 rounded flex items-center justify-center" style={{ backgroundColor: sq.color + "20" }}>
+                          <SquadIcon className="h-3 w-3" style={{ color: sq.color }} />
+                        </div>
+                        <span className={cn("font-medium", i === 0 ? "text-foreground" : "text-muted-foreground")}>{sq.name}</span>
+                        {i === 0 && <Trophy className="h-3.5 w-3.5 text-sidebar" />}
+                        <span className="ml-auto font-bold tabular-nums" style={{ color: i === 0 ? "hsl(142, 71%, 45%)" : undefined }}>
+                          {sq.speed}%
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </FadeUp>
+      )}
+
       {/* Calendar full-width */}
       <FadeUp delay={0.6}>
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
