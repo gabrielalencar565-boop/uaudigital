@@ -7,7 +7,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip as RechartsTooltip,
   BarChart, Bar,
 } from "recharts";
-import { TrendingUp, Clock, Zap, BarChart3, Info } from "lucide-react";
+import { TrendingUp, Clock, Zap, BarChart3, Info, CalendarCheck, ArrowUp, ArrowDown } from "lucide-react";
 import {
   format, getDaysInMonth,
 } from "date-fns";
