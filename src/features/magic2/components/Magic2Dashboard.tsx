@@ -221,11 +221,11 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
                 <ProgressRing
                   value={item?.pct ?? 0}
                   tone={(item?.pct ?? 0) === 100 ? "success" : "warning"}
-                  size={fullscreen ? 180 : isMobile ? 110 : 160}
-                  stroke={isMobile ? 12 : 16}
+                  size={fullscreen ? 220 : isMobile ? 110 : 160}
+                  stroke={isMobile ? 12 : 18}
                   className="animate-fade-in"
                   label={
-                    <div className={cn("font-semibold tabular-nums", isMobile ? "text-xl" : fullscreen ? "text-2xl" : "text-3xl")}>
+                    <div className={cn("font-semibold tabular-nums", isMobile ? "text-xl" : fullscreen ? "text-3xl" : "text-3xl")}>
                       {item?.pct ?? 0}%
                     </div>
                   }
