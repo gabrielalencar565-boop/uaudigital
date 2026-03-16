@@ -129,9 +129,9 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
   })();
 
   return (
-    <section className={cn("grid gap-6 items-stretch grid-cols-1 lg:grid-cols-[minmax(280px,400px)_1fr] xl:grid-cols-[460px_1fr]", fullscreen && "min-h-[calc(100vh-120px)] lg:grid-cols-[minmax(280px,400px)_1fr] xl:grid-cols-[400px_1fr] items-center")}>
+    <section className={cn("grid gap-6 items-stretch grid-cols-1 lg:grid-cols-[minmax(280px,400px)_1fr] xl:grid-cols-[460px_1fr]", fullscreen && "min-h-[calc(100vh-120px)] lg:grid-cols-1 xl:grid-cols-1 items-start justify-items-center")}>
       {/* Coluna esquerda: anel grande */}
-      <Card className={cn("overflow-hidden flex flex-col relative group border-0", fullscreen && "self-stretch")}
+      <Card className={cn("overflow-hidden flex flex-col relative group border-0", fullscreen && "w-full max-w-md")}
         style={{
           borderRadius: 16,
           boxShadow: "0 8px 32px -8px rgba(124,58,237,0.18), 0 0 0 1px rgba(139,92,246,0.12), inset 0 0 0 1px rgba(255,255,255,0.06)",
@@ -186,12 +186,12 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
           <ProgressRing
             value={dashboard.overallPct}
             tone={dashboard.overallPct === 100 ? "success" : "warning"}
-            size={fullscreen ? 340 : isMobile ? 220 : 320}
+            size={fullscreen ? 240 : isMobile ? 220 : 320}
             stroke={isMobile ? 18 : 26}
             trackColor="rgba(91,33,182,0.45)"
             label={
               <div className="text-center">
-                <div className={cn("font-semibold tabular-nums tracking-tight text-white drop-shadow-sm", isMobile ? "text-5xl" : fullscreen ? "text-6xl" : "text-7xl")}>
+                <div className={cn("font-semibold tabular-nums tracking-tight text-white drop-shadow-sm", isMobile ? "text-5xl" : fullscreen ? "text-4xl" : "text-7xl")}>
                   {dashboard.overallPct}%
                 </div>
                 <div className={cn("mt-2 text-white/60", isMobile ? "text-xs" : fullscreen ? "text-sm" : "text-sm")}>
@@ -204,7 +204,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
       </Card>
 
       {/* Coluna direita: métricas (linha) + etapas (grade) */}
-      <div className={cn("flex flex-col gap-6", fullscreen && "flex-1 justify-center")}>
+      <div className={cn("flex flex-col gap-6", fullscreen && "w-full max-w-3xl")}>
         <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
           <MetricCard value={deadlineLabel} label="MAGIC NUMBER" highlight />
           <MetricCard value={String(dashboard.totalStages)} label="TOTAL" />
@@ -213,7 +213,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
         </div>
 
         {/* 1ª linha (4): Planejamento, Captação, Edição, Design | 2ª linha (4): Alterações, PDF, Agendamento, Clientes 100% */}
-        <div className={cn("grid gap-4 content-start grid-cols-2 sm:grid-cols-3 lg:grid-cols-4", fullscreen && "flex-1 content-center")}>
+        <div className={cn("grid gap-4 content-start grid-cols-2 sm:grid-cols-3 lg:grid-cols-4", fullscreen && "content-start")}>
           {stagesForDashboard.map((st) => {
             const item = dashboard.byStage[st.key];
             return (
@@ -221,11 +221,11 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
                 <ProgressRing
                   value={item?.pct ?? 0}
                   tone={(item?.pct ?? 0) === 100 ? "success" : "warning"}
-                  size={fullscreen ? 160 : isMobile ? 110 : 160}
+                  size={fullscreen ? 120 : isMobile ? 110 : 160}
                   stroke={isMobile ? 12 : 18}
                   className="animate-fade-in"
                   label={
-                    <div className={cn("font-semibold tabular-nums", isMobile ? "text-xl" : "text-2xl")}>
+                    <div className={cn("font-semibold tabular-nums", isMobile ? "text-xl" : fullscreen ? "text-lg" : "text-2xl")}>
                       {item?.pct ?? 0}%
                     </div>
                   }
@@ -247,11 +247,11 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
             <ProgressRing
               value={clients100Pct}
               tone={clients100Pct === 100 ? "success" : "warning"}
-              size={fullscreen ? 160 : isMobile ? 110 : 160}
+              size={fullscreen ? 120 : isMobile ? 110 : 160}
               stroke={isMobile ? 12 : 18}
               className="animate-fade-in"
               label={
-                <div className={cn("font-semibold tabular-nums", isMobile ? "text-xl" : "text-2xl")}>
+                <div className={cn("font-semibold tabular-nums", isMobile ? "text-xl" : fullscreen ? "text-lg" : "text-2xl")}>
                   {dashboard.clients100}
                 </div>
               }
