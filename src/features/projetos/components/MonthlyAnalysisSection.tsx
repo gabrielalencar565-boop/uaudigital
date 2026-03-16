@@ -145,6 +145,53 @@ export function MonthlyAnalysisSection() {
     return { prazo: prazoScore, eficiencia: eficienciaScore, consistencia: consistenciaScore, uauScore: score };
   }, [stages, currentDay, doneStages, totalStages]);
 
+  // ── Previous month Uau Score ──
+  const prevUauScore = useMemo(() => {
+    const prevDone = prevStages.filter(s => s.completed).length;
+    const prevEficiencia = prevTotalStages > 0 ? Math.round((prevDone / prevTotalStages) * 100) : 0;
+
+    const prevCompletedDates = prevStages
+      .filter(s => s.completed && s.completed_at)
+      .map(s => new Date(s.completed_at!).getDate());
+    const prevLastDay = prevCompletedDates.length > 0 ? Math.max(...prevCompletedDates) : 28;
+
+    let prevPrazo: number;
+    if (prevDone === prevTotalStages && prevTotalStages > 0) {
+      if (prevLastDay <= 25) prevPrazo = 100;
+      else if (prevLastDay <= 27) prevPrazo = 85;
+      else if (prevLastDay <= 30) prevPrazo = 60;
+      else prevPrazo = 40;
+    } else {
+      prevPrazo = 35;
+    }
+
+    let prevConsistencia = 50;
+    if (prevDone > 0) {
+      const dayBuckets: Record<number, number> = {};
+      prevStages.filter(s => s.completed && s.completed_at).forEach(s => {
+        const d = new Date(s.completed_at!).getDate();
+        dayBuckets[d] = (dayBuckets[d] ?? 0) + 1;
+      });
+      const counts = Object.values(dayBuckets);
+      if (counts.length > 1) {
+        const avg = counts.reduce((a, b) => a + b, 0) / counts.length;
+        const variance = counts.reduce((sum, c) => sum + Math.pow(c - avg, 2), 0) / counts.length;
+        const cv = avg > 0 ? Math.sqrt(variance) / avg : 0;
+        prevConsistencia = Math.max(20, Math.min(100, Math.round(100 - cv * 40)));
+      } else if (counts.length === 1) {
+        prevConsistencia = prevDone <= 3 ? 70 : 30;
+      }
+      const prevTotalDaysInMonth = getDaysInMonth(new Date(prevYear, prevMonth - 1, 1));
+      const spreadRatio = counts.length / Math.min(prevTotalDaysInMonth, 27);
+      prevConsistencia = Math.round(prevConsistencia * 0.7 + spreadRatio * 100 * 0.3);
+      prevConsistencia = Math.max(0, Math.min(100, prevConsistencia));
+    }
+
+    return Math.round((prevPrazo + prevEficiencia + prevConsistencia) / 3);
+  }, [prevStages, prevTotalStages, prevYear, prevMonth]);
+
+  const uauDelta = uauScore - prevUauScore;
+
   const classification = getClassification(uauScore);
   const scoreColor = toneColor(classification.tone);
 
