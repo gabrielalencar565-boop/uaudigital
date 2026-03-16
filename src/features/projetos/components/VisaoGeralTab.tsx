@@ -744,7 +744,7 @@ export function VisaoGeralTab() {
                         </div>
                         <span className={cn("font-medium", i === 0 ? "text-foreground" : "text-muted-foreground")}>{sq.name}</span>
                         {i === 0 && <Trophy className="h-3.5 w-3.5 text-sidebar" />}
-                        <span className="ml-auto font-bold tabular-nums" style={{ color: i === 0 ? "hsl(142, 71%, 45%)" : undefined }}>
+                        <span className="ml-auto font-bold tabular-nums" style={{ color: sq.color }}>
                           {sq.speed}%
                         </span>
                       </div>
