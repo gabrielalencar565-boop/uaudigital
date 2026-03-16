@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ import {
   Plus, Trash2, Settings2, Users, CheckCircle2, Clock, FileText,
   MoreHorizontal, CalendarDays, HeartPulse, Target, ChevronLeft, ChevronRight, Star, Shield,
   BarChart2, ChevronsUpDown, Sword, Crown, Flame, Zap, Rocket, Diamond, Award, Trophy,
-  Heart, Sparkles, Sun, Moon, Cake,
+  Heart, Sparkles, Sun, Moon, Cake, TrendingUp, TrendingDown, Minus, ArrowLeft, AlertTriangle, Lightbulb,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
@@ -97,6 +97,7 @@ export function VisaoGeralTab() {
   const [showHealthScore, setShowHealthScore] = useState(false);
   const [calMonth, setCalMonth] = useState(new Date());
   const [holidayFilter, setHolidayFilter] = useState<"all" | "feriados" | "internas" | "aniversarios">("all");
+  const [expandedSquadId, setExpandedSquadId] = useState<string | null>(null);
 
   // Table sort
   const [sortKey, setSortKey] = useState<SortKey>("name");
@@ -134,44 +135,75 @@ export function VisaoGeralTab() {
     },
   });
 
-  // Fetch Magic Number completed stages for current month (for squad speed)
+  // Fetch Magic Number stages for current AND previous month (for squad speed + comparison)
   const magic2StagesQ = useQuery({
-    queryKey: ["magic2_squad_speed", now.getFullYear(), now.getMonth() + 1],
+    queryKey: ["magic2_squad_speed_v2", now.getFullYear(), now.getMonth() + 1],
     queryFn: async () => {
       const year = now.getFullYear();
       const month = now.getMonth() + 1;
-      // Get cycles for this month
-      const { data: cycles } = await supabase
-        .from("magic2_cycles")
-        .select("id, client_id")
-        .eq("year", year)
-        .eq("month", month)
-        .eq("is_active", true);
-      if (!cycles?.length) return { stages: [] as any[], clientLinks: [] as any[] };
+      const prevDate = subMonths(now, 1);
+      const prevYear = prevDate.getFullYear();
+      const prevMonth = prevDate.getMonth() + 1;
 
-      const cycleIds = cycles.map(c => c.id);
-      const { data: stages } = await supabase
+      // Get cycles for both months
+      const { data: allCycles } = await supabase
+        .from("magic2_cycles")
+        .select("id, client_id, year, month")
+        .eq("is_active", true)
+        .or(`and(year.eq.${year},month.eq.${month}),and(year.eq.${prevYear},month.eq.${prevMonth})`);
+
+      if (!allCycles?.length) return { stages: [] as any[], prevStages: [] as any[], clientNames: {} as Record<string, string> };
+
+      const currentCycles = allCycles.filter(c => c.year === year && c.month === month);
+      const prevCycles = allCycles.filter(c => c.year === prevYear && c.month === prevMonth);
+
+      const allCycleIds = allCycles.map(c => c.id);
+      const { data: allStages } = await supabase
         .from("magic2_cycle_stages")
         .select("id, cycle_id, stage, completed, completed_at")
-        .in("cycle_id", cycleIds)
-        .eq("completed", true);
+        .in("cycle_id", allCycleIds);
 
-      // Get magic2_client_links to map magic2_client_id -> agenda_client_id
-      const magic2ClientIds = [...new Set(cycles.map(c => c.client_id))];
+      // Get magic2_client_links
+      const magic2ClientIds = [...new Set(allCycles.map(c => c.client_id))];
       const { data: links } = await supabase
         .from("magic2_client_links")
         .select("magic2_client_id, agenda_client_id")
         .in("magic2_client_id", magic2ClientIds);
 
-      // Build cycle_id -> agenda_client_id map
-      const cycleToAgenda: Record<string, string> = {};
+      // Get client names
+      const { data: m2Clients } = await supabase
+        .from("magic2_clients")
+        .select("id, name")
+        .in("id", magic2ClientIds);
+
+      const clientNameMap: Record<string, string> = {};
+      (m2Clients ?? []).forEach((c: any) => { clientNameMap[c.id] = c.name; });
+
+      // Build maps
       const m2ToAgenda: Record<string, string> = {};
       (links ?? []).forEach((l: any) => { m2ToAgenda[l.magic2_client_id] = l.agenda_client_id; });
-      (cycles ?? []).forEach((c: any) => { if (m2ToAgenda[c.client_id]) cycleToAgenda[c.id] = m2ToAgenda[c.client_id]; });
+
+      const buildStageList = (cycles: typeof allCycles, stages: typeof allStages) => {
+        const cycleToAgenda: Record<string, string> = {};
+        const cycleToM2Client: Record<string, string> = {};
+        cycles.forEach((c: any) => {
+          if (m2ToAgenda[c.client_id]) cycleToAgenda[c.id] = m2ToAgenda[c.client_id];
+          cycleToM2Client[c.id] = c.client_id;
+        });
+        const cycleIds = new Set(cycles.map(c => c.id));
+        return (stages ?? [])
+          .filter((s: any) => cycleIds.has(s.cycle_id))
+          .map((s: any) => ({
+            ...s,
+            agenda_client_id: cycleToAgenda[s.cycle_id] ?? null,
+            client_name: clientNameMap[cycleToM2Client[s.cycle_id]] ?? "—",
+          }));
+      };
 
       return {
-        stages: (stages ?? []).map((s: any) => ({ ...s, agenda_client_id: cycleToAgenda[s.cycle_id] ?? null })),
-        clientLinks: links ?? [],
+        stages: buildStageList(currentCycles, allStages ?? []),
+        prevStages: buildStageList(prevCycles, allStages ?? []),
+        clientNames: clientNameMap,
       };
     },
   });
@@ -229,41 +261,121 @@ export function VisaoGeralTab() {
     }));
   }, [squads, clientsPerSquad]);
 
-  const magic2Stages = magic2StagesQ.data?.stages ?? [];
+  const magic2AllStages = magic2StagesQ.data?.stages ?? [];
+  const magic2PrevStages = magic2StagesQ.data?.prevStages ?? [];
+  const magic2Stages = magic2AllStages.filter((s: any) => s.completed);
+
+  const STAGE_LABELS: Record<string, string> = {
+    planejamento: "Planejamento", captacao: "Captação", edicao_videos: "Vídeo",
+    design: "Design", pdf: "PDF", alteracoes: "Alterações", agendamento: "Agendamento",
+  };
+
+  const computeSpeed = (stages: any[]) => {
+    if (stages.length === 0) return { speed: 0, avgDays: 0 };
+    let weightedSum = 0;
+    let totalDaysBefore = 0;
+    for (const s of stages) {
+      const day = new Date(s.completed_at).getDate();
+      if (day <= 10) weightedSum += 1.0;
+      else if (day <= 20) weightedSum += 0.6;
+      else if (day <= 27) weightedSum += 0.3;
+      totalDaysBefore += Math.max(0, 27 - day);
+    }
+    return { speed: Math.round((weightedSum / stages.length) * 100), avgDays: Math.round(totalDaysBefore / stages.length) };
+  };
 
   // Squad delivery speed data based on Magic Number completed stages
   const squadSpeedData = useMemo(() => {
     return squads.map((sq: any) => {
-      // Get clients belonging to this squad
       const squadClientIds = (clientsPerSquad[sq.id] ?? []);
-
-      // Filter completed magic2 stages for this squad's clients
       const squadStages = magic2Stages.filter((s: any) => s.agenda_client_id && squadClientIds.includes(s.agenda_client_id));
+      const prevSquadStages = magic2PrevStages.filter((s: any) => s.completed && s.agenda_client_id && squadClientIds.includes(s.agenda_client_id));
+      const allSquadStages = magic2AllStages.filter((s: any) => s.agenda_client_id && squadClientIds.includes(s.agenda_client_id));
 
-      if (squadStages.length === 0) {
-        return { name: sq.name, color: sq.color, icon: sq.icon ?? "shield", speed: 0, totalTarefas: 0, avgDaysBeforeMagic: 0, hasData: false };
+      const { speed, avgDays } = computeSpeed(squadStages);
+      const { speed: prevSpeed } = computeSpeed(prevSquadStages);
+      const totalEtapas = allSquadStages.length;
+      const completedEtapas = squadStages.length;
+
+      if (totalEtapas === 0) {
+        return { id: sq.id, name: sq.name, color: sq.color, icon: sq.icon ?? "shield", speed: 0, totalTarefas: 0, avgDaysBeforeMagic: 0, hasData: false, prevSpeed: 0, totalEtapas: 0, completedEtapas: 0, percentComplete: 0 };
       }
 
-      let weightedSum = 0;
-      let totalDaysBefore = 0;
-      for (const s of squadStages) {
-        const day = new Date(s.completed_at).getDate();
-        if (day <= 10) weightedSum += 1.0;
-        else if (day <= 20) weightedSum += 0.6;
-        else if (day <= 27) weightedSum += 0.3;
-        totalDaysBefore += Math.max(0, 27 - day);
-      }
-      const speed = Math.round((weightedSum / squadStages.length) * 100);
-      const avgDaysBeforeMagic = Math.round(totalDaysBefore / squadStages.length);
-
-      return { name: sq.name, color: sq.color, icon: sq.icon ?? "shield", speed, totalTarefas: squadStages.length, avgDaysBeforeMagic, hasData: true };
+      return {
+        id: sq.id, name: sq.name, color: sq.color, icon: sq.icon ?? "shield",
+        speed, totalTarefas: completedEtapas, avgDaysBeforeMagic: avgDays, hasData: true,
+        prevSpeed, totalEtapas, completedEtapas, percentComplete: Math.round((completedEtapas / totalEtapas) * 100),
+      };
     }).sort((a, b) => b.speed - a.speed);
-  }, [squads, clientsPerSquad, magic2Stages]);
+  }, [squads, clientsPerSquad, magic2Stages, magic2PrevStages, magic2AllStages]);
 
   const bestSquad = useMemo(() => {
     const active = squadSpeedData.filter(s => s.hasData);
     return active.length > 0 ? active[0] : null;
   }, [squadSpeedData]);
+
+  // Detailed per-client data for expanded squad
+  const expandedSquadDetail = useMemo(() => {
+    if (!expandedSquadId) return null;
+    const sq = squads.find((s: any) => s.id === expandedSquadId);
+    if (!sq) return null;
+    const squadClientIds = (clientsPerSquad[sq.id] ?? []);
+    const squadAllStages = magic2AllStages.filter((s: any) => s.agenda_client_id && squadClientIds.includes(s.agenda_client_id));
+    const prevStages = magic2PrevStages.filter((s: any) => s.agenda_client_id && squadClientIds.includes(s.agenda_client_id));
+
+    // Group by client
+    const clientMap: Record<string, { name: string; stages: any[]; prevStages: any[] }> = {};
+    for (const s of squadAllStages) {
+      if (!clientMap[s.agenda_client_id]) clientMap[s.agenda_client_id] = { name: s.client_name, stages: [], prevStages: [] };
+      clientMap[s.agenda_client_id].stages.push(s);
+    }
+    for (const s of prevStages) {
+      if (!clientMap[s.agenda_client_id]) clientMap[s.agenda_client_id] = { name: s.client_name, stages: [], prevStages: [] };
+      clientMap[s.agenda_client_id].prevStages.push(s);
+    }
+
+    const clients = Object.entries(clientMap).map(([clientId, data]) => {
+      const completed = data.stages.filter((s: any) => s.completed);
+      const total = data.stages.length;
+      const percent = total > 0 ? Math.round((completed.length / total) * 100) : 0;
+      const prevCompleted = data.prevStages.filter((s: any) => s.completed);
+      const prevTotal = data.prevStages.length;
+      const prevPercent = prevTotal > 0 ? Math.round((prevCompleted.length / prevTotal) * 100) : 0;
+      const { speed } = computeSpeed(completed);
+      const { speed: prevSpd } = computeSpeed(prevCompleted);
+
+      // Insights
+      const insights: string[] = [];
+      if (percent === 100) insights.push("✅ Todas etapas concluídas");
+      else if (percent === 0) insights.push("⚠️ Nenhuma etapa iniciada");
+      else if (percent < 50 && new Date().getDate() > 15) insights.push("🔴 Atenção: menos da metade concluída na 2ª quinzena");
+      if (prevPercent > 0 && percent > prevPercent) insights.push("📈 Melhor que o mês anterior");
+      else if (prevPercent > 0 && percent < prevPercent) insights.push("📉 Abaixo do mês anterior");
+      const earlyStages = completed.filter((s: any) => new Date(s.completed_at).getDate() <= 10);
+      if (earlyStages.length >= 3) insights.push("⚡ Alta proatividade (3+ etapas nos primeiros 10 dias)");
+
+      return {
+        clientId, name: data.name, stages: data.stages, completed: completed.length, total, percent,
+        prevPercent, speed, prevSpeed: prevSpd, insights,
+      };
+    }).sort((a, b) => b.percent - a.percent);
+
+    // Squad-level insights
+    const sqData = squadSpeedData.find(s => s.id === expandedSquadId);
+    const squadInsights: string[] = [];
+    if (sqData) {
+      const diff = sqData.speed - sqData.prevSpeed;
+      if (diff > 10) squadInsights.push(`📈 Velocidade subiu ${diff}% em relação ao mês anterior`);
+      else if (diff < -10) squadInsights.push(`📉 Velocidade caiu ${Math.abs(diff)}% em relação ao mês anterior`);
+      else if (sqData.prevSpeed > 0) squadInsights.push("➡️ Velocidade estável em relação ao mês anterior");
+      const allDone = clients.every(c => c.percent === 100);
+      if (allDone) squadInsights.push("🏆 Todos os clientes 100% concluídos!");
+      const lagging = clients.filter(c => c.percent < 50 && c.total > 0);
+      if (lagging.length > 0) squadInsights.push(`⚠️ ${lagging.length} cliente(s) com menos de 50% das etapas`);
+    }
+
+    return { squad: sq, clients, squadInsights, sqData };
+  }, [expandedSquadId, squads, clientsPerSquad, magic2AllStages, magic2PrevStages, squadSpeedData]);
 
   // Table rows with all metrics
   const tableRows = useMemo(() => {
@@ -657,10 +769,11 @@ export function VisaoGeralTab() {
                 </div>
                 <div>
                   <p className="text-xl font-bold leading-none">Desempenho por Squad</p>
-                  <p className="mt-1.5 text-sm text-muted-foreground">Velocidade de conclusão das etapas do Magic Number no mês atual</p>
+                  <p className="mt-1.5 text-sm text-muted-foreground">Conclusão das etapas do Magic Number por squad — clique para detalhar</p>
                 </div>
               </div>
 
+              {/* Chart */}
               <div className="h-[220px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={squadSpeedData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }} layout="horizontal">
@@ -673,70 +786,69 @@ export function VisaoGeralTab() {
                       ))}
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.4} />
-                    <XAxis
-                      dataKey="name"
-                      tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <YAxis
-                      domain={[0, 100]}
-                      tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
-                      axisLine={false}
-                      tickLine={false}
-                      tickFormatter={(v) => `${v}%`}
-                    />
+                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                    <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}%`} />
                     <Tooltip
                       content={({ active, payload }: any) => {
                         if (active && payload?.length) {
                           const d = payload[0].payload;
                           if (!d.hasData) return null;
+                          const diff = d.speed - d.prevSpeed;
                           return (
                             <div className="bg-card border border-border rounded-xl px-3 py-2 shadow-lg text-xs space-y-0.5">
                               <p className="font-semibold text-foreground flex items-center gap-1">
                                 {d.name}
-                                {bestSquad && d.name === bestSquad.name && (
-                                  <Trophy className="h-3 w-3 text-sidebar" />
-                                )}
+                                {bestSquad && d.name === bestSquad.name && <Trophy className="h-3 w-3 text-sidebar" />}
                               </p>
                               <p className="text-muted-foreground">Velocidade: <strong className="text-foreground">{d.speed}%</strong></p>
-                              <p className="text-muted-foreground">Etapas concluídas: <strong className="text-foreground">{d.totalTarefas}</strong></p>
+                              <p className="text-muted-foreground">Progresso: <strong className="text-foreground">{d.completedEtapas}/{d.totalEtapas} etapas ({d.percentComplete}%)</strong></p>
                               <p className="text-muted-foreground">Média dias antes do Magic: <strong className="text-foreground">{d.avgDaysBeforeMagic}</strong></p>
+                              {d.prevSpeed > 0 && (
+                                <p className="text-muted-foreground flex items-center gap-1">
+                                  vs mês anterior:
+                                  <strong className={cn("text-foreground", diff > 0 ? "text-emerald-500" : diff < 0 ? "text-red-400" : "")}>
+                                    {diff > 0 ? "+" : ""}{diff}%
+                                  </strong>
+                                  {diff > 0 ? <TrendingUp className="h-3 w-3 text-emerald-500" /> : diff < 0 ? <TrendingDown className="h-3 w-3 text-red-400" /> : <Minus className="h-3 w-3" />}
+                                </p>
+                              )}
                             </div>
                           );
                         }
                         return null;
                       }}
                     />
-                    <Bar dataKey="speed" radius={[4, 4, 0, 0]} maxBarSize={50}>
+                    <Bar dataKey="speed" radius={[4, 4, 0, 0]} maxBarSize={50} cursor="pointer"
+                      onClick={(_: any, index: number) => {
+                        const sq = squadSpeedData[index];
+                        if (sq?.hasData) setExpandedSquadId(prev => prev === sq.id ? null : sq.id);
+                      }}
+                    >
                       {squadSpeedData.map((entry, index) => (
-                        <Cell
-                          key={index}
-                          fill={
-                            !entry.hasData
-                              ? "hsl(var(--muted))"
-                              : `url(#sqGrad-${index})`
-                          }
-                          fillOpacity={entry.hasData ? 1 : 0.3}
-                        />
+                        <Cell key={index} fill={!entry.hasData ? "hsl(var(--muted))" : `url(#sqGrad-${index})`} fillOpacity={entry.hasData ? 1 : 0.3} />
                       ))}
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </div>
 
-              {/* Ranking */}
+              {/* Ranking with comparison */}
               {squadSpeedData.filter(s => s.hasData).length > 0 && (
                 <div className="pt-2 border-t border-border/50 space-y-1.5">
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Ranking de Velocidade</p>
                   {squadSpeedData.filter(s => s.hasData).map((sq, i) => {
                     const SquadIcon = getSquadIcon(sq.icon);
+                    const diff = sq.speed - sq.prevSpeed;
                     return (
-                      <div key={sq.name} className="flex items-center gap-3 text-xs py-1.5">
-                        <span className={cn(
-                          "font-bold tabular-nums w-5 text-center",
-                          i === 0 ? "text-sidebar" : "text-muted-foreground"
-                        )}>
+                      <div
+                        key={sq.name}
+                        className={cn(
+                          "flex items-center gap-3 text-xs py-2 px-2 rounded-lg cursor-pointer transition-colors",
+                          expandedSquadId === sq.id ? "bg-accent/50" : "hover:bg-accent/30"
+                        )}
+                        onClick={() => setExpandedSquadId(prev => prev === sq.id ? null : sq.id)}
+                      >
+                        <span className={cn("font-bold tabular-nums w-5 text-center", i === 0 ? "text-sidebar" : "text-muted-foreground")}>
                           {i + 1}º
                         </span>
                         <div className="h-5 w-5 rounded flex items-center justify-center" style={{ backgroundColor: sq.color + "20" }}>
@@ -744,12 +856,111 @@ export function VisaoGeralTab() {
                         </div>
                         <span className={cn("font-medium", i === 0 ? "text-foreground" : "text-muted-foreground")}>{sq.name}</span>
                         {i === 0 && <Trophy className="h-3.5 w-3.5 text-sidebar" />}
+                        <span className="text-muted-foreground ml-1">{sq.completedEtapas}/{sq.totalEtapas}</span>
+                        {sq.prevSpeed > 0 && (
+                          <span className={cn("flex items-center gap-0.5 text-[10px]", diff > 0 ? "text-emerald-500" : diff < 0 ? "text-red-400" : "text-muted-foreground")}>
+                            {diff > 0 ? <TrendingUp className="h-2.5 w-2.5" /> : diff < 0 ? <TrendingDown className="h-2.5 w-2.5" /> : <Minus className="h-2.5 w-2.5" />}
+                            {diff > 0 ? "+" : ""}{diff}%
+                          </span>
+                        )}
                         <span className="ml-auto font-bold tabular-nums" style={{ color: sq.color }}>
                           {sq.speed}%
                         </span>
                       </div>
                     );
                   })}
+                </div>
+              )}
+
+              {/* Expanded squad detail */}
+              {expandedSquadDetail && (
+                <div className="pt-4 border-t border-border/50 space-y-4" style={{ animation: "fadeUp 0.4s ease-out" }}>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setExpandedSquadId(null)}
+                      className="h-7 w-7 rounded-lg bg-accent/50 flex items-center justify-center hover:bg-accent transition-colors"
+                    >
+                      <ArrowLeft className="h-3.5 w-3.5 text-muted-foreground" />
+                    </button>
+                    <div className="h-8 w-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: expandedSquadDetail.squad.color + "20" }}>
+                      {(() => { const I = getSquadIcon(expandedSquadDetail.squad.icon ?? "shield"); return <I className="h-4 w-4" style={{ color: expandedSquadDetail.squad.color }} />; })()}
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-foreground">{expandedSquadDetail.squad.name}</p>
+                      <p className="text-[11px] text-muted-foreground">Detalhe por cliente — {format(now, "MMMM yyyy", { locale: ptBR })}</p>
+                    </div>
+                  </div>
+
+                  {/* Squad-level insights */}
+                  {expandedSquadDetail.squadInsights.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {expandedSquadDetail.squadInsights.map((insight, i) => (
+                        <div key={i} className="flex items-center gap-1.5 text-[11px] bg-accent/40 rounded-lg px-2.5 py-1.5">
+                          <Lightbulb className="h-3 w-3 text-sidebar shrink-0" />
+                          <span className="text-foreground">{insight}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Per-client breakdown */}
+                  <div className="space-y-3">
+                    {expandedSquadDetail.clients.map((client) => (
+                      <div key={client.clientId} className="bg-accent/20 rounded-xl p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-semibold text-foreground">{client.name}</p>
+                          <div className="flex items-center gap-2">
+                            {client.prevPercent > 0 && (
+                              <span className={cn(
+                                "flex items-center gap-0.5 text-[10px] font-medium",
+                                client.percent > client.prevPercent ? "text-emerald-500" : client.percent < client.prevPercent ? "text-red-400" : "text-muted-foreground"
+                              )}>
+                                {client.percent > client.prevPercent ? <TrendingUp className="h-2.5 w-2.5" /> : client.percent < client.prevPercent ? <TrendingDown className="h-2.5 w-2.5" /> : <Minus className="h-2.5 w-2.5" />}
+                                {client.prevPercent}% → {client.percent}%
+                              </span>
+                            )}
+                            <span className="text-xs font-bold tabular-nums" style={{ color: expandedSquadDetail.squad.color }}>
+                              {client.completed}/{client.total}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Stage pills */}
+                        <div className="flex flex-wrap gap-1.5">
+                          {client.stages.map((s: any) => (
+                            <div
+                              key={s.id}
+                              className={cn(
+                                "px-2 py-1 rounded-md text-[10px] font-medium border transition-all",
+                                s.completed
+                                  ? "border-transparent text-white"
+                                  : "border-border/50 text-muted-foreground bg-background"
+                              )}
+                              style={s.completed ? { backgroundColor: expandedSquadDetail.squad.color } : {}}
+                              title={s.completed ? `Concluída em ${format(new Date(s.completed_at), "dd/MM")}` : "Pendente"}
+                            >
+                              {STAGE_LABELS[s.stage] ?? s.stage}
+                              {s.completed && (
+                                <span className="ml-1 opacity-70">{format(new Date(s.completed_at), "dd/MM")}</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Progress bar */}
+                        <Progress value={client.percent} className="h-1.5" />
+
+                        {/* Client insights */}
+                        {client.insights.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 pt-0.5">
+                            {client.insights.map((ins, i) => (
+                              <span key={i} className="text-[10px] text-muted-foreground">{ins}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </CardContent>
