@@ -665,16 +665,14 @@ export function VisaoGeralTab() {
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={squadSpeedData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }} layout="horizontal">
                     <defs>
-                      <linearGradient id="squadBarGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="hsl(var(--sidebar))" stopOpacity={0.85} />
-                        <stop offset="100%" stopColor="hsl(var(--sidebar))" stopOpacity={0.35} />
-                      </linearGradient>
-                      <linearGradient id="squadBarBestGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="hsl(142, 71%, 45%)" stopOpacity={1} />
-                        <stop offset="100%" stopColor="hsl(142, 71%, 45%)" stopOpacity={0.45} />
-                      </linearGradient>
+                      {squadSpeedData.map((sq, i) => (
+                        <linearGradient key={`sqGrad-${i}`} id={`sqGrad-${i}`} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={sq.color} stopOpacity={0.95} />
+                          <stop offset="100%" stopColor={sq.color} stopOpacity={0.4} />
+                        </linearGradient>
+                      ))}
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} vertical={false} />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.4} />
                     <XAxis
                       dataKey="name"
                       tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
@@ -717,9 +715,7 @@ export function VisaoGeralTab() {
                           fill={
                             !entry.hasData
                               ? "hsl(var(--muted))"
-                              : bestSquad && entry.name === bestSquad.name
-                                ? "url(#squadBarBestGrad)"
-                                : "url(#squadBarGrad)"
+                              : `url(#sqGrad-${index})`
                           }
                           fillOpacity={entry.hasData ? 1 : 0.3}
                         />
@@ -748,7 +744,7 @@ export function VisaoGeralTab() {
                         </div>
                         <span className={cn("font-medium", i === 0 ? "text-foreground" : "text-muted-foreground")}>{sq.name}</span>
                         {i === 0 && <Trophy className="h-3.5 w-3.5 text-sidebar" />}
-                        <span className="ml-auto font-bold tabular-nums" style={{ color: i === 0 ? "hsl(142, 71%, 45%)" : undefined }}>
+                        <span className="ml-auto font-bold tabular-nums" style={{ color: sq.color }}>
                           {sq.speed}%
                         </span>
                       </div>
