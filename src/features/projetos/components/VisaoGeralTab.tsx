@@ -704,264 +704,9 @@ export function VisaoGeralTab() {
       </FadeUp>
 
 
-      {/* Progresso das entregas por squad — table widget */}
-      <FadeUp delay={0.45}>
-        <Card>
-          <CardContent className="py-6 px-6 space-y-5">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-2xl bg-sidebar/10 flex items-center justify-center">
-                <BarChart2 className="h-6 w-6 text-sidebar" />
-              </div>
-              <div>
-                <p className="text-xl font-bold leading-none">Progresso das entregas por squad</p>
-                <p className="mt-1.5 text-sm text-muted-foreground">{squads.length} squads ativos</p>
-              </div>
-            </div>
-
-            <div className="overflow-x-auto rounded-xl border border-border">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border bg-muted/30">
-                    <th className="px-4 py-3 text-left"><SortHeader label="Squad" col="name" /></th>
-                    <th className="px-4 py-3 text-center"><SortHeader label="Contas" col="contas" /></th>
-                    <th className="px-4 py-3 text-center"><SortHeader label="Time" col="time" /></th>
-                    <th className="px-4 py-3 text-center"><SortHeader label="Health Score" col="health" /></th>
-                    <th className="px-4 py-3 text-center"><SortHeader label="Demandas" col="demandas" /></th>
-                    <th className="px-4 py-3 text-center"><SortHeader label="Concluídas" col="concluidas" /></th>
-                    <th className="px-4 py-3 text-right pr-6"><SortHeader label="Progresso" col="progresso" /></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedTableRows.length === 0 && (
-                    <tr>
-                      <td colSpan={7} className="text-center py-8 text-muted-foreground text-xs">Nenhum squad encontrado</td>
-                    </tr>
-                  )}
-                  {sortedTableRows.map((row, idx) => {
-                    const healthColor =
-                      row.health === null ? "text-muted-foreground" :
-                      row.health >= 80 ? "text-success border-success/40 bg-success/10" :
-                      row.health >= 50 ? "text-warning border-warning/40 bg-warning/10" :
-                      "text-destructive border-destructive/40 bg-destructive/10";
-
-                    const progressColor =
-                      row.progresso === 0 ? "bg-destructive/70" :
-                      row.progresso < 50 ? "bg-warning" :
-                      "bg-success";
-
-                    const progressBadgeColor =
-                      row.progresso === 0 ? "bg-destructive/10 text-destructive" :
-                      row.progresso < 50 ? "bg-warning/10 text-warning" :
-                      "bg-success/10 text-success";
-
-                    return (
-                      <tr
-                        key={row.id}
-                        className={cn(
-                          "border-b border-border last:border-0 transition-colors hover:bg-muted/30",
-                          idx % 2 === 1 && "bg-muted/10"
-                        )}
-                      >
-                        <td className="px-4 py-3.5">
-                          <div className="flex items-center gap-2.5">
-                            <div className="h-2 w-2 rounded-full flex-shrink-0" style={{ backgroundColor: row.color }} />
-                            <span className="font-medium text-foreground">{row.name}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3.5 text-center text-muted-foreground">{row.contas}</td>
-                        <td className="px-4 py-3.5 text-center text-muted-foreground">{row.time}</td>
-                        <td className="px-4 py-3.5 text-center">
-                          {row.health !== null ? (
-                            <span className={cn("inline-flex items-center justify-center h-7 w-10 rounded-full border text-xs font-bold", healthColor)}>
-                              {row.health}
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground text-xs">N/A</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3.5 text-center text-muted-foreground">{row.demandas}</td>
-                        <td className="px-4 py-3.5 text-center">
-                          <span className={cn("font-semibold", row.concluidas > 0 ? "text-success" : "text-muted-foreground")}>
-                            {row.concluidas}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3.5 pr-6">
-                          <div className="flex items-center gap-2.5 justify-end">
-                            <div className="flex-1 max-w-[120px] h-2 rounded-full bg-muted overflow-hidden">
-                              <div
-                                className={cn("h-full rounded-full transition-all", progressColor)}
-                                style={{ width: `${row.progresso}%` }}
-                              />
-                            </div>
-                            <span className={cn("text-xs font-bold px-1.5 py-0.5 rounded-md min-w-[36px] text-center", progressBadgeColor)}>
-                              {row.progresso}%
-                            </span>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      </FadeUp>
-
-      {/* ═══ GRÁFICO 1 — RANKING DE SQUADS ═══ */}
-      {squadSpeedData.length > 0 && (
-        <FadeUp delay={0.52}>
-          <Card>
-            <CardContent className="py-6 px-6 space-y-5">
-              <div className="flex items-center gap-4">
-                <div className="h-12 w-12 rounded-2xl bg-sidebar/10 flex items-center justify-center">
-                  <Trophy className="h-6 w-6 text-sidebar" />
-                </div>
-                <div>
-                  <p className="text-xl font-bold leading-none">Ranking de Squads</p>
-                  <p className="mt-1.5 text-sm text-muted-foreground">Progresso geral das etapas — {format(now, "MMMM yyyy", { locale: ptBR })}</p>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                {squadSpeedData.map((sq, idx) => {
-                  const SquadIcon = getSquadIcon(sq.icon);
-                  const diff = sq.speed - sq.prevSpeed;
-                  return (
-                    <div
-                      key={sq.id}
-                      className="flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all bg-accent/20 hover:bg-accent/30"
-                      onClick={() => setExpandedSquadId(sq.id)}
-                    >
-                      <div className="flex items-center justify-center h-8 w-8 rounded-lg text-sm font-bold" style={{ backgroundColor: sq.color + "20", color: sq.color }}>
-                        {idx + 1}º
-                      </div>
-                      <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: sq.color + "20" }}>
-                        <SquadIcon className="h-4 w-4" style={{ color: sq.color }} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-foreground truncate">{sq.name}</span>
-                          {bestSquad?.id === sq.id && <Trophy className="h-3.5 w-3.5 text-sidebar shrink-0" />}
-                          {sq.prevSpeed > 0 && (
-                            <span className={cn("flex items-center gap-0.5 text-[10px] font-medium shrink-0",
-                              diff > 0 ? "text-emerald-500" : diff < 0 ? "text-red-400" : "text-muted-foreground"
-                            )}>
-                              {diff > 0 ? <TrendingUp className="h-2.5 w-2.5" /> : diff < 0 ? <TrendingDown className="h-2.5 w-2.5" /> : <Minus className="h-2.5 w-2.5" />}
-                              {diff > 0 ? "+" : ""}{diff}%
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-3 mt-1">
-                          <div className="flex-1">
-                            <div className="h-2.5 rounded-full bg-border/30 overflow-hidden">
-                              <div className="h-full rounded-full transition-all duration-700" style={{ width: `${sq.percentComplete}%`, backgroundColor: sq.color }} />
-                            </div>
-                          </div>
-                          <span className="text-xs text-muted-foreground tabular-nums shrink-0">{sq.completedEtapas}/{sq.totalEtapas}</span>
-                        </div>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-lg font-bold tabular-nums" style={{ color: sq.color }}>{sq.hasData ? `${sq.percentComplete}%` : "—"}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Squad detail modal */}
-              {expandedSquadDetail && (
-                <Dialog open={!!expandedSquadId} onOpenChange={(open) => { if (!open) setExpandedSquadId(null); }}>
-                  <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle className="flex items-center gap-2">
-                        {(() => {
-                          const SquadIcon = getSquadIcon(expandedSquadDetail.squad.icon);
-                          return (
-                            <>
-                              <div className="h-8 w-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: expandedSquadDetail.sqData?.color + "20" }}>
-                                <SquadIcon className="h-4 w-4" style={{ color: expandedSquadDetail.sqData?.color }} />
-                              </div>
-                              {expandedSquadDetail.squad.name}
-                            </>
-                          );
-                        })()}
-                      </DialogTitle>
-                      <DialogDescription>Desempenho detalhado por cliente no mês</DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-3">
-                      {expandedSquadDetail.sqData && (
-                        <div className="grid grid-cols-3 gap-2">
-                          <div className="bg-accent/20 rounded-lg p-2.5 text-center">
-                            <p className="text-lg font-bold tabular-nums" style={{ color: expandedSquadDetail.sqData.color }}>{expandedSquadDetail.sqData.percentComplete}%</p>
-                            <p className="text-[10px] text-muted-foreground">Conclusão</p>
-                          </div>
-                          <div className="bg-accent/20 rounded-lg p-2.5 text-center">
-                            <p className="text-lg font-bold tabular-nums" style={{ color: expandedSquadDetail.sqData.color }}>{expandedSquadDetail.sqData.speed}%</p>
-                            <p className="text-[10px] text-muted-foreground">Velocidade</p>
-                          </div>
-                          <div className="bg-accent/20 rounded-lg p-2.5 text-center">
-                            <p className="text-lg font-bold tabular-nums">{expandedSquadDetail.clients.length}</p>
-                            <p className="text-[10px] text-muted-foreground">Clientes</p>
-                          </div>
-                        </div>
-                      )}
-                      {expandedSquadDetail.squadInsights.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5">
-                          {expandedSquadDetail.squadInsights.map((insight, i) => (
-                            <span key={i} className="flex items-center gap-1 text-[10px] bg-accent/40 rounded-md px-2 py-1">
-                              <Lightbulb className="h-2.5 w-2.5 text-sidebar" /> {insight}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      {expandedSquadDetail.clients.map((client) => {
-                        const diff = client.percent - client.prevPercent;
-                        return (
-                          <div key={client.clientId} className="bg-accent/20 rounded-lg p-3 space-y-2">
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-semibold text-foreground">{client.name}</span>
-                              <span className="text-sm font-bold tabular-nums" style={{ color: expandedSquadDetail.sqData?.color }}>{client.percent}%</span>
-                            </div>
-                            <div className="h-2 rounded-full bg-border/30 overflow-hidden">
-                              <div className="h-full rounded-full transition-all duration-500" style={{ width: `${client.percent}%`, backgroundColor: expandedSquadDetail.sqData?.color }} />
-                            </div>
-                            <div className="flex items-center justify-between text-[11px]">
-                              <span className="text-muted-foreground">{client.completed}/{client.total} etapas</span>
-                              <div className="flex items-center gap-3">
-                                <span className="text-muted-foreground">vel. {client.speed}%</span>
-                                {client.prevPercent > 0 && (
-                                  <span className={cn("flex items-center gap-0.5 font-medium",
-                                    diff > 0 ? "text-emerald-500" : diff < 0 ? "text-red-400" : "text-muted-foreground"
-                                  )}>
-                                    {diff > 0 ? <TrendingUp className="h-3 w-3" /> : diff < 0 ? <TrendingDown className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
-                                    {diff > 0 ? "+" : ""}{diff}% vs anterior
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            {client.insights.length > 0 && (
-                              <div className="flex flex-wrap gap-1.5 pt-0.5">
-                                {client.insights.map((ins, i) => (
-                                  <span key={i} className="text-[10px] bg-background/60 rounded px-1.5 py-0.5 text-muted-foreground">{ins}</span>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              )}
-            </CardContent>
-          </Card>
-        </FadeUp>
-      )}
-
-      {/* ═══ GRÁFICO 2 — PIPELINE DE PRODUÇÃO ═══ */}
-      {pipelineData.length > 0 && (
-        <FadeUp delay={0.56}>
+      {/* ═══ PIPELINE DE PRODUÇÃO POR SQUAD ═══ */}
+      {heatmapData.length > 0 && (
+        <FadeUp delay={0.5}>
           <Card>
             <CardContent className="py-6 px-6 space-y-5">
               <div className="flex items-center gap-4">
@@ -969,136 +714,113 @@ export function VisaoGeralTab() {
                   <BarChart2 className="h-6 w-6 text-sidebar" />
                 </div>
                 <div>
-                  <p className="text-xl font-bold leading-none">Pipeline de Produção</p>
-                  <p className="mt-1.5 text-sm text-muted-foreground">Clientes pendentes por etapa — identifique gargalos</p>
+                  <p className="text-xl font-bold leading-none">Pipeline de Produção por Squad</p>
+                  <p className="mt-1.5 text-sm text-muted-foreground">Clientes concluídos por etapa — {format(now, "MMMM yyyy", { locale: ptBR })}</p>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                {pipelineData.map((item) => {
-                  const pct = item.total > 0 ? Math.round((item.pending / item.total) * 100) : 0;
-                  const isBottleneck = pct > 60;
-                  return (
-                    <div key={item.stage} className="flex items-center gap-3">
-                      <span className="text-xs font-medium text-muted-foreground w-28 text-right shrink-0">{item.label}</span>
-                      <div className="flex-1 h-7 rounded-lg bg-border/20 overflow-hidden relative">
-                        <div
-                          className={cn("h-full rounded-lg transition-all duration-700", isBottleneck ? "bg-destructive/70" : "bg-sidebar/60")}
-                          style={{ width: `${Math.max(pct, 4)}%` }}
-                        />
-                        <span className="absolute inset-0 flex items-center px-3 text-xs font-semibold text-foreground">
-                          {item.pending} {item.pending === 1 ? "cliente" : "clientes"} pendentes
-                        </span>
-                      </div>
-                      {isBottleneck && <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />}
-                    </div>
-                  );
-                })}
+              {/* Legend */}
+              <div className="flex flex-wrap gap-3">
+                {heatmapData.map((sq) => (
+                  <div key={sq.id} className="flex items-center gap-1.5 text-xs">
+                    <div className="h-3 w-3 rounded-sm" style={{ backgroundColor: sq.color }} />
+                    <span className="font-medium text-foreground">{sq.name}</span>
+                  </div>
+                ))}
               </div>
 
+              {/* Grouped Bar Chart */}
+              <div className="h-[320px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={STAGE_ORDER.map(stageKey => {
+                      const row: Record<string, any> = { stage: STAGE_LABELS[stageKey] };
+                      heatmapData.forEach(sq => {
+                        row[sq.id] = sq.stagePerf[stageKey]?.completed ?? 0;
+                        row[sq.id + "_total"] = sq.stagePerf[stageKey]?.total ?? 0;
+                      });
+                      return row;
+                    })}
+                    margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+                    barGap={2}
+                    barCategoryGap="20%"
+                  >
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.4} />
+                    <XAxis
+                      dataKey="stage"
+                      tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      allowDecimals={false}
+                      tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                      axisLine={false}
+                      tickLine={false}
+                      width={30}
+                    />
+                    <Tooltip
+                      cursor={{ fill: "hsl(var(--accent))", opacity: 0.3 }}
+                      content={({ active, payload, label }) => {
+                        if (!active || !payload?.length) return null;
+                        return (
+                          <div className="bg-popover border border-border rounded-lg shadow-lg px-3 py-2.5 space-y-1.5">
+                            <p className="text-xs font-bold text-foreground">{label}</p>
+                            {payload.map((entry: any) => {
+                              const sq = heatmapData.find(s => s.id === entry.dataKey);
+                              if (!sq) return null;
+                              const total = entry.payload[sq.id + "_total"] ?? 0;
+                              return (
+                                <div key={entry.dataKey} className="flex items-center gap-2 text-xs">
+                                  <div className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: sq.color }} />
+                                  <span className="text-muted-foreground">{sq.name}:</span>
+                                  <span className="font-bold text-foreground">{entry.value}/{total} clientes</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      }}
+                    />
+                    {heatmapData.map((sq) => (
+                      <Bar
+                        key={sq.id}
+                        dataKey={sq.id}
+                        fill={sq.color}
+                        radius={[4, 4, 0, 0]}
+                        maxBarSize={32}
+                        animationDuration={800}
+                        animationBegin={200}
+                      />
+                    ))}
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Insight */}
               {(() => {
-                const worst = [...pipelineData].sort((a, b) => b.pending - a.pending)[0];
-                if (worst && worst.pending > 0) {
+                let worstStage = "";
+                let worstPct = 101;
+                for (const stageKey of STAGE_ORDER) {
+                  let totalC = 0, totalT = 0;
+                  heatmapData.forEach(sq => {
+                    totalC += sq.stagePerf[stageKey]?.completed ?? 0;
+                    totalT += sq.stagePerf[stageKey]?.total ?? 0;
+                  });
+                  const pct = totalT > 0 ? Math.round((totalC / totalT) * 100) : 100;
+                  if (pct < worstPct) { worstPct = pct; worstStage = STAGE_LABELS[stageKey]; }
+                }
+                if (worstPct < 100 && worstStage) {
                   return (
                     <div className="flex items-center gap-2 text-xs bg-accent/30 rounded-lg px-3 py-2">
                       <Lightbulb className="h-3.5 w-3.5 text-sidebar shrink-0" />
                       <span className="text-muted-foreground">
-                        <strong className="text-foreground">{worst.label}</strong> é a etapa com mais clientes pendentes ({worst.pending}). Considere priorizar essa fase.
+                        <strong className="text-foreground">{worstStage}</strong> é a etapa com menor conclusão geral ({worstPct}%). Pode ser um gargalo na operação.
                       </span>
                     </div>
                   );
                 }
                 return null;
-              })()}
-            </CardContent>
-          </Card>
-        </FadeUp>
-      )}
-
-      {/* ═══ GRÁFICO 3 — HEATMAP DE PERFORMANCE ═══ */}
-      {heatmapData.length > 0 && (
-        <FadeUp delay={0.6}>
-          <Card>
-            <CardContent className="py-6 px-6 space-y-5">
-              <div className="flex items-center gap-4">
-                <div className="h-12 w-12 rounded-2xl bg-sidebar/10 flex items-center justify-center">
-                  <Target className="h-6 w-6 text-sidebar" />
-                </div>
-                <div>
-                  <p className="text-xl font-bold leading-none">Heatmap de Performance</p>
-                  <p className="mt-1.5 text-sm text-muted-foreground">Squad × Etapa — verde (alto), amarelo (médio), vermelho (baixo)</p>
-                </div>
-              </div>
-
-              <div className="overflow-x-auto -mx-2">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr>
-                      <th className="text-left py-2 px-2 font-semibold text-muted-foreground">Etapa</th>
-                      {heatmapData.map((sq) => (
-                        <th key={sq.id} className="text-center py-2 px-2 font-semibold text-muted-foreground min-w-[80px]">
-                          <div className="flex flex-col items-center gap-1">
-                            <div className="h-5 w-5 rounded flex items-center justify-center" style={{ backgroundColor: sq.color + "20" }}>
-                              {(() => { const I = getSquadIcon(sq.icon); return <I className="h-3 w-3" style={{ color: sq.color }} />; })()}
-                            </div>
-                            <span className="truncate max-w-[70px]">{sq.name}</span>
-                          </div>
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {STAGE_ORDER.map((stageKey) => (
-                      <tr key={stageKey} className="border-t border-border/20">
-                        <td className="py-2 px-2 font-medium text-foreground">{STAGE_LABELS[stageKey]}</td>
-                        {heatmapData.map((sq) => {
-                          const perf = sq.stagePerf[stageKey];
-                          if (!perf || perf.percent === -1) {
-                            return <td key={sq.id} className="text-center py-2 px-2"><span className="text-muted-foreground">—</span></td>;
-                          }
-                          const bg = perf.percent >= 80 ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"
-                            : perf.percent >= 50 ? "bg-yellow-500/20 text-yellow-600 dark:text-yellow-400"
-                            : "bg-red-500/20 text-red-600 dark:text-red-400";
-                          return (
-                            <td key={sq.id} className="text-center py-2 px-2">
-                              <div className={cn("inline-flex items-center justify-center rounded-md px-2 py-1 font-bold tabular-nums min-w-[48px]", bg)}>
-                                {perf.percent}%
-                              </div>
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {(() => {
-                // Find worst performing squad×stage combos
-                const weakSpots: { squad: string; stage: string; percent: number }[] = [];
-                heatmapData.forEach(sq => {
-                  STAGE_ORDER.forEach(stageKey => {
-                    const p = sq.stagePerf[stageKey];
-                    if (p && p.percent >= 0 && p.percent < 50) {
-                      weakSpots.push({ squad: sq.name, stage: STAGE_LABELS[stageKey], percent: p.percent });
-                    }
-                  });
-                });
-                weakSpots.sort((a, b) => a.percent - b.percent);
-                if (weakSpots.length === 0) return null;
-                const top3 = weakSpots.slice(0, 3);
-                return (
-                  <div className="space-y-1.5">
-                    {top3.map((ws, i) => (
-                      <div key={i} className="flex items-center gap-2 text-xs bg-accent/30 rounded-lg px-3 py-2">
-                        <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />
-                        <span className="text-muted-foreground">
-                          <strong className="text-foreground">{ws.squad}</strong> está com apenas <strong className="text-foreground">{ws.percent}%</strong> em <strong className="text-foreground">{ws.stage}</strong>
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                );
               })()}
             </CardContent>
           </Card>
