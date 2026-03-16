@@ -89,6 +89,65 @@ export function MonthlyAnalysisSection() {
     });
   }, [stages, prevStages, now, totalStages, prevTotalStages, currentDay, year, month, prevYear, prevMonth]);
 
+  // ── Annual progress data (% completed before Magic Number per month) ──
+  const annualProgressData = useMemo(() => {
+    if (!yearData) return [];
+    const now2 = new Date();
+    const currentMonth = now2.getFullYear() === year ? now2.getMonth() + 1 : 12;
+
+    return Array.from({ length: 12 }, (_, i) => {
+      const m = i + 1;
+      const monthCycles = (yearData.cycles ?? []).filter((c: any) => c.month === m && c.is_active);
+      const monthStages = (yearData.stages ?? []).filter((s: any) =>
+        monthCycles.some((c: any) => c.id === s.cycle_id)
+      );
+      const totalClients = monthCycles.length;
+      const totalStagesMonth = totalClients * MAGIC2_STAGES.length;
+      const completedStages = monthStages.filter((s: any) => s.completed).length;
+      const beforeMagic = monthStages.filter((s: any) =>
+        s.completed && s.completed_at && new Date(s.completed_at).getDate() <= 27
+      ).length;
+      const pct = totalStagesMonth > 0 ? Math.round((beforeMagic / totalStagesMonth) * 100) : 0;
+
+      // Magic diff
+      const completedDates = monthStages
+        .filter((s: any) => s.completed && s.completed_at)
+        .map((s: any) => new Date(s.completed_at!).getDate());
+      const lastDay = completedDates.length > 0 ? Math.max(...completedDates) : null;
+      const allDone = completedStages === totalStagesMonth && totalStagesMonth > 0;
+      const magicDiff = allDone && lastDay !== null ? 27 - lastDay : null;
+
+      return {
+        mes: MONTH_SHORT[i],
+        monthNum: m,
+        percentual: m > currentMonth ? 0 : pct,
+        totalEtapas: completedStages,
+        totalEtapasMonth: totalStagesMonth,
+        clientes: totalClients,
+        magicDiff,
+        hasData: m <= currentMonth && totalClients > 0,
+      };
+    });
+  }, [yearData, year]);
+
+  const bestProactiveMonth = useMemo(() => {
+    const active = annualProgressData.filter(m => m.hasData && m.percentual > 0);
+    if (active.length === 0) return null;
+    return active.reduce((a, b) => a.percentual > b.percentual ? a : b);
+  }, [annualProgressData]);
+
+  const annualProgressStats = useMemo(() => {
+    const active = annualProgressData.filter(m => m.hasData);
+    if (active.length === 0) return null;
+    const avg = Math.round(active.reduce((s, m) => s + m.percentual, 0) / active.length);
+    const totalEtapas = active.reduce((s, m) => s + m.totalEtapas, 0);
+    const totalClientes = new Set(active.flatMap(m => {
+      const monthCycles = (yearData?.cycles ?? []).filter((c: any) => c.month === m.monthNum && c.is_active);
+      return monthCycles.map((c: any) => c.client_id);
+    })).size;
+    return { avg, totalEtapas, totalClientes };
+  }, [annualProgressData, yearData]);
+
   // ── Annual score data (Uau Score per month) ──
   const annualScoreData = useMemo(() => {
     return computeAnnualScores(yearData, year, month);
