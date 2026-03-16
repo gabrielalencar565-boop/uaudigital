@@ -279,7 +279,7 @@ export function MonthlyAnalysisSection() {
                       stroke="hsl(var(--muted-foreground))"
                       strokeWidth={1.5}
                       strokeDasharray="5 3"
-                      fill="transparent"
+                      fill="url(#prevGradient)"
                       dot={false}
                       activeDot={{ r: 3, fill: "hsl(var(--muted-foreground))", stroke: "hsl(var(--background))", strokeWidth: 2 }}
                       connectNulls
