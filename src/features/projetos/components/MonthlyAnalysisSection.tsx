@@ -5,6 +5,7 @@ import { AnimatedNumber } from "@/components/ui/animated-number";
 import { ProgressRing } from "@/components/metrics/ProgressRing";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip as RechartsTooltip,
+  BarChart, Bar,
 } from "recharts";
 import { TrendingUp, Clock, Zap, BarChart3, Info } from "lucide-react";
 import {
