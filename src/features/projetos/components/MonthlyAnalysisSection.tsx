@@ -100,7 +100,34 @@ export function MonthlyAnalysisSection() {
     });
   }, [stages, prevStages, now, totalStages, prevTotalStages, currentDay, year, month, prevYear, prevMonth]);
 
-  // ── Uau Score calculation ──
+  // ── Annual progress data ──
+  const annualData = useMemo(() => {
+    const MONTH_SHORT = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+    if (!yearData?.monthly) return [];
+    return yearData.monthly.map(m => {
+      const total = m.totalClients * MAGIC2_STAGES.length;
+      const done = m.doneOnTime + m.doneLate;
+      // done here counts completed clients, we need stage-level data
+      // Use the stages array filtered per month
+      const monthStages = (yearData.stages ?? []).filter(s => {
+        const cycle = (yearData.cycles ?? []).find(c => c.id === s.cycle_id);
+        return cycle && cycle.month === m.month;
+      });
+      const completedStages = monthStages.filter(s => s.completed).length;
+      const totalStagesMonth = m.totalClients * MAGIC2_STAGES.length;
+      const pct = totalStagesMonth > 0 ? Math.round((completedStages / totalStagesMonth) * 100) : 0;
+      return {
+        mes: MONTH_SHORT[m.month - 1],
+        monthNum: m.month,
+        percentual: pct,
+        clientes: m.totalClients,
+        etapas: `${completedStages}/${totalStagesMonth}`,
+        isCurrent: m.month === month,
+      };
+    });
+  }, [yearData, month]);
+
+
   const { prazo, eficiencia, consistencia, uauScore } = useMemo(() => {
     // Prazo
     const completedDates = stages
