@@ -53,11 +53,14 @@ export function MonthlyAnalysisSection() {
   const year = now.getFullYear();
   const month = now.getMonth() + 1;
 
+  const [chartMode, setChartMode] = useState<"mensal" | "anual">("mensal");
+
   const prevMonth = month === 1 ? 12 : month - 1;
   const prevYear = month === 1 ? year - 1 : year;
 
   const { data: magic2Data } = useMagic2Month(year, month);
   const { data: prevMagic2Data } = useMagic2Month(prevYear, prevMonth);
+  const { data: yearData } = useMagic2Year(year);
 
   const cycles = magic2Data?.cycles ?? [];
   const stages = magic2Data?.stages ?? [];
