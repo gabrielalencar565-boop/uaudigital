@@ -191,7 +191,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
             trackColor="rgba(91,33,182,0.45)"
             label={
               <div className="text-center">
-                <div className={cn("font-semibold tabular-nums tracking-tight text-white drop-shadow-sm", isMobile ? "text-5xl" : fullscreen ? "text-4xl" : "text-7xl")}>
+                <div className={cn("font-semibold tabular-nums tracking-tight text-white drop-shadow-sm", isMobile ? "text-5xl" : fullscreen ? "text-5xl" : "text-7xl")}>
                   {dashboard.overallPct}%
                 </div>
                 <div className={cn("mt-2 text-white/60", isMobile ? "text-xs" : fullscreen ? "text-sm" : "text-sm")}>
