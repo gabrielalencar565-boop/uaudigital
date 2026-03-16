@@ -408,10 +408,15 @@ export function MonthlyAnalysisSection() {
                           >
                             {range.label}
                           </span>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Info className="h-3 w-3 text-muted-foreground/60 cursor-help hover:text-foreground transition-colors" />
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-[220px] text-xs">
+                              {range.desc}
+                            </TooltipContent>
+                          </Tooltip>
                         </div>
-                        <p className="text-[10px] text-muted-foreground pl-[18px] leading-tight">
-                          {range.desc}
-                        </p>
                       </div>
                     );
                   })}
