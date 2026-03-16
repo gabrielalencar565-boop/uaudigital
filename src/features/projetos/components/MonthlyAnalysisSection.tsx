@@ -316,7 +316,7 @@ export function MonthlyAnalysisSection() {
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {chartMode === "mensal"
                       ? "Evolução baseada nas etapas do Magic Number concluídas ao longo do mês."
-                      : `Percentual de conclusão de cada mês em ${year}.`}
+                      : `Etapas concluídas antes do Magic Number em cada mês de ${year}.`}
                   </p>
                 </div>
                 <div className="flex rounded-lg border border-border overflow-hidden shrink-0">
