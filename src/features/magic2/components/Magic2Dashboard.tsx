@@ -201,7 +201,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
           <CardTitle className="text-lg text-white drop-shadow-sm">Visão Geral</CardTitle>
           <CountdownTo27Badge due={dueDate} now={now} />
         </CardHeader>
-        <CardContent className="relative z-10 flex-1 flex items-center justify-center p-6">
+        <CardContent className="relative z-10 flex-1 flex items-start justify-center pt-2 px-6 pb-6">
           <ProgressRing
             value={dashboard.overallPct}
             tone={dashboard.overallPct === 100 ? "success" : "warning"}
@@ -212,11 +212,11 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
               <div className="text-center">
                 <div className={cn(
                   "font-semibold tabular-nums tracking-tight text-white drop-shadow-sm",
-                  fullscreen ? "text-5xl" : "text-6xl xl:text-7xl"
+                  fullscreen ? "text-6xl" : "text-7xl xl:text-8xl"
                 )}>
                   {dashboard.overallPct}%
                 </div>
-                <div className="mt-2 text-sm text-white/60">
+                <div className="mt-2 text-base text-white/60">
                   {dashboard.doneStages}/{dashboard.totalStages} etapas
                 </div>
               </div>
