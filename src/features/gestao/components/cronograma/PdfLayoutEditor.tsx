@@ -195,15 +195,17 @@ function PreviewPostPage({ form, index }: { form: Partial<PdfSettings>; index: n
 function PreviewFooter({ form }: { form: Partial<PdfSettings> }) {
   const bg = form.background_color ?? "#0B0D12";
   const accent = form.accent_color ?? "#7C5CFF";
+  const margin = form.margin_size ?? 60;
+
   return (
-    <div className="relative overflow-hidden" style={{ width: PDF_W, height: PDF_H / 2, backgroundColor: bg }}>
-      <div className="flex items-center justify-center h-full gap-12 px-20">
-        {form.agency_logo_url && <img src={form.agency_logo_url} alt="Logo" className="h-[80px] object-contain" />}
-        <div className="h-16 w-[2px] rounded-full" style={{ backgroundColor: accent + "66" }} />
+    <div className="relative overflow-hidden" style={{ width: PDF_W, height: PDF_H, backgroundColor: bg }}>
+      <div className="flex items-center justify-center h-full gap-12" style={{ padding: margin }}>
+        {form.agency_logo_url && <img src={form.agency_logo_url} alt="Logo" className="h-[110px] object-contain" />}
+        <div className="h-20 w-[2px] rounded-full" style={{ backgroundColor: accent + "66" }} />
         <div>
-          <div style={{ fontSize: 32, color: form.title_color ?? "#FFF" }} className="font-bold">{form.agency_name || "Nome da Agência"}</div>
-          <div style={{ fontSize: 20, color: form.subtitle_color ?? "#AAA" }} className="mt-1">{form.footer_text || "Cronograma de Conteúdo"}</div>
-          <div style={{ fontSize: 18, color: "#666" }} className="mt-1">{form.footer_contact || "@agencia • contato@agencia.com"}</div>
+          <div style={{ fontSize: (form.title_font_size ?? 32) * 1.3, color: form.title_color ?? "#FFF" }} className="font-bold">{form.agency_name || "Nome da Agência"}</div>
+          <div style={{ fontSize: (form.subtitle_font_size ?? 18) * 1.5, color: form.subtitle_color ?? "#AAA" }} className="mt-2">{form.footer_text || "Cronograma de Conteúdo"}</div>
+          <div style={{ fontSize: (form.card_caption_font_size ?? 11) * 1.6, color: form.subtitle_color ?? "#AAA" }} className="mt-2">{form.footer_contact || "@agencia • contato@agencia.com"}</div>
         </div>
       </div>
     </div>
