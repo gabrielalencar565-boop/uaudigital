@@ -387,9 +387,9 @@ export function DayViewPanel() {
   const deadlineDate = new Date(selectedYear, selectedMonth - 1, 27);
   const daysUntilDeadline = differenceInCalendarDays(deadlineDate, today);
 
-  return <div ref={containerRef} className={cn("space-y-6", isFullscreen && "bg-background p-6 overflow-auto min-h-screen")}>
+  return <div ref={containerRef} className={cn("space-y-6", isFullscreen && "bg-background p-4 overflow-auto min-h-screen flex flex-col")}>
       {/* Header em uma única linha */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
+      <div className={cn("flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between opacity-0", isFullscreen && "shrink-0")} style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
         <div className="flex items-center gap-3">
           <h2 className="font-semibold tracking-tight text-3xl">Visão do Dia</h2>
           
@@ -475,14 +475,14 @@ export function DayViewPanel() {
       </div>
 
       {/* Conteúdo */}
-      {active === "magic" ? <div className="space-y-4">
+      {active === "magic" ? <div className={cn("space-y-4", isFullscreen && "flex-1 flex flex-col")}>
           
           {magic2.query.isLoading ? <Card>
               <CardHeader>
                 <CardTitle>Carregando…</CardTitle>
                 <CardDescription>Buscando dados do mês selecionado.</CardDescription>
               </CardHeader>
-            </Card> : magic2.cycles.length ? <Magic2Dashboard dashboard={magic2.dashboard} year={selectedYear} month={selectedMonth} fullscreen={isFullscreen} /> : <Card className="border-dashed">
+            </Card> : magic2.cycles.length ? <div className={cn(isFullscreen && "flex-1 flex flex-col")}><Magic2Dashboard dashboard={magic2.dashboard} year={selectedYear} month={selectedMonth} fullscreen={isFullscreen} /></div> : <Card className="border-dashed">
               <CardHeader className="text-center">
                 <div className="mx-auto mb-3 h-12 w-12 rounded-full bg-muted/50 grid place-items-center">
                   <Target className="h-6 w-6 text-muted-foreground" />
@@ -495,7 +495,7 @@ export function DayViewPanel() {
                 </CardDescription>
               </CardHeader>
             </Card>}
-        </div> : active === "agenda" ? <Card>
+        </div> : active === "agenda" ? <Card className={cn(isFullscreen && "flex-1 flex flex-col")}>
           <CardHeader>
             <CardTitle>
               {isCurrentMonth ? "Agenda de Hoje" : `Agenda de ${format(new Date(selectedYear, selectedMonth - 1, 1), "MMMM", {
@@ -507,7 +507,7 @@ export function DayViewPanel() {
               {completedTasksCount}/{totalTasks} concluída(s)
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className={cn("space-y-4", isFullscreen && "flex-1 overflow-auto")}>
             {/* ─── Limpeza – Widget compacto horizontal (TOPO) ─── */}
             {isCurrentMonth && todayCleaningTasks.length > 0 &&
         <div className="flex flex-wrap items-center gap-2">
