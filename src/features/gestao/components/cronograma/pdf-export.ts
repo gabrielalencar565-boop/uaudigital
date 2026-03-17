@@ -373,7 +373,7 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
       doc.line(pageW / 2 - sx(160), pageH / 2 + sy(5), pageW / 2 + sx(160), pageH / 2 + sy(5));
 
       doc.setTextColor(subR, subG, subB);
-      doc.setFont("helvetica", "normal");
+      setFont(doc, "normal");
       doc.setFontSize(Math.max(10, sx(form.subtitle_font_size * 1.5)));
       doc.text(form.footer_text || "Cronograma de Conteúdo", pageW / 2, pageH / 2 + sy(50), { align: "center" });
 
