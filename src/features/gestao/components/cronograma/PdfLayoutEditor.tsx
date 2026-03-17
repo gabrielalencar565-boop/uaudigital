@@ -120,26 +120,22 @@ function PreviewPostPage({ form, index }: { form: Partial<PdfSettings>; index: n
   const titleColor = form.title_color ?? "#FFFFFF";
   const subtitleColor = form.subtitle_color ?? "#AAAAAA";
 
-  const leftW = Math.floor((PDF_W - MARGIN * 2) * 0.45);
-  const rightW = Math.floor((PDF_W - MARGIN * 2) * 0.55) - 40; // 40 = gap
-  const contentH = PDF_H - MARGIN * 2;
-
   const postTypes = ["Feed", "Reels", "Story", "Carrossel"];
   const postType = postTypes[index % postTypes.length];
   const day = 3 + index * 3;
   const caption = index === 0
-    ? "Essa é a legenda completa da postagem. O texto será exibido com quebra automática de linha para preencher o espaço disponível no lado direito da página. Caso o texto seja muito longo, ele continuará automaticamente na próxima página do PDF, garantindo que nenhuma informação seja cortada."
-    : "Legenda de exemplo para o post " + (index + 1) + ". Texto com informações relevantes sobre o conteúdo a ser publicado nas redes sociais do cliente.";
+    ? "Essa é a legenda completa da postagem. O texto será exibido com quebra automática de linha para preencher o espaço disponível no lado direito da página."
+    : "Legenda de exemplo para o post " + (index + 1) + ". Texto com informações relevantes sobre o conteúdo.";
 
   return (
     <div className="relative overflow-hidden" style={{ width: PDF_W, height: PDF_H, backgroundColor: bg }}>
-      <div className="flex gap-10" style={{ padding: MARGIN, height: PDF_H }}>
+      <div className="flex" style={{ padding: MARGIN, height: PDF_H, gap: 40 }}>
         {/* Left: Image mockup (45%) */}
         <div
           className="rounded-3xl overflow-hidden shrink-0 flex items-center justify-center"
           style={{
-            width: leftW,
-            height: contentH,
+            width: "45%",
+            height: PDF_H - MARGIN * 2,
             backgroundColor: "#1a1d27",
             boxShadow: "0 20px 60px -15px rgba(0,0,0,0.4)",
           }}
@@ -151,34 +147,33 @@ function PreviewPostPage({ form, index }: { form: Partial<PdfSettings>; index: n
         </div>
 
         {/* Right: Info (55%) */}
-        <div className="flex flex-col justify-between" style={{ width: rightW, maxWidth: rightW, height: contentH, overflow: "hidden" }}>
+        <div className="flex flex-col justify-between overflow-hidden" style={{ flex: 1, minWidth: 0, height: PDF_H - MARGIN * 2 }}>
           {/* Top: Title + type */}
-          <div>
-            <div className="flex items-center gap-4 mb-6">
-              <div style={{ fontSize: (form.card_font_size ?? 14) * 3.5, color: titleColor }} className="font-bold leading-tight">
+          <div style={{ overflow: "hidden" }}>
+            <div className="flex items-center gap-4 mb-6 flex-wrap">
+              <div style={{ fontSize: (form.card_font_size ?? 14) * 3, color: titleColor }} className="font-bold leading-tight">
                 Post {index + 1}
               </div>
               <div
-                className="rounded-full px-6 py-2 font-semibold"
-                style={{ fontSize: 22, backgroundColor: accent + "22", color: accent }}
+                className="rounded-full px-5 py-2 font-semibold shrink-0"
+                style={{ fontSize: 20, backgroundColor: accent + "22", color: accent }}
               >
                 {postType}
               </div>
             </div>
 
             {/* Caption */}
-            <div className="mb-8">
-              <div style={{ fontSize: 22, color: subtitleColor }} className="uppercase tracking-widest font-semibold mb-3">
+            <div className="mb-6">
+              <div style={{ fontSize: 20, color: subtitleColor }} className="uppercase tracking-widest font-semibold mb-3">
                 Legenda:
               </div>
               <div
                 style={{
-                  fontSize: (form.card_caption_font_size ?? 11) * 2.2,
+                  fontSize: (form.card_caption_font_size ?? 11) * 2,
                   color: titleColor,
                   lineHeight: 1.7,
                   wordBreak: "break-word",
                   overflowWrap: "break-word",
-                  maxWidth: "100%",
                 }}
               >
                 {caption}
