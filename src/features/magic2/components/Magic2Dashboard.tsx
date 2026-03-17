@@ -90,7 +90,7 @@ function StageRingWidget({ label, pct, valueLabel, className, fullscreen }: { la
           className="animate-fade-in max-w-full"
           label={
             valueLabel ?? (
-              <span className={cn("font-semibold tabular-nums", isMobile ? "text-lg" : fullscreen ? "text-2xl" : "text-xl")}>{pct}%</span>
+              <span className={cn("font-semibold tabular-nums", isMobile ? "text-lg" : fullscreen ? "text-3xl" : "text-2xl")}>{pct}%</span>
             )
           }
         />
