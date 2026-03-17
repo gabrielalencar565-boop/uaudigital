@@ -277,7 +277,7 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
           doc.addImage(postImage, "JPEG", imageX, imageY, imageW, contentH, undefined, "FAST");
         } else {
           doc.setTextColor(110, 117, 138);
-          doc.setFont("helvetica", "bold");
+          setFont(doc, "bold");
           doc.setFontSize(sx(28));
           doc.text("Imagem do Post", imageX + imageW / 2, imageY + contentH / 2, { align: "center" });
         }
