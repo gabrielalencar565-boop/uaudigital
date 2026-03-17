@@ -135,6 +135,20 @@ export function VisaoGeralTab() {
     },
   });
 
+  // Fetch active client IDs to filter charts correctly
+  const activeClientsQ = useQuery({
+    queryKey: ["active_client_ids"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("clients")
+        .select("id")
+        .eq("is_active", true)
+        .eq("is_freelancer_sentinel", false);
+      return new Set((data ?? []).map((c: any) => c.id));
+    },
+  });
+  const activeClientIds = activeClientsQ.data ?? new Set<string>();
+
   // Fetch Magic Number stages for current AND previous month (for squad speed + comparison)
   const magic2StagesQ = useQuery({
     queryKey: ["magic2_squad_speed_v2", now.getFullYear(), now.getMonth() + 1],
@@ -231,14 +245,16 @@ export function VisaoGeralTab() {
     return m;
   }, [healthScores]);
 
+  // Only include active clients in squad mapping
   const clientsPerSquad = useMemo(() => {
     const m: Record<string, string[]> = {};
     allClientSquads.forEach((cs: any) => {
+      if (!activeClientIds.has(cs.client_id)) return; // skip inactive clients
       if (!m[cs.squad_id]) m[cs.squad_id] = [];
       m[cs.squad_id].push(cs.client_id);
     });
     return m;
-  }, [allClientSquads]);
+  }, [allClientSquads, activeClientIds]);
 
   const squadStats = useMemo(() => {
     const stats: Record<string, { total: number; done: number; inProgress: number; overdue: number; memberIds: string[]; clientCount: number }> = {};
@@ -261,8 +277,13 @@ export function VisaoGeralTab() {
     }));
   }, [squads, clientsPerSquad]);
 
-  const magic2AllStages = magic2StagesQ.data?.stages ?? [];
-  const magic2PrevStages = magic2StagesQ.data?.prevStages ?? [];
+  // Filter magic2 stages to only include active clients
+  const magic2AllStages = useMemo(() => {
+    return (magic2StagesQ.data?.stages ?? []).filter((s: any) => s.agenda_client_id && activeClientIds.has(s.agenda_client_id));
+  }, [magic2StagesQ.data?.stages, activeClientIds]);
+  const magic2PrevStages = useMemo(() => {
+    return (magic2StagesQ.data?.prevStages ?? []).filter((s: any) => s.agenda_client_id && activeClientIds.has(s.agenda_client_id));
+  }, [magic2StagesQ.data?.prevStages, activeClientIds]);
   const magic2Stages = magic2AllStages.filter((s: any) => s.completed);
 
   const STAGE_ORDER = ["planejamento", "captacao", "edicao_videos", "design", "pdf", "alteracoes", "agendamento"] as const;
