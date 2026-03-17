@@ -387,7 +387,7 @@ export function DayViewPanel() {
   const deadlineDate = new Date(selectedYear, selectedMonth - 1, 27);
   const daysUntilDeadline = differenceInCalendarDays(deadlineDate, today);
 
-  return <div ref={containerRef} className={cn("space-y-6", isFullscreen && "bg-background p-4 overflow-auto min-h-screen flex flex-col")}>
+  return <div ref={containerRef} className={cn("space-y-6", isFullscreen && "bg-background p-4 overflow-hidden h-screen flex flex-col")}>
       {/* Header em uma única linha */}
       <div className={cn("flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between opacity-0", isFullscreen && "shrink-0")} style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
         <div className="flex items-center gap-3">

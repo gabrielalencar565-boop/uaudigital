@@ -129,7 +129,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
   })();
 
   return (
-    <section className={cn("grid gap-6 items-stretch grid-cols-1 lg:grid-cols-[minmax(280px,400px)_1fr] xl:grid-cols-[460px_1fr]", fullscreen && "h-[calc(100vh-120px)] lg:grid-cols-[minmax(280px,400px)_1fr] xl:grid-cols-[420px_1fr]")}>
+    <section className={cn("grid gap-6 items-stretch grid-cols-1 lg:grid-cols-[minmax(280px,400px)_1fr] xl:grid-cols-[460px_1fr]", fullscreen && "flex-1 min-h-0 lg:grid-cols-[minmax(280px,400px)_1fr] xl:grid-cols-[420px_1fr]")}>
       {/* Coluna esquerda: anel grande */}
       <Card className={cn("overflow-hidden flex flex-col relative group border-0", fullscreen && "self-stretch")}
         style={{
