@@ -312,24 +312,24 @@ export function VisaoGeralTab() {
       const squadClientIds = (clientsPerSquad[sq.id] ?? []);
       const squadStages = magic2Stages.filter((s: any) => s.agenda_client_id && squadClientIds.includes(s.agenda_client_id));
       const prevSquadStages = magic2PrevStages.filter((s: any) => s.completed && s.agenda_client_id && squadClientIds.includes(s.agenda_client_id));
-      const allSquadStages = magic2AllStages.filter((s: any) => s.agenda_client_id && squadClientIds.includes(s.agenda_client_id));
 
       const { speed, avgDays } = computeSpeed(squadStages);
       const { speed: prevSpeed } = computeSpeed(prevSquadStages);
-      const totalEtapas = allSquadStages.length;
+
+      const totalEtapas = squadClientIds.length * STAGE_ORDER.length;
       const completedEtapas = squadStages.length;
 
-      if (totalEtapas === 0) {
+      if (squadClientIds.length === 0) {
         return { id: sq.id, name: sq.name, color: sq.color, icon: sq.icon ?? "shield", speed: 0, totalTarefas: 0, avgDaysBeforeMagic: 0, hasData: false, prevSpeed: 0, totalEtapas: 0, completedEtapas: 0, percentComplete: 0 };
       }
 
       return {
         id: sq.id, name: sq.name, color: sq.color, icon: sq.icon ?? "shield",
         speed, totalTarefas: completedEtapas, avgDaysBeforeMagic: avgDays, hasData: true,
-        prevSpeed, totalEtapas, completedEtapas, percentComplete: Math.round((completedEtapas / totalEtapas) * 100),
+        prevSpeed, totalEtapas, completedEtapas, percentComplete: totalEtapas > 0 ? Math.round((completedEtapas / totalEtapas) * 100) : 0,
       };
     }).sort((a, b) => b.speed - a.speed);
-  }, [squads, clientsPerSquad, magic2Stages, magic2PrevStages, magic2AllStages]);
+  }, [squads, clientsPerSquad, magic2Stages, magic2PrevStages]);
 
   const bestSquad = useMemo(() => {
     const active = squadSpeedData.filter(s => s.hasData);
@@ -371,13 +371,19 @@ export function VisaoGeralTab() {
   const heatmapData = useMemo(() => {
     return squads.map((sq: any) => {
       const squadClientIds = clientsPerSquad[sq.id] ?? [];
-      const squadAllSt = magic2AllStages.filter((s: any) => s.agenda_client_id && squadClientIds.includes(s.agenda_client_id));
+      const squadClientSet = new Set(squadClientIds);
+      const squadAllSt = magic2AllStages.filter((s: any) => s.agenda_client_id && squadClientSet.has(s.agenda_client_id));
 
       const stagePerf: Record<string, { completed: number; total: number; percent: number }> = {};
       for (const stageKey of STAGE_ORDER) {
-        const stageItems = squadAllSt.filter((s: any) => s.stage === stageKey);
-        const completed = stageItems.filter((s: any) => s.completed).length;
-        const total = stageItems.length;
+        const completedClients = new Set(
+          squadAllSt
+            .filter((s: any) => s.stage === stageKey && s.completed && s.agenda_client_id)
+            .map((s: any) => s.agenda_client_id),
+        );
+
+        const completed = completedClients.size;
+        const total = squadClientIds.length;
         stagePerf[stageKey] = { completed, total, percent: total > 0 ? Math.round((completed / total) * 100) : -1 };
       }
 
