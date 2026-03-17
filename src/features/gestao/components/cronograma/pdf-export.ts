@@ -287,19 +287,23 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
         const [accR, accG, accB] = parseHex(form.accent_color, [124, 92, 255]);
         const postTypeLabel = POST_TYPE_LABELS[post.post_type ?? "post"] ?? "Post";
 
-        doc.setFont("helvetica", "bold");
+        setFont(doc, "bold");
         doc.setTextColor(titleR, titleG, titleB);
         doc.setFontSize(Math.max(10, sx(form.card_font_size * 2.4)));
         doc.text(`Post ${i + 1}`, textX, textY + sy(60));
 
         const badgeText = postTypeLabel;
-        const badgeW = doc.getTextWidth(badgeText) + sx(36);
-        const badgeH = sy(44);
-        doc.setFillColor(accR, accG, accB);
-        doc.roundedRect(textX + sx(180), textY + sy(24), badgeW, badgeH, sy(22), sy(22), "F");
-        doc.setTextColor(255, 255, 255);
         doc.setFontSize(sx(18));
-        doc.text(badgeText, textX + sx(198), textY + sy(54));
+        const badgeTextW = doc.getTextWidth(badgeText);
+        const badgePadX = sx(24);
+        const badgeW = badgeTextW + badgePadX * 2;
+        const badgeH = sy(44);
+        const badgeX = textX + sx(180);
+        const badgeY = textY + sy(24);
+        doc.setFillColor(accR, accG, accB);
+        doc.roundedRect(badgeX, badgeY, badgeW, badgeH, sy(22), sy(22), "F");
+        doc.setTextColor(255, 255, 255);
+        doc.text(badgeText, badgeX + badgeW / 2, badgeY + badgeH / 2 + sx(6), { align: "center" });
 
         doc.setTextColor(subR, subG, subB);
         doc.setFont("helvetica", "bold");
