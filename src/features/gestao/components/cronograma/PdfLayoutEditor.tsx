@@ -380,25 +380,35 @@ function FooterSettings({ form, setForm, uploading, handleUploadAgencyLogo }: an
 }
 
 /* ─── Scaled Preview Wrapper ─── */
+const PREVIEW_SCALE_FACTOR = 0.82;
+const PREVIEW_MIN_SCALE = 0.24;
+const PREVIEW_SIDE_PADDING = 12;
+
 function ScaledPreview({ children, label, isSelected, onClick }: { children: React.ReactNode; label: string; isSelected: boolean; onClick: () => void }) {
   const [scale, setScale] = useState(1);
   const [contentH, setContentH] = useState(0);
-  const containerRef = useCallback((el: HTMLDivElement | null) => {
-    if (!el) return;
-    const inner = el.querySelector("[data-pdf-inner]") as HTMLElement;
+  const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!containerEl) return;
+    const inner = containerEl.querySelector("[data-pdf-inner]") as HTMLElement | null;
     if (!inner) return;
+
     const update = () => {
-      const parentW = el.clientWidth;
-      const s = parentW / PDF_W;
-      setScale(s);
-      const child = inner.firstElementChild as HTMLElement;
-      if (child) setContentH(child.offsetHeight * s);
+      const child = inner.firstElementChild as HTMLElement | null;
+      const availableW = Math.max(containerEl.clientWidth - PREVIEW_SIDE_PADDING * 2, 0);
+      const fitScale = availableW / PDF_W;
+      const nextScale = Math.min(1, Math.max(PREVIEW_MIN_SCALE, fitScale * PREVIEW_SCALE_FACTOR));
+      setScale(nextScale);
+      if (child) setContentH(child.offsetHeight * nextScale);
     };
+
     const ro = new ResizeObserver(update);
-    ro.observe(el);
+    ro.observe(containerEl);
     update();
+
     return () => ro.disconnect();
-  }, []);
+  }, [containerEl]);
 
   return (
     <div
@@ -411,7 +421,11 @@ function ScaledPreview({ children, label, isSelected, onClick }: { children: Rea
       <div className="flex items-center justify-between px-3 py-1.5 bg-muted/30 border-b border-border/20">
         <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{label}</span>
       </div>
-      <div className="bg-black/20 overflow-hidden" ref={containerRef} style={{ height: contentH || "auto" }}>
+      <div
+        className="bg-muted/20 overflow-hidden px-3 py-3"
+        ref={setContainerEl}
+        style={{ height: contentH ? contentH + PREVIEW_SIDE_PADDING * 2 : "auto" }}
+      >
         <div
           data-pdf-inner
           className="origin-top-left"
@@ -595,7 +609,7 @@ export function PdfLayoutEditor() {
         </div>
 
         {/* Right: Preview */}
-        <div className="space-y-3">
+        <div className="space-y-3 w-full lg:max-w-[700px]">
           <div className="flex items-center gap-2">
             <h4 className="text-sm font-bold">Pré-visualização</h4>
             <span className="text-[10px] text-muted-foreground">A4 Landscape ({PDF_W}×{PDF_H}px)</span>
