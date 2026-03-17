@@ -9,7 +9,7 @@ import { useSession } from "@/hooks/use-session";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { MonthYearNav } from "@/features/magic2/components/MonthYearNav";
-import { ArrowLeft, HeartPulse, ChevronRight, Link2, Copy, Check, ExternalLink } from "lucide-react";
+import { ArrowLeft, HeartPulse, ChevronRight, Link2, Copy, Check, ExternalLink, Ban } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ProgressRing } from "@/components/metrics/ProgressRing";
 import { toast } from "sonner";
