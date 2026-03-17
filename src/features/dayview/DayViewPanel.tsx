@@ -482,7 +482,7 @@ export function DayViewPanel() {
                 <CardTitle>Carregando…</CardTitle>
                 <CardDescription>Buscando dados do mês selecionado.</CardDescription>
               </CardHeader>
-            </Card> : magic2.cycles.length ? <Magic2Dashboard dashboard={magic2.dashboard} year={selectedYear} month={selectedMonth} fullscreen={isFullscreen} /> : <Card className="border-dashed">
+            </Card> : magic2.cycles.length ? <div className={cn(isFullscreen && "flex-1 flex flex-col")}><Magic2Dashboard dashboard={magic2.dashboard} year={selectedYear} month={selectedMonth} fullscreen={isFullscreen} /></div> : <Card className="border-dashed">
               <CardHeader className="text-center">
                 <div className="mx-auto mb-3 h-12 w-12 rounded-full bg-muted/50 grid place-items-center">
                   <Target className="h-6 w-6 text-muted-foreground" />
