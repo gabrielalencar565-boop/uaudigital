@@ -205,8 +205,8 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
           <ProgressRing
             value={dashboard.overallPct}
             tone={dashboard.overallPct === 100 ? "success" : "warning"}
-            size={fullscreen ? 280 : 300}
-            stroke={fullscreen ? 22 : 26}
+            size={fullscreen ? 340 : 340}
+            stroke={fullscreen ? 26 : 28}
             trackColor="rgba(91,33,182,0.45)"
             label={
               <div className="text-center">
