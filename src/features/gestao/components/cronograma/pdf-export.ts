@@ -306,12 +306,12 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
         doc.text(badgeText, badgeX + badgeW / 2, badgeY + badgeH / 2 + sx(6), { align: "center" });
 
         doc.setTextColor(subR, subG, subB);
-        doc.setFont("helvetica", "bold");
+        setFont(doc, "bold");
         doc.setFontSize(sx(16));
         doc.text("Legenda:", textX, textY + sy(130));
 
         doc.setTextColor(titleR, titleG, titleB);
-        doc.setFont("helvetica", "normal");
+        setFont(doc, "normal");
         doc.setFontSize(Math.max(9, sx(form.card_caption_font_size * 1.8)));
         const caption = post.caption?.trim() || "Sem legenda";
         const wrappedCaption = doc.splitTextToSize(caption, textW);
