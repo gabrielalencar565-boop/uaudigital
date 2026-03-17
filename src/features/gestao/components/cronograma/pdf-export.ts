@@ -130,46 +130,93 @@ function detectImageKind(dataUrl: string): "png" | "jpeg" | "svg" | "other" {
   return "other";
 }
 
-async function rasterizeToPng(dataUrl: string): Promise<string | null> {
-  return await new Promise((resolve) => {
+function loadImage(src: string): Promise<HTMLImageElement | null> {
+  return new Promise((resolve) => {
     const img = new Image();
-    img.onload = () => {
-      const width = Math.max(1, img.naturalWidth || img.width || 1200);
-      const height = Math.max(1, img.naturalHeight || img.height || 900);
-      const canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        resolve(null);
-        return;
-      }
-      ctx.drawImage(img, 0, 0, width, height);
-      resolve(canvas.toDataURL("image/png"));
-    };
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
     img.onerror = () => resolve(null);
-    img.src = dataUrl;
+    img.src = src;
   });
 }
 
-async function toPdfImage(url: string): Promise<PdfImageAsset | null> {
-  try {
-    const response = await fetch(url, { mode: "cors" });
-    if (!response.ok) return null;
+async function rasterizeToPng(dataUrl: string): Promise<string | null> {
+  const img = await loadImage(dataUrl);
+  if (!img) return null;
+  const width = Math.max(1, img.naturalWidth || img.width || 1200);
+  const height = Math.max(1, img.naturalHeight || img.height || 900);
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  ctx.drawImage(img, 0, 0, width, height);
+  return canvas.toDataURL("image/png");
+}
 
-    const blob = await response.blob();
-    const dataUrl = await blobToDataUrl(blob);
-    const kind = detectImageKind(dataUrl);
+/**
+ * Draws an image on a canvas with object-cover cropping and rounded corners,
+ * then returns a PNG dataUrl ready for jsPDF.
+ */
+async function renderCoverImage(
+  imageDataUrl: string,
+  targetW: number,
+  targetH: number,
+  borderRadius: number,
+): Promise<string | null> {
+  const img = await loadImage(imageDataUrl);
+  if (!img) return null;
 
-    if (kind === "png") return { dataUrl, format: "PNG" };
-    if (kind === "jpeg") return { dataUrl, format: "JPEG" };
+  const natW = img.naturalWidth || img.width || 1;
+  const natH = img.naturalHeight || img.height || 1;
 
-    const rasterized = await rasterizeToPng(dataUrl);
-    if (!rasterized) return null;
-    return { dataUrl: rasterized, format: "PNG" };
-  } catch {
-    return null;
+  // Use a high-res canvas (2x the PDF target size in pt → px)
+  const scale = 2;
+  const cW = Math.round(targetW * scale);
+  const cH = Math.round(targetH * scale);
+  const r = borderRadius * scale;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = cW;
+  canvas.height = cH;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+
+  // Clip to rounded rect
+  ctx.beginPath();
+  ctx.moveTo(r, 0);
+  ctx.lineTo(cW - r, 0);
+  ctx.quadraticCurveTo(cW, 0, cW, r);
+  ctx.lineTo(cW, cH - r);
+  ctx.quadraticCurveTo(cW, cH, cW - r, cH);
+  ctx.lineTo(r, cH);
+  ctx.quadraticCurveTo(0, cH, 0, cH - r);
+  ctx.lineTo(0, r);
+  ctx.quadraticCurveTo(0, 0, r, 0);
+  ctx.closePath();
+  ctx.clip();
+
+  // Object-cover: scale image to cover the canvas, crop center
+  const imgRatio = natW / natH;
+  const canvasRatio = cW / cH;
+  let drawW: number, drawH: number, drawX: number, drawY: number;
+
+  if (imgRatio > canvasRatio) {
+    // Image wider → fit height, crop sides
+    drawH = cH;
+    drawW = cH * imgRatio;
+    drawX = (cW - drawW) / 2;
+    drawY = 0;
+  } else {
+    // Image taller → fit width, crop top/bottom
+    drawW = cW;
+    drawH = cW / imgRatio;
+    drawX = 0;
+    drawY = (cH - drawH) / 2;
   }
+
+  ctx.drawImage(img, drawX, drawY, drawW, drawH);
+  return canvas.toDataURL("image/png");
 }
 
 function addPdfImage(doc: jsPDF, image: PdfImageAsset, x: number, y: number, w: number, h: number): boolean {
