@@ -398,7 +398,7 @@ function ScaledPreview({ children, label, isSelected, onClick }: { children: Rea
       const child = inner.firstElementChild as HTMLElement | null;
       const availableW = Math.max(containerEl.clientWidth - PREVIEW_SIDE_PADDING * 2, 0);
       const fitScale = availableW / PDF_W;
-      const nextScale = Math.max(PREVIEW_MIN_SCALE, fitScale * PREVIEW_SCALE_FACTOR);
+      const nextScale = Math.min(1, Math.max(PREVIEW_MIN_SCALE, fitScale * PREVIEW_SCALE_FACTOR));
       setScale(nextScale);
       if (child) setContentH(child.offsetHeight * nextScale);
     };
