@@ -385,6 +385,27 @@ function FooterSettings({ form, setForm, uploading, handleUploadAgencyLogo }: an
         <Label className="text-[10px] text-muted-foreground">Contato / Redes</Label>
         <Input value={form.footer_contact ?? ""} onChange={e => setForm((p: any) => ({ ...p, footer_contact: e.target.value }))} className="h-8 text-xs mt-1" placeholder="@agencia • contato@agencia.com" />
       </div>
+      <div>
+        <Label className="text-[10px] text-muted-foreground">Nome da agência — tamanho</Label>
+        <div className="flex items-center gap-2 mt-1">
+          <Slider value={[form.title_font_size ?? 32]} onValueChange={([v]: number[]) => setForm((p: any) => ({ ...p, title_font_size: v }))} min={18} max={54} step={1} className="flex-1" />
+          <span className="text-xs font-mono w-8 text-right">{form.title_font_size ?? 32}</span>
+        </div>
+      </div>
+      <div>
+        <Label className="text-[10px] text-muted-foreground">Texto padrão — tamanho</Label>
+        <div className="flex items-center gap-2 mt-1">
+          <Slider value={[form.subtitle_font_size ?? 18]} onValueChange={([v]: number[]) => setForm((p: any) => ({ ...p, subtitle_font_size: v }))} min={10} max={34} step={1} className="flex-1" />
+          <span className="text-xs font-mono w-8 text-right">{form.subtitle_font_size ?? 18}</span>
+        </div>
+      </div>
+      <div>
+        <Label className="text-[10px] text-muted-foreground">Contato — tamanho</Label>
+        <div className="flex items-center gap-2 mt-1">
+          <Slider value={[form.card_caption_font_size ?? 11]} onValueChange={([v]: number[]) => setForm((p: any) => ({ ...p, card_caption_font_size: v }))} min={8} max={20} step={1} className="flex-1" />
+          <span className="text-xs font-mono w-8 text-right">{form.card_caption_font_size ?? 11}</span>
+        </div>
+      </div>
     </div>
   );
 }
