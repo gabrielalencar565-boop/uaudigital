@@ -123,6 +123,42 @@ async function toDataUrl(url: string): Promise<string | null> {
   }
 }
 
+const BRICOLAGE_URLS = {
+  normal: "https://fonts.gstatic.com/s/bricolagegrotesque/v10/3y9U6as8bTXq_nANBjzKo3IeZx8z6up5BeSl5jBNz_19PpbpMXuECpwUxJBOm_OJWiSBoA.ttf",
+  bold: "https://fonts.gstatic.com/s/bricolagegrotesque/v10/3y9U6as8bTXq_nANBjzKo3IeZx8z6up5BeSl5jBNz_19PpbpMXuECpwUxJBOm_OJTCOBoA.ttf",
+};
+
+let fontLoaded = false;
+
+async function loadBricolageFont(doc: jsPDF) {
+  if (fontLoaded) return;
+  try {
+    for (const [style, url] of Object.entries(BRICOLAGE_URLS)) {
+      const res = await fetch(url, { mode: "cors" });
+      if (!res.ok) continue;
+      const buf = await res.arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      let binary = "";
+      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+      const b64 = btoa(binary);
+      const fileName = `Bricolage-${style}.ttf`;
+      doc.addFileToVFS(fileName, b64);
+      doc.addFont(fileName, "Bricolage", style);
+    }
+    fontLoaded = true;
+  } catch {
+    // fallback to helvetica
+  }
+}
+
+function setFont(doc: jsPDF, style: "normal" | "bold") {
+  if (fontLoaded) {
+    doc.setFont("Bricolage", style);
+  } else {
+    doc.setFont("helvetica", style);
+  }
+}
+
 function drawBg(doc: jsPDF, pageW: number, pageH: number, settings: Required<PdfExportSettings>) {
   const [r, g, b] = parseHex(settings.background_color, [11, 13, 18]);
   doc.setFillColor(r, g, b);
