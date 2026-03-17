@@ -135,6 +135,20 @@ export function VisaoGeralTab() {
     },
   });
 
+  // Fetch active client IDs to filter charts correctly
+  const activeClientsQ = useQuery({
+    queryKey: ["active_client_ids"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("clients")
+        .select("id")
+        .eq("is_active", true)
+        .eq("is_freelancer_sentinel", false);
+      return new Set((data ?? []).map((c: any) => c.id));
+    },
+  });
+  const activeClientIds = activeClientsQ.data ?? new Set<string>();
+
   // Fetch Magic Number stages for current AND previous month (for squad speed + comparison)
   const magic2StagesQ = useQuery({
     queryKey: ["magic2_squad_speed_v2", now.getFullYear(), now.getMonth() + 1],
