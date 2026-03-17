@@ -129,7 +129,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
   })();
 
   return (
-    <section className={cn("grid gap-6 items-stretch grid-cols-1 lg:grid-cols-[minmax(280px,400px)_1fr] xl:grid-cols-[460px_1fr]", fullscreen && "h-[calc(100vh-120px)] lg:grid-cols-[minmax(280px,400px)_1fr] xl:grid-cols-[420px_1fr]")}>
+    <section className={cn("grid gap-6 items-stretch grid-cols-1 lg:grid-cols-[minmax(280px,400px)_1fr] xl:grid-cols-[460px_1fr]", fullscreen && "flex-1 min-h-0 lg:grid-cols-[minmax(280px,400px)_1fr] xl:grid-cols-[420px_1fr]")}>
       {/* Coluna esquerda: anel grande */}
       <Card className={cn("overflow-hidden flex flex-col relative group border-0", fullscreen && "self-stretch")}
         style={{
@@ -182,7 +182,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
           <CardTitle className={cn(isMobile ? "text-base" : "text-lg", "text-white drop-shadow-sm")}>Visão Geral</CardTitle>
           <CountdownTo27Badge due={dueDate} now={now} />
         </CardHeader>
-        <CardContent className={cn("relative z-10 grid place-items-center flex-1 p-6", isMobile ? "pb-6" : "pb-10")}>
+        <CardContent className={cn("relative z-10 grid place-items-center flex-1 p-6", isMobile ? "pb-6" : fullscreen ? "py-4" : "pb-10")}>
           <ProgressRing
             value={dashboard.overallPct}
             tone={dashboard.overallPct === 100 ? "success" : "warning"}
@@ -204,7 +204,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
       </Card>
 
       {/* Coluna direita: métricas (linha) + etapas (grade) */}
-      <div className={cn("flex flex-col gap-6", fullscreen && "flex-1 justify-between")}>
+      <div className={cn("flex flex-col gap-4", fullscreen && "flex-1 min-h-0 justify-between")}>
         <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
           <MetricCard value={deadlineLabel} label="MAGIC NUMBER" highlight />
           <MetricCard value={String(dashboard.totalStages)} label="TOTAL" />
@@ -213,7 +213,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
         </div>
 
         {/* 1ª linha (4): Planejamento, Captação, Edição, Design | 2ª linha (4): Alterações, PDF, Agendamento, Clientes 100% */}
-        <div className={cn("grid gap-4 content-start grid-cols-2 sm:grid-cols-3 lg:grid-cols-4", fullscreen && "flex-1 content-center")}>
+        <div className={cn("grid gap-3 content-start grid-cols-2 sm:grid-cols-3 lg:grid-cols-4", fullscreen && "flex-1 content-center")}>
           {stagesForDashboard.map((st) => {
             const item = dashboard.byStage[st.key];
             return (
