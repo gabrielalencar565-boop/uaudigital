@@ -62,6 +62,7 @@ export function HealthScoreTab() {
   const upsert = useUpsertHealthScore();
   const tokenQ = useHealthScoreToken(selectedClientId, month, year);
   const createToken = useCreateHealthScoreToken();
+  const deleteScore = useDeleteHealthScore();
 
   const clientsQ = useQuery({
     queryKey: ["clients_active"],
