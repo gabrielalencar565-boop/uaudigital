@@ -454,11 +454,6 @@ export function MonthlyAnalysisSection() {
                   <p className="text-base font-bold text-foreground">
                     Progresso da Operação {chartMode === "mensal" ? "no Mês" : "Anual"}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {chartMode === "mensal"
-                      ? "Evolução baseada nas etapas do Magic Number concluídas ao longo do mês."
-                      : `Etapas concluídas antes do Magic Number em cada mês de ${year}.`}
-                  </p>
                 </div>
                 <div className="flex rounded-lg border border-border overflow-hidden shrink-0">
                   <button
