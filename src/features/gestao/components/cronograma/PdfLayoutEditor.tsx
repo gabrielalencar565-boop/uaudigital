@@ -260,6 +260,20 @@ function CoverSettings({ form, setForm, uploading, handleUploadBg, handleUploadL
           <span className="text-xs font-mono w-8 text-right">{form.margin_size ?? 60}</span>
         </div>
       </div>
+      <div>
+        <Label className="text-[10px] text-muted-foreground">Título da capa — tamanho</Label>
+        <div className="flex items-center gap-2 mt-1">
+          <Slider value={[form.title_font_size ?? 32]} onValueChange={([v]: number[]) => setForm((p: any) => ({ ...p, title_font_size: v }))} min={18} max={54} step={1} className="flex-1" />
+          <span className="text-xs font-mono w-8 text-right">{form.title_font_size ?? 32}</span>
+        </div>
+      </div>
+      <div>
+        <Label className="text-[10px] text-muted-foreground">Subtítulo da capa — tamanho</Label>
+        <div className="flex items-center gap-2 mt-1">
+          <Slider value={[form.subtitle_font_size ?? 18]} onValueChange={([v]: number[]) => setForm((p: any) => ({ ...p, subtitle_font_size: v }))} min={10} max={34} step={1} className="flex-1" />
+          <span className="text-xs font-mono w-8 text-right">{form.subtitle_font_size ?? 18}</span>
+        </div>
+      </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
           <Label className="text-[10px] text-muted-foreground">Cor de fundo</Label>
