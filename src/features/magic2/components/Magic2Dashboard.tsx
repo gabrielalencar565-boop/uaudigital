@@ -77,8 +77,8 @@ function GradientLayers() {
 
 function StageRingWidget({ label, pct, valueLabel, className, fullscreen }: { label: string; pct: number; valueLabel?: React.ReactNode; className?: string; fullscreen?: boolean }) {
   const isMobile = useIsMobile();
-  const ringSize = isMobile ? 100 : fullscreen ? 170 : 140;
-  const strokeWidth = isMobile ? 10 : fullscreen ? 18 : 16;
+  const ringSize = isMobile ? 100 : fullscreen ? 200 : 160;
+  const strokeWidth = isMobile ? 10 : fullscreen ? 20 : 18;
   return (
     <div className={cn("flex flex-col items-center gap-2 min-w-0", className)}>
       <div className="flex-1 flex items-center justify-center w-full">
