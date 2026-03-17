@@ -313,7 +313,22 @@ export function HealthScoreTab() {
         </Card>
       ))}
 
-      <div className="flex justify-end">
+      <div className="flex justify-between">
+        {scoresMap[selectedClientId] ? (
+          <Button
+            variant="outline"
+            onClick={() => {
+              deleteScore.mutate({ client_id: selectedClientId, month, year }, {
+                onSuccess: () => setSelectedClientId(null),
+              });
+            }}
+            disabled={deleteScore.isPending}
+            className="text-destructive border-destructive/30 hover:bg-destructive/10"
+          >
+            <Ban className="h-4 w-4 mr-2" />
+            Marcar como não avaliado
+          </Button>
+        ) : <div />}
         <Button onClick={handleSave} disabled={upsert.isPending} variant="hero" className="px-8">
           Salvar Avaliação
         </Button>
