@@ -75,20 +75,22 @@ function GradientLayers() {
 
 /* ── Stage ring widget ── */
 
-function StageRingWidget({ label, pct, valueLabel, className }: { label: string; pct: number; valueLabel?: React.ReactNode; className?: string }) {
+function StageRingWidget({ label, pct, valueLabel, className, fullscreen }: { label: string; pct: number; valueLabel?: React.ReactNode; className?: string; fullscreen?: boolean }) {
   const isMobile = useIsMobile();
+  const ringSize = isMobile ? 100 : fullscreen ? 170 : 140;
+  const strokeWidth = isMobile ? 10 : fullscreen ? 18 : 16;
   return (
     <div className={cn("flex flex-col items-center gap-2 min-w-0", className)}>
       <div className="flex-1 flex items-center justify-center w-full">
         <ProgressRing
           value={pct}
           tone={pct === 100 ? "success" : "warning"}
-          size={isMobile ? 100 : 140}
-          stroke={isMobile ? 10 : 16}
+          size={ringSize}
+          stroke={strokeWidth}
           className="animate-fade-in max-w-full"
           label={
             valueLabel ?? (
-              <span className={cn("font-semibold tabular-nums", isMobile ? "text-lg" : "text-xl")}>{pct}%</span>
+              <span className={cn("font-semibold tabular-nums", isMobile ? "text-lg" : fullscreen ? "text-2xl" : "text-xl")}>{pct}%</span>
             )
           }
         />
@@ -236,7 +238,8 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
         {/* Stage rings grid — fills remaining height */}
         <div className={cn(
           "flex-1 min-h-0 grid gap-3 content-stretch",
-          "grid-cols-4 grid-rows-2"
+          "grid-cols-4 grid-rows-2",
+          fullscreen && "pb-6"
         )}>
           {stagesForDashboard.map((st) => {
             const item = dashboard.byStage[st.key];
@@ -245,14 +248,16 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
                 key={st.key}
                 label={st.label}
                 pct={item?.pct ?? 0}
+                fullscreen={fullscreen}
               />
             );
           })}
           <StageRingWidget
             label="CLIENTES 100%"
             pct={clients100Pct}
+            fullscreen={fullscreen}
             valueLabel={
-              <span className={cn("font-semibold tabular-nums", fullscreen ? "text-xl" : "text-2xl")}>
+              <span className={cn("font-semibold tabular-nums", fullscreen ? "text-2xl" : "text-2xl")}>
                 {dashboard.clients100}
               </span>
             }
