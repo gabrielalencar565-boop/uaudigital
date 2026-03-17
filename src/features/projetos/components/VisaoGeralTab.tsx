@@ -277,8 +277,13 @@ export function VisaoGeralTab() {
     }));
   }, [squads, clientsPerSquad]);
 
-  const magic2AllStages = magic2StagesQ.data?.stages ?? [];
-  const magic2PrevStages = magic2StagesQ.data?.prevStages ?? [];
+  // Filter magic2 stages to only include active clients
+  const magic2AllStages = useMemo(() => {
+    return (magic2StagesQ.data?.stages ?? []).filter((s: any) => s.agenda_client_id && activeClientIds.has(s.agenda_client_id));
+  }, [magic2StagesQ.data?.stages, activeClientIds]);
+  const magic2PrevStages = useMemo(() => {
+    return (magic2StagesQ.data?.prevStages ?? []).filter((s: any) => s.agenda_client_id && activeClientIds.has(s.agenda_client_id));
+  }, [magic2StagesQ.data?.prevStages, activeClientIds]);
   const magic2Stages = magic2AllStages.filter((s: any) => s.completed);
 
   const STAGE_ORDER = ["planejamento", "captacao", "edicao_videos", "design", "pdf", "alteracoes", "agendamento"] as const;
