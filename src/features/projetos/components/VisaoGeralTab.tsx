@@ -122,7 +122,9 @@ export function VisaoGeralTab() {
   const now = new Date();
   const monthStart = format(startOfMonth(now), "yyyy-MM-dd");
   const monthEnd = format(endOfMonth(now), "yyyy-MM-dd");
-  const daysLeft = differenceInDays(endOfMonth(now), now);
+  // Magic Number deadline is day 27
+  const magicDeadline = new Date(now.getFullYear(), now.getMonth(), 27);
+  const magicDaysLeft = Math.max(0, differenceInDays(magicDeadline, now));
 
   const pmTasksQ = useQuery({
     queryKey: ["pm_tasks_overview", monthStart],
