@@ -122,7 +122,9 @@ export function VisaoGeralTab() {
   const now = new Date();
   const monthStart = format(startOfMonth(now), "yyyy-MM-dd");
   const monthEnd = format(endOfMonth(now), "yyyy-MM-dd");
-  const daysLeft = differenceInDays(endOfMonth(now), now);
+  // Magic Number deadline is day 27
+  const magicDeadline = new Date(now.getFullYear(), now.getMonth(), 27);
+  const magicDaysLeft = Math.max(0, differenceInDays(magicDeadline, now));
 
   const pmTasksQ = useQuery({
     queryKey: ["pm_tasks_overview", monthStart],
@@ -633,7 +635,10 @@ export function VisaoGeralTab() {
         <div className="flex flex-wrap gap-4">
           {squads.map((sq: any) => {
             const st = squadStats[sq.id] ?? { total: 0, done: 0, inProgress: 0, overdue: 0, memberIds: [], clientCount: 0 };
-            const progress = st.total > 0 ? Math.round((st.done / st.total) * 100) : 0;
+            const squadClientIds = clientsPerSquad[sq.id] ?? [];
+            const squadCompletedStages = magic2AllStages.filter((s: any) => s.agenda_client_id && squadClientIds.includes(s.agenda_client_id) && s.completed).length;
+            const squadTotalStages = squadClientIds.length * STAGE_ORDER.length;
+            const progress = squadTotalStages > 0 ? Math.round((squadCompletedStages / squadTotalStages) * 100) : 0;
             const clientIds = clientsPerSquad[sq.id] ?? [];
             const healthVals = clientIds.map((c: string) => healthAvgMap[c]).filter((v) => v !== undefined);
             const avgHealth = healthVals.length > 0 ? Math.round(healthVals.reduce((a, b) => a + b, 0) / healthVals.length) : 0;
@@ -714,7 +719,7 @@ export function VisaoGeralTab() {
                   {/* Progress */}
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between text-xs text-white/80">
-                      <span className="flex items-center gap-1"><Target className="h-3.5 w-3.5" /> Progresso • <Clock className="h-3 w-3" /> {daysLeft} dias restantes</span>
+                      <span className="flex items-center gap-1"><Target className="h-3.5 w-3.5" /> Progresso • <Clock className="h-3 w-3" /> {magicDaysLeft} dias restantes</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="flex-1 h-2 rounded-full bg-white/20 overflow-hidden">
