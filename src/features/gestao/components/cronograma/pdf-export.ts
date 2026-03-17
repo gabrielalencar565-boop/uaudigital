@@ -388,15 +388,24 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
         const textX = imageX + imageW + gap;
         const textY = margin;
 
+        const cornerRadius = sx(20);
         doc.setDrawColor(255, 255, 255);
         doc.setFillColor(26, 29, 39);
-        doc.roundedRect(imageX, imageY, imageW, contentH, sx(20), sx(20), "F");
+        doc.roundedRect(imageX, imageY, imageW, contentH, cornerRadius, cornerRadius, "F");
 
         const postImageUrl = getPostImage(post);
-        const postImage = await getCachedImage(postImageUrl);
-        if (postImage && addPdfImage(doc, postImage, imageX, imageY, imageW, contentH)) {
-          // image rendered
-        } else {
+        let imageRendered = false;
+        if (postImageUrl) {
+          // Fetch raw image, then render with cover-crop + rounded corners via canvas
+          const rawAsset = await getCachedImage(postImageUrl);
+          if (rawAsset) {
+            const coverPng = await renderCoverImage(rawAsset.dataUrl, imageW, contentH, cornerRadius);
+            if (coverPng) {
+              imageRendered = addPdfImage(doc, { dataUrl: coverPng, format: "PNG" }, imageX, imageY, imageW, contentH);
+            }
+          }
+        }
+        if (!imageRendered) {
           doc.setTextColor(110, 117, 138);
           setFont(doc, "bold");
           doc.setFontSize(sx(28));
