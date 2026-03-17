@@ -635,7 +635,10 @@ export function VisaoGeralTab() {
         <div className="flex flex-wrap gap-4">
           {squads.map((sq: any) => {
             const st = squadStats[sq.id] ?? { total: 0, done: 0, inProgress: 0, overdue: 0, memberIds: [], clientCount: 0 };
-            const progress = st.total > 0 ? Math.round((st.done / st.total) * 100) : 0;
+            const squadClientIds = clientsPerSquad[sq.id] ?? [];
+            const squadCompletedStages = magic2AllStages.filter((s: any) => s.agenda_client_id && squadClientIds.includes(s.agenda_client_id) && s.completed).length;
+            const squadTotalStages = squadClientIds.length * STAGE_ORDER.length;
+            const progress = squadTotalStages > 0 ? Math.round((squadCompletedStages / squadTotalStages) * 100) : 0;
             const clientIds = clientsPerSquad[sq.id] ?? [];
             const healthVals = clientIds.map((c: string) => healthAvgMap[c]).filter((v) => v !== undefined);
             const avgHealth = healthVals.length > 0 ? Math.round(healthVals.reduce((a, b) => a + b, 0) / healthVals.length) : 0;
