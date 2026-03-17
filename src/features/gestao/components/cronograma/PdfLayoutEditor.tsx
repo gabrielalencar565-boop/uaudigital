@@ -182,17 +182,17 @@ function PreviewPostPage({ form, index }: { form: Partial<PdfSettings>; index: n
           </div>
 
           {/* Footer: date + time */}
-          <div className="flex items-center gap-8 pt-6" style={{ borderTop: `2px solid ${accent}33` }}>
+          <div className="flex items-center gap-6 pt-4 shrink-0" style={{ borderTop: `2px solid ${accent}33` }}>
             <div>
-              <div style={{ fontSize: 18, color: subtitleColor }} className="uppercase tracking-widest font-semibold mb-1">Data</div>
-              <div style={{ fontSize: (form.card_date_font_size ?? 12) * 2.8, color: titleColor }} className="font-bold">
+              <div style={{ fontSize: 16, color: subtitleColor }} className="uppercase tracking-widest font-semibold mb-1">Data</div>
+              <div style={{ fontSize: (form.card_date_font_size ?? 12) * 2.4, color: titleColor }} className="font-bold">
                 {String(day).padStart(2, "0")}/03/2026
               </div>
             </div>
             {(form.show_time_on_card ?? true) && (
               <div>
-                <div style={{ fontSize: 18, color: subtitleColor }} className="uppercase tracking-widest font-semibold mb-1">Horário</div>
-                <div style={{ fontSize: (form.card_date_font_size ?? 12) * 2.8, color: titleColor }} className="font-bold">
+                <div style={{ fontSize: 16, color: subtitleColor }} className="uppercase tracking-widest font-semibold mb-1">Horário</div>
+                <div style={{ fontSize: (form.card_date_font_size ?? 12) * 2.4, color: titleColor }} className="font-bold">
                   18:00
                 </div>
               </div>
