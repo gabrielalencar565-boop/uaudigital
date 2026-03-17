@@ -371,13 +371,19 @@ export function VisaoGeralTab() {
   const heatmapData = useMemo(() => {
     return squads.map((sq: any) => {
       const squadClientIds = clientsPerSquad[sq.id] ?? [];
-      const squadAllSt = magic2AllStages.filter((s: any) => s.agenda_client_id && squadClientIds.includes(s.agenda_client_id));
+      const squadClientSet = new Set(squadClientIds);
+      const squadAllSt = magic2AllStages.filter((s: any) => s.agenda_client_id && squadClientSet.has(s.agenda_client_id));
 
       const stagePerf: Record<string, { completed: number; total: number; percent: number }> = {};
       for (const stageKey of STAGE_ORDER) {
-        const stageItems = squadAllSt.filter((s: any) => s.stage === stageKey);
-        const completed = stageItems.filter((s: any) => s.completed).length;
-        const total = stageItems.length;
+        const completedClients = new Set(
+          squadAllSt
+            .filter((s: any) => s.stage === stageKey && s.completed && s.agenda_client_id)
+            .map((s: any) => s.agenda_client_id),
+        );
+
+        const completed = completedClients.size;
+        const total = squadClientIds.length;
         stagePerf[stageKey] = { completed, total, percent: total > 0 ? Math.round((completed / total) * 100) : -1 };
       }
 
