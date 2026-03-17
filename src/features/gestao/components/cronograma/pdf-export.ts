@@ -244,7 +244,7 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
       }
 
       if (form.agency_name) {
-        doc.setFont("helvetica", "bold");
+        setFont(doc, "bold");
         doc.setTextColor(subR, subG, subB);
         doc.setFontSize(Math.max(10, sx(form.title_font_size * 0.85)));
         doc.text(form.agency_name, pageW / 2, footerY, { align: "center" });
