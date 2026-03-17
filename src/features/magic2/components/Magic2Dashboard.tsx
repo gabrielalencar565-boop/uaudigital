@@ -238,7 +238,8 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
         {/* Stage rings grid — fills remaining height */}
         <div className={cn(
           "flex-1 min-h-0 grid gap-3 content-stretch",
-          "grid-cols-4 grid-rows-2"
+          "grid-cols-4 grid-rows-2",
+          fullscreen && "pb-6"
         )}>
           {stagesForDashboard.map((st) => {
             const item = dashboard.byStage[st.key];
@@ -247,14 +248,16 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
                 key={st.key}
                 label={st.label}
                 pct={item?.pct ?? 0}
+                fullscreen={fullscreen}
               />
             );
           })}
           <StageRingWidget
             label="CLIENTES 100%"
             pct={clients100Pct}
+            fullscreen={fullscreen}
             valueLabel={
-              <span className={cn("font-semibold tabular-nums", fullscreen ? "text-xl" : "text-2xl")}>
+              <span className={cn("font-semibold tabular-nums", fullscreen ? "text-2xl" : "text-2xl")}>
                 {dashboard.clients100}
               </span>
             }
