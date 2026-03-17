@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
+import { downloadCronogramaPdf, type PdfExportSettings } from "@/features/gestao/components/cronograma/pdf-export";
 
 const sb = supabase as any;
 
