@@ -37,6 +37,26 @@ export function useHealthScores(month: number, year: number) {
   });
 }
 
+export function useDeleteHealthScore() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ client_id, month, year }: { client_id: string; month: number; year: number }) => {
+      const { error } = await supabase
+        .from("health_scores" as any)
+        .delete()
+        .eq("client_id", client_id)
+        .eq("month", month)
+        .eq("year", year);
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ["health_scores", vars.year, vars.month] });
+      toast.success("Avaliação removida — cliente marcado como não avaliado.");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+}
+
 export function useUpsertHealthScore() {
   const qc = useQueryClient();
   return useMutation({

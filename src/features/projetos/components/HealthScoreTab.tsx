@@ -3,13 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
-import { useHealthScores, useUpsertHealthScore, type HealthScore } from "../hooks/use-health-scores";
+import { useHealthScores, useUpsertHealthScore, useDeleteHealthScore, type HealthScore } from "../hooks/use-health-scores";
 import { useHealthScoreToken, useCreateHealthScoreToken } from "../hooks/use-health-score-token";
 import { useSession } from "@/hooks/use-session";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { MonthYearNav } from "@/features/magic2/components/MonthYearNav";
-import { ArrowLeft, HeartPulse, ChevronRight, Link2, Copy, Check, ExternalLink } from "lucide-react";
+import { ArrowLeft, HeartPulse, ChevronRight, Link2, Copy, Check, ExternalLink, Ban } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ProgressRing } from "@/components/metrics/ProgressRing";
 import { toast } from "sonner";
@@ -62,6 +62,7 @@ export function HealthScoreTab() {
   const upsert = useUpsertHealthScore();
   const tokenQ = useHealthScoreToken(selectedClientId, month, year);
   const createToken = useCreateHealthScoreToken();
+  const deleteScore = useDeleteHealthScore();
 
   const clientsQ = useQuery({
     queryKey: ["clients_active"],
@@ -312,7 +313,22 @@ export function HealthScoreTab() {
         </Card>
       ))}
 
-      <div className="flex justify-end">
+      <div className="flex justify-between">
+        {scoresMap[selectedClientId] ? (
+          <Button
+            variant="outline"
+            onClick={() => {
+              deleteScore.mutate({ client_id: selectedClientId, month, year }, {
+                onSuccess: () => setSelectedClientId(null),
+              });
+            }}
+            disabled={deleteScore.isPending}
+            className="text-destructive border-destructive/30 hover:bg-destructive/10"
+          >
+            <Ban className="h-4 w-4 mr-2" />
+            Marcar como não avaliado
+          </Button>
+        ) : <div />}
         <Button onClick={handleSave} disabled={upsert.isPending} variant="hero" className="px-8">
           Salvar Avaliação
         </Button>
