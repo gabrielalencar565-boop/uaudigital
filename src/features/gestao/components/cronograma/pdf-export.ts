@@ -387,7 +387,7 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
     ensurePage();
     drawBg(doc, pageW, pageH, form);
     doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "bold");
+    setFont(doc, "bold");
     doc.setFontSize(16);
     doc.text("Nenhuma postagem agendada para exportar.", pageW / 2, pageH / 2, { align: "center" });
   }
