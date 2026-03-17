@@ -172,16 +172,47 @@ export function CronogramaClientBrowser({ tasks, childTasksMap, clientsMap, memb
     setDragOverDay(null);
   }, [updateTask]);
 
+  const buildPublicUrl = useCallback(() => {
+    if (!parentTaskForPublic || selectedClientId === "__all__") return null;
+    const url = new URL(`${window.location.origin}/cronograma/${parentTaskForPublic.id}`);
+    url.searchParams.set("client", selectedClientId);
+    return url.toString();
+  }, [parentTaskForPublic, selectedClientId]);
+
   const handleShare = async () => {
-    const parentTask = filteredParentTasks[0];
-    if (!parentTask) return;
-    const shareUrl = `${window.location.origin}/cronograma/${parentTask.id}`;
+    const shareUrl = buildPublicUrl();
+    if (!shareUrl) {
+      toast.error("Selecione um cliente com postagens para compartilhar.");
+      return;
+    }
+
+    window.open(shareUrl, "_blank", "noopener,noreferrer");
     try {
       await navigator.clipboard.writeText(shareUrl);
-      toast.success("Link copiado para a área de transferência!");
+      toast.success("Link público aberto e copiado!");
     } catch {
-      toast.info(`Link: ${shareUrl}`);
+      toast.info(`Link público: ${shareUrl}`);
     }
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!scheduledPosts.length) {
+      toast.error("Não há posts agendados para exportar.");
+      return;
+    }
+
+    const { data, error } = await sb.from("pm_pdf_settings").select("*").limit(1).maybeSingle();
+    if (error) {
+      toast.error("Não foi possível carregar o layout do PDF.");
+      return;
+    }
+
+    await downloadCronogramaPdf({
+      clientName: selectedClientName,
+      posts: scheduledPosts,
+      settings: (data ?? null) as PdfExportSettings | null,
+    });
+    toast.success("PDF baixado com sucesso!");
   };
 
   const handleUpdatePost = (field: string, value: string | null) => {
