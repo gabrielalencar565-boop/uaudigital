@@ -221,7 +221,7 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
       const [accR, accG, accB] = parseHex(form.accent_color, [124, 92, 255]);
 
       doc.setTextColor(titleR, titleG, titleB);
-      doc.setFont("helvetica", "bold");
+      setFont(doc, "bold");
       doc.setFontSize(Math.max(14, sx(form.title_font_size * 2.5)));
       doc.text(clientName || "Cronograma", pageW / 2, pageH / 2 - sy(50), { align: "center" });
 
