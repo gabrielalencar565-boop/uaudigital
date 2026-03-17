@@ -171,6 +171,10 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
 
+  // Load custom font
+  fontLoaded = false;
+  await loadBricolageFont(doc);
+
   const sx = (x: number) => (x / DESIGN_W) * pageW;
   const sy = (y: number) => (y / DESIGN_H) * pageH;
   const margin = sx(form.margin_size);
