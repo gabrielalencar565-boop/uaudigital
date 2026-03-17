@@ -213,7 +213,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
         </div>
 
         {/* 1ª linha (4): Planejamento, Captação, Edição, Design | 2ª linha (4): Alterações, PDF, Agendamento, Clientes 100% */}
-        <div className={cn("grid gap-3 content-start grid-cols-2 sm:grid-cols-3 lg:grid-cols-4", fullscreen && "flex-1 min-h-0 grid-rows-2 content-stretch items-center")}>
+        <div className={cn("grid gap-3 content-start grid-cols-2 sm:grid-cols-3 lg:grid-cols-4", fullscreen && "flex-1 min-h-0 content-evenly")}>
           {stagesForDashboard.map((st) => {
             const item = dashboard.byStage[st.key];
             return (
