@@ -40,6 +40,7 @@ interface PdfSettings {
   agency_name: string;
   footer_text: string;
   footer_contact: string;
+  margin_size: number;
 }
 
 type BlockId = "cover" | "cards" | "footer";
