@@ -609,7 +609,7 @@ export function PdfLayoutEditor() {
         </div>
 
         {/* Right: Preview */}
-        <div className="space-y-3">
+        <div className="space-y-3 w-full lg:max-w-[700px]">
           <div className="flex items-center gap-2">
             <h4 className="text-sm font-bold">Pré-visualização</h4>
             <span className="text-[10px] text-muted-foreground">A4 Landscape ({PDF_W}×{PDF_H}px)</span>
