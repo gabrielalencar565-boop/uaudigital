@@ -381,6 +381,25 @@ function FooterSettings({ form, setForm, uploading, handleUploadAgencyLogo }: an
 
 /* ─── Scaled Preview Wrapper ─── */
 function ScaledPreview({ children, label, isSelected, onClick }: { children: React.ReactNode; label: string; isSelected: boolean; onClick: () => void }) {
+  const [scale, setScale] = useState(1);
+  const [contentH, setContentH] = useState(0);
+  const containerRef = useCallback((el: HTMLDivElement | null) => {
+    if (!el) return;
+    const inner = el.querySelector("[data-pdf-inner]") as HTMLElement;
+    if (!inner) return;
+    const update = () => {
+      const parentW = el.clientWidth;
+      const s = parentW / PDF_W;
+      setScale(s);
+      const child = inner.firstElementChild as HTMLElement;
+      if (child) setContentH(child.offsetHeight * s);
+    };
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    update();
+    return () => ro.disconnect();
+  }, []);
+
   return (
     <div
       className={cn(
@@ -392,30 +411,11 @@ function ScaledPreview({ children, label, isSelected, onClick }: { children: Rea
       <div className="flex items-center justify-between px-3 py-1.5 bg-muted/30 border-b border-border/20">
         <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{label}</span>
       </div>
-      <div className="bg-black/20">
+      <div className="bg-black/20 overflow-hidden" ref={containerRef} style={{ height: contentH || "auto" }}>
         <div
+          data-pdf-inner
           className="origin-top-left"
-          style={{ width: PDF_W }}
-          ref={(el) => {
-            if (!el) return;
-            const parent = el.parentElement;
-            if (!parent) return;
-            const ro = new ResizeObserver(() => {
-              const parentW = parent.clientWidth;
-              const s = parentW / PDF_W;
-              el.style.transform = `scale(${s})`;
-              el.style.transformOrigin = "top left";
-              const child = el.firstElementChild as HTMLElement;
-              if (child) parent.style.height = `${child.offsetHeight * s}px`;
-            });
-            ro.observe(parent);
-            const parentW = parent.clientWidth;
-            const s = parentW / PDF_W;
-            el.style.transform = `scale(${s})`;
-            el.style.transformOrigin = "top left";
-            const child = el.firstElementChild as HTMLElement;
-            if (child) parent.style.height = `${child.offsetHeight * s}px`;
-          }}
+          style={{ width: PDF_W, transform: `scale(${scale})`, transformOrigin: "top left" }}
         >
           {children}
         </div>
