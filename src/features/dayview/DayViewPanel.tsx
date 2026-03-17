@@ -507,7 +507,7 @@ export function DayViewPanel() {
               {completedTasksCount}/{totalTasks} concluída(s)
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className={cn("space-y-4", isFullscreen && "flex-1 overflow-auto")}>
             {/* ─── Limpeza – Widget compacto horizontal (TOPO) ─── */}
             {isCurrentMonth && todayCleaningTasks.length > 0 &&
         <div className="flex flex-wrap items-center gap-2">
