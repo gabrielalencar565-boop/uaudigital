@@ -228,6 +228,23 @@ function addPdfImage(doc: jsPDF, image: PdfImageAsset, x: number, y: number, w: 
   }
 }
 
+async function toPdfImage(url: string): Promise<PdfImageAsset | null> {
+  try {
+    const response = await fetch(url, { mode: "cors" });
+    if (!response.ok) return null;
+    const blob = await response.blob();
+    const dataUrl = await blobToDataUrl(blob);
+    const kind = detectImageKind(dataUrl);
+    if (kind === "png") return { dataUrl, format: "PNG" };
+    if (kind === "jpeg") return { dataUrl, format: "JPEG" };
+    const rasterized = await rasterizeToPng(dataUrl);
+    if (!rasterized) return null;
+    return { dataUrl: rasterized, format: "PNG" };
+  } catch {
+    return null;
+  }
+}
+
 const BRICOLAGE_URLS: Record<"normal" | "bold", string> = {
   normal: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/bricolagegrotesque/BricolageGrotesque-Regular.ttf",
   bold: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/bricolagegrotesque/BricolageGrotesque-Bold.ttf",
