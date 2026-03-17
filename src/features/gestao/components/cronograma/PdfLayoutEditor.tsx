@@ -85,7 +85,6 @@ function useUpdatePdfSettings() {
 /* A4 Landscape dimensions (ratio 1.414:1) */
 const PDF_W = 1684;
 const PDF_H = 1190;
-const MARGIN = 60;
 
 /* ─── Preview: Cover ─── */
 function PreviewCover({ form }: { form: Partial<PdfSettings> }) {
