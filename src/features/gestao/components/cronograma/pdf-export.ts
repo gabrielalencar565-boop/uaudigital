@@ -363,7 +363,7 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
         doc.addImage(agencyLogo, "PNG", pageW / 2 - logoW / 2, pageH / 2 - sy(190), logoW, logoH, undefined, "FAST");
       }
 
-      doc.setFont("helvetica", "bold");
+      setFont(doc, "bold");
       doc.setTextColor(titleR, titleG, titleB);
       doc.setFontSize(Math.max(12, sx(form.title_font_size * 1.25)));
       doc.text(form.agency_name || "Nome da Agência", pageW / 2, pageH / 2 - sy(20), { align: "center" });
