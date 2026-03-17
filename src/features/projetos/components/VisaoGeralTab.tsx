@@ -245,14 +245,16 @@ export function VisaoGeralTab() {
     return m;
   }, [healthScores]);
 
+  // Only include active clients in squad mapping
   const clientsPerSquad = useMemo(() => {
     const m: Record<string, string[]> = {};
     allClientSquads.forEach((cs: any) => {
+      if (!activeClientIds.has(cs.client_id)) return; // skip inactive clients
       if (!m[cs.squad_id]) m[cs.squad_id] = [];
       m[cs.squad_id].push(cs.client_id);
     });
     return m;
-  }, [allClientSquads]);
+  }, [allClientSquads, activeClientIds]);
 
   const squadStats = useMemo(() => {
     const stats: Record<string, { total: number; done: number; inProgress: number; overdue: number; memberIds: string[]; clientCount: number }> = {};
