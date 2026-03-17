@@ -100,7 +100,7 @@ function withDefaults(settings?: PdfExportSettings | null): Required<PdfExportSe
   };
 }
 
-function getPostImage(post: CronogramaPost): string | null {
+function getPostImage(post: PdfExportPost): string | null {
   if (post.post_type === "carrossel" && (post.all_attachment_urls?.length ?? 0) > 0) {
     return post.all_attachment_urls?.[0] ?? null;
   }
