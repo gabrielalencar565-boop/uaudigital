@@ -1,21 +1,20 @@
 import { useState, useMemo, useCallback, useRef } from "react";
-import { format, startOfMonth, endOfMonth, addMonths, subMonths, eachDayOfInterval, isSameDay, startOfWeek, addDays } from "date-fns";
+import { format, startOfMonth, endOfMonth, addMonths, subMonths, isSameDay, startOfWeek, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, FolderOpen, CalendarRange, Palette, Clock, Link2, Plus, Download } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarRange, Palette, Clock, Link2, Plus, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import type { PmTask } from "../../pm-types";
 import { useUpdatePmTask } from "../../hooks/use-pm-data";
 import { toast } from "sonner";
-import { POST_TYPE_META, type CronogramaPost } from "./types";
+import type { CronogramaPost } from "./types";
 import { PostDetailSidebar } from "./PostDetailSidebar";
 import { PdfLayoutEditor } from "./PdfLayoutEditor";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { downloadCronogramaPdf, type PdfExportSettings } from "./pdf-export";
 
 const sb = supabase as any;
 
@@ -81,6 +80,15 @@ export function CronogramaClientBrowser({ tasks, childTasksMap, clientsMap, memb
   const allChildTasks = useMemo(() => {
     return filteredParentTasks.flatMap((t) => childTasksMap[t.id] ?? []);
   }, [filteredParentTasks, childTasksMap]);
+
+  const parentTaskForPublic = useMemo(() => {
+    return filteredParentTasks.find((t) => (childTasksMap[t.id] ?? []).some((c) => c.posting_date)) ?? filteredParentTasks[0] ?? null;
+  }, [filteredParentTasks, childTasksMap]);
+
+  const selectedClientName = useMemo(() => {
+    if (selectedClientId === "__all__") return "";
+    return clientsMap[selectedClientId] ?? "Cliente";
+  }, [clientsMap, selectedClientId]);
 
   const childIds = useMemo(() => allChildTasks.map((t) => t.id), [allChildTasks]);
 
@@ -164,16 +172,47 @@ export function CronogramaClientBrowser({ tasks, childTasksMap, clientsMap, memb
     setDragOverDay(null);
   }, [updateTask]);
 
+  const buildPublicUrl = useCallback(() => {
+    if (!parentTaskForPublic || selectedClientId === "__all__") return null;
+    const url = new URL(`${window.location.origin}/cronograma/${parentTaskForPublic.id}`);
+    url.searchParams.set("client", selectedClientId);
+    return url.toString();
+  }, [parentTaskForPublic, selectedClientId]);
+
   const handleShare = async () => {
-    const parentTask = filteredParentTasks[0];
-    if (!parentTask) return;
-    const shareUrl = `${window.location.origin}/cronograma/${parentTask.id}`;
+    const shareUrl = buildPublicUrl();
+    if (!shareUrl) {
+      toast.error("Selecione um cliente com postagens para compartilhar.");
+      return;
+    }
+
+    window.open(shareUrl, "_blank", "noopener,noreferrer");
     try {
       await navigator.clipboard.writeText(shareUrl);
-      toast.success("Link copiado para a área de transferência!");
+      toast.success("Link público aberto e copiado!");
     } catch {
-      toast.info(`Link: ${shareUrl}`);
+      toast.info(`Link público: ${shareUrl}`);
     }
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!scheduledPosts.length) {
+      toast.error("Não há posts agendados para exportar.");
+      return;
+    }
+
+    const { data, error } = await sb.from("pm_pdf_settings").select("*").limit(1).maybeSingle();
+    if (error) {
+      toast.error("Não foi possível carregar o layout do PDF.");
+      return;
+    }
+
+    await downloadCronogramaPdf({
+      clientName: selectedClientName,
+      posts: scheduledPosts,
+      settings: (data ?? null) as PdfExportSettings | null,
+    });
+    toast.success("PDF baixado com sucesso!");
   };
 
   const handleUpdatePost = (field: string, value: string | null) => {
@@ -220,18 +259,18 @@ export function CronogramaClientBrowser({ tasks, childTasksMap, clientsMap, memb
           }
 
           {!noClientSelected &&
-          <Button variant="outline" size="sm" className="gap-1.5 text-xs rounded-xl h-9" onClick={() => {
-              const parentTask = filteredParentTasks[0];
-              if (!parentTask) return;
-              const url = `${window.location.origin}/cronograma/${parentTask.id}?print=1`;
-              window.open(url, "_blank");
-            }}>
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs rounded-xl h-9" onClick={handleDownloadPdf}>
               <Download className="h-3.5 w-3.5" /> PDF
             </Button>
           }
 
           {!noClientSelected &&
-          <Button size="sm" className="gap-1.5 text-xs rounded-xl h-9 bg-sidebar text-sidebar-foreground hover:bg-sidebar/90" onClick={() => onTaskClick(filteredParentTasks[0])}>
+          <Button
+            size="sm"
+            className="gap-1.5 text-xs rounded-xl h-9 bg-sidebar text-sidebar-foreground hover:bg-sidebar/90"
+            onClick={() => parentTaskForPublic && onTaskClick(parentTaskForPublic)}
+            disabled={!parentTaskForPublic}
+          >
               <Plus className="h-3.5 w-3.5" /> Novo post
             </Button>
           }

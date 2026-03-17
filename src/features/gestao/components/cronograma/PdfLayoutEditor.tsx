@@ -195,15 +195,17 @@ function PreviewPostPage({ form, index }: { form: Partial<PdfSettings>; index: n
 function PreviewFooter({ form }: { form: Partial<PdfSettings> }) {
   const bg = form.background_color ?? "#0B0D12";
   const accent = form.accent_color ?? "#7C5CFF";
+  const margin = form.margin_size ?? 60;
+
   return (
-    <div className="relative overflow-hidden" style={{ width: PDF_W, height: PDF_H / 2, backgroundColor: bg }}>
-      <div className="flex items-center justify-center h-full gap-12 px-20">
-        {form.agency_logo_url && <img src={form.agency_logo_url} alt="Logo" className="h-[80px] object-contain" />}
-        <div className="h-16 w-[2px] rounded-full" style={{ backgroundColor: accent + "66" }} />
+    <div className="relative overflow-hidden" style={{ width: PDF_W, height: PDF_H, backgroundColor: bg }}>
+      <div className="flex items-center justify-center h-full gap-12" style={{ padding: margin }}>
+        {form.agency_logo_url && <img src={form.agency_logo_url} alt="Logo" className="h-[110px] object-contain" />}
+        <div className="h-20 w-[2px] rounded-full" style={{ backgroundColor: accent + "66" }} />
         <div>
-          <div style={{ fontSize: 32, color: form.title_color ?? "#FFF" }} className="font-bold">{form.agency_name || "Nome da Agência"}</div>
-          <div style={{ fontSize: 20, color: form.subtitle_color ?? "#AAA" }} className="mt-1">{form.footer_text || "Cronograma de Conteúdo"}</div>
-          <div style={{ fontSize: 18, color: "#666" }} className="mt-1">{form.footer_contact || "@agencia • contato@agencia.com"}</div>
+          <div style={{ fontSize: (form.title_font_size ?? 32) * 1.3, color: form.title_color ?? "#FFF" }} className="font-bold">{form.agency_name || "Nome da Agência"}</div>
+          <div style={{ fontSize: (form.subtitle_font_size ?? 18) * 1.5, color: form.subtitle_color ?? "#AAA" }} className="mt-2">{form.footer_text || "Cronograma de Conteúdo"}</div>
+          <div style={{ fontSize: (form.card_caption_font_size ?? 11) * 1.6, color: form.subtitle_color ?? "#AAA" }} className="mt-2">{form.footer_contact || "@agencia • contato@agencia.com"}</div>
         </div>
       </div>
     </div>
@@ -256,6 +258,20 @@ function CoverSettings({ form, setForm, uploading, handleUploadBg, handleUploadL
         <div className="flex items-center gap-2 mt-1">
           <Slider value={[form.margin_size ?? 60]} onValueChange={([v]: number[]) => setForm((p: any) => ({ ...p, margin_size: v }))} min={20} max={120} step={5} className="flex-1" />
           <span className="text-xs font-mono w-8 text-right">{form.margin_size ?? 60}</span>
+        </div>
+      </div>
+      <div>
+        <Label className="text-[10px] text-muted-foreground">Título da capa — tamanho</Label>
+        <div className="flex items-center gap-2 mt-1">
+          <Slider value={[form.title_font_size ?? 32]} onValueChange={([v]: number[]) => setForm((p: any) => ({ ...p, title_font_size: v }))} min={18} max={54} step={1} className="flex-1" />
+          <span className="text-xs font-mono w-8 text-right">{form.title_font_size ?? 32}</span>
+        </div>
+      </div>
+      <div>
+        <Label className="text-[10px] text-muted-foreground">Subtítulo da capa — tamanho</Label>
+        <div className="flex items-center gap-2 mt-1">
+          <Slider value={[form.subtitle_font_size ?? 18]} onValueChange={([v]: number[]) => setForm((p: any) => ({ ...p, subtitle_font_size: v }))} min={10} max={34} step={1} className="flex-1" />
+          <span className="text-xs font-mono w-8 text-right">{form.subtitle_font_size ?? 18}</span>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
@@ -368,6 +384,27 @@ function FooterSettings({ form, setForm, uploading, handleUploadAgencyLogo }: an
       <div>
         <Label className="text-[10px] text-muted-foreground">Contato / Redes</Label>
         <Input value={form.footer_contact ?? ""} onChange={e => setForm((p: any) => ({ ...p, footer_contact: e.target.value }))} className="h-8 text-xs mt-1" placeholder="@agencia • contato@agencia.com" />
+      </div>
+      <div>
+        <Label className="text-[10px] text-muted-foreground">Nome da agência — tamanho</Label>
+        <div className="flex items-center gap-2 mt-1">
+          <Slider value={[form.title_font_size ?? 32]} onValueChange={([v]: number[]) => setForm((p: any) => ({ ...p, title_font_size: v }))} min={18} max={54} step={1} className="flex-1" />
+          <span className="text-xs font-mono w-8 text-right">{form.title_font_size ?? 32}</span>
+        </div>
+      </div>
+      <div>
+        <Label className="text-[10px] text-muted-foreground">Texto padrão — tamanho</Label>
+        <div className="flex items-center gap-2 mt-1">
+          <Slider value={[form.subtitle_font_size ?? 18]} onValueChange={([v]: number[]) => setForm((p: any) => ({ ...p, subtitle_font_size: v }))} min={10} max={34} step={1} className="flex-1" />
+          <span className="text-xs font-mono w-8 text-right">{form.subtitle_font_size ?? 18}</span>
+        </div>
+      </div>
+      <div>
+        <Label className="text-[10px] text-muted-foreground">Contato — tamanho</Label>
+        <div className="flex items-center gap-2 mt-1">
+          <Slider value={[form.card_caption_font_size ?? 11]} onValueChange={([v]: number[]) => setForm((p: any) => ({ ...p, card_caption_font_size: v }))} min={8} max={20} step={1} className="flex-1" />
+          <span className="text-xs font-mono w-8 text-right">{form.card_caption_font_size ?? 11}</span>
+        </div>
       </div>
     </div>
   );

@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
+import { downloadCronogramaPdf, type PdfExportSettings } from "@/features/gestao/components/cronograma/pdf-export";
 
 const sb = supabase as any;
 
@@ -44,6 +45,7 @@ export default function CronogramaPublic() {
   const { taskId } = useParams<{ taskId: string }>();
   const [searchParams] = useSearchParams();
   const isPrint = searchParams.get("print") === "1";
+  const clientFilterId = searchParams.get("client");
 
   const [loading, setLoading] = useState(true);
   const [parentTitle, setParentTitle] = useState("");
@@ -51,65 +53,101 @@ export default function CronogramaPublic() {
   const [posts, setPosts] = useState<PostData[]>([]);
   const [selectedPost, setSelectedPost] = useState<PostData | null>(null);
   const [feedbacks, setFeedbacks] = useState<Record<string, FeedbackData>>({});
+  const [pdfSettings, setPdfSettings] = useState<PdfExportSettings | null>(null);
 
   useEffect(() => {
     if (!taskId) return;
-    (async () => {
-      const { data: parent } = await sb.from("pm_tasks").select("title, client_id").eq("id", taskId).single();
-      if (parent) {
-        setParentTitle(parent.title);
-        const { data: client } = await sb.from("clients").select("name").eq("id", parent.client_id).single();
-        if (client) setClientName(client.name);
-      }
 
-      const { data: children } = await sb
-        .from("pm_tasks")
-        .select("id, title, post_type, posting_date, posting_time, caption, cover_url")
-        .eq("parent_task_id", taskId)
-        .not("posting_date", "is", null)
-        .order("posting_date", { ascending: true });
+    const load = async () => {
+      setLoading(true);
+      try {
+        let resolvedClientId = clientFilterId;
 
-      if (children && children.length > 0) {
-        const childIds = children.map((c: any) => c.id);
-        const { data: attachments } = await sb
-          .from("pm_attachments")
-          .select("task_id, public_url, file_type, order_index")
-          .in("task_id", childIds)
-          .order("order_index", { ascending: true })
-          .order("created_at", { ascending: true });
-
-        const firstImageMap = new Map<string, string>();
-        const allImagesMap = new Map<string, string[]>();
-        (attachments ?? []).forEach((att: any) => {
-          if (att.file_type?.startsWith("image/") && att.public_url) {
-            if (!firstImageMap.has(att.task_id)) firstImageMap.set(att.task_id, att.public_url);
-            const arr = allImagesMap.get(att.task_id) ?? [];
-            arr.push(att.public_url);
-            allImagesMap.set(att.task_id, arr);
+        if (resolvedClientId) {
+          const { data: client } = await sb.from("clients").select("name").eq("id", resolvedClientId).single();
+          if (client?.name) {
+            setClientName(client.name);
+            setParentTitle(client.name);
           }
-        });
+        } else {
+          const { data: parent } = await sb.from("pm_tasks").select("title, client_id").eq("id", taskId).single();
+          if (parent) {
+            setParentTitle(parent.title);
+            resolvedClientId = parent.client_id;
+            const { data: client } = await sb.from("clients").select("name").eq("id", parent.client_id).single();
+            if (client?.name) setClientName(client.name);
+          }
+        }
 
-        const enriched = children.map((c: any) => ({
-          ...c,
-          attachment_url: firstImageMap.get(c.id) ?? null,
-          all_attachment_urls: allImagesMap.get(c.id) ?? [],
-        }));
-        setPosts(enriched);
-        setSelectedPost(enriched[0]);
+        let childrenQuery = sb
+          .from("pm_tasks")
+          .select("id, title, post_type, posting_date, posting_time, caption, cover_url")
+          .not("posting_date", "is", null)
+          .order("posting_date", { ascending: true });
 
-        // Load feedbacks
-        const { data: fbData } = await sb
-          .from("pm_cronograma_feedback")
-          .select("*")
-          .in("task_id", childIds);
-        
-        const fbMap: Record<string, FeedbackData> = {};
-        (fbData ?? []).forEach((fb: FeedbackData) => { fbMap[fb.task_id] = fb; });
-        setFeedbacks(fbMap);
+        if (clientFilterId) {
+          childrenQuery = childrenQuery.eq("client_id", clientFilterId).not("parent_task_id", "is", null);
+        } else {
+          childrenQuery = childrenQuery.eq("parent_task_id", taskId);
+        }
+
+        const { data: children } = await childrenQuery;
+        const childRows = (children ?? []) as PostData[];
+
+        if (childRows.length > 0) {
+          const childIds = childRows.map((c) => c.id);
+          const { data: attachments } = await sb
+            .from("pm_attachments")
+            .select("task_id, public_url, file_type, order_index")
+            .in("task_id", childIds)
+            .order("order_index", { ascending: true })
+            .order("created_at", { ascending: true });
+
+          const firstImageMap = new Map<string, string>();
+          const allImagesMap = new Map<string, string[]>();
+          (attachments ?? []).forEach((att: any) => {
+            if (att.file_type?.startsWith("image/") && att.public_url) {
+              if (!firstImageMap.has(att.task_id)) firstImageMap.set(att.task_id, att.public_url);
+              const arr = allImagesMap.get(att.task_id) ?? [];
+              arr.push(att.public_url);
+              allImagesMap.set(att.task_id, arr);
+            }
+          });
+
+          const enriched = childRows.map((c) => ({
+            ...c,
+            attachment_url: firstImageMap.get(c.id) ?? null,
+            all_attachment_urls: allImagesMap.get(c.id) ?? [],
+          }));
+
+          setPosts(enriched);
+          setSelectedPost(enriched[0]);
+
+          const { data: fbData } = await sb
+            .from("pm_cronograma_feedback")
+            .select("*")
+            .in("task_id", childIds);
+
+          const fbMap: Record<string, FeedbackData> = {};
+          (fbData ?? []).forEach((fb: FeedbackData) => {
+            fbMap[fb.task_id] = fb;
+          });
+          setFeedbacks(fbMap);
+        } else {
+          setPosts([]);
+          setSelectedPost(null);
+          setFeedbacks({});
+        }
+
+        const { data: layout } = await sb.from("pm_pdf_settings").select("*").limit(1).maybeSingle();
+        setPdfSettings((layout ?? null) as PdfExportSettings | null);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
-    })();
-  }, [taskId]);
+    };
+
+    load();
+  }, [taskId, clientFilterId]);
 
   const handleSubmitFeedback = async (postId: string, status: string, text: string) => {
     const existing = feedbacks[postId];
@@ -118,10 +156,23 @@ export default function CronogramaPublic() {
     } else {
       await sb.from("pm_cronograma_feedback").insert({ task_id: postId, status, feedback_text: text || null });
     }
-    // Reload
     const { data } = await sb.from("pm_cronograma_feedback").select("*").eq("task_id", postId).single();
     if (data) setFeedbacks(prev => ({ ...prev, [postId]: data }));
     toast.success(status === "aprovado" ? "Postagem aprovada!" : "Alteração solicitada!");
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!posts.length) {
+      toast.error("Não há postagens para baixar.");
+      return;
+    }
+
+    await downloadCronogramaPdf({
+      clientName: clientName || parentTitle || "Cliente",
+      posts: posts as any,
+      settings: pdfSettings,
+    });
+    toast.success("PDF baixado com sucesso!");
   };
 
   useEffect(() => {
@@ -227,7 +278,7 @@ export default function CronogramaPublic() {
             <h1 className="text-xl font-bold">{clientName || parentTitle}</h1>
             <p className="text-xs text-gray-500">Cronograma de Postagens</p>
           </div>
-          <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => window.open(`${window.location.pathname}?print=1`, "_blank")}>
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={handleDownloadPdf}>
             <Download className="h-3.5 w-3.5" /> Baixar PDF
           </Button>
         </div>
