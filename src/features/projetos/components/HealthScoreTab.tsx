@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
-import { useHealthScores, useUpsertHealthScore, type HealthScore } from "../hooks/use-health-scores";
+import { useHealthScores, useUpsertHealthScore, useDeleteHealthScore, type HealthScore } from "../hooks/use-health-scores";
 import { useHealthScoreToken, useCreateHealthScoreToken } from "../hooks/use-health-score-token";
 import { useSession } from "@/hooks/use-session";
 import { useQuery } from "@tanstack/react-query";
