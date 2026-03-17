@@ -204,8 +204,8 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
       </Card>
 
       {/* Coluna direita: métricas (linha) + etapas (grade) */}
-      <div className={cn("flex flex-col gap-4", fullscreen && "flex-1 min-h-0 justify-between")}>
-        <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
+      <div className={cn("flex flex-col gap-4", fullscreen && "flex-1 min-h-0")}>
+        <div className={cn("grid gap-3 grid-cols-2 sm:grid-cols-4", fullscreen && "shrink-0")}>
           <MetricCard value={deadlineLabel} label="MAGIC NUMBER" highlight />
           <MetricCard value={String(dashboard.totalStages)} label="TOTAL" />
           <MetricCard value={String(dashboard.doneStages)} label="FEITOS" />
@@ -213,15 +213,15 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
         </div>
 
         {/* 1ª linha (4): Planejamento, Captação, Edição, Design | 2ª linha (4): Alterações, PDF, Agendamento, Clientes 100% */}
-        <div className={cn("grid gap-3 content-start grid-cols-2 sm:grid-cols-3 lg:grid-cols-4", fullscreen && "flex-1 content-center")}>
+        <div className={cn("grid gap-3 content-start grid-cols-2 sm:grid-cols-3 lg:grid-cols-4", fullscreen && "flex-1 min-h-0 grid-rows-2 content-stretch items-center")}>
           {stagesForDashboard.map((st) => {
             const item = dashboard.byStage[st.key];
             return (
-              <div key={st.key} className="grid justify-items-center gap-3">
+              <div key={st.key} className={cn("grid justify-items-center gap-2", fullscreen && "self-center")}>
                 <ProgressRing
                   value={item?.pct ?? 0}
                   tone={(item?.pct ?? 0) === 100 ? "success" : "warning"}
-                  size={fullscreen ? 170 : isMobile ? 110 : 160}
+                  size={fullscreen ? 150 : isMobile ? 110 : 160}
                   stroke={isMobile ? 12 : 18}
                   className="animate-fade-in"
                   label={
@@ -242,12 +242,12 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
             );
           })}
 
-          {/* Abaixo de DESIGN (col 4) e ao lado de AGENDAMENTO (col 3) no xl */}
-          <div className="grid justify-items-center gap-3">
+          {/* Clientes 100% */}
+          <div className={cn("grid justify-items-center gap-2", fullscreen && "self-center")}>
             <ProgressRing
               value={clients100Pct}
               tone={clients100Pct === 100 ? "success" : "warning"}
-              size={fullscreen ? 170 : isMobile ? 110 : 160}
+              size={fullscreen ? 150 : isMobile ? 110 : 160}
               stroke={isMobile ? 12 : 18}
               className="animate-fade-in"
               label={
