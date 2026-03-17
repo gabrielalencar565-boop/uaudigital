@@ -217,11 +217,11 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
           {stagesForDashboard.map((st) => {
             const item = dashboard.byStage[st.key];
             return (
-              <div key={st.key} className={cn("grid justify-items-center gap-2", fullscreen && "self-center")}>
+              <div key={st.key} className="grid justify-items-center gap-2">
                 <ProgressRing
                   value={item?.pct ?? 0}
                   tone={(item?.pct ?? 0) === 100 ? "success" : "warning"}
-                  size={fullscreen ? 150 : isMobile ? 110 : 160}
+                  size={fullscreen ? 190 : isMobile ? 110 : 160}
                   stroke={isMobile ? 12 : 18}
                   className="animate-fade-in"
                   label={
