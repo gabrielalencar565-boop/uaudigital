@@ -6,6 +6,12 @@ const DESIGN_W = 1684;
 const DESIGN_H = 1190;
 
 type BlockId = "cover" | "cards" | "footer";
+type PdfImageFormat = "PNG" | "JPEG";
+
+interface PdfImageAsset {
+  dataUrl: string;
+  format: PdfImageFormat;
+}
 
 export interface PdfExportSettings {
   background_color?: string | null;
@@ -107,56 +113,123 @@ function getPostImage(post: PdfExportPost): string | null {
   return post.attachment_url ?? post.cover_url ?? post.all_attachment_urls?.[0] ?? null;
 }
 
-async function toDataUrl(url: string): Promise<string | null> {
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(String(reader.result));
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+function detectImageKind(dataUrl: string): "png" | "jpeg" | "svg" | "other" {
+  const lower = dataUrl.slice(0, 80).toLowerCase();
+  if (lower.startsWith("data:image/png")) return "png";
+  if (lower.startsWith("data:image/jpeg") || lower.startsWith("data:image/jpg")) return "jpeg";
+  if (lower.startsWith("data:image/svg+xml")) return "svg";
+  return "other";
+}
+
+async function rasterizeToPng(dataUrl: string): Promise<string | null> {
+  return await new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const width = Math.max(1, img.naturalWidth || img.width || 1200);
+      const height = Math.max(1, img.naturalHeight || img.height || 900);
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        resolve(null);
+        return;
+      }
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL("image/png"));
+    };
+    img.onerror = () => resolve(null);
+    img.src = dataUrl;
+  });
+}
+
+async function toPdfImage(url: string): Promise<PdfImageAsset | null> {
   try {
     const response = await fetch(url, { mode: "cors" });
     if (!response.ok) return null;
+
     const blob = await response.blob();
-    return await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(String(reader.result));
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
+    const dataUrl = await blobToDataUrl(blob);
+    const kind = detectImageKind(dataUrl);
+
+    if (kind === "png") return { dataUrl, format: "PNG" };
+    if (kind === "jpeg") return { dataUrl, format: "JPEG" };
+
+    const rasterized = await rasterizeToPng(dataUrl);
+    if (!rasterized) return null;
+    return { dataUrl: rasterized, format: "PNG" };
   } catch {
     return null;
   }
 }
 
-const BRICOLAGE_URLS = {
-  normal: "https://fonts.gstatic.com/s/bricolagegrotesque/v10/3y9U6as8bTXq_nANBjzKo3IeZx8z6up5BeSl5jBNz_19PpbpMXuECpwUxJBOm_OJWiSBoA.ttf",
-  bold: "https://fonts.gstatic.com/s/bricolagegrotesque/v10/3y9U6as8bTXq_nANBjzKo3IeZx8z6up5BeSl5jBNz_19PpbpMXuECpwUxJBOm_OJTCOBoA.ttf",
+function addPdfImage(doc: jsPDF, image: PdfImageAsset, x: number, y: number, w: number, h: number): boolean {
+  try {
+    doc.addImage(image.dataUrl, image.format, x, y, w, h, undefined, "FAST");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const BRICOLAGE_URLS: Record<"normal" | "bold", string> = {
+  normal: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/bricolagegrotesque/BricolageGrotesque-Regular.ttf",
+  bold: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/bricolagegrotesque/BricolageGrotesque-Bold.ttf",
 };
 
 let fontLoaded = false;
+let loadedStyles = new Set<"normal" | "bold">();
 
 async function loadBricolageFont(doc: jsPDF) {
   if (fontLoaded) return;
+
+  loadedStyles = new Set<"normal" | "bold">();
+
   try {
-    for (const [style, url] of Object.entries(BRICOLAGE_URLS)) {
+    for (const [style, url] of Object.entries(BRICOLAGE_URLS) as ["normal" | "bold", string][]) {
       const res = await fetch(url, { mode: "cors" });
       if (!res.ok) continue;
+
       const buf = await res.arrayBuffer();
       const bytes = new Uint8Array(buf);
       let binary = "";
       for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
       const b64 = btoa(binary);
+
       const fileName = `Bricolage-${style}.ttf`;
       doc.addFileToVFS(fileName, b64);
       doc.addFont(fileName, "Bricolage", style);
+      loadedStyles.add(style);
     }
-    fontLoaded = true;
+
+    fontLoaded = loadedStyles.size > 0;
   } catch {
-    // fallback to helvetica
+    fontLoaded = false;
+    loadedStyles.clear();
   }
 }
 
 function setFont(doc: jsPDF, style: "normal" | "bold") {
-  if (fontLoaded) {
+  if (fontLoaded && loadedStyles.has(style)) {
     doc.setFont("Bricolage", style);
-  } else {
-    doc.setFont("helvetica", style);
+    return;
   }
+
+  if (fontLoaded && loadedStyles.has("normal")) {
+    doc.setFont("Bricolage", "normal");
+    return;
+  }
+
+  doc.setFont("helvetica", style);
 }
 
 function drawBg(doc: jsPDF, pageW: number, pageH: number, settings: Required<PdfExportSettings>) {
@@ -171,8 +244,8 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
 
-  // Load custom font
   fontLoaded = false;
+  loadedStyles.clear();
   await loadBricolageFont(doc);
 
   const sx = (x: number) => (x / DESIGN_W) * pageW;
@@ -188,11 +261,11 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
     hasPage = true;
   };
 
-  const imageCache = new Map<string, string | null>();
+  const imageCache = new Map<string, PdfImageAsset | null>();
   const getCachedImage = async (url?: string | null) => {
     if (!url) return null;
     if (imageCache.has(url)) return imageCache.get(url) ?? null;
-    const data = await toDataUrl(url);
+    const data = await toPdfImage(url);
     imageCache.set(url, data);
     return data;
   };
@@ -206,14 +279,14 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
 
       const bgImage = await getCachedImage(form.background_image_url);
       if (bgImage) {
-        doc.addImage(bgImage, "JPEG", 0, 0, pageW, pageH, undefined, "FAST");
+        addPdfImage(doc, bgImage, 0, 0, pageW, pageH);
       }
 
       const coverLogo = await getCachedImage(form.cover_logo_url);
       if (coverLogo) {
         const logoW = sx(260);
         const logoH = sy(120);
-        doc.addImage(coverLogo, "PNG", pageW / 2 - logoW / 2, sy(140), logoW, logoH, undefined, "FAST");
+        addPdfImage(doc, coverLogo, pageW / 2 - logoW / 2, sy(140), logoW, logoH);
       }
 
       const [titleR, titleG, titleB] = parseHex(form.title_color, [255, 255, 255]);
@@ -239,8 +312,9 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
       if (agencyLogo) {
         const logoW = sx(130);
         const logoH = sy(52);
-        doc.addImage(agencyLogo, "PNG", pageW / 2 - logoW / 2, footerY - sy(30), logoW, logoH, undefined, "FAST");
-        footerY += sy(34);
+        if (addPdfImage(doc, agencyLogo, pageW / 2 - logoW / 2, footerY - sy(30), logoW, logoH)) {
+          footerY += sy(34);
+        }
       }
 
       if (form.agency_name) {
@@ -273,8 +347,8 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
 
         const postImageUrl = getPostImage(post);
         const postImage = await getCachedImage(postImageUrl);
-        if (postImage) {
-          doc.addImage(postImage, "JPEG", imageX, imageY, imageW, contentH, undefined, "FAST");
+        if (postImage && addPdfImage(doc, postImage, imageX, imageY, imageW, contentH)) {
+          // image rendered
         } else {
           doc.setTextColor(110, 117, 138);
           setFont(doc, "bold");
@@ -303,7 +377,7 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
         doc.setFillColor(accR, accG, accB);
         doc.roundedRect(badgeX, badgeY, badgeW, badgeH, sy(22), sy(22), "F");
         doc.setTextColor(255, 255, 255);
-        doc.text(badgeText, badgeX + badgeW / 2, badgeY + badgeH / 2 + sx(6), { align: "center" });
+        doc.text(badgeText, badgeX + badgeW / 2, badgeY + badgeH / 2, { align: "center", baseline: "middle" });
 
         doc.setTextColor(subR, subG, subB);
         setFont(doc, "bold");
@@ -335,7 +409,10 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
 
         if (form.show_time_on_card && post.posting_time) {
           const dateTextW = doc.getTextWidth(formattedDate);
-          const timeX = textX + dateTextW + sx(60);
+          const timeX = Math.min(
+            Math.max(textX + dateTextW + sx(80), textX + textW * 0.55),
+            textX + textW - sx(220),
+          );
           doc.setTextColor(subR, subG, subB);
           setFont(doc, "bold");
           doc.setFontSize(sx(14));
@@ -360,7 +437,7 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
       if (agencyLogo) {
         const logoW = sx(210);
         const logoH = sy(110);
-        doc.addImage(agencyLogo, "PNG", pageW / 2 - logoW / 2, pageH / 2 - sy(190), logoW, logoH, undefined, "FAST");
+        addPdfImage(doc, agencyLogo, pageW / 2 - logoW / 2, pageH / 2 - sy(190), logoW, logoH);
       }
 
       setFont(doc, "bold");
