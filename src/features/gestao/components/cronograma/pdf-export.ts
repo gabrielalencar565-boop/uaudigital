@@ -323,22 +323,25 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
         doc.line(textX, footerTop, textX + textW, footerTop);
 
         doc.setTextColor(subR, subG, subB);
-        doc.setFont("helvetica", "bold");
+        setFont(doc, "bold");
         doc.setFontSize(sx(14));
         doc.text("Data", textX, footerTop + sy(32));
 
         doc.setTextColor(titleR, titleG, titleB);
+        setFont(doc, "normal");
         doc.setFontSize(Math.max(10, sx(form.card_date_font_size * 2.1)));
         const formattedDate = post.posting_date ? format(parseISO(post.posting_date), "dd/MM/yyyy") : "—";
         doc.text(formattedDate, textX, footerTop + sy(68));
 
         if (form.show_time_on_card && post.posting_time) {
-          const timeX = textX + sx(210);
+          const dateTextW = doc.getTextWidth(formattedDate);
+          const timeX = textX + dateTextW + sx(60);
           doc.setTextColor(subR, subG, subB);
-          doc.setFont("helvetica", "bold");
+          setFont(doc, "bold");
           doc.setFontSize(sx(14));
           doc.text("Horário", timeX, footerTop + sy(32));
           doc.setTextColor(titleR, titleG, titleB);
+          setFont(doc, "normal");
           doc.setFontSize(Math.max(10, sx(form.card_date_font_size * 2.1)));
           doc.text(post.posting_time, timeX, footerTop + sy(68));
         }
