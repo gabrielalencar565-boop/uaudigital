@@ -77,8 +77,8 @@ function GradientLayers() {
 
 function StageRingWidget({ label, pct, valueLabel, className, fullscreen }: { label: string; pct: number; valueLabel?: React.ReactNode; className?: string; fullscreen?: boolean }) {
   const isMobile = useIsMobile();
-  const ringSize = isMobile ? 100 : fullscreen ? 200 : 160;
-  const strokeWidth = isMobile ? 10 : fullscreen ? 20 : 18;
+  const ringSize = isMobile ? 100 : fullscreen ? 240 : 180;
+  const strokeWidth = isMobile ? 10 : fullscreen ? 22 : 20;
   return (
     <div className={cn("flex flex-col items-center gap-2 min-w-0", className)}>
       <div className="flex-1 flex items-center justify-center w-full">
@@ -205,8 +205,8 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
           <ProgressRing
             value={dashboard.overallPct}
             tone={dashboard.overallPct === 100 ? "success" : "warning"}
-            size={fullscreen ? 280 : 300}
-            stroke={fullscreen ? 22 : 26}
+            size={fullscreen ? 340 : 340}
+            stroke={fullscreen ? 26 : 28}
             trackColor="rgba(91,33,182,0.45)"
             label={
               <div className="text-center">
