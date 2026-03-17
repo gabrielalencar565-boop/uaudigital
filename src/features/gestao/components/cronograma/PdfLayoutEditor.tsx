@@ -40,6 +40,7 @@ interface PdfSettings {
   agency_name: string;
   footer_text: string;
   footer_contact: string;
+  margin_size: number;
 }
 
 type BlockId = "cover" | "cards" | "footer";
@@ -84,16 +85,16 @@ function useUpdatePdfSettings() {
 /* A4 Landscape dimensions (ratio 1.414:1) */
 const PDF_W = 1684;
 const PDF_H = 1190;
-const MARGIN = 60;
 
 /* ─── Preview: Cover ─── */
 function PreviewCover({ form }: { form: Partial<PdfSettings> }) {
   const accent = form.accent_color ?? "#7C5CFF";
   const bg = form.background_color ?? "#0B0D12";
+  const margin = form.margin_size ?? 60;
   return (
     <div className="relative overflow-hidden" style={{ width: PDF_W, height: PDF_H, backgroundColor: bg, backgroundImage: form.background_image_url ? `url(${form.background_image_url})` : undefined, backgroundSize: "cover", backgroundPosition: "center" }}>
       {form.background_image_url && <div className="absolute inset-0 bg-black/40" />}
-      <div className="relative z-10 flex flex-col items-center justify-center h-full gap-8" style={{ padding: MARGIN }}>
+      <div className="relative z-10 flex flex-col items-center justify-center h-full gap-8" style={{ padding: margin }}>
         {form.cover_logo_url && <img src={form.cover_logo_url} alt="Logo" className="h-[120px] object-contain" />}
         <div style={{ fontSize: (form.title_font_size ?? 32) * 2.5, color: form.title_color ?? "#FFFFFF" }} className="font-bold leading-tight text-center">
           Nome do Cliente
@@ -119,23 +120,22 @@ function PreviewPostPage({ form, index }: { form: Partial<PdfSettings>; index: n
   const accent = form.accent_color ?? "#7C5CFF";
   const titleColor = form.title_color ?? "#FFFFFF";
   const subtitleColor = form.subtitle_color ?? "#AAAAAA";
+  const margin = form.margin_size ?? 60;
 
   const postTypes = ["Feed", "Reels", "Story", "Carrossel"];
   const postType = postTypes[index % postTypes.length];
   const day = 3 + index * 3;
-  const caption = index === 0
-    ? "Essa é a legenda completa da postagem. O texto será exibido com quebra automática de linha para preencher o espaço disponível no lado direito da página."
-    : "Legenda de exemplo para o post " + (index + 1) + ". Texto com informações relevantes sobre o conteúdo.";
+  const caption = "Essa é a legenda completa da postagem. O texto será exibido com quebra automática de linha para preencher o espaço disponível no lado direito da página.";
 
   return (
     <div className="relative overflow-hidden" style={{ width: PDF_W, height: PDF_H, backgroundColor: bg }}>
-      <div className="flex" style={{ padding: MARGIN, height: PDF_H, gap: 40 }}>
+      <div className="flex" style={{ padding: margin, height: PDF_H, gap: 40 }}>
         {/* Left: Image mockup (45%) */}
         <div
           className="rounded-3xl overflow-hidden shrink-0 flex items-center justify-center"
           style={{
             width: "45%",
-            height: PDF_H - MARGIN * 2,
+            height: PDF_H - margin * 2,
             backgroundColor: "#1a1d27",
             boxShadow: "0 20px 60px -15px rgba(0,0,0,0.4)",
           }}
@@ -147,8 +147,7 @@ function PreviewPostPage({ form, index }: { form: Partial<PdfSettings>; index: n
         </div>
 
         {/* Right: Info (55%) */}
-        <div className="flex flex-col justify-between overflow-hidden" style={{ flex: 1, minWidth: 0, height: PDF_H - MARGIN * 2 }}>
-          {/* Top: Title + type */}
+        <div className="flex flex-col justify-between overflow-hidden" style={{ flex: 1, minWidth: 0, height: PDF_H - margin * 2 }}>
           <div style={{ overflow: "hidden" }}>
             <div className="flex items-center gap-4 mb-6 flex-wrap">
               <div style={{ fontSize: (form.card_font_size ?? 14) * 3, color: titleColor }} className="font-bold leading-tight">
@@ -161,27 +160,15 @@ function PreviewPostPage({ form, index }: { form: Partial<PdfSettings>; index: n
                 {postType}
               </div>
             </div>
-
-            {/* Caption */}
             <div className="mb-6">
               <div style={{ fontSize: 20, color: subtitleColor }} className="uppercase tracking-widest font-semibold mb-3">
                 Legenda:
               </div>
-              <div
-                style={{
-                  fontSize: (form.card_caption_font_size ?? 11) * 2,
-                  color: titleColor,
-                  lineHeight: 1.7,
-                  wordBreak: "break-word",
-                  overflowWrap: "break-word",
-                }}
-              >
+              <div style={{ fontSize: (form.card_caption_font_size ?? 11) * 2, color: titleColor, lineHeight: 1.7, wordBreak: "break-word", overflowWrap: "break-word" }}>
                 {caption}
               </div>
             </div>
           </div>
-
-          {/* Footer: date + time */}
           <div className="flex items-center gap-6 pt-4 shrink-0" style={{ borderTop: `2px solid ${accent}33` }}>
             <div>
               <div style={{ fontSize: 16, color: subtitleColor }} className="uppercase tracking-widest font-semibold mb-1">Data</div>
@@ -264,6 +251,13 @@ function BlockItem({ blockId, enabled, onToggle, onMoveUp, onMoveDown, isFirst, 
 function CoverSettings({ form, setForm, uploading, handleUploadBg, handleUploadLogo }: any) {
   return (
     <div className="space-y-4">
+      <div>
+        <Label className="text-[10px] text-muted-foreground">Margem (px)</Label>
+        <div className="flex items-center gap-2 mt-1">
+          <Slider value={[form.margin_size ?? 60]} onValueChange={([v]: number[]) => setForm((p: any) => ({ ...p, margin_size: v }))} min={20} max={120} step={5} className="flex-1" />
+          <span className="text-xs font-mono w-8 text-right">{form.margin_size ?? 60}</span>
+        </div>
+      </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
           <Label className="text-[10px] text-muted-foreground">Cor de fundo</Label>
@@ -540,13 +534,9 @@ export function PdfLayoutEditor() {
         );
       case "cards":
         return (
-          <div key="cards" className="space-y-4">
-            {[0, 1, 2].map(i => (
-              <ScaledPreview key={`post-${i}`} label={`Post ${i + 1}`} isSelected={selectedBlock === "cards"} onClick={() => setSelectedBlock("cards")}>
-                <PreviewPostPage form={form} index={i} />
-              </ScaledPreview>
-            ))}
-          </div>
+          <ScaledPreview key="post-0" label="Post 1" isSelected={selectedBlock === "cards"} onClick={() => setSelectedBlock("cards")}>
+            <PreviewPostPage form={form} index={0} />
+          </ScaledPreview>
         );
       case "footer":
         return (

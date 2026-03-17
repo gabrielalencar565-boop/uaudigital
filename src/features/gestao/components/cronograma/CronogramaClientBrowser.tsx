@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useRef } from "react";
 import { format, startOfMonth, endOfMonth, addMonths, subMonths, eachDayOfInterval, isSameDay, startOfWeek, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, FolderOpen, CalendarRange, Palette, Clock, Link2, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, FolderOpen, CalendarRange, Palette, Clock, Link2, Plus, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -216,6 +216,17 @@ export function CronogramaClientBrowser({ tasks, childTasksMap, clientsMap, memb
           {!noClientSelected &&
           <Button variant="outline" size="sm" className="gap-1.5 text-xs rounded-xl h-9" onClick={handleShare}>
               <Link2 className="h-3.5 w-3.5" /> Link público
+            </Button>
+          }
+
+          {!noClientSelected &&
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs rounded-xl h-9" onClick={() => {
+              const parentTask = filteredParentTasks[0];
+              if (!parentTask) return;
+              const url = `${window.location.origin}/cronograma/${parentTask.id}?print=1`;
+              window.open(url, "_blank");
+            }}>
+              <Download className="h-3.5 w-3.5" /> PDF
             </Button>
           }
 

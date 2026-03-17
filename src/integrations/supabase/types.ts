@@ -1191,6 +1191,7 @@ export type Database = {
           footer_contact: string
           footer_text: string
           id: string
+          margin_size: number
           show_caption_on_card: boolean
           show_time_on_card: boolean
           subtitle_color: string
@@ -1217,6 +1218,7 @@ export type Database = {
           footer_contact?: string
           footer_text?: string
           id?: string
+          margin_size?: number
           show_caption_on_card?: boolean
           show_time_on_card?: boolean
           subtitle_color?: string
@@ -1243,6 +1245,7 @@ export type Database = {
           footer_contact?: string
           footer_text?: string
           id?: string
+          margin_size?: number
           show_caption_on_card?: boolean
           show_time_on_card?: boolean
           subtitle_color?: string

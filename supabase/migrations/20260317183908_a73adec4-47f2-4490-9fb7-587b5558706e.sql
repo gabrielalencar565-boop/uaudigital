@@ -1,0 +1,1 @@
+ALTER TABLE public.pm_pdf_settings ADD COLUMN IF NOT EXISTS margin_size integer NOT NULL DEFAULT 60;
