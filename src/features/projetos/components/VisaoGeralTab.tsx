@@ -392,7 +392,37 @@ export function VisaoGeralTab() {
     });
   }, [squads, clientsPerSquad, magic2AllStages]);
 
-  // Detailed per-client data for expanded squad
+  // Squad progress evolution data (daily % per squad, like the operation progress chart)
+  const squadProgressData = useMemo(() => {
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
+    const currentDay = now.getDate();
+    const totalDays = getDaysInMonth(now);
+
+    return Array.from({ length: totalDays }, (_, i) => {
+      const dia = i + 1;
+      const dateStr = format(new Date(year, month - 1, dia), "yyyy-MM-dd");
+      const row: Record<string, any> = { dia };
+
+      squads.forEach((sq: any) => {
+        const squadClientIds = clientsPerSquad[sq.id] ?? [];
+        const totalEtapas = squadClientIds.length * STAGE_ORDER.length;
+        if (totalEtapas === 0 || dia > currentDay) {
+          row[sq.id] = undefined;
+          return;
+        }
+        const doneUpToDay = magic2AllStages.filter((s: any) =>
+          s.agenda_client_id && squadClientIds.includes(s.agenda_client_id) &&
+          s.completed && s.completed_at && s.completed_at.slice(0, 10) <= dateStr
+        ).length;
+        row[sq.id] = Math.round((doneUpToDay / totalEtapas) * 100);
+      });
+
+      return row;
+    });
+  }, [squads, clientsPerSquad, magic2AllStages, now]);
+
+
   const expandedSquadDetail = useMemo(() => {
     if (!expandedSquadId) return null;
     const sq = squads.find((s: any) => s.id === expandedSquadId);
