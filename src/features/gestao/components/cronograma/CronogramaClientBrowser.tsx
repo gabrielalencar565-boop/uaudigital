@@ -81,6 +81,15 @@ export function CronogramaClientBrowser({ tasks, childTasksMap, clientsMap, memb
     return filteredParentTasks.flatMap((t) => childTasksMap[t.id] ?? []);
   }, [filteredParentTasks, childTasksMap]);
 
+  const parentTaskForPublic = useMemo(() => {
+    return filteredParentTasks.find((t) => (childTasksMap[t.id] ?? []).some((c) => c.posting_date)) ?? filteredParentTasks[0] ?? null;
+  }, [filteredParentTasks, childTasksMap]);
+
+  const selectedClientName = useMemo(() => {
+    if (selectedClientId === "__all__") return "";
+    return clientsMap[selectedClientId] ?? "Cliente";
+  }, [clientsMap, selectedClientId]);
+
   const childIds = useMemo(() => allChildTasks.map((t) => t.id), [allChildTasks]);
 
   const attachmentsQ = useQuery({
