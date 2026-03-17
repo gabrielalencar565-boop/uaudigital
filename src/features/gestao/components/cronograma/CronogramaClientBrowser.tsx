@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useRef } from "react";
 import { format, startOfMonth, endOfMonth, addMonths, subMonths, eachDayOfInterval, isSameDay, startOfWeek, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, FolderOpen, CalendarRange, Palette, Clock, Link2, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, FolderOpen, CalendarRange, Palette, Clock, Link2, Plus, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
