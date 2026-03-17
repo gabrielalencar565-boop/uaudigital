@@ -259,18 +259,18 @@ export function CronogramaClientBrowser({ tasks, childTasksMap, clientsMap, memb
           }
 
           {!noClientSelected &&
-          <Button variant="outline" size="sm" className="gap-1.5 text-xs rounded-xl h-9" onClick={() => {
-              const parentTask = filteredParentTasks[0];
-              if (!parentTask) return;
-              const url = `${window.location.origin}/cronograma/${parentTask.id}?print=1`;
-              window.open(url, "_blank");
-            }}>
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs rounded-xl h-9" onClick={handleDownloadPdf}>
               <Download className="h-3.5 w-3.5" /> PDF
             </Button>
           }
 
           {!noClientSelected &&
-          <Button size="sm" className="gap-1.5 text-xs rounded-xl h-9 bg-sidebar text-sidebar-foreground hover:bg-sidebar/90" onClick={() => onTaskClick(filteredParentTasks[0])}>
+          <Button
+            size="sm"
+            className="gap-1.5 text-xs rounded-xl h-9 bg-sidebar text-sidebar-foreground hover:bg-sidebar/90"
+            onClick={() => parentTaskForPublic && onTaskClick(parentTaskForPublic)}
+            disabled={!parentTaskForPublic}
+          >
               <Plus className="h-3.5 w-3.5" /> Novo post
             </Button>
           }
