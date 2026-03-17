@@ -90,10 +90,11 @@ const PDF_H = 1190;
 function PreviewCover({ form }: { form: Partial<PdfSettings> }) {
   const accent = form.accent_color ?? "#7C5CFF";
   const bg = form.background_color ?? "#0B0D12";
+  const margin = form.margin_size ?? 60;
   return (
     <div className="relative overflow-hidden" style={{ width: PDF_W, height: PDF_H, backgroundColor: bg, backgroundImage: form.background_image_url ? `url(${form.background_image_url})` : undefined, backgroundSize: "cover", backgroundPosition: "center" }}>
       {form.background_image_url && <div className="absolute inset-0 bg-black/40" />}
-      <div className="relative z-10 flex flex-col items-center justify-center h-full gap-8" style={{ padding: MARGIN }}>
+      <div className="relative z-10 flex flex-col items-center justify-center h-full gap-8" style={{ padding: margin }}>
         {form.cover_logo_url && <img src={form.cover_logo_url} alt="Logo" className="h-[120px] object-contain" />}
         <div style={{ fontSize: (form.title_font_size ?? 32) * 2.5, color: form.title_color ?? "#FFFFFF" }} className="font-bold leading-tight text-center">
           Nome do Cliente
