@@ -1176,13 +1176,20 @@ export type Database = {
       pm_pdf_settings: {
         Row: {
           accent_color: string
+          agency_logo_url: string | null
+          agency_name: string
+          agenda_layout: string
           background_color: string
           background_image_url: string | null
+          blocks_enabled: Json
+          blocks_order: Json
           card_caption_font_size: number
           card_date_font_size: number
           card_font_size: number
           card_proportion: string
           cover_logo_url: string | null
+          footer_contact: string
+          footer_text: string
           id: string
           show_caption_on_card: boolean
           show_time_on_card: boolean
@@ -1195,13 +1202,20 @@ export type Database = {
         }
         Insert: {
           accent_color?: string
+          agency_logo_url?: string | null
+          agency_name?: string
+          agenda_layout?: string
           background_color?: string
           background_image_url?: string | null
+          blocks_enabled?: Json
+          blocks_order?: Json
           card_caption_font_size?: number
           card_date_font_size?: number
           card_font_size?: number
           card_proportion?: string
           cover_logo_url?: string | null
+          footer_contact?: string
+          footer_text?: string
           id?: string
           show_caption_on_card?: boolean
           show_time_on_card?: boolean
@@ -1214,13 +1228,20 @@ export type Database = {
         }
         Update: {
           accent_color?: string
+          agency_logo_url?: string | null
+          agency_name?: string
+          agenda_layout?: string
           background_color?: string
           background_image_url?: string | null
+          blocks_enabled?: Json
+          blocks_order?: Json
           card_caption_font_size?: number
           card_date_font_size?: number
           card_font_size?: number
           card_proportion?: string
           cover_logo_url?: string | null
+          footer_contact?: string
+          footer_text?: string
           id?: string
           show_caption_on_card?: boolean
           show_time_on_card?: boolean
