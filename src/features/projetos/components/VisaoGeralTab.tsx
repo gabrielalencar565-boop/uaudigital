@@ -719,7 +719,7 @@ export function VisaoGeralTab() {
                   {/* Progress */}
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between text-xs text-white/80">
-                      <span className="flex items-center gap-1"><Target className="h-3.5 w-3.5" /> Progresso • <Clock className="h-3 w-3" /> {daysLeft} dias restantes</span>
+                      <span className="flex items-center gap-1"><Target className="h-3.5 w-3.5" /> Progresso • <Clock className="h-3 w-3" /> {magicDaysLeft} dias restantes</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="flex-1 h-2 rounded-full bg-white/20 overflow-hidden">
