@@ -156,10 +156,23 @@ export default function CronogramaPublic() {
     } else {
       await sb.from("pm_cronograma_feedback").insert({ task_id: postId, status, feedback_text: text || null });
     }
-    // Reload
     const { data } = await sb.from("pm_cronograma_feedback").select("*").eq("task_id", postId).single();
     if (data) setFeedbacks(prev => ({ ...prev, [postId]: data }));
     toast.success(status === "aprovado" ? "Postagem aprovada!" : "Alteração solicitada!");
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!posts.length) {
+      toast.error("Não há postagens para baixar.");
+      return;
+    }
+
+    await downloadCronogramaPdf({
+      clientName: clientName || parentTitle || "Cliente",
+      posts: posts as any,
+      settings: pdfSettings,
+    });
+    toast.success("PDF baixado com sucesso!");
   };
 
   useEffect(() => {
