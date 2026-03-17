@@ -475,7 +475,7 @@ export function DayViewPanel() {
       </div>
 
       {/* Conteúdo */}
-      {active === "magic" ? <div className="space-y-4">
+      {active === "magic" ? <div className={cn("space-y-4", isFullscreen && "flex-1 flex flex-col")}>
           
           {magic2.query.isLoading ? <Card>
               <CardHeader>
