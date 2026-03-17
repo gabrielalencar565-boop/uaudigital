@@ -227,7 +227,7 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
 
       const baseDate = posts[0]?.posting_date ? parseISO(posts[0].posting_date) : new Date();
       doc.setTextColor(subR, subG, subB);
-      doc.setFont("helvetica", "normal");
+      setFont(doc, "normal");
       doc.setFontSize(Math.max(10, sx(form.subtitle_font_size * 2)));
       doc.text(`Cronograma de Conteúdo — ${format(baseDate, "MMMM yyyy", { locale: ptBR })}`, pageW / 2, pageH / 2 + sy(20), { align: "center" });
 
