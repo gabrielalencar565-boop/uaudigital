@@ -38,7 +38,7 @@ const TABLE_TO_QUERY_KEYS: Record<RealtimeTable, string[][]> = {
     ["my_monthly_rank"],
     ["my_annual_rank"],
   ],
-  clients: [["clients"], ["clients_all"]],
+  clients: [["clients"], ["clients_all"], ["clients_admin_all"]],
   client_cycles: [["client_cycles"]],
   task_assignees: [["task_assignees"], ["task_assignees_month"], ["tasks"], ["performance_scores"]],
   magic2_cycles: [["magic2"], ["client_contract_months"]],

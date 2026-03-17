@@ -222,7 +222,7 @@ export function useClients() {
 // Hook para admin ver TODOS os clientes (ativos e inativos), exceto sentinela freelancer
 export function useAllClients() {
   return useQuery({
-    queryKey: ["clients_all"],
+    queryKey: ["clients_admin_all"],
     queryFn: async (): Promise<ClientRow[]> => {
       const { data, error } = await supabase
         .from("clients")
@@ -250,6 +250,7 @@ export function useToggleClientActive() {
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["clients"] }),
         qc.invalidateQueries({ queryKey: ["clients_all"] }),
+        qc.invalidateQueries({ queryKey: ["clients_admin_all"] }),
       ]);
     },
   });
@@ -405,6 +406,7 @@ export function useCreateClient() {
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["clients"] }),
         qc.invalidateQueries({ queryKey: ["clients_all"] }),
+        qc.invalidateQueries({ queryKey: ["clients_admin_all"] }),
         // Atualiza Checklist/Dashboard imediatamente
         ...(Number.isFinite(year)
           ? [
