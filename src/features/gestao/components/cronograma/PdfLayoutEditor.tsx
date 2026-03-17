@@ -251,6 +251,13 @@ function BlockItem({ blockId, enabled, onToggle, onMoveUp, onMoveDown, isFirst, 
 function CoverSettings({ form, setForm, uploading, handleUploadBg, handleUploadLogo }: any) {
   return (
     <div className="space-y-4">
+      <div>
+        <Label className="text-[10px] text-muted-foreground">Margem (px)</Label>
+        <div className="flex items-center gap-2 mt-1">
+          <Slider value={[form.margin_size ?? 60]} onValueChange={([v]: number[]) => setForm((p: any) => ({ ...p, margin_size: v }))} min={20} max={120} step={5} className="flex-1" />
+          <span className="text-xs font-mono w-8 text-right">{form.margin_size ?? 60}</span>
+        </div>
+      </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
           <Label className="text-[10px] text-muted-foreground">Cor de fundo</Label>
