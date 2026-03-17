@@ -29,9 +29,21 @@ export interface PdfExportSettings {
   margin_size?: number | null;
 }
 
+export interface PdfExportPost {
+  id: string;
+  title: string;
+  post_type: string | null;
+  posting_date: string | null;
+  posting_time: string | null;
+  caption: string | null;
+  cover_url?: string | null;
+  attachment_url?: string | null;
+  all_attachment_urls?: string[];
+}
+
 interface ExportInput {
   clientName: string;
-  posts: CronogramaPost[];
+  posts: PdfExportPost[];
   settings?: PdfExportSettings | null;
 }
 
