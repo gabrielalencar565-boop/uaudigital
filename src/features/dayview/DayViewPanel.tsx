@@ -495,7 +495,7 @@ export function DayViewPanel() {
                 </CardDescription>
               </CardHeader>
             </Card>}
-        </div> : active === "agenda" ? <Card>
+        </div> : active === "agenda" ? <Card className={cn(isFullscreen && "flex-1 flex flex-col")}>
           <CardHeader>
             <CardTitle>
               {isCurrentMonth ? "Agenda de Hoje" : `Agenda de ${format(new Date(selectedYear, selectedMonth - 1, 1), "MMMM", {
