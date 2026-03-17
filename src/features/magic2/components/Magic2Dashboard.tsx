@@ -243,11 +243,11 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
           })}
 
           {/* Clientes 100% */}
-          <div className={cn("grid justify-items-center gap-2", fullscreen && "self-center")}>
+          <div className="grid justify-items-center gap-2">
             <ProgressRing
               value={clients100Pct}
               tone={clients100Pct === 100 ? "success" : "warning"}
-              size={fullscreen ? 150 : isMobile ? 110 : 160}
+              size={fullscreen ? 190 : isMobile ? 110 : 160}
               stroke={isMobile ? 12 : 18}
               className="animate-fade-in"
               label={
