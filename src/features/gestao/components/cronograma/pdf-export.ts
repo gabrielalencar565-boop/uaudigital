@@ -1,7 +1,6 @@
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { jsPDF } from "jspdf";
-import type { CronogramaPost } from "./types";
 
 const DESIGN_W = 1684;
 const DESIGN_H = 1190;
