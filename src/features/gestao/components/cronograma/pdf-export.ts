@@ -87,9 +87,13 @@ const DEFAULT_SETTINGS: Required<PdfExportSettings> = {
   footer_subtitle_font_size: 18,
   footer_contact_font_size: 11,
   card_image_width_pct: 45,
+  carousel_cols: 4,
+  carousel_rows: 2,
+  carousel_title_font_size: 14,
+  carousel_caption_font_size: 11,
+  carousel_date_font_size: 12,
+  carousel_image_height_pct: 65,
 };
-
-const POST_TYPE_LABELS: Record<string, string> = {
   reels: "Reels",
   carrossel: "Carrossel",
   post: "Post",
