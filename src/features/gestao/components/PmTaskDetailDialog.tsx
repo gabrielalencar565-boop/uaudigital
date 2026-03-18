@@ -163,7 +163,7 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
 
           {/* CENTER: Task detail */}
           <div className="flex-1 overflow-y-auto min-h-0">
-            <TaskContentView task={currentTask} childTasks={childTasks} attachments={attachments} membersMap={membersMap} members={members} isAdmin={isAdmin} onSelectSubtask={handleSelectSubtask} activeSubtaskId={null} onClose={handleClose} clientsMap={clientsMap} allTags={allTags} parentStageCurrent={isSubtaskView ? resolvedRootTask.stage_current : undefined} globalTags={globalTagsQ.data ?? []} />
+            <TaskContentView task={currentTask} childTasks={childTasks} attachments={attachments} membersMap={membersMap} members={members} isAdmin={isAdmin} onSelectSubtask={handleSelectSubtask} activeSubtaskId={null} onClose={handleClose} clientsMap={clientsMap} allTags={allTags} parentStageCurrent={isSubtaskView ? resolvedRootTask.stage_current : undefined} globalTags={globalTagsQ.data ?? []} onEditTask={(taskId) => setTaskStack(prev => [...prev, taskId])} />
           </div>
 
           {/* RIGHT: Comments sidebar */}
@@ -196,13 +196,14 @@ function StageCircle({ stageKey, size = "md" }: { stageKey: string; size?: "xs" 
 
 // ─── Task Content View ───
 
-function TaskContentView({ task, childTasks, attachments, membersMap, members, isAdmin, onSelectSubtask, activeSubtaskId, onClose, clientsMap, allTags, parentStageCurrent, globalTags }: {
+function TaskContentView({ task, childTasks, attachments, membersMap, members, isAdmin, onSelectSubtask, activeSubtaskId, onClose, clientsMap, allTags, parentStageCurrent, globalTags, onEditTask }: {
   task: PmTask; childTasks: PmTask[]; attachments: any[];
   membersMap: Record<string, { name: string; avatar?: string }>; members: { id: string; name: string }[];
   isAdmin: boolean; onSelectSubtask: (sub: PmTask) => void; activeSubtaskId: string | null;
   onClose: () => void; clientsMap: Record<string, string>; allTags: string[];
   parentStageCurrent?: string;
   globalTags: { id: string; name: string; color_key: string; created_by: string; created_at: string }[];
+  onEditTask?: (taskId: string) => void;
 }) {
   const updateTask = useUpdatePmTask();
   const createTask = useCreatePmTask();
@@ -730,6 +731,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
               childTasks={childTasks}
               clientName={clientsMap[task.client_id] ?? ""}
               membersMap={membersMap}
+              onEditTask={onEditTask}
             />
           </div>
         )}

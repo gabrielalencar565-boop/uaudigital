@@ -1,14 +1,13 @@
 import { useState } from "react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Calendar, X, Clock, Instagram, Pencil, ChevronLeft, ChevronRight, Heart, MessageCircle, Send, Bookmark, MoreHorizontal } from "lucide-react";
+import { Calendar, X, Clock, Instagram, Pencil, ChevronLeft, ChevronRight, Heart, MessageCircle, Send, Bookmark } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { DatePickerInline } from "@/components/ui/date-picker";
 import { cn } from "@/lib/utils";
 import { POST_TYPE_META, type CronogramaPost } from "./types";
-import { SmartCaptionEditor } from "../SmartCaptionEditor";
 import { PmImageViewer } from "../PmImageViewer";
 
 interface Props {
@@ -16,10 +15,11 @@ interface Props {
   onClose: () => void;
   onUpdate: (field: string, value: string | null) => void;
   onRename?: (newTitle: string) => void;
+  onEditTask?: () => void;
   clientName?: string;
 }
 
-export function PostDetailSidebar({ post, onClose, onUpdate, onRename, clientName }: Props) {
+export function PostDetailSidebar({ post, onClose, onUpdate, onRename, onEditTask, clientName }: Props) {
   const [editingField, setEditingField] = useState<string | null>(null);
   const [tempValue, setTempValue] = useState("");
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -28,7 +28,7 @@ export function PostDetailSidebar({ post, onClose, onUpdate, onRename, clientNam
   const [captionExpanded, setCaptionExpanded] = useState(false);
 
   const headerName = clientName || post.title;
-
+  const headerInitial = headerName?.charAt(0)?.toUpperCase() || "C";
   const meta = POST_TYPE_META[post.post_type ?? "post"] ?? POST_TYPE_META.post;
   const allImages = post.all_attachment_urls ?? [];
   const isCarousel = post.post_type === "carrossel" && allImages.length > 1;
@@ -75,34 +75,18 @@ export function PostDetailSidebar({ post, onClose, onUpdate, onRename, clientNam
         <div className="flex items-center justify-between px-3 py-2.5">
           <div className="flex items-center gap-2.5">
             <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-purple-500 via-pink-500 to-orange-400 flex items-center justify-center">
-              <span className="text-white text-xs font-bold">{headerName?.charAt(0)?.toUpperCase() || "P"}</span>
+              <span className="text-white text-xs font-bold">{headerInitial}</span>
             </div>
             <div className="flex flex-col">
-              {editingField === "title" ? (
-                <Input
-                  autoFocus
-                  value={tempValue}
-                  onChange={(e) => setTempValue(e.target.value)}
-                  onBlur={() => saveField("title")}
-                  onKeyDown={(e) => e.key === "Enter" && saveField("title")}
-                  className="h-6 text-sm font-semibold p-0 border-none shadow-none"
-                />
-              ) : (
-                <span
-                  className="text-sm font-semibold cursor-pointer hover:text-primary transition-colors leading-tight"
-                  onClick={() => startEditing("title", post.title)}
-                >
-                  {post.title}
-                </span>
-              )}
+              <span className="text-sm font-semibold leading-tight">{headerName}</span>
               {post.post_type && (
                 <span className="text-[10px] text-muted-foreground">{meta.label}</span>
               )}
             </div>
           </div>
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
-              <MoreHorizontal className="h-4 w-4" />
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" onClick={onEditTask}>
+              <Pencil className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" onClick={onClose}>
               <X className="h-4 w-4" />
@@ -250,17 +234,6 @@ export function PostDetailSidebar({ post, onClose, onUpdate, onRename, clientNam
             )}
           </div>
 
-          {/* Full caption editor */}
-          <div className="pt-2 border-t border-border/30">
-            <h4 className="text-xs font-bold mb-1 text-muted-foreground">Legenda:</h4>
-            <SmartCaptionEditor
-              value={post.caption ?? ""}
-              onChange={(val) => onUpdate("caption", val || null)}
-              placeholder="Escreva a legenda..."
-              className="text-xs"
-              minHeight="80px"
-            />
-          </div>
         </div>
       </div>
 

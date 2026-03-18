@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Calendar, Download, Share2, CalendarRange, LayoutGrid as GridIcon, List, Palette } from "lucide-react";
+import { Calendar, Share2, CalendarRange, LayoutGrid as GridIcon, List, Palette } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -27,9 +27,10 @@ interface Props {
   childTasks: PmTask[];
   clientName: string;
   membersMap: Record<string, { name: string; avatar?: string }>;
+  onEditTask?: (taskId: string) => void;
 }
 
-export function PmCronogramaTab({ parentTask, childTasks, clientName, membersMap }: Props) {
+export function PmCronogramaTab({ parentTask, childTasks, clientName, membersMap, onEditTask }: Props) {
   const [selectedPost, setSelectedPost] = useState<CronogramaPost | null>(null);
   const updateTask = useUpdatePmTask();
 
@@ -138,9 +139,6 @@ export function PmCronogramaTab({ parentTask, childTasks, clientName, membersMap
           <Button variant="outline" size="sm" className="gap-1.5 text-xs rounded-xl" onClick={handleShare}>
             <Share2 className="h-3.5 w-3.5" /> Compartilhar
           </Button>
-          <Button variant="outline" size="sm" className="gap-1.5 text-xs rounded-xl" onClick={handleDownloadPDF}>
-            <Download className="h-3.5 w-3.5" /> PDF
-          </Button>
           <Button variant="outline" size="sm" className="gap-1.5 text-xs rounded-xl" onClick={handleCanvaExport}>
             <Palette className="h-3.5 w-3.5" /> Exportar p/ Canva
           </Button>
@@ -186,6 +184,7 @@ export function PmCronogramaTab({ parentTask, childTasks, clientName, membersMap
             onClose={() => setSelectedPost(null)}
             onUpdate={handleUpdatePost}
             onRename={(newTitle) => handleRenamePost(resolvedSelected.id, newTitle)}
+            onEditTask={() => onEditTask?.(resolvedSelected.id)}
             clientName={clientName}
           />
         )}
