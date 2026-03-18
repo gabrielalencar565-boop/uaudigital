@@ -15,6 +15,7 @@ import { POST_TYPE_META, type CronogramaPost } from "./cronograma/types";
 import { MonthlyView } from "./cronograma/MonthlyView";
 import { WeeklyView } from "./cronograma/WeeklyView";
 import { FeedView } from "./cronograma/FeedView";
+import { ListView } from "./cronograma/ListView";
 import { PostDetailSidebar } from "./cronograma/PostDetailSidebar";
 import { PostListItem } from "./cronograma/PostListItem";
 
