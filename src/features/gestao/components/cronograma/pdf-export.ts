@@ -178,21 +178,31 @@ function normalizeBlocksOrder(order?: string[] | null): BlockId[] {
   return unique;
 }
 
-function getCardLayoutPoint(layout: unknown, key: "cards_title" | "cards_caption" | "cards_date" | "cards_time", fallback: LayoutPoint): LayoutPoint {
+function getCardsInfoPoint(layout: unknown): LayoutPoint {
+  const fallback = DEFAULT_LAYOUT_POINTS.cards_info;
   if (!layout || typeof layout !== "object") return fallback;
+
   const rawLayout = layout as Record<string, unknown>;
+  const direct = readLayoutPoint(rawLayout.cards_info);
+  if (direct) return direct;
 
-  const explicit = readLayoutPoint(rawLayout[key]);
-  if (explicit) return explicit;
+  const legacySources: Array<{ key: "cards_title" | "cards_caption" | "cards_date" | "cards_time"; base: LayoutPoint }> = [
+    { key: "cards_title", base: DEFAULT_LAYOUT_POINTS.cards_title },
+    { key: "cards_caption", base: DEFAULT_LAYOUT_POINTS.cards_caption },
+    { key: "cards_date", base: DEFAULT_LAYOUT_POINTS.cards_date },
+    { key: "cards_time", base: DEFAULT_LAYOUT_POINTS.cards_time },
+  ];
 
-  const legacyCardsInfo = readLayoutPoint(rawLayout.cards_info);
-  if (!legacyCardsInfo) return fallback;
+  for (const source of legacySources) {
+    const point = readLayoutPoint(rawLayout[source.key]);
+    if (!point) continue;
+    return {
+      x: point.x + (fallback.x - source.base.x),
+      y: point.y + (fallback.y - source.base.y),
+    };
+  }
 
-  const legacyBase = DEFAULT_LAYOUT_POINTS.cards_info;
-  return {
-    x: legacyCardsInfo.x + (fallback.x - legacyBase.x),
-    y: legacyCardsInfo.y + (fallback.y - legacyBase.y),
-  };
+  return fallback;
 }
 
 function withDefaults(settings?: PdfExportSettings | null): Required<PdfExportSettings> {
