@@ -376,7 +376,6 @@ export function CronogramaClientBrowser({ tasks, childTasksMap, clientsMap, memb
               </div>
             </div>)
           }
-        }
       </div>
     </div>);
 
