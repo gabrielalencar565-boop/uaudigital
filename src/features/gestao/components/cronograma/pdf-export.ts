@@ -3,8 +3,8 @@ import { ptBR } from "date-fns/locale";
 import { jsPDF } from "jspdf";
 import { buildAdaptiveCarouselGridFrames } from "./carousel-grid";
 
-const DESIGN_W = 1684;
-const DESIGN_H = 1190;
+const DESIGN_W = 1920;
+const DESIGN_H = 1080;
 
 type BlockId = "cover" | "cards" | "carousel" | "footer";
 type PdfImageFormat = "PNG" | "JPEG";
@@ -560,17 +560,20 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
   const form = withDefaults(settings);
   await ensureBrowserFontsLoaded();
 
-  const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+  // Use a custom page size that matches the exact 16:9 ratio (1920×1080)
+  // so percentage-based coordinates map 1:1 between editor and PDF.
+  // We use the design dimensions directly as pt values.
+  const pageW = DESIGN_W;
+  const pageH = DESIGN_H;
+  const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: [pageW, pageH] });
   const fontReady = await loadBricolageFont(doc);
   if (!fontReady) {
     throw new Error("Não foi possível carregar a fonte do PDF. Tente novamente em instantes.");
   }
 
-  const pageW = doc.internal.pageSize.getWidth();
-  const pageH = doc.internal.pageSize.getHeight();
-
-  const sx = (x: number) => (x / DESIGN_W) * pageW;
-  const sy = (y: number) => (y / DESIGN_H) * pageH;
+  // With matching dimensions, sx/sy become identity functions
+  const sx = (x: number) => x;
+  const sy = (y: number) => y;
   const margin = sx(form.margin_size);
   const imgWidthPct = (form.card_image_width_pct ?? 45) / 100;
 
@@ -585,7 +588,7 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
 
   let hasPage = false;
   const ensurePage = () => {
-    if (hasPage) doc.addPage("a4", "landscape");
+    if (hasPage) doc.addPage([pageW, pageH], "landscape");
     hasPage = true;
   };
 
