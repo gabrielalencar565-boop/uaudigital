@@ -179,12 +179,28 @@ export function PostDetailSidebar({ post, onClose, onUpdate, onRename, clientNam
         <div className="px-3 pb-3 space-y-1.5">
           {/* Caption preview */}
           <div>
-            <span className="text-sm font-semibold mr-1">{post.title}</span>
-            {post.caption ? (
-              <span className="text-sm text-foreground/80">{post.caption.replace(/<[^>]+>/g, '').substring(0, 80)}{post.caption.length > 80 ? '...' : ''}</span>
-            ) : (
-              <span className="text-sm text-muted-foreground italic">sem legenda</span>
-            )}
+            <span className="text-sm font-semibold mr-1">{headerName}</span>
+            {(() => {
+              const plainCaption = post.caption ? post.caption.replace(/<[^>]+>/g, '') : '';
+              if (!plainCaption) return <span className="text-sm text-muted-foreground italic">sem legenda</span>;
+              const LIMIT = 120;
+              if (plainCaption.length <= LIMIT || captionExpanded) {
+                return (
+                  <>
+                    <span className="text-sm text-foreground/80 whitespace-pre-line">{plainCaption}</span>
+                    {plainCaption.length > LIMIT && (
+                      <button onClick={() => setCaptionExpanded(false)} className="text-sm text-muted-foreground ml-1 hover:text-primary transition-colors">menos</button>
+                    )}
+                  </>
+                );
+              }
+              return (
+                <>
+                  <span className="text-sm text-foreground/80">{plainCaption.substring(0, LIMIT)}</span>
+                  <button onClick={() => setCaptionExpanded(true)} className="text-sm text-muted-foreground ml-0.5 hover:text-primary transition-colors">... mais</button>
+                </>
+              );
+            })()}
           </div>
 
           {/* Date and time */}
