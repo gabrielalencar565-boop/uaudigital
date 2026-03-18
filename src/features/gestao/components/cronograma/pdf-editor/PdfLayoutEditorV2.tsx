@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Save, FileDown, Eye } from "lucide-react";
+import { Save, FileDown, Eye, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
