@@ -82,6 +82,10 @@ const DEFAULT_LAYOUT_POINTS: Record<string, LayoutPoint> = {
   cover_title: { x: 50, y: 45 },
   cover_subtitle: { x: 50, y: 53 },
   cards_info: { x: 73, y: 50 },
+  cards_title: { x: 73, y: 12 },
+  cards_caption: { x: 73, y: 45 },
+  cards_date: { x: 88, y: 82 },
+  cards_time: { x: 88, y: 90 },
   carousel_info: { x: 50, y: 83 },
   footer_group: { x: 50, y: 50 },
 };
