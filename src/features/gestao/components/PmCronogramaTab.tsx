@@ -118,6 +118,19 @@ export function PmCronogramaTab({ parentTask, childTasks, clientName, membersMap
     );
   }
 
+  const handleCanvaExport = async () => {
+    try {
+      const baseDate = scheduledPosts[0]?.posting_date
+        ? parseISO(scheduledPosts[0].posting_date)
+        : new Date();
+      const monthRef = format(baseDate, "yyyy-MM");
+      await downloadCanvaPackage({ clientName, posts: scheduledPosts, monthRef });
+      toast.success("Pacote para Canva exportado com sucesso!");
+    } catch (err) {
+      toast.error("Erro ao exportar pacote para Canva.");
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -127,6 +140,9 @@ export function PmCronogramaTab({ parentTask, childTasks, clientName, membersMap
           </Button>
           <Button variant="outline" size="sm" className="gap-1.5 text-xs rounded-xl" onClick={handleDownloadPDF}>
             <Download className="h-3.5 w-3.5" /> PDF
+          </Button>
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs rounded-xl" onClick={handleCanvaExport}>
+            <Palette className="h-3.5 w-3.5" /> Exportar p/ Canva
           </Button>
         </div>
       </div>
