@@ -637,10 +637,13 @@ export function PdfLayoutEditor() {
     if (settingsQ.data) setForm(settingsQ.data);
   }, [settingsQ.data]);
 
-  const blocksOrder = (form.blocks_order ?? ["cover", "cards", "footer"]).filter(
-    (b): b is BlockId => b === "cover" || b === "cards" || b === "footer"
+  const ALL_BLOCKS: BlockId[] = ["cover", "cards", "carousel", "footer"];
+  const blocksOrder = (form.blocks_order ?? ["cover", "cards", "carousel", "footer"]).filter(
+    (b): b is BlockId => ALL_BLOCKS.includes(b as BlockId)
   );
-  const blocksEnabled = (form.blocks_enabled ?? { cover: true, cards: true, footer: true }) as Record<BlockId, boolean>;
+  // Ensure carousel is always in the list
+  if (!blocksOrder.includes("carousel")) blocksOrder.splice(blocksOrder.indexOf("cards") + 1, 0, "carousel");
+  const blocksEnabled = (form.blocks_enabled ?? { cover: true, cards: true, carousel: true, footer: true }) as Record<BlockId, boolean>;
 
   const handleSave = () => {
     if (!form.id) return;
