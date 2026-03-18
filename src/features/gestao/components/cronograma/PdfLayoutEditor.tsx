@@ -76,6 +76,12 @@ function usePdfSettings() {
         footer_subtitle_font_size: data.footer_subtitle_font_size ?? 18,
         footer_contact_font_size: data.footer_contact_font_size ?? 11,
         card_image_width_pct: data.card_image_width_pct ?? 45,
+        carousel_cols: data.carousel_cols ?? 4,
+        carousel_rows: data.carousel_rows ?? 2,
+        carousel_title_font_size: data.carousel_title_font_size ?? 14,
+        carousel_caption_font_size: data.carousel_caption_font_size ?? 11,
+        carousel_date_font_size: data.carousel_date_font_size ?? 12,
+        carousel_image_height_pct: data.carousel_image_height_pct ?? 65,
       };
     },
   });
