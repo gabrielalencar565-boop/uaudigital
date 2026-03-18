@@ -16,14 +16,18 @@ interface Props {
   onClose: () => void;
   onUpdate: (field: string, value: string | null) => void;
   onRename?: (newTitle: string) => void;
+  clientName?: string;
 }
 
-export function PostDetailSidebar({ post, onClose, onUpdate, onRename }: Props) {
+export function PostDetailSidebar({ post, onClose, onUpdate, onRename, clientName }: Props) {
   const [editingField, setEditingField] = useState<string | null>(null);
   const [tempValue, setTempValue] = useState("");
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
   const [carouselIndex, setCarouselIndex] = useState(0);
+  const [captionExpanded, setCaptionExpanded] = useState(false);
+
+  const headerName = clientName || post.title;
 
   const meta = POST_TYPE_META[post.post_type ?? "post"] ?? POST_TYPE_META.post;
   const allImages = post.all_attachment_urls ?? [];
@@ -71,7 +75,7 @@ export function PostDetailSidebar({ post, onClose, onUpdate, onRename }: Props) 
         <div className="flex items-center justify-between px-3 py-2.5">
           <div className="flex items-center gap-2.5">
             <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-purple-500 via-pink-500 to-orange-400 flex items-center justify-center">
-              <span className="text-white text-xs font-bold">{post.title?.charAt(0)?.toUpperCase() || "P"}</span>
+              <span className="text-white text-xs font-bold">{headerName?.charAt(0)?.toUpperCase() || "P"}</span>
             </div>
             <div className="flex flex-col">
               {editingField === "title" ? (
@@ -175,12 +179,28 @@ export function PostDetailSidebar({ post, onClose, onUpdate, onRename }: Props) 
         <div className="px-3 pb-3 space-y-1.5">
           {/* Caption preview */}
           <div>
-            <span className="text-sm font-semibold mr-1">{post.title}</span>
-            {post.caption ? (
-              <span className="text-sm text-foreground/80">{post.caption.replace(/<[^>]+>/g, '').substring(0, 80)}{post.caption.length > 80 ? '...' : ''}</span>
-            ) : (
-              <span className="text-sm text-muted-foreground italic">sem legenda</span>
-            )}
+            <span className="text-sm font-semibold mr-1">{headerName}</span>
+            {(() => {
+              const plainCaption = post.caption ? post.caption.replace(/<[^>]+>/g, '') : '';
+              if (!plainCaption) return <span className="text-sm text-muted-foreground italic">sem legenda</span>;
+              const LIMIT = 120;
+              if (plainCaption.length <= LIMIT || captionExpanded) {
+                return (
+                  <>
+                    <span className="text-sm text-foreground/80 whitespace-pre-line">{plainCaption}</span>
+                    {plainCaption.length > LIMIT && (
+                      <button onClick={() => setCaptionExpanded(false)} className="text-sm text-muted-foreground ml-1 hover:text-primary transition-colors">menos</button>
+                    )}
+                  </>
+                );
+              }
+              return (
+                <>
+                  <span className="text-sm text-foreground/80">{plainCaption.substring(0, LIMIT)}</span>
+                  <button onClick={() => setCaptionExpanded(true)} className="text-sm text-muted-foreground ml-0.5 hover:text-primary transition-colors">... mais</button>
+                </>
+              );
+            })()}
           </div>
 
           {/* Date and time */}
