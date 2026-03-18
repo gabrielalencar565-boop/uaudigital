@@ -250,11 +250,12 @@ export function PreviewFooter({ form, editable, onMoveNode }: PreviewProps) {
 }
 
 /* ─── Scaled preview wrapper ─── */
-const PREVIEW_SCALE_FACTOR = 0.82;
-const PREVIEW_MIN_SCALE = 0.24;
-const PREVIEW_SIDE_PADDING = 12;
+const PREVIEW_SCALE_FACTOR = 0.78;
+const PREVIEW_MIN_SCALE = 0.22;
 
-export function ScaledPreview({ children, label, isSelected, onClick }: { children: React.ReactNode; label: string; isSelected: boolean; onClick: () => void }) {
+export function ScaledPreview({ children, label, pageNum, isSelected, onClick }: {
+  children: React.ReactNode; label: string; pageNum: number; isSelected: boolean; onClick: () => void;
+}) {
   const [scale, setScale] = useState(1);
   const [contentH, setContentH] = useState(0);
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
@@ -266,7 +267,7 @@ export function ScaledPreview({ children, label, isSelected, onClick }: { childr
 
     const update = () => {
       const child = inner.firstElementChild as HTMLElement | null;
-      const availableW = Math.max(containerEl.clientWidth - PREVIEW_SIDE_PADDING * 2, 0);
+      const availableW = Math.max(containerEl.clientWidth - 48, 0);
       const fitScale = availableW / PDF_W;
       const nextScale = Math.min(1, Math.max(PREVIEW_MIN_SCALE, fitScale * PREVIEW_SCALE_FACTOR));
       setScale(nextScale);
@@ -282,17 +283,57 @@ export function ScaledPreview({ children, label, isSelected, onClick }: { childr
   return (
     <div
       className={cn(
-        "rounded-2xl border overflow-hidden transition-all cursor-pointer",
-        isSelected ? "border-primary/50 shadow-lg shadow-primary/10" : "border-border/20 hover:border-border/40"
+        "rounded-2xl border overflow-hidden transition-all cursor-pointer group",
+        isSelected
+          ? "border-primary/40 shadow-lg shadow-primary/8 ring-1 ring-primary/15"
+          : "border-border/15 hover:border-border/30 hover:shadow-md"
       )}
       onClick={onClick}
     >
-      <div className="flex items-center justify-between px-3 py-1.5 bg-muted/20 border-b border-border/10">
-        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{label}</span>
-        {isSelected && <span className="text-[9px] font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">Editando</span>}
+      {/* Page header strip */}
+      <div className={cn(
+        "flex items-center justify-between px-4 py-2 border-b transition-colors",
+        isSelected ? "bg-primary/5 border-primary/15" : "bg-muted/10 border-border/10"
+      )}>
+        <div className="flex items-center gap-2.5">
+          <span className={cn(
+            "inline-flex items-center justify-center h-5 w-5 rounded-md text-[10px] font-bold",
+            isSelected ? "bg-primary text-primary-foreground" : "bg-muted/30 text-muted-foreground"
+          )}>
+            {pageNum}
+          </span>
+          <span className="text-[11px] font-medium text-foreground/80">{label}</span>
+        </div>
+        {isSelected && (
+          <span className="text-[10px] font-medium text-primary bg-primary/10 px-2.5 py-0.5 rounded-full">
+            Editando
+          </span>
+        )}
       </div>
-      <div className="bg-muted/10 overflow-hidden px-3 py-3" ref={setContainerEl} style={{ height: contentH ? contentH + PREVIEW_SIDE_PADDING * 2 : "auto" }}>
-        <div data-pdf-inner className="origin-top-left" style={{ width: PDF_W, transform: `scale(${scale})`, transformOrigin: "top left", fontFamily: '"Bricolage Grotesque", "Segoe UI", sans-serif' }}>
+
+      {/* Canvas area with checkerboard-like bg */}
+      <div
+        className="overflow-hidden flex items-start justify-center"
+        ref={setContainerEl}
+        style={{
+          padding: "24px",
+          height: contentH ? contentH + 48 : "auto",
+          background: isSelected
+            ? "radial-gradient(circle at 50% 30%, hsl(var(--primary) / 0.03), hsl(var(--muted) / 0.08))"
+            : "hsl(var(--muted) / 0.06)",
+        }}
+      >
+        <div
+          data-pdf-inner
+          className="origin-top-center rounded-lg overflow-hidden"
+          style={{
+            width: PDF_W,
+            transform: `scale(${scale})`,
+            transformOrigin: "top center",
+            fontFamily: '"Bricolage Grotesque", "Segoe UI", sans-serif',
+            boxShadow: "0 8px 32px -8px rgba(0,0,0,0.25), 0 2px 8px -2px rgba(0,0,0,0.15)",
+          }}
+        >
           {children}
         </div>
       </div>
