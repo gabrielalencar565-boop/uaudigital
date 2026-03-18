@@ -730,6 +730,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
               childTasks={childTasks}
               clientName={clientsMap[task.client_id] ?? ""}
               membersMap={membersMap}
+              onEditTask={(taskId) => setTaskStack(prev => [...prev, taskId])}
             />
           </div>
         )}
