@@ -47,7 +47,7 @@ export function CronogramaClientBrowser({ tasks, childTasksMap, clientsMap, memb
   const selectedClientId = filterClient;
   const [cursor, setCursor] = useState(() => startOfMonth(new Date()));
   const [selectedPost, setSelectedPost] = useState<CronogramaPost | null>(null);
-  const [activeTab, setActiveTab] = useState<"calendario" | "layout">("calendario");
+  const [dragOverDay, setDragOverDay] = useState<string | null>(null);
   const [dragOverDay, setDragOverDay] = useState<string | null>(null);
   const dragPostId = useRef<string | null>(null);
 
