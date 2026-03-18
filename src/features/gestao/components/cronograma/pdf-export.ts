@@ -316,33 +316,70 @@ async function toPdfImage(url: string): Promise<PdfImageAsset | null> {
   }
 }
 
-const BRICOLAGE_URLS: Record<"normal" | "bold", string> = {
-  normal: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/bricolagegrotesque/BricolageGrotesque-Regular.ttf",
-  bold: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/bricolagegrotesque/BricolageGrotesque-Bold.ttf",
+const BRICOLAGE_URLS: Record<"normal" | "bold", string[]> = {
+  normal: [
+    "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/bricolagegrotesque/BricolageGrotesque-Regular.ttf",
+    "https://raw.githubusercontent.com/google/fonts/main/ofl/bricolagegrotesque/BricolageGrotesque-Regular.ttf",
+  ],
+  bold: [
+    "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/bricolagegrotesque/BricolageGrotesque-Bold.ttf",
+    "https://raw.githubusercontent.com/google/fonts/main/ofl/bricolagegrotesque/BricolageGrotesque-Bold.ttf",
+  ],
 };
 
-let fontCache: Record<"normal" | "bold", string> | null = null;
+let fontCache: Partial<Record<"normal" | "bold", string>> | null = null;
 
-async function loadBricolageFont(doc: jsPDF) {
-  // Cache the raw base64 across exports so we don't re-download
-  if (!fontCache) {
-    fontCache = {} as any;
-    for (const [style, url] of Object.entries(BRICOLAGE_URLS) as ["normal" | "bold", string][]) {
-      try {
-        const res = await fetch(url, { mode: "cors" });
-        if (!res.ok) continue;
-        const buf = await res.arrayBuffer();
-        const bytes = new Uint8Array(buf);
-        let binary = "";
-        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-        (fontCache as any)[style] = btoa(binary);
-      } catch {
-        // ignore
-      }
+async function ensureBrowserFontsLoaded() {
+  if (typeof document === "undefined" || !document.fonts) return;
+  try {
+    await Promise.all([
+      document.fonts.ready,
+      document.fonts.load('400 16px "Bricolage Grotesque"'),
+      document.fonts.load('700 16px "Bricolage Grotesque"'),
+    ]);
+  } catch {
+    // no-op: PDF embedding still guarantees final output
+  }
+}
+
+function arrayBufferToBase64(buffer: ArrayBuffer) {
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 0x8000;
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+  return btoa(binary);
+}
+
+async function fetchFontBase64(urls: string[]) {
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, { mode: "cors" });
+      if (!res.ok) continue;
+      const buf = await res.arrayBuffer();
+      return arrayBufferToBase64(buf);
+    } catch {
+      continue;
     }
   }
+  return null;
+}
 
-  // Register fonts in THIS doc instance
+async function loadBricolageFont(doc: jsPDF): Promise<boolean> {
+  if (!fontCache) {
+    const [normal, bold] = await Promise.all([
+      fetchFontBase64(BRICOLAGE_URLS.normal),
+      fetchFontBase64(BRICOLAGE_URLS.bold),
+    ]);
+
+    fontCache = {
+      ...(normal ? { normal } : {}),
+      ...(bold ? { bold } : {}),
+    };
+  }
+
   for (const style of ["normal", "bold"] as const) {
     const b64 = fontCache?.[style];
     if (!b64) continue;
@@ -350,17 +387,19 @@ async function loadBricolageFont(doc: jsPDF) {
     doc.addFileToVFS(fileName, b64);
     doc.addFont(fileName, "Bricolage", style);
   }
+
+  return Boolean(fontCache?.normal);
 }
 
 function setFont(doc: jsPDF, style: "normal" | "bold") {
   try {
     doc.setFont("Bricolage", style);
   } catch {
-    try {
+    if (style === "bold") {
       doc.setFont("Bricolage", "normal");
-    } catch {
-      doc.setFont("helvetica", style);
+      return;
     }
+    throw new Error("Não foi possível aplicar a fonte incorporada do PDF.");
   }
 }
 
