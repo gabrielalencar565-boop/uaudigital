@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Calendar, Download, Share2, CalendarRange, LayoutGrid as GridIcon } from "lucide-react";
+import { Calendar, Download, Share2, CalendarRange, LayoutGrid as GridIcon, List } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { POST_TYPE_META, type CronogramaPost } from "./cronograma/types";
 import { MonthlyView } from "./cronograma/MonthlyView";
 import { WeeklyView } from "./cronograma/WeeklyView";
 import { FeedView } from "./cronograma/FeedView";
+import { ListView } from "./cronograma/ListView";
 import { PostDetailSidebar } from "./cronograma/PostDetailSidebar";
 import { PostListItem } from "./cronograma/PostListItem";
 
@@ -142,6 +143,9 @@ export function PmCronogramaTab({ parentTask, childTasks, clientName, membersMap
               <TabsTrigger value="feed" className="gap-1.5 text-xs">
                 <GridIcon className="h-3.5 w-3.5" /> Feed
               </TabsTrigger>
+              <TabsTrigger value="lista" className="gap-1.5 text-xs">
+                <List className="h-3.5 w-3.5" /> Lista
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="semanal">
@@ -152,6 +156,9 @@ export function PmCronogramaTab({ parentTask, childTasks, clientName, membersMap
             </TabsContent>
             <TabsContent value="feed">
               <FeedView posts={scheduledPosts} selectedPost={resolvedSelected} onSelectPost={setSelectedPost} />
+            </TabsContent>
+            <TabsContent value="lista">
+              <ListView posts={scheduledPosts} selectedPost={resolvedSelected} onSelectPost={setSelectedPost} />
             </TabsContent>
           </Tabs>
         </div>
