@@ -184,6 +184,7 @@ export function PmCronogramaTab({ parentTask, childTasks, clientName, membersMap
             onClose={() => setSelectedPost(null)}
             onUpdate={handleUpdatePost}
             onRename={(newTitle) => handleRenamePost(resolvedSelected.id, newTitle)}
+            onEditTask={() => onEditTask?.(resolvedSelected.id)}
             clientName={clientName}
           />
         )}
