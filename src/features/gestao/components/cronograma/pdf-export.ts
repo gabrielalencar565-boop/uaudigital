@@ -1,6 +1,7 @@
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { jsPDF } from "jspdf";
+import { buildAdaptiveCarouselGridFrames } from "./carousel-grid";
 
 const DESIGN_W = 1684;
 const DESIGN_H = 1190;
