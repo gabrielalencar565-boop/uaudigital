@@ -1201,6 +1201,7 @@ export type Database = {
           footer_text: string
           footer_title_font_size: number
           id: string
+          layout_overrides: Json
           margin_size: number
           show_caption_on_card: boolean
           show_time_on_card: boolean
@@ -1238,6 +1239,7 @@ export type Database = {
           footer_text?: string
           footer_title_font_size?: number
           id?: string
+          layout_overrides?: Json
           margin_size?: number
           show_caption_on_card?: boolean
           show_time_on_card?: boolean
@@ -1275,6 +1277,7 @@ export type Database = {
           footer_text?: string
           footer_title_font_size?: number
           id?: string
+          layout_overrides?: Json
           margin_size?: number
           show_caption_on_card?: boolean
           show_time_on_card?: boolean
