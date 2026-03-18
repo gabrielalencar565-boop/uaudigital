@@ -210,15 +210,16 @@ async function rasterizeToPng(dataUrl: string): Promise<string | null> {
 }
 
 /**
- * Draws an image on a canvas with object-contain (no cropping) and rounded corners.
- * For carousel blocks we use a blurred fill background so the frame feels fully preenchido.
+ * Draws an image on a canvas preserving proportion with object-fit logic.
+ * - contain: image inteira sem distorção
+ * - cover: preenche frame sem achatamento (com corte central)
  */
-async function renderContainImage(
+async function renderFittedImage(
   imageDataUrl: string,
   targetW: number,
   targetH: number,
   borderRadius: number,
-  options?: { backgroundMode?: "solid" | "blur" },
+  options?: { backgroundMode?: "solid" | "blur"; fitMode?: ImageFitMode },
 ): Promise<string | null> {
   const img = await loadImage(imageDataUrl);
   if (!img) return null;
@@ -226,7 +227,7 @@ async function renderContainImage(
   const natW = img.naturalWidth || img.width || 1;
   const natH = img.naturalHeight || img.height || 1;
 
-  const scale = 2;
+  const scale = targetW < 220 || targetH < 220 ? 3 : 2;
   const cW = Math.round(targetW * scale);
   const cH = Math.round(targetH * scale);
   const r = borderRadius * scale;
@@ -254,8 +255,9 @@ async function renderContainImage(
   ctx.closePath();
   ctx.clip();
 
-  if (options?.backgroundMode === "blur") {
-    // Fill with a blurred cover version of the same image (no cut in the foreground image).
+  const fitMode = options?.fitMode ?? "contain";
+
+  if (fitMode === "contain" && options?.backgroundMode === "blur") {
     const coverScale = Math.max(cW / natW, cH / natH);
     const bgW = natW * coverScale;
     const bgH = natH * coverScale;
@@ -270,30 +272,19 @@ async function renderContainImage(
 
     ctx.fillStyle = "rgba(8, 10, 14, 0.28)";
     ctx.fillRect(0, 0, cW, cH);
-  } else {
+  } else if (fitMode === "contain") {
     ctx.fillStyle = "#1a1d27";
     ctx.fillRect(0, 0, cW, cH);
   }
 
-  // Object-contain: fit image inside canvas preserving aspect ratio
-  const imgRatio = natW / natH;
-  const canvasRatio = cW / cH;
-  let drawW: number;
-  let drawH: number;
-  let drawX: number;
-  let drawY: number;
+  const ratioScale = fitMode === "cover"
+    ? Math.max(cW / natW, cH / natH)
+    : Math.min(cW / natW, cH / natH);
 
-  if (imgRatio > canvasRatio) {
-    drawW = cW;
-    drawH = cW / imgRatio;
-    drawX = 0;
-    drawY = (cH - drawH) / 2;
-  } else {
-    drawH = cH;
-    drawW = cH * imgRatio;
-    drawX = (cW - drawW) / 2;
-    drawY = 0;
-  }
+  const drawW = natW * ratioScale;
+  const drawH = natH * ratioScale;
+  const drawX = (cW - drawW) / 2;
+  const drawY = (cH - drawH) / 2;
 
   ctx.drawImage(img, drawX, drawY, drawW, drawH);
   return canvas.toDataURL("image/png");
