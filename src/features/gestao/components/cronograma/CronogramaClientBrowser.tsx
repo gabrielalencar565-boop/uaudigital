@@ -192,30 +192,6 @@ export function CronogramaClientBrowser({ tasks, childTasksMap, clientsMap, memb
     }
   };
 
-  const handleDownloadPdf = async () => {
-    if (!scheduledPosts.length) {
-      toast.error("Não há posts agendados para exportar.");
-      return;
-    }
-
-    const { data, error } = await sb.from("pm_pdf_settings").select("*").limit(1).maybeSingle();
-    if (error) {
-      toast.error("Não foi possível carregar o layout do PDF.");
-      return;
-    }
-
-    try {
-      await downloadCronogramaPdf({
-        clientName: selectedClientName,
-        posts: scheduledPosts,
-        settings: (data ?? null) as PdfExportSettings | null,
-      });
-      toast.success("PDF baixado com sucesso!");
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Falha ao gerar o PDF.";
-      toast.error(message);
-    }
-  };
 
   const handleUpdatePost = (field: string, value: string | null) => {
     if (!resolvedSelected) return;
