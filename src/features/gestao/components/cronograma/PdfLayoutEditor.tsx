@@ -515,6 +515,7 @@ function CarouselSettings({ form, setForm }: any) {
   );
 }
 
+function FooterSettings({ form, setForm, uploading, handleUploadAgencyLogo }: any) {
   return (
     <div className="space-y-3">
       <div>
