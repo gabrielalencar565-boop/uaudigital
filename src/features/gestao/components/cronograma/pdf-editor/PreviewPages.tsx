@@ -250,28 +250,24 @@ export function PreviewFooter({ form, editable, onMoveNode }: PreviewProps) {
 }
 
 /* ─── Scaled preview wrapper ─── */
-const PREVIEW_SCALE_FACTOR = 0.78;
-const PREVIEW_MIN_SCALE = 0.22;
+const CANVAS_PAD = 32; // breathing room around the page
 
 export function ScaledPreview({ children, label, pageNum, isSelected, onClick }: {
   children: React.ReactNode; label: string; pageNum: number; isSelected: boolean; onClick: () => void;
 }) {
-  const [scale, setScale] = useState(1);
-  const [contentH, setContentH] = useState(0);
+  const [scale, setScale] = useState(0.3);
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!containerEl) return;
-    const inner = containerEl.querySelector("[data-pdf-inner]") as HTMLElement | null;
-    if (!inner) return;
 
     const update = () => {
-      const child = inner.firstElementChild as HTMLElement | null;
-      const availableW = Math.max(containerEl.clientWidth - 48, 0);
-      const fitScale = availableW / PDF_W;
-      const nextScale = Math.min(1, Math.max(PREVIEW_MIN_SCALE, fitScale * PREVIEW_SCALE_FACTOR));
-      setScale(nextScale);
-      if (child) setContentH(child.offsetHeight * nextScale);
+      const availW = containerEl.clientWidth - CANVAS_PAD * 2;
+      const availH = containerEl.clientHeight - CANVAS_PAD * 2;
+      if (availW <= 0 || availH <= 0) return;
+      const fitW = availW / PDF_W;
+      const fitH = availH / PDF_H;
+      setScale(Math.max(0.1, Math.min(1, Math.min(fitW, fitH))));
     };
 
     const ro = new ResizeObserver(update);
@@ -279,6 +275,9 @@ export function ScaledPreview({ children, label, pageNum, isSelected, onClick }:
     update();
     return () => ro.disconnect();
   }, [containerEl]);
+
+  const scaledW = PDF_W * scale;
+  const scaledH = PDF_H * scale;
 
   return (
     <div
@@ -304,32 +303,38 @@ export function ScaledPreview({ children, label, pageNum, isSelected, onClick }:
           </span>
           <span className="text-[11px] font-medium text-foreground/80">{label}</span>
         </div>
-        {isSelected && (
-          <span className="text-[10px] font-medium text-primary bg-primary/10 px-2.5 py-0.5 rounded-full">
-            Editando
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-muted-foreground tabular-nums">{Math.round(scale * 100)}%</span>
+          {isSelected && (
+            <span className="text-[10px] font-medium text-primary bg-primary/10 px-2.5 py-0.5 rounded-full">
+              Editando
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* Canvas area with checkerboard-like bg */}
+      {/* Canvas — fixed aspect-ratio viewport */}
       <div
-        className="overflow-hidden flex items-start justify-center"
         ref={setContainerEl}
+        className="flex items-center justify-center overflow-hidden"
         style={{
-          padding: "24px",
-          height: contentH ? contentH + 48 : "auto",
+          /* Give the canvas a fixed height so we can fit-to-screen.
+             Aspect ratio of A4 landscape = PDF_W / PDF_H ≈ 1.414.
+             We want the container to be wide enough to show the page
+             but capped in height so nothing gets clipped. */
+          height: Math.max(280, scaledH + CANVAS_PAD * 2),
           background: isSelected
-            ? "radial-gradient(circle at 50% 30%, hsl(var(--primary) / 0.03), hsl(var(--muted) / 0.08))"
-            : "hsl(var(--muted) / 0.06)",
+            ? "radial-gradient(circle at 50% 40%, hsl(var(--primary) / 0.04), hsl(var(--muted) / 0.08))"
+            : "hsl(var(--muted) / 0.05)",
         }}
       >
         <div
-          data-pdf-inner
-          className="origin-top-center rounded-lg overflow-hidden"
+          className="rounded-lg overflow-hidden shrink-0"
           style={{
             width: PDF_W,
+            height: PDF_H,
             transform: `scale(${scale})`,
-            transformOrigin: "top center",
+            transformOrigin: "center center",
             fontFamily: '"Bricolage Grotesque", "Segoe UI", sans-serif',
             boxShadow: "0 8px 32px -8px rgba(0,0,0,0.25), 0 2px 8px -2px rgba(0,0,0,0.15)",
           }}
