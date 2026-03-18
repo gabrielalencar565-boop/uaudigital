@@ -159,24 +159,6 @@ export default function CronogramaPublic() {
     toast.success(status === "aprovado" ? "Postagem aprovada!" : "Alteração solicitada!");
   };
 
-  const handleDownloadPdf = async () => {
-    if (!posts.length) {
-      toast.error("Não há postagens para baixar.");
-      return;
-    }
-
-    try {
-      await downloadCronogramaPdf({
-        clientName: clientName || parentTitle || "Cliente",
-        posts: posts as any,
-        settings: pdfSettings,
-      });
-      toast.success("PDF baixado com sucesso!");
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Falha ao gerar o PDF.";
-      toast.error(message);
-    }
-  };
 
   useEffect(() => {
     if (isPrint && !loading && posts.length > 0) {
