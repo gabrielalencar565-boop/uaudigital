@@ -713,7 +713,9 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
           if (postImageUrl) {
             const rawAsset = await getCachedImage(postImageUrl);
             if (rawAsset) {
-              const containPng = await renderContainImage(rawAsset.dataUrl, imageW, contentH, cornerRadius);
+              const containPng = await renderFittedImage(rawAsset.dataUrl, imageW, contentH, cornerRadius, {
+                fitMode: "contain",
+              });
               if (containPng) {
                 imageRendered = addPdfImage(doc, { dataUrl: containPng, format: "PNG" }, imageX, imageY, imageW, contentH);
               }
@@ -744,7 +746,7 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
 
           setFont(doc, "bold");
           doc.setTextColor(titleR, titleG, titleB);
-          doc.setFontSize(Math.max(10, sx(form.card_font_size * 2.4)));
+          doc.setFontSize(Math.max(10, sx(form.card_font_size * 3)));
           doc.text(`Post ${i + 1}`, infoX, infoY + sy(60));
 
           const badgeText = postTypeLabel;
@@ -767,41 +769,43 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
 
           doc.setTextColor(titleR, titleG, titleB);
           setFont(doc, "normal");
-          doc.setFontSize(Math.max(9, sx(form.card_caption_font_size * 1.8)));
+          doc.setFontSize(Math.max(9, sx(form.card_caption_font_size * 2)));
           const caption = post.caption?.trim() || "Sem legenda";
           const wrappedCaption = doc.splitTextToSize(caption, textW);
-          doc.text(wrappedCaption, infoX, infoY + sy(170), { baseline: "top" });
+          doc.setLineHeightFactor(1.7);
+          doc.text(wrappedCaption, infoX, infoY + sy(170), { baseline: "top", lineHeightFactor: 1.7 });
+          doc.setLineHeightFactor(1.15);
 
-          const footerTop = infoY + contentH - sy(100);
+          const footerTop = infoY + contentH - sy(124);
           doc.setDrawColor(accR, accG, accB);
           doc.setLineWidth(1.4);
           doc.line(infoX, footerTop, infoX + textW, footerTop);
 
-          doc.setTextColor(subR, subG, subB);
-          setFont(doc, "bold");
-          doc.setFontSize(sx(14));
-          doc.text("Data", infoX, footerTop + sy(32));
-
-          doc.setTextColor(titleR, titleG, titleB);
-          setFont(doc, "normal");
-          doc.setFontSize(Math.max(10, sx(form.card_date_font_size * 2.1)));
           const formattedDate = post.posting_date ? format(parseISO(post.posting_date), "dd/MM/yyyy") : "—";
-          doc.text(formattedDate, infoX, footerTop + sy(68));
+          const dateBadgeW = Math.min(sx(240), textW * 0.48);
+          const dateBadgeH = sy(50);
+          const dateBadgeX = infoX + textW - dateBadgeW;
+          const dateBadgeY = footerTop + sy(18);
+
+          doc.setFillColor(accR, accG, accB);
+          doc.roundedRect(dateBadgeX, dateBadgeY, dateBadgeW, dateBadgeH, sy(10), sy(10), "F");
+          doc.setTextColor(255, 255, 255);
+          setFont(doc, "bold");
+          doc.setFontSize(Math.max(10, sx((form.card_date_font_size ?? 12) * 1.8)));
+          doc.text(`Data: ${formattedDate}`, dateBadgeX + dateBadgeW / 2, dateBadgeY + dateBadgeH / 2, {
+            align: "center",
+            baseline: "middle",
+          });
 
           if (form.show_time_on_card && post.posting_time) {
-            const dateTextW = doc.getTextWidth(formattedDate);
-            const timeX = Math.min(
-              Math.max(infoX + dateTextW + sx(80), infoX + textW * 0.55),
-              infoX + textW - sx(220),
-            );
-            doc.setTextColor(subR, subG, subB);
-            setFont(doc, "bold");
-            doc.setFontSize(sx(14));
-            doc.text("Horário", timeX, footerTop + sy(32));
-            doc.setTextColor(titleR, titleG, titleB);
-            setFont(doc, "normal");
-            doc.setFontSize(Math.max(10, sx(form.card_date_font_size * 2.1)));
-            doc.text(post.posting_time, timeX, footerTop + sy(68));
+            const timeBadgeY = dateBadgeY + dateBadgeH + sy(12);
+            doc.setFillColor(accR, accG, accB);
+            doc.roundedRect(dateBadgeX, timeBadgeY, dateBadgeW, dateBadgeH, sy(10), sy(10), "F");
+            doc.setTextColor(255, 255, 255);
+            doc.text(`Horário: ${post.posting_time}`, dateBadgeX + dateBadgeW / 2, timeBadgeY + dateBadgeH / 2, {
+              align: "center",
+              baseline: "middle",
+            });
           }
         }
       }
