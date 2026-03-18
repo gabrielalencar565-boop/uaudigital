@@ -250,12 +250,14 @@ export function PreviewFooter({ form, editable, onMoveNode }: PreviewProps) {
 }
 
 /* ─── Scaled preview wrapper ─── */
-const CANVAS_PAD = 32; // breathing room around the page
+const CANVAS_PAD = 24;
+// Max canvas height per page card — ensures the full page is visible without scrolling within the card
+const MAX_CANVAS_H = 420;
 
 export function ScaledPreview({ children, label, pageNum, isSelected, onClick }: {
   children: React.ReactNode; label: string; pageNum: number; isSelected: boolean; onClick: () => void;
 }) {
-  const [scale, setScale] = useState(0.3);
+  const [scale, setScale] = useState(0.25);
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -263,11 +265,12 @@ export function ScaledPreview({ children, label, pageNum, isSelected, onClick }:
 
     const update = () => {
       const availW = containerEl.clientWidth - CANVAS_PAD * 2;
-      const availH = containerEl.clientHeight - CANVAS_PAD * 2;
-      if (availW <= 0 || availH <= 0) return;
+      if (availW <= 0) return;
+      const maxInnerH = MAX_CANVAS_H - CANVAS_PAD * 2;
+      // Fit to the smaller of width or height constraint
       const fitW = availW / PDF_W;
-      const fitH = availH / PDF_H;
-      setScale(Math.max(0.1, Math.min(1, Math.min(fitW, fitH))));
+      const fitH = maxInnerH / PDF_H;
+      setScale(Math.max(0.08, Math.min(1, Math.min(fitW, fitH))));
     };
 
     const ro = new ResizeObserver(update);
@@ -276,8 +279,7 @@ export function ScaledPreview({ children, label, pageNum, isSelected, onClick }:
     return () => ro.disconnect();
   }, [containerEl]);
 
-  const scaledW = PDF_W * scale;
-  const scaledH = PDF_H * scale;
+  const canvasH = PDF_H * scale + CANVAS_PAD * 2;
 
   return (
     <div
@@ -313,33 +315,38 @@ export function ScaledPreview({ children, label, pageNum, isSelected, onClick }:
         </div>
       </div>
 
-      {/* Canvas — fixed aspect-ratio viewport */}
+      {/* Canvas */}
       <div
         ref={setContainerEl}
-        className="flex items-center justify-center overflow-hidden"
+        className="flex items-center justify-center"
         style={{
-          /* Give the canvas a fixed height so we can fit-to-screen.
-             Aspect ratio of A4 landscape = PDF_W / PDF_H ≈ 1.414.
-             We want the container to be wide enough to show the page
-             but capped in height so nothing gets clipped. */
-          height: Math.max(280, scaledH + CANVAS_PAD * 2),
+          height: canvasH,
           background: isSelected
             ? "radial-gradient(circle at 50% 40%, hsl(var(--primary) / 0.04), hsl(var(--muted) / 0.08))"
             : "hsl(var(--muted) / 0.05)",
         }}
       >
+        {/* Outer box sized to the SCALED dimensions so it doesn't overflow */}
         <div
-          className="rounded-lg overflow-hidden shrink-0"
           style={{
-            width: PDF_W,
-            height: PDF_H,
-            transform: `scale(${scale})`,
-            transformOrigin: "center center",
-            fontFamily: '"Bricolage Grotesque", "Segoe UI", sans-serif',
-            boxShadow: "0 8px 32px -8px rgba(0,0,0,0.25), 0 2px 8px -2px rgba(0,0,0,0.15)",
+            width: PDF_W * scale,
+            height: PDF_H * scale,
+            position: "relative",
           }}
         >
-          {children}
+          <div
+            className="rounded-lg overflow-hidden absolute top-0 left-0"
+            style={{
+              width: PDF_W,
+              height: PDF_H,
+              transform: `scale(${scale})`,
+              transformOrigin: "top left",
+              fontFamily: '"Bricolage Grotesque", "Segoe UI", sans-serif',
+              boxShadow: "0 8px 32px -8px rgba(0,0,0,0.25), 0 2px 8px -2px rgba(0,0,0,0.15)",
+            }}
+          >
+            {children}
+          </div>
         </div>
       </div>
     </div>
