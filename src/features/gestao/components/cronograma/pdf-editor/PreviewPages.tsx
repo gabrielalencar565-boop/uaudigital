@@ -326,18 +326,27 @@ export function ScaledPreview({ children, label, pageNum, isSelected, onClick }:
             : "hsl(var(--muted) / 0.05)",
         }}
       >
+        {/* Outer box sized to the SCALED dimensions so it doesn't overflow */}
         <div
-          className="rounded-lg overflow-hidden shrink-0"
           style={{
-            width: PDF_W,
-            height: PDF_H,
-            transform: `scale(${scale})`,
-            transformOrigin: "center center",
-            fontFamily: '"Bricolage Grotesque", "Segoe UI", sans-serif',
-            boxShadow: "0 8px 32px -8px rgba(0,0,0,0.25), 0 2px 8px -2px rgba(0,0,0,0.15)",
+            width: PDF_W * scale,
+            height: PDF_H * scale,
+            position: "relative",
           }}
         >
-          {children}
+          <div
+            className="rounded-lg overflow-hidden absolute top-0 left-0"
+            style={{
+              width: PDF_W,
+              height: PDF_H,
+              transform: `scale(${scale})`,
+              transformOrigin: "top left",
+              fontFamily: '"Bricolage Grotesque", "Segoe UI", sans-serif',
+              boxShadow: "0 8px 32px -8px rgba(0,0,0,0.25), 0 2px 8px -2px rgba(0,0,0,0.15)",
+            }}
+          >
+            {children}
+          </div>
         </div>
       </div>
     </div>
