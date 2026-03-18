@@ -1,9 +1,8 @@
 import { useState, useMemo, useCallback, useRef } from "react";
 import { format, startOfMonth, endOfMonth, addMonths, subMonths, isSameDay, startOfWeek, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, CalendarRange, Palette, Clock, Link2, Plus, Download } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarRange, Clock, Link2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import type { PmTask } from "../../pm-types";
@@ -11,10 +10,8 @@ import { useUpdatePmTask } from "../../hooks/use-pm-data";
 import { toast } from "sonner";
 import type { CronogramaPost } from "./types";
 import { PostDetailSidebar } from "./PostDetailSidebar";
-import { PdfLayoutEditor } from "./PdfLayoutEditor";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { downloadCronogramaPdf, type PdfExportSettings } from "./pdf-export";
 
 const sb = supabase as any;
 
