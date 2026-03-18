@@ -191,67 +191,6 @@ export default function CronogramaPublic() {
     );
   }
 
-  // ── PDF / Print View ──
-  if (isPrint) {
-    return (
-      <div className="bg-white min-h-screen">
-        <style>{`@media print { @page { size: A4 landscape; margin: 15mm; } body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }`}</style>
-        <div className="max-w-5xl mx-auto p-8">
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold">{clientName || parentTitle}</h1>
-            <p className="text-sm text-gray-500">Cronograma de Postagens</p>
-          </div>
-          {posts.map((post, i) => {
-            const meta = POST_TYPE_META[post.post_type ?? "post"] ?? POST_TYPE_META.post;
-            const allImages = post.all_attachment_urls ?? [];
-            const singleImg = post.attachment_url || post.cover_url;
-            const isCarousel = post.post_type === "carrossel" && allImages.length > 1;
-            return (
-              <div key={post.id} className={cn("mb-8 rounded-xl border-2 p-6", meta.bgPage)} style={{ pageBreakInside: "avoid" }}>
-                <div className="flex gap-6">
-                  <div className="w-1/3 shrink-0">
-                    {isCarousel ? (
-                      <div className="grid grid-cols-2 gap-1">
-                        {allImages.map((url, j) => (
-                          <img key={j} src={url} alt="" className="w-full rounded-lg object-cover aspect-square" crossOrigin="anonymous" />
-                        ))}
-                      </div>
-                    ) : singleImg ? (
-                      <img src={singleImg} alt="" className="w-full rounded-xl object-cover aspect-square" crossOrigin="anonymous" />
-                    ) : null}
-                  </div>
-                  <div className="flex-1 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Instagram className="h-5 w-5 text-pink-500" />
-                      <span className="text-xs font-semibold bg-gray-100 px-2 py-0.5 rounded">Feed</span>
-                    </div>
-                    <div className="flex items-baseline gap-3">
-                      <h2 className="text-2xl font-bold">Post {i + 1}</h2>
-                      <span className="text-sm text-gray-500">{meta.label}</span>
-                    </div>
-                    {post.caption && (
-                      <div>
-                        <h3 className="font-bold text-sm mb-1">Legenda:</h3>
-                        <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{post.caption}</p>
-                      </div>
-                    )}
-                    <div className="inline-flex items-center gap-4 bg-indigo-100 text-indigo-800 rounded-xl px-4 py-2 mt-2">
-                      <span className="text-sm font-bold">
-                        Data: {post.posting_date ? format(parseISO(post.posting_date), "dd/MM/yy") : "—"}
-                      </span>
-                      {post.posting_time && (
-                        <span className="text-sm font-bold">Horário: {post.posting_time}</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
 
   // ── Interactive Public View ──
   return (
