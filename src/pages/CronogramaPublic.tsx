@@ -139,8 +139,6 @@ export default function CronogramaPublic() {
           setFeedbacks({});
         }
 
-        const { data: layout } = await sb.from("pm_pdf_settings").select("*").limit(1).maybeSingle();
-        setPdfSettings((layout ?? null) as PdfExportSettings | null);
       } finally {
         setLoading(false);
       }
