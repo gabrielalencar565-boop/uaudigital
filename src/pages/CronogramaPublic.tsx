@@ -3,7 +3,7 @@ import { useParams, useSearchParams } from "react-router-dom";
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, startOfWeek, endOfWeek, addWeeks, subWeeks, addMonths, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
-import { Film, Image, LayoutGrid, Camera, Calendar, Clock, Instagram, Download, ChevronLeft, ChevronRight, X, CalendarRange, LayoutGrid as GridIcon, Check, MessageSquare, Edit3 } from "lucide-react";
+import { Film, Image, LayoutGrid, Camera, Calendar, Clock, Instagram, ChevronLeft, ChevronRight, X, CalendarRange, LayoutGrid as GridIcon, Check, MessageSquare, Edit3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
