@@ -196,13 +196,14 @@ function StageCircle({ stageKey, size = "md" }: { stageKey: string; size?: "xs" 
 
 // ─── Task Content View ───
 
-function TaskContentView({ task, childTasks, attachments, membersMap, members, isAdmin, onSelectSubtask, activeSubtaskId, onClose, clientsMap, allTags, parentStageCurrent, globalTags }: {
+function TaskContentView({ task, childTasks, attachments, membersMap, members, isAdmin, onSelectSubtask, activeSubtaskId, onClose, clientsMap, allTags, parentStageCurrent, globalTags, onEditTask }: {
   task: PmTask; childTasks: PmTask[]; attachments: any[];
   membersMap: Record<string, { name: string; avatar?: string }>; members: { id: string; name: string }[];
   isAdmin: boolean; onSelectSubtask: (sub: PmTask) => void; activeSubtaskId: string | null;
   onClose: () => void; clientsMap: Record<string, string>; allTags: string[];
   parentStageCurrent?: string;
   globalTags: { id: string; name: string; color_key: string; created_by: string; created_at: string }[];
+  onEditTask?: (taskId: string) => void;
 }) {
   const updateTask = useUpdatePmTask();
   const createTask = useCreatePmTask();
