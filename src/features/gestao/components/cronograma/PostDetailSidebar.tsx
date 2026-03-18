@@ -100,7 +100,7 @@ export function PostDetailSidebar({ post, onClose, onUpdate, onRename, onEditTas
             <img
             src={displayImages[carouselIndex] || displayImages[0]}
             alt=""
-            className="w-full object-contain rounded-xl cursor-pointer max-h-[60vh]"
+            className="w-full rounded-xl cursor-pointer max-h-[60vh] object-cover"
             onClick={() => openViewer(carouselIndex)} />
           
 
