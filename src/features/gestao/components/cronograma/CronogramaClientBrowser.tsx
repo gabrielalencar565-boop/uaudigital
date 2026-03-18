@@ -376,12 +376,8 @@ export function CronogramaClientBrowser({ tasks, childTasksMap, clientsMap, memb
               </div>
             </div>)
           }
-        </TabsContent>
-
-        <TabsContent value="layout" className="mt-4">
-          <PdfLayoutEditor />
-        </TabsContent>
-      </Tabs>
+        }
+      </div>
     </div>);
 
 }
