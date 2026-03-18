@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Calendar, X, Clock, Instagram, Pencil } from "lucide-react";
+import { Calendar, X, Clock, Instagram, Pencil, ChevronLeft, ChevronRight, Heart, MessageCircle, Send, Bookmark, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -23,11 +23,13 @@ export function PostDetailSidebar({ post, onClose, onUpdate, onRename }: Props) 
   const [tempValue, setTempValue] = useState("");
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
+  const [carouselIndex, setCarouselIndex] = useState(0);
 
   const meta = POST_TYPE_META[post.post_type ?? "post"] ?? POST_TYPE_META.post;
   const allImages = post.all_attachment_urls ?? [];
   const isCarousel = post.post_type === "carrossel" && allImages.length > 1;
   const singleImg = post.attachment_url || post.cover_url;
+  const displayImages = isCarousel ? allImages : singleImg ? [singleImg] : [];
 
   const startEditing = (field: string, currentValue: string) => {
     setEditingField(field);
@@ -48,136 +50,200 @@ export function PostDetailSidebar({ post, onClose, onUpdate, onRename }: Props) 
     setViewerOpen(true);
   };
 
-  // Build images for the viewer
   const viewerImages = isCarousel
     ? allImages.map((url, i) => ({ url, name: `Página ${i + 1}` }))
     : singleImg
       ? [{ url: singleImg, name: post.title }]
       : [];
 
+  const postingDateFormatted = post.posting_date
+    ? format(parseISO(post.posting_date), "dd 'DE' MMMM", { locale: ptBR }).toUpperCase()
+    : null;
+
+  const timeFormatted = post.posting_time
+    ? `ÀS ${post.posting_time.replace(":", ":")}`
+    : null;
+
   return (
     <>
-      <div className="w-full max-w-sm shrink-0 border border-border/30 rounded-2xl bg-card/60 backdrop-blur-sm p-4 space-y-4 animate-in slide-in-from-right-5 duration-200 overflow-y-auto max-h-[70vh]">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Instagram className="h-4 w-4 text-pink-500" />
-            <span className="text-[10px] font-semibold bg-muted px-2 py-0.5 rounded">Feed</span>
-          </div>
-          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose}>
-            <X className="h-3.5 w-3.5" />
-          </Button>
-        </div>
-
-        {/* Title — click to rename */}
-        <div>
-          {editingField === "title" ? (
-            <Input
-              autoFocus
-              value={tempValue}
-              onChange={(e) => setTempValue(e.target.value)}
-              onBlur={() => saveField("title")}
-              onKeyDown={(e) => e.key === "Enter" && saveField("title")}
-              className="text-lg font-bold h-9"
-            />
-          ) : (
-            <div
-              className="cursor-pointer group flex items-center gap-1 hover:text-primary transition-colors"
-              onClick={() => startEditing("title", post.title)}
-            >
-              <h3 className="text-lg font-bold">{post.title}</h3>
-              <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-60 transition-opacity shrink-0" />
+      <div className="w-full max-w-sm shrink-0 border border-border/30 rounded-2xl bg-card overflow-hidden animate-in slide-in-from-right-5 duration-200 max-h-[70vh] overflow-y-auto">
+        {/* Instagram-style header */}
+        <div className="flex items-center justify-between px-3 py-2.5">
+          <div className="flex items-center gap-2.5">
+            <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-purple-500 via-pink-500 to-orange-400 flex items-center justify-center">
+              <span className="text-white text-xs font-bold">{post.title?.charAt(0)?.toUpperCase() || "P"}</span>
             </div>
-          )}
-          {post.post_type && (
-            <Badge className={cn("text-[10px] mt-1", meta.color)}>
-              {meta.label}
-            </Badge>
-          )}
-        </div>
-
-        {/* Images — carousel shows in 3-col grid, clickable to enlarge */}
-        {isCarousel ? (
-          <div className="space-y-2">
-            <p className="text-[10px] text-muted-foreground font-medium">{allImages.length} páginas</p>
-            <div className="grid grid-cols-3 gap-1 max-h-[320px] overflow-y-auto pr-1">
-              {allImages.map((url: string, i: number) => (
-                <img
-                  key={i}
-                  src={url}
-                  alt={`Página ${i + 1}`}
-                  className="w-full aspect-square rounded-lg object-cover cursor-pointer hover:opacity-80 transition-opacity hover:ring-2 hover:ring-primary/50"
-                  onClick={() => openViewer(i)}
+            <div className="flex flex-col">
+              {editingField === "title" ? (
+                <Input
+                  autoFocus
+                  value={tempValue}
+                  onChange={(e) => setTempValue(e.target.value)}
+                  onBlur={() => saveField("title")}
+                  onKeyDown={(e) => e.key === "Enter" && saveField("title")}
+                  className="h-6 text-sm font-semibold p-0 border-none shadow-none"
                 />
-              ))}
+              ) : (
+                <span
+                  className="text-sm font-semibold cursor-pointer hover:text-primary transition-colors leading-tight"
+                  onClick={() => startEditing("title", post.title)}
+                >
+                  {post.title}
+                </span>
+              )}
+              {post.post_type && (
+                <span className="text-[10px] text-muted-foreground">{meta.label}</span>
+              )}
             </div>
           </div>
-        ) : singleImg ? (
-          <img
-            src={singleImg}
-            alt=""
-            className="w-full rounded-xl object-cover aspect-square cursor-pointer hover:opacity-80 transition-opacity hover:ring-2 hover:ring-primary/50"
-            onClick={() => openViewer(0)}
-          />
-        ) : null}
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
 
-        {/* Date — click to edit */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Calendar className="h-3.5 w-3.5 text-primary shrink-0" />
+        {/* Image area with carousel arrows */}
+        {displayImages.length > 0 && (
+          <div className="relative w-full aspect-square bg-black/5 group">
+            <img
+              src={displayImages[carouselIndex] || displayImages[0]}
+              alt=""
+              className="w-full h-full object-cover cursor-pointer"
+              onClick={() => openViewer(carouselIndex)}
+            />
+
+            {/* Carousel counter badge */}
+            {isCarousel && (
+              <div className="absolute top-3 right-3 bg-black/60 text-white text-xs font-medium px-2 py-0.5 rounded-full">
+                {carouselIndex + 1}/{displayImages.length}
+              </div>
+            )}
+
+            {/* Prev arrow */}
+            {isCarousel && carouselIndex > 0 && (
+              <button
+                onClick={() => setCarouselIndex(i => i - 1)}
+                className="absolute left-2 top-1/2 -translate-y-1/2 h-7 w-7 rounded-full bg-white/90 shadow-sm flex items-center justify-center text-foreground/80 hover:bg-white transition opacity-0 group-hover:opacity-100"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+            )}
+
+            {/* Next arrow */}
+            {isCarousel && carouselIndex < displayImages.length - 1 && (
+              <button
+                onClick={() => setCarouselIndex(i => i + 1)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 rounded-full bg-white/90 shadow-sm flex items-center justify-center text-foreground/80 hover:bg-white transition opacity-0 group-hover:opacity-100"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            )}
+
+            {/* Dots indicator */}
+            {isCarousel && displayImages.length <= 10 && (
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1">
+                {displayImages.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setCarouselIndex(i)}
+                    className={cn(
+                      "h-1.5 rounded-full transition-all",
+                      i === carouselIndex ? "w-1.5 bg-primary" : "w-1.5 bg-white/60"
+                    )}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Instagram-style action bar */}
+        <div className="flex items-center justify-between px-3 py-2">
+          <div className="flex items-center gap-3">
+            <Heart className="h-5 w-5 text-foreground/70" />
+            <MessageCircle className="h-5 w-5 text-foreground/70" />
+            <Send className="h-5 w-5 text-foreground/70" />
+          </div>
+          <Bookmark className="h-5 w-5 text-foreground/70" />
+        </div>
+
+        {/* Caption + date/time area */}
+        <div className="px-3 pb-3 space-y-1.5">
+          {/* Caption preview */}
+          <div>
+            <span className="text-sm font-semibold mr-1">{post.title}</span>
+            {post.caption ? (
+              <span className="text-sm text-foreground/80">{post.caption.replace(/<[^>]+>/g, '').substring(0, 80)}{post.caption.length > 80 ? '...' : ''}</span>
+            ) : (
+              <span className="text-sm text-muted-foreground italic">sem legenda</span>
+            )}
+          </div>
+
+          {/* Date and time */}
+          <div className="flex items-center gap-1 text-[11px] text-muted-foreground uppercase">
             {editingField === "posting_date" ? (
               <DatePickerInline
                 value={tempValue}
                 onChange={(v) => { onUpdate("posting_date", v || null); setEditingField(null); }}
               />
             ) : (
-              <div
-                className="flex-1 text-sm cursor-pointer group flex items-center gap-1 hover:text-primary transition-colors"
+              <span
+                className="cursor-pointer hover:text-primary transition-colors"
                 onClick={() => startEditing("posting_date", post.posting_date ?? "")}
               >
-                <span>{post.posting_date ? format(parseISO(post.posting_date), "dd/MM/yyyy", { locale: ptBR }) : "Sem data"}</span>
-                <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-60 transition-opacity" />
-              </div>
+                {postingDateFormatted || "Sem data"}
+              </span>
             )}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Clock className="h-3.5 w-3.5 text-primary shrink-0" />
-            {editingField === "posting_time" ? (
-              <Input
-                type="time"
-                autoFocus
-                value={tempValue}
-                onChange={(e) => setTempValue(e.target.value)}
-                onBlur={() => saveField("posting_time")}
-                onKeyDown={(e) => e.key === "Enter" && saveField("posting_time")}
-                className="h-7 text-xs flex-1"
-              />
-            ) : (
-              <div
-                className="flex-1 text-sm cursor-pointer group flex items-center gap-1 hover:text-primary transition-colors"
+            {timeFormatted && (
+              <>
+                {editingField === "posting_time" ? (
+                  <Input
+                    type="time"
+                    autoFocus
+                    value={tempValue}
+                    onChange={(e) => setTempValue(e.target.value)}
+                    onBlur={() => saveField("posting_time")}
+                    onKeyDown={(e) => e.key === "Enter" && saveField("posting_time")}
+                    className="h-6 text-[11px] w-20 border-none shadow-none p-0"
+                  />
+                ) : (
+                  <span
+                    className="cursor-pointer hover:text-primary transition-colors"
+                    onClick={() => startEditing("posting_time", post.posting_time ?? "")}
+                  >
+                    {timeFormatted}
+                  </span>
+                )}
+              </>
+            )}
+            {!timeFormatted && editingField !== "posting_time" && (
+              <span
+                className="cursor-pointer hover:text-primary transition-colors"
                 onClick={() => startEditing("posting_time", post.posting_time ?? "")}
               >
-                <span>{post.posting_time || "Sem horário"}</span>
-                <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-60 transition-opacity" />
-              </div>
+                 
+              </span>
             )}
           </div>
-        </div>
 
-        {/* Caption — auto-save with AI */}
-        <div>
-          <h4 className="text-xs font-bold mb-1">Legenda:</h4>
-          <SmartCaptionEditor
-            value={post.caption ?? ""}
-            onChange={(val) => onUpdate("caption", val || null)}
-            placeholder="Escreva a legenda..."
-            className="text-xs"
-            minHeight="80px"
-          />
+          {/* Full caption editor */}
+          <div className="pt-2 border-t border-border/30">
+            <h4 className="text-xs font-bold mb-1 text-muted-foreground">Legenda:</h4>
+            <SmartCaptionEditor
+              value={post.caption ?? ""}
+              onChange={(val) => onUpdate("caption", val || null)}
+              placeholder="Escreva a legenda..."
+              className="text-xs"
+              minHeight="80px"
+            />
+          </div>
         </div>
       </div>
 
-      {/* Image Viewer */}
       {viewerImages.length > 0 && (
         <PmImageViewer
           images={viewerImages}
