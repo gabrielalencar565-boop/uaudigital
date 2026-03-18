@@ -24,6 +24,7 @@ import {
   Layers,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { buildAdaptiveCarouselGridFrames } from "./carousel-grid";
 
 const sb = supabase as any;
 
@@ -286,7 +287,7 @@ function PreviewCover({
   );
 }
 
-/* ─── Preview: Post Page (standard) — each block draggable independently ─── */
+/* ─── Preview: Post Page (standard) — layout fixo, sem sobreposição ─── */
 function PreviewPostPage({
   form,
   index,
@@ -311,7 +312,7 @@ function PreviewPostPage({
   const postType = postTypes[index % postTypes.length];
   const day = 3 + index * 3;
   const caption =
-    "Essa é a legenda completa da postagem. O texto será exibido com quebra automática de linha para preencher o espaço disponível no lado direito da página.";
+    "Essa é a legenda completa da postagem. O texto ocupa uma área própria, respeita largura e quebra de linha sem invadir data e horário.";
 
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
   const [imageSelected, setImageSelected] = useState(false);
@@ -319,19 +320,33 @@ function PreviewPostPage({
   const contentW = PDF_W - margin * 2;
   const contentH = PDF_H - margin * 2;
   const imageW = (contentW * imgPct) / 100;
-  const infoW = contentW - imageW - 40;
+  const gap = 40;
+  const infoW = contentW - imageW - gap;
 
-  const titlePoint = getLayoutPoint(form.layout_overrides, "cards_title", DEFAULT_LAYOUT_POINTS.cards_title);
-  const captionPoint = getLayoutPoint(form.layout_overrides, "cards_caption", DEFAULT_LAYOUT_POINTS.cards_caption);
-  const datePoint = getLayoutPoint(form.layout_overrides, "cards_date", DEFAULT_LAYOUT_POINTS.cards_date);
-  const timePoint = getLayoutPoint(form.layout_overrides, "cards_time", DEFAULT_LAYOUT_POINTS.cards_time);
+  const cardsInfoPoint = getLayoutPoint(form.layout_overrides, "cards_info", DEFAULT_LAYOUT_POINTS.cards_info);
+  const defaultCardsCenterX = (DEFAULT_LAYOUT_POINTS.cards_info.x / 100) * PDF_W;
+  const cardsCenterX = (cardsInfoPoint.x / 100) * PDF_W;
+  const infoShiftX = clamp(cardsCenterX - defaultCardsCenterX, -56, 56);
+
+  const infoX = margin + imageW + gap + infoShiftX;
+  const infoY = margin;
+  const infoInnerW = infoW - 8;
+
+  const showTime = form.show_time_on_card ?? true;
+  const badgeHeight = 50;
+  const badgeGap = 10;
+  const badgesTotalHeight = showTime ? badgeHeight * 2 + badgeGap : badgeHeight;
+  const badgesTop = infoY + contentH - 18 - badgesTotalHeight;
+
+  const captionLabelY = infoY + 90;
+  const captionTextY = captionLabelY + 28;
+  const captionHeight = Math.max(40, badgesTop - captionTextY - 12);
 
   const dragClass = "cursor-move ring-1 ring-primary/40 bg-background/15 rounded-xl";
 
   return (
     <div ref={setContainerEl} className="relative overflow-hidden" style={{ width: PDF_W, height: PDF_H, backgroundColor: bg }}>
       <div className="absolute" style={{ left: margin, top: margin, width: contentW, height: contentH }}>
-        {/* Left: Image mockup */}
         <div
           className={cn(
             "absolute rounded-3xl overflow-hidden shrink-0 flex items-center justify-center",
@@ -355,112 +370,94 @@ function PreviewPostPage({
 
           {editable && imageSelected && (
             <div className="absolute right-4 top-4 z-20 flex items-center gap-2 rounded-xl border border-primary/40 bg-background/80 p-1.5">
-              <Button type="button" variant="secondary" size="icon" className="h-7 w-7"
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onResizeImage(-2); }}>−</Button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon"
+                className="h-7 w-7"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onResizeImage(-2); }}
+              >
+                −
+              </Button>
               <span className="text-[10px] font-medium px-1">{imgPct}%</span>
-              <Button type="button" variant="secondary" size="icon" className="h-7 w-7"
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onResizeImage(2); }}>+</Button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon"
+                className="h-7 w-7"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onResizeImage(2); }}
+              >
+                +
+              </Button>
             </div>
           )}
         </div>
       </div>
 
-      {/* ── Title block (Post N + type badge) ── */}
       <div
         className={cn("absolute z-10", editable && dragClass)}
         style={{
-          left: `${titlePoint.x}%`,
-          top: `${titlePoint.y}%`,
+          left: infoX + infoW / 2,
+          top: infoY + contentH / 2,
           transform: "translate(-50%, -50%)",
-          padding: editable ? "6px 12px" : 0,
+          width: infoW,
+          height: contentH,
+          padding: editable ? "6px" : 0,
         }}
-        onPointerDown={(e) => editable && startDrag(e, containerEl, (p) => onMoveNode("cards_title", p))}
+        onPointerDown={(e) => editable && startDrag(e, containerEl, (p) => onMoveNode("cards_info", p))}
       >
-        <div className="flex items-center gap-4 flex-wrap">
-          <div style={{ fontSize: (form.card_font_size ?? 14) * 3, color: titleColor }} className="font-bold leading-tight">
-            Post {index + 1}
+        <div className="relative h-full w-full">
+          <div className="flex items-center gap-3 flex-wrap" style={{ minHeight: 56 }}>
+            <div style={{ fontSize: (form.card_font_size ?? 14) * 2.9, color: titleColor }} className="font-bold leading-tight">
+              Post {index + 1}
+            </div>
+            <div className="rounded-full px-4 py-1.5 font-semibold shrink-0" style={{ fontSize: 18, backgroundColor: `${accent}22`, color: accent }}>
+              {postType}
+            </div>
           </div>
-          <div
-            className="rounded-full px-5 py-2 font-semibold shrink-0"
-            style={{ fontSize: 20, backgroundColor: accent + "22", color: accent }}
-          >
-            {postType}
+
+          <div style={{ marginTop: 24, maxWidth: infoInnerW }}>
+            <div style={{ fontSize: 18, color: subtitleColor }} className="uppercase tracking-widest font-semibold mb-3">
+              Legenda:
+            </div>
+            <div
+              style={{
+                fontSize: (form.card_caption_font_size ?? 11) * 2,
+                color: titleColor,
+                lineHeight: 1.65,
+                wordBreak: "break-word",
+                overflowWrap: "break-word",
+                maxHeight: captionHeight,
+                overflow: "hidden",
+              }}
+            >
+              {caption}
+            </div>
           </div>
+
+          <div className="absolute right-1 flex flex-col items-end gap-2.5" style={{ top: badgesTop - infoY }}>
+            <div className="rounded-xl px-6 py-3 font-bold text-white whitespace-nowrap" style={{ backgroundColor: accent, fontSize: (form.card_date_font_size ?? 12) * 1.8 }}>
+              Data: {String(day).padStart(2, "0")}/03/2026
+            </div>
+            {showTime && (
+              <div className="rounded-xl px-6 py-3 font-bold text-white whitespace-nowrap" style={{ backgroundColor: accent, fontSize: (form.card_date_font_size ?? 12) * 1.8 }}>
+                Horário: 18:00
+              </div>
+            )}
+          </div>
+
+          {editable && (
+            <div className="absolute left-0 text-[10px] text-muted-foreground" style={{ top: captionLabelY - infoY }}>
+              Arraste esta área para reposicionar o bloco de texto
+            </div>
+          )}
         </div>
       </div>
-
-      {/* ── Caption block ── */}
-      <div
-        className={cn("absolute z-10", editable && dragClass)}
-        style={{
-          left: `${captionPoint.x}%`,
-          top: `${captionPoint.y}%`,
-          transform: "translate(-50%, -50%)",
-          maxWidth: infoW,
-          padding: editable ? "6px 12px" : 0,
-        }}
-        onPointerDown={(e) => editable && startDrag(e, containerEl, (p) => onMoveNode("cards_caption", p))}
-      >
-        <div style={{ fontSize: 20, color: subtitleColor }} className="uppercase tracking-widest font-semibold mb-3">
-          Legenda:
-        </div>
-        <div
-          style={{
-            fontSize: (form.card_caption_font_size ?? 11) * 2,
-            color: titleColor,
-            lineHeight: 1.7,
-            wordBreak: "break-word",
-            overflowWrap: "break-word",
-          }}
-        >
-          {caption}
-        </div>
-      </div>
-
-      {/* ── Date badge ── */}
-      <div
-        className={cn("absolute z-10", editable && dragClass)}
-        style={{
-          left: `${datePoint.x}%`,
-          top: `${datePoint.y}%`,
-          transform: "translate(-50%, -50%)",
-          padding: editable ? "4px" : 0,
-        }}
-        onPointerDown={(e) => editable && startDrag(e, containerEl, (p) => onMoveNode("cards_date", p))}
-      >
-        <div
-          className="rounded-xl px-6 py-3 font-bold text-white whitespace-nowrap"
-          style={{ backgroundColor: accent, fontSize: (form.card_date_font_size ?? 12) * 1.8 }}
-        >
-          Data: {String(day).padStart(2, "0")}/03/2026
-        </div>
-      </div>
-
-      {/* ── Time badge ── */}
-      {(form.show_time_on_card ?? true) && (
-        <div
-          className={cn("absolute z-10", editable && dragClass)}
-          style={{
-            left: `${timePoint.x}%`,
-            top: `${timePoint.y}%`,
-            transform: "translate(-50%, -50%)",
-            padding: editable ? "4px" : 0,
-          }}
-          onPointerDown={(e) => editable && startDrag(e, containerEl, (p) => onMoveNode("cards_time", p))}
-        >
-          <div
-            className="rounded-xl px-6 py-3 font-bold text-white whitespace-nowrap"
-            style={{ backgroundColor: accent, fontSize: (form.card_date_font_size ?? 12) * 1.8 }}
-          >
-            Horário: 18:00
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
-/* ─── Preview: Carousel Page (grid top, info bottom) ─── */
+/* ─── Preview: Carousel Page (grade dinâmica sem vazios) ─── */
 function PreviewCarouselPage({
   form,
   editable,
@@ -473,18 +470,16 @@ function PreviewCarouselPage({
   const bg = form.background_color ?? "#0B0D12";
   const accent = form.accent_color ?? "#7C5CFF";
   const titleColor = form.title_color ?? "#FFFFFF";
+  const subtitleColor = form.subtitle_color ?? "#AAAAAA";
   const margin = form.margin_size ?? 60;
-  const COLS = form.carousel_cols ?? 4;
-  const ROWS = form.carousel_rows ?? 2;
+  const maxCols = form.carousel_cols ?? 4;
+  const maxRows = form.carousel_rows ?? 2;
   const imgGap = 12;
   const contentW = PDF_W - margin * 2;
   const contentH = PDF_H - margin * 2;
   const imgHeightPct = (form.carousel_image_height_pct ?? 65) / 100;
   const gridH = contentH * imgHeightPct;
   const infoH = contentH - gridH - 20;
-
-  const gridRowH = (gridH - imgGap * (ROWS - 1)) / ROWS;
-  const totalCells = COLS * ROWS;
 
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
 
@@ -494,80 +489,97 @@ function PreviewCarouselPage({
   };
   const infoPoint = getLayoutPoint(form.layout_overrides, "carousel_info", fallbackInfoPoint);
 
+  const mockImageCount = Math.min(maxCols * maxRows, 5);
+  const frames = buildAdaptiveCarouselGridFrames({
+    itemCount: mockImageCount,
+    maxCols,
+    maxRows,
+    x: margin,
+    y: margin,
+    width: contentW,
+    height: gridH,
+    gap: imgGap,
+  });
+
   const mockBackgrounds = [
     "linear-gradient(140deg, #2a3148 0%, #556fa7 60%, #1b2135 100%)",
     "linear-gradient(140deg, #322515 0%, #aa6d2e 58%, #251b10 100%)",
     "linear-gradient(140deg, #183235 0%, #2f9c8b 56%, #132427 100%)",
     "linear-gradient(140deg, #352039 0%, #9652a2 55%, #281a2b 100%)",
+    "linear-gradient(140deg, #2f2f2f 0%, #6f6f6f 58%, #1d1d1d 100%)",
   ];
 
   return (
     <div ref={setContainerEl} className="relative overflow-hidden" style={{ width: PDF_W, height: PDF_H, backgroundColor: bg }}>
-      <div style={{ padding: margin, height: PDF_H }}>
-        {/* Top: Image grid */}
-        <div className="grid" style={{ gridTemplateColumns: `repeat(${COLS}, 1fr)`, gap: imgGap, height: gridH }}>
-          {Array.from({ length: totalCells }, (_, n) => (
-            <div
-              key={n}
-              className="relative rounded-3xl overflow-hidden"
-              style={{
-                backgroundImage: mockBackgrounds[n % mockBackgrounds.length],
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-                height: gridRowH,
-              }}
-            >
-              <div className="absolute inset-0 bg-black/20" />
-              <div className="absolute inset-0 flex items-end justify-center pb-4 text-white/90 text-sm font-semibold">
-                Página {n + 1}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Bottom: Info bar */}
+      {frames.map((frame) => (
         <div
-          className={cn("absolute", editable && "cursor-move")}
+          key={frame.index}
+          className="absolute rounded-3xl overflow-hidden"
           style={{
-            left: `${infoPoint.x}%`,
-            top: `${infoPoint.y}%`,
-            transform: "translate(-50%, -50%)",
-            width: contentW,
-            maxWidth: contentW,
-            minHeight: infoH,
+            left: frame.x,
+            top: frame.y,
+            width: frame.size,
+            height: frame.size,
+            backgroundColor: "#1a1d27",
           }}
-          onPointerDown={(e) => editable && startDrag(e, containerEl, (point) => onMoveNode("carousel_info", point))}
         >
           <div
-            className={cn(
-              "flex items-start rounded-2xl px-3 py-2",
-              editable && "ring-1 ring-primary/40 bg-background/15"
-            )}
-            style={{ minHeight: infoH }}
-          >
-            <div style={{ width: "20%" }}>
-              <div style={{ fontSize: (form.carousel_title_font_size ?? 14) * 3, color: titleColor }} className="font-bold leading-tight">
-                Post 1
-              </div>
-              <div style={{ fontSize: 18, color: accent }} className="mt-1">
-                Carrossel
-              </div>
-            </div>
+            className="absolute inset-0"
+            style={{
+              backgroundImage: mockBackgrounds[frame.index % mockBackgrounds.length],
+              backgroundSize: "contain",
+              backgroundPosition: "center",
+              backgroundRepeat: "no-repeat",
+            }}
+          />
+          <div className="absolute inset-0 flex items-end justify-center pb-4 text-white/90 text-sm font-semibold">
+            Página {frame.index + 1}
+          </div>
+        </div>
+      ))}
 
-            <div style={{ width: "50%", fontSize: (form.carousel_caption_font_size ?? 11) * 2, color: titleColor, lineHeight: 1.7 }}>
-              Essa é a legenda completa da postagem do carrossel com quebra automática.
+      <div
+        className={cn("absolute", editable && "cursor-move")}
+        style={{
+          left: `${infoPoint.x}%`,
+          top: `${infoPoint.y}%`,
+          transform: "translate(-50%, -50%)",
+          width: contentW,
+          minHeight: infoH,
+        }}
+        onPointerDown={(e) => editable && startDrag(e, containerEl, (point) => onMoveNode("carousel_info", point))}
+      >
+        <div
+          className={cn("relative rounded-2xl px-3 py-2", editable && "ring-1 ring-primary/40 bg-background/15")}
+          style={{ minHeight: infoH }}
+        >
+          <div className="absolute left-3 top-4" style={{ width: "22%" }}>
+            <div style={{ fontSize: (form.carousel_title_font_size ?? 14) * 2.8, color: titleColor }} className="font-bold leading-tight">
+              Post 1
             </div>
+            <div style={{ fontSize: 16, color: accent }} className="mt-1 font-semibold">
+              Carrossel
+            </div>
+          </div>
 
-            <div style={{ width: "30%", display: "flex", flexDirection: "column", gap: 10, alignItems: "flex-end" }}>
+          <div className="absolute top-4" style={{ left: "24%", width: "46%" }}>
+            <div style={{ fontSize: 15, color: subtitleColor }} className="uppercase tracking-wider font-semibold mb-2">
+              Legenda:
+            </div>
+            <div style={{ fontSize: (form.carousel_caption_font_size ?? 11) * 1.9, color: titleColor, lineHeight: 1.65, maxHeight: infoH - 30, overflow: "hidden" }}>
+              Essa é a legenda completa da postagem do carrossel com quebra automática, sem invadir a área de data e horário.
+            </div>
+          </div>
+
+          <div className="absolute right-3 bottom-3 flex flex-col gap-2.5 items-end" style={{ width: "26%" }}>
+            <div className="rounded-xl px-6 py-3 font-bold text-white" style={{ backgroundColor: accent, fontSize: (form.carousel_date_font_size ?? 12) * 1.8 }}>
+              Data: 05/03/2026
+            </div>
+            {(form.show_time_on_card ?? true) && (
               <div className="rounded-xl px-6 py-3 font-bold text-white" style={{ backgroundColor: accent, fontSize: (form.carousel_date_font_size ?? 12) * 1.8 }}>
-                Data: 05/03/2026
+                Horário: 12h00
               </div>
-              {(form.show_time_on_card ?? true) && (
-                <div className="rounded-xl px-6 py-3 font-bold text-white" style={{ backgroundColor: accent, fontSize: (form.carousel_date_font_size ?? 12) * 1.8 }}>
-                  Horário: 12h00
-                </div>
-              )}
-            </div>
+            )}
           </div>
         </div>
       </div>
@@ -803,7 +815,7 @@ function CarouselSettings({ form, setForm }: any) {
         <span className="text-[10px] text-muted-foreground">Layout: grade de imagens em cima, informações embaixo.</span>
       </div>
       <div className="px-2 py-1.5 rounded-lg bg-muted/30 border border-border/20">
-        <span className="text-[10px] text-muted-foreground">As imagens são exportadas sem corte com preenchimento visual no fundo.</span>
+        <span className="text-[10px] text-muted-foreground">As imagens são exportadas inteiras, sem corte, sem blur e sem distorção.</span>
       </div>
       <div>
         <Label className="text-[10px] text-muted-foreground">Colunas</Label>
