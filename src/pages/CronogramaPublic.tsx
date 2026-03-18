@@ -160,20 +160,6 @@ export default function CronogramaPublic() {
   };
 
 
-  useEffect(() => {
-    if (isPrint && !loading && posts.length > 0) {
-      // Wait for images to load before printing
-      const images = document.querySelectorAll('img');
-      const promises = Array.from(images).map(img => {
-        if (img.complete) return Promise.resolve();
-        return new Promise(resolve => {
-          img.onload = resolve;
-          img.onerror = resolve;
-        });
-      });
-      Promise.all(promises).then(() => setTimeout(() => window.print(), 500));
-    }
-  }, [isPrint, loading, posts]);
 
   if (loading) {
     return (
