@@ -286,7 +286,7 @@ function PreviewCover({
   );
 }
 
-/* ─── Preview: Post Page (standard) ─── */
+/* ─── Preview: Post Page (standard) — each block draggable independently ─── */
 function PreviewPostPage({
   form,
   index,
@@ -321,11 +321,12 @@ function PreviewPostPage({
   const imageW = (contentW * imgPct) / 100;
   const infoW = contentW - imageW - 40;
 
-  const fallbackInfoPoint: LayoutPoint = {
-    x: ((margin + imageW + 40 + infoW / 2) / PDF_W) * 100,
-    y: 50,
-  };
-  const infoPoint = getLayoutPoint(form.layout_overrides, "cards_info", fallbackInfoPoint);
+  const titlePoint = getLayoutPoint(form.layout_overrides, "cards_title", DEFAULT_LAYOUT_POINTS.cards_title);
+  const captionPoint = getLayoutPoint(form.layout_overrides, "cards_caption", DEFAULT_LAYOUT_POINTS.cards_caption);
+  const datePoint = getLayoutPoint(form.layout_overrides, "cards_date", DEFAULT_LAYOUT_POINTS.cards_date);
+  const timePoint = getLayoutPoint(form.layout_overrides, "cards_time", DEFAULT_LAYOUT_POINTS.cards_time);
+
+  const dragClass = "cursor-move ring-1 ring-primary/40 bg-background/15 rounded-xl";
 
   return (
     <div ref={setContainerEl} className="relative overflow-hidden" style={{ width: PDF_W, height: PDF_H, backgroundColor: bg }}>
@@ -354,105 +355,107 @@ function PreviewPostPage({
 
           {editable && imageSelected && (
             <div className="absolute right-4 top-4 z-20 flex items-center gap-2 rounded-xl border border-primary/40 bg-background/80 p-1.5">
-              <Button
-                type="button"
-                variant="secondary"
-                size="icon"
-                className="h-7 w-7"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onResizeImage(-2);
-                }}
-              >
-                −
-              </Button>
+              <Button type="button" variant="secondary" size="icon" className="h-7 w-7"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onResizeImage(-2); }}>−</Button>
               <span className="text-[10px] font-medium px-1">{imgPct}%</span>
-              <Button
-                type="button"
-                variant="secondary"
-                size="icon"
-                className="h-7 w-7"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onResizeImage(2);
-                }}
-              >
-                +
-              </Button>
+              <Button type="button" variant="secondary" size="icon" className="h-7 w-7"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onResizeImage(2); }}>+</Button>
             </div>
           )}
         </div>
+      </div>
 
-        {/* Right: Info */}
-        <div
-          className={cn("absolute flex flex-col justify-between overflow-hidden", editable && "cursor-move")}
-          style={{
-            left: `${infoPoint.x}%`,
-            top: `${infoPoint.y}%`,
-            transform: "translate(-50%, -50%)",
-            width: infoW,
-            height: contentH,
-          }}
-          onPointerDown={(e) => editable && startDrag(e, containerEl, (point) => onMoveNode("cards_info", point))}
-        >
+      {/* ── Title block (Post N + type badge) ── */}
+      <div
+        className={cn("absolute z-10", editable && dragClass)}
+        style={{
+          left: `${titlePoint.x}%`,
+          top: `${titlePoint.y}%`,
+          transform: "translate(-50%, -50%)",
+          padding: editable ? "6px 12px" : 0,
+        }}
+        onPointerDown={(e) => editable && startDrag(e, containerEl, (p) => onMoveNode("cards_title", p))}
+      >
+        <div className="flex items-center gap-4 flex-wrap">
+          <div style={{ fontSize: (form.card_font_size ?? 14) * 3, color: titleColor }} className="font-bold leading-tight">
+            Post {index + 1}
+          </div>
           <div
-            className={cn(
-              "h-full rounded-2xl px-3 py-2",
-              editable && "ring-1 ring-primary/40 bg-background/15"
-            )}
-            style={{ overflow: "hidden" }}
+            className="rounded-full px-5 py-2 font-semibold shrink-0"
+            style={{ fontSize: 20, backgroundColor: accent + "22", color: accent }}
           >
-            <div className="flex items-center gap-4 mb-6 flex-wrap">
-              <div style={{ fontSize: (form.card_font_size ?? 14) * 3, color: titleColor }} className="font-bold leading-tight">
-                Post {index + 1}
-              </div>
-              <div
-                className="rounded-full px-5 py-2 font-semibold shrink-0"
-                style={{ fontSize: 20, backgroundColor: accent + "22", color: accent }}
-              >
-                {postType}
-              </div>
-            </div>
-            <div className="mb-6">
-              <div style={{ fontSize: 20, color: subtitleColor }} className="uppercase tracking-widest font-semibold mb-3">
-                Legenda:
-              </div>
-              <div
-                style={{
-                  fontSize: (form.card_caption_font_size ?? 11) * 2,
-                  color: titleColor,
-                  lineHeight: 1.7,
-                  wordBreak: "break-word",
-                  overflowWrap: "break-word",
-                }}
-              >
-                {caption}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end pt-4" style={{ borderTop: `2px solid ${accent}33` }}>
-              <div className="flex flex-col items-end gap-3">
-                <div
-                  className="rounded-xl px-6 py-3 font-bold text-white"
-                  style={{ backgroundColor: accent, fontSize: (form.card_date_font_size ?? 12) * 1.8 }}
-                >
-                  Data: {String(day).padStart(2, "0")}/03/2026
-                </div>
-                {(form.show_time_on_card ?? true) && (
-                  <div
-                    className="rounded-xl px-6 py-3 font-bold text-white"
-                    style={{ backgroundColor: accent, fontSize: (form.card_date_font_size ?? 12) * 1.8 }}
-                  >
-                    Horário: 18:00
-                  </div>
-                )}
-              </div>
-            </div>
+            {postType}
           </div>
         </div>
       </div>
+
+      {/* ── Caption block ── */}
+      <div
+        className={cn("absolute z-10", editable && dragClass)}
+        style={{
+          left: `${captionPoint.x}%`,
+          top: `${captionPoint.y}%`,
+          transform: "translate(-50%, -50%)",
+          maxWidth: infoW,
+          padding: editable ? "6px 12px" : 0,
+        }}
+        onPointerDown={(e) => editable && startDrag(e, containerEl, (p) => onMoveNode("cards_caption", p))}
+      >
+        <div style={{ fontSize: 20, color: subtitleColor }} className="uppercase tracking-widest font-semibold mb-3">
+          Legenda:
+        </div>
+        <div
+          style={{
+            fontSize: (form.card_caption_font_size ?? 11) * 2,
+            color: titleColor,
+            lineHeight: 1.7,
+            wordBreak: "break-word",
+            overflowWrap: "break-word",
+          }}
+        >
+          {caption}
+        </div>
+      </div>
+
+      {/* ── Date badge ── */}
+      <div
+        className={cn("absolute z-10", editable && dragClass)}
+        style={{
+          left: `${datePoint.x}%`,
+          top: `${datePoint.y}%`,
+          transform: "translate(-50%, -50%)",
+          padding: editable ? "4px" : 0,
+        }}
+        onPointerDown={(e) => editable && startDrag(e, containerEl, (p) => onMoveNode("cards_date", p))}
+      >
+        <div
+          className="rounded-xl px-6 py-3 font-bold text-white whitespace-nowrap"
+          style={{ backgroundColor: accent, fontSize: (form.card_date_font_size ?? 12) * 1.8 }}
+        >
+          Data: {String(day).padStart(2, "0")}/03/2026
+        </div>
+      </div>
+
+      {/* ── Time badge ── */}
+      {(form.show_time_on_card ?? true) && (
+        <div
+          className={cn("absolute z-10", editable && dragClass)}
+          style={{
+            left: `${timePoint.x}%`,
+            top: `${timePoint.y}%`,
+            transform: "translate(-50%, -50%)",
+            padding: editable ? "4px" : 0,
+          }}
+          onPointerDown={(e) => editable && startDrag(e, containerEl, (p) => onMoveNode("cards_time", p))}
+        >
+          <div
+            className="rounded-xl px-6 py-3 font-bold text-white whitespace-nowrap"
+            style={{ backgroundColor: accent, fontSize: (form.card_date_font_size ?? 12) * 1.8 }}
+          >
+            Horário: 18:00
+          </div>
+        </div>
+      )}
     </div>
   );
 }
