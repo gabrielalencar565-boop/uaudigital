@@ -41,13 +41,17 @@ interface PdfSettings {
   footer_text: string;
   footer_contact: string;
   margin_size: number;
+  footer_title_font_size: number;
+  footer_subtitle_font_size: number;
+  footer_contact_font_size: number;
+  card_image_width_pct: number;
 }
 
 type BlockId = "cover" | "cards" | "footer";
 
 const BLOCK_META: Record<BlockId, { label: string; icon: React.ReactNode; description: string }> = {
   cover: { label: "Capa", icon: <Image className="h-4 w-4" />, description: "Logo, título, mês e imagem de fundo" },
-  cards: { label: "Páginas de Posts", icon: <CreditCard className="h-4 w-4" />, description: "Cada postagem em página individual (45% imagem / 55% texto)" },
+  cards: { label: "Páginas de Posts", icon: <CreditCard className="h-4 w-4" />, description: "Cada postagem em página individual" },
   footer: { label: "Rodapé", icon: <FileText className="h-4 w-4" />, description: "Logo da agência, contato e redes" },
 };
 
@@ -61,6 +65,10 @@ function usePdfSettings() {
         ...data,
         blocks_order: data.blocks_order ?? ["cover", "cards", "footer"],
         blocks_enabled: data.blocks_enabled ?? { cover: true, cards: true, footer: true },
+        footer_title_font_size: data.footer_title_font_size ?? 32,
+        footer_subtitle_font_size: data.footer_subtitle_font_size ?? 18,
+        footer_contact_font_size: data.footer_contact_font_size ?? 11,
+        card_image_width_pct: data.card_image_width_pct ?? 45,
       };
     },
   });
@@ -121,6 +129,7 @@ function PreviewPostPage({ form, index }: { form: Partial<PdfSettings>; index: n
   const titleColor = form.title_color ?? "#FFFFFF";
   const subtitleColor = form.subtitle_color ?? "#AAAAAA";
   const margin = form.margin_size ?? 60;
+  const imgPct = form.card_image_width_pct ?? 45;
 
   const postTypes = ["Feed", "Reels", "Story", "Carrossel"];
   const postType = postTypes[index % postTypes.length];
@@ -130,11 +139,11 @@ function PreviewPostPage({ form, index }: { form: Partial<PdfSettings>; index: n
   return (
     <div className="relative overflow-hidden" style={{ width: PDF_W, height: PDF_H, backgroundColor: bg }}>
       <div className="flex" style={{ padding: margin, height: PDF_H, gap: 40 }}>
-        {/* Left: Image mockup (45%) */}
+        {/* Left: Image mockup */}
         <div
           className="rounded-3xl overflow-hidden shrink-0 flex items-center justify-center"
           style={{
-            width: "45%",
+            width: `${imgPct}%`,
             height: PDF_H - margin * 2,
             backgroundColor: "#1a1d27",
             boxShadow: "0 20px 60px -15px rgba(0,0,0,0.4)",
@@ -146,7 +155,7 @@ function PreviewPostPage({ form, index }: { form: Partial<PdfSettings>; index: n
           </div>
         </div>
 
-        {/* Right: Info (55%) */}
+        {/* Right: Info */}
         <div className="flex flex-col justify-between overflow-hidden" style={{ flex: 1, minWidth: 0, height: PDF_H - margin * 2 }}>
           <div style={{ overflow: "hidden" }}>
             <div className="flex items-center gap-4 mb-6 flex-wrap">
@@ -198,65 +207,70 @@ function PreviewCarouselPage({ form }: { form: Partial<PdfSettings> }) {
   const titleColor = form.title_color ?? "#FFFFFF";
   const subtitleColor = form.subtitle_color ?? "#AAAAAA";
   const margin = form.margin_size ?? 60;
+  const imgPct = form.card_image_width_pct ?? 45;
   const COLS = 3;
   const imgGap = 20;
-  const headerH = 100;
-  const footerH = 120;
   const contentW = PDF_W - margin * 2;
   const contentH = PDF_H - margin * 2;
-  const imagesAreaH = contentH - headerH - footerH;
-  const colW = (contentW - imgGap * (COLS - 1)) / COLS;
+  const imageW = contentW * (imgPct / 100);
+  const textW = contentW - imageW - 40;
+  const colW = (imageW - imgGap * (COLS - 1)) / COLS;
+  const ROWS = 2;
+  const rowH = (contentH - imgGap * (ROWS - 1)) / ROWS;
 
   return (
     <div className="relative overflow-hidden" style={{ width: PDF_W, height: PDF_H, backgroundColor: bg }}>
-      <div style={{ padding: margin }}>
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-4" style={{ height: headerH }}>
-          <div style={{ fontSize: (form.card_font_size ?? 14) * 3, color: titleColor }} className="font-bold">
-            Post 1
-          </div>
-          <div className="rounded-full px-5 py-2 font-semibold" style={{ fontSize: 20, backgroundColor: accent + "22", color: accent }}>
-            Carrossel
+      <div className="flex" style={{ padding: margin, height: PDF_H, gap: 40 }}>
+        {/* Left: 3-col grid */}
+        <div style={{ width: imageW, flexShrink: 0 }}>
+          <div className="grid" style={{ gridTemplateColumns: `repeat(${COLS}, 1fr)`, gap: imgGap, height: contentH }}>
+            {[1, 2, 3, 4, 5, 6].map((n) => (
+              <div
+                key={n}
+                className="rounded-3xl flex items-center justify-center"
+                style={{ backgroundColor: "#1a1d27" }}
+              >
+                <div className="flex flex-col items-center gap-2 text-center" style={{ color: "#3a3d48" }}>
+                  <LayoutGrid className="h-10 w-10" />
+                  <span style={{ fontSize: 14 }}>Pág {n}</span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* 3 Column Images */}
-        <div className="flex" style={{ gap: imgGap, height: imagesAreaH }}>
-          {[1, 2, 3].map((n) => (
-            <div
-              key={n}
-              className="rounded-3xl flex items-center justify-center"
-              style={{ width: colW, height: imagesAreaH, backgroundColor: "#1a1d27" }}
-            >
-              <div className="flex flex-col items-center gap-2 text-center" style={{ color: "#3a3d48" }}>
-                <LayoutGrid className="h-14 w-14" />
-                <span style={{ fontSize: 16 }}>Página {n}</span>
+        {/* Right: Info */}
+        <div className="flex flex-col justify-between overflow-hidden" style={{ flex: 1, minWidth: 0, height: contentH }}>
+          <div>
+            <div className="flex items-center gap-4 mb-6 flex-wrap">
+              <div style={{ fontSize: (form.card_font_size ?? 14) * 3, color: titleColor }} className="font-bold">
+                Post 1
+              </div>
+              <div className="rounded-full px-5 py-2 font-semibold" style={{ fontSize: 20, backgroundColor: accent + "22", color: accent }}>
+                Carrossel
               </div>
             </div>
-          ))}
-        </div>
-
-        {/* Page numbers */}
-        <div className="flex" style={{ gap: imgGap, marginTop: 8 }}>
-          {[1, 2, 3].map((n) => (
-            <div key={n} className="text-center font-bold" style={{ width: colW, fontSize: 14, color: subtitleColor }}>
-              {n}/6
+            <div className="mb-6">
+              <div style={{ fontSize: 20, color: subtitleColor }} className="uppercase tracking-widest font-semibold mb-3">
+                Legenda:
+              </div>
+              <div style={{ fontSize: (form.card_caption_font_size ?? 11) * 2, color: titleColor, lineHeight: 1.7 }}>
+                Essa é a legenda completa da postagem do carrossel.
+              </div>
             </div>
-          ))}
-        </div>
-
-        {/* Footer line */}
-        <div style={{ borderTop: `2px solid ${accent}33`, marginTop: 12, paddingTop: 12 }} className="flex items-center gap-6">
-          <div>
-            <div style={{ fontSize: 16, color: subtitleColor }} className="uppercase tracking-widest font-semibold mb-1">Data</div>
-            <div style={{ fontSize: (form.card_date_font_size ?? 12) * 2.4, color: titleColor }} className="font-bold">03/03/2026</div>
           </div>
-          {(form.show_time_on_card ?? true) && (
+          <div className="flex items-center gap-6 pt-4 shrink-0" style={{ borderTop: `2px solid ${accent}33` }}>
             <div>
-              <div style={{ fontSize: 16, color: subtitleColor }} className="uppercase tracking-widest font-semibold mb-1">Horário</div>
-              <div style={{ fontSize: (form.card_date_font_size ?? 12) * 2.4, color: titleColor }} className="font-bold">18:00</div>
+              <div style={{ fontSize: 16, color: subtitleColor }} className="uppercase tracking-widest font-semibold mb-1">Data</div>
+              <div style={{ fontSize: (form.card_date_font_size ?? 12) * 2.4, color: titleColor }} className="font-bold">03/03/2026</div>
             </div>
-          )}
+            {(form.show_time_on_card ?? true) && (
+              <div>
+                <div style={{ fontSize: 16, color: subtitleColor }} className="uppercase tracking-widest font-semibold mb-1">Horário</div>
+                <div style={{ fontSize: (form.card_date_font_size ?? 12) * 2.4, color: titleColor }} className="font-bold">18:00</div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -275,9 +289,9 @@ function PreviewFooter({ form }: { form: Partial<PdfSettings> }) {
         {form.agency_logo_url && <img src={form.agency_logo_url} alt="Logo" className="h-[110px] object-contain" />}
         <div className="h-20 w-[2px] rounded-full" style={{ backgroundColor: accent + "66" }} />
         <div>
-          <div style={{ fontSize: (form.title_font_size ?? 32) * 1.3, color: form.title_color ?? "#FFF" }} className="font-bold">{form.agency_name || "Nome da Agência"}</div>
-          <div style={{ fontSize: (form.subtitle_font_size ?? 18) * 1.5, color: form.subtitle_color ?? "#AAA" }} className="mt-2">{form.footer_text || "Cronograma de Conteúdo"}</div>
-          <div style={{ fontSize: (form.card_caption_font_size ?? 11) * 1.6, color: form.subtitle_color ?? "#AAA" }} className="mt-2">{form.footer_contact || "@agencia • contato@agencia.com"}</div>
+          <div style={{ fontSize: (form.footer_title_font_size ?? 32) * 1.3, color: form.title_color ?? "#FFF" }} className="font-bold">{form.agency_name || "Nome da Agência"}</div>
+          <div style={{ fontSize: (form.footer_subtitle_font_size ?? 18) * 1.5, color: form.subtitle_color ?? "#AAA" }} className="mt-2">{form.footer_text || "Cronograma de Conteúdo"}</div>
+          <div style={{ fontSize: (form.footer_contact_font_size ?? 11) * 1.6, color: form.subtitle_color ?? "#AAA" }} className="mt-2">{form.footer_contact || "@agencia • contato@agencia.com"}</div>
         </div>
       </div>
     </div>
@@ -407,6 +421,13 @@ function CardsSettings({ form, setForm }: any) {
         <span className="text-[10px] text-muted-foreground">Fonte: <strong className="text-foreground">Bricolage Grotesque</strong> (Regular + Bold)</span>
       </div>
       <div>
+        <Label className="text-[10px] text-muted-foreground">Largura da imagem (%)</Label>
+        <div className="flex items-center gap-2 mt-1">
+          <Slider value={[form.card_image_width_pct ?? 45]} onValueChange={([v]: number[]) => setForm((p: any) => ({ ...p, card_image_width_pct: v }))} min={25} max={65} step={1} className="flex-1" />
+          <span className="text-xs font-mono w-10 text-right">{form.card_image_width_pct ?? 45}%</span>
+        </div>
+      </div>
+      <div>
         <Label className="text-[10px] text-muted-foreground">Título — tamanho</Label>
         <div className="flex items-center gap-2 mt-1">
           <Slider value={[form.card_font_size ?? 14]} onValueChange={([v]: number[]) => setForm((p: any) => ({ ...p, card_font_size: v }))} min={10} max={24} step={1} className="flex-1" />
@@ -463,22 +484,22 @@ function FooterSettings({ form, setForm, uploading, handleUploadAgencyLogo }: an
       <div>
         <Label className="text-[10px] text-muted-foreground">Nome da agência — tamanho</Label>
         <div className="flex items-center gap-2 mt-1">
-          <Slider value={[form.title_font_size ?? 32]} onValueChange={([v]: number[]) => setForm((p: any) => ({ ...p, title_font_size: v }))} min={18} max={54} step={1} className="flex-1" />
-          <span className="text-xs font-mono w-8 text-right">{form.title_font_size ?? 32}</span>
+          <Slider value={[form.footer_title_font_size ?? 32]} onValueChange={([v]: number[]) => setForm((p: any) => ({ ...p, footer_title_font_size: v }))} min={18} max={54} step={1} className="flex-1" />
+          <span className="text-xs font-mono w-8 text-right">{form.footer_title_font_size ?? 32}</span>
         </div>
       </div>
       <div>
         <Label className="text-[10px] text-muted-foreground">Texto padrão — tamanho</Label>
         <div className="flex items-center gap-2 mt-1">
-          <Slider value={[form.subtitle_font_size ?? 18]} onValueChange={([v]: number[]) => setForm((p: any) => ({ ...p, subtitle_font_size: v }))} min={10} max={34} step={1} className="flex-1" />
-          <span className="text-xs font-mono w-8 text-right">{form.subtitle_font_size ?? 18}</span>
+          <Slider value={[form.footer_subtitle_font_size ?? 18]} onValueChange={([v]: number[]) => setForm((p: any) => ({ ...p, footer_subtitle_font_size: v }))} min={10} max={34} step={1} className="flex-1" />
+          <span className="text-xs font-mono w-8 text-right">{form.footer_subtitle_font_size ?? 18}</span>
         </div>
       </div>
       <div>
         <Label className="text-[10px] text-muted-foreground">Contato — tamanho</Label>
         <div className="flex items-center gap-2 mt-1">
-          <Slider value={[form.card_caption_font_size ?? 11]} onValueChange={([v]: number[]) => setForm((p: any) => ({ ...p, card_caption_font_size: v }))} min={8} max={20} step={1} className="flex-1" />
-          <span className="text-xs font-mono w-8 text-right">{form.card_caption_font_size ?? 11}</span>
+          <Slider value={[form.footer_contact_font_size ?? 11]} onValueChange={([v]: number[]) => setForm((p: any) => ({ ...p, footer_contact_font_size: v }))} min={8} max={20} step={1} className="flex-1" />
+          <span className="text-xs font-mono w-8 text-right">{form.footer_contact_font_size ?? 11}</span>
         </div>
       </div>
     </div>

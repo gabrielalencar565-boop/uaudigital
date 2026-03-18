@@ -9,6 +9,7 @@ import { DatePickerInline } from "@/components/ui/date-picker";
 import { cn } from "@/lib/utils";
 import { POST_TYPE_META, type CronogramaPost } from "./types";
 import { SmartCaptionEditor } from "../SmartCaptionEditor";
+import { PmImageViewer } from "../PmImageViewer";
 
 interface Props {
   post: CronogramaPost & { all_attachment_urls?: string[] };
@@ -20,6 +21,8 @@ interface Props {
 export function PostDetailSidebar({ post, onClose, onUpdate, onRename }: Props) {
   const [editingField, setEditingField] = useState<string | null>(null);
   const [tempValue, setTempValue] = useState("");
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState(0);
 
   const meta = POST_TYPE_META[post.post_type ?? "post"] ?? POST_TYPE_META.post;
   const allImages = post.all_attachment_urls ?? [];
@@ -40,114 +43,149 @@ export function PostDetailSidebar({ post, onClose, onUpdate, onRename }: Props) 
     setEditingField(null);
   };
 
+  const openViewer = (index: number) => {
+    setViewerIndex(index);
+    setViewerOpen(true);
+  };
+
+  // Build images for the viewer
+  const viewerImages = isCarousel
+    ? allImages.map((url, i) => ({ url, name: `Página ${i + 1}` }))
+    : singleImg
+      ? [{ url: singleImg, name: post.title }]
+      : [];
+
   return (
-    <div className="w-full max-w-sm shrink-0 border border-border/30 rounded-2xl bg-card/60 backdrop-blur-sm p-4 space-y-4 animate-in slide-in-from-right-5 duration-200 overflow-y-auto max-h-[70vh]">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Instagram className="h-4 w-4 text-pink-500" />
-          <span className="text-[10px] font-semibold bg-muted px-2 py-0.5 rounded">Feed</span>
-        </div>
-        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose}>
-          <X className="h-3.5 w-3.5" />
-        </Button>
-      </div>
-
-      {/* Title — click to rename */}
-      <div>
-        {editingField === "title" ? (
-          <Input
-            autoFocus
-            value={tempValue}
-            onChange={(e) => setTempValue(e.target.value)}
-            onBlur={() => saveField("title")}
-            onKeyDown={(e) => e.key === "Enter" && saveField("title")}
-            className="text-lg font-bold h-9"
-          />
-        ) : (
-          <div
-            className="cursor-pointer group flex items-center gap-1 hover:text-primary transition-colors"
-            onClick={() => startEditing("title", post.title)}
-          >
-            <h3 className="text-lg font-bold">{post.title}</h3>
-            <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-60 transition-opacity shrink-0" />
+    <>
+      <div className="w-full max-w-sm shrink-0 border border-border/30 rounded-2xl bg-card/60 backdrop-blur-sm p-4 space-y-4 animate-in slide-in-from-right-5 duration-200 overflow-y-auto max-h-[70vh]">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Instagram className="h-4 w-4 text-pink-500" />
+            <span className="text-[10px] font-semibold bg-muted px-2 py-0.5 rounded">Feed</span>
           </div>
-        )}
-        {post.post_type && (
-          <Badge className={cn("text-[10px] mt-1", meta.color)}>
-            {meta.label}
-          </Badge>
-        )}
-      </div>
-
-      {/* Images — carousel shows in 3-col grid */}
-      {isCarousel ? (
-        <div className="space-y-2">
-          <p className="text-[10px] text-muted-foreground font-medium">{allImages.length} páginas</p>
-          <div className="grid grid-cols-3 gap-1 max-h-[320px] overflow-y-auto pr-1">
-            {allImages.map((url: string, i: number) => (
-              <img key={i} src={url} alt={`Página ${i + 1}`} className="w-full aspect-square rounded-lg object-cover" />
-            ))}
-          </div>
-        </div>
-      ) : singleImg ? (
-        <img src={singleImg} alt="" className="w-full rounded-xl object-cover aspect-square" />
-      ) : null}
-
-      {/* Date — click to edit */}
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <Calendar className="h-3.5 w-3.5 text-primary shrink-0" />
-          {editingField === "posting_date" ? (
-            <DatePickerInline
-              value={tempValue}
-              onChange={(v) => { onUpdate("posting_date", v || null); setEditingField(null); }}
-            />
-          ) : (
-            <div
-              className="flex-1 text-sm cursor-pointer group flex items-center gap-1 hover:text-primary transition-colors"
-              onClick={() => startEditing("posting_date", post.posting_date ?? "")}
-            >
-              <span>{post.posting_date ? format(parseISO(post.posting_date), "dd/MM/yyyy", { locale: ptBR }) : "Sem data"}</span>
-              <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-60 transition-opacity" />
-            </div>
-          )}
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose}>
+            <X className="h-3.5 w-3.5" />
+          </Button>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Clock className="h-3.5 w-3.5 text-primary shrink-0" />
-          {editingField === "posting_time" ? (
+        {/* Title — click to rename */}
+        <div>
+          {editingField === "title" ? (
             <Input
-              type="time"
               autoFocus
               value={tempValue}
               onChange={(e) => setTempValue(e.target.value)}
-              onBlur={() => saveField("posting_time")}
-              onKeyDown={(e) => e.key === "Enter" && saveField("posting_time")}
-              className="h-7 text-xs flex-1"
+              onBlur={() => saveField("title")}
+              onKeyDown={(e) => e.key === "Enter" && saveField("title")}
+              className="text-lg font-bold h-9"
             />
           ) : (
             <div
-              className="flex-1 text-sm cursor-pointer group flex items-center gap-1 hover:text-primary transition-colors"
-              onClick={() => startEditing("posting_time", post.posting_time ?? "")}
+              className="cursor-pointer group flex items-center gap-1 hover:text-primary transition-colors"
+              onClick={() => startEditing("title", post.title)}
             >
-              <span>{post.posting_time || "Sem horário"}</span>
-              <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-60 transition-opacity" />
+              <h3 className="text-lg font-bold">{post.title}</h3>
+              <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-60 transition-opacity shrink-0" />
             </div>
           )}
+          {post.post_type && (
+            <Badge className={cn("text-[10px] mt-1", meta.color)}>
+              {meta.label}
+            </Badge>
+          )}
+        </div>
+
+        {/* Images — carousel shows in 3-col grid, clickable to enlarge */}
+        {isCarousel ? (
+          <div className="space-y-2">
+            <p className="text-[10px] text-muted-foreground font-medium">{allImages.length} páginas</p>
+            <div className="grid grid-cols-3 gap-1 max-h-[320px] overflow-y-auto pr-1">
+              {allImages.map((url: string, i: number) => (
+                <img
+                  key={i}
+                  src={url}
+                  alt={`Página ${i + 1}`}
+                  className="w-full aspect-square rounded-lg object-cover cursor-pointer hover:opacity-80 transition-opacity hover:ring-2 hover:ring-primary/50"
+                  onClick={() => openViewer(i)}
+                />
+              ))}
+            </div>
+          </div>
+        ) : singleImg ? (
+          <img
+            src={singleImg}
+            alt=""
+            className="w-full rounded-xl object-cover aspect-square cursor-pointer hover:opacity-80 transition-opacity hover:ring-2 hover:ring-primary/50"
+            onClick={() => openViewer(0)}
+          />
+        ) : null}
+
+        {/* Date — click to edit */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-3.5 w-3.5 text-primary shrink-0" />
+            {editingField === "posting_date" ? (
+              <DatePickerInline
+                value={tempValue}
+                onChange={(v) => { onUpdate("posting_date", v || null); setEditingField(null); }}
+              />
+            ) : (
+              <div
+                className="flex-1 text-sm cursor-pointer group flex items-center gap-1 hover:text-primary transition-colors"
+                onClick={() => startEditing("posting_date", post.posting_date ?? "")}
+              >
+                <span>{post.posting_date ? format(parseISO(post.posting_date), "dd/MM/yyyy", { locale: ptBR }) : "Sem data"}</span>
+                <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-60 transition-opacity" />
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Clock className="h-3.5 w-3.5 text-primary shrink-0" />
+            {editingField === "posting_time" ? (
+              <Input
+                type="time"
+                autoFocus
+                value={tempValue}
+                onChange={(e) => setTempValue(e.target.value)}
+                onBlur={() => saveField("posting_time")}
+                onKeyDown={(e) => e.key === "Enter" && saveField("posting_time")}
+                className="h-7 text-xs flex-1"
+              />
+            ) : (
+              <div
+                className="flex-1 text-sm cursor-pointer group flex items-center gap-1 hover:text-primary transition-colors"
+                onClick={() => startEditing("posting_time", post.posting_time ?? "")}
+              >
+                <span>{post.posting_time || "Sem horário"}</span>
+                <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-60 transition-opacity" />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Caption — auto-save with AI */}
+        <div>
+          <h4 className="text-xs font-bold mb-1">Legenda:</h4>
+          <SmartCaptionEditor
+            value={post.caption ?? ""}
+            onChange={(val) => onUpdate("caption", val || null)}
+            placeholder="Escreva a legenda..."
+            className="text-xs"
+            minHeight="80px"
+          />
         </div>
       </div>
 
-      {/* Caption — auto-save with AI */}
-      <div>
-        <h4 className="text-xs font-bold mb-1">Legenda:</h4>
-        <SmartCaptionEditor
-          value={post.caption ?? ""}
-          onChange={(val) => onUpdate("caption", val || null)}
-          placeholder="Escreva a legenda..."
-          className="text-xs"
-          minHeight="80px"
+      {/* Image Viewer */}
+      {viewerImages.length > 0 && (
+        <PmImageViewer
+          images={viewerImages}
+          initialIndex={viewerIndex}
+          open={viewerOpen}
+          onClose={() => setViewerOpen(false)}
         />
-      </div>
-    </div>
+      )}
+    </>
   );
 }

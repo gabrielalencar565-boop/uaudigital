@@ -30,6 +30,159 @@ function SpecialDatesBadges({ dates }: { dates: import("@/features/agenda/hooks/
   );
 }
 
+/* ─── Mobile Day Card ─── */
+function MobileDayCard({ day, dayPosts, specialDates, selectedPost, onSelectPost }: {
+  day: Date;
+  dayPosts: CronogramaViewProps["posts"];
+  specialDates: import("@/features/agenda/hooks/use-agenda-dates").SpecialDate[];
+  selectedPost: CronogramaViewProps["selectedPost"];
+  onSelectPost: CronogramaViewProps["onSelectPost"];
+}) {
+  const key = format(day, "yyyy-MM-dd");
+  const isToday = isSameDay(day, new Date());
+
+  return (
+    <div className={cn(
+      "rounded-xl border p-3 space-y-2",
+      isToday ? "border-primary/40 bg-primary/5" : "border-border/30 bg-card/20"
+    )}>
+      <div className="flex items-center gap-2">
+        <span className={cn("text-sm font-bold", isToday && "text-primary")}>
+          {format(day, "dd")}
+        </span>
+        <span className="text-xs text-muted-foreground capitalize">
+          {format(day, "EEEE", { locale: ptBR })}
+        </span>
+      </div>
+      {specialDates.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          <SpecialDatesBadges dates={specialDates} />
+        </div>
+      )}
+      {dayPosts.map(post => {
+        const meta = POST_TYPE_META[post.post_type ?? "post"] ?? POST_TYPE_META.post;
+        const Icon = meta.icon;
+        const imgUrl = post.attachment_url || post.cover_url;
+        const isSelected = selectedPost?.id === post.id;
+
+        return (
+          <div
+            key={post.id}
+            className={cn(
+              "rounded-lg border p-2 transition-all",
+              isSelected ? "ring-2 ring-primary border-primary/40" : "border-border/30",
+            )}
+            onClick={() => onSelectPost(post)}
+          >
+            <div className="flex items-center gap-2">
+              {imgUrl && (
+                <img src={imgUrl} alt="" className="h-10 w-10 rounded object-cover shrink-0" />
+              )}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <Icon className="h-3 w-3 shrink-0" />
+                  <span className="text-xs font-medium truncate">{post.title}</span>
+                </div>
+                {post.posting_time && (
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <Clock className="h-2.5 w-2.5 text-muted-foreground" />
+                    <span className="text-[10px] text-muted-foreground">{post.posting_time}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ─── Desktop Day Cell ─── */
+function DesktopDayCell({ day, dayPosts, specialDates, selectedPost, onSelectPost, isDragOver, onDragOver, onDragLeave, onDrop, onDragStart }: {
+  day: Date;
+  dayPosts: CronogramaViewProps["posts"];
+  specialDates: import("@/features/agenda/hooks/use-agenda-dates").SpecialDate[];
+  selectedPost: CronogramaViewProps["selectedPost"];
+  onSelectPost: CronogramaViewProps["onSelectPost"];
+  isDragOver: boolean;
+  onDragOver: (e: React.DragEvent) => void;
+  onDragLeave: () => void;
+  onDrop: (e: React.DragEvent) => void;
+  onDragStart: (postId: string) => void;
+}) {
+  const key = format(day, "yyyy-MM-dd");
+  const isToday = isSameDay(day, new Date());
+  const hasSelected = selectedPost?.posting_date === key;
+
+  return (
+    <div
+      className={cn(
+        "min-h-24 rounded-xl border p-1.5 transition-all cursor-pointer",
+        dayPosts.length > 0 ? "border-primary/30 bg-primary/5 hover:border-primary/60" : "border-border/20 bg-card/20",
+        isToday && "ring-2 ring-primary/20",
+        hasSelected && "ring-2 ring-primary",
+        isDragOver && "border-primary ring-2 ring-primary/30 bg-primary/10",
+      )}
+      onClick={() => dayPosts.length > 0 && onSelectPost(dayPosts[0])}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+    >
+      <div className={cn("text-[10px] font-bold mb-1", isToday ? "text-primary" : "text-muted-foreground/60")}>
+        {format(day, "d")}
+      </div>
+      {specialDates.length > 0 && (
+        <div className="flex flex-wrap gap-0.5 mb-1">
+          <SpecialDatesBadges dates={specialDates} />
+        </div>
+      )}
+      <div className="space-y-1">
+        {dayPosts.map(post => {
+          const meta = POST_TYPE_META[post.post_type ?? "post"] ?? POST_TYPE_META.post;
+          const Icon = meta.icon;
+          const imgUrl = post.attachment_url || post.cover_url;
+          const isSelected = selectedPost?.id === post.id;
+
+          return (
+            <div
+              key={post.id}
+              draggable
+              onDragStart={() => onDragStart(post.id)}
+              className={cn(
+                "rounded-lg border p-1 cursor-grab active:cursor-grabbing transition-all hover:scale-[1.02]",
+                isSelected ? "ring-1 ring-primary border-primary/40" : "border-border/30",
+                meta.color.includes("pink") ? "bg-pink-500/5" :
+                meta.color.includes("blue") ? "bg-blue-500/5" :
+                meta.color.includes("emerald") ? "bg-emerald-500/5" : "bg-amber-500/5"
+              )}
+              onClick={(e) => { e.stopPropagation(); onSelectPost(post); }}
+            >
+              {imgUrl ? (
+                <img src={imgUrl} alt="" className="w-full aspect-[4/3] rounded object-cover mb-0.5" />
+              ) : (
+                <div className="w-full aspect-[4/3] rounded bg-muted/30 flex items-center justify-center mb-0.5">
+                  <Icon className="h-4 w-4 text-muted-foreground/40" />
+                </div>
+              )}
+              <div className="flex items-center gap-1">
+                <Icon className="h-2.5 w-2.5 shrink-0" />
+                <span className="text-[8px] font-medium truncate">{post.title}</span>
+              </div>
+              {post.posting_time && (
+                <div className="flex items-center gap-0.5 mt-0.5">
+                  <Clock className="h-2 w-2 text-muted-foreground" />
+                  <span className="text-[7px] text-muted-foreground">{post.posting_time}</span>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function MonthlyView({ posts, selectedPost, onSelectPost, onDateChange }: CronogramaViewProps) {
   const isMobile = useIsMobile();
   const [cursor, setCursor] = useState(() => {
@@ -96,63 +249,15 @@ export function MonthlyView({ posts, selectedPost, onSelectPost, onDateChange }:
 
         {daysWithPosts.map(day => {
           const key = format(day, "yyyy-MM-dd");
-          const dayPosts = postsByDay.get(key) ?? [];
-          const isToday = isSameDay(day, new Date());
-
           return (
-            <div key={key} className={cn(
-              "rounded-xl border p-3 space-y-2",
-              isToday ? "border-primary/40 bg-primary/5" : "border-border/30 bg-card/20"
-            )}>
-              <div className="flex items-center gap-2">
-                <span className={cn("text-sm font-bold", isToday && "text-primary")}>
-                  {format(day, "dd")}
-                </span>
-                <span className="text-xs text-muted-foreground capitalize">
-                  {format(day, "EEEE", { locale: ptBR })}
-                </span>
-              </div>
-              {(specialDatesMap?.get(key) ?? []).length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  <SpecialDatesBadges dates={specialDatesMap!.get(key)!} />
-                </div>
-              )}
-              {dayPosts.map(post => {
-                const meta = POST_TYPE_META[post.post_type ?? "post"] ?? POST_TYPE_META.post;
-                const Icon = meta.icon;
-                const imgUrl = post.attachment_url || post.cover_url;
-                const isSelected = selectedPost?.id === post.id;
-
-                return (
-                  <div
-                    key={post.id}
-                    className={cn(
-                      "rounded-lg border p-2 transition-all",
-                      isSelected ? "ring-2 ring-primary border-primary/40" : "border-border/30",
-                    )}
-                    onClick={() => onSelectPost(post)}
-                  >
-                    <div className="flex items-center gap-2">
-                      {imgUrl && (
-                        <img src={imgUrl} alt="" className="h-10 w-10 rounded object-cover shrink-0" />
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <Icon className="h-3 w-3 shrink-0" />
-                          <span className="text-xs font-medium truncate">{post.title}</span>
-                        </div>
-                        {post.posting_time && (
-                          <div className="flex items-center gap-1 mt-0.5">
-                            <Clock className="h-2.5 w-2.5 text-muted-foreground" />
-                            <span className="text-[10px] text-muted-foreground">{post.posting_time}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <MobileDayCard
+              key={key}
+              day={day}
+              dayPosts={postsByDay.get(key) ?? []}
+              specialDates={specialDatesMap?.get(key) ?? []}
+              selectedPost={selectedPost}
+              onSelectPost={onSelectPost}
+            />
           );
         })}
       </div>
@@ -184,77 +289,20 @@ export function MonthlyView({ posts, selectedPost, onSelectPost, onDateChange }:
         {Array.from({ length: days[0].getDay() }).map((_, i) => <div key={`b-${i}`} className="min-h-24" />)}
         {days.map(day => {
           const key = format(day, "yyyy-MM-dd");
-          const dayPosts = postsByDay.get(key) ?? [];
-          const isToday = isSameDay(day, new Date());
-          const hasSelected = selectedPost?.posting_date === key;
-          const isDragOver = dragOverDay === key;
-
           return (
-            <div
+            <DesktopDayCell
               key={key}
-              className={cn(
-                "min-h-24 rounded-xl border p-1.5 transition-all cursor-pointer",
-                dayPosts.length > 0 ? "border-primary/30 bg-primary/5 hover:border-primary/60" : "border-border/20 bg-card/20",
-                isToday && "ring-2 ring-primary/20",
-                hasSelected && "ring-2 ring-primary",
-                isDragOver && "border-primary ring-2 ring-primary/30 bg-primary/10",
-              )}
-              onClick={() => dayPosts.length > 0 && onSelectPost(dayPosts[0])}
+              day={day}
+              dayPosts={postsByDay.get(key) ?? []}
+              specialDates={specialDatesMap?.get(key) ?? []}
+              selectedPost={selectedPost}
+              onSelectPost={onSelectPost}
+              isDragOver={dragOverDay === key}
               onDragOver={(e) => { e.preventDefault(); setDragOverDay(key); }}
               onDragLeave={() => setDragOverDay(null)}
               onDrop={(e) => { e.preventDefault(); handleDrop(key); }}
-            >
-              <div className={cn("text-[10px] font-bold mb-1", isToday ? "text-primary" : "text-muted-foreground/60")}>
-                {format(day, "d")}
-              </div>
-              {(specialDatesMap?.get(key) ?? []).length > 0 && (
-                <div className="flex flex-wrap gap-0.5 mb-1">
-                  <SpecialDatesBadges dates={specialDatesMap!.get(key)!} />
-                </div>
-              )}
-              <div className="space-y-1">
-                {dayPosts.map(post => {
-                  const meta = POST_TYPE_META[post.post_type ?? "post"] ?? POST_TYPE_META.post;
-                  const Icon = meta.icon;
-                  const imgUrl = post.attachment_url || post.cover_url;
-                  const isSelected = selectedPost?.id === post.id;
-
-                  return (
-                    <div
-                      key={post.id}
-                      draggable
-                      onDragStart={() => handleDragStart(post.id)}
-                      className={cn(
-                        "rounded-lg border p-1 cursor-grab active:cursor-grabbing transition-all hover:scale-[1.02]",
-                        isSelected ? "ring-1 ring-primary border-primary/40" : "border-border/30",
-                        meta.color.includes("pink") ? "bg-pink-500/5" :
-                        meta.color.includes("blue") ? "bg-blue-500/5" :
-                        meta.color.includes("emerald") ? "bg-emerald-500/5" : "bg-amber-500/5"
-                      )}
-                      onClick={(e) => { e.stopPropagation(); onSelectPost(post); }}
-                    >
-                      {imgUrl ? (
-                        <img src={imgUrl} alt="" className="w-full aspect-[4/3] rounded object-cover mb-0.5" />
-                      ) : (
-                        <div className="w-full aspect-[4/3] rounded bg-muted/30 flex items-center justify-center mb-0.5">
-                          <Icon className="h-4 w-4 text-muted-foreground/40" />
-                        </div>
-                      )}
-                      <div className="flex items-center gap-1">
-                        <Icon className="h-2.5 w-2.5 shrink-0" />
-                        <span className="text-[8px] font-medium truncate">{post.title}</span>
-                      </div>
-                      {post.posting_time && (
-                        <div className="flex items-center gap-0.5 mt-0.5">
-                          <Clock className="h-2 w-2 text-muted-foreground" />
-                          <span className="text-[7px] text-muted-foreground">{post.posting_time}</span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+              onDragStart={handleDragStart}
+            />
           );
         })}
       </div>
