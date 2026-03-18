@@ -27,6 +27,7 @@ export function PdfLayoutEditor() {
   const [form, setForm] = useState<Partial<PdfSettings>>({});
   const [selectedBlock, setSelectedBlock] = useState<BlockId>("cover");
   const [previewPageIndex, setPreviewPageIndex] = useState(0);
+  const [fullPreview, setFullPreview] = useState(false);
 
   useEffect(() => {
     if (settingsQ.data) setForm(settingsQ.data);
