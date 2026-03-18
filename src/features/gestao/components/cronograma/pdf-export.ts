@@ -588,7 +588,7 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
 
   let hasPage = false;
   const ensurePage = () => {
-    if (hasPage) doc.addPage("a4", "landscape");
+    if (hasPage) doc.addPage([pageW, pageH], "landscape");
     hasPage = true;
   };
 

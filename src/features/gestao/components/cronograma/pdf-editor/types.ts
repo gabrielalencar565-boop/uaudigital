@@ -67,8 +67,8 @@ export const DEFAULT_LAYOUT_POINTS: Record<string, LayoutPoint> = {
   footer_group: { x: 50, y: 50 },
 };
 
-export const PDF_W = 1684;
-export const PDF_H = 1190;
+export const PDF_W = 1920;
+export const PDF_H = 1080;
 
 export function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
