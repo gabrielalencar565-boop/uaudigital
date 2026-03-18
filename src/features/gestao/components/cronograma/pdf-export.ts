@@ -37,6 +37,12 @@ export interface PdfExportSettings {
   footer_subtitle_font_size?: number | null;
   footer_contact_font_size?: number | null;
   card_image_width_pct?: number | null;
+  carousel_cols?: number | null;
+  carousel_rows?: number | null;
+  carousel_title_font_size?: number | null;
+  carousel_caption_font_size?: number | null;
+  carousel_date_font_size?: number | null;
+  carousel_image_height_pct?: number | null;
 }
 
 export interface PdfExportPost {
