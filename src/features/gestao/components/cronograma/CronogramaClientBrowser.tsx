@@ -407,7 +407,8 @@ export function CronogramaClientBrowser({ tasks, childTasksMap, clientsMap, memb
                 post={resolvedSelected}
                 onClose={() => setSelectedPost(null)}
                 onUpdate={handleUpdatePost}
-                onRename={handleRenamePost} /> :
+                onRename={handleRenamePost}
+                clientName={selectedClientName} /> :
 
 
               <div className="rounded-2xl border bg-card/40 backdrop-blur-sm p-6 flex flex-col items-center justify-center min-h-[400px] text-center border-[#d9d9d9]">
