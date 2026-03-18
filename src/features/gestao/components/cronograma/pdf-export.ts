@@ -475,7 +475,10 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
 
       const bgImage = await getCachedImage(form.background_image_url);
       if (bgImage) {
-        addPdfImage(doc, bgImage, 0, 0, pageW, pageH);
+        const coveredBg = await renderFittedImage(bgImage.dataUrl, pageW, pageH, 0, { fitMode: "cover" });
+        if (coveredBg) {
+          addPdfImage(doc, { dataUrl: coveredBg, format: "PNG" }, 0, 0, pageW, pageH);
+        }
       }
 
       const coverLogo = await getCachedImage(form.cover_logo_url);
