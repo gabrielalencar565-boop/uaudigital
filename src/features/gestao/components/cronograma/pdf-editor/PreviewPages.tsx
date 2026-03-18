@@ -250,8 +250,9 @@ export function PreviewFooter({ form, editable, onMoveNode }: PreviewProps) {
 }
 
 /* ─── Scaled preview wrapper ─── */
-const CANVAS_PAD = 28;
-const PDF_ASPECT = PDF_H / PDF_W; // ≈ 0.707
+const CANVAS_PAD = 24;
+// Max canvas height per page card — ensures the full page is visible without scrolling within the card
+const MAX_CANVAS_H = 420;
 
 export function ScaledPreview({ children, label, pageNum, isSelected, onClick }: {
   children: React.ReactNode; label: string; pageNum: number; isSelected: boolean; onClick: () => void;
@@ -263,11 +264,13 @@ export function ScaledPreview({ children, label, pageNum, isSelected, onClick }:
     if (!containerEl) return;
 
     const update = () => {
-      // Scale to fit the available WIDTH only (the height follows automatically)
       const availW = containerEl.clientWidth - CANVAS_PAD * 2;
       if (availW <= 0) return;
-      const fitScale = availW / PDF_W;
-      setScale(Math.max(0.1, Math.min(1, fitScale)));
+      const maxInnerH = MAX_CANVAS_H - CANVAS_PAD * 2;
+      // Fit to the smaller of width or height constraint
+      const fitW = availW / PDF_W;
+      const fitH = maxInnerH / PDF_H;
+      setScale(Math.max(0.08, Math.min(1, Math.min(fitW, fitH))));
     };
 
     const ro = new ResizeObserver(update);
@@ -276,7 +279,6 @@ export function ScaledPreview({ children, label, pageNum, isSelected, onClick }:
     return () => ro.disconnect();
   }, [containerEl]);
 
-  // The wrapper height is derived from scale — no circular dependency
   const canvasH = PDF_H * scale + CANVAS_PAD * 2;
 
   return (
