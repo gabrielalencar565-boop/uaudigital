@@ -403,6 +403,9 @@ function CoverSettings({ form, setForm, uploading, handleUploadBg, handleUploadL
 function CardsSettings({ form, setForm }: any) {
   return (
     <div className="space-y-3">
+      <div className="px-2 py-1.5 rounded-lg bg-muted/30 border border-border/20">
+        <span className="text-[10px] text-muted-foreground">Fonte: <strong className="text-foreground">Bricolage Grotesque</strong> (Regular + Bold)</span>
+      </div>
       <div>
         <Label className="text-[10px] text-muted-foreground">Título — tamanho</Label>
         <div className="flex items-center gap-2 mt-1">
