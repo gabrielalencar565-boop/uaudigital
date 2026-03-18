@@ -118,6 +118,6 @@ export function startDrag(
 export const LAYOUT_KEYS_BY_BLOCK: Record<BlockId, string[]> = {
   cover: ["cover_title", "cover_subtitle"],
   cards: ["cards_info", "cards_title", "cards_caption", "cards_date", "cards_time"],
-  carousel: ["carousel_info"],
+  carousel: ["carousel_info", "carousel_title", "carousel_caption", "carousel_date", "carousel_time"],
   footer: ["footer_group"],
 };
