@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { ArrowLeft, Save, Download, Eye, ChevronLeft, ChevronRight } from "lucide-react";
+import { Save, FileDown, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -11,6 +11,13 @@ import { EditorSidebar } from "./EditorSidebar";
 import {
   PreviewCover, PreviewPostPage, PreviewCarouselPage, PreviewFooter, ScaledPreview
 } from "./PreviewPages";
+
+const BLOCK_LABELS: Record<BlockId, string> = {
+  cover: "Capa",
+  cards: "Posts",
+  carousel: "Carrossel",
+  footer: "Rodapé",
+};
 
 export function PdfLayoutEditor() {
   const settingsQ = usePdfSettings();
@@ -27,9 +34,8 @@ export function PdfLayoutEditor() {
     (b): b is BlockId => ALL_BLOCKS.includes(b as BlockId)
   );
   if (!blocksOrder.includes("carousel")) blocksOrder.splice(Math.max(blocksOrder.indexOf("cards") + 1, 1), 0, "carousel");
-  
-  const blocksEnabled = { cover: true, cards: true, carousel: true, footer: true, ...(form.blocks_enabled ?? {}) } as Record<BlockId, boolean>;
 
+  const blocksEnabled = { cover: true, cards: true, carousel: true, footer: true, ...(form.blocks_enabled ?? {}) } as Record<BlockId, boolean>;
   const enabledBlocks = blocksOrder.filter(b => blocksEnabled[b]);
 
   const handleSave = () => {
@@ -103,25 +109,25 @@ export function PdfLayoutEditor() {
     switch (blockId) {
       case "cover":
         return (
-          <ScaledPreview key="cover" label="Capa" isSelected={editable} onClick={() => setSelectedBlock("cover")}>
+          <ScaledPreview key="cover" label="Capa" pageNum={enabledBlocks.indexOf("cover") + 1} isSelected={editable} onClick={() => setSelectedBlock("cover")}>
             <PreviewCover form={form} editable={editable} onMoveNode={moveLayoutNode} />
           </ScaledPreview>
         );
       case "cards":
         return (
-          <ScaledPreview key="cards" label="Post padrão" isSelected={editable} onClick={() => setSelectedBlock("cards")}>
+          <ScaledPreview key="cards" label="Post padrão" pageNum={enabledBlocks.indexOf("cards") + 1} isSelected={editable} onClick={() => setSelectedBlock("cards")}>
             <PreviewPostPage form={form} editable={editable} onMoveNode={moveLayoutNode} index={0} onResizeImage={nudgeCardImageWidth} />
           </ScaledPreview>
         );
       case "carousel":
         return (
-          <ScaledPreview key="carousel" label={`Carrossel (${form.carousel_cols ?? 4}×${form.carousel_rows ?? 2})`} isSelected={editable} onClick={() => setSelectedBlock("carousel")}>
+          <ScaledPreview key="carousel" label={`Carrossel (${form.carousel_cols ?? 4}×${form.carousel_rows ?? 2})`} pageNum={enabledBlocks.indexOf("carousel") + 1} isSelected={editable} onClick={() => setSelectedBlock("carousel")}>
             <PreviewCarouselPage form={form} editable={editable} onMoveNode={moveLayoutNode} />
           </ScaledPreview>
         );
       case "footer":
         return (
-          <ScaledPreview key="footer" label="Rodapé" isSelected={editable} onClick={() => setSelectedBlock("footer")}>
+          <ScaledPreview key="footer" label="Rodapé" pageNum={enabledBlocks.indexOf("footer") + 1} isSelected={editable} onClick={() => setSelectedBlock("footer")}>
             <PreviewFooter form={form} editable={editable} onMoveNode={moveLayoutNode} />
           </ScaledPreview>
         );
@@ -129,27 +135,35 @@ export function PdfLayoutEditor() {
   };
 
   return (
-    <div className="rounded-2xl border border-border/20 bg-card/30 backdrop-blur-sm overflow-hidden" style={{ animation: "fadeUp 0.6s ease-out forwards" }}>
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border/20 bg-card/50">
-        <div className="flex items-center gap-3">
+    <div className="rounded-2xl border border-border/30 bg-card/40 backdrop-blur-sm overflow-hidden" style={{ animation: "fadeUp 0.6s ease-out forwards" }}>
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/20 bg-card/60">
+        <div className="flex items-center gap-4">
           <div>
-            <h3 className="text-sm font-bold">Editor de Layout PDF</h3>
-            <p className="text-[10px] text-muted-foreground">A4 Paisagem • Arraste elementos na prévia para reposicionar</p>
+            <h3 className="text-sm font-bold tracking-tight">Editor de Layout PDF</h3>
+            <p className="text-[11px] text-muted-foreground mt-0.5">A4 Paisagem · Arraste elementos para reposicionar</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="rounded-xl h-8 text-xs gap-1.5" onClick={handleSave} disabled={updateSettings.isPending}>
+          <Button variant="ghost" size="sm" className="rounded-xl h-8 text-xs gap-1.5 text-muted-foreground hover:text-foreground">
+            <Eye className="h-3.5 w-3.5" />
+            Pré-visualizar
+          </Button>
+          <Button variant="outline" size="sm" className="rounded-xl h-8 text-xs gap-1.5">
+            <FileDown className="h-3.5 w-3.5" />
+            Exportar PDF
+          </Button>
+          <Button size="sm" className="rounded-xl h-8 text-xs gap-1.5" onClick={handleSave} disabled={updateSettings.isPending}>
             <Save className="h-3.5 w-3.5" />
             {updateSettings.isPending ? "Salvando..." : "Salvar"}
           </Button>
         </div>
       </div>
 
-      {/* Main layout: sidebar + preview */}
-      <div className="flex" style={{ height: "calc(100vh - 220px)", minHeight: 500 }}>
+      {/* ── Body: sidebar + canvas ── */}
+      <div className="flex" style={{ height: "calc(100vh - 220px)", minHeight: 520 }}>
         {/* Sidebar */}
-        <div className="w-64 shrink-0">
+        <div className="w-[272px] shrink-0">
           <EditorSidebar
             form={form}
             setForm={setForm}
@@ -165,35 +179,35 @@ export function PdfLayoutEditor() {
           />
         </div>
 
-        {/* Preview area */}
-        <div className="flex-1 min-w-0 bg-muted/10">
+        {/* Canvas area */}
+        <div className="flex-1 min-w-0 bg-muted/5">
           <ScrollArea className="h-full">
-            <div className="p-6 space-y-4">
-              {/* Page navigation */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+            <div className="px-8 py-6">
+              {/* Page tab bar */}
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-1.5 p-1 rounded-xl bg-muted/20 border border-border/10">
                   {enabledBlocks.map((blockId, i) => (
                     <button
                       key={blockId}
                       onClick={() => { setSelectedBlock(blockId); setPreviewPageIndex(i); }}
                       className={cn(
-                        "px-3 py-1 rounded-lg text-[10px] font-semibold transition-all",
+                        "px-3.5 py-1.5 rounded-lg text-[11px] font-medium transition-all",
                         selectedBlock === blockId
                           ? "bg-primary text-primary-foreground shadow-sm"
-                          : "bg-muted/30 text-muted-foreground hover:bg-muted/50"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
                       )}
                     >
-                      {i + 1}. {blockId === "cover" ? "Capa" : blockId === "cards" ? "Posts" : blockId === "carousel" ? "Carrossel" : "Rodapé"}
+                      {BLOCK_LABELS[blockId]}
                     </button>
                   ))}
                 </div>
-                <span className="text-[10px] text-muted-foreground">
-                  {enabledBlocks.length} páginas ativas
+                <span className="text-[11px] text-muted-foreground tabular-nums">
+                  {enabledBlocks.length} {enabledBlocks.length === 1 ? "página" : "páginas"}
                 </span>
               </div>
 
-              {/* Preview blocks */}
-              <div className="space-y-4">
+              {/* Preview pages */}
+              <div className="space-y-6">
                 {enabledBlocks.map((blockId) => renderPreviewBlock(blockId))}
               </div>
             </div>
