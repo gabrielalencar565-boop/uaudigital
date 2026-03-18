@@ -207,12 +207,17 @@ export function CronogramaClientBrowser({ tasks, childTasksMap, clientsMap, memb
       return;
     }
 
-    await downloadCronogramaPdf({
-      clientName: selectedClientName,
-      posts: scheduledPosts,
-      settings: (data ?? null) as PdfExportSettings | null,
-    });
-    toast.success("PDF baixado com sucesso!");
+    try {
+      await downloadCronogramaPdf({
+        clientName: selectedClientName,
+        posts: scheduledPosts,
+        settings: (data ?? null) as PdfExportSettings | null,
+      });
+      toast.success("PDF baixado com sucesso!");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Falha ao gerar o PDF.";
+      toast.error(message);
+    }
   };
 
   const handleUpdatePost = (field: string, value: string | null) => {
