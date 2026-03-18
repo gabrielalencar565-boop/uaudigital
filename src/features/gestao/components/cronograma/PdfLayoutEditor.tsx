@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import {
   Palette, Save, Upload, GripVertical,
   Eye, EyeOff, ChevronUp, ChevronDown, FileText, Image,
-  CreditCard, LayoutGrid
+  CreditCard, LayoutGrid, Layers
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -45,13 +45,20 @@ interface PdfSettings {
   footer_subtitle_font_size: number;
   footer_contact_font_size: number;
   card_image_width_pct: number;
+  carousel_cols: number;
+  carousel_rows: number;
+  carousel_title_font_size: number;
+  carousel_caption_font_size: number;
+  carousel_date_font_size: number;
+  carousel_image_height_pct: number;
 }
 
-type BlockId = "cover" | "cards" | "footer";
+type BlockId = "cover" | "cards" | "carousel" | "footer";
 
 const BLOCK_META: Record<BlockId, { label: string; icon: React.ReactNode; description: string }> = {
   cover: { label: "Capa", icon: <Image className="h-4 w-4" />, description: "Logo, título, mês e imagem de fundo" },
   cards: { label: "Páginas de Posts", icon: <CreditCard className="h-4 w-4" />, description: "Cada postagem em página individual" },
+  carousel: { label: "Carrossel", icon: <Layers className="h-4 w-4" />, description: "Layout de grade para posts carrossel" },
   footer: { label: "Rodapé", icon: <FileText className="h-4 w-4" />, description: "Logo da agência, contato e redes" },
 };
 
@@ -69,6 +76,12 @@ function usePdfSettings() {
         footer_subtitle_font_size: data.footer_subtitle_font_size ?? 18,
         footer_contact_font_size: data.footer_contact_font_size ?? 11,
         card_image_width_pct: data.card_image_width_pct ?? 45,
+        carousel_cols: data.carousel_cols ?? 4,
+        carousel_rows: data.carousel_rows ?? 2,
+        carousel_title_font_size: data.carousel_title_font_size ?? 14,
+        carousel_caption_font_size: data.carousel_caption_font_size ?? 11,
+        carousel_date_font_size: data.carousel_date_font_size ?? 12,
+        carousel_image_height_pct: data.carousel_image_height_pct ?? 65,
       };
     },
   });
@@ -200,74 +213,68 @@ function PreviewPostPage({ form, index }: { form: Partial<PdfSettings>; index: n
   );
 }
 
-/* ─── Preview: Carousel Page ─── */
+/* ─── Preview: Carousel Page (grid top, info bottom) ─── */
 function PreviewCarouselPage({ form }: { form: Partial<PdfSettings> }) {
   const bg = form.background_color ?? "#0B0D12";
   const accent = form.accent_color ?? "#7C5CFF";
   const titleColor = form.title_color ?? "#FFFFFF";
   const subtitleColor = form.subtitle_color ?? "#AAAAAA";
   const margin = form.margin_size ?? 60;
-  const imgPct = form.card_image_width_pct ?? 45;
-  const COLS = 3;
-  const imgGap = 20;
+  const COLS = form.carousel_cols ?? 4;
+  const ROWS = form.carousel_rows ?? 2;
+  const imgGap = 12;
   const contentW = PDF_W - margin * 2;
   const contentH = PDF_H - margin * 2;
-  const imageW = contentW * (imgPct / 100);
-  const textW = contentW - imageW - 40;
-  const colW = (imageW - imgGap * (COLS - 1)) / COLS;
-  const ROWS = 2;
-  const rowH = (contentH - imgGap * (ROWS - 1)) / ROWS;
+  const imgHeightPct = (form.carousel_image_height_pct ?? 65) / 100;
+  const gridH = contentH * imgHeightPct;
+  const infoY = gridH + 20;
+
+  const gridColW = (contentW - imgGap * (COLS - 1)) / COLS;
+  const gridRowH = (gridH - imgGap * (ROWS - 1)) / ROWS;
+  const totalCells = COLS * ROWS;
 
   return (
     <div className="relative overflow-hidden" style={{ width: PDF_W, height: PDF_H, backgroundColor: bg }}>
-      <div className="flex" style={{ padding: margin, height: PDF_H, gap: 40 }}>
-        {/* Left: 3-col grid */}
-        <div style={{ width: imageW, flexShrink: 0 }}>
-          <div className="grid" style={{ gridTemplateColumns: `repeat(${COLS}, 1fr)`, gap: imgGap, height: contentH }}>
-            {[1, 2, 3, 4, 5, 6].map((n) => (
-              <div
-                key={n}
-                className="rounded-3xl flex items-center justify-center"
-                style={{ backgroundColor: "#1a1d27" }}
-              >
-                <div className="flex flex-col items-center gap-2 text-center" style={{ color: "#3a3d48" }}>
-                  <LayoutGrid className="h-10 w-10" />
-                  <span style={{ fontSize: 14 }}>Pág {n}</span>
-                </div>
+      <div style={{ padding: margin, height: PDF_H }}>
+        {/* Top: Image grid */}
+        <div className="grid" style={{ gridTemplateColumns: `repeat(${COLS}, 1fr)`, gap: imgGap, height: gridH }}>
+          {Array.from({ length: totalCells }, (_, n) => (
+            <div
+              key={n}
+              className="rounded-3xl flex items-center justify-center"
+              style={{ backgroundColor: "#1a1d27", height: gridRowH }}
+            >
+              <div className="flex flex-col items-center gap-2 text-center" style={{ color: "#3a3d48" }}>
+                <LayoutGrid className="h-10 w-10" />
+                <span style={{ fontSize: 14 }}>Pág {n + 1}</span>
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
 
-        {/* Right: Info */}
-        <div className="flex flex-col justify-between overflow-hidden" style={{ flex: 1, minWidth: 0, height: contentH }}>
-          <div>
-            <div className="flex items-center gap-4 mb-6 flex-wrap">
-              <div style={{ fontSize: (form.card_font_size ?? 14) * 3, color: titleColor }} className="font-bold">
-                Post 1
-              </div>
-              <div className="rounded-full px-5 py-2 font-semibold" style={{ fontSize: 20, backgroundColor: accent + "22", color: accent }}>
-                Carrossel
-              </div>
+        {/* Bottom: Info bar */}
+        <div className="flex items-start" style={{ marginTop: 20, height: contentH - gridH - 20 }}>
+          {/* Left: Post number + type */}
+          <div style={{ width: "20%" }}>
+            <div style={{ fontSize: (form.carousel_title_font_size ?? 14) * 3, color: titleColor }} className="font-bold leading-tight">
+              Post 1
             </div>
-            <div className="mb-6">
-              <div style={{ fontSize: 20, color: subtitleColor }} className="uppercase tracking-widest font-semibold mb-3">
-                Legenda:
-              </div>
-              <div style={{ fontSize: (form.card_caption_font_size ?? 11) * 2, color: titleColor, lineHeight: 1.7 }}>
-                Essa é a legenda completa da postagem do carrossel.
-              </div>
+            <div style={{ fontSize: 18, color: accent }} className="mt-1">
+              Carrossel
             </div>
           </div>
-          <div className="flex items-center gap-6 pt-4 shrink-0" style={{ borderTop: `2px solid ${accent}33` }}>
-            <div>
-              <div style={{ fontSize: 16, color: subtitleColor }} className="uppercase tracking-widest font-semibold mb-1">Data</div>
-              <div style={{ fontSize: (form.card_date_font_size ?? 12) * 2.4, color: titleColor }} className="font-bold">03/03/2026</div>
+          {/* Center: Caption */}
+          <div style={{ width: "50%", fontSize: (form.carousel_caption_font_size ?? 11) * 2, color: titleColor, lineHeight: 1.7 }}>
+            Essa é a legenda completa da postagem do carrossel com quebra automática.
+          </div>
+          {/* Right: Date + Time badges */}
+          <div style={{ width: "30%", display: "flex", flexDirection: "column", gap: 10, alignItems: "flex-end" }}>
+            <div className="rounded-xl px-6 py-3 font-bold text-white" style={{ backgroundColor: accent, fontSize: (form.carousel_date_font_size ?? 12) * 1.8 }}>
+              Data: 05/03/2026
             </div>
             {(form.show_time_on_card ?? true) && (
-              <div>
-                <div style={{ fontSize: 16, color: subtitleColor }} className="uppercase tracking-widest font-semibold mb-1">Horário</div>
-                <div style={{ fontSize: (form.card_date_font_size ?? 12) * 2.4, color: titleColor }} className="font-bold">18:00</div>
+              <div className="rounded-xl px-6 py-3 font-bold text-white" style={{ backgroundColor: accent, fontSize: (form.carousel_date_font_size ?? 12) * 1.8 }}>
+                Horário: 12h00
               </div>
             )}
           </div>
@@ -456,6 +463,58 @@ function CardsSettings({ form, setForm }: any) {
   );
 }
 
+function CarouselSettings({ form, setForm }: any) {
+  return (
+    <div className="space-y-3">
+      <div className="px-2 py-1.5 rounded-lg bg-muted/30 border border-border/20">
+        <span className="text-[10px] text-muted-foreground">Layout: grade de imagens em cima, informações embaixo</span>
+      </div>
+      <div>
+        <Label className="text-[10px] text-muted-foreground">Colunas</Label>
+        <div className="flex items-center gap-2 mt-1">
+          <Slider value={[form.carousel_cols ?? 4]} onValueChange={([v]: number[]) => setForm((p: any) => ({ ...p, carousel_cols: v }))} min={2} max={6} step={1} className="flex-1" />
+          <span className="text-xs font-mono w-8 text-right">{form.carousel_cols ?? 4}</span>
+        </div>
+      </div>
+      <div>
+        <Label className="text-[10px] text-muted-foreground">Linhas</Label>
+        <div className="flex items-center gap-2 mt-1">
+          <Slider value={[form.carousel_rows ?? 2]} onValueChange={([v]: number[]) => setForm((p: any) => ({ ...p, carousel_rows: v }))} min={1} max={4} step={1} className="flex-1" />
+          <span className="text-xs font-mono w-8 text-right">{form.carousel_rows ?? 2}</span>
+        </div>
+      </div>
+      <div>
+        <Label className="text-[10px] text-muted-foreground">Altura das imagens (%)</Label>
+        <div className="flex items-center gap-2 mt-1">
+          <Slider value={[form.carousel_image_height_pct ?? 65]} onValueChange={([v]: number[]) => setForm((p: any) => ({ ...p, carousel_image_height_pct: v }))} min={40} max={85} step={1} className="flex-1" />
+          <span className="text-xs font-mono w-10 text-right">{form.carousel_image_height_pct ?? 65}%</span>
+        </div>
+      </div>
+      <div>
+        <Label className="text-[10px] text-muted-foreground">Título — tamanho</Label>
+        <div className="flex items-center gap-2 mt-1">
+          <Slider value={[form.carousel_title_font_size ?? 14]} onValueChange={([v]: number[]) => setForm((p: any) => ({ ...p, carousel_title_font_size: v }))} min={10} max={24} step={1} className="flex-1" />
+          <span className="text-xs font-mono w-8 text-right">{form.carousel_title_font_size ?? 14}</span>
+        </div>
+      </div>
+      <div>
+        <Label className="text-[10px] text-muted-foreground">Legenda — tamanho</Label>
+        <div className="flex items-center gap-2 mt-1">
+          <Slider value={[form.carousel_caption_font_size ?? 11]} onValueChange={([v]: number[]) => setForm((p: any) => ({ ...p, carousel_caption_font_size: v }))} min={8} max={18} step={1} className="flex-1" />
+          <span className="text-xs font-mono w-8 text-right">{form.carousel_caption_font_size ?? 11}</span>
+        </div>
+      </div>
+      <div>
+        <Label className="text-[10px] text-muted-foreground">Data — tamanho</Label>
+        <div className="flex items-center gap-2 mt-1">
+          <Slider value={[form.carousel_date_font_size ?? 12]} onValueChange={([v]: number[]) => setForm((p: any) => ({ ...p, carousel_date_font_size: v }))} min={8} max={20} step={1} className="flex-1" />
+          <span className="text-xs font-mono w-8 text-right">{form.carousel_date_font_size ?? 12}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function FooterSettings({ form, setForm, uploading, handleUploadAgencyLogo }: any) {
   return (
     <div className="space-y-3">
@@ -578,10 +637,13 @@ export function PdfLayoutEditor() {
     if (settingsQ.data) setForm(settingsQ.data);
   }, [settingsQ.data]);
 
-  const blocksOrder = (form.blocks_order ?? ["cover", "cards", "footer"]).filter(
-    (b): b is BlockId => b === "cover" || b === "cards" || b === "footer"
+  const ALL_BLOCKS: BlockId[] = ["cover", "cards", "carousel", "footer"];
+  const blocksOrder = (form.blocks_order ?? ["cover", "cards", "carousel", "footer"]).filter(
+    (b): b is BlockId => ALL_BLOCKS.includes(b as BlockId)
   );
-  const blocksEnabled = (form.blocks_enabled ?? { cover: true, cards: true, footer: true }) as Record<BlockId, boolean>;
+  // Ensure carousel is always in the list
+  if (!blocksOrder.includes("carousel")) blocksOrder.splice(blocksOrder.indexOf("cards") + 1, 0, "carousel");
+  const blocksEnabled = (form.blocks_enabled ?? { cover: true, cards: true, carousel: true, footer: true }) as Record<BlockId, boolean>;
 
   const handleSave = () => {
     if (!form.id) return;
@@ -590,8 +652,8 @@ export function PdfLayoutEditor() {
 
   const moveBlock = useCallback((blockId: BlockId, dir: -1 | 1) => {
     setForm(prev => {
-      const order = [...(prev.blocks_order ?? ["cover", "cards", "footer"])].filter(
-        (b): b is BlockId => b === "cover" || b === "cards" || b === "footer"
+      const order = [...(prev.blocks_order ?? ["cover", "cards", "carousel", "footer"])].filter(
+        (b): b is BlockId => ALL_BLOCKS.includes(b as BlockId)
       );
       const idx = order.indexOf(blockId);
       if (idx < 0) return prev;
@@ -604,7 +666,7 @@ export function PdfLayoutEditor() {
 
   const toggleBlock = useCallback((blockId: BlockId) => {
     setForm(prev => {
-      const enabled = { ...(prev.blocks_enabled ?? { cover: true, cards: true, footer: true }) } as Record<BlockId, boolean>;
+      const enabled = { ...(prev.blocks_enabled ?? { cover: true, cards: true, carousel: true, footer: true }) } as Record<BlockId, boolean>;
       enabled[blockId] = !enabled[blockId];
       return { ...prev, blocks_enabled: enabled };
     });
@@ -653,6 +715,7 @@ export function PdfLayoutEditor() {
     switch (selectedBlock) {
       case "cover": return <CoverSettings form={form} setForm={setForm} uploading={uploading} handleUploadBg={handleUploadBg} handleUploadLogo={handleUploadLogo} />;
       case "cards": return <CardsSettings form={form} setForm={setForm} />;
+      case "carousel": return <CarouselSettings form={form} setForm={setForm} />;
       case "footer": return <FooterSettings form={form} setForm={setForm} uploading={uploading} handleUploadAgencyLogo={handleUploadAgencyLogo} />;
     }
   };
@@ -667,14 +730,15 @@ export function PdfLayoutEditor() {
         );
       case "cards":
         return (
-          <div key="cards-previews" className="space-y-4">
-            <ScaledPreview label="Post padrão" isSelected={selectedBlock === "cards"} onClick={() => setSelectedBlock("cards")}>
-              <PreviewPostPage form={form} index={0} />
-            </ScaledPreview>
-            <ScaledPreview label="Carrossel (3 colunas)" isSelected={selectedBlock === "cards"} onClick={() => setSelectedBlock("cards")}>
-              <PreviewCarouselPage form={form} />
-            </ScaledPreview>
-          </div>
+          <ScaledPreview key="cards" label="Post padrão" isSelected={selectedBlock === "cards"} onClick={() => setSelectedBlock("cards")}>
+            <PreviewPostPage form={form} index={0} />
+          </ScaledPreview>
+        );
+      case "carousel":
+        return (
+          <ScaledPreview key="carousel" label={`Carrossel (${form.carousel_cols ?? 4} colunas)`} isSelected={selectedBlock === "carousel"} onClick={() => setSelectedBlock("carousel")}>
+            <PreviewCarouselPage form={form} />
+          </ScaledPreview>
         );
       case "footer":
         return (

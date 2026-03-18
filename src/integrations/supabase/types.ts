@@ -1188,6 +1188,12 @@ export type Database = {
           card_font_size: number
           card_image_width_pct: number
           card_proportion: string
+          carousel_caption_font_size: number
+          carousel_cols: number
+          carousel_date_font_size: number
+          carousel_image_height_pct: number
+          carousel_rows: number
+          carousel_title_font_size: number
           cover_logo_url: string | null
           footer_contact: string
           footer_contact_font_size: number
@@ -1219,6 +1225,12 @@ export type Database = {
           card_font_size?: number
           card_image_width_pct?: number
           card_proportion?: string
+          carousel_caption_font_size?: number
+          carousel_cols?: number
+          carousel_date_font_size?: number
+          carousel_image_height_pct?: number
+          carousel_rows?: number
+          carousel_title_font_size?: number
           cover_logo_url?: string | null
           footer_contact?: string
           footer_contact_font_size?: number
@@ -1250,6 +1262,12 @@ export type Database = {
           card_font_size?: number
           card_image_width_pct?: number
           card_proportion?: string
+          carousel_caption_font_size?: number
+          carousel_cols?: number
+          carousel_date_font_size?: number
+          carousel_image_height_pct?: number
+          carousel_rows?: number
+          carousel_title_font_size?: number
           cover_logo_url?: string | null
           footer_contact?: string
           footer_contact_font_size?: number
