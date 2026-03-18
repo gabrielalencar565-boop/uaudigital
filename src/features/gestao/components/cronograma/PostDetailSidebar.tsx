@@ -16,14 +16,18 @@ interface Props {
   onClose: () => void;
   onUpdate: (field: string, value: string | null) => void;
   onRename?: (newTitle: string) => void;
+  clientName?: string;
 }
 
-export function PostDetailSidebar({ post, onClose, onUpdate, onRename }: Props) {
+export function PostDetailSidebar({ post, onClose, onUpdate, onRename, clientName }: Props) {
   const [editingField, setEditingField] = useState<string | null>(null);
   const [tempValue, setTempValue] = useState("");
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
   const [carouselIndex, setCarouselIndex] = useState(0);
+  const [captionExpanded, setCaptionExpanded] = useState(false);
+
+  const headerName = clientName || post.title;
 
   const meta = POST_TYPE_META[post.post_type ?? "post"] ?? POST_TYPE_META.post;
   const allImages = post.all_attachment_urls ?? [];
