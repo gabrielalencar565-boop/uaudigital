@@ -249,18 +249,8 @@ export function CronogramaClientBrowser({ tasks, childTasksMap, clientsMap, memb
         </div>
       </div>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
-        <TabsList className="bg-muted/40 h-9 p-0.5 rounded-xl gap-0.5 mb-4 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.15s" }}>
-          <TabsTrigger value="calendario" className="gap-1.5 text-xs h-8 rounded-lg data-[state=active]:shadow-sm">
-            <CalendarRange className="h-3.5 w-3.5" /> Calendário
-          </TabsTrigger>
-          <TabsTrigger value="layout" className="gap-1.5 text-xs h-8 rounded-lg data-[state=active]:shadow-sm">
-            <Palette className="h-3.5 w-3.5" /> Layout PDF
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="calendario">
+      {/* Calendar content */}
+      <div>
           {noClientSelected ? (
           /* Skeleton placeholder */
           <div className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.2s" }}>
