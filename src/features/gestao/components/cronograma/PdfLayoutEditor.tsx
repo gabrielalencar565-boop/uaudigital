@@ -666,7 +666,7 @@ export function PdfLayoutEditor() {
 
   const toggleBlock = useCallback((blockId: BlockId) => {
     setForm(prev => {
-      const enabled = { ...(prev.blocks_enabled ?? { cover: true, cards: true, footer: true }) } as Record<BlockId, boolean>;
+      const enabled = { ...(prev.blocks_enabled ?? { cover: true, cards: true, carousel: true, footer: true }) } as Record<BlockId, boolean>;
       enabled[blockId] = !enabled[blockId];
       return { ...prev, blocks_enabled: enabled };
     });
