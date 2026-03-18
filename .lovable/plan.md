@@ -1,87 +1,27 @@
 
 
-# Diagnóstico Completo e Plano de Melhorias do Sistema
+## Plan: Fix PostDetailSidebar — client name in header + full caption with "leia mais"
 
-## Resumo Executivo
+### Changes
 
-✅ **IMPLEMENTADO** - A visualização de múltiplos responsáveis em tarefas agora está funcionando em todo o sistema.
+**1. `PostDetailSidebar.tsx` — Add `clientName` prop, show it in header instead of task title**
+- Add `clientName?: string` to Props
+- In the Instagram-style header: display `clientName` as the bold name (where `post.title` currently shows), and keep `meta.label` (Post/Carrossel/etc) as subtitle
+- The avatar initial letter uses `clientName` first char instead of `post.title`
 
----
+**2. `PostDetailSidebar.tsx` — Show full caption with "leia mais" toggle**
+- Replace the truncated caption preview (currently hardcoded to 80 chars) with an expandable system
+- Add `expanded` state, default `false`
+- When collapsed: show first ~120 chars + clickable "... mais" link
+- When expanded: show full plain-text caption + clickable "menos" to collapse
+- Keep the `SmartCaptionEditor` below in the "Legenda" section for editing
 
-## 1. Problema Resolvido: Múltiplos Membros Agora São Exibidos
+**3. Pass `clientName` from parents:**
+- `PmCronogramaTab.tsx` — already has `clientName` prop, pass it to `<PostDetailSidebar clientName={clientName} />`
+- `CronogramaClientBrowser.tsx` — has `clientsMap` and can resolve `resolvedSelected.client_id`, pass `clientName={clientsMap[resolvedSelected.client_id] ?? ""}` to `<PostDetailSidebar />`
 
-### Mudanças Implementadas
+### Files to edit
+- `src/features/gestao/components/cronograma/PostDetailSidebar.tsx`
+- `src/features/gestao/components/PmCronogramaTab.tsx`
+- `src/features/gestao/components/cronograma/CronogramaClientBrowser.tsx`
 
-**1. AgendaPanel.tsx**
-- Adicionado `useTaskAssigneesByMonth` para buscar assignees do mês
-- Criado mapa `assigneesByTaskId` via useMemo para acesso rápido
-- Passando prop `members` para `AgendaWeekTaskItem` e `DraggableTaskCard` em todos os locais
-
-**2. DraggableTaskCard.tsx**
-- Adicionada interface `TaskMember`
-- Adicionada prop `members` opcional
-- Passando `members` para `AgendaWeekTaskItem`
-
-**3. DayViewPanel.tsx**
-- Adicionado `useTaskAssigneesByMonth` para buscar assignees
-- Criado mapa `assigneesByTaskId` 
-- Implementada exibição de pilha de avatares com tooltip para múltiplos membros
-- Atualizado tanto para tarefas atrasadas quanto para tarefas do dia
-
----
-
-## 2. Status Atualizado do Sistema
-
-### Magic Number (Fevereiro/2026)
-| Aspecto | Status |
-|---------|--------|
-| Dados no banco | ✅ OK |
-| Query `useMagic2Month` | ✅ OK |
-| Navegação mês/ano | ✅ OK |
-| Dashboard | ✅ OK |
-| Checklist | ✅ OK |
-
-### Agenda
-| Aspecto | Status |
-|---------|--------|
-| Visualização mensal | ✅ OK |
-| Visualização semanal | ✅ OK |
-| Drag and drop | ✅ OK |
-| Criar tarefa | ✅ OK |
-| Editar tarefa | ✅ OK |
-| **Exibir múltiplos membros** | ✅ OK |
-| Filtros (cliente/usuário) | ✅ OK |
-
-### Visão do Dia
-| Aspecto | Status |
-|---------|--------|
-| Navegação mês/ano | ✅ OK |
-| Auto-alternância | ✅ OK |
-| Magic Number view | ✅ OK |
-| Agenda view | ✅ OK |
-| **Múltiplos membros** | ✅ OK |
-
-### Desempenho
-| Aspecto | Status |
-|---------|--------|
-| Pontuação manual | ✅ OK |
-| Ranking mensal | ✅ OK |
-| Ranking anual | ✅ OK |
-| Relatório de prazos | ✅ OK |
-
-### Meu Painel
-| Aspecto | Status |
-|---------|--------|
-| Resumo do mês | ✅ OK |
-| Ranking pessoal | ✅ OK |
-| Lista de tarefas | ✅ OK |
-
----
-
-## 3. Resultado Visual
-
-Quando uma tarefa tem múltiplos responsáveis:
-1. ✅ Exibe uma **pilha elegante de avatares** (até 3 visíveis)
-2. ✅ Ao passar o mouse, um **tooltip** mostra todos os nomes
-3. ✅ Se houver mais de 3 membros, aparece **"+N"** indicando quantos faltam
-4. ✅ A visualização é **consistente** em Agenda, Visão do Dia e dialogs
