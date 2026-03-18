@@ -165,7 +165,8 @@ export function PostDetailSidebar({ post, onClose, onUpdate, onRename, onEditTas
           <div>
             <span className="text-sm font-semibold mr-1">{headerName}</span>
             {(() => {
-              const plainCaption = post.caption ? post.caption.replace(/<[^>]+>/g, '') : '';
+              const rawCaption = post.caption ? post.caption.replace(/<[^>]+>/g, '') : '';
+              const plainCaption = rawCaption.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/\s+/g, ' ').trim();
               if (!plainCaption) return <span className="text-sm text-muted-foreground italic">sem legenda</span>;
               const LIMIT = 120;
               if (plainCaption.length <= LIMIT || captionExpanded) {
