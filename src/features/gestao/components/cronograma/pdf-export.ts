@@ -694,9 +694,9 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
         const cornerRadius = sx(20);
 
         if (isCarousel) {
-          const COLS = Math.max(1, form.carousel_cols ?? 4);
-          const ROWS = Math.max(1, form.carousel_rows ?? 2);
-          const PER_PAGE = COLS * ROWS;
+          const maxCols = Math.max(1, form.carousel_cols ?? 4);
+          const maxRows = Math.max(1, form.carousel_rows ?? 2);
+          const perPage = maxCols * maxRows;
           const imgGap = sx(12);
           const imgHeightPct = (form.carousel_image_height_pct ?? 65) / 100;
 
@@ -708,7 +708,7 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
               ? [fallbackCarouselImage]
               : [];
 
-          const chunks = chunkArray(carouselImages, PER_PAGE);
+          const chunks = chunkArray(carouselImages, perPage);
           const pages = chunks.length ? chunks : [[]];
 
           for (let chunkIndex = 0; chunkIndex < pages.length; chunkIndex += 1) {
@@ -721,31 +721,42 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
             const gridY = margin;
             const infoY = margin + gridH + sy(20);
 
-            const gridColW = (contentW - imgGap * (COLS - 1)) / COLS;
-            const gridRowH = (gridH - imgGap * (ROWS - 1)) / ROWS;
+            const frames = buildAdaptiveCarouselGridFrames({
+              itemCount: pageImages.length,
+              maxCols,
+              maxRows,
+              x: margin,
+              y: gridY,
+              width: contentW,
+              height: gridH,
+              gap: imgGap,
+            });
 
-            for (let cell = 0; cell < COLS * ROWS; cell += 1) {
-              const col = cell % COLS;
-              const row = Math.floor(cell / COLS);
-              const cx = margin + col * (gridColW + imgGap);
-              const cy = gridY + row * (gridRowH + imgGap);
-
+            if (!frames.length) {
               doc.setFillColor(26, 29, 39);
-              doc.roundedRect(cx, cy, gridColW, gridRowH, cornerRadius, cornerRadius, "F");
+              const emptySize = Math.min(contentW, gridH);
+              const emptyX = margin + (contentW - emptySize) / 2;
+              const emptyY = gridY + (gridH - emptySize) / 2;
+              doc.roundedRect(emptyX, emptyY, emptySize, emptySize, cornerRadius, cornerRadius, "F");
+            }
 
-              const imageUrl = pageImages[cell];
+            for (const frame of frames) {
+              doc.setFillColor(26, 29, 39);
+              doc.roundedRect(frame.x, frame.y, frame.size, frame.size, cornerRadius, cornerRadius, "F");
+
+              const imageUrl = pageImages[frame.index];
               if (!imageUrl) continue;
 
               const rawAsset = await getCachedImage(imageUrl);
               if (!rawAsset) continue;
 
-              const fittedPng = await renderFittedImage(rawAsset.dataUrl, gridColW, gridRowH, cornerRadius, {
+              const fittedPng = await renderFittedImage(rawAsset.dataUrl, frame.size, frame.size, cornerRadius, {
                 fitMode: "contain",
-                backgroundMode: "blur",
+                backgroundMode: "solid",
               });
 
               if (fittedPng) {
-                addPdfImage(doc, { dataUrl: fittedPng, format: "PNG" }, cx, cy, gridColW, gridRowH);
+                addPdfImage(doc, { dataUrl: fittedPng, format: "PNG" }, frame.x, frame.y, frame.size, frame.size);
               }
             }
 
@@ -753,27 +764,17 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
             const cCaptionFontSize = form.carousel_caption_font_size ?? form.card_caption_font_size ?? 11;
             const cDateFontSize = form.carousel_date_font_size ?? form.card_date_font_size ?? 12;
 
-            const leftColW = contentW * 0.2;
-            const centerColW = contentW * 0.5;
-            const rightColW = contentW * 0.3;
+            const leftColW = contentW * 0.22;
+            const centerColW = contentW * 0.48;
+            const rightColW = contentW - leftColW - centerColW;
 
-            const defaultCarouselInfoPoint: LayoutPoint = {
-              x: 50,
-              y: ((infoY + infoH / 2) / pageH) * 100,
-            };
-            const carouselInfoPoint = getLayoutPoint(form.layout_overrides, "carousel_info", defaultCarouselInfoPoint);
-            const carouselInfoCenterX = (carouselInfoPoint.x / 100) * pageW;
-            const carouselInfoCenterY = (carouselInfoPoint.y / 100) * pageH;
-            const defaultCarouselCenterX = margin + contentW / 2;
-            const defaultCarouselCenterY = infoY + infoH / 2;
-
-            const infoDx = carouselInfoCenterX - defaultCarouselCenterX;
-            const infoDy = carouselInfoCenterY - defaultCarouselCenterY;
-
-            const leftX = margin + infoDx;
-            const centerX = margin + leftColW + infoDx;
-            const rightX = margin + leftColW + centerColW + infoDx;
-            const infoBaseY = infoY + infoDy;
+            const infoPaddingX = sx(8);
+            const infoPaddingY = sy(8);
+            const leftX = margin + infoPaddingX;
+            const centerX = margin + leftColW + infoPaddingX;
+            const rightX = margin + leftColW + centerColW;
+            const infoTop = infoY + infoPaddingY;
+            const infoBottom = infoY + infoH - infoPaddingY;
 
             const postHeader = pages.length > 1
               ? `Post ${i + 1} • Página ${chunkIndex + 1}/${pages.length}`
@@ -781,26 +782,17 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
 
             setFont(doc, "bold");
             doc.setTextColor(titleR, titleG, titleB);
-            doc.setFontSize(Math.max(10, sx(cTitleFontSize * 3)));
-            doc.text(postHeader, leftX, infoBaseY + sy(50));
+            doc.setFontSize(Math.max(10, sx(cTitleFontSize * 2.8)));
+            doc.text(postHeader, leftX, infoTop + sy(34), { baseline: "middle" });
 
-            setFont(doc, "normal");
-            doc.setFontSize(sx(16));
+            setFont(doc, "bold");
+            doc.setFontSize(sx(15));
             doc.setTextColor(accR, accG, accB);
-            doc.text(postTypeLabel, leftX, infoBaseY + sy(90));
+            doc.text(postTypeLabel, leftX, infoTop + sy(68), { baseline: "middle" });
 
+            const captionLabelY = infoTop + sy(2);
+            const captionTextY = captionLabelY + sy(22);
             const captionText = toPdfText(post.caption, "Sem legenda");
-            setFont(doc, "normal");
-            doc.setTextColor(titleR, titleG, titleB);
-            doc.setFontSize(Math.max(9, sx(cCaptionFontSize * 2)));
-            const carouselCaptionX = centerX;
-            const carouselCaptionY = infoBaseY + sy(28);
-            const carouselCaptionW = centerColW - sx(20);
-            const carouselCaptionH = Math.max(sy(40), infoH - sy(30));
-            const carouselLines = fitTextLines(doc, captionText, carouselCaptionW, carouselCaptionH, 1.7);
-            doc.setLineHeightFactor(1.7);
-            doc.text(carouselLines, carouselCaptionX, carouselCaptionY, { baseline: "top", lineHeightFactor: 1.7 });
-            doc.setLineHeightFactor(1.15);
 
             const formattedDate = formatPostingDate(post.posting_date);
             const dateText = `Data: ${formattedDate}`;
@@ -809,25 +801,50 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
 
             setFont(doc, "bold");
             doc.setFontSize(Math.max(10, sx(cDateFontSize * 1.8)));
-            const maxBadgeW = Math.max(sx(150), rightColW - sx(10));
-            const dateBadgeW = Math.min(maxBadgeW, Math.max(sx(150), doc.getTextWidth(dateText) + sx(32)));
-            const dateBadgeH = sy(50);
-            const dateBadgeX = rightX + (rightColW - dateBadgeW);
-            const dateBadgeY = infoBaseY + sy(10);
+            const badgeH = sy(48);
+            const badgeGap = sy(10);
+            const rightInnerW = Math.max(sx(120), rightColW - infoPaddingX);
+            const dateBadgeW = Math.min(rightInnerW, Math.max(sx(150), doc.getTextWidth(dateText) + sx(32)));
+            const timeBadgeW = showTime && timeText
+              ? Math.min(rightInnerW, Math.max(sx(150), doc.getTextWidth(timeText) + sx(32)))
+              : 0;
+            const badgesTotalH = showTime ? badgeH * 2 + badgeGap : badgeH;
+            const badgesTop = infoBottom - badgesTotalH;
+
+            setFont(doc, "bold");
+            doc.setTextColor(subR, subG, subB);
+            doc.setFontSize(sx(16));
+            doc.text("Legenda:", centerX, captionLabelY, { baseline: "top" });
+
+            setFont(doc, "normal");
+            doc.setTextColor(titleR, titleG, titleB);
+            doc.setFontSize(Math.max(9, sx(cCaptionFontSize * 2)));
+            const carouselCaptionW = Math.max(sx(120), centerColW - sx(22));
+            const carouselCaptionH = Math.max(sy(30), badgesTop - captionTextY - sy(10));
+            const carouselLines = fitTextLines(doc, captionText, carouselCaptionW, carouselCaptionH, 1.65);
+            doc.setLineHeightFactor(1.65);
+            doc.text(carouselLines, centerX, captionTextY, { baseline: "top", lineHeightFactor: 1.65 });
+            doc.setLineHeightFactor(1.15);
+
+            const dateBadgeX = rightX + rightInnerW - dateBadgeW;
+            const dateBadgeY = badgesTop;
+            const dateCenterX = dateBadgeX + dateBadgeW / 2;
+            const dateCenterY = dateBadgeY + badgeH / 2;
 
             doc.setFillColor(accR, accG, accB);
-            doc.roundedRect(dateBadgeX, dateBadgeY, dateBadgeW, dateBadgeH, sy(10), sy(10), "F");
+            doc.roundedRect(dateBadgeX, dateBadgeY, dateBadgeW, badgeH, sy(10), sy(10), "F");
             doc.setTextColor(255, 255, 255);
-            doc.text(dateText, dateBadgeX + dateBadgeW / 2, dateBadgeY + dateBadgeH / 2, { align: "center", baseline: "middle" });
+            doc.text(dateText, dateCenterX, dateCenterY, { align: "center", baseline: "middle" });
 
             if (showTime && timeText) {
-              const timeBadgeW = Math.min(maxBadgeW, Math.max(sx(150), doc.getTextWidth(timeText) + sx(32)));
-              const timeBadgeX = rightX + (rightColW - timeBadgeW);
-              const timeBadgeY = dateBadgeY + dateBadgeH + sy(12);
+              const timeBadgeX = rightX + rightInnerW - timeBadgeW;
+              const timeBadgeY = dateBadgeY + badgeH + badgeGap;
+              const timeCenterX = timeBadgeX + timeBadgeW / 2;
+              const timeCenterY = timeBadgeY + badgeH / 2;
               doc.setFillColor(accR, accG, accB);
-              doc.roundedRect(timeBadgeX, timeBadgeY, timeBadgeW, dateBadgeH, sy(10), sy(10), "F");
+              doc.roundedRect(timeBadgeX, timeBadgeY, timeBadgeW, badgeH, sy(10), sy(10), "F");
               doc.setTextColor(255, 255, 255);
-              doc.text(timeText, timeBadgeX + timeBadgeW / 2, timeBadgeY + dateBadgeH / 2, { align: "center", baseline: "middle" });
+              doc.text(timeText, timeCenterX, timeCenterY, { align: "center", baseline: "middle" });
             }
           }
         } else {
@@ -838,6 +855,8 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
           const infoW = contentW - imageW - gap;
           const imageX = margin;
           const imageY = margin;
+          const infoX = imageX + imageW + gap;
+          const infoY = imageY;
 
           doc.setFillColor(26, 29, 39);
           doc.roundedRect(imageX, imageY, imageW, contentH, cornerRadius, cornerRadius, "F");
@@ -863,57 +882,50 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
             doc.text("Imagem do Post", imageX + imageW / 2, imageY + contentH / 2, { align: "center", baseline: "middle" });
           }
 
-          const titlePoint = getCardLayoutPoint(form.layout_overrides, "cards_title", DEFAULT_LAYOUT_POINTS.cards_title);
-          const captionPoint = getCardLayoutPoint(form.layout_overrides, "cards_caption", DEFAULT_LAYOUT_POINTS.cards_caption);
-          const datePoint = getCardLayoutPoint(form.layout_overrides, "cards_date", DEFAULT_LAYOUT_POINTS.cards_date);
-          const timePoint = getCardLayoutPoint(form.layout_overrides, "cards_time", DEFAULT_LAYOUT_POINTS.cards_time);
-
-          const titleCenterX = (titlePoint.x / 100) * pageW;
-          const titleCenterY = (titlePoint.y / 100) * pageH;
-          const captionCenterX = (captionPoint.x / 100) * pageW;
-          const captionCenterY = (captionPoint.y / 100) * pageH;
-          const dateCenterX = (datePoint.x / 100) * pageW;
-          const dateCenterY = (datePoint.y / 100) * pageH;
-          const timeCenterX = (timePoint.x / 100) * pageW;
-          const timeCenterY = (timePoint.y / 100) * pageH;
+          const cardsInfoPoint = getCardsInfoPoint(form.layout_overrides);
+          const defaultCardsCenterX = ((DEFAULT_LAYOUT_POINTS.cards_info.x / 100) * pageW);
+          const cardsCenterX = (cardsInfoPoint.x / 100) * pageW;
+          const maxShiftX = Math.max(0, sx(34));
+          const infoShiftX = clamp(cardsCenterX - defaultCardsCenterX, -maxShiftX, maxShiftX);
 
           const [bgR, bgG, bgB] = parseHex(form.background_color, [11, 13, 18]);
           const softAccR = Math.round(accR * 0.22 + bgR * 0.78);
           const softAccG = Math.round(accG * 0.22 + bgG * 0.78);
           const softAccB = Math.round(accB * 0.22 + bgB * 0.78);
 
+          const innerPaddingX = sx(4);
+          const rightEdge = infoX + infoW + infoShiftX - innerPaddingX;
+          const leftEdge = infoX + infoShiftX + innerPaddingX;
+          const titleY = infoY + sy(56);
+
           const postTitle = `Post ${i + 1}`;
-          const titleFontSize = Math.max(10, sx(form.card_font_size * 3));
+          const titleFontSize = Math.max(10, sx((form.card_font_size ?? 14) * 2.9));
           setFont(doc, "bold");
           doc.setTextColor(titleR, titleG, titleB);
           doc.setFontSize(titleFontSize);
           const postTitleW = doc.getTextWidth(postTitle);
 
-          const typeFontSize = sx(20);
-          setFont(doc, "normal");
+          const typeFontSize = sx(18);
+          setFont(doc, "bold");
           doc.setFontSize(typeFontSize);
           const typeTextW = doc.getTextWidth(postTypeLabel);
-          const typePadX = sx(20);
+          const typePadX = sx(16);
           const typeBadgeW = typeTextW + typePadX * 2;
-          const typeBadgeH = sy(42);
-          const groupGap = sx(16);
-          const totalTitleW = postTitleW + groupGap + typeBadgeW;
-          const groupStartX = titleCenterX - totalTitleW / 2;
+          const typeBadgeH = sy(38);
+          const titleGap = sx(12);
 
-          setFont(doc, "bold");
           doc.setTextColor(titleR, titleG, titleB);
-          doc.setFontSize(titleFontSize);
-          doc.text(postTitle, groupStartX, titleCenterY, { baseline: "middle" });
+          doc.text(postTitle, leftEdge, titleY, { baseline: "middle" });
 
-          const typeBadgeX = groupStartX + postTitleW + groupGap;
-          const typeBadgeY = titleCenterY - typeBadgeH / 2;
+          const typeBadgeX = leftEdge + postTitleW + titleGap;
+          const typeBadgeY = titleY - typeBadgeH / 2;
           doc.setFillColor(softAccR, softAccG, softAccB);
-          doc.roundedRect(typeBadgeX, typeBadgeY, typeBadgeW, typeBadgeH, sy(21), sy(21), "F");
+          doc.roundedRect(typeBadgeX, typeBadgeY, typeBadgeW, typeBadgeH, sy(18), sy(18), "F");
 
           setFont(doc, "bold");
-          doc.setFontSize(typeFontSize);
           doc.setTextColor(accR, accG, accB);
-          doc.text(postTypeLabel, typeBadgeX + typeBadgeW / 2, titleCenterY, { align: "center", baseline: "middle" });
+          doc.setFontSize(typeFontSize);
+          doc.text(postTypeLabel, typeBadgeX + typeBadgeW / 2, titleY, { align: "center", baseline: "middle" });
 
           const formattedDate = formatPostingDate(post.posting_date);
           const dateText = `Data: ${formattedDate}`;
@@ -922,51 +934,53 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
 
           setFont(doc, "bold");
           doc.setFontSize(Math.max(10, sx((form.card_date_font_size ?? 12) * 1.8)));
+          const badgeH = sy(48);
+          const badgeGap = sy(10);
+          const maxBadgeW = Math.max(sx(150), infoW - sx(8));
+          const dateBadgeW = Math.min(maxBadgeW, Math.max(sx(150), doc.getTextWidth(dateText) + sx(34)));
+          const timeBadgeW = showTime && timeText
+            ? Math.min(maxBadgeW, Math.max(sx(150), doc.getTextWidth(timeText) + sx(34)))
+            : 0;
+          const badgesTotalH = showTime ? badgeH * 2 + badgeGap : badgeH;
+          const badgesTop = infoY + contentH - sy(18) - badgesTotalH;
 
-          const dateBadgeW = Math.max(sx(220), doc.getTextWidth(dateText) + sx(36));
-          const dateBadgeH = sy(50);
-          const dateBadgeX = dateCenterX - dateBadgeW / 2;
-          const dateBadgeY = dateCenterY - dateBadgeH / 2;
-
-          const timeBadgeW = showTime && timeText ? Math.max(sx(220), doc.getTextWidth(timeText) + sx(36)) : 0;
-          const timeBadgeH = dateBadgeH;
-          const timeBadgeX = timeCenterX - timeBadgeW / 2;
-          const timeBadgeY = showTime ? timeCenterY - timeBadgeH / 2 : null;
-
-          const captionLabelX = captionCenterX - infoW / 2;
-          const captionLabelY = captionCenterY - sy(48);
-          const captionTextY = captionLabelY + sy(34);
-          const captionLimitY = Math.min(
-            dateBadgeY,
-            showTime && timeBadgeY !== null ? timeBadgeY : Number.POSITIVE_INFINITY,
-          );
-          const maxCaptionBottom = Number.isFinite(captionLimitY)
-            ? Math.max(captionTextY + sy(20), captionLimitY - sy(14))
-            : pageH - margin;
-          const maxCaptionHeight = Math.max(sy(30), maxCaptionBottom - captionTextY);
+          const captionLabelX = leftEdge;
+          const captionLabelY = titleY + sy(36);
+          const captionTextY = captionLabelY + sy(28);
+          const captionText = toPdfText(post.caption, "Sem legenda");
 
           setFont(doc, "bold");
           doc.setTextColor(subR, subG, subB);
-          doc.setFontSize(sx(20));
+          doc.setFontSize(sx(18));
           doc.text("Legenda:", captionLabelX, captionLabelY, { baseline: "top" });
 
-          const captionText = toPdfText(post.caption, "Sem legenda");
           setFont(doc, "normal");
           doc.setTextColor(titleR, titleG, titleB);
-          doc.setFontSize(Math.max(9, sx(form.card_caption_font_size * 2)));
-          const wrappedCaption = fitTextLines(doc, captionText, infoW, maxCaptionHeight, 1.7);
-          doc.setLineHeightFactor(1.7);
-          doc.text(wrappedCaption, captionLabelX, captionTextY, { baseline: "top", lineHeightFactor: 1.7 });
+          doc.setFontSize(Math.max(9, sx((form.card_caption_font_size ?? 11) * 2)));
+          const captionMaxW = Math.max(sx(120), infoW - sx(8));
+          const captionMaxH = Math.max(sy(36), badgesTop - captionTextY - sy(12));
+          const wrappedCaption = fitTextLines(doc, captionText, captionMaxW, captionMaxH, 1.65);
+          doc.setLineHeightFactor(1.65);
+          doc.text(wrappedCaption, captionLabelX, captionTextY, { baseline: "top", lineHeightFactor: 1.65 });
           doc.setLineHeightFactor(1.15);
 
+          const dateBadgeX = rightEdge - dateBadgeW;
+          const dateBadgeY = badgesTop;
+          const dateCenterX = dateBadgeX + dateBadgeW / 2;
+          const dateCenterY = dateBadgeY + badgeH / 2;
+
           doc.setFillColor(accR, accG, accB);
-          doc.roundedRect(dateBadgeX, dateBadgeY, dateBadgeW, dateBadgeH, sy(10), sy(10), "F");
+          doc.roundedRect(dateBadgeX, dateBadgeY, dateBadgeW, badgeH, sy(10), sy(10), "F");
           doc.setTextColor(255, 255, 255);
           doc.text(dateText, dateCenterX, dateCenterY, { align: "center", baseline: "middle" });
 
-          if (showTime && timeText && timeBadgeY !== null) {
+          if (showTime && timeText) {
+            const timeBadgeX = rightEdge - timeBadgeW;
+            const timeBadgeY = dateBadgeY + badgeH + badgeGap;
+            const timeCenterX = timeBadgeX + timeBadgeW / 2;
+            const timeCenterY = timeBadgeY + badgeH / 2;
             doc.setFillColor(accR, accG, accB);
-            doc.roundedRect(timeBadgeX, timeBadgeY, timeBadgeW, timeBadgeH, sy(10), sy(10), "F");
+            doc.roundedRect(timeBadgeX, timeBadgeY, timeBadgeW, badgeH, sy(10), sy(10), "F");
             doc.setTextColor(255, 255, 255);
             doc.text(timeText, timeCenterX, timeCenterY, { align: "center", baseline: "middle" });
           }
