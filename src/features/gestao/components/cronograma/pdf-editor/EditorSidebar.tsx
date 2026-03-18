@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   Image, CreditCard, Layers, FileText, ChevronUp, ChevronDown,
-  Eye, EyeOff, Upload, Type, Palette, Settings2, RotateCcw,
+  Eye, EyeOff, Upload, Type, Palette, Settings2, RotateCcw, Save,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
