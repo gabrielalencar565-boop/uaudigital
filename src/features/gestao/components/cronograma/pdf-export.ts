@@ -7,6 +7,7 @@ const DESIGN_H = 1190;
 
 type BlockId = "cover" | "cards" | "carousel" | "footer";
 type PdfImageFormat = "PNG" | "JPEG";
+type ImageFitMode = "contain" | "cover";
 
 interface PdfImageAsset {
   dataUrl: string;
