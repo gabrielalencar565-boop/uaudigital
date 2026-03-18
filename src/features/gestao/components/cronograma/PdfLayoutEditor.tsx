@@ -24,6 +24,7 @@ import {
   Layers,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { buildAdaptiveCarouselGridFrames } from "./carousel-grid";
 
 const sb = supabase as any;
 
