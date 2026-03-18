@@ -114,7 +114,7 @@ function PreviewCover({ form }: { form: Partial<PdfSettings> }) {
   );
 }
 
-/* ─── Preview: Post Page ─── */
+/* ─── Preview: Post Page (standard) ─── */
 function PreviewPostPage({ form, index }: { form: Partial<PdfSettings>; index: number }) {
   const bg = form.background_color ?? "#0B0D12";
   const accent = form.accent_color ?? "#7C5CFF";
@@ -185,6 +185,78 @@ function PreviewPostPage({ form, index }: { form: Partial<PdfSettings>; index: n
               </div>
             )}
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Preview: Carousel Page ─── */
+function PreviewCarouselPage({ form }: { form: Partial<PdfSettings> }) {
+  const bg = form.background_color ?? "#0B0D12";
+  const accent = form.accent_color ?? "#7C5CFF";
+  const titleColor = form.title_color ?? "#FFFFFF";
+  const subtitleColor = form.subtitle_color ?? "#AAAAAA";
+  const margin = form.margin_size ?? 60;
+  const COLS = 3;
+  const imgGap = 20;
+  const headerH = 100;
+  const footerH = 120;
+  const contentW = PDF_W - margin * 2;
+  const contentH = PDF_H - margin * 2;
+  const imagesAreaH = contentH - headerH - footerH;
+  const colW = (contentW - imgGap * (COLS - 1)) / COLS;
+
+  return (
+    <div className="relative overflow-hidden" style={{ width: PDF_W, height: PDF_H, backgroundColor: bg }}>
+      <div style={{ padding: margin }}>
+        {/* Header */}
+        <div className="flex items-center gap-4 mb-4" style={{ height: headerH }}>
+          <div style={{ fontSize: (form.card_font_size ?? 14) * 3, color: titleColor }} className="font-bold">
+            Post 1
+          </div>
+          <div className="rounded-full px-5 py-2 font-semibold" style={{ fontSize: 20, backgroundColor: accent + "22", color: accent }}>
+            Carrossel
+          </div>
+        </div>
+
+        {/* 3 Column Images */}
+        <div className="flex" style={{ gap: imgGap, height: imagesAreaH }}>
+          {[1, 2, 3].map((n) => (
+            <div
+              key={n}
+              className="rounded-3xl flex items-center justify-center"
+              style={{ width: colW, height: imagesAreaH, backgroundColor: "#1a1d27" }}
+            >
+              <div className="flex flex-col items-center gap-2 text-center" style={{ color: "#3a3d48" }}>
+                <LayoutGrid className="h-14 w-14" />
+                <span style={{ fontSize: 16 }}>Página {n}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Page numbers */}
+        <div className="flex" style={{ gap: imgGap, marginTop: 8 }}>
+          {[1, 2, 3].map((n) => (
+            <div key={n} className="text-center font-bold" style={{ width: colW, fontSize: 14, color: subtitleColor }}>
+              {n}/6
+            </div>
+          ))}
+        </div>
+
+        {/* Footer line */}
+        <div style={{ borderTop: `2px solid ${accent}33`, marginTop: 12, paddingTop: 12 }} className="flex items-center gap-6">
+          <div>
+            <div style={{ fontSize: 16, color: subtitleColor }} className="uppercase tracking-widest font-semibold mb-1">Data</div>
+            <div style={{ fontSize: (form.card_date_font_size ?? 12) * 2.4, color: titleColor }} className="font-bold">03/03/2026</div>
+          </div>
+          {(form.show_time_on_card ?? true) && (
+            <div>
+              <div style={{ fontSize: 16, color: subtitleColor }} className="uppercase tracking-widest font-semibold mb-1">Horário</div>
+              <div style={{ fontSize: (form.card_date_font_size ?? 12) * 2.4, color: titleColor }} className="font-bold">18:00</div>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -331,6 +403,9 @@ function CoverSettings({ form, setForm, uploading, handleUploadBg, handleUploadL
 function CardsSettings({ form, setForm }: any) {
   return (
     <div className="space-y-3">
+      <div className="px-2 py-1.5 rounded-lg bg-muted/30 border border-border/20">
+        <span className="text-[10px] text-muted-foreground">Fonte: <strong className="text-foreground">Bricolage Grotesque</strong> (Regular + Bold)</span>
+      </div>
       <div>
         <Label className="text-[10px] text-muted-foreground">Título — tamanho</Label>
         <div className="flex items-center gap-2 mt-1">
@@ -571,9 +646,14 @@ export function PdfLayoutEditor() {
         );
       case "cards":
         return (
-          <ScaledPreview key="post-0" label="Post 1" isSelected={selectedBlock === "cards"} onClick={() => setSelectedBlock("cards")}>
-            <PreviewPostPage form={form} index={0} />
-          </ScaledPreview>
+          <div key="cards-previews" className="space-y-4">
+            <ScaledPreview label="Post padrão" isSelected={selectedBlock === "cards"} onClick={() => setSelectedBlock("cards")}>
+              <PreviewPostPage form={form} index={0} />
+            </ScaledPreview>
+            <ScaledPreview label="Carrossel (3 colunas)" isSelected={selectedBlock === "cards"} onClick={() => setSelectedBlock("cards")}>
+              <PreviewCarouselPage form={form} />
+            </ScaledPreview>
+          </div>
         );
       case "footer":
         return (

@@ -392,108 +392,230 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
     if (block === "cards") {
       for (let i = 0; i < posts.length; i += 1) {
         const post = posts[i];
+        const isCarousel = post.post_type === "carrossel" && (post.all_attachment_urls?.length ?? 0) > 1;
+
         ensurePage();
         drawBg(doc, pageW, pageH, form);
 
         const contentW = pageW - margin * 2;
-        const gap = sx(40);
-        const imageW = contentW * 0.45;
-        const textW = contentW - imageW - gap;
         const contentH = pageH - margin * 2;
-        const imageX = margin;
-        const imageY = margin;
-        const textX = imageX + imageW + gap;
-        const textY = margin;
-
+        const gap = sx(40);
         const cornerRadius = sx(20);
-        doc.setDrawColor(255, 255, 255);
-        doc.setFillColor(26, 29, 39);
-        doc.roundedRect(imageX, imageY, imageW, contentH, cornerRadius, cornerRadius, "F");
-
-        const postImageUrl = getPostImage(post);
-        let imageRendered = false;
-        if (postImageUrl) {
-          // Fetch raw image, then render with cover-crop + rounded corners via canvas
-          const rawAsset = await getCachedImage(postImageUrl);
-          if (rawAsset) {
-            const coverPng = await renderCoverImage(rawAsset.dataUrl, imageW, contentH, cornerRadius);
-            if (coverPng) {
-              imageRendered = addPdfImage(doc, { dataUrl: coverPng, format: "PNG" }, imageX, imageY, imageW, contentH);
-            }
-          }
-        }
-        if (!imageRendered) {
-          doc.setTextColor(110, 117, 138);
-          setFont(doc, "bold");
-          doc.setFontSize(sx(28));
-          doc.text("Imagem do Post", imageX + imageW / 2, imageY + contentH / 2, { align: "center" });
-        }
 
         const [titleR, titleG, titleB] = parseHex(form.title_color, [255, 255, 255]);
         const [subR, subG, subB] = parseHex(form.subtitle_color, [170, 170, 170]);
         const [accR, accG, accB] = parseHex(form.accent_color, [124, 92, 255]);
         const postTypeLabel = POST_TYPE_LABELS[post.post_type ?? "post"] ?? "Post";
 
-        setFont(doc, "bold");
-        doc.setTextColor(titleR, titleG, titleB);
-        doc.setFontSize(Math.max(10, sx(form.card_font_size * 2.4)));
-        doc.text(`Post ${i + 1}`, textX, textY + sy(60));
+        if (isCarousel) {
+          // ── Carousel layout: 3 columns of images per page ──
+          const carouselImages = post.all_attachment_urls ?? [];
+          const COLS = 3;
+          const imgGap = sx(20);
+          const headerH = sy(100);
+          const footerH = sy(120);
+          const imagesAreaH = contentH - headerH - footerH;
+          const colW = (contentW - imgGap * (COLS - 1)) / COLS;
 
-        const badgeText = postTypeLabel;
-        doc.setFontSize(sx(18));
-        const badgeTextW = doc.getTextWidth(badgeText);
-        const badgePadX = sx(24);
-        const badgeW = badgeTextW + badgePadX * 2;
-        const badgeH = sy(44);
-        const badgeX = textX + sx(180);
-        const badgeY = textY + sy(24);
-        doc.setFillColor(accR, accG, accB);
-        doc.roundedRect(badgeX, badgeY, badgeW, badgeH, sy(22), sy(22), "F");
-        doc.setTextColor(255, 255, 255);
-        doc.text(badgeText, badgeX + badgeW / 2, badgeY + badgeH / 2, { align: "center", baseline: "middle" });
+          // Header: title + badge
+          setFont(doc, "bold");
+          doc.setTextColor(titleR, titleG, titleB);
+          doc.setFontSize(Math.max(10, sx(form.card_font_size * 2.4)));
+          doc.text(`Post ${i + 1}`, margin, margin + sy(50));
 
-        doc.setTextColor(subR, subG, subB);
-        setFont(doc, "bold");
-        doc.setFontSize(sx(16));
-        doc.text("Legenda:", textX, textY + sy(130));
+          const badgeText = postTypeLabel;
+          doc.setFontSize(sx(18));
+          const badgeTextW = doc.getTextWidth(badgeText);
+          const badgePadX = sx(24);
+          const badgeW = badgeTextW + badgePadX * 2;
+          const badgeH = sy(44);
+          const badgeX = margin + sx(180);
+          const badgeY = margin + sy(14);
+          doc.setFillColor(accR, accG, accB);
+          doc.roundedRect(badgeX, badgeY, badgeW, badgeH, sy(22), sy(22), "F");
+          doc.setTextColor(255, 255, 255);
+          doc.text(badgeText, badgeX + badgeW / 2, badgeY + badgeH / 2, { align: "center", baseline: "middle" });
 
-        doc.setTextColor(titleR, titleG, titleB);
-        setFont(doc, "normal");
-        doc.setFontSize(Math.max(9, sx(form.card_caption_font_size * 1.8)));
-        const caption = post.caption?.trim() || "Sem legenda";
-        const wrappedCaption = doc.splitTextToSize(caption, textW);
-        doc.text(wrappedCaption, textX, textY + sy(170), { baseline: "top" });
+          // Render images in pages of 3 columns
+          const imagesY = margin + headerH;
+          const pageImages = carouselImages.slice(0, COLS); // first page
+          const remainingImages = carouselImages.slice(COLS);
 
-        const footerTop = pageH - margin - sy(100);
-        doc.setDrawColor(accR, accG, accB);
-        doc.setLineWidth(1.4);
-        doc.line(textX, footerTop, textX + textW, footerTop);
+          for (let c = 0; c < pageImages.length; c++) {
+            const imgUrl = pageImages[c];
+            const colX = margin + c * (colW + imgGap);
+            doc.setFillColor(26, 29, 39);
+            doc.roundedRect(colX, imagesY, colW, imagesAreaH, cornerRadius, cornerRadius, "F");
 
-        doc.setTextColor(subR, subG, subB);
-        setFont(doc, "bold");
-        doc.setFontSize(sx(14));
-        doc.text("Data", textX, footerTop + sy(32));
+            const rawAsset = await getCachedImage(imgUrl);
+            if (rawAsset) {
+              const coverPng = await renderCoverImage(rawAsset.dataUrl, colW, imagesAreaH, cornerRadius);
+              if (coverPng) {
+                addPdfImage(doc, { dataUrl: coverPng, format: "PNG" }, colX, imagesY, colW, imagesAreaH);
+              }
+            }
 
-        doc.setTextColor(titleR, titleG, titleB);
-        setFont(doc, "normal");
-        doc.setFontSize(Math.max(10, sx(form.card_date_font_size * 2.1)));
-        const formattedDate = post.posting_date ? format(parseISO(post.posting_date), "dd/MM/yyyy") : "—";
-        doc.text(formattedDate, textX, footerTop + sy(68));
+            // Page number label
+            doc.setFontSize(sx(14));
+            setFont(doc, "bold");
+            doc.setTextColor(subR, subG, subB);
+            doc.text(`${c + 1}/${carouselImages.length}`, colX + colW / 2, imagesY + imagesAreaH + sy(25), { align: "center" });
+          }
 
-        if (form.show_time_on_card && post.posting_time) {
-          const dateTextW = doc.getTextWidth(formattedDate);
-          const timeX = Math.min(
-            Math.max(textX + dateTextW + sx(80), textX + textW * 0.55),
-            textX + textW - sx(220),
-          );
+          // Footer: date + time
+          const footerTop = pageH - margin - sy(80);
+          doc.setDrawColor(accR, accG, accB);
+          doc.setLineWidth(1.4);
+          doc.line(margin, footerTop, margin + contentW, footerTop);
+
           doc.setTextColor(subR, subG, subB);
           setFont(doc, "bold");
           doc.setFontSize(sx(14));
-          doc.text("Horário", timeX, footerTop + sy(32));
+          doc.text("Data", margin, footerTop + sy(32));
+
           doc.setTextColor(titleR, titleG, titleB);
           setFont(doc, "normal");
           doc.setFontSize(Math.max(10, sx(form.card_date_font_size * 2.1)));
-          doc.text(post.posting_time, timeX, footerTop + sy(68));
+          const formattedDate = post.posting_date ? format(parseISO(post.posting_date), "dd/MM/yyyy") : "—";
+          doc.text(formattedDate, margin, footerTop + sy(58));
+
+          if (form.show_time_on_card && post.posting_time) {
+            const dateTextW = doc.getTextWidth(formattedDate);
+            const timeX = margin + dateTextW + sx(80);
+            doc.setTextColor(subR, subG, subB);
+            setFont(doc, "bold");
+            doc.setFontSize(sx(14));
+            doc.text("Horário", timeX, footerTop + sy(32));
+            doc.setTextColor(titleR, titleG, titleB);
+            setFont(doc, "normal");
+            doc.setFontSize(Math.max(10, sx(form.card_date_font_size * 2.1)));
+            doc.text(post.posting_time, timeX, footerTop + sy(58));
+          }
+
+          // Additional pages for remaining carousel images (3 per page)
+          for (let pageStart = 0; pageStart < remainingImages.length; pageStart += COLS) {
+            ensurePage();
+            drawBg(doc, pageW, pageH, form);
+
+            setFont(doc, "bold");
+            doc.setTextColor(titleR, titleG, titleB);
+            doc.setFontSize(Math.max(10, sx(form.card_font_size * 2.4)));
+            doc.text(`Post ${i + 1} (cont.)`, margin, margin + sy(50));
+
+            const chunk = remainingImages.slice(pageStart, pageStart + COLS);
+            for (let c = 0; c < chunk.length; c++) {
+              const imgUrl = chunk[c];
+              const colX = margin + c * (colW + imgGap);
+              doc.setFillColor(26, 29, 39);
+              doc.roundedRect(colX, imagesY, colW, imagesAreaH, cornerRadius, cornerRadius, "F");
+
+              const rawAsset = await getCachedImage(imgUrl);
+              if (rawAsset) {
+                const coverPng = await renderCoverImage(rawAsset.dataUrl, colW, imagesAreaH, cornerRadius);
+                if (coverPng) {
+                  addPdfImage(doc, { dataUrl: coverPng, format: "PNG" }, colX, imagesY, colW, imagesAreaH);
+                }
+              }
+
+              const globalIdx = COLS + pageStart + c;
+              doc.setFontSize(sx(14));
+              setFont(doc, "bold");
+              doc.setTextColor(subR, subG, subB);
+              doc.text(`${globalIdx + 1}/${carouselImages.length}`, colX + colW / 2, imagesY + imagesAreaH + sy(25), { align: "center" });
+            }
+          }
+        } else {
+          // ── Standard single-image layout ──
+          const imageW = contentW * 0.45;
+          const textW = contentW - imageW - gap;
+          const imageX = margin;
+          const imageY = margin;
+          const textX = imageX + imageW + gap;
+          const textY = margin;
+
+          doc.setDrawColor(255, 255, 255);
+          doc.setFillColor(26, 29, 39);
+          doc.roundedRect(imageX, imageY, imageW, contentH, cornerRadius, cornerRadius, "F");
+
+          const postImageUrl = getPostImage(post);
+          let imageRendered = false;
+          if (postImageUrl) {
+            const rawAsset = await getCachedImage(postImageUrl);
+            if (rawAsset) {
+              const coverPng = await renderCoverImage(rawAsset.dataUrl, imageW, contentH, cornerRadius);
+              if (coverPng) {
+                imageRendered = addPdfImage(doc, { dataUrl: coverPng, format: "PNG" }, imageX, imageY, imageW, contentH);
+              }
+            }
+          }
+          if (!imageRendered) {
+            doc.setTextColor(110, 117, 138);
+            setFont(doc, "bold");
+            doc.setFontSize(sx(28));
+            doc.text("Imagem do Post", imageX + imageW / 2, imageY + contentH / 2, { align: "center" });
+          }
+
+          setFont(doc, "bold");
+          doc.setTextColor(titleR, titleG, titleB);
+          doc.setFontSize(Math.max(10, sx(form.card_font_size * 2.4)));
+          doc.text(`Post ${i + 1}`, textX, textY + sy(60));
+
+          const badgeText = postTypeLabel;
+          doc.setFontSize(sx(18));
+          const badgeTextW = doc.getTextWidth(badgeText);
+          const badgePadX = sx(24);
+          const badgeW = badgeTextW + badgePadX * 2;
+          const badgeH = sy(44);
+          const badgeX = textX + sx(180);
+          const badgeY = textY + sy(24);
+          doc.setFillColor(accR, accG, accB);
+          doc.roundedRect(badgeX, badgeY, badgeW, badgeH, sy(22), sy(22), "F");
+          doc.setTextColor(255, 255, 255);
+          doc.text(badgeText, badgeX + badgeW / 2, badgeY + badgeH / 2, { align: "center", baseline: "middle" });
+
+          doc.setTextColor(subR, subG, subB);
+          setFont(doc, "bold");
+          doc.setFontSize(sx(16));
+          doc.text("Legenda:", textX, textY + sy(130));
+
+          doc.setTextColor(titleR, titleG, titleB);
+          setFont(doc, "normal");
+          doc.setFontSize(Math.max(9, sx(form.card_caption_font_size * 1.8)));
+          const caption = post.caption?.trim() || "Sem legenda";
+          const wrappedCaption = doc.splitTextToSize(caption, textW);
+          doc.text(wrappedCaption, textX, textY + sy(170), { baseline: "top" });
+
+          const footerTop = pageH - margin - sy(100);
+          doc.setDrawColor(accR, accG, accB);
+          doc.setLineWidth(1.4);
+          doc.line(textX, footerTop, textX + textW, footerTop);
+
+          doc.setTextColor(subR, subG, subB);
+          setFont(doc, "bold");
+          doc.setFontSize(sx(14));
+          doc.text("Data", textX, footerTop + sy(32));
+
+          doc.setTextColor(titleR, titleG, titleB);
+          setFont(doc, "normal");
+          doc.setFontSize(Math.max(10, sx(form.card_date_font_size * 2.1)));
+          const formattedDate = post.posting_date ? format(parseISO(post.posting_date), "dd/MM/yyyy") : "—";
+          doc.text(formattedDate, textX, footerTop + sy(68));
+
+          if (form.show_time_on_card && post.posting_time) {
+            const dateTextW = doc.getTextWidth(formattedDate);
+            const timeX = Math.min(
+              Math.max(textX + dateTextW + sx(80), textX + textW * 0.55),
+              textX + textW - sx(220),
+            );
+            doc.setTextColor(subR, subG, subB);
+            setFont(doc, "bold");
+            doc.setFontSize(sx(14));
+            doc.text("Horário", timeX, footerTop + sy(32));
+            doc.setTextColor(titleR, titleG, titleB);
+            setFont(doc, "normal");
+            doc.setFontSize(Math.max(10, sx(form.card_date_font_size * 2.1)));
+            doc.text(post.posting_time, timeX, footerTop + sy(68));
+          }
         }
       }
     }
