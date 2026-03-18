@@ -443,6 +443,104 @@ function drawBg(doc: jsPDF, pageW: number, pageH: number, settings: Required<Pdf
   doc.rect(0, 0, pageW, pageH, "F");
 }
 
+function decodeHtmlEntities(value: string) {
+  if (typeof document === "undefined") return value;
+  const textarea = document.createElement("textarea");
+  textarea.innerHTML = value;
+  return textarea.value;
+}
+
+function htmlToPlainText(value: string) {
+  const withBreaks = value
+    .replace(/<\s*br\s*\/?>/gi, "\n")
+    .replace(/<\s*li[^>]*>/gi, "• ")
+    .replace(/<\/\s*(p|div|li|h[1-6]|tr|ul|ol)\s*>/gi, "\n");
+
+  const withoutTags = withBreaks.replace(/<[^>]+>/g, "");
+  return decodeHtmlEntities(withoutTags)
+    .replace(/\u00a0/g, " ")
+    .replace(/\r\n?/g, "\n")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function toPdfText(value: string | null | undefined, fallback: string) {
+  const raw = (value ?? "").trim();
+  if (!raw) return fallback;
+
+  const maybeHtml = /<[^>]+>|&[a-zA-Z#0-9]+;/.test(raw);
+  const parsed = maybeHtml
+    ? htmlToPlainText(raw)
+    : decodeHtmlEntities(raw).replace(/\u00a0/g, " ").trim();
+
+  return parsed || fallback;
+}
+
+function fitTextLines(
+  doc: jsPDF,
+  text: string,
+  maxWidth: number,
+  maxHeight: number,
+  lineHeightFactor: number,
+) {
+  const safeWidth = Math.max(20, maxWidth);
+  const collected: string[] = [];
+
+  for (const paragraph of text.split("\n")) {
+    const chunk = paragraph.trim();
+    if (!chunk) {
+      if (collected.length > 0 && collected[collected.length - 1] !== "") {
+        collected.push("");
+      }
+      continue;
+    }
+
+    const wrapped = doc.splitTextToSize(chunk, safeWidth) as string[];
+    if (wrapped.length) {
+      collected.push(...wrapped);
+    } else {
+      collected.push(chunk);
+    }
+  }
+
+  if (!collected.length) return [""];
+
+  const lineHeight = Math.max(1, doc.getFontSize() * lineHeightFactor);
+  const maxLines = Math.max(1, Math.floor(maxHeight / lineHeight));
+
+  if (collected.length <= maxLines) return collected;
+
+  const trimmed = collected.slice(0, maxLines);
+  const ellipsis = "…";
+  let tail = trimmed[maxLines - 1] ?? "";
+
+  while (tail && doc.getTextWidth(`${tail}${ellipsis}`) > safeWidth) {
+    tail = tail.slice(0, -1).trimEnd();
+  }
+
+  trimmed[maxLines - 1] = `${tail}${ellipsis}`;
+  return trimmed;
+}
+
+function chunkArray<T>(items: T[], size: number): T[][] {
+  const safeSize = Math.max(1, size);
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += safeSize) {
+    chunks.push(items.slice(i, i + safeSize));
+  }
+  return chunks;
+}
+
+function formatPostingDate(dateValue: string | null) {
+  if (!dateValue) return "—";
+  try {
+    return format(parseISO(dateValue), "dd/MM/yyyy");
+  } catch {
+    return "—";
+  }
+}
+
 export async function downloadCronogramaPdf({ clientName, posts, settings }: ExportInput) {
   const form = withDefaults(settings);
   await ensureBrowserFontsLoaded();
@@ -532,7 +630,7 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
       doc.setTextColor(titleR, titleG, titleB);
       setFont(doc, "bold");
       doc.setFontSize(Math.max(14, sx(form.title_font_size * 2.5)));
-      doc.text(clientName || "Cronograma", (coverTitlePoint.x / 100) * pageW, (coverTitlePoint.y / 100) * pageH, { align: "center", baseline: "middle" });
+      doc.text(toPdfText(clientName, "Cronograma"), (coverTitlePoint.x / 100) * pageW, (coverTitlePoint.y / 100) * pageH, { align: "center", baseline: "middle" });
 
       const baseDate = posts[0]?.posting_date ? parseISO(posts[0].posting_date) : new Date();
       doc.setTextColor(subR, subG, subB);
@@ -562,7 +660,7 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
         setFont(doc, "bold");
         doc.setTextColor(subR, subG, subB);
         doc.setFontSize(Math.max(10, sx(form.title_font_size * 0.85)));
-        doc.text(form.agency_name, pageW / 2, footerY, { align: "center" });
+        doc.text(toPdfText(form.agency_name, ""), pageW / 2, footerY, { align: "center" });
       }
     }
 
@@ -574,161 +672,157 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
         if (block === "cards" && isCarousel) continue;
         if (block === "carousel" && !isCarousel) continue;
 
-        ensurePage();
-        drawBg(doc, pageW, pageH, form);
+        const [titleR, titleG, titleB] = parseHex(form.title_color, [255, 255, 255]);
+        const [subR, subG, subB] = parseHex(form.subtitle_color, [170, 170, 170]);
+        const [accR, accG, accB] = parseHex(form.accent_color, [124, 92, 255]);
+        const postTypeLabel = POST_TYPE_LABELS[post.post_type ?? "post"] ?? "Post";
 
         const contentW = pageW - margin * 2;
         const contentH = pageH - margin * 2;
         const gap = sx(40);
         const cornerRadius = sx(20);
 
-        const [titleR, titleG, titleB] = parseHex(form.title_color, [255, 255, 255]);
-        const [subR, subG, subB] = parseHex(form.subtitle_color, [170, 170, 170]);
-        const [accR, accG, accB] = parseHex(form.accent_color, [124, 92, 255]);
-        const postTypeLabel = POST_TYPE_LABELS[post.post_type ?? "post"] ?? "Post";
-
         if (isCarousel) {
-          // ── Carousel layout: grid on TOP, info bar on BOTTOM ──
-          const carouselImages = post.all_attachment_urls ?? [];
-          const COLS = form.carousel_cols ?? 4;
-          const ROWS = form.carousel_rows ?? 2;
+          const COLS = Math.max(1, form.carousel_cols ?? 4);
+          const ROWS = Math.max(1, form.carousel_rows ?? 2);
           const PER_PAGE = COLS * ROWS;
           const imgGap = sx(12);
           const imgHeightPct = (form.carousel_image_height_pct ?? 65) / 100;
 
-          const gridH = contentH * imgHeightPct;
-          const infoH = contentH - gridH - sy(20);
-          const gridY = margin;
-          const infoY = margin + gridH + sy(20);
+          const fallbackCarouselImage = getPostImage(post);
+          const baseCarouselImages = (post.all_attachment_urls ?? []).filter((url): url is string => Boolean(url));
+          const carouselImages = baseCarouselImages.length
+            ? baseCarouselImages
+            : fallbackCarouselImage
+              ? [fallbackCarouselImage]
+              : [];
 
-          const gridColW = (contentW - imgGap * (COLS - 1)) / COLS;
-          const gridRowH = (gridH - imgGap * (ROWS - 1)) / ROWS;
+          const chunks = chunkArray(carouselImages, PER_PAGE);
+          const pages = chunks.length ? chunks : [[]];
 
-          const firstPageImgs = carouselImages.slice(0, PER_PAGE);
-          for (let idx = 0; idx < firstPageImgs.length; idx++) {
-            const col = idx % COLS;
-            const row = Math.floor(idx / COLS);
-            const cx = margin + col * (gridColW + imgGap);
-            const cy = gridY + row * (gridRowH + imgGap);
-
-            doc.setFillColor(26, 29, 39);
-            doc.roundedRect(cx, cy, gridColW, gridRowH, cornerRadius, cornerRadius, "F");
-
-            const rawAsset = await getCachedImage(firstPageImgs[idx]);
-            if (rawAsset) {
-              const containPng = await renderFittedImage(rawAsset.dataUrl, gridColW, gridRowH, cornerRadius, {
-                fitMode: "cover",
-              });
-              if (containPng) {
-                addPdfImage(doc, { dataUrl: containPng, format: "PNG" }, cx, cy, gridColW, gridRowH);
-              }
-            }
-          }
-
-          const cTitleFontSize = form.carousel_title_font_size ?? form.card_font_size ?? 14;
-          const cCaptionFontSize = form.carousel_caption_font_size ?? form.card_caption_font_size ?? 11;
-          const cDateFontSize = form.carousel_date_font_size ?? form.card_date_font_size ?? 12;
-
-          const leftColW = contentW * 0.2;
-          const centerColW = contentW * 0.5;
-          const rightColW = contentW * 0.3;
-
-          const defaultCarouselInfoPoint: LayoutPoint = {
-            x: 50,
-            y: ((infoY + infoH / 2) / pageH) * 100,
-          };
-          const carouselInfoPoint = getLayoutPoint(form.layout_overrides, "carousel_info", defaultCarouselInfoPoint);
-          const carouselInfoCenterX = (carouselInfoPoint.x / 100) * pageW;
-          const carouselInfoCenterY = (carouselInfoPoint.y / 100) * pageH;
-          const defaultCarouselCenterX = margin + contentW / 2;
-          const defaultCarouselCenterY = infoY + infoH / 2;
-
-          const infoDx = carouselInfoCenterX - defaultCarouselCenterX;
-          const infoDy = carouselInfoCenterY - defaultCarouselCenterY;
-
-          const leftX = margin + infoDx;
-          const centerX = margin + leftColW + infoDx;
-          const rightX = margin + leftColW + centerColW + infoDx;
-          const infoBaseY = infoY + infoDy;
-
-          setFont(doc, "bold");
-          doc.setTextColor(titleR, titleG, titleB);
-          doc.setFontSize(Math.max(10, sx(cTitleFontSize * 3)));
-          doc.text(`Post ${i + 1}`, leftX, infoBaseY + sy(50));
-
-          setFont(doc, "normal");
-          doc.setFontSize(sx(16));
-          doc.setTextColor(accR, accG, accB);
-          doc.text(postTypeLabel, leftX, infoBaseY + sy(90));
-
-          doc.setTextColor(titleR, titleG, titleB);
-          setFont(doc, "normal");
-          doc.setFontSize(Math.max(9, sx(cCaptionFontSize * 2)));
-          const caption = post.caption?.trim() || "Sem legenda";
-          const wrappedCaption = doc.splitTextToSize(caption, centerColW - sx(20));
-          doc.setLineHeightFactor(1.7);
-          doc.text(wrappedCaption, centerX, infoBaseY + sy(30), { baseline: "top", lineHeightFactor: 1.7 });
-          doc.setLineHeightFactor(1.15);
-
-          const formattedDate = post.posting_date ? format(parseISO(post.posting_date), "dd/MM/yyyy") : "—";
-          const dateBadgeW = rightColW - sx(20);
-          const dateBadgeH = sy(50);
-          const dateBadgeX = rightX;
-          const dateBadgeY = infoBaseY + sy(10);
-
-          doc.setFillColor(accR, accG, accB);
-          doc.roundedRect(dateBadgeX, dateBadgeY, dateBadgeW, dateBadgeH, sy(10), sy(10), "F");
-          doc.setTextColor(255, 255, 255);
-          setFont(doc, "bold");
-          doc.setFontSize(Math.max(10, sx(cDateFontSize * 1.8)));
-          doc.text(`Data: ${formattedDate}`, dateBadgeX + dateBadgeW / 2, dateBadgeY + dateBadgeH / 2, { align: "center", baseline: "middle" });
-
-          if (form.show_time_on_card && post.posting_time) {
-            const timeBadgeY = dateBadgeY + dateBadgeH + sy(12);
-            doc.setFillColor(accR, accG, accB);
-            doc.roundedRect(dateBadgeX, timeBadgeY, dateBadgeW, dateBadgeH, sy(10), sy(10), "F");
-            doc.setTextColor(255, 255, 255);
-            doc.text(`Horário: ${post.posting_time}`, dateBadgeX + dateBadgeW / 2, timeBadgeY + dateBadgeH / 2, { align: "center", baseline: "middle" });
-          }
-
-          for (let pageStart = PER_PAGE; pageStart < carouselImages.length; pageStart += PER_PAGE) {
+          for (let chunkIndex = 0; chunkIndex < pages.length; chunkIndex += 1) {
             ensurePage();
             drawBg(doc, pageW, pageH, form);
 
-            setFont(doc, "bold");
-            doc.setTextColor(titleR, titleG, titleB);
-            doc.setFontSize(Math.max(10, sx(cTitleFontSize * 2.4)));
-            doc.text(`Post ${i + 1} (cont.)`, margin, margin + sy(50));
+            const pageImages = pages[chunkIndex];
+            const gridH = contentH * imgHeightPct;
+            const infoH = contentH - gridH - sy(20);
+            const gridY = margin;
+            const infoY = margin + gridH + sy(20);
 
-            const chunk = carouselImages.slice(pageStart, pageStart + PER_PAGE);
-            const fullW = pageW - margin * 2;
-            const fullH = contentH - sy(80);
-            const cColW = (fullW - imgGap * (COLS - 1)) / COLS;
-            const cRowH = (fullH - imgGap * (ROWS - 1)) / ROWS;
-            const startY = margin + sy(80);
+            const gridColW = (contentW - imgGap * (COLS - 1)) / COLS;
+            const gridRowH = (gridH - imgGap * (ROWS - 1)) / ROWS;
 
-            for (let idx = 0; idx < chunk.length; idx++) {
-              const col = idx % COLS;
-              const row = Math.floor(idx / COLS);
-              const cx = margin + col * (cColW + imgGap);
-              const cy = startY + row * (cRowH + imgGap);
+            for (let cell = 0; cell < COLS * ROWS; cell += 1) {
+              const col = cell % COLS;
+              const row = Math.floor(cell / COLS);
+              const cx = margin + col * (gridColW + imgGap);
+              const cy = gridY + row * (gridRowH + imgGap);
 
               doc.setFillColor(26, 29, 39);
-              doc.roundedRect(cx, cy, cColW, cRowH, cornerRadius, cornerRadius, "F");
+              doc.roundedRect(cx, cy, gridColW, gridRowH, cornerRadius, cornerRadius, "F");
 
-              const rawAsset = await getCachedImage(chunk[idx]);
-              if (rawAsset) {
-                const containPng = await renderFittedImage(rawAsset.dataUrl, cColW, cRowH, cornerRadius, {
-                  fitMode: "cover",
-                });
-                if (containPng) {
-                  addPdfImage(doc, { dataUrl: containPng, format: "PNG" }, cx, cy, cColW, cRowH);
-                }
+              const imageUrl = pageImages[cell];
+              if (!imageUrl) continue;
+
+              const rawAsset = await getCachedImage(imageUrl);
+              if (!rawAsset) continue;
+
+              const fittedPng = await renderFittedImage(rawAsset.dataUrl, gridColW, gridRowH, cornerRadius, {
+                fitMode: "contain",
+                backgroundMode: "blur",
+              });
+
+              if (fittedPng) {
+                addPdfImage(doc, { dataUrl: fittedPng, format: "PNG" }, cx, cy, gridColW, gridRowH);
               }
+            }
+
+            const cTitleFontSize = form.carousel_title_font_size ?? form.card_font_size ?? 14;
+            const cCaptionFontSize = form.carousel_caption_font_size ?? form.card_caption_font_size ?? 11;
+            const cDateFontSize = form.carousel_date_font_size ?? form.card_date_font_size ?? 12;
+
+            const leftColW = contentW * 0.2;
+            const centerColW = contentW * 0.5;
+            const rightColW = contentW * 0.3;
+
+            const defaultCarouselInfoPoint: LayoutPoint = {
+              x: 50,
+              y: ((infoY + infoH / 2) / pageH) * 100,
+            };
+            const carouselInfoPoint = getLayoutPoint(form.layout_overrides, "carousel_info", defaultCarouselInfoPoint);
+            const carouselInfoCenterX = (carouselInfoPoint.x / 100) * pageW;
+            const carouselInfoCenterY = (carouselInfoPoint.y / 100) * pageH;
+            const defaultCarouselCenterX = margin + contentW / 2;
+            const defaultCarouselCenterY = infoY + infoH / 2;
+
+            const infoDx = carouselInfoCenterX - defaultCarouselCenterX;
+            const infoDy = carouselInfoCenterY - defaultCarouselCenterY;
+
+            const leftX = margin + infoDx;
+            const centerX = margin + leftColW + infoDx;
+            const rightX = margin + leftColW + centerColW + infoDx;
+            const infoBaseY = infoY + infoDy;
+
+            const postHeader = pages.length > 1
+              ? `Post ${i + 1} • Página ${chunkIndex + 1}/${pages.length}`
+              : `Post ${i + 1}`;
+
+            setFont(doc, "bold");
+            doc.setTextColor(titleR, titleG, titleB);
+            doc.setFontSize(Math.max(10, sx(cTitleFontSize * 3)));
+            doc.text(postHeader, leftX, infoBaseY + sy(50));
+
+            setFont(doc, "normal");
+            doc.setFontSize(sx(16));
+            doc.setTextColor(accR, accG, accB);
+            doc.text(postTypeLabel, leftX, infoBaseY + sy(90));
+
+            const captionText = toPdfText(post.caption, "Sem legenda");
+            setFont(doc, "normal");
+            doc.setTextColor(titleR, titleG, titleB);
+            doc.setFontSize(Math.max(9, sx(cCaptionFontSize * 2)));
+            const carouselCaptionX = centerX;
+            const carouselCaptionY = infoBaseY + sy(28);
+            const carouselCaptionW = centerColW - sx(20);
+            const carouselCaptionH = Math.max(sy(40), infoH - sy(30));
+            const carouselLines = fitTextLines(doc, captionText, carouselCaptionW, carouselCaptionH, 1.7);
+            doc.setLineHeightFactor(1.7);
+            doc.text(carouselLines, carouselCaptionX, carouselCaptionY, { baseline: "top", lineHeightFactor: 1.7 });
+            doc.setLineHeightFactor(1.15);
+
+            const formattedDate = formatPostingDate(post.posting_date);
+            const dateText = `Data: ${formattedDate}`;
+            const showTime = Boolean(form.show_time_on_card && post.posting_time);
+            const timeText = showTime ? `Horário: ${toPdfText(post.posting_time, "—")}` : null;
+
+            setFont(doc, "bold");
+            doc.setFontSize(Math.max(10, sx(cDateFontSize * 1.8)));
+            const maxBadgeW = Math.max(sx(150), rightColW - sx(10));
+            const dateBadgeW = Math.min(maxBadgeW, Math.max(sx(150), doc.getTextWidth(dateText) + sx(32)));
+            const dateBadgeH = sy(50);
+            const dateBadgeX = rightX + (rightColW - dateBadgeW);
+            const dateBadgeY = infoBaseY + sy(10);
+
+            doc.setFillColor(accR, accG, accB);
+            doc.roundedRect(dateBadgeX, dateBadgeY, dateBadgeW, dateBadgeH, sy(10), sy(10), "F");
+            doc.setTextColor(255, 255, 255);
+            doc.text(dateText, dateBadgeX + dateBadgeW / 2, dateBadgeY + dateBadgeH / 2, { align: "center", baseline: "middle" });
+
+            if (showTime && timeText) {
+              const timeBadgeW = Math.min(maxBadgeW, Math.max(sx(150), doc.getTextWidth(timeText) + sx(32)));
+              const timeBadgeX = rightX + (rightColW - timeBadgeW);
+              const timeBadgeY = dateBadgeY + dateBadgeH + sy(12);
+              doc.setFillColor(accR, accG, accB);
+              doc.roundedRect(timeBadgeX, timeBadgeY, timeBadgeW, dateBadgeH, sy(10), sy(10), "F");
+              doc.setTextColor(255, 255, 255);
+              doc.text(timeText, timeBadgeX + timeBadgeW / 2, timeBadgeY + dateBadgeH / 2, { align: "center", baseline: "middle" });
             }
           }
         } else {
-          // ── Standard single-image layout (espelha a prévia) ──
+          ensurePage();
+          drawBg(doc, pageW, pageH, form);
+
           const imageW = contentW * imgWidthPct;
           const infoW = contentW - imageW - gap;
           const imageX = margin;
@@ -810,43 +904,56 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
           doc.setTextColor(accR, accG, accB);
           doc.text(postTypeLabel, typeBadgeX + typeBadgeW / 2, titleCenterY, { align: "center", baseline: "middle" });
 
+          const formattedDate = formatPostingDate(post.posting_date);
+          const dateText = `Data: ${formattedDate}`;
+          const showTime = Boolean(form.show_time_on_card && post.posting_time);
+          const timeText = showTime ? `Horário: ${toPdfText(post.posting_time, "—")}` : null;
+
+          setFont(doc, "bold");
+          doc.setFontSize(Math.max(10, sx((form.card_date_font_size ?? 12) * 1.8)));
+
+          const dateBadgeW = Math.max(sx(220), doc.getTextWidth(dateText) + sx(36));
+          const dateBadgeH = sy(50);
+          const dateBadgeX = dateCenterX - dateBadgeW / 2;
+          const dateBadgeY = dateCenterY - dateBadgeH / 2;
+
+          const timeBadgeW = showTime && timeText ? Math.max(sx(220), doc.getTextWidth(timeText) + sx(36)) : 0;
+          const timeBadgeH = dateBadgeH;
+          const timeBadgeX = timeCenterX - timeBadgeW / 2;
+          const timeBadgeY = showTime ? timeCenterY - timeBadgeH / 2 : null;
+
           const captionLabelX = captionCenterX - infoW / 2;
           const captionLabelY = captionCenterY - sy(48);
+          const captionTextY = captionLabelY + sy(34);
+          const captionLimitY = Math.min(
+            dateBadgeY,
+            showTime && timeBadgeY !== null ? timeBadgeY : Number.POSITIVE_INFINITY,
+          );
+          const maxCaptionBottom = Number.isFinite(captionLimitY)
+            ? Math.max(captionTextY + sy(20), captionLimitY - sy(14))
+            : pageH - margin;
+          const maxCaptionHeight = Math.max(sy(30), maxCaptionBottom - captionTextY);
+
           setFont(doc, "bold");
           doc.setTextColor(subR, subG, subB);
           doc.setFontSize(sx(20));
           doc.text("Legenda:", captionLabelX, captionLabelY, { baseline: "top" });
 
-          const captionText = post.caption?.trim() || "Sem legenda";
+          const captionText = toPdfText(post.caption, "Sem legenda");
           setFont(doc, "normal");
           doc.setTextColor(titleR, titleG, titleB);
           doc.setFontSize(Math.max(9, sx(form.card_caption_font_size * 2)));
-          const wrappedCaption = doc.splitTextToSize(captionText, infoW);
+          const wrappedCaption = fitTextLines(doc, captionText, infoW, maxCaptionHeight, 1.7);
           doc.setLineHeightFactor(1.7);
-          doc.text(wrappedCaption, captionLabelX, captionLabelY + sy(34), { baseline: "top", lineHeightFactor: 1.7 });
+          doc.text(wrappedCaption, captionLabelX, captionTextY, { baseline: "top", lineHeightFactor: 1.7 });
           doc.setLineHeightFactor(1.15);
-
-          const formattedDate = post.posting_date ? format(parseISO(post.posting_date), "dd/MM/yyyy") : "—";
-          const dateText = `Data: ${formattedDate}`;
-          setFont(doc, "bold");
-          doc.setFontSize(Math.max(10, sx((form.card_date_font_size ?? 12) * 1.8)));
-          const dateBadgeW = Math.max(sx(220), doc.getTextWidth(dateText) + sx(36));
-          const dateBadgeH = sy(50);
-          const dateBadgeX = dateCenterX - dateBadgeW / 2;
-          const dateBadgeY = dateCenterY - dateBadgeH / 2;
 
           doc.setFillColor(accR, accG, accB);
           doc.roundedRect(dateBadgeX, dateBadgeY, dateBadgeW, dateBadgeH, sy(10), sy(10), "F");
           doc.setTextColor(255, 255, 255);
           doc.text(dateText, dateCenterX, dateCenterY, { align: "center", baseline: "middle" });
 
-          if (form.show_time_on_card && post.posting_time) {
-            const timeText = `Horário: ${post.posting_time}`;
-            const timeBadgeW = Math.max(sx(220), doc.getTextWidth(timeText) + sx(36));
-            const timeBadgeH = sy(50);
-            const timeBadgeX = timeCenterX - timeBadgeW / 2;
-            const timeBadgeY = timeCenterY - timeBadgeH / 2;
-
+          if (showTime && timeText && timeBadgeY !== null) {
             doc.setFillColor(accR, accG, accB);
             doc.roundedRect(timeBadgeX, timeBadgeY, timeBadgeW, timeBadgeH, sy(10), sy(10), "F");
             doc.setTextColor(255, 255, 255);
@@ -880,7 +987,7 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
       setFont(doc, "bold");
       doc.setTextColor(titleR, titleG, titleB);
       doc.setFontSize(Math.max(12, sx((form.footer_title_font_size ?? 32) * 1.25)));
-      doc.text(form.agency_name || "Nome da Agência", pageW / 2 + footerDx, pageH / 2 - sy(20) + footerDy, { align: "center" });
+      doc.text(toPdfText(form.agency_name, "Nome da Agência"), pageW / 2 + footerDx, pageH / 2 - sy(20) + footerDy, { align: "center" });
 
       doc.setDrawColor(accR, accG, accB);
       doc.setLineWidth(2);
@@ -894,11 +1001,11 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
       doc.setTextColor(subR, subG, subB);
       setFont(doc, "normal");
       doc.setFontSize(Math.max(10, sx((form.footer_subtitle_font_size ?? 18) * 1.5)));
-      doc.text(form.footer_text || "Cronograma de Conteúdo", pageW / 2 + footerDx, pageH / 2 + sy(50) + footerDy, { align: "center" });
+      doc.text(toPdfText(form.footer_text, "Cronograma de Conteúdo"), pageW / 2 + footerDx, pageH / 2 + sy(50) + footerDy, { align: "center" });
 
       doc.setTextColor(subR, subG, subB);
       doc.setFontSize(Math.max(9, sx((form.footer_contact_font_size ?? 11) * 1.6)));
-      doc.text(form.footer_contact || "@agencia • contato@agencia.com", pageW / 2 + footerDx, pageH / 2 + sy(95) + footerDy, { align: "center" });
+      doc.text(toPdfText(form.footer_contact, "@agencia • contato@agencia.com"), pageW / 2 + footerDx, pageH / 2 + sy(95) + footerDy, { align: "center" });
     }
   }
 
