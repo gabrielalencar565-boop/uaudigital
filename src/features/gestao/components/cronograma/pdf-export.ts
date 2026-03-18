@@ -582,7 +582,10 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
 
             const rawAsset = await getCachedImage(firstPageImgs[idx]);
             if (rawAsset) {
-              const containPng = await renderContainImage(rawAsset.dataUrl, gridColW, gridRowH, cornerRadius, { backgroundMode: "blur" });
+              const containPng = await renderFittedImage(rawAsset.dataUrl, gridColW, gridRowH, cornerRadius, {
+                backgroundMode: "blur",
+                fitMode: "contain",
+              });
               if (containPng) {
                 addPdfImage(doc, { dataUrl: containPng, format: "PNG" }, cx, cy, gridColW, gridRowH);
               }
