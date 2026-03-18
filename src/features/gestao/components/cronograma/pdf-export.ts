@@ -391,13 +391,19 @@ async function loadBricolageFont(doc: jsPDF): Promise<boolean> {
   return Boolean(fontCache?.normal);
 }
 
+let _fontLoaded = false;
+
 function setFont(doc: jsPDF, style: "normal" | "bold") {
+  if (!_fontLoaded) {
+    doc.setFont("helvetica", style);
+    return;
+  }
   try {
     doc.setFont("Bricolage", style);
   } catch {
     if (style === "bold") {
-      doc.setFont("Bricolage", "normal");
-      return;
+      try { doc.setFont("Bricolage", "normal"); return; } catch { /* fall through */ }
+    }
     }
     throw new Error("Não foi possível aplicar a fonte incorporada do PDF.");
   }
