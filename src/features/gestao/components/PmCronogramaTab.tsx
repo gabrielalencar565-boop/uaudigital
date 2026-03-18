@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Calendar, Download, Share2, CalendarRange, LayoutGrid as GridIcon, List } from "lucide-react";
+import { Calendar, Download, Share2, CalendarRange, LayoutGrid as GridIcon, List, Palette } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import type { PmTask } from "../pm-types";
 import { useUpdatePmTask } from "../hooks/use-pm-data";
 import { toast } from "sonner";
+import { downloadCanvaPackage } from "./cronograma/canva-export";
 
 import { POST_TYPE_META, type CronogramaPost } from "./cronograma/types";
 import { MonthlyView } from "./cronograma/MonthlyView";
@@ -117,6 +118,19 @@ export function PmCronogramaTab({ parentTask, childTasks, clientName, membersMap
     );
   }
 
+  const handleCanvaExport = async () => {
+    try {
+      const baseDate = scheduledPosts[0]?.posting_date
+        ? parseISO(scheduledPosts[0].posting_date)
+        : new Date();
+      const monthRef = format(baseDate, "yyyy-MM");
+      await downloadCanvaPackage({ clientName, posts: scheduledPosts, monthRef });
+      toast.success("Pacote para Canva exportado com sucesso!");
+    } catch (err) {
+      toast.error("Erro ao exportar pacote para Canva.");
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -126,6 +140,9 @@ export function PmCronogramaTab({ parentTask, childTasks, clientName, membersMap
           </Button>
           <Button variant="outline" size="sm" className="gap-1.5 text-xs rounded-xl" onClick={handleDownloadPDF}>
             <Download className="h-3.5 w-3.5" /> PDF
+          </Button>
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs rounded-xl" onClick={handleCanvaExport}>
+            <Palette className="h-3.5 w-3.5" /> Exportar p/ Canva
           </Button>
         </div>
       </div>
