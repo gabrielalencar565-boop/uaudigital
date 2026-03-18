@@ -15,6 +15,7 @@ interface Props {
   onClose: () => void;
   onUpdate: (field: string, value: string | null) => void;
   onRename?: (newTitle: string) => void;
+  onEditTask?: () => void;
   clientName?: string;
 }
 
