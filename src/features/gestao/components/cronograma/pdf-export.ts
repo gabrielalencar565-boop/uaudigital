@@ -3,8 +3,8 @@ import { ptBR } from "date-fns/locale";
 import { jsPDF } from "jspdf";
 import { buildAdaptiveCarouselGridFrames } from "./carousel-grid";
 
-const DESIGN_W = 1684;
-const DESIGN_H = 1190;
+const DESIGN_W = 1920;
+const DESIGN_H = 1080;
 
 type BlockId = "cover" | "cards" | "carousel" | "footer";
 type PdfImageFormat = "PNG" | "JPEG";
