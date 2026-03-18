@@ -162,21 +162,6 @@ export function PdfLayoutEditor() {
 
         {/* ── Body: 3-panel layout ── */}
         <div className="flex" style={{ height: "calc(100vh - 220px)", minHeight: 520 }}>
-          {/* Left: Block list */}
-          <div className="w-[220px] shrink-0">
-            <EditorSidebar
-              form={form}
-              blocksOrder={blocksOrder}
-              blocksEnabled={blocksEnabled}
-              selectedBlock={selectedBlock}
-              onSelectBlock={setSelectedBlock}
-              onMoveBlock={moveBlock}
-              onToggleBlock={toggleBlock}
-              onSave={handleSave}
-              saving={updateSettings.isPending}
-            />
-          </div>
-
           {/* Center: Canvas */}
           <div className="flex-1 min-w-0 bg-muted/5">
             <ScrollArea className="h-full">
@@ -200,14 +185,12 @@ export function PdfLayoutEditor() {
                     ))}
                   </div>
                   <span className="text-[11px] text-muted-foreground tabular-nums">
-                    {enabledBlocks.length} {enabledBlocks.length === 1 ? "página" : "páginas"}
+                    Página {enabledBlocks.indexOf(selectedBlock) + 1} de {enabledBlocks.length}
                   </span>
                 </div>
 
-                {/* Preview pages */}
-                <div className="space-y-5">
-                  {enabledBlocks.map((blockId) => renderPreviewBlock(blockId))}
-                </div>
+                {/* Single selected preview */}
+                {enabledBlocks.includes(selectedBlock) && renderPreviewBlock(selectedBlock)}
               </div>
             </ScrollArea>
           </div>
