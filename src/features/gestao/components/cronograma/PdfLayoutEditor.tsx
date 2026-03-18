@@ -969,7 +969,7 @@ function ScaledPreview({ children, label, isSelected, onClick }: { children: Rea
 
 const LAYOUT_KEYS_BY_BLOCK: Record<BlockId, string[]> = {
   cover: ["cover_title", "cover_subtitle"],
-  cards: ["cards_info"],
+  cards: ["cards_info", "cards_title", "cards_caption", "cards_date", "cards_time"],
   carousel: ["carousel_info"],
   footer: ["footer_group"],
 };
