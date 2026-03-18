@@ -19,7 +19,7 @@ interface Props {
   clientName?: string;
 }
 
-export function PostDetailSidebar({ post, onClose, onUpdate, onRename, clientName }: Props) {
+export function PostDetailSidebar({ post, onClose, onUpdate, onRename, onEditTask, clientName }: Props) {
   const [editingField, setEditingField] = useState<string | null>(null);
   const [tempValue, setTempValue] = useState("");
   const [viewerOpen, setViewerOpen] = useState(false);
