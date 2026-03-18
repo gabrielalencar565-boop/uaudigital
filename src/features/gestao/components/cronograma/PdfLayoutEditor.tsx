@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import {
   Palette, Save, Upload, GripVertical,
   Eye, EyeOff, ChevronUp, ChevronDown, FileText, Image,
-  CreditCard, LayoutGrid
+  CreditCard, LayoutGrid, Layers
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
