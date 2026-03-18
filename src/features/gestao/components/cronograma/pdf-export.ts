@@ -94,6 +94,8 @@ const DEFAULT_SETTINGS: Required<PdfExportSettings> = {
   carousel_date_font_size: 12,
   carousel_image_height_pct: 65,
 };
+
+const POST_TYPE_LABELS: Record<string, string> = {
   reels: "Reels",
   carrossel: "Carrossel",
   post: "Post",
