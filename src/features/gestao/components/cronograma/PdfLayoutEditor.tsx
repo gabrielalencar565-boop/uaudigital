@@ -457,7 +457,7 @@ function PreviewPostPage({
   );
 }
 
-/* ─── Preview: Carousel Page (grid top, info bottom) ─── */
+/* ─── Preview: Carousel Page (grade dinâmica sem vazios) ─── */
 function PreviewCarouselPage({
   form,
   editable,
@@ -470,18 +470,16 @@ function PreviewCarouselPage({
   const bg = form.background_color ?? "#0B0D12";
   const accent = form.accent_color ?? "#7C5CFF";
   const titleColor = form.title_color ?? "#FFFFFF";
+  const subtitleColor = form.subtitle_color ?? "#AAAAAA";
   const margin = form.margin_size ?? 60;
-  const COLS = form.carousel_cols ?? 4;
-  const ROWS = form.carousel_rows ?? 2;
+  const maxCols = form.carousel_cols ?? 4;
+  const maxRows = form.carousel_rows ?? 2;
   const imgGap = 12;
   const contentW = PDF_W - margin * 2;
   const contentH = PDF_H - margin * 2;
   const imgHeightPct = (form.carousel_image_height_pct ?? 65) / 100;
   const gridH = contentH * imgHeightPct;
   const infoH = contentH - gridH - 20;
-
-  const gridRowH = (gridH - imgGap * (ROWS - 1)) / ROWS;
-  const totalCells = COLS * ROWS;
 
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
 
@@ -491,80 +489,97 @@ function PreviewCarouselPage({
   };
   const infoPoint = getLayoutPoint(form.layout_overrides, "carousel_info", fallbackInfoPoint);
 
+  const mockImageCount = Math.min(maxCols * maxRows, 5);
+  const frames = buildAdaptiveCarouselGridFrames({
+    itemCount: mockImageCount,
+    maxCols,
+    maxRows,
+    x: margin,
+    y: margin,
+    width: contentW,
+    height: gridH,
+    gap: imgGap,
+  });
+
   const mockBackgrounds = [
     "linear-gradient(140deg, #2a3148 0%, #556fa7 60%, #1b2135 100%)",
     "linear-gradient(140deg, #322515 0%, #aa6d2e 58%, #251b10 100%)",
     "linear-gradient(140deg, #183235 0%, #2f9c8b 56%, #132427 100%)",
     "linear-gradient(140deg, #352039 0%, #9652a2 55%, #281a2b 100%)",
+    "linear-gradient(140deg, #2f2f2f 0%, #6f6f6f 58%, #1d1d1d 100%)",
   ];
 
   return (
     <div ref={setContainerEl} className="relative overflow-hidden" style={{ width: PDF_W, height: PDF_H, backgroundColor: bg }}>
-      <div style={{ padding: margin, height: PDF_H }}>
-        {/* Top: Image grid */}
-        <div className="grid" style={{ gridTemplateColumns: `repeat(${COLS}, 1fr)`, gap: imgGap, height: gridH }}>
-          {Array.from({ length: totalCells }, (_, n) => (
-            <div
-              key={n}
-              className="relative rounded-3xl overflow-hidden"
-              style={{
-                backgroundImage: mockBackgrounds[n % mockBackgrounds.length],
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-                height: gridRowH,
-              }}
-            >
-              <div className="absolute inset-0 bg-black/20" />
-              <div className="absolute inset-0 flex items-end justify-center pb-4 text-white/90 text-sm font-semibold">
-                Página {n + 1}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Bottom: Info bar */}
+      {frames.map((frame) => (
         <div
-          className={cn("absolute", editable && "cursor-move")}
+          key={frame.index}
+          className="absolute rounded-3xl overflow-hidden"
           style={{
-            left: `${infoPoint.x}%`,
-            top: `${infoPoint.y}%`,
-            transform: "translate(-50%, -50%)",
-            width: contentW,
-            maxWidth: contentW,
-            minHeight: infoH,
+            left: frame.x,
+            top: frame.y,
+            width: frame.size,
+            height: frame.size,
+            backgroundColor: "#1a1d27",
           }}
-          onPointerDown={(e) => editable && startDrag(e, containerEl, (point) => onMoveNode("carousel_info", point))}
         >
           <div
-            className={cn(
-              "flex items-start rounded-2xl px-3 py-2",
-              editable && "ring-1 ring-primary/40 bg-background/15"
-            )}
-            style={{ minHeight: infoH }}
-          >
-            <div style={{ width: "20%" }}>
-              <div style={{ fontSize: (form.carousel_title_font_size ?? 14) * 3, color: titleColor }} className="font-bold leading-tight">
-                Post 1
-              </div>
-              <div style={{ fontSize: 18, color: accent }} className="mt-1">
-                Carrossel
-              </div>
-            </div>
+            className="absolute inset-0"
+            style={{
+              backgroundImage: mockBackgrounds[frame.index % mockBackgrounds.length],
+              backgroundSize: "contain",
+              backgroundPosition: "center",
+              backgroundRepeat: "no-repeat",
+            }}
+          />
+          <div className="absolute inset-0 flex items-end justify-center pb-4 text-white/90 text-sm font-semibold">
+            Página {frame.index + 1}
+          </div>
+        </div>
+      ))}
 
-            <div style={{ width: "50%", fontSize: (form.carousel_caption_font_size ?? 11) * 2, color: titleColor, lineHeight: 1.7 }}>
-              Essa é a legenda completa da postagem do carrossel com quebra automática.
+      <div
+        className={cn("absolute", editable && "cursor-move")}
+        style={{
+          left: `${infoPoint.x}%`,
+          top: `${infoPoint.y}%`,
+          transform: "translate(-50%, -50%)",
+          width: contentW,
+          minHeight: infoH,
+        }}
+        onPointerDown={(e) => editable && startDrag(e, containerEl, (point) => onMoveNode("carousel_info", point))}
+      >
+        <div
+          className={cn("relative rounded-2xl px-3 py-2", editable && "ring-1 ring-primary/40 bg-background/15")}
+          style={{ minHeight: infoH }}
+        >
+          <div className="absolute left-3 top-4" style={{ width: "22%" }}>
+            <div style={{ fontSize: (form.carousel_title_font_size ?? 14) * 2.8, color: titleColor }} className="font-bold leading-tight">
+              Post 1
             </div>
+            <div style={{ fontSize: 16, color: accent }} className="mt-1 font-semibold">
+              Carrossel
+            </div>
+          </div>
 
-            <div style={{ width: "30%", display: "flex", flexDirection: "column", gap: 10, alignItems: "flex-end" }}>
+          <div className="absolute top-4" style={{ left: "24%", width: "46%" }}>
+            <div style={{ fontSize: 15, color: subtitleColor }} className="uppercase tracking-wider font-semibold mb-2">
+              Legenda:
+            </div>
+            <div style={{ fontSize: (form.carousel_caption_font_size ?? 11) * 1.9, color: titleColor, lineHeight: 1.65, maxHeight: infoH - 30, overflow: "hidden" }}>
+              Essa é a legenda completa da postagem do carrossel com quebra automática, sem invadir a área de data e horário.
+            </div>
+          </div>
+
+          <div className="absolute right-3 bottom-3 flex flex-col gap-2.5 items-end" style={{ width: "26%" }}>
+            <div className="rounded-xl px-6 py-3 font-bold text-white" style={{ backgroundColor: accent, fontSize: (form.carousel_date_font_size ?? 12) * 1.8 }}>
+              Data: 05/03/2026
+            </div>
+            {(form.show_time_on_card ?? true) && (
               <div className="rounded-xl px-6 py-3 font-bold text-white" style={{ backgroundColor: accent, fontSize: (form.carousel_date_font_size ?? 12) * 1.8 }}>
-                Data: 05/03/2026
+                Horário: 12h00
               </div>
-              {(form.show_time_on_card ?? true) && (
-                <div className="rounded-xl px-6 py-3 font-bold text-white" style={{ backgroundColor: accent, fontSize: (form.carousel_date_font_size ?? 12) * 1.8 }}>
-                  Horário: 12h00
-                </div>
-              )}
-            </div>
+            )}
           </div>
         </div>
       </div>
