@@ -411,12 +411,16 @@ function drawBg(doc: jsPDF, pageW: number, pageH: number, settings: Required<Pdf
 
 export async function downloadCronogramaPdf({ clientName, posts, settings }: ExportInput) {
   const form = withDefaults(settings);
+  await ensureBrowserFontsLoaded();
+
   const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+  const fontReady = await loadBricolageFont(doc);
+  if (!fontReady) {
+    throw new Error("Não foi possível carregar a fonte do PDF. Tente novamente em instantes.");
+  }
+
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
-
-
-  await loadBricolageFont(doc);
 
   const sx = (x: number) => (x / DESIGN_W) * pageW;
   const sy = (y: number) => (y / DESIGN_H) * pageH;
@@ -446,6 +450,21 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
     imageCache.set(url, data);
     return data;
   };
+
+  const preloadUrls = new Set<string>();
+  if (form.background_image_url) preloadUrls.add(form.background_image_url);
+  if (form.cover_logo_url) preloadUrls.add(form.cover_logo_url);
+  if (form.agency_logo_url) preloadUrls.add(form.agency_logo_url);
+
+  for (const post of posts) {
+    const mainImage = getPostImage(post);
+    if (mainImage) preloadUrls.add(mainImage);
+    for (const carouselImg of post.all_attachment_urls ?? []) {
+      if (carouselImg) preloadUrls.add(carouselImg);
+    }
+  }
+
+  await Promise.all(Array.from(preloadUrls).map((url) => getCachedImage(url)));
 
   for (const block of blocksOrder) {
     if (!blocksEnabled[block]) continue;
