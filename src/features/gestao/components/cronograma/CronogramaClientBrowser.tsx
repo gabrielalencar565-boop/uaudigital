@@ -1,9 +1,8 @@
 import { useState, useMemo, useCallback, useRef } from "react";
 import { format, startOfMonth, endOfMonth, addMonths, subMonths, isSameDay, startOfWeek, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, CalendarRange, Palette, Clock, Link2, Plus, Download } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarRange, Clock, Link2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import type { PmTask } from "../../pm-types";
@@ -11,10 +10,8 @@ import { useUpdatePmTask } from "../../hooks/use-pm-data";
 import { toast } from "sonner";
 import type { CronogramaPost } from "./types";
 import { PostDetailSidebar } from "./PostDetailSidebar";
-import { PdfLayoutEditor } from "./PdfLayoutEditor";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { downloadCronogramaPdf, type PdfExportSettings } from "./pdf-export";
 
 const sb = supabase as any;
 
@@ -50,7 +47,6 @@ export function CronogramaClientBrowser({ tasks, childTasksMap, clientsMap, memb
   const selectedClientId = filterClient;
   const [cursor, setCursor] = useState(() => startOfMonth(new Date()));
   const [selectedPost, setSelectedPost] = useState<CronogramaPost | null>(null);
-  const [activeTab, setActiveTab] = useState<"calendario" | "layout">("calendario");
   const [dragOverDay, setDragOverDay] = useState<string | null>(null);
   const dragPostId = useRef<string | null>(null);
 
@@ -195,30 +191,6 @@ export function CronogramaClientBrowser({ tasks, childTasksMap, clientsMap, memb
     }
   };
 
-  const handleDownloadPdf = async () => {
-    if (!scheduledPosts.length) {
-      toast.error("Não há posts agendados para exportar.");
-      return;
-    }
-
-    const { data, error } = await sb.from("pm_pdf_settings").select("*").limit(1).maybeSingle();
-    if (error) {
-      toast.error("Não foi possível carregar o layout do PDF.");
-      return;
-    }
-
-    try {
-      await downloadCronogramaPdf({
-        clientName: selectedClientName,
-        posts: scheduledPosts,
-        settings: (data ?? null) as PdfExportSettings | null,
-      });
-      toast.success("PDF baixado com sucesso!");
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Falha ao gerar o PDF.";
-      toast.error(message);
-    }
-  };
 
   const handleUpdatePost = (field: string, value: string | null) => {
     if (!resolvedSelected) return;
@@ -263,11 +235,6 @@ export function CronogramaClientBrowser({ tasks, childTasksMap, clientsMap, memb
             </Button>
           }
 
-          {!noClientSelected &&
-          <Button variant="outline" size="sm" className="gap-1.5 text-xs rounded-xl h-9" onClick={handleDownloadPdf}>
-              <Download className="h-3.5 w-3.5" /> PDF
-            </Button>
-          }
 
           {!noClientSelected &&
           <Button
@@ -282,18 +249,8 @@ export function CronogramaClientBrowser({ tasks, childTasksMap, clientsMap, memb
         </div>
       </div>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
-        <TabsList className="bg-muted/40 h-9 p-0.5 rounded-xl gap-0.5 mb-4 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.15s" }}>
-          <TabsTrigger value="calendario" className="gap-1.5 text-xs h-8 rounded-lg data-[state=active]:shadow-sm">
-            <CalendarRange className="h-3.5 w-3.5" /> Calendário
-          </TabsTrigger>
-          <TabsTrigger value="layout" className="gap-1.5 text-xs h-8 rounded-lg data-[state=active]:shadow-sm">
-            <Palette className="h-3.5 w-3.5" /> Layout PDF
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="calendario">
+      {/* Calendar content */}
+      <div>
           {noClientSelected ? (
           /* Skeleton placeholder */
           <div className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.2s" }}>
@@ -419,12 +376,7 @@ export function CronogramaClientBrowser({ tasks, childTasksMap, clientsMap, memb
               </div>
             </div>)
           }
-        </TabsContent>
-
-        <TabsContent value="layout" className="mt-4">
-          <PdfLayoutEditor />
-        </TabsContent>
-      </Tabs>
+      </div>
     </div>);
 
 }

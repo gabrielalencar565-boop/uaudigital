@@ -3,7 +3,7 @@ import { useParams, useSearchParams } from "react-router-dom";
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, startOfWeek, endOfWeek, addWeeks, subWeeks, addMonths, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
-import { Film, Image, LayoutGrid, Camera, Calendar, Clock, Instagram, Download, ChevronLeft, ChevronRight, X, CalendarRange, LayoutGrid as GridIcon, Check, MessageSquare, Edit3 } from "lucide-react";
+import { Film, Image, LayoutGrid, Camera, Calendar, Clock, Instagram, ChevronLeft, ChevronRight, X, CalendarRange, LayoutGrid as GridIcon, Check, MessageSquare, Edit3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
-import { downloadCronogramaPdf, type PdfExportSettings } from "@/features/gestao/components/cronograma/pdf-export";
+
 
 const sb = supabase as any;
 
@@ -44,7 +44,7 @@ interface FeedbackData {
 export default function CronogramaPublic() {
   const { taskId } = useParams<{ taskId: string }>();
   const [searchParams] = useSearchParams();
-  const isPrint = searchParams.get("print") === "1";
+  
   const clientFilterId = searchParams.get("client");
 
   const [loading, setLoading] = useState(true);
@@ -53,7 +53,7 @@ export default function CronogramaPublic() {
   const [posts, setPosts] = useState<PostData[]>([]);
   const [selectedPost, setSelectedPost] = useState<PostData | null>(null);
   const [feedbacks, setFeedbacks] = useState<Record<string, FeedbackData>>({});
-  const [pdfSettings, setPdfSettings] = useState<PdfExportSettings | null>(null);
+  
 
   useEffect(() => {
     if (!taskId) return;
@@ -139,8 +139,6 @@ export default function CronogramaPublic() {
           setFeedbacks({});
         }
 
-        const { data: layout } = await sb.from("pm_pdf_settings").select("*").limit(1).maybeSingle();
-        setPdfSettings((layout ?? null) as PdfExportSettings | null);
       } finally {
         setLoading(false);
       }
@@ -161,39 +159,7 @@ export default function CronogramaPublic() {
     toast.success(status === "aprovado" ? "Postagem aprovada!" : "Alteração solicitada!");
   };
 
-  const handleDownloadPdf = async () => {
-    if (!posts.length) {
-      toast.error("Não há postagens para baixar.");
-      return;
-    }
 
-    try {
-      await downloadCronogramaPdf({
-        clientName: clientName || parentTitle || "Cliente",
-        posts: posts as any,
-        settings: pdfSettings,
-      });
-      toast.success("PDF baixado com sucesso!");
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Falha ao gerar o PDF.";
-      toast.error(message);
-    }
-  };
-
-  useEffect(() => {
-    if (isPrint && !loading && posts.length > 0) {
-      // Wait for images to load before printing
-      const images = document.querySelectorAll('img');
-      const promises = Array.from(images).map(img => {
-        if (img.complete) return Promise.resolve();
-        return new Promise(resolve => {
-          img.onload = resolve;
-          img.onerror = resolve;
-        });
-      });
-      Promise.all(promises).then(() => setTimeout(() => window.print(), 500));
-    }
-  }, [isPrint, loading, posts]);
 
   if (loading) {
     return (
@@ -211,67 +177,6 @@ export default function CronogramaPublic() {
     );
   }
 
-  // ── PDF / Print View ──
-  if (isPrint) {
-    return (
-      <div className="bg-white min-h-screen">
-        <style>{`@media print { @page { size: A4 landscape; margin: 15mm; } body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }`}</style>
-        <div className="max-w-5xl mx-auto p-8">
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold">{clientName || parentTitle}</h1>
-            <p className="text-sm text-gray-500">Cronograma de Postagens</p>
-          </div>
-          {posts.map((post, i) => {
-            const meta = POST_TYPE_META[post.post_type ?? "post"] ?? POST_TYPE_META.post;
-            const allImages = post.all_attachment_urls ?? [];
-            const singleImg = post.attachment_url || post.cover_url;
-            const isCarousel = post.post_type === "carrossel" && allImages.length > 1;
-            return (
-              <div key={post.id} className={cn("mb-8 rounded-xl border-2 p-6", meta.bgPage)} style={{ pageBreakInside: "avoid" }}>
-                <div className="flex gap-6">
-                  <div className="w-1/3 shrink-0">
-                    {isCarousel ? (
-                      <div className="grid grid-cols-2 gap-1">
-                        {allImages.map((url, j) => (
-                          <img key={j} src={url} alt="" className="w-full rounded-lg object-cover aspect-square" crossOrigin="anonymous" />
-                        ))}
-                      </div>
-                    ) : singleImg ? (
-                      <img src={singleImg} alt="" className="w-full rounded-xl object-cover aspect-square" crossOrigin="anonymous" />
-                    ) : null}
-                  </div>
-                  <div className="flex-1 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Instagram className="h-5 w-5 text-pink-500" />
-                      <span className="text-xs font-semibold bg-gray-100 px-2 py-0.5 rounded">Feed</span>
-                    </div>
-                    <div className="flex items-baseline gap-3">
-                      <h2 className="text-2xl font-bold">Post {i + 1}</h2>
-                      <span className="text-sm text-gray-500">{meta.label}</span>
-                    </div>
-                    {post.caption && (
-                      <div>
-                        <h3 className="font-bold text-sm mb-1">Legenda:</h3>
-                        <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{post.caption}</p>
-                      </div>
-                    )}
-                    <div className="inline-flex items-center gap-4 bg-indigo-100 text-indigo-800 rounded-xl px-4 py-2 mt-2">
-                      <span className="text-sm font-bold">
-                        Data: {post.posting_date ? format(parseISO(post.posting_date), "dd/MM/yy") : "—"}
-                      </span>
-                      {post.posting_time && (
-                        <span className="text-sm font-bold">Horário: {post.posting_time}</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
 
   // ── Interactive Public View ──
   return (
@@ -283,9 +188,6 @@ export default function CronogramaPublic() {
             <h1 className="text-xl font-bold">{clientName || parentTitle}</h1>
             <p className="text-xs text-gray-500">Cronograma de Postagens</p>
           </div>
-          <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={handleDownloadPdf}>
-            <Download className="h-3.5 w-3.5" /> Baixar PDF
-          </Button>
         </div>
 
         <div className="flex gap-6">

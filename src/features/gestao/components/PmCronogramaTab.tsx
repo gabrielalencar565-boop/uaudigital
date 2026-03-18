@@ -87,10 +87,6 @@ export function PmCronogramaTab({ parentTask, childTasks, clientName, membersMap
     }
   };
 
-  const handleDownloadPDF = () => {
-    const url = `${window.location.origin}/cronograma/${parentTask.id}?print=1`;
-    window.open(url, "_blank");
-  };
 
   const handleUpdatePost = (field: string, value: string | null) => {
     if (!resolvedSelected) return;
