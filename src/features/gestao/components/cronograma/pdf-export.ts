@@ -432,31 +432,30 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
         const postTypeLabel = POST_TYPE_LABELS[post.post_type ?? "post"] ?? "Post";
 
         if (isCarousel) {
-          // ── Carousel layout: split left (image grid) / right (info) ──
+          // ── Carousel layout: grid on TOP, info bar on BOTTOM ──
           const carouselImages = post.all_attachment_urls ?? [];
-          const imageW = contentW * imgWidthPct;
-          const textW = contentW - imageW - gap;
-          const imageX = margin;
-          const imageY = margin;
-          const textX = imageX + imageW + gap;
-          const textY = margin;
-
-          // Grid config: 3 cols, 2 rows per page
-          const COLS = 3;
-          const ROWS = 2;
+          const COLS = form.carousel_cols ?? 4;
+          const ROWS = form.carousel_rows ?? 2;
           const PER_PAGE = COLS * ROWS;
           const imgGap = sx(12);
+          const imgHeightPct = (form.carousel_image_height_pct ?? 65) / 100;
 
-          const gridColW = (imageW - imgGap * (COLS - 1)) / COLS;
-          const gridRowH = (contentH - imgGap * (ROWS - 1)) / ROWS;
+          // Top area for images, bottom for info
+          const gridH = contentH * imgHeightPct;
+          const infoH = contentH - gridH - sy(20); // 20px gap between grid and info
+          const gridY = margin;
+          const infoY = margin + gridH + sy(20);
 
-          // Render first page of images on left
+          const gridColW = (contentW - imgGap * (COLS - 1)) / COLS;
+          const gridRowH = (gridH - imgGap * (ROWS - 1)) / ROWS;
+
+          // Render first page of images
           const firstPageImgs = carouselImages.slice(0, PER_PAGE);
           for (let idx = 0; idx < firstPageImgs.length; idx++) {
             const col = idx % COLS;
             const row = Math.floor(idx / COLS);
-            const cx = imageX + col * (gridColW + imgGap);
-            const cy = imageY + row * (gridRowH + imgGap);
+            const cx = margin + col * (gridColW + imgGap);
+            const cy = gridY + row * (gridRowH + imgGap);
 
             doc.setFillColor(26, 29, 39);
             doc.roundedRect(cx, cy, gridColW, gridRowH, cornerRadius, cornerRadius, "F");
@@ -470,79 +469,69 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
             }
           }
 
-          // Right side: post info
+          // Bottom info bar: Post N + Badge | Caption | Date + Time
+          const cTitleFontSize = form.carousel_title_font_size ?? form.card_font_size ?? 14;
+          const cCaptionFontSize = form.carousel_caption_font_size ?? form.card_caption_font_size ?? 11;
+          const cDateFontSize = form.carousel_date_font_size ?? form.card_date_font_size ?? 12;
+
+          // Left column: Post number + type
+          const leftColW = contentW * 0.2;
+          const centerColW = contentW * 0.5;
+          const rightColW = contentW * 0.3;
+          const leftX = margin;
+          const centerX = margin + leftColW;
+          const rightX = margin + leftColW + centerColW;
+
           setFont(doc, "bold");
           doc.setTextColor(titleR, titleG, titleB);
-          doc.setFontSize(Math.max(10, sx(form.card_font_size * 2.4)));
-          doc.text(`Post ${i + 1}`, textX, textY + sy(60));
+          doc.setFontSize(Math.max(10, sx(cTitleFontSize * 3)));
+          doc.text(`Post ${i + 1}`, leftX, infoY + sy(50));
 
+          // Type badge below post number
           const badgeText = postTypeLabel;
-          doc.setFontSize(sx(18));
-          const badgeTextW = doc.getTextWidth(badgeText);
-          const badgePadX = sx(24);
-          const badgeW = badgeTextW + badgePadX * 2;
-          const badgeH = sy(44);
-          const badgeX = textX + sx(180);
-          const badgeY = textY + sy(24);
-          doc.setFillColor(accR, accG, accB);
-          doc.roundedRect(badgeX, badgeY, badgeW, badgeH, sy(22), sy(22), "F");
-          doc.setTextColor(255, 255, 255);
-          doc.text(badgeText, badgeX + badgeW / 2, badgeY + badgeH / 2, { align: "center", baseline: "middle" });
-
-          // Caption
-          doc.setTextColor(subR, subG, subB);
-          setFont(doc, "bold");
+          setFont(doc, "normal");
           doc.setFontSize(sx(16));
-          doc.text("Legenda:", textX, textY + sy(130));
+          doc.setTextColor(accR, accG, accB);
+          doc.text(badgeText, leftX, infoY + sy(90));
 
+          // Center: caption
           doc.setTextColor(titleR, titleG, titleB);
           setFont(doc, "normal");
-          doc.setFontSize(Math.max(9, sx(form.card_caption_font_size * 1.8)));
+          doc.setFontSize(Math.max(9, sx(cCaptionFontSize * 1.8)));
           const caption = post.caption?.trim() || "Sem legenda";
-          const wrappedCaption = doc.splitTextToSize(caption, textW);
-          doc.text(wrappedCaption, textX, textY + sy(170), { baseline: "top" });
+          const wrappedCaption = doc.splitTextToSize(caption, centerColW - sx(20));
+          doc.text(wrappedCaption, centerX, infoY + sy(30), { baseline: "top" });
 
-          // Footer: date + time
-          const footerTop = pageH - margin - sy(100);
-          doc.setDrawColor(accR, accG, accB);
-          doc.setLineWidth(1.4);
-          doc.line(textX, footerTop, textX + textW, footerTop);
-
-          doc.setTextColor(subR, subG, subB);
-          setFont(doc, "bold");
-          doc.setFontSize(sx(14));
-          doc.text("Data", textX, footerTop + sy(32));
-
-          doc.setTextColor(titleR, titleG, titleB);
-          setFont(doc, "normal");
-          doc.setFontSize(Math.max(10, sx(form.card_date_font_size * 2.1)));
+          // Right: date + time badges
           const formattedDate = post.posting_date ? format(parseISO(post.posting_date), "dd/MM/yyyy") : "—";
-          doc.text(formattedDate, textX, footerTop + sy(68));
+          const dateBadgeW = rightColW - sx(20);
+          const dateBadgeH = sy(50);
+          const dateBadgeX = rightX;
+          const dateBadgeY = infoY + sy(10);
+
+          doc.setFillColor(accR, accG, accB);
+          doc.roundedRect(dateBadgeX, dateBadgeY, dateBadgeW, dateBadgeH, sy(10), sy(10), "F");
+          doc.setTextColor(255, 255, 255);
+          setFont(doc, "bold");
+          doc.setFontSize(Math.max(10, sx(cDateFontSize * 1.8)));
+          doc.text(`Data: ${formattedDate}`, dateBadgeX + dateBadgeW / 2, dateBadgeY + dateBadgeH / 2, { align: "center", baseline: "middle" });
 
           if (form.show_time_on_card && post.posting_time) {
-            const dateTextW2 = doc.getTextWidth(formattedDate);
-            const timeX = Math.min(
-              Math.max(textX + dateTextW2 + sx(80), textX + textW * 0.55),
-              textX + textW - sx(220),
-            );
-            doc.setTextColor(subR, subG, subB);
-            setFont(doc, "bold");
-            doc.setFontSize(sx(14));
-            doc.text("Horário", timeX, footerTop + sy(32));
-            doc.setTextColor(titleR, titleG, titleB);
-            setFont(doc, "normal");
-            doc.setFontSize(Math.max(10, sx(form.card_date_font_size * 2.1)));
-            doc.text(post.posting_time, timeX, footerTop + sy(68));
+            const timeBadgeY = dateBadgeY + dateBadgeH + sy(12);
+            doc.setFillColor(accR, accG, accB);
+            doc.roundedRect(dateBadgeX, timeBadgeY, dateBadgeW, dateBadgeH, sy(10), sy(10), "F");
+            doc.setTextColor(255, 255, 255);
+            doc.text(`Horário: ${post.posting_time}`, dateBadgeX + dateBadgeW / 2, timeBadgeY + dateBadgeH / 2, { align: "center", baseline: "middle" });
           }
 
-          // Additional pages for remaining carousel images (grid only, no text)
+          // Additional pages for remaining carousel images
           for (let pageStart = PER_PAGE; pageStart < carouselImages.length; pageStart += PER_PAGE) {
             ensurePage();
             drawBg(doc, pageW, pageH, form);
 
             setFont(doc, "bold");
             doc.setTextColor(titleR, titleG, titleB);
-            doc.setFontSize(Math.max(10, sx(form.card_font_size * 2.4)));
+            doc.setFontSize(Math.max(10, sx(cTitleFontSize * 2.4)));
             doc.text(`Post ${i + 1} (cont.)`, margin, margin + sy(50));
 
             const chunk = carouselImages.slice(pageStart, pageStart + PER_PAGE);
