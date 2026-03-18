@@ -882,10 +882,10 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
             doc.text("Imagem do Post", imageX + imageW / 2, imageY + contentH / 2, { align: "center", baseline: "middle" });
           }
 
-          const cardsInfoPoint = getCardsInfoPoint(form.layout_overrides);
+          const cardsInfoPoint = getLayoutPoint(form.layout_overrides, "cards_info", DEFAULT_LAYOUT_POINTS.cards_info);
           const defaultCardsCenterX = ((DEFAULT_LAYOUT_POINTS.cards_info.x / 100) * pageW);
           const cardsCenterX = (cardsInfoPoint.x / 100) * pageW;
-          const maxShiftX = Math.max(0, sx(34));
+          const maxShiftX = Math.max(0, sx(56));
           const infoShiftX = clamp(cardsCenterX - defaultCardsCenterX, -maxShiftX, maxShiftX);
 
           const [bgR, bgG, bgB] = parseHex(form.background_color, [11, 13, 18]);
