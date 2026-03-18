@@ -9,13 +9,28 @@ import { Slider } from "@/components/ui/slider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import {
-  Palette, Save, Upload, GripVertical,
-  Eye, EyeOff, ChevronUp, ChevronDown, FileText, Image,
-  CreditCard, LayoutGrid, Layers
+  Palette,
+  Save,
+  Upload,
+  GripVertical,
+  Eye,
+  EyeOff,
+  ChevronUp,
+  ChevronDown,
+  FileText,
+  Image,
+  CreditCard,
+  LayoutGrid,
+  Layers,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const sb = supabase as any;
+
+interface LayoutPoint {
+  x: number;
+  y: number;
+}
 
 interface PdfSettings {
   id: string;
@@ -35,6 +50,7 @@ interface PdfSettings {
   accent_color: string;
   blocks_order: string[];
   blocks_enabled: Record<string, boolean>;
+  layout_overrides: Record<string, LayoutPoint>;
   agenda_layout: string;
   agency_logo_url: string | null;
   agency_name: string;
@@ -62,6 +78,66 @@ const BLOCK_META: Record<BlockId, { label: string; icon: React.ReactNode; descri
   footer: { label: "Rodapé", icon: <FileText className="h-4 w-4" />, description: "Logo da agência, contato e redes" },
 };
 
+const DEFAULT_LAYOUT_POINTS: Record<string, LayoutPoint> = {
+  cover_title: { x: 50, y: 45 },
+  cover_subtitle: { x: 50, y: 53 },
+  cards_info: { x: 73, y: 50 },
+  carousel_info: { x: 50, y: 83 },
+  footer_group: { x: 50, y: 50 },
+};
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function readLayoutPoint(raw: unknown): LayoutPoint | null {
+  if (!raw || typeof raw !== "object") return null;
+  const x = Number((raw as any).x);
+  const y = Number((raw as any).y);
+  if (Number.isNaN(x) || Number.isNaN(y)) return null;
+  return { x, y };
+}
+
+function getLayoutPoint(layout: unknown, key: string, fallback: LayoutPoint): LayoutPoint {
+  if (!layout || typeof layout !== "object") return fallback;
+  const parsed = readLayoutPoint((layout as Record<string, unknown>)[key]);
+  return parsed ?? fallback;
+}
+
+function startDrag(
+  e: React.PointerEvent<HTMLElement>,
+  container: HTMLElement | null,
+  onPointChange: (point: LayoutPoint) => void,
+) {
+  if (!container) return;
+
+  e.preventDefault();
+  e.stopPropagation();
+
+  const updateFromClient = (clientX: number, clientY: number) => {
+    const rect = container.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+
+    const x = clamp(((clientX - rect.left) / rect.width) * 100, 4, 96);
+    const y = clamp(((clientY - rect.top) / rect.height) * 100, 4, 96);
+    onPointChange({ x, y });
+  };
+
+  updateFromClient(e.clientX, e.clientY);
+
+  const handleMove = (event: PointerEvent) => updateFromClient(event.clientX, event.clientY);
+
+  const cleanup = () => {
+    window.removeEventListener("pointermove", handleMove);
+    window.removeEventListener("pointerup", cleanup);
+    window.removeEventListener("pointercancel", cleanup);
+  };
+
+  window.addEventListener("pointermove", handleMove);
+  window.addEventListener("pointerup", cleanup);
+  window.addEventListener("pointercancel", cleanup);
+}
+
 function usePdfSettings() {
   return useQuery<PdfSettings>({
     queryKey: ["pm_pdf_settings"],
@@ -70,8 +146,9 @@ function usePdfSettings() {
       if (error) throw error;
       return {
         ...data,
-        blocks_order: data.blocks_order ?? ["cover", "cards", "footer"],
-        blocks_enabled: data.blocks_enabled ?? { cover: true, cards: true, footer: true },
+        blocks_order: data.blocks_order ?? ["cover", "cards", "carousel", "footer"],
+        blocks_enabled: data.blocks_enabled ?? { cover: true, cards: true, carousel: true, footer: true },
+        layout_overrides: data.layout_overrides ?? {},
         footer_title_font_size: data.footer_title_font_size ?? 32,
         footer_subtitle_font_size: data.footer_subtitle_font_size ?? 18,
         footer_contact_font_size: data.footer_contact_font_size ?? 11,
@@ -92,8 +169,13 @@ function useUpdatePdfSettings() {
   return useMutation({
     mutationFn: async (settings: Partial<PdfSettings> & { id: string }) => {
       const { id, ...updates } = settings;
-      const { data: { user } } = await supabase.auth.getUser();
-      const { error } = await sb.from("pm_pdf_settings").update({ ...updates, updated_by: user?.id, updated_at: new Date().toISOString() }).eq("id", id);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      const { error } = await sb
+        .from("pm_pdf_settings")
+        .update({ ...updates, updated_by: user?.id, updated_at: new Date().toISOString() })
+        .eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -108,35 +190,112 @@ const PDF_W = 1684;
 const PDF_H = 1190;
 
 /* ─── Preview: Cover ─── */
-function PreviewCover({ form }: { form: Partial<PdfSettings> }) {
+function PreviewCover({
+  form,
+  editable,
+  onMoveNode,
+}: {
+  form: Partial<PdfSettings>;
+  editable: boolean;
+  onMoveNode: (key: string, point: LayoutPoint) => void;
+}) {
   const accent = form.accent_color ?? "#7C5CFF";
   const bg = form.background_color ?? "#0B0D12";
   const margin = form.margin_size ?? 60;
+  const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
+
+  const titlePoint = getLayoutPoint(form.layout_overrides, "cover_title", DEFAULT_LAYOUT_POINTS.cover_title);
+  const subtitlePoint = getLayoutPoint(form.layout_overrides, "cover_subtitle", DEFAULT_LAYOUT_POINTS.cover_subtitle);
+
   return (
-    <div className="relative overflow-hidden" style={{ width: PDF_W, height: PDF_H, backgroundColor: bg, backgroundImage: form.background_image_url ? `url(${form.background_image_url})` : undefined, backgroundSize: "cover", backgroundPosition: "center" }}>
+    <div
+      ref={setContainerEl}
+      className="relative overflow-hidden"
+      style={{
+        width: PDF_W,
+        height: PDF_H,
+        backgroundColor: bg,
+        backgroundImage: form.background_image_url ? `url(${form.background_image_url})` : undefined,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }}
+    >
       {form.background_image_url && <div className="absolute inset-0 bg-black/40" />}
-      <div className="relative z-10 flex flex-col items-center justify-center h-full gap-8" style={{ padding: margin }}>
-        {form.cover_logo_url && <img src={form.cover_logo_url} alt="Logo" className="h-[120px] object-contain" />}
-        <div style={{ fontSize: (form.title_font_size ?? 32) * 2.5, color: form.title_color ?? "#FFFFFF" }} className="font-bold leading-tight text-center">
-          Nome do Cliente
-        </div>
-        <div style={{ fontSize: (form.subtitle_font_size ?? 18) * 2, color: form.subtitle_color ?? "#AAAAAA" }} className="text-center">
-          Cronograma de Conteúdo — Março 2026
-        </div>
-        <div className="h-2 w-48 rounded-full" style={{ backgroundColor: accent }} />
-        {(form.agency_name || form.agency_logo_url) && (
-          <div className="absolute bottom-12 flex items-center gap-4">
-            {form.agency_logo_url && <img src={form.agency_logo_url} alt="Agency" className="h-[48px] object-contain" />}
-            {form.agency_name && <div style={{ fontSize: 24, color: form.subtitle_color ?? "#AAA" }}>{form.agency_name}</div>}
-          </div>
+
+      {form.cover_logo_url && (
+        <img
+          src={form.cover_logo_url}
+          alt="Logo"
+          className="absolute z-10 object-contain"
+          style={{ height: 120, left: "50%", top: margin + 30, transform: "translateX(-50%)" }}
+        />
+      )}
+
+      <div
+        style={{
+          position: "absolute",
+          left: `${titlePoint.x}%`,
+          top: `${titlePoint.y}%`,
+          transform: "translate(-50%, -50%)",
+          fontSize: (form.title_font_size ?? 32) * 2.5,
+          color: form.title_color ?? "#FFFFFF",
+        }}
+        className={cn(
+          "z-10 font-bold leading-tight text-center px-4 rounded-xl",
+          editable && "cursor-move ring-1 ring-primary/50 bg-background/20"
         )}
+        onPointerDown={(e) => editable && startDrag(e, containerEl, (point) => onMoveNode("cover_title", point))}
+      >
+        Nome do Cliente
       </div>
+
+      <div
+        style={{
+          position: "absolute",
+          left: `${subtitlePoint.x}%`,
+          top: `${subtitlePoint.y}%`,
+          transform: "translate(-50%, -50%)",
+          fontSize: (form.subtitle_font_size ?? 18) * 2,
+          color: form.subtitle_color ?? "#AAAAAA",
+        }}
+        className={cn(
+          "z-10 text-center px-4 rounded-xl",
+          editable && "cursor-move ring-1 ring-primary/40 bg-background/15"
+        )}
+        onPointerDown={(e) => editable && startDrag(e, containerEl, (point) => onMoveNode("cover_subtitle", point))}
+      >
+        Cronograma de Conteúdo — Março 2026
+      </div>
+
+      <div
+        className="absolute z-10 h-2 w-48 rounded-full"
+        style={{ backgroundColor: accent, left: "50%", top: `${subtitlePoint.y + 4.3}%`, transform: "translateX(-50%)" }}
+      />
+
+      {(form.agency_name || form.agency_logo_url) && (
+        <div className="absolute bottom-12 left-1/2 z-10 -translate-x-1/2 flex items-center gap-4">
+          {form.agency_logo_url && <img src={form.agency_logo_url} alt="Agency" className="h-[48px] object-contain" />}
+          {form.agency_name && <div style={{ fontSize: 24, color: form.subtitle_color ?? "#AAA" }}>{form.agency_name}</div>}
+        </div>
+      )}
     </div>
   );
 }
 
 /* ─── Preview: Post Page (standard) ─── */
-function PreviewPostPage({ form, index }: { form: Partial<PdfSettings>; index: number }) {
+function PreviewPostPage({
+  form,
+  index,
+  editable,
+  onMoveNode,
+  onResizeImage,
+}: {
+  form: Partial<PdfSettings>;
+  index: number;
+  editable: boolean;
+  onMoveNode: (key: string, point: LayoutPoint) => void;
+  onResizeImage: (delta: number) => void;
+}) {
   const bg = form.background_color ?? "#0B0D12";
   const accent = form.accent_color ?? "#7C5CFF";
   const titleColor = form.title_color ?? "#FFFFFF";
@@ -147,30 +306,100 @@ function PreviewPostPage({ form, index }: { form: Partial<PdfSettings>; index: n
   const postTypes = ["Feed", "Reels", "Story", "Carrossel"];
   const postType = postTypes[index % postTypes.length];
   const day = 3 + index * 3;
-  const caption = "Essa é a legenda completa da postagem. O texto será exibido com quebra automática de linha para preencher o espaço disponível no lado direito da página.";
+  const caption =
+    "Essa é a legenda completa da postagem. O texto será exibido com quebra automática de linha para preencher o espaço disponível no lado direito da página.";
+
+  const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
+  const [imageSelected, setImageSelected] = useState(false);
+
+  const contentW = PDF_W - margin * 2;
+  const contentH = PDF_H - margin * 2;
+  const imageW = (contentW * imgPct) / 100;
+  const infoW = contentW - imageW - 40;
+
+  const fallbackInfoPoint: LayoutPoint = {
+    x: ((margin + imageW + 40 + infoW / 2) / PDF_W) * 100,
+    y: 50,
+  };
+  const infoPoint = getLayoutPoint(form.layout_overrides, "cards_info", fallbackInfoPoint);
 
   return (
-    <div className="relative overflow-hidden" style={{ width: PDF_W, height: PDF_H, backgroundColor: bg }}>
-      <div className="flex" style={{ padding: margin, height: PDF_H, gap: 40 }}>
+    <div ref={setContainerEl} className="relative overflow-hidden" style={{ width: PDF_W, height: PDF_H, backgroundColor: bg }}>
+      <div className="absolute" style={{ left: margin, top: margin, width: contentW, height: contentH }}>
         {/* Left: Image mockup */}
         <div
-          className="rounded-3xl overflow-hidden shrink-0 flex items-center justify-center"
+          className={cn(
+            "absolute rounded-3xl overflow-hidden shrink-0 flex items-center justify-center",
+            editable && "cursor-pointer ring-2 ring-transparent hover:ring-primary/60",
+            imageSelected && "ring-primary"
+          )}
           style={{
-            width: `${imgPct}%`,
-            height: PDF_H - margin * 2,
-            backgroundColor: "#1a1d27",
+            width: imageW,
+            height: contentH,
+            background: "linear-gradient(140deg, #131828 0%, #283149 48%, #11141f 100%)",
             boxShadow: "0 20px 60px -15px rgba(0,0,0,0.4)",
           }}
+          onClick={() => editable && setImageSelected(true)}
         >
-          <div className="flex flex-col items-center gap-4 text-center" style={{ color: "#3a3d48" }}>
+          <div className="absolute inset-0 bg-black/20" />
+          <div className="relative flex flex-col items-center gap-4 text-center" style={{ color: "#d9deef" }}>
             <LayoutGrid className="h-20 w-20" />
             <span style={{ fontSize: 20 }}>Imagem do Post</span>
+            <span className="text-sm opacity-70">Sem cortes • formato original</span>
           </div>
+
+          {editable && imageSelected && (
+            <div className="absolute right-4 top-4 z-20 flex items-center gap-2 rounded-xl border border-primary/40 bg-background/80 p-1.5">
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon"
+                className="h-7 w-7"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onResizeImage(-2);
+                }}
+              >
+                −
+              </Button>
+              <span className="text-[10px] font-medium px-1">{imgPct}%</span>
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon"
+                className="h-7 w-7"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onResizeImage(2);
+                }}
+              >
+                +
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Right: Info */}
-        <div className="flex flex-col justify-between overflow-hidden" style={{ flex: 1, minWidth: 0, height: PDF_H - margin * 2 }}>
-          <div style={{ overflow: "hidden" }}>
+        <div
+          className={cn("absolute flex flex-col justify-between overflow-hidden", editable && "cursor-move")}
+          style={{
+            left: `${infoPoint.x}%`,
+            top: `${infoPoint.y}%`,
+            transform: "translate(-50%, -50%)",
+            width: infoW,
+            height: contentH,
+          }}
+          onPointerDown={(e) => editable && startDrag(e, containerEl, (point) => onMoveNode("cards_info", point))}
+        >
+          <div
+            className={cn(
+              "h-full rounded-2xl px-3 py-2",
+              editable && "ring-1 ring-primary/40 bg-background/15"
+            )}
+            style={{ overflow: "hidden" }}
+          >
             <div className="flex items-center gap-4 mb-6 flex-wrap">
               <div style={{ fontSize: (form.card_font_size ?? 14) * 3, color: titleColor }} className="font-bold leading-tight">
                 Post {index + 1}
@@ -186,26 +415,39 @@ function PreviewPostPage({ form, index }: { form: Partial<PdfSettings>; index: n
               <div style={{ fontSize: 20, color: subtitleColor }} className="uppercase tracking-widest font-semibold mb-3">
                 Legenda:
               </div>
-              <div style={{ fontSize: (form.card_caption_font_size ?? 11) * 2, color: titleColor, lineHeight: 1.7, wordBreak: "break-word", overflowWrap: "break-word" }}>
+              <div
+                style={{
+                  fontSize: (form.card_caption_font_size ?? 11) * 2,
+                  color: titleColor,
+                  lineHeight: 1.7,
+                  wordBreak: "break-word",
+                  overflowWrap: "break-word",
+                }}
+              >
                 {caption}
               </div>
             </div>
-          </div>
-          <div className="flex items-center gap-6 pt-4 shrink-0" style={{ borderTop: `2px solid ${accent}33` }}>
-            <div>
-              <div style={{ fontSize: 16, color: subtitleColor }} className="uppercase tracking-widest font-semibold mb-1">Data</div>
-              <div style={{ fontSize: (form.card_date_font_size ?? 12) * 2.4, color: titleColor }} className="font-bold">
-                {String(day).padStart(2, "0")}/03/2026
-              </div>
-            </div>
-            {(form.show_time_on_card ?? true) && (
+
+            <div className="flex items-center gap-6 pt-4" style={{ borderTop: `2px solid ${accent}33` }}>
               <div>
-                <div style={{ fontSize: 16, color: subtitleColor }} className="uppercase tracking-widest font-semibold mb-1">Horário</div>
+                <div style={{ fontSize: 16, color: subtitleColor }} className="uppercase tracking-widest font-semibold mb-1">
+                  Data
+                </div>
                 <div style={{ fontSize: (form.card_date_font_size ?? 12) * 2.4, color: titleColor }} className="font-bold">
-                  18:00
+                  {String(day).padStart(2, "0")}/03/2026
                 </div>
               </div>
-            )}
+              {(form.show_time_on_card ?? true) && (
+                <div>
+                  <div style={{ fontSize: 16, color: subtitleColor }} className="uppercase tracking-widest font-semibold mb-1">
+                    Horário
+                  </div>
+                  <div style={{ fontSize: (form.card_date_font_size ?? 12) * 2.4, color: titleColor }} className="font-bold">
+                    18:00
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -214,11 +456,18 @@ function PreviewPostPage({ form, index }: { form: Partial<PdfSettings>; index: n
 }
 
 /* ─── Preview: Carousel Page (grid top, info bottom) ─── */
-function PreviewCarouselPage({ form }: { form: Partial<PdfSettings> }) {
+function PreviewCarouselPage({
+  form,
+  editable,
+  onMoveNode,
+}: {
+  form: Partial<PdfSettings>;
+  editable: boolean;
+  onMoveNode: (key: string, point: LayoutPoint) => void;
+}) {
   const bg = form.background_color ?? "#0B0D12";
   const accent = form.accent_color ?? "#7C5CFF";
   const titleColor = form.title_color ?? "#FFFFFF";
-  const subtitleColor = form.subtitle_color ?? "#AAAAAA";
   const margin = form.margin_size ?? 60;
   const COLS = form.carousel_cols ?? 4;
   const ROWS = form.carousel_rows ?? 2;
@@ -227,56 +476,93 @@ function PreviewCarouselPage({ form }: { form: Partial<PdfSettings> }) {
   const contentH = PDF_H - margin * 2;
   const imgHeightPct = (form.carousel_image_height_pct ?? 65) / 100;
   const gridH = contentH * imgHeightPct;
-  const infoY = gridH + 20;
+  const infoH = contentH - gridH - 20;
 
-  const gridColW = (contentW - imgGap * (COLS - 1)) / COLS;
   const gridRowH = (gridH - imgGap * (ROWS - 1)) / ROWS;
   const totalCells = COLS * ROWS;
 
+  const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
+
+  const fallbackInfoPoint: LayoutPoint = {
+    x: 50,
+    y: ((margin + gridH + 20 + infoH / 2) / PDF_H) * 100,
+  };
+  const infoPoint = getLayoutPoint(form.layout_overrides, "carousel_info", fallbackInfoPoint);
+
+  const mockBackgrounds = [
+    "linear-gradient(140deg, #2a3148 0%, #556fa7 60%, #1b2135 100%)",
+    "linear-gradient(140deg, #322515 0%, #aa6d2e 58%, #251b10 100%)",
+    "linear-gradient(140deg, #183235 0%, #2f9c8b 56%, #132427 100%)",
+    "linear-gradient(140deg, #352039 0%, #9652a2 55%, #281a2b 100%)",
+  ];
+
   return (
-    <div className="relative overflow-hidden" style={{ width: PDF_W, height: PDF_H, backgroundColor: bg }}>
+    <div ref={setContainerEl} className="relative overflow-hidden" style={{ width: PDF_W, height: PDF_H, backgroundColor: bg }}>
       <div style={{ padding: margin, height: PDF_H }}>
         {/* Top: Image grid */}
         <div className="grid" style={{ gridTemplateColumns: `repeat(${COLS}, 1fr)`, gap: imgGap, height: gridH }}>
           {Array.from({ length: totalCells }, (_, n) => (
             <div
               key={n}
-              className="rounded-3xl flex items-center justify-center"
-              style={{ backgroundColor: "#1a1d27", height: gridRowH }}
+              className="relative rounded-3xl overflow-hidden"
+              style={{
+                backgroundImage: mockBackgrounds[n % mockBackgrounds.length],
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+                height: gridRowH,
+              }}
             >
-              <div className="flex flex-col items-center gap-2 text-center" style={{ color: "#3a3d48" }}>
-                <LayoutGrid className="h-10 w-10" />
-                <span style={{ fontSize: 14 }}>Pág {n + 1}</span>
+              <div className="absolute inset-0 bg-black/20" />
+              <div className="absolute inset-0 flex items-end justify-center pb-4 text-white/90 text-sm font-semibold">
+                Página {n + 1}
               </div>
             </div>
           ))}
         </div>
 
         {/* Bottom: Info bar */}
-        <div className="flex items-start" style={{ marginTop: 20, height: contentH - gridH - 20 }}>
-          {/* Left: Post number + type */}
-          <div style={{ width: "20%" }}>
-            <div style={{ fontSize: (form.carousel_title_font_size ?? 14) * 3, color: titleColor }} className="font-bold leading-tight">
-              Post 1
-            </div>
-            <div style={{ fontSize: 18, color: accent }} className="mt-1">
-              Carrossel
-            </div>
-          </div>
-          {/* Center: Caption */}
-          <div style={{ width: "50%", fontSize: (form.carousel_caption_font_size ?? 11) * 2, color: titleColor, lineHeight: 1.7 }}>
-            Essa é a legenda completa da postagem do carrossel com quebra automática.
-          </div>
-          {/* Right: Date + Time badges */}
-          <div style={{ width: "30%", display: "flex", flexDirection: "column", gap: 10, alignItems: "flex-end" }}>
-            <div className="rounded-xl px-6 py-3 font-bold text-white" style={{ backgroundColor: accent, fontSize: (form.carousel_date_font_size ?? 12) * 1.8 }}>
-              Data: 05/03/2026
-            </div>
-            {(form.show_time_on_card ?? true) && (
-              <div className="rounded-xl px-6 py-3 font-bold text-white" style={{ backgroundColor: accent, fontSize: (form.carousel_date_font_size ?? 12) * 1.8 }}>
-                Horário: 12h00
-              </div>
+        <div
+          className={cn("absolute", editable && "cursor-move")}
+          style={{
+            left: `${infoPoint.x}%`,
+            top: `${infoPoint.y}%`,
+            transform: "translate(-50%, -50%)",
+            width: contentW,
+            maxWidth: contentW,
+            minHeight: infoH,
+          }}
+          onPointerDown={(e) => editable && startDrag(e, containerEl, (point) => onMoveNode("carousel_info", point))}
+        >
+          <div
+            className={cn(
+              "flex items-start rounded-2xl px-3 py-2",
+              editable && "ring-1 ring-primary/40 bg-background/15"
             )}
+            style={{ minHeight: infoH }}
+          >
+            <div style={{ width: "20%" }}>
+              <div style={{ fontSize: (form.carousel_title_font_size ?? 14) * 3, color: titleColor }} className="font-bold leading-tight">
+                Post 1
+              </div>
+              <div style={{ fontSize: 18, color: accent }} className="mt-1">
+                Carrossel
+              </div>
+            </div>
+
+            <div style={{ width: "50%", fontSize: (form.carousel_caption_font_size ?? 11) * 2, color: titleColor, lineHeight: 1.7 }}>
+              Essa é a legenda completa da postagem do carrossel com quebra automática.
+            </div>
+
+            <div style={{ width: "30%", display: "flex", flexDirection: "column", gap: 10, alignItems: "flex-end" }}>
+              <div className="rounded-xl px-6 py-3 font-bold text-white" style={{ backgroundColor: accent, fontSize: (form.carousel_date_font_size ?? 12) * 1.8 }}>
+                Data: 05/03/2026
+              </div>
+              {(form.show_time_on_card ?? true) && (
+                <div className="rounded-xl px-6 py-3 font-bold text-white" style={{ backgroundColor: accent, fontSize: (form.carousel_date_font_size ?? 12) * 1.8 }}>
+                  Horário: 12h00
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -285,20 +571,42 @@ function PreviewCarouselPage({ form }: { form: Partial<PdfSettings> }) {
 }
 
 /* ─── Preview: Footer page ─── */
-function PreviewFooter({ form }: { form: Partial<PdfSettings> }) {
+function PreviewFooter({
+  form,
+  editable,
+  onMoveNode,
+}: {
+  form: Partial<PdfSettings>;
+  editable: boolean;
+  onMoveNode: (key: string, point: LayoutPoint) => void;
+}) {
   const bg = form.background_color ?? "#0B0D12";
   const accent = form.accent_color ?? "#7C5CFF";
-  const margin = form.margin_size ?? 60;
+  const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
+
+  const groupPoint = getLayoutPoint(form.layout_overrides, "footer_group", DEFAULT_LAYOUT_POINTS.footer_group);
 
   return (
-    <div className="relative overflow-hidden" style={{ width: PDF_W, height: PDF_H, backgroundColor: bg }}>
-      <div className="flex items-center justify-center h-full gap-12" style={{ padding: margin }}>
-        {form.agency_logo_url && <img src={form.agency_logo_url} alt="Logo" className="h-[110px] object-contain" />}
-        <div className="h-20 w-[2px] rounded-full" style={{ backgroundColor: accent + "66" }} />
-        <div>
-          <div style={{ fontSize: (form.footer_title_font_size ?? 32) * 1.3, color: form.title_color ?? "#FFF" }} className="font-bold">{form.agency_name || "Nome da Agência"}</div>
-          <div style={{ fontSize: (form.footer_subtitle_font_size ?? 18) * 1.5, color: form.subtitle_color ?? "#AAA" }} className="mt-2">{form.footer_text || "Cronograma de Conteúdo"}</div>
-          <div style={{ fontSize: (form.footer_contact_font_size ?? 11) * 1.6, color: form.subtitle_color ?? "#AAA" }} className="mt-2">{form.footer_contact || "@agencia • contato@agencia.com"}</div>
+    <div ref={setContainerEl} className="relative overflow-hidden" style={{ width: PDF_W, height: PDF_H, backgroundColor: bg }}>
+      <div
+        className={cn("absolute flex items-center justify-center gap-12", editable && "cursor-move")}
+        style={{ left: `${groupPoint.x}%`, top: `${groupPoint.y}%`, transform: "translate(-50%, -50%)" }}
+        onPointerDown={(e) => editable && startDrag(e, containerEl, (point) => onMoveNode("footer_group", point))}
+      >
+        <div className={cn("flex items-center gap-12 rounded-2xl px-4 py-3", editable && "ring-1 ring-primary/40 bg-background/15")}>
+          {form.agency_logo_url && <img src={form.agency_logo_url} alt="Logo" className="h-[110px] object-contain" />}
+          <div className="h-20 w-[2px] rounded-full" style={{ backgroundColor: accent + "66" }} />
+          <div>
+            <div style={{ fontSize: (form.footer_title_font_size ?? 32) * 1.3, color: form.title_color ?? "#FFF" }} className="font-bold">
+              {form.agency_name || "Nome da Agência"}
+            </div>
+            <div style={{ fontSize: (form.footer_subtitle_font_size ?? 18) * 1.5, color: form.subtitle_color ?? "#AAA" }} className="mt-2">
+              {form.footer_text || "Cronograma de Conteúdo"}
+            </div>
+            <div style={{ fontSize: (form.footer_contact_font_size ?? 11) * 1.6, color: form.subtitle_color ?? "#AAA" }} className="mt-2">
+              {form.footer_contact || "@agencia • contato@agencia.com"}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -306,9 +614,26 @@ function PreviewFooter({ form }: { form: Partial<PdfSettings> }) {
 }
 
 /* ─── Block Reorder Item ─── */
-function BlockItem({ blockId, enabled, onToggle, onMoveUp, onMoveDown, isFirst, isLast, isSelected, onClick }: {
-  blockId: BlockId; enabled: boolean; onToggle: () => void; onMoveUp: () => void; onMoveDown: () => void;
-  isFirst: boolean; isLast: boolean; isSelected: boolean; onClick: () => void;
+function BlockItem({
+  blockId,
+  enabled,
+  onToggle,
+  onMoveUp,
+  onMoveDown,
+  isFirst,
+  isLast,
+  isSelected,
+  onClick,
+}: {
+  blockId: BlockId;
+  enabled: boolean;
+  onToggle: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  isFirst: boolean;
+  isLast: boolean;
+  isSelected: boolean;
+  onClick: () => void;
 }) {
   const meta = BLOCK_META[blockId];
   return (
@@ -427,6 +752,9 @@ function CardsSettings({ form, setForm }: any) {
       <div className="px-2 py-1.5 rounded-lg bg-muted/30 border border-border/20">
         <span className="text-[10px] text-muted-foreground">Fonte: <strong className="text-foreground">Bricolage Grotesque</strong> (Regular + Bold)</span>
       </div>
+      <div className="px-2 py-1.5 rounded-lg bg-muted/30 border border-border/20">
+        <span className="text-[10px] text-muted-foreground">Dica: clique na imagem da prévia para aumentar ou diminuir o tamanho.</span>
+      </div>
       <div>
         <Label className="text-[10px] text-muted-foreground">Largura da imagem (%)</Label>
         <div className="flex items-center gap-2 mt-1">
@@ -467,7 +795,10 @@ function CarouselSettings({ form, setForm }: any) {
   return (
     <div className="space-y-3">
       <div className="px-2 py-1.5 rounded-lg bg-muted/30 border border-border/20">
-        <span className="text-[10px] text-muted-foreground">Layout: grade de imagens em cima, informações embaixo</span>
+        <span className="text-[10px] text-muted-foreground">Layout: grade de imagens em cima, informações embaixo.</span>
+      </div>
+      <div className="px-2 py-1.5 rounded-lg bg-muted/30 border border-border/20">
+        <span className="text-[10px] text-muted-foreground">As imagens são exportadas sem corte com preenchimento visual no fundo.</span>
       </div>
       <div>
         <Label className="text-[10px] text-muted-foreground">Colunas</Label>
@@ -626,6 +957,13 @@ function ScaledPreview({ children, label, isSelected, onClick }: { children: Rea
 
 /* ─── Main Editor ─── */
 
+const LAYOUT_KEYS_BY_BLOCK: Record<BlockId, string[]> = {
+  cover: ["cover_title", "cover_subtitle"],
+  cards: ["cards_info"],
+  carousel: ["carousel_info"],
+  footer: ["footer_group"],
+};
+
 export function PdfLayoutEditor() {
   const settingsQ = usePdfSettings();
   const updateSettings = useUpdatePdfSettings();
@@ -641,8 +979,7 @@ export function PdfLayoutEditor() {
   const blocksOrder = (form.blocks_order ?? ["cover", "cards", "carousel", "footer"]).filter(
     (b): b is BlockId => ALL_BLOCKS.includes(b as BlockId)
   );
-  // Ensure carousel is always in the list
-  if (!blocksOrder.includes("carousel")) blocksOrder.splice(blocksOrder.indexOf("cards") + 1, 0, "carousel");
+  if (!blocksOrder.includes("carousel")) blocksOrder.splice(Math.max(blocksOrder.indexOf("cards") + 1, 1), 0, "carousel");
   const blocksEnabled = (form.blocks_enabled ?? { cover: true, cards: true, carousel: true, footer: true }) as Record<BlockId, boolean>;
 
   const handleSave = () => {
@@ -671,6 +1008,34 @@ export function PdfLayoutEditor() {
       return { ...prev, blocks_enabled: enabled };
     });
   }, []);
+
+  const moveLayoutNode = useCallback((key: string, point: LayoutPoint) => {
+    setForm(prev => ({
+      ...prev,
+      layout_overrides: {
+        ...((prev.layout_overrides as Record<string, LayoutPoint> | undefined) ?? {}),
+        [key]: point,
+      },
+    }));
+  }, []);
+
+  const nudgeCardImageWidth = useCallback((delta: number) => {
+    setForm(prev => ({
+      ...prev,
+      card_image_width_pct: clamp((prev.card_image_width_pct ?? 45) + delta, 25, 65),
+    }));
+  }, []);
+
+  const resetSelectedBlockLayout = useCallback(() => {
+    setForm(prev => {
+      const current = { ...((prev.layout_overrides as Record<string, LayoutPoint> | undefined) ?? {}) };
+      for (const key of LAYOUT_KEYS_BY_BLOCK[selectedBlock]) {
+        delete current[key];
+      }
+      return { ...prev, layout_overrides: current };
+    });
+    toast.success("Posição da aba resetada.");
+  }, [selectedBlock]);
 
   const uploadFile = async (file: File, prefix: string) => {
     setUploading(true);
@@ -721,29 +1086,37 @@ export function PdfLayoutEditor() {
   };
 
   const renderPreview = (blockId: BlockId) => {
+    const editable = selectedBlock === blockId;
+
     switch (blockId) {
       case "cover":
         return (
-          <ScaledPreview key="cover" label="Capa" isSelected={selectedBlock === "cover"} onClick={() => setSelectedBlock("cover")}>
-            <PreviewCover form={form} />
+          <ScaledPreview key="cover" label="Capa" isSelected={editable} onClick={() => setSelectedBlock("cover")}>
+            <PreviewCover form={form} editable={editable} onMoveNode={moveLayoutNode} />
           </ScaledPreview>
         );
       case "cards":
         return (
-          <ScaledPreview key="cards" label="Post padrão" isSelected={selectedBlock === "cards"} onClick={() => setSelectedBlock("cards")}>
-            <PreviewPostPage form={form} index={0} />
+          <ScaledPreview key="cards" label="Post padrão" isSelected={editable} onClick={() => setSelectedBlock("cards")}>
+            <PreviewPostPage
+              form={form}
+              index={0}
+              editable={editable}
+              onMoveNode={moveLayoutNode}
+              onResizeImage={nudgeCardImageWidth}
+            />
           </ScaledPreview>
         );
       case "carousel":
         return (
-          <ScaledPreview key="carousel" label={`Carrossel (${form.carousel_cols ?? 4} colunas)`} isSelected={selectedBlock === "carousel"} onClick={() => setSelectedBlock("carousel")}>
-            <PreviewCarouselPage form={form} />
+          <ScaledPreview key="carousel" label={`Carrossel (${form.carousel_cols ?? 4} colunas)`} isSelected={editable} onClick={() => setSelectedBlock("carousel")}>
+            <PreviewCarouselPage form={form} editable={editable} onMoveNode={moveLayoutNode} />
           </ScaledPreview>
         );
       case "footer":
         return (
-          <ScaledPreview key="footer" label="Rodapé" isSelected={selectedBlock === "footer"} onClick={() => setSelectedBlock("footer")}>
-            <PreviewFooter form={form} />
+          <ScaledPreview key="footer" label="Rodapé" isSelected={editable} onClick={() => setSelectedBlock("footer")}>
+            <PreviewFooter form={form} editable={editable} onMoveNode={moveLayoutNode} />
           </ScaledPreview>
         );
     }
@@ -752,14 +1125,19 @@ export function PdfLayoutEditor() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h3 className="text-base font-bold">Editor de Layout do PDF</h3>
-          <p className="text-xs text-muted-foreground">Landscape A4 — Capa + páginas individuais por postagem</p>
+          <p className="text-xs text-muted-foreground">Landscape A4 — arraste elementos na prévia e clique na imagem para redimensionar.</p>
         </div>
-        <Button size="sm" className="gap-1.5 rounded-xl" onClick={handleSave} disabled={updateSettings.isPending}>
-          <Save className="h-3.5 w-3.5" /> Salvar Layout
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button type="button" variant="outline" size="sm" className="rounded-xl" onClick={resetSelectedBlockLayout}>
+            Resetar posição da aba
+          </Button>
+          <Button size="sm" className="gap-1.5 rounded-xl" onClick={handleSave} disabled={updateSettings.isPending}>
+            <Save className="h-3.5 w-3.5" /> Salvar Layout
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
@@ -801,10 +1179,10 @@ export function PdfLayoutEditor() {
         </div>
 
         {/* Right: Preview */}
-        <div className="space-y-3 w-full lg:max-w-[700px]">
-          <div className="flex items-center gap-2">
-            <h4 className="text-sm font-bold">Pré-visualização</h4>
-            <span className="text-[10px] text-muted-foreground">A4 Landscape ({PDF_W}×{PDF_H}px)</span>
+        <div className="space-y-3 w-full lg:max-w-[760px]">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h4 className="text-sm font-bold">Pré-visualização interativa</h4>
+            <span className="text-[10px] text-muted-foreground">Clique em uma aba e arraste os elementos para reposicionar.</span>
           </div>
 
           <div className="space-y-4">

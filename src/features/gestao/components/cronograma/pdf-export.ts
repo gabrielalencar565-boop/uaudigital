@@ -5,12 +5,17 @@ import { jsPDF } from "jspdf";
 const DESIGN_W = 1684;
 const DESIGN_H = 1190;
 
-type BlockId = "cover" | "cards" | "footer";
+type BlockId = "cover" | "cards" | "carousel" | "footer";
 type PdfImageFormat = "PNG" | "JPEG";
 
 interface PdfImageAsset {
   dataUrl: string;
   format: PdfImageFormat;
+}
+
+interface LayoutPoint {
+  x: number;
+  y: number;
 }
 
 export interface PdfExportSettings {
@@ -28,6 +33,7 @@ export interface PdfExportSettings {
   accent_color?: string | null;
   blocks_order?: string[] | null;
   blocks_enabled?: Record<string, boolean> | null;
+  layout_overrides?: Record<string, LayoutPoint> | null;
   agency_logo_url?: string | null;
   agency_name?: string | null;
   footer_text?: string | null;
@@ -76,8 +82,9 @@ const DEFAULT_SETTINGS: Required<PdfExportSettings> = {
   card_caption_font_size: 11,
   show_time_on_card: true,
   accent_color: "#7C5CFF",
-  blocks_order: ["cover", "cards", "footer"],
-  blocks_enabled: { cover: true, cards: true, footer: true },
+  blocks_order: ["cover", "cards", "carousel", "footer"],
+  blocks_enabled: { cover: true, cards: true, carousel: true, footer: true },
+  layout_overrides: {},
   agency_logo_url: null,
   agency_name: "",
   footer_text: "",
@@ -102,6 +109,18 @@ const POST_TYPE_LABELS: Record<string, string> = {
   foto: "Foto",
 };
 
+const DEFAULT_LAYOUT_POINTS: Record<string, LayoutPoint> = {
+  cover_title: { x: 50, y: 45 },
+  cover_subtitle: { x: 50, y: 53 },
+  cards_info: { x: 73, y: 50 },
+  carousel_info: { x: 50, y: 83 },
+  footer_group: { x: 50, y: 50 },
+};
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
 function parseHex(hex: string, fallback: [number, number, number]): [number, number, number] {
   const value = (hex || "").trim();
   const normalized = value.startsWith("#") ? value.slice(1) : value;
@@ -117,12 +136,27 @@ function parseHex(hex: string, fallback: [number, number, number]): [number, num
   return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
 }
 
+function readLayoutPoint(raw: unknown): LayoutPoint | null {
+  if (!raw || typeof raw !== "object") return null;
+  const x = Number((raw as any).x);
+  const y = Number((raw as any).y);
+  if (Number.isNaN(x) || Number.isNaN(y)) return null;
+  return { x, y };
+}
+
+function getLayoutPoint(layout: unknown, key: string, fallback: LayoutPoint): LayoutPoint {
+  if (!layout || typeof layout !== "object") return fallback;
+  const parsed = readLayoutPoint((layout as Record<string, unknown>)[key]);
+  return parsed ?? fallback;
+}
+
 function withDefaults(settings?: PdfExportSettings | null): Required<PdfExportSettings> {
   return {
     ...DEFAULT_SETTINGS,
     ...settings,
     blocks_order: (settings?.blocks_order ?? DEFAULT_SETTINGS.blocks_order).filter(Boolean),
     blocks_enabled: { ...DEFAULT_SETTINGS.blocks_enabled, ...(settings?.blocks_enabled ?? {}) },
+    layout_overrides: { ...DEFAULT_SETTINGS.layout_overrides, ...(settings?.layout_overrides ?? {}) },
   };
 }
 
@@ -175,14 +209,15 @@ async function rasterizeToPng(dataUrl: string): Promise<string | null> {
 }
 
 /**
- * Draws an image on a canvas with object-contain (no cropping) and rounded corners,
- * then returns a PNG dataUrl ready for jsPDF.
+ * Draws an image on a canvas with object-contain (no cropping) and rounded corners.
+ * For carousel blocks we use a blurred fill background so the frame feels fully preenchido.
  */
 async function renderContainImage(
   imageDataUrl: string,
   targetW: number,
   targetH: number,
   borderRadius: number,
+  options?: { backgroundMode?: "solid" | "blur" },
 ): Promise<string | null> {
   const img = await loadImage(imageDataUrl);
   if (!img) return null;
@@ -201,6 +236,9 @@ async function renderContainImage(
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
 
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+
   // Clip to rounded rect
   ctx.beginPath();
   ctx.moveTo(r, 0);
@@ -215,23 +253,41 @@ async function renderContainImage(
   ctx.closePath();
   ctx.clip();
 
-  // Fill background
-  ctx.fillStyle = "#1a1d27";
-  ctx.fillRect(0, 0, cW, cH);
+  if (options?.backgroundMode === "blur") {
+    // Fill with a blurred cover version of the same image (no cut in the foreground image).
+    const coverScale = Math.max(cW / natW, cH / natH);
+    const bgW = natW * coverScale;
+    const bgH = natH * coverScale;
+    const bgX = (cW - bgW) / 2;
+    const bgY = (cH - bgH) / 2;
+
+    ctx.save();
+    ctx.filter = `blur(${Math.round(12 * scale)}px)`;
+    ctx.globalAlpha = 0.9;
+    ctx.drawImage(img, bgX, bgY, bgW, bgH);
+    ctx.restore();
+
+    ctx.fillStyle = "rgba(8, 10, 14, 0.28)";
+    ctx.fillRect(0, 0, cW, cH);
+  } else {
+    ctx.fillStyle = "#1a1d27";
+    ctx.fillRect(0, 0, cW, cH);
+  }
 
   // Object-contain: fit image inside canvas preserving aspect ratio
   const imgRatio = natW / natH;
   const canvasRatio = cW / cH;
-  let drawW: number, drawH: number, drawX: number, drawY: number;
+  let drawW: number;
+  let drawH: number;
+  let drawX: number;
+  let drawY: number;
 
   if (imgRatio > canvasRatio) {
-    // Image wider → fit width
     drawW = cW;
     drawH = cW / imgRatio;
     drawX = 0;
     drawY = (cH - drawH) / 2;
   } else {
-    // Image taller → fit height
     drawH = cH;
     drawW = cH * imgRatio;
     drawX = (cW - drawW) / 2;
@@ -340,8 +396,14 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
   const margin = sx(form.margin_size);
   const imgWidthPct = (form.card_image_width_pct ?? 45) / 100;
 
-  const blocksOrder = (form.blocks_order as BlockId[]).filter((b) => ["cover", "cards", "footer"].includes(b));
-  const blocksEnabled = form.blocks_enabled as Record<BlockId, boolean>;
+  const blocksOrder = (form.blocks_order as BlockId[]).filter((b) => ["cover", "cards", "carousel", "footer"].includes(b));
+  const blocksEnabled = {
+    cover: true,
+    cards: true,
+    carousel: true,
+    footer: true,
+    ...(form.blocks_enabled as Record<string, boolean>),
+  } as Record<BlockId, boolean>;
 
   let hasPage = false;
   const ensurePage = () => {
@@ -381,19 +443,27 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
       const [subR, subG, subB] = parseHex(form.subtitle_color, [170, 170, 170]);
       const [accR, accG, accB] = parseHex(form.accent_color, [124, 92, 255]);
 
+      const coverTitlePoint = getLayoutPoint(form.layout_overrides, "cover_title", DEFAULT_LAYOUT_POINTS.cover_title);
+      const coverSubtitlePoint = getLayoutPoint(form.layout_overrides, "cover_subtitle", DEFAULT_LAYOUT_POINTS.cover_subtitle);
+
       doc.setTextColor(titleR, titleG, titleB);
       setFont(doc, "bold");
       doc.setFontSize(Math.max(14, sx(form.title_font_size * 2.5)));
-      doc.text(clientName || "Cronograma", pageW / 2, pageH / 2 - sy(50), { align: "center" });
+      doc.text(clientName || "Cronograma", (coverTitlePoint.x / 100) * pageW, (coverTitlePoint.y / 100) * pageH, { align: "center", baseline: "middle" });
 
       const baseDate = posts[0]?.posting_date ? parseISO(posts[0].posting_date) : new Date();
       doc.setTextColor(subR, subG, subB);
       setFont(doc, "normal");
       doc.setFontSize(Math.max(10, sx(form.subtitle_font_size * 2)));
-      doc.text(`Cronograma de Conteúdo — ${format(baseDate, "MMMM yyyy", { locale: ptBR })}`, pageW / 2, pageH / 2 + sy(20), { align: "center" });
+      doc.text(
+        `Cronograma de Conteúdo — ${format(baseDate, "MMMM yyyy", { locale: ptBR })}`,
+        (coverSubtitlePoint.x / 100) * pageW,
+        (coverSubtitlePoint.y / 100) * pageH,
+        { align: "center", baseline: "middle" }
+      );
 
       doc.setFillColor(accR, accG, accB);
-      doc.roundedRect(pageW / 2 - sx(100), pageH / 2 + sy(40), sx(200), sy(8), sy(4), sy(4), "F");
+      doc.roundedRect(pageW / 2 - sx(100), (coverSubtitlePoint.y / 100) * pageH + sy(32), sx(200), sy(8), sy(4), sy(4), "F");
 
       const agencyLogo = await getCachedImage(form.agency_logo_url);
       let footerY = pageH - sy(85);
@@ -413,10 +483,13 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
       }
     }
 
-    if (block === "cards") {
+    if (block === "cards" || block === "carousel") {
       for (let i = 0; i < posts.length; i += 1) {
         const post = posts[i];
         const isCarousel = post.post_type === "carrossel" && (post.all_attachment_urls?.length ?? 0) > 1;
+
+        if (block === "cards" && isCarousel) continue;
+        if (block === "carousel" && !isCarousel) continue;
 
         ensurePage();
         drawBg(doc, pageW, pageH, form);
@@ -440,16 +513,14 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
           const imgGap = sx(12);
           const imgHeightPct = (form.carousel_image_height_pct ?? 65) / 100;
 
-          // Top area for images, bottom for info
           const gridH = contentH * imgHeightPct;
-          const infoH = contentH - gridH - sy(20); // 20px gap between grid and info
+          const infoH = contentH - gridH - sy(20);
           const gridY = margin;
           const infoY = margin + gridH + sy(20);
 
           const gridColW = (contentW - imgGap * (COLS - 1)) / COLS;
           const gridRowH = (gridH - imgGap * (ROWS - 1)) / ROWS;
 
-          // Render first page of images
           const firstPageImgs = carouselImages.slice(0, PER_PAGE);
           for (let idx = 0; idx < firstPageImgs.length; idx++) {
             const col = idx % COLS;
@@ -462,52 +533,61 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
 
             const rawAsset = await getCachedImage(firstPageImgs[idx]);
             if (rawAsset) {
-              const containPng = await renderContainImage(rawAsset.dataUrl, gridColW, gridRowH, cornerRadius);
+              const containPng = await renderContainImage(rawAsset.dataUrl, gridColW, gridRowH, cornerRadius, { backgroundMode: "blur" });
               if (containPng) {
                 addPdfImage(doc, { dataUrl: containPng, format: "PNG" }, cx, cy, gridColW, gridRowH);
               }
             }
           }
 
-          // Bottom info bar: Post N + Badge | Caption | Date + Time
           const cTitleFontSize = form.carousel_title_font_size ?? form.card_font_size ?? 14;
           const cCaptionFontSize = form.carousel_caption_font_size ?? form.card_caption_font_size ?? 11;
           const cDateFontSize = form.carousel_date_font_size ?? form.card_date_font_size ?? 12;
 
-          // Left column: Post number + type
           const leftColW = contentW * 0.2;
           const centerColW = contentW * 0.5;
           const rightColW = contentW * 0.3;
-          const leftX = margin;
-          const centerX = margin + leftColW;
-          const rightX = margin + leftColW + centerColW;
+
+          const defaultCarouselInfoPoint: LayoutPoint = {
+            x: 50,
+            y: ((infoY + infoH / 2) / pageH) * 100,
+          };
+          const carouselInfoPoint = getLayoutPoint(form.layout_overrides, "carousel_info", defaultCarouselInfoPoint);
+          const carouselInfoCenterX = (carouselInfoPoint.x / 100) * pageW;
+          const carouselInfoCenterY = (carouselInfoPoint.y / 100) * pageH;
+          const defaultCarouselCenterX = margin + contentW / 2;
+          const defaultCarouselCenterY = infoY + infoH / 2;
+
+          const infoDx = carouselInfoCenterX - defaultCarouselCenterX;
+          const infoDy = carouselInfoCenterY - defaultCarouselCenterY;
+
+          const leftX = margin + infoDx;
+          const centerX = margin + leftColW + infoDx;
+          const rightX = margin + leftColW + centerColW + infoDx;
+          const infoBaseY = infoY + infoDy;
 
           setFont(doc, "bold");
           doc.setTextColor(titleR, titleG, titleB);
           doc.setFontSize(Math.max(10, sx(cTitleFontSize * 3)));
-          doc.text(`Post ${i + 1}`, leftX, infoY + sy(50));
+          doc.text(`Post ${i + 1}`, leftX, infoBaseY + sy(50));
 
-          // Type badge below post number
-          const badgeText = postTypeLabel;
           setFont(doc, "normal");
           doc.setFontSize(sx(16));
           doc.setTextColor(accR, accG, accB);
-          doc.text(badgeText, leftX, infoY + sy(90));
+          doc.text(postTypeLabel, leftX, infoBaseY + sy(90));
 
-          // Center: caption
           doc.setTextColor(titleR, titleG, titleB);
           setFont(doc, "normal");
           doc.setFontSize(Math.max(9, sx(cCaptionFontSize * 1.8)));
           const caption = post.caption?.trim() || "Sem legenda";
           const wrappedCaption = doc.splitTextToSize(caption, centerColW - sx(20));
-          doc.text(wrappedCaption, centerX, infoY + sy(30), { baseline: "top" });
+          doc.text(wrappedCaption, centerX, infoBaseY + sy(30), { baseline: "top" });
 
-          // Right: date + time badges
           const formattedDate = post.posting_date ? format(parseISO(post.posting_date), "dd/MM/yyyy") : "—";
           const dateBadgeW = rightColW - sx(20);
           const dateBadgeH = sy(50);
           const dateBadgeX = rightX;
-          const dateBadgeY = infoY + sy(10);
+          const dateBadgeY = infoBaseY + sy(10);
 
           doc.setFillColor(accR, accG, accB);
           doc.roundedRect(dateBadgeX, dateBadgeY, dateBadgeW, dateBadgeH, sy(10), sy(10), "F");
@@ -524,7 +604,6 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
             doc.text(`Horário: ${post.posting_time}`, dateBadgeX + dateBadgeW / 2, timeBadgeY + dateBadgeH / 2, { align: "center", baseline: "middle" });
           }
 
-          // Additional pages for remaining carousel images
           for (let pageStart = PER_PAGE; pageStart < carouselImages.length; pageStart += PER_PAGE) {
             ensurePage();
             drawBg(doc, pageW, pageH, form);
@@ -552,7 +631,7 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
 
               const rawAsset = await getCachedImage(chunk[idx]);
               if (rawAsset) {
-                const containPng = await renderContainImage(rawAsset.dataUrl, cColW, cRowH, cornerRadius);
+                const containPng = await renderContainImage(rawAsset.dataUrl, cColW, cRowH, cornerRadius, { backgroundMode: "blur" });
                 if (containPng) {
                   addPdfImage(doc, { dataUrl: containPng, format: "PNG" }, cx, cy, cColW, cRowH);
                 }
@@ -590,10 +669,26 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
             doc.text("Imagem do Post", imageX + imageW / 2, imageY + contentH / 2, { align: "center" });
           }
 
+          const defaultCardsInfoPoint: LayoutPoint = {
+            x: ((textX + textW / 2) / pageW) * 100,
+            y: ((textY + contentH / 2) / pageH) * 100,
+          };
+          const cardsInfoPoint = getLayoutPoint(form.layout_overrides, "cards_info", defaultCardsInfoPoint);
+          const cardsInfoCenterX = (cardsInfoPoint.x / 100) * pageW;
+          const cardsInfoCenterY = (cardsInfoPoint.y / 100) * pageH;
+          const defaultCardsCenterX = textX + textW / 2;
+          const defaultCardsCenterY = textY + contentH / 2;
+
+          const infoDx = cardsInfoCenterX - defaultCardsCenterX;
+          const infoDy = cardsInfoCenterY - defaultCardsCenterY;
+
+          const infoX = textX + infoDx;
+          const infoY = textY + infoDy;
+
           setFont(doc, "bold");
           doc.setTextColor(titleR, titleG, titleB);
           doc.setFontSize(Math.max(10, sx(form.card_font_size * 2.4)));
-          doc.text(`Post ${i + 1}`, textX, textY + sy(60));
+          doc.text(`Post ${i + 1}`, infoX, infoY + sy(60));
 
           const badgeText = postTypeLabel;
           doc.setFontSize(sx(18));
@@ -601,8 +696,8 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
           const badgePadX = sx(24);
           const badgeW = badgeTextW + badgePadX * 2;
           const badgeH = sy(44);
-          const badgeX = textX + sx(180);
-          const badgeY = textY + sy(24);
+          const badgeX = infoX + sx(180);
+          const badgeY = infoY + sy(24);
           doc.setFillColor(accR, accG, accB);
           doc.roundedRect(badgeX, badgeY, badgeW, badgeH, sy(22), sy(22), "F");
           doc.setTextColor(255, 255, 255);
@@ -611,36 +706,36 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
           doc.setTextColor(subR, subG, subB);
           setFont(doc, "bold");
           doc.setFontSize(sx(16));
-          doc.text("Legenda:", textX, textY + sy(130));
+          doc.text("Legenda:", infoX, infoY + sy(130));
 
           doc.setTextColor(titleR, titleG, titleB);
           setFont(doc, "normal");
           doc.setFontSize(Math.max(9, sx(form.card_caption_font_size * 1.8)));
           const caption = post.caption?.trim() || "Sem legenda";
           const wrappedCaption = doc.splitTextToSize(caption, textW);
-          doc.text(wrappedCaption, textX, textY + sy(170), { baseline: "top" });
+          doc.text(wrappedCaption, infoX, infoY + sy(170), { baseline: "top" });
 
-          const footerTop = pageH - margin - sy(100);
+          const footerTop = infoY + contentH - sy(100);
           doc.setDrawColor(accR, accG, accB);
           doc.setLineWidth(1.4);
-          doc.line(textX, footerTop, textX + textW, footerTop);
+          doc.line(infoX, footerTop, infoX + textW, footerTop);
 
           doc.setTextColor(subR, subG, subB);
           setFont(doc, "bold");
           doc.setFontSize(sx(14));
-          doc.text("Data", textX, footerTop + sy(32));
+          doc.text("Data", infoX, footerTop + sy(32));
 
           doc.setTextColor(titleR, titleG, titleB);
           setFont(doc, "normal");
           doc.setFontSize(Math.max(10, sx(form.card_date_font_size * 2.1)));
           const formattedDate = post.posting_date ? format(parseISO(post.posting_date), "dd/MM/yyyy") : "—";
-          doc.text(formattedDate, textX, footerTop + sy(68));
+          doc.text(formattedDate, infoX, footerTop + sy(68));
 
           if (form.show_time_on_card && post.posting_time) {
             const dateTextW = doc.getTextWidth(formattedDate);
             const timeX = Math.min(
-              Math.max(textX + dateTextW + sx(80), textX + textW * 0.55),
-              textX + textW - sx(220),
+              Math.max(infoX + dateTextW + sx(80), infoX + textW * 0.55),
+              infoX + textW - sx(220),
             );
             doc.setTextColor(subR, subG, subB);
             setFont(doc, "bold");
@@ -663,30 +758,41 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
       const [subR, subG, subB] = parseHex(form.subtitle_color, [170, 170, 170]);
       const [accR, accG, accB] = parseHex(form.accent_color, [124, 92, 255]);
 
+      const footerGroupPoint = getLayoutPoint(form.layout_overrides, "footer_group", DEFAULT_LAYOUT_POINTS.footer_group);
+      const footerCenterX = (footerGroupPoint.x / 100) * pageW;
+      const footerCenterY = (footerGroupPoint.y / 100) * pageH;
+      const footerDx = footerCenterX - pageW / 2;
+      const footerDy = footerCenterY - pageH / 2;
+
       const agencyLogo = await getCachedImage(form.agency_logo_url);
       if (agencyLogo) {
         const logoW = sx(210);
         const logoH = sy(110);
-        addPdfImage(doc, agencyLogo, pageW / 2 - logoW / 2, pageH / 2 - sy(190), logoW, logoH);
+        addPdfImage(doc, agencyLogo, pageW / 2 - logoW / 2 + footerDx, pageH / 2 - sy(190) + footerDy, logoW, logoH);
       }
 
       setFont(doc, "bold");
       doc.setTextColor(titleR, titleG, titleB);
       doc.setFontSize(Math.max(12, sx((form.footer_title_font_size ?? 32) * 1.25)));
-      doc.text(form.agency_name || "Nome da Agência", pageW / 2, pageH / 2 - sy(20), { align: "center" });
+      doc.text(form.agency_name || "Nome da Agência", pageW / 2 + footerDx, pageH / 2 - sy(20) + footerDy, { align: "center" });
 
       doc.setDrawColor(accR, accG, accB);
       doc.setLineWidth(2);
-      doc.line(pageW / 2 - sx(160), pageH / 2 + sy(5), pageW / 2 + sx(160), pageH / 2 + sy(5));
+      doc.line(
+        pageW / 2 - sx(160) + footerDx,
+        pageH / 2 + sy(5) + footerDy,
+        pageW / 2 + sx(160) + footerDx,
+        pageH / 2 + sy(5) + footerDy,
+      );
 
       doc.setTextColor(subR, subG, subB);
       setFont(doc, "normal");
       doc.setFontSize(Math.max(10, sx((form.footer_subtitle_font_size ?? 18) * 1.5)));
-      doc.text(form.footer_text || "Cronograma de Conteúdo", pageW / 2, pageH / 2 + sy(50), { align: "center" });
+      doc.text(form.footer_text || "Cronograma de Conteúdo", pageW / 2 + footerDx, pageH / 2 + sy(50) + footerDy, { align: "center" });
 
       doc.setTextColor(subR, subG, subB);
       doc.setFontSize(Math.max(9, sx((form.footer_contact_font_size ?? 11) * 1.6)));
-      doc.text(form.footer_contact || "@agencia • contato@agencia.com", pageW / 2, pageH / 2 + sy(95), { align: "center" });
+      doc.text(form.footer_contact || "@agencia • contato@agencia.com", pageW / 2 + footerDx, pageH / 2 + sy(95) + footerDy, { align: "center" });
     }
   }
 
