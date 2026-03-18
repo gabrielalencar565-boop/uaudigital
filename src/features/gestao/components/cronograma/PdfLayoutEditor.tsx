@@ -715,6 +715,7 @@ export function PdfLayoutEditor() {
     switch (selectedBlock) {
       case "cover": return <CoverSettings form={form} setForm={setForm} uploading={uploading} handleUploadBg={handleUploadBg} handleUploadLogo={handleUploadLogo} />;
       case "cards": return <CardsSettings form={form} setForm={setForm} />;
+      case "carousel": return <CarouselSettings form={form} setForm={setForm} />;
       case "footer": return <FooterSettings form={form} setForm={setForm} uploading={uploading} handleUploadAgencyLogo={handleUploadAgencyLogo} />;
     }
   };
