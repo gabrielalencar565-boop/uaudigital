@@ -428,25 +428,23 @@ function PreviewPostPage({
               </div>
             </div>
 
-            <div className="flex items-center gap-6 pt-4" style={{ borderTop: `2px solid ${accent}33` }}>
-              <div>
-                <div style={{ fontSize: 16, color: subtitleColor }} className="uppercase tracking-widest font-semibold mb-1">
-                  Data
+            <div className="flex items-center justify-end pt-4" style={{ borderTop: `2px solid ${accent}33` }}>
+              <div className="flex flex-col items-end gap-3">
+                <div
+                  className="rounded-xl px-6 py-3 font-bold text-white"
+                  style={{ backgroundColor: accent, fontSize: (form.card_date_font_size ?? 12) * 1.8 }}
+                >
+                  Data: {String(day).padStart(2, "0")}/03/2026
                 </div>
-                <div style={{ fontSize: (form.card_date_font_size ?? 12) * 2.4, color: titleColor }} className="font-bold">
-                  {String(day).padStart(2, "0")}/03/2026
-                </div>
+                {(form.show_time_on_card ?? true) && (
+                  <div
+                    className="rounded-xl px-6 py-3 font-bold text-white"
+                    style={{ backgroundColor: accent, fontSize: (form.card_date_font_size ?? 12) * 1.8 }}
+                  >
+                    Horário: 18:00
+                  </div>
+                )}
               </div>
-              {(form.show_time_on_card ?? true) && (
-                <div>
-                  <div style={{ fontSize: 16, color: subtitleColor }} className="uppercase tracking-widest font-semibold mb-1">
-                    Horário
-                  </div>
-                  <div style={{ fontSize: (form.card_date_font_size ?? 12) * 2.4, color: titleColor }} className="font-bold">
-                    18:00
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         </div>
