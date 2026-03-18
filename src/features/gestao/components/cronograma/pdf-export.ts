@@ -420,8 +420,9 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
 
   const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
   const fontReady = await loadBricolageFont(doc);
+  _fontLoaded = fontReady;
   if (!fontReady) {
-    throw new Error("Não foi possível carregar a fonte do PDF. Tente novamente em instantes.");
+    console.warn("Fonte Bricolage não carregou — usando Helvetica como fallback.");
   }
 
   const pageW = doc.internal.pageSize.getWidth();
