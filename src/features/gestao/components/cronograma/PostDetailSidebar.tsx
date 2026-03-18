@@ -78,23 +78,7 @@ export function PostDetailSidebar({ post, onClose, onUpdate, onRename, onEditTas
               <span className="text-white text-xs font-bold">{headerInitial}</span>
             </div>
             <div className="flex flex-col">
-              {editingField === "title" ? (
-                <Input
-                  autoFocus
-                  value={tempValue}
-                  onChange={(e) => setTempValue(e.target.value)}
-                  onBlur={() => saveField("title")}
-                  onKeyDown={(e) => e.key === "Enter" && saveField("title")}
-                  className="h-6 text-sm font-semibold p-0 border-none shadow-none"
-                />
-              ) : (
-                <span
-                  className="text-sm font-semibold cursor-pointer hover:text-primary transition-colors leading-tight"
-                  onClick={() => startEditing("title", post.title)}
-                >
-                  {post.title}
-                </span>
-              )}
+              <span className="text-sm font-semibold leading-tight">{headerName}</span>
               {post.post_type && (
                 <span className="text-[10px] text-muted-foreground">{meta.label}</span>
               )}
