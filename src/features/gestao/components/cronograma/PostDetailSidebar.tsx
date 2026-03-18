@@ -96,11 +96,11 @@ export function PostDetailSidebar({ post, onClose, onUpdate, onRename, onEditTas
 
         {/* Image area with carousel arrows */}
         {displayImages.length > 0 && (
-          <div className="relative w-full aspect-square bg-black/5 group">
+          <div className="relative w-full bg-black/5 group px-3">
             <img
               src={displayImages[carouselIndex] || displayImages[0]}
               alt=""
-              className="w-full h-full object-cover cursor-pointer"
+              className="w-full object-contain rounded-xl cursor-pointer max-h-[60vh]"
               onClick={() => openViewer(carouselIndex)}
             />
 
