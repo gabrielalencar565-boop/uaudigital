@@ -250,24 +250,24 @@ export function PreviewFooter({ form, editable, onMoveNode }: PreviewProps) {
 }
 
 /* ─── Scaled preview wrapper ─── */
-const CANVAS_PAD = 32; // breathing room around the page
+const CANVAS_PAD = 28;
+const PDF_ASPECT = PDF_H / PDF_W; // ≈ 0.707
 
 export function ScaledPreview({ children, label, pageNum, isSelected, onClick }: {
   children: React.ReactNode; label: string; pageNum: number; isSelected: boolean; onClick: () => void;
 }) {
-  const [scale, setScale] = useState(0.3);
+  const [scale, setScale] = useState(0.25);
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!containerEl) return;
 
     const update = () => {
+      // Scale to fit the available WIDTH only (the height follows automatically)
       const availW = containerEl.clientWidth - CANVAS_PAD * 2;
-      const availH = containerEl.clientHeight - CANVAS_PAD * 2;
-      if (availW <= 0 || availH <= 0) return;
-      const fitW = availW / PDF_W;
-      const fitH = availH / PDF_H;
-      setScale(Math.max(0.1, Math.min(1, Math.min(fitW, fitH))));
+      if (availW <= 0) return;
+      const fitScale = availW / PDF_W;
+      setScale(Math.max(0.1, Math.min(1, fitScale)));
     };
 
     const ro = new ResizeObserver(update);
@@ -276,8 +276,8 @@ export function ScaledPreview({ children, label, pageNum, isSelected, onClick }:
     return () => ro.disconnect();
   }, [containerEl]);
 
-  const scaledW = PDF_W * scale;
-  const scaledH = PDF_H * scale;
+  // The wrapper height is derived from scale — no circular dependency
+  const canvasH = PDF_H * scale + CANVAS_PAD * 2;
 
   return (
     <div
@@ -313,16 +313,12 @@ export function ScaledPreview({ children, label, pageNum, isSelected, onClick }:
         </div>
       </div>
 
-      {/* Canvas — fixed aspect-ratio viewport */}
+      {/* Canvas */}
       <div
         ref={setContainerEl}
-        className="flex items-center justify-center overflow-hidden"
+        className="flex items-center justify-center"
         style={{
-          /* Give the canvas a fixed height so we can fit-to-screen.
-             Aspect ratio of A4 landscape = PDF_W / PDF_H ≈ 1.414.
-             We want the container to be wide enough to show the page
-             but capped in height so nothing gets clipped. */
-          height: Math.max(280, scaledH + CANVAS_PAD * 2),
+          height: canvasH,
           background: isSelected
             ? "radial-gradient(circle at 50% 40%, hsl(var(--primary) / 0.04), hsl(var(--muted) / 0.08))"
             : "hsl(var(--muted) / 0.05)",
