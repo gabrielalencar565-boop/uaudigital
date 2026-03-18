@@ -236,11 +236,6 @@ export function CronogramaClientBrowser({ tasks, childTasksMap, clientsMap, memb
             </Button>
           }
 
-          {!noClientSelected &&
-          <Button variant="outline" size="sm" className="gap-1.5 text-xs rounded-xl h-9" onClick={handleDownloadPdf}>
-              <Download className="h-3.5 w-3.5" /> PDF
-            </Button>
-          }
 
           {!noClientSelected &&
           <Button
