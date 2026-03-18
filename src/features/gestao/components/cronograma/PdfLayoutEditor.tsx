@@ -946,7 +946,12 @@ function ScaledPreview({ children, label, isSelected, onClick }: { children: Rea
         <div
           data-pdf-inner
           className="origin-top-left"
-          style={{ width: PDF_W, transform: `scale(${scale})`, transformOrigin: "top left" }}
+          style={{
+            width: PDF_W,
+            transform: `scale(${scale})`,
+            transformOrigin: "top left",
+            fontFamily: '"Bricolage Grotesque", "Segoe UI", sans-serif',
+          }}
         >
           {children}
         </div>
