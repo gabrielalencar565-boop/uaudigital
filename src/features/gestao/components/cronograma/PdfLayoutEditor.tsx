@@ -646,9 +646,14 @@ export function PdfLayoutEditor() {
         );
       case "cards":
         return (
-          <ScaledPreview key="post-0" label="Post 1" isSelected={selectedBlock === "cards"} onClick={() => setSelectedBlock("cards")}>
-            <PreviewPostPage form={form} index={0} />
-          </ScaledPreview>
+          <div key="cards-previews" className="space-y-4">
+            <ScaledPreview label="Post padrão" isSelected={selectedBlock === "cards"} onClick={() => setSelectedBlock("cards")}>
+              <PreviewPostPage form={form} index={0} />
+            </ScaledPreview>
+            <ScaledPreview label="Carrossel (3 colunas)" isSelected={selectedBlock === "cards"} onClick={() => setSelectedBlock("cards")}>
+              <PreviewCarouselPage form={form} />
+            </ScaledPreview>
+          </div>
         );
       case "footer":
         return (
