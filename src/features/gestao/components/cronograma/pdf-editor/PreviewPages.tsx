@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { LayoutGrid } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { PdfSettings, LayoutPoint, BlockId } from "./types";
-import { PDF_W, PDF_H, getLayoutPoint, DEFAULT_LAYOUT_POINTS, startDrag, clamp } from "./types";
+import { PDF_W, PDF_H, getLayoutPoint, DEFAULT_LAYOUT_POINTS, clamp } from "./types";
 import { buildAdaptiveCarouselGridFrames } from "../carousel-grid";
+import { DraggableNode } from "./DraggableNode";
 
 interface PreviewProps {
   form: Partial<PdfSettings>;
@@ -20,7 +21,6 @@ export function PreviewCover({ form, editable, onMoveNode }: PreviewProps) {
 
   const titlePoint = getLayoutPoint(form.layout_overrides, "cover_title", DEFAULT_LAYOUT_POINTS.cover_title);
   const subtitlePoint = getLayoutPoint(form.layout_overrides, "cover_subtitle", DEFAULT_LAYOUT_POINTS.cover_subtitle);
-  const dragCls = "cursor-move ring-1 ring-primary/50 bg-background/20";
 
   return (
     <div ref={setContainerEl} className="relative overflow-hidden" style={{ width: PDF_W, height: PDF_H, backgroundColor: bg, backgroundImage: form.background_image_url ? `url(${form.background_image_url})` : undefined, backgroundSize: "cover", backgroundPosition: "center" }}>
@@ -28,20 +28,25 @@ export function PreviewCover({ form, editable, onMoveNode }: PreviewProps) {
       {form.cover_logo_url && (
         <img src={form.cover_logo_url} alt="Logo" className="absolute z-10 object-contain" style={{ height: 120, left: "50%", top: margin + 30, transform: "translateX(-50%)" }} />
       )}
-      <div
-        style={{ position: "absolute", left: `${titlePoint.x}%`, top: `${titlePoint.y}%`, transform: "translate(-50%, -50%)", fontSize: (form.title_font_size ?? 32) * 2.5, color: form.title_color ?? "#FFFFFF" }}
-        className={cn("z-10 font-bold leading-tight text-center px-4 rounded-xl", editable && dragCls)}
-        onPointerDown={(e) => editable && startDrag(e, containerEl, (p) => onMoveNode("cover_title", p))}
-      >
-        Nome do Cliente
-      </div>
-      <div
-        style={{ position: "absolute", left: `${subtitlePoint.x}%`, top: `${subtitlePoint.y}%`, transform: "translate(-50%, -50%)", fontSize: (form.subtitle_font_size ?? 18) * 2, color: form.subtitle_color ?? "#AAAAAA" }}
-        className={cn("z-10 text-center px-4 rounded-xl", editable && "cursor-move ring-1 ring-primary/40 bg-background/15")}
-        onPointerDown={(e) => editable && startDrag(e, containerEl, (p) => onMoveNode("cover_subtitle", p))}
-      >
-        Cronograma de Conteúdo — Março 2026
-      </div>
+
+      <DraggableNode layoutKey="cover_title" point={titlePoint} editable={editable} containerEl={containerEl} onMoveNode={onMoveNode} label="Título" className="z-10">
+        <div
+          className="font-bold leading-tight text-center px-4"
+          style={{ fontSize: (form.title_font_size ?? 32) * 2.5, color: form.title_color ?? "#FFFFFF" }}
+        >
+          Nome do Cliente
+        </div>
+      </DraggableNode>
+
+      <DraggableNode layoutKey="cover_subtitle" point={subtitlePoint} editable={editable} containerEl={containerEl} onMoveNode={onMoveNode} label="Subtítulo" className="z-10">
+        <div
+          className="text-center px-4"
+          style={{ fontSize: (form.subtitle_font_size ?? 18) * 2, color: form.subtitle_color ?? "#AAAAAA" }}
+        >
+          Cronograma de Conteúdo — Março 2026
+        </div>
+      </DraggableNode>
+
       <div className="absolute z-10 h-2 w-48 rounded-full" style={{ backgroundColor: accent, left: "50%", top: `${subtitlePoint.y + 4.3}%`, transform: "translateX(-50%)" }} />
       {(form.agency_name || form.agency_logo_url) && (
         <div className="absolute bottom-12 left-1/2 z-10 -translate-x-1/2 flex items-center gap-4">
@@ -72,82 +77,71 @@ export function PreviewPostPage({ form, editable, onMoveNode, index = 0, onResiz
   const contentW = PDF_W - margin * 2;
   const contentH = PDF_H - margin * 2;
   const imageW = (contentW * imgPct) / 100;
-  const gap = 40;
-  const infoW = contentW - imageW - gap;
-
-  const cardsInfoPoint = getLayoutPoint(form.layout_overrides, "cards_info", DEFAULT_LAYOUT_POINTS.cards_info);
-  const defaultCardsCenterX = (DEFAULT_LAYOUT_POINTS.cards_info.x / 100) * PDF_W;
-  const cardsCenterX = (cardsInfoPoint.x / 100) * PDF_W;
-  const infoShiftX = clamp(cardsCenterX - defaultCardsCenterX, -56, 56);
-  const infoX = margin + imageW + gap + infoShiftX;
-  const infoY = margin;
-  const infoInnerW = infoW - 8;
 
   const showTime = form.show_time_on_card ?? true;
-  const badgeHeight = 50;
-  const badgeGap = 10;
-  const badgesTotalHeight = showTime ? badgeHeight * 2 + badgeGap : badgeHeight;
-  const badgesTop = infoY + contentH - 18 - badgesTotalHeight;
-  const captionLabelY = infoY + 90;
-  const captionTextY = captionLabelY + 28;
-  const captionHeight = Math.max(40, badgesTop - captionTextY - 12);
 
-  const dragClass = "cursor-move ring-1 ring-primary/40 bg-background/15 rounded-xl";
+  // Individual layout points for each element
+  const titlePoint = getLayoutPoint(form.layout_overrides, "cards_title", DEFAULT_LAYOUT_POINTS.cards_title);
+  const captionPoint = getLayoutPoint(form.layout_overrides, "cards_caption", DEFAULT_LAYOUT_POINTS.cards_caption);
+  const datePoint = getLayoutPoint(form.layout_overrides, "cards_date", DEFAULT_LAYOUT_POINTS.cards_date);
+  const timePoint = getLayoutPoint(form.layout_overrides, "cards_time", DEFAULT_LAYOUT_POINTS.cards_time);
 
   return (
     <div ref={setContainerEl} className="relative overflow-hidden" style={{ width: PDF_W, height: PDF_H, backgroundColor: bg }}>
-      <div className="absolute" style={{ left: margin, top: margin, width: contentW, height: contentH }}>
-        {/* Image area */}
-        <div
-          className={cn("absolute rounded-3xl overflow-hidden shrink-0 flex items-center justify-center", editable && "cursor-pointer ring-2 ring-transparent hover:ring-primary/60", imageSelected && "ring-primary")}
-          style={{ width: imageW, height: contentH, background: "linear-gradient(140deg, #131828 0%, #283149 48%, #11141f 100%)", boxShadow: "0 20px 60px -15px rgba(0,0,0,0.4)" }}
-          onClick={() => editable && setImageSelected(true)}
-        >
-          <div className="absolute inset-0 bg-black/20" />
-          <div className="relative flex flex-col items-center gap-4 text-center" style={{ color: "#d9deef" }}>
-            <LayoutGrid className="h-20 w-20" />
-            <span style={{ fontSize: 20 }}>Imagem do Post</span>
-            <span className="text-sm opacity-70">Sem cortes • formato original</span>
-          </div>
-          {editable && imageSelected && onResizeImage && (
-            <div className="absolute right-4 top-4 z-20 flex items-center gap-2 rounded-xl border border-primary/40 bg-background/80 p-1.5">
-              <button type="button" className="h-7 w-7 rounded-lg bg-muted text-foreground flex items-center justify-center text-sm font-bold" onClick={(e) => { e.stopPropagation(); onResizeImage(-2); }}>−</button>
-              <span className="text-[10px] font-medium px-1">{imgPct}%</span>
-              <button type="button" className="h-7 w-7 rounded-lg bg-muted text-foreground flex items-center justify-center text-sm font-bold" onClick={(e) => { e.stopPropagation(); onResizeImage(2); }}>+</button>
-            </div>
-          )}
+      {/* Image area – fixed left side */}
+      <div
+        className={cn("absolute rounded-3xl overflow-hidden flex items-center justify-center", editable && "cursor-pointer ring-2 ring-transparent hover:ring-primary/60", imageSelected && "ring-primary")}
+        style={{ left: margin, top: margin, width: imageW, height: contentH, background: "linear-gradient(140deg, #131828 0%, #283149 48%, #11141f 100%)", boxShadow: "0 20px 60px -15px rgba(0,0,0,0.4)" }}
+        onClick={() => editable && setImageSelected(true)}
+      >
+        <div className="absolute inset-0 bg-black/20" />
+        <div className="relative flex flex-col items-center gap-4 text-center" style={{ color: "#d9deef" }}>
+          <LayoutGrid className="h-20 w-20" />
+          <span style={{ fontSize: 20 }}>Imagem do Post</span>
+          <span className="text-sm opacity-70">Sem cortes • formato original</span>
         </div>
+        {editable && imageSelected && onResizeImage && (
+          <div className="absolute right-4 top-4 z-20 flex items-center gap-2 rounded-xl border border-primary/40 bg-background/80 p-1.5">
+            <button type="button" className="h-7 w-7 rounded-lg bg-muted text-foreground flex items-center justify-center text-sm font-bold" onClick={(e) => { e.stopPropagation(); onResizeImage(-2); }}>−</button>
+            <span className="text-[10px] font-medium px-1">{imgPct}%</span>
+            <button type="button" className="h-7 w-7 rounded-lg bg-muted text-foreground flex items-center justify-center text-sm font-bold" onClick={(e) => { e.stopPropagation(); onResizeImage(2); }}>+</button>
+          </div>
+        )}
       </div>
 
-      {/* Info block */}
-      <div
-        className={cn("absolute z-10", editable && dragClass)}
-        style={{ left: infoX + infoW / 2, top: infoY + contentH / 2, transform: "translate(-50%, -50%)", width: infoW, height: contentH, padding: editable ? "6px" : 0 }}
-        onPointerDown={(e) => editable && startDrag(e, containerEl, (p) => onMoveNode("cards_info", p))}
-      >
-        <div className="relative h-full w-full">
-          <div className="flex items-center gap-3 flex-wrap" style={{ minHeight: 56 }}>
-            <div style={{ fontSize: (form.card_font_size ?? 14) * 2.9, color: titleColor }} className="font-bold leading-tight">Post {index + 1}</div>
-            <div className="rounded-full px-4 py-1.5 font-semibold shrink-0" style={{ fontSize: 18, backgroundColor: `${accent}22`, color: accent }}>{postType}</div>
-          </div>
-          <div style={{ marginTop: 24, maxWidth: infoInnerW }}>
-            <div style={{ fontSize: 18, color: subtitleColor }} className="uppercase tracking-widest font-semibold mb-3">Legenda:</div>
-            <div style={{ fontSize: (form.card_caption_font_size ?? 11) * 2, color: titleColor, lineHeight: 1.65, wordBreak: "break-word", overflowWrap: "break-word", maxHeight: captionHeight, overflow: "hidden" }}>
-              {caption}
-            </div>
-          </div>
-          <div className="absolute right-1 flex flex-col items-end gap-2.5" style={{ top: badgesTop - infoY }}>
-            <div className="rounded-xl px-6 py-3 font-bold text-white whitespace-nowrap" style={{ backgroundColor: accent, fontSize: (form.card_date_font_size ?? 12) * 1.8 }}>
-              Data: {String(day).padStart(2, "0")}/03/2026
-            </div>
-            {showTime && (
-              <div className="rounded-xl px-6 py-3 font-bold text-white whitespace-nowrap" style={{ backgroundColor: accent, fontSize: (form.card_date_font_size ?? 12) * 1.8 }}>
-                Horário: 18:00
-              </div>
-            )}
+      {/* Title + Type badge – draggable */}
+      <DraggableNode layoutKey="cards_title" point={titlePoint} editable={editable} containerEl={containerEl} onMoveNode={onMoveNode} label="Título" className="z-10">
+        <div className="flex items-center gap-3 flex-wrap">
+          <div style={{ fontSize: (form.card_font_size ?? 14) * 2.9, color: titleColor }} className="font-bold leading-tight">Post {index + 1}</div>
+          <div className="rounded-full px-4 py-1.5 font-semibold shrink-0" style={{ fontSize: 18, backgroundColor: `${accent}22`, color: accent }}>{postType}</div>
+        </div>
+      </DraggableNode>
+
+      {/* Caption – draggable */}
+      <DraggableNode layoutKey="cards_caption" point={captionPoint} editable={editable} containerEl={containerEl} onMoveNode={onMoveNode} label="Legenda" className="z-10" style={{ maxWidth: contentW * 0.45 }}>
+        <div>
+          <div style={{ fontSize: 18, color: subtitleColor }} className="uppercase tracking-widest font-semibold mb-3">Legenda:</div>
+          <div style={{ fontSize: (form.card_caption_font_size ?? 11) * 2, color: titleColor, lineHeight: 1.65, wordBreak: "break-word", overflowWrap: "break-word" }}>
+            {caption}
           </div>
         </div>
-      </div>
+      </DraggableNode>
+
+      {/* Date badge – draggable */}
+      <DraggableNode layoutKey="cards_date" point={datePoint} editable={editable} containerEl={containerEl} onMoveNode={onMoveNode} label="Data" className="z-10">
+        <div className="rounded-xl px-6 py-3 font-bold text-white whitespace-nowrap" style={{ backgroundColor: accent, fontSize: (form.card_date_font_size ?? 12) * 1.8 }}>
+          Data: {String(day).padStart(2, "0")}/03/2026
+        </div>
+      </DraggableNode>
+
+      {/* Time badge – draggable */}
+      {showTime && (
+        <DraggableNode layoutKey="cards_time" point={timePoint} editable={editable} containerEl={containerEl} onMoveNode={onMoveNode} label="Horário" className="z-10">
+          <div className="rounded-xl px-6 py-3 font-bold text-white whitespace-nowrap" style={{ backgroundColor: accent, fontSize: (form.card_date_font_size ?? 12) * 1.8 }}>
+            Horário: 18:00
+          </div>
+        </DraggableNode>
+      )}
     </div>
   );
 }
@@ -193,12 +187,9 @@ export function PreviewCarouselPage({ form, editable, onMoveNode }: PreviewProps
         </div>
       ))}
 
-      <div
-        className={cn("absolute", editable && "cursor-move")}
-        style={{ left: `${infoPoint.x}%`, top: `${infoPoint.y}%`, transform: "translate(-50%, -50%)", width: contentW, minHeight: infoH }}
-        onPointerDown={(e) => editable && startDrag(e, containerEl, (point) => onMoveNode("carousel_info", point))}
-      >
-        <div className={cn("relative rounded-2xl px-3 py-2", editable && "ring-1 ring-primary/40 bg-background/15")} style={{ minHeight: infoH }}>
+      {/* Info section – draggable as group */}
+      <DraggableNode layoutKey="carousel_info" point={infoPoint} editable={editable} containerEl={containerEl} onMoveNode={onMoveNode} label="Info do Carrossel" className="z-10" style={{ width: contentW, minHeight: infoH }}>
+        <div className="relative rounded-2xl px-3 py-2" style={{ minHeight: infoH }}>
           <div className="absolute left-3 top-4" style={{ width: "22%" }}>
             <div style={{ fontSize: (form.carousel_title_font_size ?? 14) * 2.8, color: titleColor }} className="font-bold leading-tight">Post 1</div>
             <div style={{ fontSize: 16, color: accent }} className="mt-1 font-semibold">Carrossel</div>
@@ -216,7 +207,7 @@ export function PreviewCarouselPage({ form, editable, onMoveNode }: PreviewProps
             )}
           </div>
         </div>
-      </div>
+      </DraggableNode>
     </div>
   );
 }
@@ -230,12 +221,8 @@ export function PreviewFooter({ form, editable, onMoveNode }: PreviewProps) {
 
   return (
     <div ref={setContainerEl} className="relative overflow-hidden" style={{ width: PDF_W, height: PDF_H, backgroundColor: bg }}>
-      <div
-        className={cn("absolute flex items-center justify-center gap-12", editable && "cursor-move")}
-        style={{ left: `${groupPoint.x}%`, top: `${groupPoint.y}%`, transform: "translate(-50%, -50%)" }}
-        onPointerDown={(e) => editable && startDrag(e, containerEl, (point) => onMoveNode("footer_group", point))}
-      >
-        <div className={cn("flex items-center gap-12 rounded-2xl px-4 py-3", editable && "ring-1 ring-primary/40 bg-background/15")}>
+      <DraggableNode layoutKey="footer_group" point={groupPoint} editable={editable} containerEl={containerEl} onMoveNode={onMoveNode} label="Rodapé" className="z-10">
+        <div className="flex items-center gap-12 rounded-2xl px-4 py-3">
           {form.agency_logo_url && <img src={form.agency_logo_url} alt="Logo" className="h-[110px] object-contain" />}
           <div className="h-20 w-[2px] rounded-full" style={{ backgroundColor: accent + "66" }} />
           <div>
@@ -244,14 +231,13 @@ export function PreviewFooter({ form, editable, onMoveNode }: PreviewProps) {
             <div style={{ fontSize: (form.footer_contact_font_size ?? 11) * 1.6, color: form.subtitle_color ?? "#AAA" }} className="mt-2">{form.footer_contact || "@agencia • contato@agencia.com"}</div>
           </div>
         </div>
-      </div>
+      </DraggableNode>
     </div>
   );
 }
 
 /* ─── Scaled preview wrapper ─── */
 const CANVAS_PAD = 24;
-// Max canvas height per page card — ensures the full page is visible without scrolling within the card
 const MAX_CANVAS_H = 420;
 
 export function ScaledPreview({ children, label, pageNum, isSelected, onClick }: {
@@ -262,17 +248,14 @@ export function ScaledPreview({ children, label, pageNum, isSelected, onClick }:
 
   useEffect(() => {
     if (!containerEl) return;
-
     const update = () => {
       const availW = containerEl.clientWidth - CANVAS_PAD * 2;
       if (availW <= 0) return;
       const maxInnerH = MAX_CANVAS_H - CANVAS_PAD * 2;
-      // Fit to the smaller of width or height constraint
       const fitW = availW / PDF_W;
       const fitH = maxInnerH / PDF_H;
       setScale(Math.max(0.08, Math.min(1, Math.min(fitW, fitH))));
     };
-
     const ro = new ResizeObserver(update);
     ro.observe(containerEl);
     update();
@@ -291,7 +274,7 @@ export function ScaledPreview({ children, label, pageNum, isSelected, onClick }:
       )}
       onClick={onClick}
     >
-      {/* Page header strip */}
+      {/* Page header */}
       <div className={cn(
         "flex items-center justify-between px-4 py-2 border-b transition-colors",
         isSelected ? "bg-primary/5 border-primary/15" : "bg-muted/10 border-border/10"
@@ -326,14 +309,7 @@ export function ScaledPreview({ children, label, pageNum, isSelected, onClick }:
             : "hsl(var(--muted) / 0.05)",
         }}
       >
-        {/* Outer box sized to the SCALED dimensions so it doesn't overflow */}
-        <div
-          style={{
-            width: PDF_W * scale,
-            height: PDF_H * scale,
-            position: "relative",
-          }}
-        >
+        <div style={{ width: PDF_W * scale, height: PDF_H * scale, position: "relative" }}>
           <div
             className="rounded-lg overflow-hidden absolute top-0 left-0"
             style={{
