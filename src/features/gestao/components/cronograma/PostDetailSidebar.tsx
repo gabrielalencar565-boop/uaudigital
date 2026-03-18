@@ -28,7 +28,7 @@ export function PostDetailSidebar({ post, onClose, onUpdate, onRename, onEditTas
   const [captionExpanded, setCaptionExpanded] = useState(false);
 
   const headerName = clientName || post.title;
-
+  const headerInitial = headerName?.charAt(0)?.toUpperCase() || "C";
   const meta = POST_TYPE_META[post.post_type ?? "post"] ?? POST_TYPE_META.post;
   const allImages = post.all_attachment_urls ?? [];
   const isCarousel = post.post_type === "carrossel" && allImages.length > 1;
