@@ -44,7 +44,7 @@ interface FeedbackData {
 export default function CronogramaPublic() {
   const { taskId } = useParams<{ taskId: string }>();
   const [searchParams] = useSearchParams();
-  const isPrint = searchParams.get("print") === "1";
+  
   const clientFilterId = searchParams.get("client");
 
   const [loading, setLoading] = useState(true);
