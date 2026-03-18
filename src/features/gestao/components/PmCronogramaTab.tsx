@@ -143,6 +143,9 @@ export function PmCronogramaTab({ parentTask, childTasks, clientName, membersMap
               <TabsTrigger value="feed" className="gap-1.5 text-xs">
                 <GridIcon className="h-3.5 w-3.5" /> Feed
               </TabsTrigger>
+              <TabsTrigger value="lista" className="gap-1.5 text-xs">
+                <List className="h-3.5 w-3.5" /> Lista
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="semanal">
