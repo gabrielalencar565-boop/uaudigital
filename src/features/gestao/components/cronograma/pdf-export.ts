@@ -329,50 +329,47 @@ const BRICOLAGE_URLS: Record<"normal" | "bold", string> = {
   bold: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/bricolagegrotesque/BricolageGrotesque-Bold.ttf",
 };
 
-let fontLoaded = false;
-let loadedStyles = new Set<"normal" | "bold">();
+let fontCache: Record<"normal" | "bold", string> | null = null;
 
 async function loadBricolageFont(doc: jsPDF) {
-  if (fontLoaded) return;
-
-  loadedStyles = new Set<"normal" | "bold">();
-
-  try {
+  // Cache the raw base64 across exports so we don't re-download
+  if (!fontCache) {
+    fontCache = {} as any;
     for (const [style, url] of Object.entries(BRICOLAGE_URLS) as ["normal" | "bold", string][]) {
-      const res = await fetch(url, { mode: "cors" });
-      if (!res.ok) continue;
-
-      const buf = await res.arrayBuffer();
-      const bytes = new Uint8Array(buf);
-      let binary = "";
-      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-      const b64 = btoa(binary);
-
-      const fileName = `Bricolage-${style}.ttf`;
-      doc.addFileToVFS(fileName, b64);
-      doc.addFont(fileName, "Bricolage", style);
-      loadedStyles.add(style);
+      try {
+        const res = await fetch(url, { mode: "cors" });
+        if (!res.ok) continue;
+        const buf = await res.arrayBuffer();
+        const bytes = new Uint8Array(buf);
+        let binary = "";
+        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+        (fontCache as any)[style] = btoa(binary);
+      } catch {
+        // ignore
+      }
     }
+  }
 
-    fontLoaded = loadedStyles.size > 0;
-  } catch {
-    fontLoaded = false;
-    loadedStyles.clear();
+  // Register fonts in THIS doc instance
+  for (const style of ["normal", "bold"] as const) {
+    const b64 = fontCache?.[style];
+    if (!b64) continue;
+    const fileName = `Bricolage-${style}.ttf`;
+    doc.addFileToVFS(fileName, b64);
+    doc.addFont(fileName, "Bricolage", style);
   }
 }
 
 function setFont(doc: jsPDF, style: "normal" | "bold") {
-  if (fontLoaded && loadedStyles.has(style)) {
+  try {
     doc.setFont("Bricolage", style);
-    return;
+  } catch {
+    try {
+      doc.setFont("Bricolage", "normal");
+    } catch {
+      doc.setFont("helvetica", style);
+    }
   }
-
-  if (fontLoaded && loadedStyles.has("normal")) {
-    doc.setFont("Bricolage", "normal");
-    return;
-  }
-
-  doc.setFont("helvetica", style);
 }
 
 function drawBg(doc: jsPDF, pageW: number, pageH: number, settings: Required<PdfExportSettings>) {
@@ -387,8 +384,7 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
 
-  fontLoaded = false;
-  loadedStyles.clear();
+
   await loadBricolageFont(doc);
 
   const sx = (x: number) => (x / DESIGN_W) * pageW;

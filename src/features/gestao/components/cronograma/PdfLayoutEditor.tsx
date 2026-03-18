@@ -980,7 +980,7 @@ export function PdfLayoutEditor() {
     (b): b is BlockId => ALL_BLOCKS.includes(b as BlockId)
   );
   if (!blocksOrder.includes("carousel")) blocksOrder.splice(Math.max(blocksOrder.indexOf("cards") + 1, 1), 0, "carousel");
-  const blocksEnabled = (form.blocks_enabled ?? { cover: true, cards: true, carousel: true, footer: true }) as Record<BlockId, boolean>;
+  const blocksEnabled = { cover: true, cards: true, carousel: true, footer: true, ...(form.blocks_enabled ?? {}) } as Record<BlockId, boolean>;
 
   const handleSave = () => {
     if (!form.id) return;
@@ -1003,7 +1003,7 @@ export function PdfLayoutEditor() {
 
   const toggleBlock = useCallback((blockId: BlockId) => {
     setForm(prev => {
-      const enabled = { ...(prev.blocks_enabled ?? { cover: true, cards: true, carousel: true, footer: true }) } as Record<BlockId, boolean>;
+      const enabled = { cover: true, cards: true, carousel: true, footer: true, ...(prev.blocks_enabled ?? {}) } as Record<BlockId, boolean>;
       enabled[blockId] = !enabled[blockId];
       return { ...prev, blocks_enabled: enabled };
     });
