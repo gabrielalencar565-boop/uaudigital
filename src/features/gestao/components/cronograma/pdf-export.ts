@@ -120,6 +120,10 @@ const DEFAULT_LAYOUT_POINTS: Record<string, LayoutPoint> = {
   cards_date: { x: 88, y: 82 },
   cards_time: { x: 88, y: 90 },
   carousel_info: { x: 50, y: 83 },
+  carousel_title: { x: 14, y: 78 },
+  carousel_caption: { x: 45, y: 80 },
+  carousel_date: { x: 85, y: 88 },
+  carousel_time: { x: 85, y: 94 },
   footer_group: { x: 50, y: 50 },
 };
 
