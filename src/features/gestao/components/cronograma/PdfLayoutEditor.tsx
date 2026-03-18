@@ -815,7 +815,7 @@ function CarouselSettings({ form, setForm }: any) {
         <span className="text-[10px] text-muted-foreground">Layout: grade de imagens em cima, informações embaixo.</span>
       </div>
       <div className="px-2 py-1.5 rounded-lg bg-muted/30 border border-border/20">
-        <span className="text-[10px] text-muted-foreground">As imagens são exportadas sem corte com preenchimento visual no fundo.</span>
+        <span className="text-[10px] text-muted-foreground">As imagens são exportadas inteiras, sem corte, sem blur e sem distorção.</span>
       </div>
       <div>
         <Label className="text-[10px] text-muted-foreground">Colunas</Label>
