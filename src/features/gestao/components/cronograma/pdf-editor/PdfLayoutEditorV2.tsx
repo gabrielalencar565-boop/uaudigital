@@ -19,6 +19,8 @@ const BLOCK_LABELS: Record<BlockId, string> = {
   footer: "Rodapé",
 };
 
+import { PDF_W, PDF_H } from "./types";
+
 export function PdfLayoutEditor() {
   const settingsQ = usePdfSettings();
   const updateSettings = useUpdatePdfSettings();
