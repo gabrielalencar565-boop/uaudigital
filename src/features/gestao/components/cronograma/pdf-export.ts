@@ -404,8 +404,7 @@ function setFont(doc: jsPDF, style: "normal" | "bold") {
     if (style === "bold") {
       try { doc.setFont("Bricolage", "normal"); return; } catch { /* fall through */ }
     }
-    }
-    throw new Error("Não foi possível aplicar a fonte incorporada do PDF.");
+    doc.setFont("helvetica", style);
   }
 }
 
