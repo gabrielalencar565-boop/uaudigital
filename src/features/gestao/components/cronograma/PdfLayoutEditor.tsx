@@ -45,13 +45,20 @@ interface PdfSettings {
   footer_subtitle_font_size: number;
   footer_contact_font_size: number;
   card_image_width_pct: number;
+  carousel_cols: number;
+  carousel_rows: number;
+  carousel_title_font_size: number;
+  carousel_caption_font_size: number;
+  carousel_date_font_size: number;
+  carousel_image_height_pct: number;
 }
 
-type BlockId = "cover" | "cards" | "footer";
+type BlockId = "cover" | "cards" | "carousel" | "footer";
 
 const BLOCK_META: Record<BlockId, { label: string; icon: React.ReactNode; description: string }> = {
   cover: { label: "Capa", icon: <Image className="h-4 w-4" />, description: "Logo, título, mês e imagem de fundo" },
   cards: { label: "Páginas de Posts", icon: <CreditCard className="h-4 w-4" />, description: "Cada postagem em página individual" },
+  carousel: { label: "Carrossel", icon: <Layers className="h-4 w-4" />, description: "Layout de grade para posts carrossel" },
   footer: { label: "Rodapé", icon: <FileText className="h-4 w-4" />, description: "Logo da agência, contato e redes" },
 };
 
