@@ -391,15 +391,20 @@ async function loadBricolageFont(doc: jsPDF): Promise<boolean> {
   return Boolean(fontCache?.normal);
 }
 
+let _fontLoaded = false;
+
 function setFont(doc: jsPDF, style: "normal" | "bold") {
+  if (!_fontLoaded) {
+    doc.setFont("helvetica", style);
+    return;
+  }
   try {
     doc.setFont("Bricolage", style);
   } catch {
     if (style === "bold") {
-      doc.setFont("Bricolage", "normal");
-      return;
+      try { doc.setFont("Bricolage", "normal"); return; } catch { /* fall through */ }
     }
-    throw new Error("Não foi possível aplicar a fonte incorporada do PDF.");
+    doc.setFont("helvetica", style);
   }
 }
 
@@ -415,8 +420,9 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
 
   const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
   const fontReady = await loadBricolageFont(doc);
+  _fontLoaded = fontReady;
   if (!fontReady) {
-    throw new Error("Não foi possível carregar a fonte do PDF. Tente novamente em instantes.");
+    console.warn("Fonte Bricolage não carregou — usando Helvetica como fallback.");
   }
 
   const pageW = doc.internal.pageSize.getWidth();
