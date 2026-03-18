@@ -138,9 +138,6 @@ export function PmCronogramaTab({ parentTask, childTasks, clientName, membersMap
           <Button variant="outline" size="sm" className="gap-1.5 text-xs rounded-xl" onClick={handleShare}>
             <Share2 className="h-3.5 w-3.5" /> Compartilhar
           </Button>
-          <Button variant="outline" size="sm" className="gap-1.5 text-xs rounded-xl" onClick={handleDownloadPDF}>
-            <Download className="h-3.5 w-3.5" /> PDF
-          </Button>
           <Button variant="outline" size="sm" className="gap-1.5 text-xs rounded-xl" onClick={handleCanvaExport}>
             <Palette className="h-3.5 w-3.5" /> Exportar p/ Canva
           </Button>
