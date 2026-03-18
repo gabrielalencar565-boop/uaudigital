@@ -27,9 +27,10 @@ interface Props {
   childTasks: PmTask[];
   clientName: string;
   membersMap: Record<string, { name: string; avatar?: string }>;
+  onEditTask?: (taskId: string) => void;
 }
 
-export function PmCronogramaTab({ parentTask, childTasks, clientName, membersMap }: Props) {
+export function PmCronogramaTab({ parentTask, childTasks, clientName, membersMap, onEditTask }: Props) {
   const [selectedPost, setSelectedPost] = useState<CronogramaPost | null>(null);
   const updateTask = useUpdatePmTask();
 
