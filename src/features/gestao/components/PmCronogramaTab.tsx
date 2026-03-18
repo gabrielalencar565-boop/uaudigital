@@ -157,6 +157,9 @@ export function PmCronogramaTab({ parentTask, childTasks, clientName, membersMap
             <TabsContent value="feed">
               <FeedView posts={scheduledPosts} selectedPost={resolvedSelected} onSelectPost={setSelectedPost} />
             </TabsContent>
+            <TabsContent value="lista">
+              <ListView posts={scheduledPosts} selectedPost={resolvedSelected} onSelectPost={setSelectedPost} />
+            </TabsContent>
           </Tabs>
         </div>
 
