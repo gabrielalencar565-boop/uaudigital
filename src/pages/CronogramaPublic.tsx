@@ -167,12 +167,17 @@ export default function CronogramaPublic() {
       return;
     }
 
-    await downloadCronogramaPdf({
-      clientName: clientName || parentTitle || "Cliente",
-      posts: posts as any,
-      settings: pdfSettings,
-    });
-    toast.success("PDF baixado com sucesso!");
+    try {
+      await downloadCronogramaPdf({
+        clientName: clientName || parentTitle || "Cliente",
+        posts: posts as any,
+        settings: pdfSettings,
+      });
+      toast.success("PDF baixado com sucesso!");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Falha ao gerar o PDF.";
+      toast.error(message);
+    }
   };
 
   useEffect(() => {

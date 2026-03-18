@@ -7,6 +7,7 @@ const DESIGN_H = 1190;
 
 type BlockId = "cover" | "cards" | "carousel" | "footer";
 type PdfImageFormat = "PNG" | "JPEG";
+type ImageFitMode = "contain" | "cover";
 
 interface PdfImageAsset {
   dataUrl: string;
@@ -209,15 +210,16 @@ async function rasterizeToPng(dataUrl: string): Promise<string | null> {
 }
 
 /**
- * Draws an image on a canvas with object-contain (no cropping) and rounded corners.
- * For carousel blocks we use a blurred fill background so the frame feels fully preenchido.
+ * Draws an image on a canvas preserving proportion with object-fit logic.
+ * - contain: image inteira sem distorção
+ * - cover: preenche frame sem achatamento (com corte central)
  */
-async function renderContainImage(
+async function renderFittedImage(
   imageDataUrl: string,
   targetW: number,
   targetH: number,
   borderRadius: number,
-  options?: { backgroundMode?: "solid" | "blur" },
+  options?: { backgroundMode?: "solid" | "blur"; fitMode?: ImageFitMode },
 ): Promise<string | null> {
   const img = await loadImage(imageDataUrl);
   if (!img) return null;
@@ -225,7 +227,7 @@ async function renderContainImage(
   const natW = img.naturalWidth || img.width || 1;
   const natH = img.naturalHeight || img.height || 1;
 
-  const scale = 2;
+  const scale = targetW < 220 || targetH < 220 ? 3 : 2;
   const cW = Math.round(targetW * scale);
   const cH = Math.round(targetH * scale);
   const r = borderRadius * scale;
@@ -253,8 +255,9 @@ async function renderContainImage(
   ctx.closePath();
   ctx.clip();
 
-  if (options?.backgroundMode === "blur") {
-    // Fill with a blurred cover version of the same image (no cut in the foreground image).
+  const fitMode = options?.fitMode ?? "contain";
+
+  if (fitMode === "contain" && options?.backgroundMode === "blur") {
     const coverScale = Math.max(cW / natW, cH / natH);
     const bgW = natW * coverScale;
     const bgH = natH * coverScale;
@@ -269,30 +272,19 @@ async function renderContainImage(
 
     ctx.fillStyle = "rgba(8, 10, 14, 0.28)";
     ctx.fillRect(0, 0, cW, cH);
-  } else {
+  } else if (fitMode === "contain") {
     ctx.fillStyle = "#1a1d27";
     ctx.fillRect(0, 0, cW, cH);
   }
 
-  // Object-contain: fit image inside canvas preserving aspect ratio
-  const imgRatio = natW / natH;
-  const canvasRatio = cW / cH;
-  let drawW: number;
-  let drawH: number;
-  let drawX: number;
-  let drawY: number;
+  const ratioScale = fitMode === "cover"
+    ? Math.max(cW / natW, cH / natH)
+    : Math.min(cW / natW, cH / natH);
 
-  if (imgRatio > canvasRatio) {
-    drawW = cW;
-    drawH = cW / imgRatio;
-    drawX = 0;
-    drawY = (cH - drawH) / 2;
-  } else {
-    drawH = cH;
-    drawW = cH * imgRatio;
-    drawX = (cW - drawW) / 2;
-    drawY = 0;
-  }
+  const drawW = natW * ratioScale;
+  const drawH = natH * ratioScale;
+  const drawX = (cW - drawW) / 2;
+  const drawY = (cH - drawH) / 2;
 
   ctx.drawImage(img, drawX, drawY, drawW, drawH);
   return canvas.toDataURL("image/png");
@@ -300,7 +292,7 @@ async function renderContainImage(
 
 function addPdfImage(doc: jsPDF, image: PdfImageAsset, x: number, y: number, w: number, h: number): boolean {
   try {
-    doc.addImage(image.dataUrl, image.format, x, y, w, h, undefined, "FAST");
+    doc.addImage(image.dataUrl, image.format, x, y, w, h, undefined, "MEDIUM");
     return true;
   } catch {
     return false;
@@ -324,33 +316,70 @@ async function toPdfImage(url: string): Promise<PdfImageAsset | null> {
   }
 }
 
-const BRICOLAGE_URLS: Record<"normal" | "bold", string> = {
-  normal: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/bricolagegrotesque/BricolageGrotesque-Regular.ttf",
-  bold: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/bricolagegrotesque/BricolageGrotesque-Bold.ttf",
+const BRICOLAGE_URLS: Record<"normal" | "bold", string[]> = {
+  normal: [
+    "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/bricolagegrotesque/BricolageGrotesque-Regular.ttf",
+    "https://raw.githubusercontent.com/google/fonts/main/ofl/bricolagegrotesque/BricolageGrotesque-Regular.ttf",
+  ],
+  bold: [
+    "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/bricolagegrotesque/BricolageGrotesque-Bold.ttf",
+    "https://raw.githubusercontent.com/google/fonts/main/ofl/bricolagegrotesque/BricolageGrotesque-Bold.ttf",
+  ],
 };
 
-let fontCache: Record<"normal" | "bold", string> | null = null;
+let fontCache: Partial<Record<"normal" | "bold", string>> | null = null;
 
-async function loadBricolageFont(doc: jsPDF) {
-  // Cache the raw base64 across exports so we don't re-download
-  if (!fontCache) {
-    fontCache = {} as any;
-    for (const [style, url] of Object.entries(BRICOLAGE_URLS) as ["normal" | "bold", string][]) {
-      try {
-        const res = await fetch(url, { mode: "cors" });
-        if (!res.ok) continue;
-        const buf = await res.arrayBuffer();
-        const bytes = new Uint8Array(buf);
-        let binary = "";
-        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-        (fontCache as any)[style] = btoa(binary);
-      } catch {
-        // ignore
-      }
+async function ensureBrowserFontsLoaded() {
+  if (typeof document === "undefined" || !document.fonts) return;
+  try {
+    await Promise.all([
+      document.fonts.ready,
+      document.fonts.load('400 16px "Bricolage Grotesque"'),
+      document.fonts.load('700 16px "Bricolage Grotesque"'),
+    ]);
+  } catch {
+    // no-op: PDF embedding still guarantees final output
+  }
+}
+
+function arrayBufferToBase64(buffer: ArrayBuffer) {
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 0x8000;
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+  return btoa(binary);
+}
+
+async function fetchFontBase64(urls: string[]) {
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, { mode: "cors" });
+      if (!res.ok) continue;
+      const buf = await res.arrayBuffer();
+      return arrayBufferToBase64(buf);
+    } catch {
+      continue;
     }
   }
+  return null;
+}
 
-  // Register fonts in THIS doc instance
+async function loadBricolageFont(doc: jsPDF): Promise<boolean> {
+  if (!fontCache) {
+    const [normal, bold] = await Promise.all([
+      fetchFontBase64(BRICOLAGE_URLS.normal),
+      fetchFontBase64(BRICOLAGE_URLS.bold),
+    ]);
+
+    fontCache = {
+      ...(normal ? { normal } : {}),
+      ...(bold ? { bold } : {}),
+    };
+  }
+
   for (const style of ["normal", "bold"] as const) {
     const b64 = fontCache?.[style];
     if (!b64) continue;
@@ -358,17 +387,19 @@ async function loadBricolageFont(doc: jsPDF) {
     doc.addFileToVFS(fileName, b64);
     doc.addFont(fileName, "Bricolage", style);
   }
+
+  return Boolean(fontCache?.normal);
 }
 
 function setFont(doc: jsPDF, style: "normal" | "bold") {
   try {
     doc.setFont("Bricolage", style);
   } catch {
-    try {
+    if (style === "bold") {
       doc.setFont("Bricolage", "normal");
-    } catch {
-      doc.setFont("helvetica", style);
+      return;
     }
+    throw new Error("Não foi possível aplicar a fonte incorporada do PDF.");
   }
 }
 
@@ -380,12 +411,16 @@ function drawBg(doc: jsPDF, pageW: number, pageH: number, settings: Required<Pdf
 
 export async function downloadCronogramaPdf({ clientName, posts, settings }: ExportInput) {
   const form = withDefaults(settings);
+  await ensureBrowserFontsLoaded();
+
   const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+  const fontReady = await loadBricolageFont(doc);
+  if (!fontReady) {
+    throw new Error("Não foi possível carregar a fonte do PDF. Tente novamente em instantes.");
+  }
+
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
-
-
-  await loadBricolageFont(doc);
 
   const sx = (x: number) => (x / DESIGN_W) * pageW;
   const sy = (y: number) => (y / DESIGN_H) * pageH;
@@ -416,6 +451,21 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
     return data;
   };
 
+  const preloadUrls = new Set<string>();
+  if (form.background_image_url) preloadUrls.add(form.background_image_url);
+  if (form.cover_logo_url) preloadUrls.add(form.cover_logo_url);
+  if (form.agency_logo_url) preloadUrls.add(form.agency_logo_url);
+
+  for (const post of posts) {
+    const mainImage = getPostImage(post);
+    if (mainImage) preloadUrls.add(mainImage);
+    for (const carouselImg of post.all_attachment_urls ?? []) {
+      if (carouselImg) preloadUrls.add(carouselImg);
+    }
+  }
+
+  await Promise.all(Array.from(preloadUrls).map((url) => getCachedImage(url)));
+
   for (const block of blocksOrder) {
     if (!blocksEnabled[block]) continue;
 
@@ -425,7 +475,10 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
 
       const bgImage = await getCachedImage(form.background_image_url);
       if (bgImage) {
-        addPdfImage(doc, bgImage, 0, 0, pageW, pageH);
+        const coveredBg = await renderFittedImage(bgImage.dataUrl, pageW, pageH, 0, { fitMode: "cover" });
+        if (coveredBg) {
+          addPdfImage(doc, { dataUrl: coveredBg, format: "PNG" }, 0, 0, pageW, pageH);
+        }
       }
 
       const coverLogo = await getCachedImage(form.cover_logo_url);
@@ -529,7 +582,10 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
 
             const rawAsset = await getCachedImage(firstPageImgs[idx]);
             if (rawAsset) {
-              const containPng = await renderContainImage(rawAsset.dataUrl, gridColW, gridRowH, cornerRadius, { backgroundMode: "blur" });
+              const containPng = await renderFittedImage(rawAsset.dataUrl, gridColW, gridRowH, cornerRadius, {
+                backgroundMode: "blur",
+                fitMode: "contain",
+              });
               if (containPng) {
                 addPdfImage(doc, { dataUrl: containPng, format: "PNG" }, cx, cy, gridColW, gridRowH);
               }
@@ -574,10 +630,12 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
 
           doc.setTextColor(titleR, titleG, titleB);
           setFont(doc, "normal");
-          doc.setFontSize(Math.max(9, sx(cCaptionFontSize * 1.8)));
+          doc.setFontSize(Math.max(9, sx(cCaptionFontSize * 2)));
           const caption = post.caption?.trim() || "Sem legenda";
           const wrappedCaption = doc.splitTextToSize(caption, centerColW - sx(20));
-          doc.text(wrappedCaption, centerX, infoBaseY + sy(30), { baseline: "top" });
+          doc.setLineHeightFactor(1.7);
+          doc.text(wrappedCaption, centerX, infoBaseY + sy(30), { baseline: "top", lineHeightFactor: 1.7 });
+          doc.setLineHeightFactor(1.15);
 
           const formattedDate = post.posting_date ? format(parseISO(post.posting_date), "dd/MM/yyyy") : "—";
           const dateBadgeW = rightColW - sx(20);
@@ -627,7 +685,10 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
 
               const rawAsset = await getCachedImage(chunk[idx]);
               if (rawAsset) {
-                const containPng = await renderContainImage(rawAsset.dataUrl, cColW, cRowH, cornerRadius, { backgroundMode: "blur" });
+                const containPng = await renderFittedImage(rawAsset.dataUrl, cColW, cRowH, cornerRadius, {
+                  backgroundMode: "blur",
+                  fitMode: "contain",
+                });
                 if (containPng) {
                   addPdfImage(doc, { dataUrl: containPng, format: "PNG" }, cx, cy, cColW, cRowH);
                 }
@@ -652,7 +713,9 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
           if (postImageUrl) {
             const rawAsset = await getCachedImage(postImageUrl);
             if (rawAsset) {
-              const containPng = await renderContainImage(rawAsset.dataUrl, imageW, contentH, cornerRadius);
+              const containPng = await renderFittedImage(rawAsset.dataUrl, imageW, contentH, cornerRadius, {
+                fitMode: "contain",
+              });
               if (containPng) {
                 imageRendered = addPdfImage(doc, { dataUrl: containPng, format: "PNG" }, imageX, imageY, imageW, contentH);
               }
@@ -683,7 +746,7 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
 
           setFont(doc, "bold");
           doc.setTextColor(titleR, titleG, titleB);
-          doc.setFontSize(Math.max(10, sx(form.card_font_size * 2.4)));
+          doc.setFontSize(Math.max(10, sx(form.card_font_size * 3)));
           doc.text(`Post ${i + 1}`, infoX, infoY + sy(60));
 
           const badgeText = postTypeLabel;
@@ -706,41 +769,43 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
 
           doc.setTextColor(titleR, titleG, titleB);
           setFont(doc, "normal");
-          doc.setFontSize(Math.max(9, sx(form.card_caption_font_size * 1.8)));
+          doc.setFontSize(Math.max(9, sx(form.card_caption_font_size * 2)));
           const caption = post.caption?.trim() || "Sem legenda";
           const wrappedCaption = doc.splitTextToSize(caption, textW);
-          doc.text(wrappedCaption, infoX, infoY + sy(170), { baseline: "top" });
+          doc.setLineHeightFactor(1.7);
+          doc.text(wrappedCaption, infoX, infoY + sy(170), { baseline: "top", lineHeightFactor: 1.7 });
+          doc.setLineHeightFactor(1.15);
 
-          const footerTop = infoY + contentH - sy(100);
+          const footerTop = infoY + contentH - sy(124);
           doc.setDrawColor(accR, accG, accB);
           doc.setLineWidth(1.4);
           doc.line(infoX, footerTop, infoX + textW, footerTop);
 
-          doc.setTextColor(subR, subG, subB);
-          setFont(doc, "bold");
-          doc.setFontSize(sx(14));
-          doc.text("Data", infoX, footerTop + sy(32));
-
-          doc.setTextColor(titleR, titleG, titleB);
-          setFont(doc, "normal");
-          doc.setFontSize(Math.max(10, sx(form.card_date_font_size * 2.1)));
           const formattedDate = post.posting_date ? format(parseISO(post.posting_date), "dd/MM/yyyy") : "—";
-          doc.text(formattedDate, infoX, footerTop + sy(68));
+          const dateBadgeW = Math.min(sx(240), textW * 0.48);
+          const dateBadgeH = sy(50);
+          const dateBadgeX = infoX + textW - dateBadgeW;
+          const dateBadgeY = footerTop + sy(18);
+
+          doc.setFillColor(accR, accG, accB);
+          doc.roundedRect(dateBadgeX, dateBadgeY, dateBadgeW, dateBadgeH, sy(10), sy(10), "F");
+          doc.setTextColor(255, 255, 255);
+          setFont(doc, "bold");
+          doc.setFontSize(Math.max(10, sx((form.card_date_font_size ?? 12) * 1.8)));
+          doc.text(`Data: ${formattedDate}`, dateBadgeX + dateBadgeW / 2, dateBadgeY + dateBadgeH / 2, {
+            align: "center",
+            baseline: "middle",
+          });
 
           if (form.show_time_on_card && post.posting_time) {
-            const dateTextW = doc.getTextWidth(formattedDate);
-            const timeX = Math.min(
-              Math.max(infoX + dateTextW + sx(80), infoX + textW * 0.55),
-              infoX + textW - sx(220),
-            );
-            doc.setTextColor(subR, subG, subB);
-            setFont(doc, "bold");
-            doc.setFontSize(sx(14));
-            doc.text("Horário", timeX, footerTop + sy(32));
-            doc.setTextColor(titleR, titleG, titleB);
-            setFont(doc, "normal");
-            doc.setFontSize(Math.max(10, sx(form.card_date_font_size * 2.1)));
-            doc.text(post.posting_time, timeX, footerTop + sy(68));
+            const timeBadgeY = dateBadgeY + dateBadgeH + sy(12);
+            doc.setFillColor(accR, accG, accB);
+            doc.roundedRect(dateBadgeX, timeBadgeY, dateBadgeW, dateBadgeH, sy(10), sy(10), "F");
+            doc.setTextColor(255, 255, 255);
+            doc.text(`Horário: ${post.posting_time}`, dateBadgeX + dateBadgeW / 2, timeBadgeY + dateBadgeH / 2, {
+              align: "center",
+              baseline: "middle",
+            });
           }
         }
       }
