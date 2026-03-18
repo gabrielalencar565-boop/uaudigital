@@ -719,7 +719,20 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
             const gridH = contentH * imgHeightPct;
             const infoH = contentH - gridH - sy(20);
             const gridY = margin;
-            const infoY = margin + gridH + sy(20);
+
+            const fallbackCarouselInfoPoint: LayoutPoint = {
+              x: 50,
+              y: ((margin + gridH + sy(20) + infoH / 2) / pageH) * 100,
+            };
+            const carouselInfoPoint = getLayoutPoint(form.layout_overrides, "carousel_info", fallbackCarouselInfoPoint);
+            const defaultCarouselCenterX = (fallbackCarouselInfoPoint.x / 100) * pageW;
+            const defaultCarouselCenterY = (fallbackCarouselInfoPoint.y / 100) * pageH;
+            const carouselCenterX = (carouselInfoPoint.x / 100) * pageW;
+            const carouselCenterY = (carouselInfoPoint.y / 100) * pageH;
+            const carouselShiftX = carouselCenterX - defaultCarouselCenterX;
+            const carouselShiftY = carouselCenterY - defaultCarouselCenterY;
+            const infoX = margin + carouselShiftX;
+            const infoY = margin + gridH + sy(20) + carouselShiftY;
 
             const frames = buildAdaptiveCarouselGridFrames({
               itemCount: pageImages.length,
@@ -770,9 +783,9 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
 
             const infoPaddingX = sx(8);
             const infoPaddingY = sy(8);
-            const leftX = margin + infoPaddingX;
-            const centerX = margin + leftColW + infoPaddingX;
-            const rightX = margin + leftColW + centerColW;
+            const leftX = infoX + infoPaddingX;
+            const centerX = infoX + leftColW + infoPaddingX;
+            const rightX = infoX + leftColW + centerColW;
             const infoTop = infoY + infoPaddingY;
             const infoBottom = infoY + infoH - infoPaddingY;
 
