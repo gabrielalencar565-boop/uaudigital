@@ -630,10 +630,12 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
 
           doc.setTextColor(titleR, titleG, titleB);
           setFont(doc, "normal");
-          doc.setFontSize(Math.max(9, sx(cCaptionFontSize * 1.8)));
+          doc.setFontSize(Math.max(9, sx(cCaptionFontSize * 2)));
           const caption = post.caption?.trim() || "Sem legenda";
           const wrappedCaption = doc.splitTextToSize(caption, centerColW - sx(20));
-          doc.text(wrappedCaption, centerX, infoBaseY + sy(30), { baseline: "top" });
+          doc.setLineHeightFactor(1.7);
+          doc.text(wrappedCaption, centerX, infoBaseY + sy(30), { baseline: "top", lineHeightFactor: 1.7 });
+          doc.setLineHeightFactor(1.15);
 
           const formattedDate = post.posting_date ? format(parseISO(post.posting_date), "dd/MM/yyyy") : "—";
           const dateBadgeW = rightColW - sx(20);
