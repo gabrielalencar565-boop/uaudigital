@@ -292,7 +292,7 @@ async function renderFittedImage(
 
 function addPdfImage(doc: jsPDF, image: PdfImageAsset, x: number, y: number, w: number, h: number): boolean {
   try {
-    doc.addImage(image.dataUrl, image.format, x, y, w, h, undefined, "FAST");
+    doc.addImage(image.dataUrl, image.format, x, y, w, h, undefined, "MEDIUM");
     return true;
   } catch {
     return false;
