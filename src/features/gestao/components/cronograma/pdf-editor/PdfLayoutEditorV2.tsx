@@ -148,7 +148,7 @@ export function PdfLayoutEditor() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" className="rounded-xl h-8 text-xs gap-1.5 text-muted-foreground hover:text-foreground">
+          <Button variant="ghost" size="sm" className="rounded-xl h-8 text-xs gap-1.5 text-muted-foreground hover:text-foreground" onClick={() => setFullPreview(true)}>
             <Eye className="h-3.5 w-3.5" />
             Pré-visualizar
           </Button>
