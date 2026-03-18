@@ -200,14 +200,12 @@ export function PdfLayoutEditor() {
                     ))}
                   </div>
                   <span className="text-[11px] text-muted-foreground tabular-nums">
-                    {enabledBlocks.length} {enabledBlocks.length === 1 ? "página" : "páginas"}
+                    Página {enabledBlocks.indexOf(selectedBlock) + 1} de {enabledBlocks.length}
                   </span>
                 </div>
 
-                {/* Preview pages */}
-                <div className="space-y-5">
-                  {enabledBlocks.map((blockId) => renderPreviewBlock(blockId))}
-                </div>
+                {/* Single selected preview */}
+                {enabledBlocks.includes(selectedBlock) && renderPreviewBlock(selectedBlock)}
               </div>
             </ScrollArea>
           </div>
