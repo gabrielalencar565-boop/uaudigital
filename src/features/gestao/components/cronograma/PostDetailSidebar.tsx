@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { DatePickerInline } from "@/components/ui/date-picker";
 import { cn } from "@/lib/utils";
 import { POST_TYPE_META, type CronogramaPost } from "./types";
-import { SmartCaptionEditor } from "../SmartCaptionEditor";
 import { PmImageViewer } from "../PmImageViewer";
 
 interface Props {
