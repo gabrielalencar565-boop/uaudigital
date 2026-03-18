@@ -463,7 +463,58 @@ function CardsSettings({ form, setForm }: any) {
   );
 }
 
-function FooterSettings({ form, setForm, uploading, handleUploadAgencyLogo }: any) {
+function CarouselSettings({ form, setForm }: any) {
+  return (
+    <div className="space-y-3">
+      <div className="px-2 py-1.5 rounded-lg bg-muted/30 border border-border/20">
+        <span className="text-[10px] text-muted-foreground">Layout: grade de imagens em cima, informações embaixo</span>
+      </div>
+      <div>
+        <Label className="text-[10px] text-muted-foreground">Colunas</Label>
+        <div className="flex items-center gap-2 mt-1">
+          <Slider value={[form.carousel_cols ?? 4]} onValueChange={([v]: number[]) => setForm((p: any) => ({ ...p, carousel_cols: v }))} min={2} max={6} step={1} className="flex-1" />
+          <span className="text-xs font-mono w-8 text-right">{form.carousel_cols ?? 4}</span>
+        </div>
+      </div>
+      <div>
+        <Label className="text-[10px] text-muted-foreground">Linhas</Label>
+        <div className="flex items-center gap-2 mt-1">
+          <Slider value={[form.carousel_rows ?? 2]} onValueChange={([v]: number[]) => setForm((p: any) => ({ ...p, carousel_rows: v }))} min={1} max={4} step={1} className="flex-1" />
+          <span className="text-xs font-mono w-8 text-right">{form.carousel_rows ?? 2}</span>
+        </div>
+      </div>
+      <div>
+        <Label className="text-[10px] text-muted-foreground">Altura das imagens (%)</Label>
+        <div className="flex items-center gap-2 mt-1">
+          <Slider value={[form.carousel_image_height_pct ?? 65]} onValueChange={([v]: number[]) => setForm((p: any) => ({ ...p, carousel_image_height_pct: v }))} min={40} max={85} step={1} className="flex-1" />
+          <span className="text-xs font-mono w-10 text-right">{form.carousel_image_height_pct ?? 65}%</span>
+        </div>
+      </div>
+      <div>
+        <Label className="text-[10px] text-muted-foreground">Título — tamanho</Label>
+        <div className="flex items-center gap-2 mt-1">
+          <Slider value={[form.carousel_title_font_size ?? 14]} onValueChange={([v]: number[]) => setForm((p: any) => ({ ...p, carousel_title_font_size: v }))} min={10} max={24} step={1} className="flex-1" />
+          <span className="text-xs font-mono w-8 text-right">{form.carousel_title_font_size ?? 14}</span>
+        </div>
+      </div>
+      <div>
+        <Label className="text-[10px] text-muted-foreground">Legenda — tamanho</Label>
+        <div className="flex items-center gap-2 mt-1">
+          <Slider value={[form.carousel_caption_font_size ?? 11]} onValueChange={([v]: number[]) => setForm((p: any) => ({ ...p, carousel_caption_font_size: v }))} min={8} max={18} step={1} className="flex-1" />
+          <span className="text-xs font-mono w-8 text-right">{form.carousel_caption_font_size ?? 11}</span>
+        </div>
+      </div>
+      <div>
+        <Label className="text-[10px] text-muted-foreground">Data — tamanho</Label>
+        <div className="flex items-center gap-2 mt-1">
+          <Slider value={[form.carousel_date_font_size ?? 12]} onValueChange={([v]: number[]) => setForm((p: any) => ({ ...p, carousel_date_font_size: v }))} min={8} max={20} step={1} className="flex-1" />
+          <span className="text-xs font-mono w-8 text-right">{form.carousel_date_font_size ?? 12}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
   return (
     <div className="space-y-3">
       <div>
