@@ -11,7 +11,7 @@ import { POST_TYPE_META, type CronogramaPost } from "./types";
 import { PmImageViewer } from "../PmImageViewer";
 
 interface Props {
-  post: CronogramaPost & { all_attachment_urls?: string[] };
+  post: CronogramaPost & {all_attachment_urls?: string[];};
   onClose: () => void;
   onUpdate: (field: string, value: string | null) => void;
   onRename?: (newTitle: string) => void;
@@ -54,19 +54,19 @@ export function PostDetailSidebar({ post, onClose, onUpdate, onRename, onEditTas
     setViewerOpen(true);
   };
 
-  const viewerImages = isCarousel
-    ? allImages.map((url, i) => ({ url, name: `Página ${i + 1}` }))
-    : singleImg
-      ? [{ url: singleImg, name: post.title }]
-      : [];
+  const viewerImages = isCarousel ?
+  allImages.map((url, i) => ({ url, name: `Página ${i + 1}` })) :
+  singleImg ?
+  [{ url: singleImg, name: post.title }] :
+  [];
 
-  const postingDateFormatted = post.posting_date
-    ? format(parseISO(post.posting_date), "dd 'DE' MMMM", { locale: ptBR }).toUpperCase()
-    : null;
+  const postingDateFormatted = post.posting_date ?
+  format(parseISO(post.posting_date), "dd 'DE' MMMM", { locale: ptBR }).toUpperCase() :
+  null;
 
-  const timeFormatted = post.posting_time
-    ? `ÀS ${post.posting_time.replace(":", ":")}`
-    : null;
+  const timeFormatted = post.posting_time ?
+  `ÀS ${post.posting_time.replace(":", ":")}` :
+  null;
 
   return (
     <>
@@ -79,9 +79,9 @@ export function PostDetailSidebar({ post, onClose, onUpdate, onRename, onEditTas
             </div>
             <div className="flex flex-col">
               <span className="text-sm font-semibold leading-tight">{headerName}</span>
-              {post.post_type && (
-                <span className="text-[10px] text-muted-foreground">{meta.label}</span>
-              )}
+              {post.post_type &&
+              <span className="text-[10px] text-muted-foreground">{meta.label}</span>
+              }
             </div>
           </div>
           <div className="flex items-center gap-1">
@@ -95,59 +95,59 @@ export function PostDetailSidebar({ post, onClose, onUpdate, onRename, onEditTas
         </div>
 
         {/* Image area with carousel arrows */}
-        {displayImages.length > 0 && (
-          <div className="relative w-full bg-black/5 group px-3">
+        {displayImages.length > 0 &&
+        <div className="relative w-full bg-black/5 group px-3">
             <img
-              src={displayImages[carouselIndex] || displayImages[0]}
-              alt=""
-              className="w-full object-contain rounded-xl cursor-pointer max-h-[60vh]"
-              onClick={() => openViewer(carouselIndex)}
-            />
+            src={displayImages[carouselIndex] || displayImages[0]}
+            alt=""
+            className="w-full object-contain rounded-xl cursor-pointer max-h-[60vh]"
+            onClick={() => openViewer(carouselIndex)} />
+          
 
             {/* Carousel counter badge */}
-            {isCarousel && (
-              <div className="absolute top-3 right-3 bg-black/60 text-white text-xs font-medium px-2 py-0.5 rounded-full">
+            {isCarousel &&
+          <div className="absolute top-3 right-3 bg-black/60 text-white text-xs font-medium rounded-full py-[2px] pl-[20px] my-[2px] mx-[9px] px-[8px]">
                 {carouselIndex + 1}/{displayImages.length}
               </div>
-            )}
+          }
 
             {/* Prev arrow */}
-            {isCarousel && carouselIndex > 0 && (
-              <button
-                onClick={() => setCarouselIndex(i => i - 1)}
-                className="absolute left-2 top-1/2 -translate-y-1/2 h-7 w-7 rounded-full bg-white/90 shadow-sm flex items-center justify-center text-foreground/80 hover:bg-white transition opacity-0 group-hover:opacity-100"
-              >
+            {isCarousel && carouselIndex > 0 &&
+          <button
+            onClick={() => setCarouselIndex((i) => i - 1)}
+            className="absolute left-2 top-1/2 -translate-y-1/2 h-7 w-7 rounded-full bg-white/90 shadow-sm flex items-center justify-center text-foreground/80 hover:bg-white transition opacity-0 group-hover:opacity-100">
+            
                 <ChevronLeft className="h-4 w-4" />
               </button>
-            )}
+          }
 
             {/* Next arrow */}
-            {isCarousel && carouselIndex < displayImages.length - 1 && (
-              <button
-                onClick={() => setCarouselIndex(i => i + 1)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 rounded-full bg-white/90 shadow-sm flex items-center justify-center text-foreground/80 hover:bg-white transition opacity-0 group-hover:opacity-100"
-              >
+            {isCarousel && carouselIndex < displayImages.length - 1 &&
+          <button
+            onClick={() => setCarouselIndex((i) => i + 1)}
+            className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 rounded-full bg-white/90 shadow-sm flex items-center justify-center text-foreground/80 hover:bg-white transition opacity-0 group-hover:opacity-100">
+            
                 <ChevronRight className="h-4 w-4" />
               </button>
-            )}
+          }
 
             {/* Dots indicator */}
-            {isCarousel && displayImages.length <= 10 && (
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1">
-                {displayImages.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setCarouselIndex(i)}
-                    className={cn(
-                      "h-1.5 rounded-full transition-all",
-                      i === carouselIndex ? "w-1.5 bg-primary" : "w-1.5 bg-white/60"
-                    )}
-                  />
-                ))}
-              </div>
+            {isCarousel && displayImages.length <= 10 &&
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1">
+                {displayImages.map((_, i) =>
+            <button
+              key={i}
+              onClick={() => setCarouselIndex(i)}
+              className={cn(
+                "h-1.5 rounded-full transition-all",
+                i === carouselIndex ? "w-1.5 bg-primary" : "w-1.5 bg-white/60"
+              )} />
+
             )}
+              </div>
+          }
           </div>
-        )}
+        }
 
         {/* Instagram-style action bar */}
         <div className="flex items-center justify-between px-3 py-2">
@@ -172,79 +172,79 @@ export function PostDetailSidebar({ post, onClose, onUpdate, onRename, onEditTas
                 return (
                   <>
                     <span className="text-sm text-foreground/80 whitespace-pre-line">{plainCaption}</span>
-                    {plainCaption.length > LIMIT && (
-                      <button onClick={() => setCaptionExpanded(false)} className="text-sm text-muted-foreground ml-1 hover:text-primary transition-colors">menos</button>
-                    )}
-                  </>
-                );
+                    {plainCaption.length > LIMIT &&
+                    <button onClick={() => setCaptionExpanded(false)} className="text-sm text-muted-foreground ml-1 hover:text-primary transition-colors">menos</button>
+                    }
+                  </>);
+
               }
               return (
                 <>
                   <span className="text-sm text-foreground/80">{plainCaption.substring(0, LIMIT)}</span>
                   <button onClick={() => setCaptionExpanded(true)} className="text-sm text-muted-foreground ml-0.5 hover:text-primary transition-colors">... mais</button>
-                </>
-              );
+                </>);
+
             })()}
           </div>
 
           {/* Date and time */}
           <div className="flex items-center gap-1 text-[11px] text-muted-foreground uppercase">
-            {editingField === "posting_date" ? (
-              <DatePickerInline
-                value={tempValue}
-                onChange={(v) => { onUpdate("posting_date", v || null); setEditingField(null); }}
-              />
-            ) : (
-              <span
-                className="cursor-pointer hover:text-primary transition-colors"
-                onClick={() => startEditing("posting_date", post.posting_date ?? "")}
-              >
+            {editingField === "posting_date" ?
+            <DatePickerInline
+              value={tempValue}
+              onChange={(v) => {onUpdate("posting_date", v || null);setEditingField(null);}} /> :
+
+
+            <span
+              className="cursor-pointer hover:text-primary transition-colors"
+              onClick={() => startEditing("posting_date", post.posting_date ?? "")}>
+              
                 {postingDateFormatted || "Sem data"}
               </span>
-            )}
-            {timeFormatted && (
-              <>
-                {editingField === "posting_time" ? (
-                  <Input
-                    type="time"
-                    autoFocus
-                    value={tempValue}
-                    onChange={(e) => setTempValue(e.target.value)}
-                    onBlur={() => saveField("posting_time")}
-                    onKeyDown={(e) => e.key === "Enter" && saveField("posting_time")}
-                    className="h-6 text-[11px] w-20 border-none shadow-none p-0"
-                  />
-                ) : (
-                  <span
-                    className="cursor-pointer hover:text-primary transition-colors"
-                    onClick={() => startEditing("posting_time", post.posting_time ?? "")}
-                  >
-                    {timeFormatted}
-                  </span>
-                )}
-              </>
-            )}
-            {!timeFormatted && editingField !== "posting_time" && (
+            }
+            {timeFormatted &&
+            <>
+                {editingField === "posting_time" ?
+              <Input
+                type="time"
+                autoFocus
+                value={tempValue}
+                onChange={(e) => setTempValue(e.target.value)}
+                onBlur={() => saveField("posting_time")}
+                onKeyDown={(e) => e.key === "Enter" && saveField("posting_time")}
+                className="h-6 text-[11px] w-20 border-none shadow-none p-0" /> :
+
+
               <span
                 className="cursor-pointer hover:text-primary transition-colors"
-                onClick={() => startEditing("posting_time", post.posting_time ?? "")}
-              >
+                onClick={() => startEditing("posting_time", post.posting_time ?? "")}>
+                
+                    {timeFormatted}
+                  </span>
+              }
+              </>
+            }
+            {!timeFormatted && editingField !== "posting_time" &&
+            <span
+              className="cursor-pointer hover:text-primary transition-colors"
+              onClick={() => startEditing("posting_time", post.posting_time ?? "")}>
+              
                  
               </span>
-            )}
+            }
           </div>
 
         </div>
       </div>
 
-      {viewerImages.length > 0 && (
-        <PmImageViewer
-          images={viewerImages}
-          initialIndex={viewerIndex}
-          open={viewerOpen}
-          onClose={() => setViewerOpen(false)}
-        />
-      )}
-    </>
-  );
+      {viewerImages.length > 0 &&
+      <PmImageViewer
+        images={viewerImages}
+        initialIndex={viewerIndex}
+        open={viewerOpen}
+        onClose={() => setViewerOpen(false)} />
+
+      }
+    </>);
+
 }
