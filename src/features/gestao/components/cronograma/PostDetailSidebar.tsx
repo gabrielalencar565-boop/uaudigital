@@ -85,8 +85,8 @@ export function PostDetailSidebar({ post, onClose, onUpdate, onRename, onEditTas
             </div>
           </div>
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
-              <MoreHorizontal className="h-4 w-4" />
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" onClick={onEditTask}>
+              <Pencil className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" onClick={onClose}>
               <X className="h-4 w-4" />
