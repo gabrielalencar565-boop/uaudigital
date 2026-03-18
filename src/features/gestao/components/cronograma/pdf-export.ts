@@ -114,6 +114,10 @@ const DEFAULT_LAYOUT_POINTS: Record<string, LayoutPoint> = {
   cover_title: { x: 50, y: 45 },
   cover_subtitle: { x: 50, y: 53 },
   cards_info: { x: 73, y: 50 },
+  cards_title: { x: 73, y: 12 },
+  cards_caption: { x: 73, y: 45 },
+  cards_date: { x: 88, y: 82 },
+  cards_time: { x: 88, y: 90 },
   carousel_info: { x: 50, y: 83 },
   footer_group: { x: 50, y: 50 },
 };
@@ -151,11 +155,50 @@ function getLayoutPoint(layout: unknown, key: string, fallback: LayoutPoint): La
   return parsed ?? fallback;
 }
 
+function normalizeBlocksOrder(order?: string[] | null): BlockId[] {
+  const required: BlockId[] = ["cover", "cards", "carousel", "footer"];
+  const incoming = (order ?? DEFAULT_SETTINGS.blocks_order)
+    .filter((value): value is BlockId => required.includes(value as BlockId));
+
+  const unique: BlockId[] = [];
+  for (const block of incoming) {
+    if (!unique.includes(block)) unique.push(block);
+  }
+
+  for (const block of required) {
+    if (unique.includes(block)) continue;
+    if (block === "carousel" && unique.includes("cards")) {
+      unique.splice(unique.indexOf("cards") + 1, 0, block);
+    } else {
+      unique.push(block);
+    }
+  }
+
+  return unique;
+}
+
+function getCardLayoutPoint(layout: unknown, key: "cards_title" | "cards_caption" | "cards_date" | "cards_time", fallback: LayoutPoint): LayoutPoint {
+  if (!layout || typeof layout !== "object") return fallback;
+  const rawLayout = layout as Record<string, unknown>;
+
+  const explicit = readLayoutPoint(rawLayout[key]);
+  if (explicit) return explicit;
+
+  const legacyCardsInfo = readLayoutPoint(rawLayout.cards_info);
+  if (!legacyCardsInfo) return fallback;
+
+  const legacyBase = DEFAULT_LAYOUT_POINTS.cards_info;
+  return {
+    x: legacyCardsInfo.x + (fallback.x - legacyBase.x),
+    y: legacyCardsInfo.y + (fallback.y - legacyBase.y),
+  };
+}
+
 function withDefaults(settings?: PdfExportSettings | null): Required<PdfExportSettings> {
   return {
     ...DEFAULT_SETTINGS,
     ...settings,
-    blocks_order: (settings?.blocks_order ?? DEFAULT_SETTINGS.blocks_order).filter(Boolean),
+    blocks_order: normalizeBlocksOrder(settings?.blocks_order),
     blocks_enabled: { ...DEFAULT_SETTINGS.blocks_enabled, ...(settings?.blocks_enabled ?? {}) },
     layout_overrides: { ...DEFAULT_SETTINGS.layout_overrides, ...(settings?.layout_overrides ?? {}) },
   };
@@ -318,12 +361,13 @@ async function toPdfImage(url: string): Promise<PdfImageAsset | null> {
 
 const BRICOLAGE_URLS: Record<"normal" | "bold", string[]> = {
   normal: [
-    "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/bricolagegrotesque/BricolageGrotesque-Regular.ttf",
-    "https://raw.githubusercontent.com/google/fonts/main/ofl/bricolagegrotesque/BricolageGrotesque-Regular.ttf",
+    "/fonts/BricolageGrotesque-Regular.ttf",
+    "https://raw.githubusercontent.com/google/fonts/main/ofl/bricolagegrotesque/BricolageGrotesque%5Bopsz%2Cwdth%2Cwght%5D.ttf",
   ],
   bold: [
-    "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/bricolagegrotesque/BricolageGrotesque-Bold.ttf",
-    "https://raw.githubusercontent.com/google/fonts/main/ofl/bricolagegrotesque/BricolageGrotesque-Bold.ttf",
+    "/fonts/BricolageGrotesque-Bold.ttf",
+    "/fonts/BricolageGrotesque-Regular.ttf",
+    "https://raw.githubusercontent.com/google/fonts/main/ofl/bricolagegrotesque/BricolageGrotesque%5Bopsz%2Cwdth%2Cwght%5D.ttf",
   ],
 };
 
@@ -331,15 +375,11 @@ let fontCache: Partial<Record<"normal" | "bold", string>> | null = null;
 
 async function ensureBrowserFontsLoaded() {
   if (typeof document === "undefined" || !document.fonts) return;
-  try {
-    await Promise.all([
-      document.fonts.ready,
-      document.fonts.load('400 16px "Bricolage Grotesque"'),
-      document.fonts.load('700 16px "Bricolage Grotesque"'),
-    ]);
-  } catch {
-    // no-op: PDF embedding still guarantees final output
-  }
+  await Promise.all([
+    document.fonts.ready,
+    document.fonts.load('400 16px "Bricolage Grotesque"'),
+    document.fonts.load('700 16px "Bricolage Grotesque"'),
+  ]);
 }
 
 function arrayBufferToBase64(buffer: ArrayBuffer) {
@@ -374,38 +414,27 @@ async function loadBricolageFont(doc: jsPDF): Promise<boolean> {
       fetchFontBase64(BRICOLAGE_URLS.bold),
     ]);
 
-    fontCache = {
-      ...(normal ? { normal } : {}),
-      ...(bold ? { bold } : {}),
-    };
+    if (!normal || !bold) {
+      fontCache = null;
+      return false;
+    }
+
+    fontCache = { normal, bold };
   }
 
   for (const style of ["normal", "bold"] as const) {
     const b64 = fontCache?.[style];
-    if (!b64) continue;
+    if (!b64) return false;
     const fileName = `Bricolage-${style}.ttf`;
     doc.addFileToVFS(fileName, b64);
     doc.addFont(fileName, "Bricolage", style);
   }
 
-  return Boolean(fontCache?.normal);
+  return true;
 }
 
-let _fontLoaded = false;
-
 function setFont(doc: jsPDF, style: "normal" | "bold") {
-  if (!_fontLoaded) {
-    doc.setFont("helvetica", style);
-    return;
-  }
-  try {
-    doc.setFont("Bricolage", style);
-  } catch {
-    if (style === "bold") {
-      try { doc.setFont("Bricolage", "normal"); return; } catch { /* fall through */ }
-    }
-    doc.setFont("helvetica", style);
-  }
+  doc.setFont("Bricolage", style);
 }
 
 function drawBg(doc: jsPDF, pageW: number, pageH: number, settings: Required<PdfExportSettings>) {
@@ -420,9 +449,8 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
 
   const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
   const fontReady = await loadBricolageFont(doc);
-  _fontLoaded = fontReady;
   if (!fontReady) {
-    console.warn("Fonte Bricolage não carregou — usando Helvetica como fallback.");
+    throw new Error("Não foi possível carregar a fonte do PDF. Tente novamente em instantes.");
   }
 
   const pageW = doc.internal.pageSize.getWidth();
@@ -433,7 +461,7 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
   const margin = sx(form.margin_size);
   const imgWidthPct = (form.card_image_width_pct ?? 45) / 100;
 
-  const blocksOrder = (form.blocks_order as BlockId[]).filter((b) => ["cover", "cards", "carousel", "footer"].includes(b));
+  const blocksOrder = normalizeBlocksOrder(form.blocks_order);
   const blocksEnabled = {
     cover: true,
     cards: true,
@@ -589,8 +617,7 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
             const rawAsset = await getCachedImage(firstPageImgs[idx]);
             if (rawAsset) {
               const containPng = await renderFittedImage(rawAsset.dataUrl, gridColW, gridRowH, cornerRadius, {
-                backgroundMode: "blur",
-                fitMode: "contain",
+                fitMode: "cover",
               });
               if (containPng) {
                 addPdfImage(doc, { dataUrl: containPng, format: "PNG" }, cx, cy, gridColW, gridRowH);
@@ -692,8 +719,7 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
               const rawAsset = await getCachedImage(chunk[idx]);
               if (rawAsset) {
                 const containPng = await renderFittedImage(rawAsset.dataUrl, cColW, cRowH, cornerRadius, {
-                  backgroundMode: "blur",
-                  fitMode: "contain",
+                  fitMode: "cover",
                 });
                 if (containPng) {
                   addPdfImage(doc, { dataUrl: containPng, format: "PNG" }, cx, cy, cColW, cRowH);
@@ -702,15 +728,12 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
             }
           }
         } else {
-          // ── Standard single-image layout ──
+          // ── Standard single-image layout (espelha a prévia) ──
           const imageW = contentW * imgWidthPct;
-          const textW = contentW - imageW - gap;
+          const infoW = contentW - imageW - gap;
           const imageX = margin;
           const imageY = margin;
-          const textX = imageX + imageW + gap;
-          const textY = margin;
 
-          doc.setDrawColor(255, 255, 255);
           doc.setFillColor(26, 29, 39);
           doc.roundedRect(imageX, imageY, imageW, contentH, cornerRadius, cornerRadius, "F");
 
@@ -719,99 +742,115 @@ export async function downloadCronogramaPdf({ clientName, posts, settings }: Exp
           if (postImageUrl) {
             const rawAsset = await getCachedImage(postImageUrl);
             if (rawAsset) {
-              const containPng = await renderFittedImage(rawAsset.dataUrl, imageW, contentH, cornerRadius, {
-                fitMode: "contain",
+              const coverPng = await renderFittedImage(rawAsset.dataUrl, imageW, contentH, cornerRadius, {
+                fitMode: "cover",
               });
-              if (containPng) {
-                imageRendered = addPdfImage(doc, { dataUrl: containPng, format: "PNG" }, imageX, imageY, imageW, contentH);
+              if (coverPng) {
+                imageRendered = addPdfImage(doc, { dataUrl: coverPng, format: "PNG" }, imageX, imageY, imageW, contentH);
               }
             }
           }
+
           if (!imageRendered) {
             doc.setTextColor(110, 117, 138);
             setFont(doc, "bold");
             doc.setFontSize(sx(28));
-            doc.text("Imagem do Post", imageX + imageW / 2, imageY + contentH / 2, { align: "center" });
+            doc.text("Imagem do Post", imageX + imageW / 2, imageY + contentH / 2, { align: "center", baseline: "middle" });
           }
 
-          const defaultCardsInfoPoint: LayoutPoint = {
-            x: ((textX + textW / 2) / pageW) * 100,
-            y: ((textY + contentH / 2) / pageH) * 100,
-          };
-          const cardsInfoPoint = getLayoutPoint(form.layout_overrides, "cards_info", defaultCardsInfoPoint);
-          const cardsInfoCenterX = (cardsInfoPoint.x / 100) * pageW;
-          const cardsInfoCenterY = (cardsInfoPoint.y / 100) * pageH;
-          const defaultCardsCenterX = textX + textW / 2;
-          const defaultCardsCenterY = textY + contentH / 2;
+          const titlePoint = getCardLayoutPoint(form.layout_overrides, "cards_title", DEFAULT_LAYOUT_POINTS.cards_title);
+          const captionPoint = getCardLayoutPoint(form.layout_overrides, "cards_caption", DEFAULT_LAYOUT_POINTS.cards_caption);
+          const datePoint = getCardLayoutPoint(form.layout_overrides, "cards_date", DEFAULT_LAYOUT_POINTS.cards_date);
+          const timePoint = getCardLayoutPoint(form.layout_overrides, "cards_time", DEFAULT_LAYOUT_POINTS.cards_time);
 
-          const infoDx = cardsInfoCenterX - defaultCardsCenterX;
-          const infoDy = cardsInfoCenterY - defaultCardsCenterY;
+          const titleCenterX = (titlePoint.x / 100) * pageW;
+          const titleCenterY = (titlePoint.y / 100) * pageH;
+          const captionCenterX = (captionPoint.x / 100) * pageW;
+          const captionCenterY = (captionPoint.y / 100) * pageH;
+          const dateCenterX = (datePoint.x / 100) * pageW;
+          const dateCenterY = (datePoint.y / 100) * pageH;
+          const timeCenterX = (timePoint.x / 100) * pageW;
+          const timeCenterY = (timePoint.y / 100) * pageH;
 
-          const infoX = textX + infoDx;
-          const infoY = textY + infoDy;
+          const [bgR, bgG, bgB] = parseHex(form.background_color, [11, 13, 18]);
+          const softAccR = Math.round(accR * 0.22 + bgR * 0.78);
+          const softAccG = Math.round(accG * 0.22 + bgG * 0.78);
+          const softAccB = Math.round(accB * 0.22 + bgB * 0.78);
 
+          const postTitle = `Post ${i + 1}`;
+          const titleFontSize = Math.max(10, sx(form.card_font_size * 3));
           setFont(doc, "bold");
           doc.setTextColor(titleR, titleG, titleB);
-          doc.setFontSize(Math.max(10, sx(form.card_font_size * 3)));
-          doc.text(`Post ${i + 1}`, infoX, infoY + sy(60));
+          doc.setFontSize(titleFontSize);
+          const postTitleW = doc.getTextWidth(postTitle);
 
-          const badgeText = postTypeLabel;
-          doc.setFontSize(sx(18));
-          const badgeTextW = doc.getTextWidth(badgeText);
-          const badgePadX = sx(24);
-          const badgeW = badgeTextW + badgePadX * 2;
-          const badgeH = sy(44);
-          const badgeX = infoX + sx(180);
-          const badgeY = infoY + sy(24);
-          doc.setFillColor(accR, accG, accB);
-          doc.roundedRect(badgeX, badgeY, badgeW, badgeH, sy(22), sy(22), "F");
-          doc.setTextColor(255, 255, 255);
-          doc.text(badgeText, badgeX + badgeW / 2, badgeY + badgeH / 2, { align: "center", baseline: "middle" });
-
-          doc.setTextColor(subR, subG, subB);
-          setFont(doc, "bold");
-          doc.setFontSize(sx(16));
-          doc.text("Legenda:", infoX, infoY + sy(130));
-
-          doc.setTextColor(titleR, titleG, titleB);
+          const typeFontSize = sx(20);
           setFont(doc, "normal");
+          doc.setFontSize(typeFontSize);
+          const typeTextW = doc.getTextWidth(postTypeLabel);
+          const typePadX = sx(20);
+          const typeBadgeW = typeTextW + typePadX * 2;
+          const typeBadgeH = sy(42);
+          const groupGap = sx(16);
+          const totalTitleW = postTitleW + groupGap + typeBadgeW;
+          const groupStartX = titleCenterX - totalTitleW / 2;
+
+          setFont(doc, "bold");
+          doc.setTextColor(titleR, titleG, titleB);
+          doc.setFontSize(titleFontSize);
+          doc.text(postTitle, groupStartX, titleCenterY, { baseline: "middle" });
+
+          const typeBadgeX = groupStartX + postTitleW + groupGap;
+          const typeBadgeY = titleCenterY - typeBadgeH / 2;
+          doc.setFillColor(softAccR, softAccG, softAccB);
+          doc.roundedRect(typeBadgeX, typeBadgeY, typeBadgeW, typeBadgeH, sy(21), sy(21), "F");
+
+          setFont(doc, "bold");
+          doc.setFontSize(typeFontSize);
+          doc.setTextColor(accR, accG, accB);
+          doc.text(postTypeLabel, typeBadgeX + typeBadgeW / 2, titleCenterY, { align: "center", baseline: "middle" });
+
+          const captionLabelX = captionCenterX - infoW / 2;
+          const captionLabelY = captionCenterY - sy(48);
+          setFont(doc, "bold");
+          doc.setTextColor(subR, subG, subB);
+          doc.setFontSize(sx(20));
+          doc.text("Legenda:", captionLabelX, captionLabelY, { baseline: "top" });
+
+          const captionText = post.caption?.trim() || "Sem legenda";
+          setFont(doc, "normal");
+          doc.setTextColor(titleR, titleG, titleB);
           doc.setFontSize(Math.max(9, sx(form.card_caption_font_size * 2)));
-          const caption = post.caption?.trim() || "Sem legenda";
-          const wrappedCaption = doc.splitTextToSize(caption, textW);
+          const wrappedCaption = doc.splitTextToSize(captionText, infoW);
           doc.setLineHeightFactor(1.7);
-          doc.text(wrappedCaption, infoX, infoY + sy(170), { baseline: "top", lineHeightFactor: 1.7 });
+          doc.text(wrappedCaption, captionLabelX, captionLabelY + sy(34), { baseline: "top", lineHeightFactor: 1.7 });
           doc.setLineHeightFactor(1.15);
 
-          const footerTop = infoY + contentH - sy(124);
-          doc.setDrawColor(accR, accG, accB);
-          doc.setLineWidth(1.4);
-          doc.line(infoX, footerTop, infoX + textW, footerTop);
-
           const formattedDate = post.posting_date ? format(parseISO(post.posting_date), "dd/MM/yyyy") : "—";
-          const dateBadgeW = Math.min(sx(240), textW * 0.48);
+          const dateText = `Data: ${formattedDate}`;
+          setFont(doc, "bold");
+          doc.setFontSize(Math.max(10, sx((form.card_date_font_size ?? 12) * 1.8)));
+          const dateBadgeW = Math.max(sx(220), doc.getTextWidth(dateText) + sx(36));
           const dateBadgeH = sy(50);
-          const dateBadgeX = infoX + textW - dateBadgeW;
-          const dateBadgeY = footerTop + sy(18);
+          const dateBadgeX = dateCenterX - dateBadgeW / 2;
+          const dateBadgeY = dateCenterY - dateBadgeH / 2;
 
           doc.setFillColor(accR, accG, accB);
           doc.roundedRect(dateBadgeX, dateBadgeY, dateBadgeW, dateBadgeH, sy(10), sy(10), "F");
           doc.setTextColor(255, 255, 255);
-          setFont(doc, "bold");
-          doc.setFontSize(Math.max(10, sx((form.card_date_font_size ?? 12) * 1.8)));
-          doc.text(`Data: ${formattedDate}`, dateBadgeX + dateBadgeW / 2, dateBadgeY + dateBadgeH / 2, {
-            align: "center",
-            baseline: "middle",
-          });
+          doc.text(dateText, dateCenterX, dateCenterY, { align: "center", baseline: "middle" });
 
           if (form.show_time_on_card && post.posting_time) {
-            const timeBadgeY = dateBadgeY + dateBadgeH + sy(12);
+            const timeText = `Horário: ${post.posting_time}`;
+            const timeBadgeW = Math.max(sx(220), doc.getTextWidth(timeText) + sx(36));
+            const timeBadgeH = sy(50);
+            const timeBadgeX = timeCenterX - timeBadgeW / 2;
+            const timeBadgeY = timeCenterY - timeBadgeH / 2;
+
             doc.setFillColor(accR, accG, accB);
-            doc.roundedRect(dateBadgeX, timeBadgeY, dateBadgeW, dateBadgeH, sy(10), sy(10), "F");
+            doc.roundedRect(timeBadgeX, timeBadgeY, timeBadgeW, timeBadgeH, sy(10), sy(10), "F");
             doc.setTextColor(255, 255, 255);
-            doc.text(`Horário: ${post.posting_time}`, dateBadgeX + dateBadgeW / 2, timeBadgeY + dateBadgeH / 2, {
-              align: "center",
-              baseline: "middle",
-            });
+            doc.text(timeText, timeCenterX, timeCenterY, { align: "center", baseline: "middle" });
           }
         }
       }
