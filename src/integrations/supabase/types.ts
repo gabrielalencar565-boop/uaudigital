@@ -1186,10 +1186,14 @@ export type Database = {
           card_caption_font_size: number
           card_date_font_size: number
           card_font_size: number
+          card_image_width_pct: number
           card_proportion: string
           cover_logo_url: string | null
           footer_contact: string
+          footer_contact_font_size: number
+          footer_subtitle_font_size: number
           footer_text: string
+          footer_title_font_size: number
           id: string
           margin_size: number
           show_caption_on_card: boolean
@@ -1213,10 +1217,14 @@ export type Database = {
           card_caption_font_size?: number
           card_date_font_size?: number
           card_font_size?: number
+          card_image_width_pct?: number
           card_proportion?: string
           cover_logo_url?: string | null
           footer_contact?: string
+          footer_contact_font_size?: number
+          footer_subtitle_font_size?: number
           footer_text?: string
+          footer_title_font_size?: number
           id?: string
           margin_size?: number
           show_caption_on_card?: boolean
@@ -1240,10 +1248,14 @@ export type Database = {
           card_caption_font_size?: number
           card_date_font_size?: number
           card_font_size?: number
+          card_image_width_pct?: number
           card_proportion?: string
           cover_logo_url?: string | null
           footer_contact?: string
+          footer_contact_font_size?: number
+          footer_subtitle_font_size?: number
           footer_text?: string
+          footer_title_font_size?: number
           id?: string
           margin_size?: number
           show_caption_on_card?: boolean
