@@ -233,8 +233,12 @@ export function MonthlyView({ posts, selectedPost, onSelectPost, onDateChange }:
                       )}
                       onClick={(e) => { e.stopPropagation(); onSelectPost(post); }}
                     >
-                      {imgUrl && (
-                        <img src={imgUrl} alt="" className="w-full aspect-square rounded object-cover mb-0.5" />
+                      {imgUrl ? (
+                        <img src={imgUrl} alt="" className="w-full aspect-[4/3] rounded object-cover mb-0.5" />
+                      ) : (
+                        <div className="w-full aspect-[4/3] rounded bg-muted/30 flex items-center justify-center mb-0.5">
+                          <Icon className="h-4 w-4 text-muted-foreground/40" />
+                        </div>
                       )}
                       <div className="flex items-center gap-1">
                         <Icon className="h-2.5 w-2.5 shrink-0" />
