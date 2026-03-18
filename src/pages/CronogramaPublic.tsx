@@ -53,7 +53,7 @@ export default function CronogramaPublic() {
   const [posts, setPosts] = useState<PostData[]>([]);
   const [selectedPost, setSelectedPost] = useState<PostData | null>(null);
   const [feedbacks, setFeedbacks] = useState<Record<string, FeedbackData>>({});
-  const [pdfSettings, setPdfSettings] = useState<PdfExportSettings | null>(null);
+  
 
   useEffect(() => {
     if (!taskId) return;
