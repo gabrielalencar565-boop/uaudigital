@@ -160,12 +160,13 @@ export function PreviewCarouselPage({ form, editable, onMoveNode }: PreviewProps
   const contentH = PDF_H - margin * 2;
   const imgHeightPct = (form.carousel_image_height_pct ?? 65) / 100;
   const gridH = contentH * imgHeightPct;
-  const infoH = contentH - gridH - 20;
 
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
 
-  const fallbackInfoPoint: LayoutPoint = { x: 50, y: ((margin + gridH + 20 + infoH / 2) / PDF_H) * 100 };
-  const infoPoint = getLayoutPoint(form.layout_overrides, "carousel_info", fallbackInfoPoint);
+  const titlePoint = getLayoutPoint(form.layout_overrides, "carousel_title", DEFAULT_LAYOUT_POINTS.carousel_title);
+  const captionPoint = getLayoutPoint(form.layout_overrides, "carousel_caption", DEFAULT_LAYOUT_POINTS.carousel_caption);
+  const datePoint = getLayoutPoint(form.layout_overrides, "carousel_date", DEFAULT_LAYOUT_POINTS.carousel_date);
+  const timePoint = getLayoutPoint(form.layout_overrides, "carousel_time", DEFAULT_LAYOUT_POINTS.carousel_time);
 
   const mockImageCount = Math.min(maxCols * maxRows, 5);
   const frames = buildAdaptiveCarouselGridFrames({ itemCount: mockImageCount, maxCols, maxRows, x: margin, y: margin, width: contentW, height: gridH, gap: imgGap });
@@ -180,6 +181,7 @@ export function PreviewCarouselPage({ form, editable, onMoveNode }: PreviewProps
 
   return (
     <div ref={setContainerEl} className="relative overflow-hidden" style={{ width: PDF_W, height: PDF_H, backgroundColor: bg }}>
+      {/* Image grid */}
       {frames.map((frame) => (
         <div key={frame.index} className="absolute rounded-3xl overflow-hidden" style={{ left: frame.x, top: frame.y, width: frame.size, height: frame.size, backgroundColor: "#1a1d27" }}>
           <div className="absolute inset-0" style={{ backgroundImage: mockBackgrounds[frame.index % mockBackgrounds.length], backgroundSize: "contain", backgroundPosition: "center", backgroundRepeat: "no-repeat" }} />
@@ -187,27 +189,39 @@ export function PreviewCarouselPage({ form, editable, onMoveNode }: PreviewProps
         </div>
       ))}
 
-      {/* Info section – draggable as group */}
-      <DraggableNode layoutKey="carousel_info" point={infoPoint} editable={editable} containerEl={containerEl} onMoveNode={onMoveNode} label="Info do Carrossel" className="z-10" style={{ width: contentW, minHeight: infoH }}>
-        <div className="relative rounded-2xl px-3 py-2" style={{ minHeight: infoH }}>
-          <div className="absolute left-3 top-4" style={{ width: "22%" }}>
-            <div style={{ fontSize: (form.carousel_title_font_size ?? 14) * 2.8, color: titleColor }} className="font-bold leading-tight">Post 1</div>
-            <div style={{ fontSize: 16, color: accent }} className="mt-1 font-semibold">Carrossel</div>
-          </div>
-          <div className="absolute top-4" style={{ left: "24%", width: "46%" }}>
-            <div style={{ fontSize: 15, color: subtitleColor }} className="uppercase tracking-wider font-semibold mb-2">Legenda:</div>
-            <div style={{ fontSize: (form.carousel_caption_font_size ?? 11) * 1.9, color: titleColor, lineHeight: 1.65, maxHeight: infoH - 30, overflow: "hidden" }}>
-              Essa é a legenda completa da postagem do carrossel com quebra automática, sem invadir a área de data e horário.
-            </div>
-          </div>
-          <div className="absolute right-3 bottom-3 flex flex-col gap-2.5 items-end" style={{ width: "26%" }}>
-            <div className="rounded-xl px-6 py-3 font-bold text-white" style={{ backgroundColor: accent, fontSize: (form.carousel_date_font_size ?? 12) * 1.8 }}>Data: 05/03/2026</div>
-            {(form.show_time_on_card ?? true) && (
-              <div className="rounded-xl px-6 py-3 font-bold text-white" style={{ backgroundColor: accent, fontSize: (form.carousel_date_font_size ?? 12) * 1.8 }}>Horário: 12h00</div>
-            )}
+      {/* Title + type – draggable */}
+      <DraggableNode layoutKey="carousel_title" point={titlePoint} editable={editable} containerEl={containerEl} onMoveNode={onMoveNode} label="Título" className="z-10">
+        <div>
+          <div style={{ fontSize: (form.carousel_title_font_size ?? 14) * 2.8, color: titleColor }} className="font-bold leading-tight">Post 1</div>
+          <div style={{ fontSize: 16, color: accent }} className="mt-1 font-semibold">Carrossel</div>
+        </div>
+      </DraggableNode>
+
+      {/* Caption – draggable */}
+      <DraggableNode layoutKey="carousel_caption" point={captionPoint} editable={editable} containerEl={containerEl} onMoveNode={onMoveNode} label="Legenda" className="z-10" style={{ maxWidth: contentW * 0.45 }}>
+        <div>
+          <div style={{ fontSize: 15, color: subtitleColor }} className="uppercase tracking-wider font-semibold mb-2">Legenda:</div>
+          <div style={{ fontSize: (form.carousel_caption_font_size ?? 11) * 1.9, color: titleColor, lineHeight: 1.65, wordBreak: "break-word", overflowWrap: "break-word" }}>
+            Essa é a legenda completa da postagem do carrossel com quebra automática.
           </div>
         </div>
       </DraggableNode>
+
+      {/* Date – draggable */}
+      <DraggableNode layoutKey="carousel_date" point={datePoint} editable={editable} containerEl={containerEl} onMoveNode={onMoveNode} label="Data" className="z-10">
+        <div className="rounded-xl px-6 py-3 font-bold text-white whitespace-nowrap" style={{ backgroundColor: accent, fontSize: (form.carousel_date_font_size ?? 12) * 1.8 }}>
+          Data: 05/03/2026
+        </div>
+      </DraggableNode>
+
+      {/* Time – draggable */}
+      {(form.show_time_on_card ?? true) && (
+        <DraggableNode layoutKey="carousel_time" point={timePoint} editable={editable} containerEl={containerEl} onMoveNode={onMoveNode} label="Horário" className="z-10">
+          <div className="rounded-xl px-6 py-3 font-bold text-white whitespace-nowrap" style={{ backgroundColor: accent, fontSize: (form.carousel_date_font_size ?? 12) * 1.8 }}>
+            Horário: 12h00
+          </div>
+        </DraggableNode>
+      )}
     </div>
   );
 }
