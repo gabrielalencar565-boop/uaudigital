@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Calendar, Download, Share2, CalendarRange, LayoutGrid as GridIcon, List } from "lucide-react";
+import { Calendar, Download, Share2, CalendarRange, LayoutGrid as GridIcon, List, Palette } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import type { PmTask } from "../pm-types";
 import { useUpdatePmTask } from "../hooks/use-pm-data";
 import { toast } from "sonner";
+import { downloadCanvaPackage } from "./cronograma/canva-export";
 
 import { POST_TYPE_META, type CronogramaPost } from "./cronograma/types";
 import { MonthlyView } from "./cronograma/MonthlyView";
