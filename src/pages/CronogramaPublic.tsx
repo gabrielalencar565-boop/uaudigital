@@ -202,9 +202,6 @@ export default function CronogramaPublic() {
             <h1 className="text-xl font-bold">{clientName || parentTitle}</h1>
             <p className="text-xs text-gray-500">Cronograma de Postagens</p>
           </div>
-          <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={handleDownloadPdf}>
-            <Download className="h-3.5 w-3.5" /> Baixar PDF
-          </Button>
         </div>
 
         <div className="flex gap-6">
