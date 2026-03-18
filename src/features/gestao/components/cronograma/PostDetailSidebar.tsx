@@ -75,7 +75,7 @@ export function PostDetailSidebar({ post, onClose, onUpdate, onRename, clientNam
         <div className="flex items-center justify-between px-3 py-2.5">
           <div className="flex items-center gap-2.5">
             <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-purple-500 via-pink-500 to-orange-400 flex items-center justify-center">
-              <span className="text-white text-xs font-bold">{post.title?.charAt(0)?.toUpperCase() || "P"}</span>
+              <span className="text-white text-xs font-bold">{headerName?.charAt(0)?.toUpperCase() || "P"}</span>
             </div>
             <div className="flex flex-col">
               {editingField === "title" ? (
