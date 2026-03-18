@@ -652,8 +652,8 @@ export function PdfLayoutEditor() {
 
   const moveBlock = useCallback((blockId: BlockId, dir: -1 | 1) => {
     setForm(prev => {
-      const order = [...(prev.blocks_order ?? ["cover", "cards", "footer"])].filter(
-        (b): b is BlockId => b === "cover" || b === "cards" || b === "footer"
+      const order = [...(prev.blocks_order ?? ["cover", "cards", "carousel", "footer"])].filter(
+        (b): b is BlockId => ALL_BLOCKS.includes(b as BlockId)
       );
       const idx = order.indexOf(blockId);
       if (idx < 0) return prev;
