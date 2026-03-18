@@ -234,17 +234,6 @@ export function PostDetailSidebar({ post, onClose, onUpdate, onRename, onEditTas
             )}
           </div>
 
-          {/* Full caption editor */}
-          <div className="pt-2 border-t border-border/30">
-            <h4 className="text-xs font-bold mb-1 text-muted-foreground">Legenda:</h4>
-            <SmartCaptionEditor
-              value={post.caption ?? ""}
-              onChange={(val) => onUpdate("caption", val || null)}
-              placeholder="Escreva a legenda..."
-              className="text-xs"
-              minHeight="80px"
-            />
-          </div>
         </div>
       </div>
 
