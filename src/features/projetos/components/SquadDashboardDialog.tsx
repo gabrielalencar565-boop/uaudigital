@@ -139,7 +139,7 @@ export function SquadDashboardDialog({
       .sort((a, b) => b.stagesCompleted - a.stagesCompleted || b.tasksDone - a.tasksDone);
   }, [squadMemberIds, squadStages, agendaTasks, squadClientIds, teamMap]);
 
-  const maxDone = Math.max(1, ...memberProductivity.map(m => m.done));
+  const maxStages = Math.max(1, ...memberProductivity.map(m => m.stagesCompleted));
 
   if (!squad) return null;
 
