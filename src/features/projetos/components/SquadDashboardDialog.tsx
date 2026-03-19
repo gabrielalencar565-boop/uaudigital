@@ -478,33 +478,6 @@ export function SquadDashboardDialog({
     </div>
   );
 
-  // ── Maximized dialog ──
-  const renderMaximized = () => {
-    if (!maximized) return null;
-    const titles: Record<string, string> = {
-      stages: "Evolução por Etapa",
-      productivity: "Produtividade por Colaborador",
-    };
-    return (
-      <Dialog open={!!maximized} onOpenChange={() => setMaximized(null)}>
-        <DialogContent className="max-w-5xl max-h-[95vh] overflow-hidden p-0">
-          <div className="px-8 pt-6 pb-4 border-b border-border/30 flex items-center justify-between">
-            <div>
-              <DialogTitle className="text-lg font-bold">{titles[maximized]}</DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-                {squad.name} — {format(now, "MMMM yyyy", { locale: ptBR })}
-              </DialogDescription>
-            </div>
-          </div>
-          <div className="px-8 py-6 overflow-y-auto max-h-[calc(95vh-80px)]">
-            {maximized === "stages" && renderStagesSection(true)}
-            {maximized === "productivity" && renderProductivitySection(true)}
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  };
-
   return (
     <>
       <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
