@@ -380,8 +380,3 @@ All colors MUST be HSL.
   0%   { transform: translateY(-50%); }
   100% { transform: translateY(0); }
 }
-
-/* iOS safe area for bottom nav */
-.safe-area-bottom {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-}

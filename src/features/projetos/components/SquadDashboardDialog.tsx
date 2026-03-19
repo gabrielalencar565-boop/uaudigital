@@ -31,8 +31,7 @@ const ROLE_STAGES: Record<string, string[]> = {
   "designer": ["design"],
 };
 
-function getRoleStages(roleTitle: string | undefined | null): string[] {
-  if (!roleTitle) return [...STAGE_ORDER]; // fallback: all
+function getRoleStages(roleTitle: string): string[] {
   const normalized = roleTitle.toLowerCase().trim();
   for (const [key, stages] of Object.entries(ROLE_STAGES)) {
     if (normalized.includes(key)) return stages;
@@ -40,13 +39,12 @@ function getRoleStages(roleTitle: string | undefined | null): string[] {
   return [...STAGE_ORDER]; // fallback: all
 }
 
-function getRoleLabel(roleTitle: string | undefined | null): string {
-  if (!roleTitle) return "—";
+function getRoleLabel(roleTitle: string): string {
   const normalized = roleTitle.toLowerCase().trim();
   if (normalized.includes("social media")) return "Social Media";
   if (normalized.includes("videomaker")) return "Videomaker";
   if (normalized.includes("designer")) return "Designer";
-  return roleTitle;
+  return roleTitle || "—";
 }
 
 function initials(name: string) {
