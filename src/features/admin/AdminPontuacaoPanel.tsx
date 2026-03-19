@@ -80,6 +80,12 @@ export function AdminPontuacaoPanel() {
     .filter((r) => magicStages.includes(r.stage))
     .sort((a, b) => magicStages.indexOf(a.stage) - magicStages.indexOf(b.stage));
 
+  // Tag-based scoring entries
+  const tagStages = ["tag_post", "tag_carrossel", "tag_capa", "tag_video_curto", "tag_video"];
+  const tagRows = [...rows]
+    .filter((r) => tagStages.includes(r.stage))
+    .sort((a, b) => tagStages.indexOf(a.stage) - tagStages.indexOf(b.stage));
+
   return (
     <div className="space-y-6">
       <div className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
