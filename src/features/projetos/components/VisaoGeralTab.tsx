@@ -649,7 +649,8 @@ export function VisaoGeralTab() {
             return (
               <Card
                 key={sq.id}
-                className="relative overflow-hidden border-0 group transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl flex-1 min-w-[280px] max-w-[400px]"
+                className="relative overflow-hidden border-0 group transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl flex-1 min-w-[280px] max-w-[400px] cursor-pointer"
+                onClick={() => setExpandedSquadId(sq.id)}
                 style={{
                   background: `linear-gradient(135deg, ${sq.color} 0%, ${sq.color}dd 50%, ${sq.color}aa 100%)`,
                 }}
