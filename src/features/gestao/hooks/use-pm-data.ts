@@ -207,6 +207,33 @@ export function useDeletePmTask() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      // Soft-delete all performance snapshot tasks linked to this pm_task
+      // Pattern: description LIKE 'pm:{id}:%'
+      // This triggers task_soft_delete_uncheck_magic to uncheck magic number & recalc scores
+      const { error: snapErr } = await sb
+        .from("tasks")
+        .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id ?? null })
+        .like("description", `pm:${id}:%`)
+        .is("deleted_at", null);
+      if (snapErr) console.error("Error cleaning snapshots:", snapErr);
+
+      // Also delete child pm_tasks first (cascade won't soft-delete snapshots)
+      const { data: children } = await sb
+        .from("pm_tasks")
+        .select("id")
+        .eq("parent_task_id", id);
+      if (children?.length) {
+        for (const child of children) {
+          await sb
+            .from("tasks")
+            .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id ?? null })
+            .like("description", `pm:${child.id}:%`)
+            .is("deleted_at", null);
+        }
+      }
+
       const { error } = await sb.from("pm_tasks").delete().eq("id", id);
       if (error) throw error;
     },
@@ -214,6 +241,8 @@ export function useDeletePmTask() {
       qc.invalidateQueries({ queryKey: ["pm_tasks"] });
       qc.invalidateQueries({ queryKey: ["pm_child_tasks"] });
       qc.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
+      qc.invalidateQueries({ queryKey: ["magic2"] });
+      qc.invalidateQueries({ queryKey: ["tasks"] });
     },
   });
 }
