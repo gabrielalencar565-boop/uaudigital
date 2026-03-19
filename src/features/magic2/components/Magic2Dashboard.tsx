@@ -184,7 +184,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
     <section className={cn(
       "grid gap-4 items-stretch",
       fullscreen
-        ? "flex-1 min-h-0 h-full grid-cols-[minmax(280px,380px)_1fr]"
+        ? "flex-1 min-h-0 h-full grid-cols-[1fr_2fr]"
         : "grid-cols-[minmax(260px,360px)_1fr] lg:grid-cols-[minmax(300px,400px)_1fr] xl:grid-cols-[420px_1fr]"
     )} style={fullscreen ? { height: "100%" } : undefined}>
 
@@ -199,14 +199,15 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
         <GradientLayers />
         <CardHeader className="relative z-10 shrink-0">
           <CardTitle className="text-lg text-white drop-shadow-sm">Visão Geral</CardTitle>
+          <p className="text-sm text-white/50">Percentual concluído no mês selecionado.</p>
           <CountdownTo27Badge due={dueDate} now={now} />
         </CardHeader>
         <CardContent className="relative z-10 flex-1 flex items-center justify-center p-6">
           <ProgressRing
             value={dashboard.overallPct}
             tone={dashboard.overallPct === 100 ? "success" : "warning"}
-            size={fullscreen ? 340 : 340}
-            stroke={fullscreen ? 26 : 28}
+            size={fullscreen ? 400 : 340}
+            stroke={fullscreen ? 30 : 28}
             trackColor="rgba(91,33,182,0.45)"
             label={
               <div className="text-center">
@@ -237,9 +238,8 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
 
         {/* Stage rings grid — fills remaining height */}
         <div className={cn(
-          "flex-1 min-h-0 grid gap-3 content-stretch",
-          "grid-cols-4 grid-rows-2",
-          fullscreen && "pb-6"
+          "flex-1 min-h-0 grid gap-3",
+          "grid-cols-4 grid-rows-2"
         )}>
           {stagesForDashboard.map((st) => {
             const item = dashboard.byStage[st.key];
