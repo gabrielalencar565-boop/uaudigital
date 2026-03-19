@@ -241,7 +241,23 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       const { supabase } = await import("@/integrations/supabase/client");
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      syncStage.mutate({ pmTaskId: task.id, completedStage, userId: user.id });
+      // Pass explicit user IDs: assignee + watchers (BEFORE stage change updates them)
+      const scoringUserIds = [
+        task.assignee_id,
+        ...(task.watchers ?? []),
+      ].filter(Boolean) as string[];
+      // Also include child task assignees
+      for (const child of childTasks) {
+        if (child.assignee_id && !scoringUserIds.includes(child.assignee_id)) {
+          scoringUserIds.push(child.assignee_id);
+        }
+      }
+      syncStage.mutate({
+        pmTaskId: task.id,
+        completedStage,
+        userId: user.id,
+        scoringUserIds: scoringUserIds.length > 0 ? scoringUserIds : undefined,
+      });
     } catch (_) { /* ignore */ }
   };
 
