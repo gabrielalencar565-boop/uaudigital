@@ -85,7 +85,7 @@ interface SquadDashboardDialogProps {
   squadClientIds: string[];
 }
 
-type MaxSection = "stages" | "productivity" | "clients" | null;
+type MaxSection = "stages" | "productivity" | null;
 
 export function SquadDashboardDialog({
   open, onClose, squad, squadIcon: SquadIcon, stageProgress, stagePerf,
