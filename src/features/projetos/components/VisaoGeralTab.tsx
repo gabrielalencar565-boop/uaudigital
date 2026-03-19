@@ -721,7 +721,7 @@ export function VisaoGeralTab() {
                     {isAdmin && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <button className="h-7 w-7 flex items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 transition-colors">
+                          <button onClick={(e) => e.stopPropagation()} className="h-7 w-7 flex items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 transition-colors">
                             <MoreHorizontal className="h-4 w-4 text-white" />
                           </button>
                         </DropdownMenuTrigger>
