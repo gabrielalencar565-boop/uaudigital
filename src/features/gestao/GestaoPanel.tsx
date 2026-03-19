@@ -303,7 +303,9 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
           search={search}
           cursor={agendaCursor}
           setCursor={setAgendaCursor}
-          fixedAssigneeClientIds={fixedAssigneeClientIds} />
+          fixedAssigneeClientIds={fixedAssigneeClientIds}
+          clients={(clientsQ.data ?? []).map((c) => ({ id: c.id, name: c.name }))}
+          members={membersList} />
 
         }
         {effectiveView === "clientes" &&
