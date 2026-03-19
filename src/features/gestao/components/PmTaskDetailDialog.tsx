@@ -361,15 +361,40 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
   const handleAlteracao = () => {
     if (alteracaoTargets.length === 1) {
-      updateTask.mutate({ id: task.id, stage_current: alteracaoTargets[0] as any });
-      toast.success(`Retornou para ${stageLabel(alteracaoTargets[0])}`);
+      const targetStage = alteracaoTargets[0];
+      const updates: any = { id: task.id, stage_current: targetStage as any };
+      const fixedAssignee = getFixedAssignee(stageAssignees, targetStage, task.client_id);
+      if (fixedAssignee !== undefined) {
+        updates.assignee_id = fixedAssignee;
+        updates.watchers = [];
+      }
+      updateTask.mutate(updates);
+      // Move child tasks too
+      for (const child of childTasks) {
+        if (child.stage_current !== targetStage) {
+          updateTask.mutate({ id: child.id, stage_current: targetStage as any });
+        }
+      }
+      toast.success(`Retornou para ${stageLabel(targetStage)}`);
     } else {
       setAlteracaoChoiceOpen(true);
     }
   };
 
   const handleChooseAlteracao = (stageKey: string) => {
-    updateTask.mutate({ id: task.id, stage_current: stageKey as any });
+    const updates: any = { id: task.id, stage_current: stageKey as any };
+    const fixedAssignee = getFixedAssignee(stageAssignees, stageKey, task.client_id);
+    if (fixedAssignee !== undefined) {
+      updates.assignee_id = fixedAssignee;
+      updates.watchers = [];
+    }
+    updateTask.mutate(updates);
+    // Move child tasks too
+    for (const child of childTasks) {
+      if (child.stage_current !== stageKey) {
+        updateTask.mutate({ id: child.id, stage_current: stageKey as any });
+      }
+    }
     toast.success(`Retornou para ${stageLabel(stageKey)}`);
     setAlteracaoChoiceOpen(false);
   };
