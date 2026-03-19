@@ -29,6 +29,7 @@ import { stageLabel, getStageCircleColor, tagColor, tagDisplay } from "./pm-cons
 import { cn } from "@/lib/utils";
 import type { PmTask } from "./pm-types";
 import { toast } from "sonner";
+import { AgendaQuickCreateDialog } from "./components/AgendaQuickCreateDialog";
 import { useAgendaSpecialDates } from "@/features/agenda/hooks/use-agenda-dates";
 import { getIconById } from "@/features/agenda/components/IconPicker";
 function initials(n: string) {
