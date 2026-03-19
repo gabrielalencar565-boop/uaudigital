@@ -10,6 +10,8 @@ import type { PmTask } from "../pm-types";
 import { PmTaskCard } from "./PmTaskCard";
 import { useUpdatePmTask } from "../hooks/use-pm-data";
 import { useDefaultFlowWithDates, getFixedAssignee, getFixedWatchers } from "./PmStageFlowConfig";
+import { LinkOrDateDialog } from "./LinkOrDateDialog";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 const KANBAN_COLUMNS = [
