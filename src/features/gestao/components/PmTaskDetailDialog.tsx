@@ -896,8 +896,8 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           <PmAttachmentsSection taskId={task.id} attachments={attachments} membersMap={membersMap} onSetCover={handleSetCover} currentCoverUrl={task.cover_url} />
         </div>
 
-        {/* Cronograma tab (only for parent tasks with children) */}
-        {!task.parent_task_id && childTasks.length > 0 && (
+        {/* Cronograma tab (only for parent tasks in PDF stage with children) */}
+        {!task.parent_task_id && task.stage_current === "pdf" && childTasks.length > 0 && (
           <div className="border-t border-border/20 pt-4">
             <div className="flex items-center gap-2 mb-3">
               <CalendarDays className="h-4 w-4 text-muted-foreground" />
