@@ -354,12 +354,18 @@ export async function checkAndUpdateParentStatus(taskId: string) {
 export function usePmSyncStageCompletion() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ pmTaskId, completedStage, userId }: { pmTaskId: string; completedStage: string; userId: string }) => {
+    mutationFn: async ({ pmTaskId, completedStage, userId, scoringUserIds }: {
+      pmTaskId: string;
+      completedStage: string;
+      userId: string;
+      scoringUserIds?: string[];
+    }) => {
       const { error } = await supabase.rpc("pm_sync_stage_completion", {
         _pm_task_id: pmTaskId,
         _completed_stage: completedStage,
         _user_id: userId,
-      });
+        _scoring_user_ids: scoringUserIds ?? null,
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {
