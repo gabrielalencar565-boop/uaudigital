@@ -209,6 +209,13 @@ export function useDeletePmTask() {
     mutationFn: async (id: string) => {
       const { data: { user } } = await supabase.auth.getUser();
 
+      // Get task info before deleting (for snapshot cleanup)
+      const { data: taskInfo } = await sb
+        .from("pm_tasks")
+        .select("title, client_id")
+        .eq("id", id)
+        .single();
+
       // Soft-delete all performance snapshot tasks linked to this pm_task
       // Pattern: description LIKE 'pm:{id}:%'
       // This triggers task_soft_delete_uncheck_magic to uncheck magic number & recalc scores
@@ -232,6 +239,18 @@ export function useDeletePmTask() {
             .like("description", `pm:${child.id}:%`)
             .is("deleted_at", null);
         }
+      }
+
+      // Delete agenda snapshots (concluído copies created by advanceStage)
+      // These are pm_tasks with status_global = "concluido" and same title/client
+      if (taskInfo) {
+        await sb
+          .from("pm_tasks")
+          .delete()
+          .eq("client_id", taskInfo.client_id)
+          .eq("title", taskInfo.title)
+          .eq("status_global", "concluido")
+          .neq("id", id);
       }
 
       const { error } = await sb.from("pm_tasks").delete().eq("id", id);
