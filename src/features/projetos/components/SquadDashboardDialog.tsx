@@ -426,18 +426,16 @@ export function SquadDashboardDialog({
           <p className="text-sm font-bold text-foreground">Desempenho por Cliente</p>
           <p className="text-xs text-muted-foreground">{clientPerformance.length} clientes • 7 etapas do Magic Number</p>
         </div>
-        {!fullscreen && (
-          <button
-            onClick={() => setClientsCollapsed(!clientsCollapsed)}
-            className="h-8 w-8 rounded-xl border border-border/30 flex items-center justify-center hover:bg-muted/50 transition-colors"
-          >
-            {clientsCollapsed ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronUp className="h-4 w-4 text-muted-foreground" />}
-          </button>
-        )}
+        <button
+          onClick={() => setClientsCollapsed(!clientsCollapsed)}
+          className="h-8 w-8 rounded-xl border border-border/30 flex items-center justify-center hover:bg-muted/50 transition-colors"
+        >
+          {clientsCollapsed ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronUp className="h-4 w-4 text-muted-foreground" />}
+        </button>
       </div>
 
-      {(!clientsCollapsed || fullscreen) && (
-        <div className={cn("space-y-2", !fullscreen && "pl-12")}>
+      {!clientsCollapsed && (
+        <div className={cn("space-y-2", "pl-12")}>
           {clientPerformance.map(c => {
             const color = progressColor(c.percent);
             return (
