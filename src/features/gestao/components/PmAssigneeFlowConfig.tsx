@@ -180,7 +180,9 @@ export function PmAssigneeFlowConfig() {
                   </td>
                   {EDITABLE_STAGES.map(stage => {
                     const currentVal = assignees[stage.key]?.[client.id];
-                    const hasConfig = currentVal !== undefined;
+                    const rawVal = assignees[stage.key]?.[client.id];
+                    const currentVal = Array.isArray(rawVal) ? (rawVal[0] ?? null) : rawVal;
+                    const hasConfig = rawVal !== undefined;
                     const member = currentVal ? members.find(m => m.user_id === currentVal) : null;
 
                     return (
