@@ -739,6 +739,15 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
                     )}>
                       {format(d, "d")}
                     </div>
+                    {inMonth && (
+                      <button
+                        type="button"
+                        className="h-5 w-5 rounded-md flex items-center justify-center text-muted-foreground/40 hover:text-primary hover:bg-primary/10 transition opacity-0 group-hover/cell:opacity-100"
+                        onClick={() => { setQuickCreateDate(key); setQuickCreateOpen(true); }}
+                        title="Nova tarefa">
+                        <Plus className="h-3 w-3" />
+                      </button>
+                    )}
                   </div>
                   <div className="space-y-1.5 max-h-[520px] overflow-y-auto">
                     {renderSpecialDates(key, true)}
