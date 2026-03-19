@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { format, isPast, isToday } from "date-fns";
-import { Calendar, UserCircle, Flag, Plus, MoreHorizontal, Archive, Trash2, Pencil, Link2 } from "lucide-react";
+import { Calendar, UserCircle, Flag, Plus, MoreHorizontal, Archive, Trash2, Pencil, Link2, AlertTriangle } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { priorityMeta, tagColor, tagDisplay } from "../pm-constants";
 import { useUpdatePmTask, useDeletePmTask, useCreatePmTask } from "../hooks/use-pm-data";
@@ -33,6 +34,7 @@ export function PmTaskCard({ task, clientName, assigneeName, assigneeAvatar, chi
   const createTask = useCreatePmTask();
   const [addingSubtask, setAddingSubtask] = useState(false);
   const [newSubTitle, setNewSubTitle] = useState("");
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   const handleAddSubtask = async () => {
     if (!newSubTitle.trim()) { setAddingSubtask(false); return; }
@@ -42,10 +44,13 @@ export function PmTaskCard({ task, clientName, assigneeName, assigneeAvatar, chi
   };
 
   const handleArchive = (e: React.MouseEvent) => { e.stopPropagation(); updateTask.mutate({ id: task.id, status_global: "cancelado" as any }); toast.success("Tarefa arquivada"); };
-  const handleDelete = async (e: React.MouseEvent) => {
+  const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm("Excluir esta tarefa e todas as subtarefas?")) return;
+    setDeleteConfirmOpen(true);
+  };
+  const confirmDelete = async () => {
     try { await deleteTask.mutateAsync(task.id); toast.success("Tarefa excluída"); } catch (err: any) { toast.error(err?.message ?? "Erro ao excluir"); }
+    setDeleteConfirmOpen(false);
   };
 
   const [renaming, setRenaming] = useState(false);
@@ -162,6 +167,34 @@ export function PmTaskCard({ task, clientName, assigneeName, assigneeAvatar, chi
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Excluir tarefa?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">Tem certeza que deseja excluir <strong>"{task.title}"</strong>?</span>
+              <span className="block text-destructive font-medium">
+                ⚠️ Os pontos de performance não serão contabilizados e a etapa será desmarcada no Magic Number.
+              </span>
+              {total > 0 && (
+                <span className="block text-muted-foreground">
+                  {total} subtarefa{total > 1 ? "s" : ""} também será{total > 1 ? "ão" : ""} excluída{total > 1 ? "s" : ""}.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 import { useSession } from "@/hooks/use-session";
 import { useRole } from "@/hooks/use-role";
@@ -393,6 +394,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
   const [moreOpen, setMoreOpen] = useState(false);
   const [moreDayKey, setMoreDayKey] = useState<string | null>(null);
   const [agendaView, setAgendaView] = useState<"month" | "week">("month");
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   const todayKey = format(new Date(), "yyyy-MM-dd");
 
@@ -427,8 +429,13 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
 
   const handleDelete = (taskId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    deleteTask.mutate(taskId);
-    toast.success("Tarefa removida");
+    setPendingDeleteId(taskId);
+  };
+
+  const confirmDeleteCronograma = async () => {
+    if (!pendingDeleteId) return;
+    try { await deleteTask.mutateAsync(pendingDeleteId); toast.success("Tarefa removida"); } catch (err: any) { toast.error(err?.message ?? "Erro ao excluir"); }
+    setPendingDeleteId(null);
   };
 
   const filteredTasks = useMemo(() => {
@@ -774,6 +781,26 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
           </div>
         </DialogContent>
       </Dialog>
+      {/* Delete confirmation */}
+      <AlertDialog open={!!pendingDeleteId} onOpenChange={(open) => { if (!open) setPendingDeleteId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir tarefa?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">Tem certeza que deseja excluir esta tarefa?</span>
+              <span className="block text-destructive font-medium">
+                ⚠️ Os pontos de performance não serão contabilizados e a etapa será desmarcada no Magic Number.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteCronograma} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
