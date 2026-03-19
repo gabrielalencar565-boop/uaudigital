@@ -879,8 +879,8 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           />
         </div>
 
-        {/* Posting Fields (for subtasks - all stages) */}
-        {task.parent_task_id && (
+        {/* Posting Fields (for subtasks in PDF stage only) */}
+        {task.parent_task_id && task.stage_current === "pdf" && (
           <div className="border-t border-border/20 pt-4">
             <PmPostingFields task={task} />
           </div>
