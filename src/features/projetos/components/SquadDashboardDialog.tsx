@@ -52,12 +52,18 @@ interface SquadDashboardDialogProps {
   sqData: any;
   teamMap: Record<string, { user_id: string; display_name: string; avatar_url: string | null; role_title: string }>;
   squadMemberIds: string[];
-  allTasks: any[];
+  /** Magic2 cycle stages for this squad (with completed_by) */
+  squadStages: any[];
+  /** Agenda tasks (tasks table) for the current month */
+  agendaTasks: any[];
+  /** Client IDs belonging to this squad */
+  squadClientIds: string[];
 }
 
 export function SquadDashboardDialog({
   open, onClose, squad, squadIcon: SquadIcon, stageProgress, stagePerf,
-  clients, squadInsights, sqData, teamMap, squadMemberIds, allTasks,
+  clients, squadInsights, sqData, teamMap, squadMemberIds,
+  squadStages, agendaTasks, squadClientIds,
 }: SquadDashboardDialogProps) {
   const [clientsCollapsed, setClientsCollapsed] = useState(false);
   const now = new Date();
@@ -75,18 +81,44 @@ export function SquadDashboardDialog({
     return worst.percent < 100 ? worst : null;
   }, [stagePerf]);
 
-  // ── Member productivity ──
+  // ── Member productivity based on Magic Number stages + Agenda tasks ──
   const memberProductivity = useMemo(() => {
     if (!squadMemberIds.length) return [];
 
-    // Count tasks completed this month by each member
-    const memberStats: Record<string, { total: number; done: number }> = {};
-    squadMemberIds.forEach(uid => { memberStats[uid] = { total: 0, done: 0 }; });
+    const squadClientSet = new Set(squadClientIds);
 
-    for (const t of allTasks) {
-      if (!t.assignee_id || !memberStats[t.assignee_id]) continue;
-      memberStats[t.assignee_id].total++;
-      if (t.status_global === "concluido") memberStats[t.assignee_id].done++;
+    // Build stats per member
+    const memberStats: Record<string, {
+      stagesCompleted: number;
+      tasksTotal: number;
+      tasksDone: number;
+      stageBreakdown: Record<string, number>;
+    }> = {};
+
+    squadMemberIds.forEach(uid => {
+      memberStats[uid] = { stagesCompleted: 0, tasksTotal: 0, tasksDone: 0, stageBreakdown: {} };
+      STAGE_ORDER.forEach(k => { memberStats[uid].stageBreakdown[k] = 0; });
+    });
+
+    // Count magic2 stage completions per member (completed_by)
+    for (const s of squadStages) {
+      if (!s.completed || !s.completed_by) continue;
+      const stats = memberStats[s.completed_by];
+      if (!stats) continue;
+      stats.stagesCompleted++;
+      if (stats.stageBreakdown[s.stage] !== undefined) {
+        stats.stageBreakdown[s.stage]++;
+      }
+    }
+
+    // Count agenda tasks assigned to squad members for squad clients
+    for (const t of agendaTasks) {
+      if (!t.assigned_user_id || !memberStats[t.assigned_user_id]) continue;
+      if (!squadClientSet.has(t.client_id)) continue;
+      memberStats[t.assigned_user_id].tasksTotal++;
+      if (t.status === "concluido") {
+        memberStats[t.assigned_user_id].tasksDone++;
+      }
     }
 
     return Object.entries(memberStats)
@@ -97,13 +129,15 @@ export function SquadDashboardDialog({
           name: member?.display_name ?? "—",
           avatar: member?.avatar_url ?? null,
           role: member?.role_title ?? "",
-          done: stats.done,
-          total: stats.total,
-          percent: stats.total > 0 ? Math.round((stats.done / stats.total) * 100) : 0,
+          stagesCompleted: stats.stagesCompleted,
+          tasksDone: stats.tasksDone,
+          tasksTotal: stats.tasksTotal,
+          tasksPercent: stats.tasksTotal > 0 ? Math.round((stats.tasksDone / stats.tasksTotal) * 100) : 0,
+          stageBreakdown: stats.stageBreakdown,
         };
       })
-      .sort((a, b) => b.done - a.done || b.percent - a.percent);
-  }, [squadMemberIds, allTasks, teamMap]);
+      .sort((a, b) => b.stagesCompleted - a.stagesCompleted || b.tasksDone - a.tasksDone);
+  }, [squadMemberIds, squadStages, agendaTasks, squadClientIds, teamMap]);
 
   const maxDone = Math.max(1, ...memberProductivity.map(m => m.done));
 
