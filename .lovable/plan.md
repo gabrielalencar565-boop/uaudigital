@@ -1,87 +1,59 @@
 
 
-# Diagnóstico Completo e Plano de Melhorias do Sistema
+# Plano: Dashboard de Squad — Dados reais do Magic Number + Funções por Colaborador
 
-## Resumo Executivo
+## Resumo
 
-✅ **IMPLEMENTADO** - A visualização de múltiplos responsáveis em tarefas agora está funcionando em todo o sistema.
+Três mudanças principais no `SquadDashboardDialog.tsx`:
 
----
+1. **Desempenho por Cliente** — baseado nas 7 etapas do Magic Number (não em tarefas genéricas). Barra de progresso colorida: vermelho (<50%), amarelo (50-99%), verde (100%).
 
-## 1. Problema Resolvido: Múltiplos Membros Agora São Exibidos
+2. **Produtividade por Colaborador** — filtrada pelas etapas da função de cada pessoa:
+   - **Social Media**: planejamento, pdf, alterações, agendamento
+   - **Videomaker**: captação, edicao_videos
+   - **Designer**: design
+   
+   O `role_title` do `teamMap` será usado para mapear a função. As etapas exibidas e contabilizadas serão apenas as da responsabilidade da pessoa.
 
-### Mudanças Implementadas
+3. **Maximizar seções** — cada bloco (Evolução por Etapa, Produtividade por Colaborador, Desempenho por Cliente) terá um botão de maximizar que expande a seção em tela cheia (Dialog dentro de Dialog, ou estado fullscreen por seção).
 
-**1. AgendaPanel.tsx**
-- Adicionado `useTaskAssigneesByMonth` para buscar assignees do mês
-- Criado mapa `assigneesByTaskId` via useMemo para acesso rápido
-- Passando prop `members` para `AgendaWeekTaskItem` e `DraggableTaskCard` em todos os locais
+## Detalhes técnicos
 
-**2. DraggableTaskCard.tsx**
-- Adicionada interface `TaskMember`
-- Adicionada prop `members` opcional
-- Passando `members` para `AgendaWeekTaskItem`
+### Arquivo: `src/features/projetos/components/SquadDashboardDialog.tsx`
 
-**3. DayViewPanel.tsx**
-- Adicionado `useTaskAssigneesByMonth` para buscar assignees
-- Criado mapa `assigneesByTaskId` 
-- Implementada exibição de pilha de avatares com tooltip para múltiplos membros
-- Atualizado tanto para tarefas atrasadas quanto para tarefas do dia
+**Mapeamento de funções → etapas:**
+```typescript
+const ROLE_STAGES: Record<string, string[]> = {
+  "social media": ["planejamento", "pdf", "alteracoes", "agendamento"],
+  "videomaker": ["captacao", "edicao_videos"],
+  "designer": ["design"],
+};
 
----
+function getRoleStages(roleTitle: string): string[] {
+  const normalized = roleTitle.toLowerCase().trim();
+  for (const [key, stages] of Object.entries(ROLE_STAGES)) {
+    if (normalized.includes(key)) return stages;
+  }
+  return STAGE_ORDER; // fallback: todas
+}
+```
 
-## 2. Status Atualizado do Sistema
+**Produtividade por Colaborador:**
+- Para cada membro, filtrar `squadStages` por `completed_by === uid` E `stage` dentro das etapas da sua função.
+- Total possível = nº de clientes do squad × nº de etapas da função.
+- Mostrar percentual e barra de progresso com cor baseada no progresso.
 
-### Magic Number (Fevereiro/2026)
-| Aspecto | Status |
-|---------|--------|
-| Dados no banco | ✅ OK |
-| Query `useMagic2Month` | ✅ OK |
-| Navegação mês/ano | ✅ OK |
-| Dashboard | ✅ OK |
-| Checklist | ✅ OK |
+**Desempenho por Cliente:**
+- Cada cliente tem 7 etapas no Magic Number.
+- Contar `completed` stages do ciclo atual.
+- Barra: vermelho se `<50%`, amarelo se `50-99%`, verde se `100%`.
+- Mostrar badge "Completo" verde ou "Em andamento" amarelo/vermelho.
 
-### Agenda
-| Aspecto | Status |
-|---------|--------|
-| Visualização mensal | ✅ OK |
-| Visualização semanal | ✅ OK |
-| Drag and drop | ✅ OK |
-| Criar tarefa | ✅ OK |
-| Editar tarefa | ✅ OK |
-| **Exibir múltiplos membros** | ✅ OK |
-| Filtros (cliente/usuário) | ✅ OK |
+**Maximizar seções:**
+- Adicionar estado `maximizedSection: string | null` ("stages" | "productivity" | "clients").
+- Quando ativo, renderizar a seção em um Dialog fullscreen dedicado com botão de fechar.
+- Ícone `Maximize2` no header de cada seção.
 
-### Visão do Dia
-| Aspecto | Status |
-|---------|--------|
-| Navegação mês/ano | ✅ OK |
-| Auto-alternância | ✅ OK |
-| Magic Number view | ✅ OK |
-| Agenda view | ✅ OK |
-| **Múltiplos membros** | ✅ OK |
+### Arquivo: `src/features/projetos/components/VisaoGeralTab.tsx`
+- Nenhuma mudança necessária — os dados já são passados corretamente (squadStages contém `completed_by` e `stage`).
 
-### Desempenho
-| Aspecto | Status |
-|---------|--------|
-| Pontuação manual | ✅ OK |
-| Ranking mensal | ✅ OK |
-| Ranking anual | ✅ OK |
-| Relatório de prazos | ✅ OK |
-
-### Meu Painel
-| Aspecto | Status |
-|---------|--------|
-| Resumo do mês | ✅ OK |
-| Ranking pessoal | ✅ OK |
-| Lista de tarefas | ✅ OK |
-
----
-
-## 3. Resultado Visual
-
-Quando uma tarefa tem múltiplos responsáveis:
-1. ✅ Exibe uma **pilha elegante de avatares** (até 3 visíveis)
-2. ✅ Ao passar o mouse, um **tooltip** mostra todos os nomes
-3. ✅ Se houver mais de 3 membros, aparece **"+N"** indicando quantos faltam
-4. ✅ A visualização é **consistente** em Agenda, Visão do Dia e dialogs
