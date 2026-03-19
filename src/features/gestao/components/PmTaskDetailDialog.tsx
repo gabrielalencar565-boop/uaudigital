@@ -314,22 +314,26 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   };
 
   const advanceStage = async (completedStage: string, nextStage: string, newDueDate?: string) => {
-    // Check if there's an existing agenda task for the same client + target stage
+    // Check if there's an existing agenda task for the same client + target stage + month
     if (nextStage !== "entrega") {
       const sb = supabase as any;
-      const now = new Date();
-      const monthStart = format(new Date(now.getFullYear(), now.getMonth(), 1), "yyyy-MM-dd");
-      const monthEnd = format(new Date(now.getFullYear(), now.getMonth() + 1, 0), "yyyy-MM-dd");
+      const referenceDate = newDueDate ?? task.due_date ?? format(new Date(), "yyyy-MM-dd");
+      const base = new Date(`${referenceDate}T12:00:00`);
+      const monthStart = format(new Date(base.getFullYear(), base.getMonth(), 1), "yyyy-MM-dd");
+      const monthEnd = format(new Date(base.getFullYear(), base.getMonth() + 1, 0), "yyyy-MM-dd");
 
       const { data: existing } = await sb
         .from("pm_tasks")
         .select("id, due_date, title")
         .eq("client_id", task.client_id)
         .eq("stage_current", nextStage)
-        .eq("status_global", "concluido")
+        .neq("status_global", "concluido")
+        .is("parent_task_id", null)
+        .not("due_date", "is", null)
         .gte("due_date", monthStart)
         .lte("due_date", monthEnd)
         .neq("id", task.id)
+        .order("due_date", { ascending: true })
         .limit(1);
 
       if (existing && existing.length > 0) {

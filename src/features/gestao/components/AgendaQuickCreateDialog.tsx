@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -39,6 +39,11 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
   const [dueDate, setDueDate] = useState(defaultDate ?? format(new Date(), "yyyy-MM-dd"));
   const [isExtra, setIsExtra] = useState(false);
 
+  useEffect(() => {
+    if (!open) return;
+    setDueDate(defaultDate ?? format(new Date(), "yyyy-MM-dd"));
+  }, [open, defaultDate]);
+
   const toggleMember = (id: string) => {
     setSelectedMemberIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
@@ -50,7 +55,7 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
     const clientName = clients.find(c => c.id === clientId)?.name ?? "";
     const stageLabel = STAGE_OPTIONS.find(s => s.key === stage)?.label ?? stage;
     const mainAssignee = selectedMemberIds[0] ?? undefined;
-    
+
     createTask.mutate({
       client_id: clientId,
       title: `[${clientName}] - ${stageLabel}`,
@@ -58,7 +63,7 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
       due_date: dueDate,
       assignee_id: mainAssignee,
       is_extra_demand: isExtra,
-      status_global: "concluido",
+      status_global: "backlog",
     }, {
       onSuccess: () => {
         toast.success("Tarefa criada!");
@@ -73,6 +78,7 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
     setClientId("");
     setStage("planejamento");
     setSelectedMemberIds([]);
+    setDueDate(defaultDate ?? format(new Date(), "yyyy-MM-dd"));
     setIsExtra(false);
   };
 

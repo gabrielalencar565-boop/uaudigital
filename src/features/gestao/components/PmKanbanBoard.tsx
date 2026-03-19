@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { format } from "date-fns";
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, closestCenter, type DragStartEvent, type DragEndEvent } from "@dnd-kit/core";
 import { useDroppable } from "@dnd-kit/core";
 import { useDraggable } from "@dnd-kit/core";
@@ -141,16 +142,25 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, on
     const newStage = over.id as string;
     if (droppedTask.stage_current === newStage) return;
 
-    // Check for existing completed agenda task for same client + target stage
+    // Check for existing agenda task in the same month/client/stage
     try {
       const sb = supabase as any;
+      const base = droppedTask.due_date ? new Date(`${droppedTask.due_date}T12:00:00`) : new Date();
+      const monthStart = format(new Date(base.getFullYear(), base.getMonth(), 1), "yyyy-MM-dd");
+      const monthEnd = format(new Date(base.getFullYear(), base.getMonth() + 1, 0), "yyyy-MM-dd");
+
       const { data: existing } = await sb
         .from("pm_tasks")
         .select("id, due_date, title")
         .eq("client_id", droppedTask.client_id)
         .eq("stage_current", newStage)
-        .eq("status_global", "concluido")
+        .neq("status_global", "concluido")
         .is("parent_task_id", null)
+        .not("due_date", "is", null)
+        .gte("due_date", monthStart)
+        .lte("due_date", monthEnd)
+        .neq("id", droppedTask.id)
+        .order("due_date", { ascending: true })
         .limit(1);
 
       if (existing && existing.length > 0 && existing[0].due_date) {
