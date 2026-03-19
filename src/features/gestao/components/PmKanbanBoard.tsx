@@ -83,6 +83,19 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, on
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
 
+  const getTaskAssignees = (pmTask: PmTask) => {
+    const ids = Array.from(new Set([
+      pmTask.assignee_id,
+      ...(pmTask.watchers ?? []),
+    ].filter((id): id is string => Boolean(id))));
+
+    return ids.flatMap((id) => {
+      const member = membersMap[id];
+      if (!member) return [];
+      return [{ id, name: member.name, avatar: member.avatar }];
+    });
+  };
+
   const filtered = useMemo(() => {
     let list = tasks.filter((t) => t.status_global !== "concluido");
     if (filters.clientId) list = list.filter((t) => t.client_id === filters.clientId);
@@ -183,8 +196,6 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, on
     setPendingDragStage(null);
   };
 
-  const activeMember = activeTask?.assignee_id ? membersMap[activeTask.assignee_id] : undefined;
-
   return (
     <>
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
@@ -211,14 +222,13 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, on
               {/* Cards */}
               <DroppableColumn id={col.key}>
                 {col.tasks.map((task) => {
-                  const member = task.assignee_id ? membersMap[task.assignee_id] : undefined;
+                  const cardAssignees = getTaskAssignees(task);
                   return (
                     <DraggableCard key={task.id} task={task}>
                       <PmTaskCard
                         task={task}
                         clientName={clientsMap[task.client_id] ?? "—"}
-                        assigneeName={member?.name}
-                        assigneeAvatar={member?.avatar}
+                        assignees={cardAssignees}
                         childTasks={childTasksMap[task.id] ?? []}
                         onClick={() => onTaskClick(task)}
                         isAdmin={isAdmin}
@@ -247,8 +257,7 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, on
             <PmTaskCard
               task={activeTask}
               clientName={clientsMap[activeTask.client_id] ?? "—"}
-              assigneeName={activeMember?.name}
-              assigneeAvatar={activeMember?.avatar}
+              assignees={getTaskAssignees(activeTask)}
               childTasks={childTasksMap[activeTask.id] ?? []}
               onClick={() => {}}
               isAdmin={isAdmin}

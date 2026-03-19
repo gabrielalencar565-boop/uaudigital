@@ -517,7 +517,16 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
     const isDone = t.status_global === "concluido";
     const stageBg = STAGE_BADGE_BG[t.stage_current] ?? "bg-muted";
     const abbr = STAGE_ABBR[t.stage_current] ?? t.stage_current.toUpperCase().slice(0, 4);
-    const member = t.assignee_id ? membersMap[t.assignee_id] : undefined;
+    const assigneeIds = Array.from(new Set([
+      t.assignee_id,
+      ...(t.watchers ?? []),
+    ].filter((id): id is string => Boolean(id))));
+    const assignees = assigneeIds
+      .map((id) => ({ id, ...membersMap[id] }))
+      .filter((member): member is { id: string; name: string; avatar?: string } => Boolean(member.name));
+    const visibleAssignees = assignees.slice(0, 2);
+    const extraAssignees = Math.max(assignees.length - visibleAssignees.length, 0);
+    const mainAssignee = assignees[0];
     const clientName = clientsMap[t.client_id] ?? "—";
 
     return (
@@ -550,12 +559,29 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
           <Badge variant="secondary" className="text-[8px] h-4 px-1.5 gap-0.5 mt-1 rounded-md">★ Extra</Badge>
         }
         <div className="mt-1.5 flex items-center gap-1.5">
-          <Avatar className="h-5 w-5 shrink-0 ring-1 ring-background">
-            <AvatarImage src={member?.avatar} />
-            <AvatarFallback className="text-[7px] font-bold bg-primary/10 text-primary">{member ? initials(member.name) : "?"}</AvatarFallback>
-          </Avatar>
+          {visibleAssignees.length > 0 ? (
+            <div className="flex items-center shrink-0">
+              {visibleAssignees.map((member, index) => (
+                <Avatar key={member.id} className={cn("h-5 w-5 ring-1 ring-background", index > 0 && "-ml-1.5")}>
+                  <AvatarImage src={member.avatar} />
+                  <AvatarFallback className="text-[7px] font-bold bg-primary/10 text-primary">{initials(member.name)}</AvatarFallback>
+                </Avatar>
+              ))}
+              {extraAssignees > 0 && (
+                <span className="ml-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-muted px-1 text-[8px] font-semibold text-muted-foreground">
+                  +{extraAssignees}
+                </span>
+              )}
+            </div>
+          ) : (
+            <Avatar className="h-5 w-5 shrink-0 ring-1 ring-background">
+              <AvatarFallback className="text-[7px] font-bold bg-primary/10 text-primary">?</AvatarFallback>
+            </Avatar>
+          )}
           <div className="min-w-0">
-            <p className="truncate text-[11px] font-semibold leading-4">{member?.name?.split(" ")[0] ?? "—"}</p>
+            <p className="truncate text-[11px] font-semibold leading-4">
+              {mainAssignee ? `${mainAssignee.name.split(" ")[0]}${assignees.length > 1 ? ` +${assignees.length - 1}` : ""}` : "—"}
+            </p>
             <p className="truncate text-[10px] text-muted-foreground/60 leading-3">{clientName}</p>
           </div>
         </div>

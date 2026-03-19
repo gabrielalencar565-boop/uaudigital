@@ -313,35 +313,39 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     toast.success(nextStage === "entrega" ? "Tarefa marcada como Entregue!" : `Avançou para ${stageLabel(nextStage)}`);
   };
 
+  const findExistingAgendaTaskForStage = async (nextStage: string, referenceDueDate?: string) => {
+    if (nextStage === "entrega") return null;
+
+    const sb = supabase as any;
+    const referenceDate = referenceDueDate ?? task.due_date ?? format(new Date(), "yyyy-MM-dd");
+    const base = new Date(`${referenceDate}T12:00:00`);
+    const monthStart = format(new Date(base.getFullYear(), base.getMonth(), 1), "yyyy-MM-dd");
+    const monthEnd = format(new Date(base.getFullYear(), base.getMonth() + 1, 0), "yyyy-MM-dd");
+
+    const { data: existing } = await sb
+      .from("pm_tasks")
+      .select("id, due_date, title")
+      .eq("client_id", task.client_id)
+      .eq("stage_current", nextStage)
+      .neq("status_global", "concluido")
+      .is("parent_task_id", null)
+      .not("due_date", "is", null)
+      .gte("due_date", monthStart)
+      .lte("due_date", monthEnd)
+      .neq("id", task.id)
+      .order("due_date", { ascending: true })
+      .limit(1);
+
+    return existing && existing.length > 0 ? existing[0] : null;
+  };
+
   const advanceStage = async (completedStage: string, nextStage: string, newDueDate?: string) => {
-    // Check if there's an existing agenda task for the same client + target stage + month
-    if (nextStage !== "entrega") {
-      const sb = supabase as any;
-      const referenceDate = newDueDate ?? task.due_date ?? format(new Date(), "yyyy-MM-dd");
-      const base = new Date(`${referenceDate}T12:00:00`);
-      const monthStart = format(new Date(base.getFullYear(), base.getMonth(), 1), "yyyy-MM-dd");
-      const monthEnd = format(new Date(base.getFullYear(), base.getMonth() + 1, 0), "yyyy-MM-dd");
-
-      const { data: existing } = await sb
-        .from("pm_tasks")
-        .select("id, due_date, title")
-        .eq("client_id", task.client_id)
-        .eq("stage_current", nextStage)
-        .neq("status_global", "concluido")
-        .is("parent_task_id", null)
-        .not("due_date", "is", null)
-        .gte("due_date", monthStart)
-        .lte("due_date", monthEnd)
-        .neq("id", task.id)
-        .order("due_date", { ascending: true })
-        .limit(1);
-
-      if (existing && existing.length > 0) {
-        setLinkExistingTask(existing[0]);
-        setPendingAdvance({ completedStage, nextStage });
-        setLinkDialogOpen(true);
-        return;
-      }
+    const existing = await findExistingAgendaTaskForStage(nextStage, newDueDate);
+    if (existing) {
+      setLinkExistingTask(existing);
+      setPendingAdvance({ completedStage, nextStage });
+      setLinkDialogOpen(true);
+      return;
     }
 
     doAdvance(completedStage, nextStage, newDueDate);
@@ -405,7 +409,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     toast.success(`Revertido para ${stageLabel(prevStage)}`);
   };
 
-  const handleConcluido = () => {
+  const handleConcluido = async () => {
     if (isDone) return;
     const completedStage = task.stage_current;
     const dateConfig = transitionDates[task.stage_current];
@@ -420,7 +424,17 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     }
 
     if (dateConfig === "pick") {
-      // Show date picker dialog
+      if (nextStages.length === 1) {
+        const existing = await findExistingAgendaTaskForStage(nextStages[0], task.due_date ?? format(new Date(), "yyyy-MM-dd"));
+        if (existing) {
+          setLinkExistingTask(existing);
+          setPendingAdvance({ completedStage, nextStage: nextStages[0] });
+          setLinkDialogOpen(true);
+          return;
+        }
+      }
+
+      // Show date picker dialog only when no pre-created agenda task was found
       setPendingCompletedStage(completedStage);
       setCompletionDate(task.due_date ?? format(new Date(), "yyyy-MM-dd"));
       setCompletionDateOpen(true);

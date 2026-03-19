@@ -19,14 +19,13 @@ function initials(name: string) {
 interface Props {
   task: PmTask;
   clientName: string;
-  assigneeName?: string;
-  assigneeAvatar?: string;
+  assignees?: { id: string; name: string; avatar?: string }[];
   childTasks?: PmTask[];
   onClick: () => void;
   isAdmin?: boolean;
 }
 
-export function PmTaskCard({ task, clientName, assigneeName, assigneeAvatar, childTasks = [], onClick, isAdmin }: Props) {
+export function PmTaskCard({ task, clientName, assignees = [], childTasks = [], onClick, isAdmin }: Props) {
   const prio = priorityMeta(task.priority);
   const total = childTasks.length;
   const updateTask = useUpdatePmTask();
@@ -58,6 +57,8 @@ export function PmTaskCard({ task, clientName, assigneeName, assigneeAvatar, chi
   const handleRename = () => { if (renameDraft.trim() && renameDraft.trim() !== task.title) updateTask.mutate({ id: task.id, title: renameDraft.trim() }); setRenaming(false); };
 
   const dueDateOverdue = task.due_date && isPast(new Date(task.due_date + "T23:59:59")) && !isToday(new Date(task.due_date + "T12:00:00"));
+  const visibleAssignees = assignees.slice(0, 2);
+  const extraAssignees = Math.max(assignees.length - visibleAssignees.length, 0);
 
   return (
     <div className="calendar-card-hover group w-full rounded-xl border border-border/20 bg-card shadow-sm transition-all duration-300 ease-out overflow-hidden">
@@ -95,12 +96,21 @@ export function PmTaskCard({ task, clientName, assigneeName, assigneeAvatar, chi
 
         {/* Bottom row */}
         <div className="flex items-center gap-2 pt-1">
-          {/* Assignee avatar */}
-          {assigneeName ? (
-            <Avatar className="h-6 w-6 ring-2 ring-background">
-              <AvatarImage src={assigneeAvatar} />
-              <AvatarFallback className="text-[8px] bg-primary/10 text-primary font-bold">{initials(assigneeName)}</AvatarFallback>
-            </Avatar>
+          {/* Assignees avatars */}
+          {visibleAssignees.length > 0 ? (
+            <div className="flex items-center">
+              {visibleAssignees.map((assignee, index) => (
+                <Avatar key={assignee.id} className={cn("h-6 w-6 ring-2 ring-background", index > 0 && "-ml-2")}> 
+                  <AvatarImage src={assignee.avatar} />
+                  <AvatarFallback className="text-[8px] bg-primary/10 text-primary font-bold">{initials(assignee.name)}</AvatarFallback>
+                </Avatar>
+              ))}
+              {extraAssignees > 0 && (
+                <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1 text-[9px] font-semibold text-muted-foreground">
+                  +{extraAssignees}
+                </span>
+              )}
+            </div>
           ) : (
             <div className="h-6 w-6 rounded-full border-2 border-dashed border-muted-foreground/20 flex items-center justify-center">
               <UserCircle className="h-3.5 w-3.5 text-muted-foreground/25" />
