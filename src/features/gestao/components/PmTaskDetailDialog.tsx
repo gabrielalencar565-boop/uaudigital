@@ -268,7 +268,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     } catch (_) { /* ignore */ }
   };
 
-  const advanceStage = async (completedStage: string, nextStage: string, newDueDate?: string) => {
+  const doAdvance = (completedStage: string, nextStage: string, newDueDate?: string) => {
     // Save a "completed snapshot" so the agenda keeps showing the old stage as done
     const snapshotDueDate = task.due_date ?? format(new Date(), "yyyy-MM-dd");
     createTask.mutate({
@@ -311,6 +311,36 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
     syncCompletedStage(completedStage);
     toast.success(nextStage === "entrega" ? "Tarefa marcada como Entregue!" : `Avançou para ${stageLabel(nextStage)}`);
+  };
+
+  const advanceStage = async (completedStage: string, nextStage: string, newDueDate?: string) => {
+    // Check if there's an existing agenda task for the same client + target stage
+    if (nextStage !== "entrega") {
+      const sb = supabase as any;
+      const now = new Date();
+      const monthStart = format(new Date(now.getFullYear(), now.getMonth(), 1), "yyyy-MM-dd");
+      const monthEnd = format(new Date(now.getFullYear(), now.getMonth() + 1, 0), "yyyy-MM-dd");
+
+      const { data: existing } = await sb
+        .from("pm_tasks")
+        .select("id, due_date, title")
+        .eq("client_id", task.client_id)
+        .eq("stage_current", nextStage)
+        .eq("status_global", "concluido")
+        .gte("due_date", monthStart)
+        .lte("due_date", monthEnd)
+        .neq("id", task.id)
+        .limit(1);
+
+      if (existing && existing.length > 0) {
+        setLinkExistingTask(existing[0]);
+        setPendingAdvance({ completedStage, nextStage });
+        setLinkDialogOpen(true);
+        return;
+      }
+    }
+
+    doAdvance(completedStage, nextStage, newDueDate);
   };
 
   // Revert: go back to previous stage (undo concluído advance)
