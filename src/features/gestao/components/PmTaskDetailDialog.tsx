@@ -790,6 +790,21 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                   </div>
                 </DialogContent>
               </Dialog>
+
+              {/* Link or Date dialog for existing agenda tasks */}
+              <LinkOrDateDialog
+                open={linkDialogOpen}
+                onClose={() => { setLinkDialogOpen(false); setLinkExistingTask(null); setPendingAdvance(null); }}
+                existingTask={linkExistingTask}
+                onLink={(dueDate) => {
+                  if (pendingAdvance) doAdvance(pendingAdvance.completedStage, pendingAdvance.nextStage, dueDate);
+                  setLinkDialogOpen(false); setLinkExistingTask(null); setPendingAdvance(null);
+                }}
+                onSelectDate={(dueDate) => {
+                  if (pendingAdvance) doAdvance(pendingAdvance.completedStage, pendingAdvance.nextStage, dueDate);
+                  setLinkDialogOpen(false); setLinkExistingTask(null); setPendingAdvance(null);
+                }}
+              />
             </>
           ) : (
             <Badge className="bg-emerald-500/20 text-emerald-400 border-0 gap-1">
