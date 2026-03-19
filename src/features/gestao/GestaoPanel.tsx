@@ -816,6 +816,13 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <AgendaQuickCreateDialog
+        open={quickCreateOpen}
+        onClose={() => setQuickCreateOpen(false)}
+        clients={clients}
+        members={members}
+        defaultDate={quickCreateDate}
+      />
     </div>
   );
 }
