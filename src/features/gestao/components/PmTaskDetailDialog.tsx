@@ -413,7 +413,16 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       newDueDate = format(addDays(baseDate, dateConfig), "yyyy-MM-dd");
     }
 
-    // For ALL transitions, first check if existing agenda task exists
+    // Multiple next stages → show stage choice first (existing task check happens inside handleChooseNextStage → advanceStage)
+    if (nextStages.length > 1) {
+      setPendingCompletedStage(completedStage);
+      setPendingDueDate(newDueDate);
+      setStageChoiceOptions(nextStages);
+      setStageChoiceOpen(true);
+      return;
+    }
+
+    // Single next stage → check for existing agenda task
     if (nextStages.length === 1) {
       const existing = await findExistingAgendaTaskForStage(nextStages[0], newDueDate ?? task.due_date ?? format(new Date(), "yyyy-MM-dd"));
       if (existing) {
@@ -424,24 +433,19 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       }
     }
 
+    // No existing task found — if dateConfig is "pick", show date picker
     if (dateConfig === "pick") {
-      // Show date picker dialog only when no pre-created agenda task was found
       setPendingCompletedStage(completedStage);
       setCompletionDate(task.due_date ?? format(new Date(), "yyyy-MM-dd"));
       setCompletionDateOpen(true);
       return;
     }
 
-    // No "pick" — advance directly (with auto-calculated date if any)
+    // No "pick" — advance directly
     if (nextStages.length === 0) {
       advanceStage(completedStage, "entrega", newDueDate);
     } else if (nextStages.length === 1) {
       advanceStage(completedStage, nextStages[0], newDueDate);
-    } else {
-      setPendingCompletedStage(completedStage);
-      setPendingDueDate(newDueDate);
-      setStageChoiceOptions(nextStages);
-      setStageChoiceOpen(true);
     }
   };
 
