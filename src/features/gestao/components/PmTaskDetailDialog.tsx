@@ -268,45 +268,35 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     } catch (_) { /* ignore */ }
   };
 
-  const doAdvance = (completedStage: string, nextStage: string, newDueDate?: string) => {
-    // Save a "completed snapshot" so the agenda keeps showing the old stage as done
+  const doAdvance = (completedStage: string, nextStage: string, newDueDate?: string, linkedTaskId?: string) => {
+    // Mark the CURRENT task as completed (snapshot in the agenda)
     const snapshotDueDate = task.due_date ?? format(new Date(), "yyyy-MM-dd");
-    createTask.mutate({
-      client_id: task.client_id,
-      title: task.title,
-      description: task.description ?? undefined,
-      priority: task.priority,
-      stage_current: completedStage,
+    updateTask.mutate({
+      id: task.id,
+      stage_current: completedStage as any,
+      status_global: "concluido" as any,
       due_date: snapshotDueDate,
-      assignee_id: task.assignee_id ?? undefined,
-      project_id: task.project_id ?? undefined,
-      tags: task.tags ?? [],
-      parent_task_id: task.parent_task_id ?? undefined,
-      is_extra_demand: task.is_extra_demand,
-      status_global: "concluido",
     });
 
-    // Advance the actual task to the next stage
-    const updates: any = { id: task.id, stage_current: nextStage as any };
-    if (newDueDate) updates.due_date = newDueDate;
-
-    const fixedAssignee = getFixedAssignee(stageAssignees, nextStage, task.client_id);
-    const fixedWatchers = getFixedWatchers(stageAssignees, nextStage, task.client_id);
-    if (fixedAssignee !== undefined) {
-      updates.assignee_id = fixedAssignee;
-      updates.watchers = fixedWatchers;
+    // Mark all child tasks as completed too
+    for (const child of childTasks) {
+      updateTask.mutate({
+        id: child.id,
+        stage_current: completedStage as any,
+        status_global: "concluido" as any,
+      });
     }
 
-    updateTask.mutate(updates);
-
-    // Move all child tasks to the same next stage with the same assignee
-    for (const child of childTasks) {
-      const childUpdates: any = { id: child.id, stage_current: nextStage as any };
+    if (linkedTaskId) {
+      // We linked to an existing agenda task — just update its status to backlog (active)
+      const linkedUpdates: any = { id: linkedTaskId, status_global: "backlog" as any };
+      const fixedAssignee = getFixedAssignee(stageAssignees, nextStage, task.client_id);
+      const fixedWatchers = getFixedWatchers(stageAssignees, nextStage, task.client_id);
       if (fixedAssignee !== undefined) {
-        childUpdates.assignee_id = fixedAssignee;
-        childUpdates.watchers = fixedWatchers;
+        linkedUpdates.assignee_id = fixedAssignee;
+        linkedUpdates.watchers = fixedWatchers;
       }
-      updateTask.mutate(childUpdates);
+      updateTask.mutate(linkedUpdates);
     }
 
     syncCompletedStage(completedStage);
@@ -340,6 +330,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   };
 
   const advanceStage = async (completedStage: string, nextStage: string, newDueDate?: string) => {
+    // Always check for existing agenda task regardless of date config
     const existing = await findExistingAgendaTaskForStage(nextStage, newDueDate);
     if (existing) {
       setLinkExistingTask(existing);
@@ -418,22 +409,22 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     let newDueDate: string | undefined;
 
     if (typeof dateConfig === "number") {
-      // Auto-apply +N days silently
       const baseDate = task.due_date ? new Date(task.due_date + "T12:00:00") : new Date();
       newDueDate = format(addDays(baseDate, dateConfig), "yyyy-MM-dd");
     }
 
-    if (dateConfig === "pick") {
-      if (nextStages.length === 1) {
-        const existing = await findExistingAgendaTaskForStage(nextStages[0], task.due_date ?? format(new Date(), "yyyy-MM-dd"));
-        if (existing) {
-          setLinkExistingTask(existing);
-          setPendingAdvance({ completedStage, nextStage: nextStages[0] });
-          setLinkDialogOpen(true);
-          return;
-        }
+    // For ALL transitions, first check if existing agenda task exists
+    if (nextStages.length === 1) {
+      const existing = await findExistingAgendaTaskForStage(nextStages[0], newDueDate ?? task.due_date ?? format(new Date(), "yyyy-MM-dd"));
+      if (existing) {
+        setLinkExistingTask(existing);
+        setPendingAdvance({ completedStage, nextStage: nextStages[0] });
+        setLinkDialogOpen(true);
+        return;
       }
+    }
 
+    if (dateConfig === "pick") {
       // Show date picker dialog only when no pre-created agenda task was found
       setPendingCompletedStage(completedStage);
       setCompletionDate(task.due_date ?? format(new Date(), "yyyy-MM-dd"));
@@ -815,7 +806,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                 onClose={() => { setLinkDialogOpen(false); setLinkExistingTask(null); setPendingAdvance(null); }}
                 existingTask={linkExistingTask}
                 onLink={(dueDate) => {
-                  if (pendingAdvance) doAdvance(pendingAdvance.completedStage, pendingAdvance.nextStage, dueDate);
+                  if (pendingAdvance) doAdvance(pendingAdvance.completedStage, pendingAdvance.nextStage, dueDate, linkExistingTask?.id);
                   setLinkDialogOpen(false); setLinkExistingTask(null); setPendingAdvance(null);
                 }}
                 onSelectDate={(dueDate) => {
