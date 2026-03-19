@@ -516,7 +516,7 @@ export function VisaoGeralTab() {
       if (lagging.length > 0) squadInsights.push(`⚠️ ${lagging.length} cliente(s) com menos de 50% das etapas`);
     }
 
-    return { squad: sq, clients, squadInsights, sqData };
+    return { squad: sq, clients, squadInsights, sqData, squadAllStages };
   }, [expandedSquadId, squads, clientsPerSquad, magic2AllStages, magic2PrevStages, squadSpeedData]);
 
   // Table rows with all metrics
