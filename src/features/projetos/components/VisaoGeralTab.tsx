@@ -424,6 +424,37 @@ export function VisaoGeralTab() {
     });
   }, [squads, clientsPerSquad, magic2AllStages, now]);
 
+  // Per-stage daily progress for the expanded squad
+  const expandedSquadStageProgress = useMemo(() => {
+    if (!expandedSquadId) return [];
+    const squadClientIds = clientsPerSquad[expandedSquadId] ?? [];
+    if (squadClientIds.length === 0) return [];
+    const totalDays = getDaysInMonth(now);
+    const currentDayNum = now.getDate();
+    const year = now.getFullYear();
+    const monthNum = now.getMonth() + 1;
+    const squadStages = magic2AllStages.filter((s: any) => s.agenda_client_id && squadClientIds.includes(s.agenda_client_id));
+    const totalClientsForSquad = squadClientIds.length;
+
+    return Array.from({ length: totalDays }, (_, i) => {
+      const dia = i + 1;
+      if (dia > currentDayNum) {
+        const row: Record<string, any> = { dia };
+        STAGE_ORDER.forEach(k => { row[k] = undefined; });
+        return row;
+      }
+      const dateStr = format(new Date(year, monthNum - 1, dia), "yyyy-MM-dd");
+      const row: Record<string, any> = { dia };
+      for (const stageKey of STAGE_ORDER) {
+        const doneUpToDay = squadStages.filter((s: any) =>
+          s.stage === stageKey && s.completed && s.completed_at && s.completed_at.slice(0, 10) <= dateStr
+        ).length;
+        row[stageKey] = totalClientsForSquad > 0 ? Math.round((doneUpToDay / totalClientsForSquad) * 100) : 0;
+      }
+      return row;
+    });
+  }, [expandedSquadId, clientsPerSquad, magic2AllStages, now]);
+
 
   const expandedSquadDetail = useMemo(() => {
     if (!expandedSquadId) return null;
