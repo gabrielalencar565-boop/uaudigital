@@ -77,20 +77,20 @@ function GradientLayers() {
 
 function StageRingWidget({ label, pct, valueLabel, className, fullscreen }: { label: string; pct: number; valueLabel?: React.ReactNode; className?: string; fullscreen?: boolean }) {
   const isMobile = useIsMobile();
-  const ringSize = isMobile ? 100 : fullscreen ? 240 : 180;
-  const strokeWidth = isMobile ? 10 : fullscreen ? 22 : 20;
+  const ringSize = isMobile ? 100 : fullscreen ? 200 : 180;
+  const strokeWidth = isMobile ? 10 : fullscreen ? 18 : 20;
   return (
-    <div className={cn("flex flex-col items-center gap-2 min-w-0", className)}>
-      <div className="flex-1 flex items-center justify-center w-full">
+    <div className={cn("flex flex-col items-center gap-2 min-w-0", fullscreen && "justify-end", className)}>
+      <div className={cn("flex items-center justify-center w-full", fullscreen ? "flex-1 min-h-0" : "")}>
         <ProgressRing
           value={pct}
           tone={pct === 100 ? "success" : "warning"}
           size={ringSize}
           stroke={strokeWidth}
-          className="animate-fade-in max-w-full"
+          className={cn("animate-fade-in", fullscreen ? "max-w-full max-h-full" : "max-w-full")}
           label={
             valueLabel ?? (
-              <span className={cn("font-semibold tabular-nums", isMobile ? "text-lg" : fullscreen ? "text-3xl" : "text-2xl")}>{pct}%</span>
+              <span className={cn("font-semibold tabular-nums", isMobile ? "text-lg" : fullscreen ? "text-2xl" : "text-2xl")}>{pct}%</span>
             )
           }
         />
