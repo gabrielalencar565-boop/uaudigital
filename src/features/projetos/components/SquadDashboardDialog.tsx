@@ -347,7 +347,7 @@ export function SquadDashboardDialog({
                 </div>
                 <div>
                   <p className="text-sm font-bold text-foreground">Produtividade por Colaborador</p>
-                  <p className="text-xs text-muted-foreground">Ranking de tarefas concluídas no mês</p>
+                  <p className="text-xs text-muted-foreground">Baseado em etapas do Magic Number e tarefas atribuídas</p>
                 </div>
               </div>
 
@@ -355,62 +355,88 @@ export function SquadDashboardDialog({
                 {memberProductivity.map((m, idx) => {
                   const medals = ["🥇", "🥈", "🥉"];
                   const medal = idx < 3 ? medals[idx] : null;
-                  const barWidth = maxDone > 0 ? Math.round((m.done / maxDone) * 100) : 0;
-                  const isTop = idx === 0 && m.done > 0;
+                  const barWidth = maxStages > 0 ? Math.round((m.stagesCompleted / maxStages) * 100) : 0;
+                  const isTop = idx === 0 && m.stagesCompleted > 0;
 
                   return (
                     <div
                       key={m.uid}
                       className={cn(
-                        "relative flex items-center gap-3 rounded-xl border px-4 py-3 transition-all",
+                        "relative rounded-xl border px-4 py-3 transition-all",
                         isTop ? "border-transparent shadow-md" : "border-border/30 hover:border-border/60",
                       )}
                       style={isTop ? {
                         background: `linear-gradient(135deg, ${squad.color}10 0%, ${squad.color}04 100%)`,
                       } : undefined}
                     >
-                      {/* Rank */}
-                      <span className="text-sm font-bold min-w-[28px] text-center">
-                        {medal ?? `${idx + 1}º`}
-                      </span>
+                      <div className="flex items-center gap-3">
+                        {/* Rank */}
+                        <span className="text-sm font-bold min-w-[28px] text-center">
+                          {medal ?? `${idx + 1}º`}
+                        </span>
 
-                      {/* Avatar */}
-                      <Avatar className="h-9 w-9 shrink-0">
-                        <AvatarImage src={m.avatar ?? undefined} alt={m.name} />
-                        <AvatarFallback className="text-[10px] bg-muted">{initials(m.name)}</AvatarFallback>
-                      </Avatar>
+                        {/* Avatar */}
+                        <Avatar className="h-9 w-9 shrink-0">
+                          <AvatarImage src={m.avatar ?? undefined} alt={m.name} />
+                          <AvatarFallback className="text-[10px] bg-muted">{initials(m.name)}</AvatarFallback>
+                        </Avatar>
 
-                      {/* Info + bar */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-semibold text-foreground truncate">{m.name}</p>
-                          {isTop && m.done > 0 && (
-                            <Badge variant="outline" className="text-[9px] font-bold px-1.5 py-0 border-0" style={{
-                              backgroundColor: `${squad.color}15`,
-                              color: squad.color,
-                            }}>
-                              TOP
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 mt-1.5">
-                          <div className="flex-1 h-2 rounded-full bg-border/20 overflow-hidden">
-                            <div
-                              className="h-full rounded-full transition-all duration-700"
-                              style={{
-                                width: `${barWidth}%`,
-                                background: `linear-gradient(90deg, ${squad.color}, ${squad.color}88)`,
-                              }}
-                            />
+                        {/* Info + bar */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-semibold text-foreground truncate">{m.name}</p>
+                            {isTop && (
+                              <Badge variant="outline" className="text-[9px] font-bold px-1.5 py-0 border-0" style={{
+                                backgroundColor: `${squad.color}15`,
+                                color: squad.color,
+                              }}>
+                                TOP
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 mt-1.5">
+                            <div className="flex-1 h-2 rounded-full bg-border/20 overflow-hidden">
+                              <div
+                                className="h-full rounded-full transition-all duration-700"
+                                style={{
+                                  width: `${barWidth}%`,
+                                  background: `linear-gradient(90deg, ${squad.color}, ${squad.color}88)`,
+                                }}
+                              />
+                            </div>
                           </div>
                         </div>
+
+                        {/* Stats */}
+                        <div className="text-right shrink-0">
+                          <p className="text-xl font-bold text-foreground">{m.stagesCompleted}</p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {m.stagesCompleted === 1 ? "etapa" : "etapas"} • {m.tasksDone}/{m.tasksTotal} tarefas
+                          </p>
+                        </div>
                       </div>
 
-                      {/* Stats */}
-                      <div className="text-right shrink-0">
-                        <p className="text-xl font-bold text-foreground">{m.done}</p>
-                        <p className="text-[10px] text-muted-foreground">{m.total > 0 ? `${m.percent}% de ${m.total}` : "sem tarefas"}</p>
-                      </div>
+                      {/* Stage breakdown mini chips */}
+                      {m.stagesCompleted > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2 ml-[68px]">
+                          {STAGE_ORDER.map(k => {
+                            const count = m.stageBreakdown[k] ?? 0;
+                            if (count === 0) return null;
+                            return (
+                              <span
+                                key={k}
+                                className="text-[9px] font-medium rounded-md px-1.5 py-0.5"
+                                style={{
+                                  backgroundColor: `${STAGE_COLORS[k]}15`,
+                                  color: STAGE_COLORS[k],
+                                }}
+                              >
+                                {STAGE_LABELS[k]} ×{count}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
