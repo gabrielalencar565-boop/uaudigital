@@ -167,6 +167,34 @@ export function PmTaskCard({ task, clientName, assigneeName, assigneeAvatar, chi
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Excluir tarefa?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">Tem certeza que deseja excluir <strong>"{task.title}"</strong>?</span>
+              <span className="block text-destructive font-medium">
+                ⚠️ Os pontos de performance não serão contabilizados e a etapa será desmarcada no Magic Number.
+              </span>
+              {total > 0 && (
+                <span className="block text-muted-foreground">
+                  {total} subtarefa{total > 1 ? "s" : ""} também será{total > 1 ? "ão" : ""} excluída{total > 1 ? "s" : ""}.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
