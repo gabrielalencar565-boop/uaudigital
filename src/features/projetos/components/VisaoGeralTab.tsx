@@ -424,6 +424,37 @@ export function VisaoGeralTab() {
     });
   }, [squads, clientsPerSquad, magic2AllStages, now]);
 
+  // Per-stage daily progress for the expanded squad
+  const expandedSquadStageProgress = useMemo(() => {
+    if (!expandedSquadId) return [];
+    const squadClientIds = clientsPerSquad[expandedSquadId] ?? [];
+    if (squadClientIds.length === 0) return [];
+    const totalDays = getDaysInMonth(now);
+    const currentDayNum = now.getDate();
+    const year = now.getFullYear();
+    const monthNum = now.getMonth() + 1;
+    const squadStages = magic2AllStages.filter((s: any) => s.agenda_client_id && squadClientIds.includes(s.agenda_client_id));
+    const totalClientsForSquad = squadClientIds.length;
+
+    return Array.from({ length: totalDays }, (_, i) => {
+      const dia = i + 1;
+      if (dia > currentDayNum) {
+        const row: Record<string, any> = { dia };
+        STAGE_ORDER.forEach(k => { row[k] = undefined; });
+        return row;
+      }
+      const dateStr = format(new Date(year, monthNum - 1, dia), "yyyy-MM-dd");
+      const row: Record<string, any> = { dia };
+      for (const stageKey of STAGE_ORDER) {
+        const doneUpToDay = squadStages.filter((s: any) =>
+          s.stage === stageKey && s.completed && s.completed_at && s.completed_at.slice(0, 10) <= dateStr
+        ).length;
+        row[stageKey] = totalClientsForSquad > 0 ? Math.round((doneUpToDay / totalClientsForSquad) * 100) : 0;
+      }
+      return row;
+    });
+  }, [expandedSquadId, clientsPerSquad, magic2AllStages, now]);
+
 
   const expandedSquadDetail = useMemo(() => {
     if (!expandedSquadId) return null;
@@ -649,7 +680,8 @@ export function VisaoGeralTab() {
             return (
               <Card
                 key={sq.id}
-                className="relative overflow-hidden border-0 group transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl flex-1 min-w-[280px] max-w-[400px]"
+                className="relative overflow-hidden border-0 group transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl flex-1 min-w-[280px] max-w-[400px] cursor-pointer"
+                onClick={() => setExpandedSquadId(sq.id)}
                 style={{
                   background: `linear-gradient(135deg, ${sq.color} 0%, ${sq.color}dd 50%, ${sq.color}aa 100%)`,
                 }}
@@ -689,7 +721,7 @@ export function VisaoGeralTab() {
                     {isAdmin && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <button className="h-7 w-7 flex items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 transition-colors">
+                          <button onClick={(e) => e.stopPropagation()} className="h-7 w-7 flex items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 transition-colors">
                             <MoreHorizontal className="h-4 w-4 text-white" />
                           </button>
                         </DropdownMenuTrigger>
@@ -1199,6 +1231,149 @@ export function VisaoGeralTab() {
           </CardContent>
         </Card>
       </FadeUp>
+
+      {/* Squad stage progress dialog */}
+      <Dialog open={!!expandedSquadId} onOpenChange={(v) => !v && setExpandedSquadId(null)}>
+        <DialogContent className="max-w-3xl overflow-hidden">
+          {expandedSquadDetail && (() => {
+            const sq = expandedSquadDetail.squad;
+            const SquadIcon = getSquadIcon(sq.icon ?? "shield");
+            const STAGE_COLORS: Record<string, string> = {
+              planejamento: "#8B5CF6",
+              captacao: "#3B82F6",
+              edicao_videos: "#06B6D4",
+              design: "#EC4899",
+              pdf: "#F59E0B",
+              alteracoes: "#EF4444",
+              agendamento: "#10B981",
+            };
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-xl flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${sq.color}, ${sq.color}aa)` }}>
+                      <SquadIcon className="h-4.5 w-4.5 text-white" />
+                    </div>
+                    Progresso por Etapa — {sq.name}
+                  </DialogTitle>
+                  <DialogDescription>{format(now, "MMMM yyyy", { locale: ptBR })} • Evolução diária de conclusão por etapa</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 overflow-y-auto max-h-[65vh]">
+                  {/* Legend */}
+                  <div className="flex flex-wrap gap-3">
+                    {STAGE_ORDER.map(k => (
+                      <div key={k} className="flex items-center gap-1.5 text-xs">
+                        <div className="h-3 w-3 rounded-sm" style={{ backgroundColor: STAGE_COLORS[k] }} />
+                        <span className="font-medium text-foreground">{STAGE_LABELS[k]}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* AreaChart */}
+                  <div className="h-[320px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={expandedSquadStageProgress} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                        <defs>
+                          {STAGE_ORDER.map(k => (
+                            <linearGradient key={`sg-${k}`} id={`sg-grad-${k}`} x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor={STAGE_COLORS[k]} stopOpacity={0.3} />
+                              <stop offset="100%" stopColor={STAGE_COLORS[k]} stopOpacity={0.02} />
+                            </linearGradient>
+                          ))}
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.4} />
+                        <XAxis dataKey="dia" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} interval={4} />
+                        <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} width={35} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+                        <Tooltip
+                          content={({ active, payload, label }) => {
+                            if (!active || !payload?.length) return null;
+                            return (
+                              <div className="bg-popover border border-border rounded-lg shadow-lg px-3 py-2.5 space-y-1.5">
+                                <p className="text-xs font-bold text-foreground">Dia {label}</p>
+                                {payload
+                                  .filter((e: any) => e.value !== undefined)
+                                  .sort((a: any, b: any) => (b.value ?? 0) - (a.value ?? 0))
+                                  .map((entry: any) => (
+                                    <div key={entry.dataKey} className="flex items-center gap-2 text-xs">
+                                      <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: STAGE_COLORS[entry.dataKey as string] }} />
+                                      <span className="text-muted-foreground">{STAGE_LABELS[entry.dataKey as string]}:</span>
+                                      <span className="font-bold text-foreground">{entry.value}%</span>
+                                    </div>
+                                  ))}
+                              </div>
+                            );
+                          }}
+                        />
+                        {STAGE_ORDER.map(k => (
+                          <Area
+                            key={k}
+                            type="monotone"
+                            dataKey={k}
+                            stroke={STAGE_COLORS[k]}
+                            strokeWidth={2.5}
+                            fill={`url(#sg-grad-${k})`}
+                            dot={false}
+                            connectNulls={false}
+                            animationDuration={800}
+                          />
+                        ))}
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Current stage completion summary */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {STAGE_ORDER.map(k => {
+                      const perf = expandedSquadDetail.squad ? 
+                        heatmapData.find(h => h.id === expandedSquadId)?.stagePerf[k] : null;
+                      return (
+                        <div key={k} className="flex items-center gap-2 rounded-lg border border-border/30 px-3 py-2">
+                          <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: STAGE_COLORS[k] }} />
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold text-foreground truncate">{STAGE_LABELS[k]}</p>
+                            <p className="text-[11px] text-muted-foreground">{perf ? `${perf.completed}/${perf.total}` : "—"} • {perf?.percent ?? 0}%</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Client breakdown */}
+                  {expandedSquadDetail.clients.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-sm font-semibold text-foreground">Desempenho por cliente</p>
+                      {expandedSquadDetail.clients.map(c => (
+                        <div key={c.clientId} className="flex items-center gap-3 rounded-lg border border-border/20 px-3 py-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-foreground truncate">{c.name}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <div className="flex-1 h-1.5 rounded-full bg-border/20 overflow-hidden">
+                                <div className="h-full rounded-full transition-all duration-500" style={{ width: `${c.percent}%`, backgroundColor: sq.color }} />
+                              </div>
+                              <span className="text-[11px] font-medium text-foreground shrink-0">{c.percent}%</span>
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <span className="text-[11px] text-muted-foreground">{c.completed}/{c.total}</span>
+                            {c.prevPercent > 0 && (
+                              <div className="flex items-center gap-0.5 text-[10px]">
+                                {c.percent > c.prevPercent ? <TrendingUp className="h-2.5 w-2.5 text-emerald-500" /> : c.percent < c.prevPercent ? <TrendingDown className="h-2.5 w-2.5 text-rose-500" /> : null}
+                                <span className={cn(c.percent > c.prevPercent ? "text-emerald-500" : c.percent < c.prevPercent ? "text-rose-500" : "text-muted-foreground")}>
+                                  {c.prevPercent}% ant.
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
 
       {/* Create squad dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
