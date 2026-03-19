@@ -246,5 +246,15 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, on
         )}
       </DragOverlay>
     </DndContext>
+
+    <LinkOrDateDialog
+      open={linkDialogOpen}
+      onClose={() => { setLinkDialogOpen(false); setPendingDragTask(null); setPendingDragStage(null); }}
+      existingTask={linkExistingTask}
+      onLink={handleLinkChoice}
+      onSelectDate={handleLinkChoice}
+    />
+    </>
   );
 }
+
