@@ -9,6 +9,7 @@ import { getStageCircleColor } from "../pm-constants";
 import type { PmTask } from "../pm-types";
 import { PmTaskCard } from "./PmTaskCard";
 import { useUpdatePmTask } from "../hooks/use-pm-data";
+import { useDefaultFlowWithDates, getFixedAssignee, getFixedWatchers } from "./PmStageFlowConfig";
 import { toast } from "sonner";
 
 const KANBAN_COLUMNS = [
