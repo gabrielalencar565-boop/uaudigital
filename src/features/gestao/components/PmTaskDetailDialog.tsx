@@ -409,22 +409,22 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     let newDueDate: string | undefined;
 
     if (typeof dateConfig === "number") {
-      // Auto-apply +N days silently
       const baseDate = task.due_date ? new Date(task.due_date + "T12:00:00") : new Date();
       newDueDate = format(addDays(baseDate, dateConfig), "yyyy-MM-dd");
     }
 
-    if (dateConfig === "pick") {
-      if (nextStages.length === 1) {
-        const existing = await findExistingAgendaTaskForStage(nextStages[0], task.due_date ?? format(new Date(), "yyyy-MM-dd"));
-        if (existing) {
-          setLinkExistingTask(existing);
-          setPendingAdvance({ completedStage, nextStage: nextStages[0] });
-          setLinkDialogOpen(true);
-          return;
-        }
+    // For ALL transitions, first check if existing agenda task exists
+    if (nextStages.length === 1) {
+      const existing = await findExistingAgendaTaskForStage(nextStages[0], newDueDate ?? task.due_date ?? format(new Date(), "yyyy-MM-dd"));
+      if (existing) {
+        setLinkExistingTask(existing);
+        setPendingAdvance({ completedStage, nextStage: nextStages[0] });
+        setLinkDialogOpen(true);
+        return;
       }
+    }
 
+    if (dateConfig === "pick") {
       // Show date picker dialog only when no pre-created agenda task was found
       setPendingCompletedStage(completedStage);
       setCompletionDate(task.due_date ?? format(new Date(), "yyyy-MM-dd"));
