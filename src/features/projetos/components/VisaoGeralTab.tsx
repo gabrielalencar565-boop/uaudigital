@@ -16,6 +16,7 @@ import {
   BarChart2, ChevronsUpDown, Sword, Crown, Flame, Zap, Rocket, Diamond, Award, Trophy,
   Heart, Sparkles, Sun, Moon, Cake, TrendingUp, TrendingDown, Minus, ArrowLeft, AlertTriangle, Lightbulb,
 } from "lucide-react";
+import { SquadDashboardDialog } from "./SquadDashboardDialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
