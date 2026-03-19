@@ -32,6 +32,8 @@ import { PmPostingFields } from "./PmPostingFields";
 import type { PmTask } from "../pm-types";
 import { toast } from "sonner";
 import { SmartCaptionEditor } from "./SmartCaptionEditor";
+import { LinkOrDateDialog } from "./LinkOrDateDialog";
+import { supabase } from "@/integrations/supabase/client";
 
 function initials(n: string) {
   return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
