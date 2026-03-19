@@ -485,7 +485,6 @@ export function SquadDashboardDialog({
     const titles: Record<string, string> = {
       stages: "Evolução por Etapa",
       productivity: "Produtividade por Colaborador",
-      clients: "Desempenho por Cliente",
     };
     return (
       <Dialog open={!!maximized} onOpenChange={() => setMaximized(null)}>
@@ -501,7 +500,6 @@ export function SquadDashboardDialog({
           <div className="px-8 py-6 overflow-y-auto max-h-[calc(95vh-80px)]">
             {maximized === "stages" && renderStagesSection(true)}
             {maximized === "productivity" && renderProductivitySection(true)}
-            {maximized === "clients" && renderClientsSection(true)}
           </div>
         </DialogContent>
       </Dialog>
