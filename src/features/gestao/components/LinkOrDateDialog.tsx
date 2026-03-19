@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -22,6 +22,12 @@ interface Props {
 export function LinkOrDateDialog({ open, onClose, existingTask, onLink, onSelectDate }: Props) {
   const [dateMode, setDateMode] = useState(false);
   const [selectedDate, setSelectedDate] = useState(format(new Date(), "yyyy-MM-dd"));
+
+  useEffect(() => {
+    if (!open) return;
+    setDateMode(false);
+    setSelectedDate(existingTask?.due_date ?? format(new Date(), "yyyy-MM-dd"));
+  }, [open, existingTask?.due_date]);
 
   const handleLink = () => {
     if (existingTask?.due_date) {
@@ -47,6 +53,12 @@ export function LinkOrDateDialog({ open, onClose, existingTask, onLink, onSelect
           Já existe uma tarefa do mesmo cliente nesta etapa na agenda
           {existingTask?.due_date ? ` (${format(new Date(existingTask.due_date + "T12:00:00"), "dd/MM/yyyy")})` : ""}.
         </p>
+        {existingTask?.title && (
+          <div className="rounded-xl border border-border/40 bg-muted/30 px-3 py-2">
+            <p className="text-[11px] text-muted-foreground">Tarefa encontrada</p>
+            <p className="text-sm font-semibold leading-tight">{existingTask.title}</p>
+          </div>
+        )}
 
         {!dateMode ? (
           <div className="space-y-2 mt-3">
