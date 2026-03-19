@@ -274,6 +274,14 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     }
 
     updateTask.mutate(updates);
+
+    // Move all child tasks to the same next stage
+    for (const child of childTasks) {
+      if (child.stage_current !== nextStage) {
+        updateTask.mutate({ id: child.id, stage_current: nextStage as any });
+      }
+    }
+
     syncCompletedStage(completedStage);
     toast.success(nextStage === "entrega" ? "Tarefa marcada como Entregue!" : `Avançou para ${stageLabel(nextStage)}`);
   };

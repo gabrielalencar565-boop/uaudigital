@@ -111,6 +111,14 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, on
       { id: droppedTask.id, stage_current: newStage } as any,
       { onError: () => toast.error("Erro ao mover tarefa") }
     );
+
+    // Move all child tasks to the same stage
+    const children = childTasksMap[droppedTask.id] ?? [];
+    for (const child of children) {
+      if (child.stage_current !== newStage) {
+        updateTask.mutate({ id: child.id, stage_current: newStage } as any);
+      }
+    }
   };
 
   const activeMember = activeTask?.assignee_id ? membersMap[activeTask.assignee_id] : undefined;
