@@ -16,8 +16,8 @@ function initials(n: string) {
   return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
 }
 
-// stage_assignees format: { "stage_key": { "client_id": "user_id" | null } }
-export type StageAssignees = Record<string, Record<string, string | null>>;
+// stage_assignees format: { "stage_key": { "client_id": "user_id" | null | ["assignee_id", "watcher_id", ...] } }
+export type StageAssignees = Record<string, Record<string, string | null | (string | null)[]>>;
 
 export interface StageFlow {
   id: string;
