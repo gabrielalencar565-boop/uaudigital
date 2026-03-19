@@ -9,6 +9,7 @@ import { getStageCircleColor } from "../pm-constants";
 import type { PmTask } from "../pm-types";
 import { PmTaskCard } from "./PmTaskCard";
 import { useUpdatePmTask } from "../hooks/use-pm-data";
+import { useDefaultFlowWithDates, getFixedAssignee, getFixedWatchers } from "./PmStageFlowConfig";
 import { toast } from "sonner";
 
 const KANBAN_COLUMNS = [
@@ -67,6 +68,7 @@ interface Props {
 export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, onTaskClick, onCreateClick, filters, isAdmin }: Props) {
   const updateTask = useUpdatePmTask();
   const [activeTask, setActiveTask] = useState<PmTask | null>(null);
+  const { stageAssignees } = useDefaultFlowWithDates();
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -107,17 +109,29 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, on
     const newStage = over.id as string;
     if (droppedTask.stage_current === newStage) return;
 
+    const fixedAssignee = getFixedAssignee(stageAssignees, newStage, droppedTask.client_id);
+    const fixedWatchers = getFixedWatchers(stageAssignees, newStage, droppedTask.client_id);
+
+    const parentUpdates: any = { id: droppedTask.id, stage_current: newStage };
+    if (fixedAssignee !== undefined) {
+      parentUpdates.assignee_id = fixedAssignee;
+      parentUpdates.watchers = fixedWatchers;
+    }
+
     updateTask.mutate(
-      { id: droppedTask.id, stage_current: newStage } as any,
+      parentUpdates as any,
       { onError: () => toast.error("Erro ao mover tarefa") }
     );
 
-    // Move all child tasks to the same stage
+    // Move all child tasks to the same stage with same assignee
     const children = childTasksMap[droppedTask.id] ?? [];
     for (const child of children) {
-      if (child.stage_current !== newStage) {
-        updateTask.mutate({ id: child.id, stage_current: newStage } as any);
+      const childUpdates: any = { id: child.id, stage_current: newStage };
+      if (fixedAssignee !== undefined) {
+        childUpdates.assignee_id = fixedAssignee;
+        childUpdates.watchers = fixedWatchers;
       }
+      updateTask.mutate(childUpdates as any);
     }
   };
 

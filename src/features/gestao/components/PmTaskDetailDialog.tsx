@@ -22,7 +22,7 @@ import {
   usePmComments, usePmAttachments, usePmSyncStageCompletion,
 } from "../hooks/use-pm-data";
 import { usePmTags, useCreatePmTag, useDeletePmTag } from "../hooks/use-pm-tags";
-import { useDefaultFlowWithDates, getNextStages, getFixedAssignee } from "./PmStageFlowConfig";
+import { useDefaultFlowWithDates, getNextStages, getFixedAssignee, getFixedWatchers } from "./PmStageFlowConfig";
 import { PmSubtaskList } from "./PmSubtaskList";
 import { PmCommentsSection } from "./PmCommentsSection";
 import { PmAttachmentsSection } from "./PmAttachmentsSection";
@@ -268,18 +268,22 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     if (newDueDate) updates.due_date = newDueDate;
 
     const fixedAssignee = getFixedAssignee(stageAssignees, nextStage, task.client_id);
+    const fixedWatchers = getFixedWatchers(stageAssignees, nextStage, task.client_id);
     if (fixedAssignee !== undefined) {
       updates.assignee_id = fixedAssignee;
-      updates.watchers = [];
+      updates.watchers = fixedWatchers;
     }
 
     updateTask.mutate(updates);
 
-    // Move all child tasks to the same next stage
+    // Move all child tasks to the same next stage with the same assignee
     for (const child of childTasks) {
-      if (child.stage_current !== nextStage) {
-        updateTask.mutate({ id: child.id, stage_current: nextStage as any });
+      const childUpdates: any = { id: child.id, stage_current: nextStage as any };
+      if (fixedAssignee !== undefined) {
+        childUpdates.assignee_id = fixedAssignee;
+        childUpdates.watchers = fixedWatchers;
       }
+      updateTask.mutate(childUpdates);
     }
 
     syncCompletedStage(completedStage);
@@ -364,16 +368,19 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       const targetStage = alteracaoTargets[0];
       const updates: any = { id: task.id, stage_current: targetStage as any };
       const fixedAssignee = getFixedAssignee(stageAssignees, targetStage, task.client_id);
+      const fixedWatchers = getFixedWatchers(stageAssignees, targetStage, task.client_id);
       if (fixedAssignee !== undefined) {
         updates.assignee_id = fixedAssignee;
-        updates.watchers = [];
+        updates.watchers = fixedWatchers;
       }
       updateTask.mutate(updates);
-      // Move child tasks too
       for (const child of childTasks) {
-        if (child.stage_current !== targetStage) {
-          updateTask.mutate({ id: child.id, stage_current: targetStage as any });
+        const childUpdates: any = { id: child.id, stage_current: targetStage as any };
+        if (fixedAssignee !== undefined) {
+          childUpdates.assignee_id = fixedAssignee;
+          childUpdates.watchers = fixedWatchers;
         }
+        updateTask.mutate(childUpdates);
       }
       toast.success(`Retornou para ${stageLabel(targetStage)}`);
     } else {
@@ -384,16 +391,19 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   const handleChooseAlteracao = (stageKey: string) => {
     const updates: any = { id: task.id, stage_current: stageKey as any };
     const fixedAssignee = getFixedAssignee(stageAssignees, stageKey, task.client_id);
+    const fixedWatchers = getFixedWatchers(stageAssignees, stageKey, task.client_id);
     if (fixedAssignee !== undefined) {
       updates.assignee_id = fixedAssignee;
-      updates.watchers = [];
+      updates.watchers = fixedWatchers;
     }
     updateTask.mutate(updates);
-    // Move child tasks too
     for (const child of childTasks) {
-      if (child.stage_current !== stageKey) {
-        updateTask.mutate({ id: child.id, stage_current: stageKey as any });
+      const childUpdates: any = { id: child.id, stage_current: stageKey as any };
+      if (fixedAssignee !== undefined) {
+        childUpdates.assignee_id = fixedAssignee;
+        childUpdates.watchers = fixedWatchers;
       }
+      updateTask.mutate(childUpdates);
     }
     toast.success(`Retornou para ${stageLabel(stageKey)}`);
     setAlteracaoChoiceOpen(false);

@@ -16,8 +16,8 @@ function initials(n: string) {
   return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
 }
 
-// stage_assignees format: { "stage_key": { "client_id": "user_id" | null } }
-export type StageAssignees = Record<string, Record<string, string | null>>;
+// stage_assignees format: { "stage_key": { "client_id": "user_id" | null | ["assignee_id", "watcher_id", ...] } }
+export type StageAssignees = Record<string, Record<string, string | null | (string | null)[]>>;
 
 export interface StageFlow {
   id: string;
@@ -67,12 +67,24 @@ export function getNextStages(flowConfig: Record<string, string | string[]>, sta
   return [next];
 }
 
-/** Get the fixed assignee for a client+stage from the flow config */
+/** Get the fixed assignee for a client+stage from the flow config.
+ *  Value can be a string (single assignee), null, or an array [assignee, ...watchers]. */
 export function getFixedAssignee(stageAssignees: StageAssignees, stageKey: string, clientId: string): string | null | undefined {
   const stageMap = stageAssignees[stageKey];
-  if (!stageMap) return undefined; // no config for this stage
-  if (clientId in stageMap) return stageMap[clientId]; // could be string (user_id) or null (no fixed)
-  return undefined; // no config for this client in this stage
+  if (!stageMap) return undefined;
+  if (!(clientId in stageMap)) return undefined;
+  const val = stageMap[clientId];
+  if (Array.isArray(val)) return val[0] ?? null;
+  return val;
+}
+
+/** Get the fixed watchers for a client+stage (when value is an array, elements after [0] are watchers) */
+export function getFixedWatchers(stageAssignees: StageAssignees, stageKey: string, clientId: string): string[] {
+  const stageMap = stageAssignees[stageKey];
+  if (!stageMap || !(clientId in stageMap)) return [];
+  const val = stageMap[clientId];
+  if (Array.isArray(val)) return val.slice(1).filter(Boolean) as string[];
+  return [];
 }
 
 const STAGE_OPTIONS = PM_ACTIVE_STAGES;
