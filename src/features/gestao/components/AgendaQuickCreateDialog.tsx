@@ -58,7 +58,7 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
       due_date: dueDate,
       assignee_id: mainAssignee,
       is_extra_demand: isExtra,
-      status_global: "backlog",
+      status_global: "concluido",
     }, {
       onSuccess: () => {
         toast.success("Tarefa criada!");
