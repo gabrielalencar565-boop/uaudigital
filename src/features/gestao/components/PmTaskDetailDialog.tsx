@@ -288,7 +288,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     }
 
     if (linkedTaskId) {
-      // We linked to an existing agenda task — just update its status to backlog (active)
+      // We linked to an existing agenda task — update its status and transfer subtasks
       const linkedUpdates: any = { id: linkedTaskId, status_global: "backlog" as any };
       const fixedAssignee = getFixedAssignee(stageAssignees, nextStage, task.client_id);
       const fixedWatchers = getFixedWatchers(stageAssignees, nextStage, task.client_id);
@@ -297,6 +297,16 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         linkedUpdates.watchers = fixedWatchers;
       }
       updateTask.mutate(linkedUpdates);
+
+      // Transfer all child tasks to the linked task
+      for (const child of childTasks) {
+        updateTask.mutate({
+          id: child.id,
+          parent_task_id: linkedTaskId,
+          stage_current: nextStage as any,
+          status_global: "backlog" as any,
+        } as any);
+      }
     }
 
     syncCompletedStage(completedStage);
