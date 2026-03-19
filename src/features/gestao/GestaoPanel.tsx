@@ -781,6 +781,26 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
           </div>
         </DialogContent>
       </Dialog>
+      {/* Delete confirmation */}
+      <AlertDialog open={!!pendingDeleteId} onOpenChange={(open) => { if (!open) setPendingDeleteId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir tarefa?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">Tem certeza que deseja excluir esta tarefa?</span>
+              <span className="block text-destructive font-medium">
+                ⚠️ Os pontos de performance não serão contabilizados e a etapa será desmarcada no Magic Number.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteCronograma} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
