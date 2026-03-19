@@ -10,6 +10,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useRealtimeSyncAll } from "@/hooks/use-realtime-sync";
 import { useNotificationSound } from "@/hooks/use-notification-sound";
 import { TopBar } from "@/components/layout/TopBar";
+import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { EditProfileDialog } from "@/features/meu-painel/components/EditProfileDialog";
 import { usePmTasks } from "@/features/gestao/hooks/use-pm-data";
 import { PmTaskDetailDialog } from "@/features/gestao/components/PmTaskDetailDialog";
@@ -306,12 +307,12 @@ export function UauSidebarShell({
 
           <div
             className={cn(
-              "w-full pb-10 pt-18 transition-[padding] duration-300",
+              "w-full transition-[padding] duration-300",
               isMobile ?
-              "px-4" :
+              "px-4 pt-18 pb-24" :
               collapsed ?
-              "pl-[5rem] pr-6 pt-[4.5rem]" :
-              "pl-[15rem] pr-6 pt-[4.5rem] xl:pl-[17rem] xl:pr-8"
+              "pl-[5rem] pr-6 pt-[4.5rem] pb-10" :
+              "pl-[15rem] pr-6 pt-[4.5rem] pb-10 xl:pl-[17rem] xl:pr-8"
             )}>
             
             <div className="mx-auto w-full">
@@ -321,6 +322,8 @@ export function UauSidebarShell({
             </div>
           </div>
         </SidebarInset>
+
+        {isMobile && <MobileBottomNav tab={tab} onTabChange={onTabChange} isAdmin={isAdmin} />}
 
         <EditProfileDialog open={editProfileOpen} onOpenChange={setEditProfileOpen} />
         <NotifTaskDialogWrapper taskId={notifTaskId} onClose={() => setNotifTaskId(null)} isAdmin={isAdmin ?? false} />
