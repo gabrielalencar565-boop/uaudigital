@@ -179,7 +179,6 @@ export function PmAssigneeFlowConfig() {
                     {client.name}
                   </td>
                   {EDITABLE_STAGES.map(stage => {
-                    const currentVal = assignees[stage.key]?.[client.id];
                     const rawVal = assignees[stage.key]?.[client.id];
                     const currentVal = Array.isArray(rawVal) ? (rawVal[0] ?? null) : rawVal;
                     const hasConfig = rawVal !== undefined;
@@ -188,7 +187,7 @@ export function PmAssigneeFlowConfig() {
                     return (
                       <td key={stage.key} className="px-2 py-2 text-center">
                         <Select
-                          value={hasConfig ? (currentVal ?? "__none__") : "__unset__"}
+                          value={hasConfig ? (currentVal ?? "__none__") as string : "__unset__"}
                           onValueChange={(v) => {
                             if (v === "__unset__") {
                               setAssignee(stage.key, client.id, undefined);
