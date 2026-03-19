@@ -298,14 +298,19 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       }
       updateTask.mutate(linkedUpdates);
 
-      // Transfer all child tasks to the linked task
+      // Transfer all child tasks to the linked task + auto-assign stage responsible
       for (const child of childTasks) {
-        updateTask.mutate({
+        const childUpdates: any = {
           id: child.id,
           parent_task_id: linkedTaskId,
           stage_current: nextStage as any,
           status_global: "backlog" as any,
-        } as any);
+        };
+        if (fixedAssignee !== undefined) {
+          childUpdates.assignee_id = fixedAssignee;
+          childUpdates.watchers = fixedWatchers;
+        }
+        updateTask.mutate(childUpdates as any);
       }
     }
 
