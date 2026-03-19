@@ -806,7 +806,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                 onClose={() => { setLinkDialogOpen(false); setLinkExistingTask(null); setPendingAdvance(null); }}
                 existingTask={linkExistingTask}
                 onLink={(dueDate) => {
-                  if (pendingAdvance) doAdvance(pendingAdvance.completedStage, pendingAdvance.nextStage, dueDate);
+                  if (pendingAdvance) doAdvance(pendingAdvance.completedStage, pendingAdvance.nextStage, dueDate, linkExistingTask?.id);
                   setLinkDialogOpen(false); setLinkExistingTask(null); setPendingAdvance(null);
                 }}
                 onSelectDate={(dueDate) => {

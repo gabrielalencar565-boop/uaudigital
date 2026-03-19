@@ -558,31 +558,35 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
         {t.is_extra_demand &&
           <Badge variant="secondary" className="text-[8px] h-4 px-1.5 gap-0.5 mt-1 rounded-md">★ Extra</Badge>
         }
-        <div className="mt-1.5 flex items-center gap-1.5">
+        <div className="mt-2 flex items-center gap-2">
           {visibleAssignees.length > 0 ? (
             <div className="flex items-center shrink-0">
               {visibleAssignees.map((member, index) => (
-                <Avatar key={member.id} className={cn("h-5 w-5 ring-1 ring-background", index > 0 && "-ml-1.5")}>
+                <Avatar key={member.id} className={cn("h-7 w-7 ring-2 ring-background", index > 0 && "-ml-2")}>
                   <AvatarImage src={member.avatar} />
-                  <AvatarFallback className="text-[7px] font-bold bg-primary/10 text-primary">{initials(member.name)}</AvatarFallback>
+                  <AvatarFallback className="text-[8px] font-bold bg-primary/10 text-primary">{initials(member.name)}</AvatarFallback>
                 </Avatar>
               ))}
               {extraAssignees > 0 && (
-                <span className="ml-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-muted px-1 text-[8px] font-semibold text-muted-foreground">
+                <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1 text-[9px] font-semibold text-muted-foreground">
                   +{extraAssignees}
                 </span>
               )}
             </div>
           ) : (
-            <Avatar className="h-5 w-5 shrink-0 ring-1 ring-background">
-              <AvatarFallback className="text-[7px] font-bold bg-primary/10 text-primary">?</AvatarFallback>
+            <Avatar className="h-7 w-7 shrink-0 ring-2 ring-background">
+              <AvatarFallback className="text-[8px] font-bold bg-primary/10 text-primary">?</AvatarFallback>
             </Avatar>
           )}
           <div className="min-w-0">
-            <p className="truncate text-[11px] font-semibold leading-4">
-              {mainAssignee ? `${mainAssignee.name.split(" ")[0]}${assignees.length > 1 ? ` +${assignees.length - 1}` : ""}` : "—"}
-            </p>
-            <p className="truncate text-[10px] text-muted-foreground/60 leading-3">{clientName}</p>
+            {assignees.length === 1 && mainAssignee ? (
+              <>
+                <p className="truncate text-xs font-semibold leading-4">{mainAssignee.name.split(" ")[0]}</p>
+                <p className="truncate text-[11px] text-muted-foreground/60 leading-3">{clientName}</p>
+              </>
+            ) : (
+              <p className="truncate text-xs font-semibold leading-4">{clientName}</p>
+            )}
           </div>
         </div>
       </div>
