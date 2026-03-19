@@ -114,26 +114,15 @@ export function SquadDashboardDialog({
     // For each squad client, count completed stages out of 7
     const clientMap = new Map<string, { name: string; completed: number; total: number }>();
     
-    // Initialize from clients prop
+    // Initialize from clients prop (clientId = agenda_client_id)
     for (const c of clients) {
       clientMap.set(c.clientId, { name: c.name, completed: 0, total: STAGE_ORDER.length });
     }
 
-    // Count completed stages from squadStages per client
-    // squadStages come from magic2_cycle_stages joined with cycles — we need client_id
-    // The stages have cycle_id, and we need to map cycle_id → client_id
-    // Actually squadStages are passed with client_id already mapped from VisaoGeralTab
-    const cycleClientMap = new Map<string, string>();
-    for (const s of squadStages) {
-      if (s.client_id) {
-        cycleClientMap.set(s.cycle_id || s.id, s.client_id);
-      }
-    }
-
-    // Group stages by client
+    // Group completed stages by agenda_client_id
     const clientStagesMap = new Map<string, Set<string>>();
     for (const s of squadStages) {
-      const cid = s.client_id;
+      const cid = s.agenda_client_id;
       if (!cid || !clientMap.has(cid)) continue;
       if (!s.completed) continue;
       if (!clientStagesMap.has(cid)) clientStagesMap.set(cid, new Set());
