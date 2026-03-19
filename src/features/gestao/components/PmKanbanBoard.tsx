@@ -176,6 +176,7 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, on
   const activeMember = activeTask?.assignee_id ? membersMap[activeTask.assignee_id] : undefined;
 
   return (
+    <>
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="flex gap-3 overflow-x-auto pb-4 -mx-1 px-1">
         {columns.map((col, idx) => {
