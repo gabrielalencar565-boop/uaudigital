@@ -1263,7 +1263,9 @@ export function VisaoGeralTab() {
           sqData={expandedSquadDetail.sqData}
           teamMap={teamMap}
           squadMemberIds={squadStats[expandedSquadId!]?.memberIds ?? []}
-          allTasks={allTasks}
+          squadStages={expandedSquadDetail.squadAllStages}
+          agendaTasks={agendaTasks}
+          squadClientIds={clientsPerSquad[expandedSquadId!] ?? []}
         />
       )}
 
