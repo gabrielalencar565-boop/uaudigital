@@ -291,7 +291,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   };
 
   // Revert: go back to previous stage (undo concluído advance)
-  const handleRevert = () => {
+  const handleRevert = async () => {
     if (!task.stage_current || task.stage_current === "captacao") return;
     // Find the stage that points to the current stage
     const prevStage = Object.entries(flowConfig).find(([_, targets]) => 
@@ -301,7 +301,50 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       toast.error("Não foi possível reverter");
       return;
     }
-    updateTask.mutate({ id: task.id, stage_current: prevStage as any });
+
+    const { supabase } = await import("@/integrations/supabase/client");
+    const { data: { user } } = await supabase.auth.getUser();
+    const sb = supabase as any;
+
+    // 1) Delete the snapshot pm_task created for the previous stage (concluído copy)
+    //    Snapshots have status_global = "concluido" and stage_current = prevStage
+    await sb
+      .from("pm_tasks")
+      .delete()
+      .eq("client_id", task.client_id)
+      .eq("stage_current", prevStage)
+      .eq("status_global", "concluido")
+      .eq("title", task.title)
+      .not("id", "eq", task.id);
+
+    // 2) Soft-delete performance snapshot tasks for this pm_task + prevStage
+    //    This triggers task_soft_delete_uncheck_magic to uncheck magic number & recalc scores
+    await sb
+      .from("tasks")
+      .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id ?? null })
+      .like("description", `pm:${task.id}:${prevStage}%`)
+      .is("deleted_at", null);
+
+    // 3) Restore assignee from the previous stage
+    const fixedAssignee = getFixedAssignee(stageAssignees, prevStage, task.client_id);
+    const fixedWatchers = getFixedWatchers(stageAssignees, prevStage, task.client_id);
+    const updates: any = { id: task.id, stage_current: prevStage as any };
+    if (fixedAssignee !== undefined) {
+      updates.assignee_id = fixedAssignee;
+      updates.watchers = fixedWatchers;
+    }
+    updateTask.mutate(updates);
+
+    // Revert child tasks too
+    for (const child of childTasks) {
+      const childUpdates: any = { id: child.id, stage_current: prevStage as any };
+      if (fixedAssignee !== undefined) {
+        childUpdates.assignee_id = fixedAssignee;
+        childUpdates.watchers = fixedWatchers;
+      }
+      updateTask.mutate(childUpdates);
+    }
+
     toast.success(`Revertido para ${stageLabel(prevStage)}`);
   };
 
