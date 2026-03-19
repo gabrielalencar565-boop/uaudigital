@@ -268,45 +268,35 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     } catch (_) { /* ignore */ }
   };
 
-  const doAdvance = (completedStage: string, nextStage: string, newDueDate?: string) => {
-    // Save a "completed snapshot" so the agenda keeps showing the old stage as done
+  const doAdvance = (completedStage: string, nextStage: string, newDueDate?: string, linkedTaskId?: string) => {
+    // Mark the CURRENT task as completed (snapshot in the agenda)
     const snapshotDueDate = task.due_date ?? format(new Date(), "yyyy-MM-dd");
-    createTask.mutate({
-      client_id: task.client_id,
-      title: task.title,
-      description: task.description ?? undefined,
-      priority: task.priority,
-      stage_current: completedStage,
+    updateTask.mutate({
+      id: task.id,
+      stage_current: completedStage as any,
+      status_global: "concluido" as any,
       due_date: snapshotDueDate,
-      assignee_id: task.assignee_id ?? undefined,
-      project_id: task.project_id ?? undefined,
-      tags: task.tags ?? [],
-      parent_task_id: task.parent_task_id ?? undefined,
-      is_extra_demand: task.is_extra_demand,
-      status_global: "concluido",
     });
 
-    // Advance the actual task to the next stage
-    const updates: any = { id: task.id, stage_current: nextStage as any };
-    if (newDueDate) updates.due_date = newDueDate;
-
-    const fixedAssignee = getFixedAssignee(stageAssignees, nextStage, task.client_id);
-    const fixedWatchers = getFixedWatchers(stageAssignees, nextStage, task.client_id);
-    if (fixedAssignee !== undefined) {
-      updates.assignee_id = fixedAssignee;
-      updates.watchers = fixedWatchers;
+    // Mark all child tasks as completed too
+    for (const child of childTasks) {
+      updateTask.mutate({
+        id: child.id,
+        stage_current: completedStage as any,
+        status_global: "concluido" as any,
+      });
     }
 
-    updateTask.mutate(updates);
-
-    // Move all child tasks to the same next stage with the same assignee
-    for (const child of childTasks) {
-      const childUpdates: any = { id: child.id, stage_current: nextStage as any };
+    if (linkedTaskId) {
+      // We linked to an existing agenda task — just update its status to backlog (active)
+      const linkedUpdates: any = { id: linkedTaskId, status_global: "backlog" as any };
+      const fixedAssignee = getFixedAssignee(stageAssignees, nextStage, task.client_id);
+      const fixedWatchers = getFixedWatchers(stageAssignees, nextStage, task.client_id);
       if (fixedAssignee !== undefined) {
-        childUpdates.assignee_id = fixedAssignee;
-        childUpdates.watchers = fixedWatchers;
+        linkedUpdates.assignee_id = fixedAssignee;
+        linkedUpdates.watchers = fixedWatchers;
       }
-      updateTask.mutate(childUpdates);
+      updateTask.mutate(linkedUpdates);
     }
 
     syncCompletedStage(completedStage);
