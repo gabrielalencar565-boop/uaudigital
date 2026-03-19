@@ -96,7 +96,7 @@ function StageRingWidget({ label, pct, valueLabel, className, fullscreen }: { la
         />
       </div>
       <div className={cn(
-        "w-full whitespace-nowrap rounded-md bg-foreground text-center font-semibold tracking-wide text-background shrink-0 -mt-2",
+        "w-full whitespace-nowrap rounded-md bg-foreground text-center font-semibold tracking-wide text-background shrink-0",
         isMobile ? "px-2 py-1 text-[10px]" : "px-3 py-1.5 text-xs"
       )}>
         {label.toUpperCase()}
