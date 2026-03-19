@@ -80,20 +80,6 @@ export function useNotificationSound() {
           }
         }
       )
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "pm_tasks" },
-        (payload) => {
-          const uid = userIdRef.current;
-          if (!uid) return;
-          const newRow = payload.new as any;
-          const oldRow = payload.old as any;
-          // Notify when assignee changes TO this user
-          if (newRow.assignee_id === uid && oldRow.assignee_id !== uid) {
-            playNotificationSound();
-          }
-        }
-      )
       .subscribe();
 
     return () => {
