@@ -581,9 +581,5 @@ export function SquadDashboardDialog({
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Maximized overlay */}
-      {renderMaximized()}
-    </>
   );
 }
