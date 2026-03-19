@@ -182,10 +182,10 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
   /* Desktop / Tablet: 2-column layout that stretches to fill viewport */
   return (
     <section className={cn(
-      "grid items-stretch mx-auto w-full",
+      "grid gap-4 items-stretch",
       fullscreen
-        ? "flex-1 min-h-0 h-full grid-cols-[minmax(280px,340px)_1fr] gap-3 max-w-[1400px]"
-        : "gap-4 grid-cols-[minmax(260px,360px)_1fr] lg:grid-cols-[minmax(300px,400px)_1fr] xl:grid-cols-[420px_1fr]"
+        ? "flex-1 min-h-0 h-full grid-cols-[1fr_2fr]"
+        : "grid-cols-[minmax(260px,360px)_1fr] lg:grid-cols-[minmax(300px,400px)_1fr] xl:grid-cols-[420px_1fr]"
     )} style={fullscreen ? { height: "100%" } : undefined}>
 
       {/* ── Left column: Overview card ── */}
@@ -206,14 +206,14 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
           <ProgressRing
             value={dashboard.overallPct}
             tone={dashboard.overallPct === 100 ? "success" : "warning"}
-            size={fullscreen ? 320 : 340}
-            stroke={fullscreen ? 26 : 28}
+            size={fullscreen ? 400 : 340}
+            stroke={fullscreen ? 30 : 28}
             trackColor="rgba(91,33,182,0.45)"
             label={
               <div className="text-center">
                 <div className={cn(
                   "font-semibold tabular-nums tracking-tight text-white drop-shadow-sm",
-                  fullscreen ? "text-5xl" : "text-7xl xl:text-8xl"
+                  fullscreen ? "text-6xl" : "text-7xl xl:text-8xl"
                 )}>
                   {dashboard.overallPct}%
                 </div>
@@ -227,7 +227,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
       </Card>
 
       {/* ── Right column: metrics + stage grid ── */}
-      <div className="flex flex-col gap-2 min-h-0">
+      <div className="flex flex-col gap-3 min-h-0">
         {/* Top metrics row */}
         <div className="grid grid-cols-4 gap-2 shrink-0">
           <MetricCard value={deadlineLabel} label="MAGIC NUMBER" highlight />
@@ -238,8 +238,8 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
 
         {/* Stage rings grid — fills remaining height */}
         <div className={cn(
-          "flex-1 min-h-0 grid",
-          fullscreen ? "gap-2 grid-cols-4 grid-rows-2" : "gap-3 grid-cols-4 grid-rows-2"
+          "flex-1 min-h-0 grid gap-3",
+          "grid-cols-4 grid-rows-2"
         )}>
           {stagesForDashboard.map((st) => {
             const item = dashboard.byStage[st.key];
