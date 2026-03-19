@@ -80,7 +80,7 @@ function StageRingWidget({ label, pct, valueLabel, className, fullscreen }: { la
   const ringSize = isMobile ? 100 : fullscreen ? 200 : 180;
   const strokeWidth = isMobile ? 10 : fullscreen ? 18 : 20;
   return (
-    <div className={cn("flex flex-col items-center gap-0 min-w-0", fullscreen && "justify-end", className)}>
+    <div className={cn("flex flex-col items-center gap-1 min-w-0", fullscreen && "justify-end", className)}>
       <div className={cn("flex items-center justify-center w-full", fullscreen ? "flex-1 min-h-0" : "")}>
         <ProgressRing
           value={pct}
