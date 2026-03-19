@@ -61,13 +61,13 @@ const NAV: NavEntry[] = [
 { key: "meu_painel", label: "Meu Painel", icon: UserRound },
 {
   key: "gestao_group",
-  label: "Projetos",
+  label: "Tarefas",
   icon: ClipboardList,
-  landingTab: "visao_geral_projetos",
+  landingTab: "tarefas",
   children: [
-  { key: "tarefas", label: "Tarefas", icon: LayoutGrid },
   { key: "agenda_gestao", label: "Agenda", icon: CalendarDays },
   { key: "cronograma", label: "Cronograma", icon: CalendarRange },
+  { key: "visao_geral_projetos", label: "Painel de Squads", icon: PieChart },
   { key: "fluxos", label: "Fluxos", icon: Workflow }]
 
 

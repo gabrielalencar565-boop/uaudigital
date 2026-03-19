@@ -29,6 +29,7 @@ import { stageLabel, getStageCircleColor, tagColor, tagDisplay } from "./pm-cons
 import { cn } from "@/lib/utils";
 import type { PmTask } from "./pm-types";
 import { toast } from "sonner";
+import { AgendaQuickCreateDialog } from "./components/AgendaQuickCreateDialog";
 import { useAgendaSpecialDates } from "@/features/agenda/hooks/use-agenda-dates";
 import { getIconById } from "@/features/agenda/components/IconPicker";
 function initials(n: string) {
@@ -303,7 +304,9 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
           search={search}
           cursor={agendaCursor}
           setCursor={setAgendaCursor}
-          fixedAssigneeClientIds={fixedAssigneeClientIds} />
+          fixedAssigneeClientIds={fixedAssigneeClientIds}
+          clients={(clientsQ.data ?? []).map((c) => ({ id: c.id, name: c.name }))}
+          members={membersList} />
 
         }
         {effectiveView === "clientes" &&
@@ -376,7 +379,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
 }
 
 // ─── Agenda Calendar View (matches main Agenda module) ───
-function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTaskClick, filterClient, filterAssignee, search, cursor, setCursor, fixedAssigneeClientIds }: {
+function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTaskClick, filterClient, filterAssignee, search, cursor, setCursor, fixedAssigneeClientIds, clients, members }: {
   tasks: PmTask[];
   clientsMap: Record<string, string>;
   membersMap: Record<string, { name: string; avatar?: string }>;
@@ -388,6 +391,8 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
   cursor: Date;
   setCursor: React.Dispatch<React.SetStateAction<Date>>;
   fixedAssigneeClientIds: Set<string>;
+  clients: { id: string; name: string }[];
+  members: { id: string; name: string }[];
 }) {
   const isMobile = useIsMobile();
   const deleteTask = useDeletePmTask();
@@ -395,6 +400,8 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
   const [moreDayKey, setMoreDayKey] = useState<string | null>(null);
   const [agendaView, setAgendaView] = useState<"month" | "week">("month");
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [quickCreateOpen, setQuickCreateOpen] = useState(false);
+  const [quickCreateDate, setQuickCreateDate] = useState<string | undefined>();
 
   const todayKey = format(new Date(), "yyyy-MM-dd");
 
@@ -722,7 +729,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
               return (
                 <div
                   key={key}
-                  className={cn("relative min-h-28 rounded-2xl border border-[#d9d9d9] bg-card/30 backdrop-blur-sm p-2.5 transition-all calendar-card-hover",
+                  className={cn("group/cell relative min-h-28 rounded-2xl border border-[#d9d9d9] bg-card/30 backdrop-blur-sm p-2.5 transition-all calendar-card-hover",
                     inMonth ? "opacity-100" : "opacity-30 border-transparent",
                     isToday && "border-primary/50 ring-2 ring-primary/15 bg-primary/5"
                   )}>
@@ -733,6 +740,15 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
                     )}>
                       {format(d, "d")}
                     </div>
+                    {inMonth && (
+                      <button
+                        type="button"
+                        className="h-5 w-5 rounded-md flex items-center justify-center text-muted-foreground/40 hover:text-primary hover:bg-primary/10 transition opacity-0 group-hover/cell:opacity-100"
+                        onClick={() => { setQuickCreateDate(key); setQuickCreateOpen(true); }}
+                        title="Nova tarefa">
+                        <Plus className="h-3 w-3" />
+                      </button>
+                    )}
                   </div>
                   <div className="space-y-1.5 max-h-[520px] overflow-y-auto">
                     {renderSpecialDates(key, true)}
@@ -801,6 +817,13 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <AgendaQuickCreateDialog
+        open={quickCreateOpen}
+        onClose={() => setQuickCreateOpen(false)}
+        clients={clients}
+        members={members}
+        defaultDate={quickCreateDate}
+      />
     </div>
   );
 }

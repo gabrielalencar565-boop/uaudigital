@@ -216,9 +216,22 @@ export function useDeletePmTask() {
         .eq("id", id)
         .single();
 
+      // Collect ALL affected user IDs from performance snapshots BEFORE soft-deleting
+      const { data: affectedRows } = await sb
+        .from("tasks")
+        .select("assigned_user_id, due_date")
+        .like("description", `pm:${id}:%`)
+        .is("deleted_at", null);
+
+      const affectedUsers = new Map<string, { year: number; month: number }>();
+      (affectedRows ?? []).forEach((r: any) => {
+        if (r.assigned_user_id && r.due_date) {
+          const d = new Date(r.due_date);
+          affectedUsers.set(r.assigned_user_id, { year: d.getFullYear(), month: d.getMonth() + 1 });
+        }
+      });
+
       // Soft-delete all performance snapshot tasks linked to this pm_task
-      // Pattern: description LIKE 'pm:{id}:%'
-      // This triggers task_soft_delete_uncheck_magic to uncheck magic number & recalc scores
       const { error: snapErr } = await sb
         .from("tasks")
         .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id ?? null })
@@ -233,6 +246,19 @@ export function useDeletePmTask() {
         .eq("parent_task_id", id);
       if (children?.length) {
         for (const child of children) {
+          // Collect child affected users too
+          const { data: childAffected } = await sb
+            .from("tasks")
+            .select("assigned_user_id, due_date")
+            .like("description", `pm:${child.id}:%`)
+            .is("deleted_at", null);
+          (childAffected ?? []).forEach((r: any) => {
+            if (r.assigned_user_id && r.due_date) {
+              const d = new Date(r.due_date);
+              affectedUsers.set(r.assigned_user_id, { year: d.getFullYear(), month: d.getMonth() + 1 });
+            }
+          });
+
           await sb
             .from("tasks")
             .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id ?? null })
@@ -242,7 +268,6 @@ export function useDeletePmTask() {
       }
 
       // Delete agenda snapshots (concluído copies created by advanceStage)
-      // These are pm_tasks with status_global = "concluido" and same title/client
       if (taskInfo) {
         await sb
           .from("pm_tasks")
@@ -255,6 +280,19 @@ export function useDeletePmTask() {
 
       const { error } = await sb.from("pm_tasks").delete().eq("id", id);
       if (error) throw error;
+
+      // Recompute scores for ALL affected users
+      for (const [userId, { year, month }] of affectedUsers) {
+        try {
+          await supabase.rpc("recompute_all_scores", {
+            _user_id: userId,
+            _year: year,
+            _month: month,
+          } as any);
+        } catch (e) {
+          console.error("Error recomputing scores for user:", userId, e);
+        }
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pm_tasks"] });

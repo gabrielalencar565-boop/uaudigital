@@ -10,6 +10,8 @@ import type { PmTask } from "../pm-types";
 import { PmTaskCard } from "./PmTaskCard";
 import { useUpdatePmTask } from "../hooks/use-pm-data";
 import { useDefaultFlowWithDates, getFixedAssignee, getFixedWatchers } from "./PmStageFlowConfig";
+import { LinkOrDateDialog } from "./LinkOrDateDialog";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 const KANBAN_COLUMNS = [
@@ -70,6 +72,12 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, on
   const [activeTask, setActiveTask] = useState<PmTask | null>(null);
   const { stageAssignees } = useDefaultFlowWithDates();
 
+  // Link dialog state
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+  const [linkExistingTask, setLinkExistingTask] = useState<{ id: string; due_date: string; title: string } | null>(null);
+  const [pendingDragTask, setPendingDragTask] = useState<PmTask | null>(null);
+  const [pendingDragStage, setPendingDragStage] = useState<string | null>(null);
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
@@ -100,15 +108,7 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, on
     setActiveTask(task ?? null);
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    setActiveTask(null);
-    const { active, over } = event;
-    if (!over) return;
-    const droppedTask = (active.data.current as any)?.task as PmTask | undefined;
-    if (!droppedTask) return;
-    const newStage = over.id as string;
-    if (droppedTask.stage_current === newStage) return;
-
+  const applyMove = (droppedTask: PmTask, newStage: string, overrideDueDate?: string) => {
     const fixedAssignee = getFixedAssignee(stageAssignees, newStage, droppedTask.client_id);
     const fixedWatchers = getFixedWatchers(stageAssignees, newStage, droppedTask.client_id);
 
@@ -117,13 +117,10 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, on
       parentUpdates.assignee_id = fixedAssignee;
       parentUpdates.watchers = fixedWatchers;
     }
+    if (overrideDueDate) parentUpdates.due_date = overrideDueDate;
 
-    updateTask.mutate(
-      parentUpdates as any,
-      { onError: () => toast.error("Erro ao mover tarefa") }
-    );
+    updateTask.mutate(parentUpdates as any, { onError: () => toast.error("Erro ao mover tarefa") });
 
-    // Move all child tasks to the same stage with same assignee
     const children = childTasksMap[droppedTask.id] ?? [];
     for (const child of children) {
       const childUpdates: any = { id: child.id, stage_current: newStage };
@@ -135,9 +132,51 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, on
     }
   };
 
+  const handleDragEnd = async (event: DragEndEvent) => {
+    setActiveTask(null);
+    const { active, over } = event;
+    if (!over) return;
+    const droppedTask = (active.data.current as any)?.task as PmTask | undefined;
+    if (!droppedTask) return;
+    const newStage = over.id as string;
+    if (droppedTask.stage_current === newStage) return;
+
+    // Check for existing completed agenda task for same client + target stage
+    try {
+      const sb = supabase as any;
+      const { data: existing } = await sb
+        .from("pm_tasks")
+        .select("id, due_date, title")
+        .eq("client_id", droppedTask.client_id)
+        .eq("stage_current", newStage)
+        .eq("status_global", "concluido")
+        .is("parent_task_id", null)
+        .limit(1);
+
+      if (existing && existing.length > 0 && existing[0].due_date) {
+        setPendingDragTask(droppedTask);
+        setPendingDragStage(newStage);
+        setLinkExistingTask(existing[0]);
+        setLinkDialogOpen(true);
+        return;
+      }
+    } catch (_) { /* proceed normally */ }
+
+    applyMove(droppedTask, newStage);
+  };
+
+  const handleLinkChoice = (dueDate: string) => {
+    if (pendingDragTask && pendingDragStage) {
+      applyMove(pendingDragTask, pendingDragStage, dueDate);
+    }
+    setPendingDragTask(null);
+    setPendingDragStage(null);
+  };
+
   const activeMember = activeTask?.assignee_id ? membersMap[activeTask.assignee_id] : undefined;
 
   return (
+    <>
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="flex gap-3 overflow-x-auto pb-4 -mx-1 px-1">
         {columns.map((col, idx) => {
@@ -208,5 +247,15 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, on
         )}
       </DragOverlay>
     </DndContext>
+
+    <LinkOrDateDialog
+      open={linkDialogOpen}
+      onClose={() => { setLinkDialogOpen(false); setPendingDragTask(null); setPendingDragStage(null); }}
+      existingTask={linkExistingTask}
+      onLink={handleLinkChoice}
+      onSelectDate={handleLinkChoice}
+    />
+    </>
   );
 }
+
