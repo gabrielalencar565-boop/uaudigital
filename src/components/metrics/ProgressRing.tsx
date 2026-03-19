@@ -46,8 +46,8 @@ export function ProgressRing({
           : "hsl(var(--primary))";
 
   return (
-    <div className={cn("relative grid place-items-center", className)} style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="-rotate-90">
+    <div className={cn("relative grid place-items-center", className)} style={{ width: size, height: size, maxWidth: "100%", maxHeight: "100%", aspectRatio: "1/1" }}>
+      <svg width="100%" height="100%" viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
         <circle cx={size / 2} cy={size / 2} r={r} stroke={trackColor ?? "hsl(var(--border))"} strokeWidth={stroke} fill="none" />
         <circle
           cx={size / 2}
