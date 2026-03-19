@@ -231,6 +231,11 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   const [pendingCompletedStage, setPendingCompletedStage] = useState("");
   const [pendingDueDate, setPendingDueDate] = useState<string | undefined>();
 
+  // Link existing task state
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+  const [linkExistingTask, setLinkExistingTask] = useState<{ id: string; due_date: string; title: string } | null>(null);
+  const [pendingAdvance, setPendingAdvance] = useState<{ completedStage: string; nextStage: string } | null>(null);
+
   // Possible next stages from flow
   const nextStages = getNextStages(flowConfig, task.stage_current);
   const isDone = task.stage_current === "entrega";
