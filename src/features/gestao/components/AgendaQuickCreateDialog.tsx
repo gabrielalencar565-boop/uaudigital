@@ -4,19 +4,30 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DatePicker } from "@/components/ui/date-picker";
 import { PM_STAGES } from "../pm-constants";
 import { useCreatePmTask } from "../hooks/use-pm-data";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 const STAGE_OPTIONS = PM_STAGES.filter(s => !["roteiro", "edicao", "alteracoes"].includes(s.key));
+
+function initials(name: string) {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]!.toUpperCase())
+    .join("");
+}
 
 interface Props {
   open: boolean;
   onClose: () => void;
   clients: { id: string; name: string }[];
-  members: { id: string; name: string }[];
+  members: { id: string; name: string; avatar?: string }[];
   defaultDate?: string;
 }
 
@@ -24,21 +35,28 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
   const createTask = useCreatePmTask();
   const [clientId, setClientId] = useState("");
   const [stage, setStage] = useState("planejamento");
-  const [assigneeId, setAssigneeId] = useState("__none__");
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const [dueDate, setDueDate] = useState(defaultDate ?? format(new Date(), "yyyy-MM-dd"));
   const [isExtra, setIsExtra] = useState(false);
+
+  const toggleMember = (id: string) => {
+    setSelectedMemberIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
 
   const handleCreate = async () => {
     if (!clientId) { toast.error("Selecione um cliente"); return; }
     const clientName = clients.find(c => c.id === clientId)?.name ?? "";
     const stageLabel = STAGE_OPTIONS.find(s => s.key === stage)?.label ?? stage;
+    const mainAssignee = selectedMemberIds[0] ?? undefined;
     
     createTask.mutate({
       client_id: clientId,
       title: `[${clientName}] - ${stageLabel}`,
       stage_current: stage,
       due_date: dueDate,
-      assignee_id: assigneeId === "__none__" ? undefined : assigneeId,
+      assignee_id: mainAssignee,
       is_extra_demand: isExtra,
       status_global: "backlog",
     }, {
@@ -54,7 +72,7 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
   const resetForm = () => {
     setClientId("");
     setStage("planejamento");
-    setAssigneeId("__none__");
+    setSelectedMemberIds([]);
     setIsExtra(false);
   };
 
@@ -83,15 +101,37 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
             </Select>
           </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-muted-foreground">Responsável</Label>
-            <Select value={assigneeId} onValueChange={setAssigneeId}>
-              <SelectTrigger className="rounded-xl"><SelectValue placeholder="Nenhum" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">Nenhum</SelectItem>
-                {members.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+          <div className="space-y-2">
+            <Label className="text-xs font-semibold text-muted-foreground">Membros da tarefa</Label>
+            <div className="flex flex-wrap gap-2">
+              {members.map((m) => {
+                const selected = selectedMemberIds.includes(m.id);
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => toggleMember(m.id)}
+                    className={cn(
+                      "flex items-center gap-2 rounded-full border px-3 py-1.5 transition",
+                      selected
+                        ? "border-primary bg-primary/10 text-foreground"
+                        : "border-border bg-background text-muted-foreground hover:bg-accent"
+                    )}
+                  >
+                    <Avatar className="h-7 w-7">
+                      <AvatarImage src={m.avatar ?? undefined} />
+                      <AvatarFallback className="text-[10px]">
+                        {initials(m.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-sm">{m.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {selectedMemberIds.length === 0 && (
+              <p className="text-xs text-muted-foreground">Selecione ao menos um membro</p>
+            )}
           </div>
 
           <div className="space-y-1.5">

@@ -145,7 +145,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
     (membersQ.data ?? []).forEach((tm) => {m[tm.user_id] = { name: tm.display_name, avatar: tm.avatar_url ?? undefined };});
     return m;
   }, [membersQ.data]);
-  const membersList = useMemo(() => (membersQ.data ?? []).map((m) => ({ id: m.user_id, name: m.display_name })), [membersQ.data]);
+  const membersList = useMemo(() => (membersQ.data ?? []).map((m) => ({ id: m.user_id, name: m.display_name, avatar: m.avatar_url ?? undefined })), [membersQ.data]);
   const membersForSpecialDates = useMemo(
     () => (membersQ.data ?? []).map((m) => ({ user_id: m.user_id, display_name: m.display_name, birth_date: m.birth_date ?? null })),
     [membersQ.data]
