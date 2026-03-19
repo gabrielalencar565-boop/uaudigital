@@ -246,6 +246,7 @@ export function VisaoGeralTab() {
   const allClientSquads = clientSquadsQ.data ?? [];
   const allTeam = teamQ.data ?? [];
   const allTasks = pmTasksQ.data ?? [];
+  const agendaTasks = agendaTasksQ.data ?? [];
   const healthScores = healthQ.data ?? [];
 
   const teamMap = useMemo(() => {
