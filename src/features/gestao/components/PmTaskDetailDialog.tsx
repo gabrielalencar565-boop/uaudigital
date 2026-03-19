@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import {
   Calendar, UserCircle, Flag, X, ChevronRight, ArrowLeft,
   Layers, Tag, MessageSquare, Plus, Check, CheckCircle2, RotateCcw, Paperclip, ListTodo, FileText, CalendarDays
@@ -32,6 +32,8 @@ import { PmPostingFields } from "./PmPostingFields";
 import type { PmTask } from "../pm-types";
 import { toast } from "sonner";
 import { SmartCaptionEditor } from "./SmartCaptionEditor";
+import { LinkOrDateDialog } from "./LinkOrDateDialog";
+import { supabase } from "@/integrations/supabase/client";
 
 function initials(n: string) {
   return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
@@ -229,6 +231,11 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   const [pendingCompletedStage, setPendingCompletedStage] = useState("");
   const [pendingDueDate, setPendingDueDate] = useState<string | undefined>();
 
+  // Link existing task state
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+  const [linkExistingTask, setLinkExistingTask] = useState<{ id: string; due_date: string; title: string } | null>(null);
+  const [pendingAdvance, setPendingAdvance] = useState<{ completedStage: string; nextStage: string } | null>(null);
+
   // Possible next stages from flow
   const nextStages = getNextStages(flowConfig, task.stage_current);
   const isDone = task.stage_current === "entrega";
@@ -261,7 +268,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     } catch (_) { /* ignore */ }
   };
 
-  const advanceStage = async (completedStage: string, nextStage: string, newDueDate?: string) => {
+  const doAdvance = (completedStage: string, nextStage: string, newDueDate?: string) => {
     // Save a "completed snapshot" so the agenda keeps showing the old stage as done
     const snapshotDueDate = task.due_date ?? format(new Date(), "yyyy-MM-dd");
     createTask.mutate({
@@ -304,6 +311,36 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
     syncCompletedStage(completedStage);
     toast.success(nextStage === "entrega" ? "Tarefa marcada como Entregue!" : `Avançou para ${stageLabel(nextStage)}`);
+  };
+
+  const advanceStage = async (completedStage: string, nextStage: string, newDueDate?: string) => {
+    // Check if there's an existing agenda task for the same client + target stage
+    if (nextStage !== "entrega") {
+      const sb = supabase as any;
+      const now = new Date();
+      const monthStart = format(new Date(now.getFullYear(), now.getMonth(), 1), "yyyy-MM-dd");
+      const monthEnd = format(new Date(now.getFullYear(), now.getMonth() + 1, 0), "yyyy-MM-dd");
+
+      const { data: existing } = await sb
+        .from("pm_tasks")
+        .select("id, due_date, title")
+        .eq("client_id", task.client_id)
+        .eq("stage_current", nextStage)
+        .eq("status_global", "concluido")
+        .gte("due_date", monthStart)
+        .lte("due_date", monthEnd)
+        .neq("id", task.id)
+        .limit(1);
+
+      if (existing && existing.length > 0) {
+        setLinkExistingTask(existing[0]);
+        setPendingAdvance({ completedStage, nextStage });
+        setLinkDialogOpen(true);
+        return;
+      }
+    }
+
+    doAdvance(completedStage, nextStage, newDueDate);
   };
 
   // Revert: go back to previous stage (undo concluído advance)
@@ -753,6 +790,21 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                   </div>
                 </DialogContent>
               </Dialog>
+
+              {/* Link or Date dialog for existing agenda tasks */}
+              <LinkOrDateDialog
+                open={linkDialogOpen}
+                onClose={() => { setLinkDialogOpen(false); setLinkExistingTask(null); setPendingAdvance(null); }}
+                existingTask={linkExistingTask}
+                onLink={(dueDate) => {
+                  if (pendingAdvance) doAdvance(pendingAdvance.completedStage, pendingAdvance.nextStage, dueDate);
+                  setLinkDialogOpen(false); setLinkExistingTask(null); setPendingAdvance(null);
+                }}
+                onSelectDate={(dueDate) => {
+                  if (pendingAdvance) doAdvance(pendingAdvance.completedStage, pendingAdvance.nextStage, dueDate);
+                  setLinkDialogOpen(false); setLinkExistingTask(null); setPendingAdvance(null);
+                }}
+              />
             </>
           ) : (
             <Badge className="bg-emerald-500/20 text-emerald-400 border-0 gap-1">
