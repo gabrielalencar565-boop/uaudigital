@@ -479,9 +479,8 @@ export function SquadDashboardDialog({
   );
 
   return (
-    <>
-      <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden p-0">
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden p-0">
           {/* ── Premium Header ── */}
           <div
             className="relative px-8 pt-8 pb-6"
