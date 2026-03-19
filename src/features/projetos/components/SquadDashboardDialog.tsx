@@ -426,17 +426,12 @@ export function SquadDashboardDialog({
           <p className="text-xs text-muted-foreground">{clientPerformance.length} clientes • 7 etapas do Magic Number</p>
         </div>
         {!fullscreen && (
-          <div className="flex items-center gap-1">
-            <button onClick={() => setMaximized("clients")} className="h-8 w-8 rounded-xl border border-border/30 flex items-center justify-center hover:bg-muted/50 transition-colors">
-              <Maximize2 className="h-3.5 w-3.5 text-muted-foreground" />
-            </button>
-            <button
-              onClick={() => setClientsCollapsed(!clientsCollapsed)}
-              className="h-8 w-8 rounded-xl border border-border/30 flex items-center justify-center hover:bg-muted/50 transition-colors"
-            >
-              {clientsCollapsed ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronUp className="h-4 w-4 text-muted-foreground" />}
-            </button>
-          </div>
+          <button
+            onClick={() => setClientsCollapsed(!clientsCollapsed)}
+            className="h-8 w-8 rounded-xl border border-border/30 flex items-center justify-center hover:bg-muted/50 transition-colors"
+          >
+            {clientsCollapsed ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronUp className="h-4 w-4 text-muted-foreground" />}
+          </button>
         )}
       </div>
 
