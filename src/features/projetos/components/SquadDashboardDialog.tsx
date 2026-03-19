@@ -190,7 +190,7 @@ export function SquadDashboardDialog({
   if (!squad) return null;
 
   // ── Section: Stages ──
-  const renderStagesSection = (fullscreen = false) => (
+  const renderStagesSection = () => (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
         <div className="h-9 w-9 rounded-xl bg-sidebar/10 flex items-center justify-center">
@@ -200,12 +200,13 @@ export function SquadDashboardDialog({
           <p className="text-sm font-bold text-foreground">Evolução por Etapa</p>
           <p className="text-xs text-muted-foreground">Progresso diário de conclusão</p>
         </div>
-        {!fullscreen && (
-          <button onClick={() => setMaximized("stages")} className="h-8 w-8 rounded-xl border border-border/30 flex items-center justify-center hover:bg-muted/50 transition-colors">
-            <Maximize2 className="h-3.5 w-3.5 text-muted-foreground" />
-          </button>
-        )}
+        <button onClick={() => setStagesCollapsed(!stagesCollapsed)} className="h-8 w-8 rounded-xl border border-border/30 flex items-center justify-center hover:bg-muted/50 transition-colors">
+          {stagesCollapsed ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronUp className="h-4 w-4 text-muted-foreground" />}
+        </button>
       </div>
+
+      {!stagesCollapsed && (
+        <>
 
       <div className="flex flex-wrap gap-x-4 gap-y-1.5">
         {STAGE_ORDER.map(k => (
