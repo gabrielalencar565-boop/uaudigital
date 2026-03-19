@@ -85,15 +85,14 @@ interface SquadDashboardDialogProps {
   squadClientIds: string[];
 }
 
-type MaxSection = "stages" | "productivity" | null;
-
 export function SquadDashboardDialog({
   open, onClose, squad, squadIcon: SquadIcon, stageProgress, stagePerf,
   clients, squadInsights, sqData, teamMap, squadMemberIds,
   squadStages, agendaTasks, squadClientIds,
 }: SquadDashboardDialogProps) {
   const [clientsCollapsed, setClientsCollapsed] = useState(false);
-  const [maximized, setMaximized] = useState<MaxSection>(null);
+  const [stagesCollapsed, setStagesCollapsed] = useState(false);
+  const [productivityCollapsed, setProductivityCollapsed] = useState(false);
   const now = new Date();
 
   // ── Bottleneck detection ──
