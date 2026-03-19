@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-  AlertTriangle, ChevronDown, ChevronUp, TrendingUp, TrendingDown, Users, Zap, BarChart2, Target, Maximize2, X
+  AlertTriangle, ChevronDown, ChevronUp, TrendingUp, TrendingDown, Users, Zap, BarChart2, Target,
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip,
@@ -85,15 +85,14 @@ interface SquadDashboardDialogProps {
   squadClientIds: string[];
 }
 
-type MaxSection = "stages" | "productivity" | null;
-
 export function SquadDashboardDialog({
   open, onClose, squad, squadIcon: SquadIcon, stageProgress, stagePerf,
   clients, squadInsights, sqData, teamMap, squadMemberIds,
   squadStages, agendaTasks, squadClientIds,
 }: SquadDashboardDialogProps) {
   const [clientsCollapsed, setClientsCollapsed] = useState(false);
-  const [maximized, setMaximized] = useState<MaxSection>(null);
+  const [stagesCollapsed, setStagesCollapsed] = useState(false);
+  const [productivityCollapsed, setProductivityCollapsed] = useState(false);
   const now = new Date();
 
   // ── Bottleneck detection ──
@@ -191,7 +190,7 @@ export function SquadDashboardDialog({
   if (!squad) return null;
 
   // ── Section: Stages ──
-  const renderStagesSection = (fullscreen = false) => (
+  const renderStagesSection = () => (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
         <div className="h-9 w-9 rounded-xl bg-sidebar/10 flex items-center justify-center">
@@ -201,114 +200,116 @@ export function SquadDashboardDialog({
           <p className="text-sm font-bold text-foreground">Evolução por Etapa</p>
           <p className="text-xs text-muted-foreground">Progresso diário de conclusão</p>
         </div>
-        {!fullscreen && (
-          <button onClick={() => setMaximized("stages")} className="h-8 w-8 rounded-xl border border-border/30 flex items-center justify-center hover:bg-muted/50 transition-colors">
-            <Maximize2 className="h-3.5 w-3.5 text-muted-foreground" />
-          </button>
-        )}
+        <button onClick={() => setStagesCollapsed(!stagesCollapsed)} className="h-8 w-8 rounded-xl border border-border/30 flex items-center justify-center hover:bg-muted/50 transition-colors">
+          {stagesCollapsed ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronUp className="h-4 w-4 text-muted-foreground" />}
+        </button>
       </div>
 
-      <div className="flex flex-wrap gap-x-4 gap-y-1.5">
-        {STAGE_ORDER.map(k => (
-          <div key={k} className="flex items-center gap-1.5 text-xs">
-            <div
-              className={cn("h-2.5 w-2.5 rounded-sm", bottleneck?.key === k && "ring-2 ring-offset-1")}
-              style={{ backgroundColor: STAGE_COLORS[k] }}
-            />
-            <span className={cn("font-medium", bottleneck?.key === k ? "text-foreground font-bold" : "text-muted-foreground")}>
-              {STAGE_LABELS[k]}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      <div className={fullscreen ? "h-[400px] w-full" : "h-[280px] w-full"}>
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={stageProgress} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-            <defs>
-              {STAGE_ORDER.map(k => (
-                <linearGradient key={`sg-${k}`} id={`sd-grad-${k}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={STAGE_COLORS[k]} stopOpacity={0.3} />
-                  <stop offset="100%" stopColor={STAGE_COLORS[k]} stopOpacity={0.02} />
-                </linearGradient>
-              ))}
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.4} />
-            <XAxis dataKey="dia" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} interval={4} />
-            <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} width={35} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
-            <Tooltip
-              content={({ active, payload, label }) => {
-                if (!active || !payload?.length) return null;
-                return (
-                  <div className="bg-popover border border-border rounded-xl shadow-xl px-3.5 py-3 space-y-1.5">
-                    <p className="text-xs font-bold text-foreground">Dia {label}</p>
-                    {payload
-                      .filter((e: any) => e.value !== undefined)
-                      .sort((a: any, b: any) => (b.value ?? 0) - (a.value ?? 0))
-                      .map((entry: any) => (
-                        <div key={entry.dataKey} className="flex items-center gap-2 text-xs">
-                          <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: STAGE_COLORS[entry.dataKey as string] }} />
-                          <span className="text-muted-foreground">{STAGE_LABELS[entry.dataKey as string]}:</span>
-                          <span className="font-bold text-foreground">{entry.value}%</span>
-                        </div>
-                      ))}
-                  </div>
-                );
-              }}
-            />
+      {!stagesCollapsed && (
+        <>
+          <div className="flex flex-wrap gap-x-4 gap-y-1.5">
             {STAGE_ORDER.map(k => (
-              <Area
-                key={k}
-                type="monotone"
-                dataKey={k}
-                stroke={STAGE_COLORS[k]}
-                strokeWidth={bottleneck?.key === k ? 3.5 : 2}
-                fill={`url(#sd-grad-${k})`}
-                dot={false}
-                connectNulls={false}
-                animationDuration={800}
-              />
+              <div key={k} className="flex items-center gap-1.5 text-xs">
+                <div
+                  className={cn("h-2.5 w-2.5 rounded-sm", bottleneck?.key === k && "ring-2 ring-offset-1")}
+                  style={{ backgroundColor: STAGE_COLORS[k] }}
+                />
+                <span className={cn("font-medium", bottleneck?.key === k ? "text-foreground font-bold" : "text-muted-foreground")}>
+                  {STAGE_LABELS[k]}
+                </span>
+              </div>
             ))}
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
+          </div>
 
-      <div className="grid grid-cols-7 gap-2">
-        {STAGE_ORDER.map(k => {
-          const perf = stagePerf[k];
-          const isBottleneck = bottleneck?.key === k;
-          return (
-            <div
-              key={k}
-              className={cn(
-                "relative rounded-xl border p-3 text-center transition-all",
-                isBottleneck ? "border-transparent shadow-md" : "border-border/30",
-              )}
-              style={isBottleneck ? {
-                background: `linear-gradient(135deg, ${STAGE_COLORS[k]}12 0%, ${STAGE_COLORS[k]}04 100%)`,
-                borderColor: `${STAGE_COLORS[k]}40`,
-              } : undefined}
-            >
-              {isBottleneck && (
-                <div className="absolute -top-2 left-1/2 -translate-x-1/2">
-                  <AlertTriangle className="h-3.5 w-3.5" style={{ color: STAGE_COLORS[k] }} />
+          <div className="h-[280px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={stageProgress} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                <defs>
+                  {STAGE_ORDER.map(k => (
+                    <linearGradient key={`sg-${k}`} id={`sd-grad-${k}`} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={STAGE_COLORS[k]} stopOpacity={0.3} />
+                      <stop offset="100%" stopColor={STAGE_COLORS[k]} stopOpacity={0.02} />
+                    </linearGradient>
+                  ))}
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.4} />
+                <XAxis dataKey="dia" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} interval={4} />
+                <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} width={35} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+                <Tooltip
+                  content={({ active, payload, label }) => {
+                    if (!active || !payload?.length) return null;
+                    return (
+                      <div className="bg-popover border border-border rounded-xl shadow-xl px-3.5 py-3 space-y-1.5">
+                        <p className="text-xs font-bold text-foreground">Dia {label}</p>
+                        {payload
+                          .filter((e: any) => e.value !== undefined)
+                          .sort((a: any, b: any) => (b.value ?? 0) - (a.value ?? 0))
+                          .map((entry: any) => (
+                            <div key={entry.dataKey} className="flex items-center gap-2 text-xs">
+                              <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: STAGE_COLORS[entry.dataKey as string] }} />
+                              <span className="text-muted-foreground">{STAGE_LABELS[entry.dataKey as string]}:</span>
+                              <span className="font-bold text-foreground">{entry.value}%</span>
+                            </div>
+                          ))}
+                      </div>
+                    );
+                  }}
+                />
+                {STAGE_ORDER.map(k => (
+                  <Area
+                    key={k}
+                    type="monotone"
+                    dataKey={k}
+                    stroke={STAGE_COLORS[k]}
+                    strokeWidth={bottleneck?.key === k ? 3.5 : 2}
+                    fill={`url(#sd-grad-${k})`}
+                    dot={false}
+                    connectNulls={false}
+                    animationDuration={800}
+                  />
+                ))}
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="grid grid-cols-7 gap-2">
+            {STAGE_ORDER.map(k => {
+              const perf = stagePerf[k];
+              const isBottleneck = bottleneck?.key === k;
+              return (
+                <div
+                  key={k}
+                  className={cn(
+                    "relative rounded-xl border p-3 text-center transition-all",
+                    isBottleneck ? "border-transparent shadow-md" : "border-border/30",
+                  )}
+                  style={isBottleneck ? {
+                    background: `linear-gradient(135deg, ${STAGE_COLORS[k]}12 0%, ${STAGE_COLORS[k]}04 100%)`,
+                    borderColor: `${STAGE_COLORS[k]}40`,
+                  } : undefined}
+                >
+                  {isBottleneck && (
+                    <div className="absolute -top-2 left-1/2 -translate-x-1/2">
+                      <AlertTriangle className="h-3.5 w-3.5" style={{ color: STAGE_COLORS[k] }} />
+                    </div>
+                  )}
+                  <div className="h-2 w-2 rounded-full mx-auto mb-2" style={{ backgroundColor: STAGE_COLORS[k] }} />
+                  <p className="text-[10px] font-bold text-foreground leading-tight">{STAGE_LABELS[k]}</p>
+                  <p className="text-lg font-bold mt-1" style={{ color: isBottleneck ? STAGE_COLORS[k] : undefined }}>
+                    {perf?.percent ?? 0}%
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">{perf ? `${perf.completed}/${perf.total}` : "—"}</p>
                 </div>
-              )}
-              <div className="h-2 w-2 rounded-full mx-auto mb-2" style={{ backgroundColor: STAGE_COLORS[k] }} />
-              <p className="text-[10px] font-bold text-foreground leading-tight">{STAGE_LABELS[k]}</p>
-              <p className="text-lg font-bold mt-1" style={{ color: isBottleneck ? STAGE_COLORS[k] : undefined }}>
-                {perf?.percent ?? 0}%
-              </p>
-              <p className="text-[10px] text-muted-foreground">{perf ? `${perf.completed}/${perf.total}` : "—"}</p>
-            </div>
-          );
-        })}
-      </div>
+              );
+            })}
+          </div>
+        </>
+      )}
     </div>
   );
 
   // ── Section: Productivity ──
-  const renderProductivitySection = (fullscreen = false) => (
+  const renderProductivitySection = () => (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
         <div className="h-9 w-9 rounded-xl bg-sidebar/10 flex items-center justify-center">
@@ -318,104 +319,104 @@ export function SquadDashboardDialog({
           <p className="text-sm font-bold text-foreground">Produtividade por Colaborador</p>
           <p className="text-xs text-muted-foreground">Baseado nas etapas da função de cada pessoa</p>
         </div>
-        {!fullscreen && (
-          <button onClick={() => setMaximized("productivity")} className="h-8 w-8 rounded-xl border border-border/30 flex items-center justify-center hover:bg-muted/50 transition-colors">
-            <Maximize2 className="h-3.5 w-3.5 text-muted-foreground" />
-          </button>
-        )}
+        <button onClick={() => setProductivityCollapsed(!productivityCollapsed)} className="h-8 w-8 rounded-xl border border-border/30 flex items-center justify-center hover:bg-muted/50 transition-colors">
+          {productivityCollapsed ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronUp className="h-4 w-4 text-muted-foreground" />}
+        </button>
       </div>
 
-      <div className="space-y-2">
-        {memberProductivity.map((m, idx) => {
-          const medals = ["🥇", "🥈", "🥉"];
-          const medal = idx < 3 ? medals[idx] : null;
-          const barWidth = maxCompleted > 0 ? Math.round((m.completed / maxCompleted) * 100) : 0;
-          const isTop = idx === 0 && m.completed > 0;
-          const barColor = progressColor(m.percent);
+      {!productivityCollapsed && (
+        <div className="space-y-2">
+          {memberProductivity.map((m, idx) => {
+            const medals = ["🥇", "🥈", "🥉"];
+            const medal = idx < 3 ? medals[idx] : null;
+            const barWidth = maxCompleted > 0 ? Math.round((m.completed / maxCompleted) * 100) : 0;
+            const isTop = idx === 0 && m.completed > 0;
+            const barColor = progressColor(m.percent);
 
-          return (
-            <div
-              key={m.uid}
-              className={cn(
-                "relative rounded-xl border px-4 py-3 transition-all",
-                isTop ? "border-transparent shadow-md" : "border-border/30 hover:border-border/60",
-              )}
-              style={isTop ? {
-                background: `linear-gradient(135deg, ${squad.color}10 0%, ${squad.color}04 100%)`,
-              } : undefined}
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-bold min-w-[28px] text-center">
-                  {medal ?? `${idx + 1}º`}
-                </span>
+            return (
+              <div
+                key={m.uid}
+                className={cn(
+                  "relative rounded-xl border px-4 py-3 transition-all",
+                  isTop ? "border-transparent shadow-md" : "border-border/30 hover:border-border/60",
+                )}
+                style={isTop ? {
+                  background: `linear-gradient(135deg, ${squad.color}10 0%, ${squad.color}04 100%)`,
+                } : undefined}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-bold min-w-[28px] text-center">
+                    {medal ?? `${idx + 1}º`}
+                  </span>
 
-                <Avatar className="h-9 w-9 shrink-0">
-                  <AvatarImage src={m.avatar ?? undefined} alt={m.name} />
-                  <AvatarFallback className="text-[10px] bg-muted">{initials(m.name)}</AvatarFallback>
-                </Avatar>
+                  <Avatar className="h-9 w-9 shrink-0">
+                    <AvatarImage src={m.avatar ?? undefined} alt={m.name} />
+                    <AvatarFallback className="text-[10px] bg-muted">{initials(m.name)}</AvatarFallback>
+                  </Avatar>
 
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold text-foreground truncate">{m.name}</p>
-                    <Badge variant="outline" className="text-[9px] font-bold px-1.5 py-0 border-0 bg-muted text-muted-foreground">
-                      {m.role}
-                    </Badge>
-                    {isTop && (
-                      <Badge variant="outline" className="text-[9px] font-bold px-1.5 py-0 border-0" style={{
-                        backgroundColor: `${squad.color}15`,
-                        color: squad.color,
-                      }}>
-                        TOP
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-foreground truncate">{m.name}</p>
+                      <Badge variant="outline" className="text-[9px] font-bold px-1.5 py-0 border-0 bg-muted text-muted-foreground">
+                        {m.role}
                       </Badge>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 mt-1.5">
-                    <div className="flex-1 h-2 rounded-full bg-border/20 overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all duration-700"
-                        style={{ width: `${barWidth}%`, backgroundColor: barColor }}
-                      />
+                      {isTop && (
+                        <Badge variant="outline" className="text-[9px] font-bold px-1.5 py-0 border-0" style={{
+                          backgroundColor: `${squad.color}15`,
+                          color: squad.color,
+                        }}>
+                          TOP
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 mt-1.5">
+                      <div className="flex-1 h-2 rounded-full bg-border/20 overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-700"
+                          style={{ width: `${barWidth}%`, backgroundColor: barColor }}
+                        />
+                      </div>
                     </div>
                   </div>
+
+                  <div className="text-right shrink-0">
+                    <p className="text-xl font-bold text-foreground">{m.percent}<span className="text-xs font-normal text-muted-foreground">%</span></p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {m.completed}/{m.totalPossible} etapas
+                    </p>
+                  </div>
                 </div>
 
-                <div className="text-right shrink-0">
-                  <p className="text-xl font-bold text-foreground">{m.percent}<span className="text-xs font-normal text-muted-foreground">%</span></p>
-                  <p className="text-[10px] text-muted-foreground">
-                    {m.completed}/{m.totalPossible} etapas
-                  </p>
-                </div>
+                {m.completed > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-2 ml-[68px]">
+                    {m.roleStages.map(k => {
+                      const count = m.stageBreakdown[k] ?? 0;
+                      if (count === 0) return null;
+                      return (
+                        <span
+                          key={k}
+                          className="text-[9px] font-medium rounded-md px-1.5 py-0.5"
+                          style={{
+                            backgroundColor: `${STAGE_COLORS[k]}15`,
+                            color: STAGE_COLORS[k],
+                          }}
+                        >
+                          {STAGE_LABELS[k]} ×{count}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-
-              {m.completed > 0 && (
-                <div className="flex flex-wrap gap-1 mt-2 ml-[68px]">
-                  {m.roleStages.map(k => {
-                    const count = m.stageBreakdown[k] ?? 0;
-                    if (count === 0) return null;
-                    return (
-                      <span
-                        key={k}
-                        className="text-[9px] font-medium rounded-md px-1.5 py-0.5"
-                        style={{
-                          backgroundColor: `${STAGE_COLORS[k]}15`,
-                          color: STAGE_COLORS[k],
-                        }}
-                      >
-                        {STAGE_LABELS[k]} ×{count}
-                      </span>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 
   // ── Section: Client performance ──
-  const renderClientsSection = (fullscreen = false) => (
+  const renderClientsSection = () => (
     <div className="space-y-3">
       <div className="flex items-center gap-3">
         <div className="h-9 w-9 rounded-xl bg-sidebar/10 flex items-center justify-center shrink-0">
@@ -425,18 +426,16 @@ export function SquadDashboardDialog({
           <p className="text-sm font-bold text-foreground">Desempenho por Cliente</p>
           <p className="text-xs text-muted-foreground">{clientPerformance.length} clientes • 7 etapas do Magic Number</p>
         </div>
-        {!fullscreen && (
-          <button
-            onClick={() => setClientsCollapsed(!clientsCollapsed)}
-            className="h-8 w-8 rounded-xl border border-border/30 flex items-center justify-center hover:bg-muted/50 transition-colors"
-          >
-            {clientsCollapsed ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronUp className="h-4 w-4 text-muted-foreground" />}
-          </button>
-        )}
+        <button
+          onClick={() => setClientsCollapsed(!clientsCollapsed)}
+          className="h-8 w-8 rounded-xl border border-border/30 flex items-center justify-center hover:bg-muted/50 transition-colors"
+        >
+          {clientsCollapsed ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronUp className="h-4 w-4 text-muted-foreground" />}
+        </button>
       </div>
 
-      {(!clientsCollapsed || fullscreen) && (
-        <div className={cn("space-y-2", !fullscreen && "pl-12")}>
+      {!clientsCollapsed && (
+        <div className={cn("space-y-2", "pl-12")}>
           {clientPerformance.map(c => {
             const color = progressColor(c.percent);
             return (
@@ -479,37 +478,9 @@ export function SquadDashboardDialog({
     </div>
   );
 
-  // ── Maximized dialog ──
-  const renderMaximized = () => {
-    if (!maximized) return null;
-    const titles: Record<string, string> = {
-      stages: "Evolução por Etapa",
-      productivity: "Produtividade por Colaborador",
-    };
-    return (
-      <Dialog open={!!maximized} onOpenChange={() => setMaximized(null)}>
-        <DialogContent className="max-w-5xl max-h-[95vh] overflow-hidden p-0">
-          <div className="px-8 pt-6 pb-4 border-b border-border/30 flex items-center justify-between">
-            <div>
-              <DialogTitle className="text-lg font-bold">{titles[maximized]}</DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-                {squad.name} — {format(now, "MMMM yyyy", { locale: ptBR })}
-              </DialogDescription>
-            </div>
-          </div>
-          <div className="px-8 py-6 overflow-y-auto max-h-[calc(95vh-80px)]">
-            {maximized === "stages" && renderStagesSection(true)}
-            {maximized === "productivity" && renderProductivitySection(true)}
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  };
-
   return (
-    <>
-      <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden p-0">
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden p-0">
           {/* ── Premium Header ── */}
           <div
             className="relative px-8 pt-8 pb-6"
@@ -610,9 +581,5 @@ export function SquadDashboardDialog({
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Maximized overlay */}
-      {renderMaximized()}
-    </>
   );
 }
