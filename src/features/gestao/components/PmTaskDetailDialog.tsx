@@ -268,18 +268,22 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     if (newDueDate) updates.due_date = newDueDate;
 
     const fixedAssignee = getFixedAssignee(stageAssignees, nextStage, task.client_id);
+    const fixedWatchers = getFixedWatchers(stageAssignees, nextStage, task.client_id);
     if (fixedAssignee !== undefined) {
       updates.assignee_id = fixedAssignee;
-      updates.watchers = [];
+      updates.watchers = fixedWatchers;
     }
 
     updateTask.mutate(updates);
 
-    // Move all child tasks to the same next stage
+    // Move all child tasks to the same next stage with the same assignee
     for (const child of childTasks) {
-      if (child.stage_current !== nextStage) {
-        updateTask.mutate({ id: child.id, stage_current: nextStage as any });
+      const childUpdates: any = { id: child.id, stage_current: nextStage as any };
+      if (fixedAssignee !== undefined) {
+        childUpdates.assignee_id = fixedAssignee;
+        childUpdates.watchers = fixedWatchers;
       }
+      updateTask.mutate(childUpdates);
     }
 
     syncCompletedStage(completedStage);
