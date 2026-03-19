@@ -139,6 +139,19 @@ export function VisaoGeralTab() {
     },
   });
 
+  // Agenda tasks (tasks table) for current month — used for member productivity
+  const agendaTasksQ = useQuery({
+    queryKey: ["agenda_tasks_overview", monthStart],
+    queryFn: async () => {
+      const { data } = await supabase.from("tasks")
+        .select("id, assigned_user_id, stage, status, due_date, client_id, completed_at, is_extra_demand, quantity")
+        .gte("due_date", monthStart)
+        .lte("due_date", monthEnd)
+        .is("deleted_at", null);
+      return data ?? [];
+    },
+  });
+
   // Fetch active client IDs to filter charts correctly
   const activeClientsQ = useQuery({
     queryKey: ["active_client_ids"],
@@ -233,6 +246,7 @@ export function VisaoGeralTab() {
   const allClientSquads = clientSquadsQ.data ?? [];
   const allTeam = teamQ.data ?? [];
   const allTasks = pmTasksQ.data ?? [];
+  const agendaTasks = agendaTasksQ.data ?? [];
   const healthScores = healthQ.data ?? [];
 
   const teamMap = useMemo(() => {
@@ -516,7 +530,7 @@ export function VisaoGeralTab() {
       if (lagging.length > 0) squadInsights.push(`⚠️ ${lagging.length} cliente(s) com menos de 50% das etapas`);
     }
 
-    return { squad: sq, clients, squadInsights, sqData };
+    return { squad: sq, clients, squadInsights, sqData, squadAllStages };
   }, [expandedSquadId, squads, clientsPerSquad, magic2AllStages, magic2PrevStages, squadSpeedData]);
 
   // Table rows with all metrics
@@ -1249,7 +1263,9 @@ export function VisaoGeralTab() {
           sqData={expandedSquadDetail.sqData}
           teamMap={teamMap}
           squadMemberIds={squadStats[expandedSquadId!]?.memberIds ?? []}
-          allTasks={allTasks}
+          squadStages={expandedSquadDetail.squadAllStages}
+          agendaTasks={agendaTasks}
+          squadClientIds={clientsPerSquad[expandedSquadId!] ?? []}
         />
       )}
 
