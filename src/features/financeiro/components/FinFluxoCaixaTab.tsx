@@ -1,7 +1,8 @@
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProgressRing } from "@/components/metrics/ProgressRing";
-import { useFinClients, useFinAllTransactions } from "../hooks/use-financial-data";
+import { Input } from "@/components/ui/input";
+import { useFinClients, useFinAllTransactions, useFinOpeningBalances, useUpsertOpeningBalance } from "../hooks/use-financial-data";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { FinMonthYearSelector } from "./FinMonthYearSelector";
 
@@ -12,13 +13,21 @@ export function FinFluxoCaixaTab() {
 
   const clientsQ = useFinClients();
   const transactionsQ = useFinAllTransactions(year);
+  const openingQ = useFinOpeningBalances(year);
+  const upsertOpening = useUpsertOpeningBalance();
 
   const clients = clientsQ.data?.filter((c) => c.is_active) ?? [];
   const transactions = transactionsQ.data ?? [];
+  const openingBalances = openingQ.data ?? [];
 
-  // Calculate from transactions only
+  // Opening balance for the selected month
+  const openingRecord = openingBalances.find((b) => b.month === month);
+  const caixaInicial = openingRecord ? Number(openingRecord.amount) : 0;
+
+  // Filter transactions for the month (exclude "caixa" category)
   const monthTxs = useMemo(() => {
     return transactions.filter((t) => {
+      if (t.category === "caixa") return false;
       const d = new Date(t.date);
       return d.getMonth() + 1 === month;
     });
@@ -26,27 +35,12 @@ export function FinFluxoCaixaTab() {
 
   const totalReceita = monthTxs.filter((t) => t.type === "entrada").reduce((s, t) => s + Number(t.amount), 0);
   const totalDespesa = monthTxs.filter((t) => t.type === "saida").reduce((s, t) => s + Number(t.amount), 0);
-  const lucro = totalReceita - totalDespesa;
+  const resultado = totalReceita - totalDespesa;
+  const caixaFinal = caixaInicial + resultado;
   const ticketMedio = clients.length > 0 ? totalReceita / clients.length : 0;
-  const margemLucro = totalReceita > 0 ? (lucro / totalReceita) * 100 : 0;
+  const margemLucro = totalReceita > 0 ? (resultado / totalReceita) * 100 : 0;
 
-  const caixaAcumulado = useMemo(() => {
-    const txs = transactions.filter((t) => {
-      const d = new Date(t.date);
-      return d.getMonth() + 1 <= month;
-    });
-    return txs.reduce((s, t) => s + (t.type === "entrada" ? Number(t.amount) : -Number(t.amount)), 0);
-  }, [transactions, month]);
-
-  const caixaInicial = useMemo(() => {
-    const beforeTxs = transactions.filter((t) => {
-      const d = new Date(t.date);
-      return d.getMonth() + 1 < month;
-    });
-    return beforeTxs.reduce((s, t) => s + (t.type === "entrada" ? Number(t.amount) : -Number(t.amount)), 0);
-  }, [transactions, month]);
-
-  // Category breakdown from transactions
+  // Category breakdown (exclude "caixa")
   const categoryData = useMemo(() => {
     const CATEGORY_LABELS: Record<string, string> = {
       receita_recorrente: "Receita Recorrente",
@@ -60,7 +54,6 @@ export function FinFluxoCaixaTab() {
       despesa_outros: "Despesas Outros",
       despesa_variavel: "Despesas Variáveis",
       investimentos: "Investimentos",
-      caixa: "Caixa",
     };
     const cats: Record<string, number> = {};
     monthTxs.forEach((t) => {
@@ -71,6 +64,20 @@ export function FinFluxoCaixaTab() {
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
   }, [monthTxs]);
+
+  const [editingOpening, setEditingOpening] = useState(false);
+  const [openingVal, setOpeningVal] = useState("");
+
+  const handleSaveOpening = () => {
+    const amt = parseFloat(openingVal) || 0;
+    upsertOpening.mutate({
+      year,
+      month,
+      amount: amt,
+      ...(openingRecord ? { id: openingRecord.id } : {}),
+    });
+    setEditingOpening(false);
+  };
 
   return (
     <div className="space-y-6">
@@ -90,22 +97,23 @@ export function FinFluxoCaixaTab() {
         </Card>
       </div>
 
-      {/* KPIs Row 2 */}
+      {/* KPIs Row 2: Resultado + Caixa Final */}
       <div className="grid gap-4 sm:grid-cols-2">
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium uppercase">Lucro</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium uppercase">Resultado do Mês</CardTitle></CardHeader>
           <CardContent>
-            <p className={`text-4xl font-bold ${lucro >= 0 ? "text-success" : "text-destructive"}`}>
-              {lucro < 0 ? "-" : ""}R$ {Math.abs(lucro).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+            <p className={`text-4xl font-bold ${resultado >= 0 ? "text-success" : "text-destructive"}`}>
+              {resultado < 0 ? "-" : ""}R$ {Math.abs(resultado).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm font-medium uppercase">Caixa</CardTitle></CardHeader>
           <CardContent>
-            <p className={`text-4xl font-bold ${caixaAcumulado >= 0 ? "text-success" : "text-destructive"}`}>
-              {caixaAcumulado < 0 ? "-" : ""}R$ {Math.abs(caixaAcumulado).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+            <p className={`text-4xl font-bold ${caixaFinal >= 0 ? "text-success" : "text-destructive"}`}>
+              {caixaFinal < 0 ? "-" : ""}R$ {Math.abs(caixaFinal).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
             </p>
+            <p className="text-xs text-muted-foreground mt-1">Caixa inicial + Entradas − Saídas</p>
           </CardContent>
         </Card>
       </div>
@@ -131,9 +139,39 @@ export function FinFluxoCaixaTab() {
           <CardContent><p className="text-4xl font-bold">R$ {ticketMedio.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p></CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium uppercase">Caixa Inicial</CardTitle></CardHeader>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium uppercase flex items-center gap-2">
+              Caixa Inicial
+              {!editingOpening && (
+                <button
+                  onClick={() => { setOpeningVal(String(caixaInicial)); setEditingOpening(true); }}
+                  className="text-xs text-primary hover:underline font-normal"
+                >
+                  editar
+                </button>
+              )}
+            </CardTitle>
+          </CardHeader>
           <CardContent>
-            <p className="text-4xl font-bold">R$ {Math.abs(caixaInicial).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+            {editingOpening ? (
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={openingVal}
+                  onChange={(e) => setOpeningVal(e.target.value)}
+                  className="h-9 w-40"
+                  autoFocus
+                  onKeyDown={(e) => { if (e.key === "Enter") handleSaveOpening(); if (e.key === "Escape") setEditingOpening(false); }}
+                />
+                <button onClick={handleSaveOpening} className="text-sm text-primary hover:underline">Salvar</button>
+                <button onClick={() => setEditingOpening(false)} className="text-sm text-muted-foreground hover:underline">Cancelar</button>
+              </div>
+            ) : (
+              <p className="text-4xl font-bold">
+                {caixaInicial < 0 ? "-" : ""}R$ {Math.abs(caixaInicial).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>
