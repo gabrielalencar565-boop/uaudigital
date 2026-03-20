@@ -97,10 +97,10 @@ export function FinFluxoCaixaTab() {
         </Card>
       </div>
 
-      {/* KPIs Row 2: Resultado + Caixa Final */}
+      {/* KPIs Row 2: Lucro + Caixa Final */}
       <div className="grid gap-4 sm:grid-cols-2">
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium uppercase">Resultado do Mês</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium uppercase">Lucro</CardTitle></CardHeader>
           <CardContent>
             <p className={`text-4xl font-bold ${resultado >= 0 ? "text-success" : "text-destructive"}`}>
               {resultado < 0 ? "-" : ""}R$ {Math.abs(resultado).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
