@@ -109,7 +109,7 @@ export function FinVisaoAnualTab() {
           <CardContent><p className="text-2xl font-bold">{fmt(totalDespesa)}</p></CardContent>
         </Card>
         <Card className="text-center">
-          <CardHeader className="pb-1"><CardTitle className="text-xs uppercase">Resultado Anual</CardTitle></CardHeader>
+          <CardHeader className="pb-1"><CardTitle className="text-xs uppercase">Lucro Anual</CardTitle></CardHeader>
           <CardContent><p className={`text-2xl font-bold ${resultadoAnual >= 0 ? "text-success" : "text-destructive"}`}>{fmtSign(resultadoAnual)}</p></CardContent>
         </Card>
         <Card className="text-center">
