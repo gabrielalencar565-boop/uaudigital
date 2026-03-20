@@ -128,7 +128,7 @@ export function FinVisaoAnualTab() {
                   <th className="px-3 py-2 text-left font-bold">Mês</th>
                   <th className="px-3 py-2 text-right font-bold">Receita</th>
                   <th className="px-3 py-2 text-right font-bold">Despesa</th>
-                  <th className="px-3 py-2 text-right font-bold">Resultado</th>
+                  <th className="px-3 py-2 text-right font-bold">Lucro</th>
                   <th className="px-3 py-2 text-right font-bold">Caixa</th>
                 </tr>
               </thead>
