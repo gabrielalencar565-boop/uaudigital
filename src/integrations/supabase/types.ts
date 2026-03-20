@@ -554,33 +554,6 @@ export type Database = {
         }
         Relationships: []
       }
-      financial_opening_balances: {
-        Row: {
-          amount: number
-          created_at: string
-          id: string
-          month: number
-          updated_at: string
-          year: number
-        }
-        Insert: {
-          amount?: number
-          created_at?: string
-          id?: string
-          month: number
-          updated_at?: string
-          year: number
-        }
-        Update: {
-          amount?: number
-          created_at?: string
-          id?: string
-          month?: number
-          updated_at?: string
-          year?: number
-        }
-        Relationships: []
-      }
       financial_revenues: {
         Row: {
           amount: number
