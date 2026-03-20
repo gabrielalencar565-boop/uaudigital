@@ -425,33 +425,66 @@ export function FinLancamentosTab() {
       </div>
 
       {/* Summary */}
-      <div className="grid gap-4 sm:grid-cols-3 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.1s" }}>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.1s" }}>
         <Card>
           <CardContent className="flex items-center gap-3 pt-4">
-            <ArrowUpCircle className="h-8 w-8 text-success" />
+            <Wallet className="h-7 w-7 text-muted-foreground shrink-0" />
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                Caixa Inicial
+                {!editingOpening && (
+                  <button onClick={() => { setOpeningVal(String(caixaInicial)); setEditingOpening(true); }} className="text-primary hover:underline text-[10px]">editar</button>
+                )}
+              </p>
+              {editingOpening ? (
+                <div className="flex items-center gap-1 mt-0.5">
+                  <Input type="number" step="0.01" value={openingVal} onChange={(e) => setOpeningVal(e.target.value)} className="h-7 w-24 text-xs" autoFocus
+                    onKeyDown={(e) => { if (e.key === "Enter") handleSaveOpening(); if (e.key === "Escape") setEditingOpening(false); }} />
+                  <button onClick={handleSaveOpening} className="text-[10px] text-primary hover:underline">OK</button>
+                </div>
+              ) : (
+                <p className="text-lg font-bold">{caixaInicial < 0 ? "-" : ""}R$ {Math.abs(caixaInicial).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-3 pt-4">
+            <ArrowUpCircle className="h-7 w-7 text-success shrink-0" />
             <div>
               <p className="text-xs text-muted-foreground">Entradas</p>
-              <p className="text-xl font-bold">R$ {totalEntradas.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+              <p className="text-lg font-bold">R$ {totalEntradas.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="flex items-center gap-3 pt-4">
-            <ArrowDownCircle className="h-8 w-8 text-destructive" />
+            <ArrowDownCircle className="h-7 w-7 text-destructive shrink-0" />
             <div>
               <p className="text-xs text-muted-foreground">Saídas</p>
-              <p className="text-xl font-bold">R$ {totalSaidas.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+              <p className="text-lg font-bold">R$ {totalSaidas.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="flex items-center gap-3 pt-4">
-            <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold ${totalEntradas - totalSaidas >= 0 ? "bg-success/20 text-success" : "bg-destructive/20 text-destructive"}`}>
+            <div className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${totalEntradas - totalSaidas >= 0 ? "bg-success/20 text-success" : "bg-destructive/20 text-destructive"}`}>
               {totalEntradas - totalSaidas >= 0 ? "+" : "−"}
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Saldo</p>
-              <p className="text-xl font-bold">R$ {Math.abs(totalEntradas - totalSaidas).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+              <p className="text-xs text-muted-foreground">Resultado</p>
+              <p className="text-lg font-bold">R$ {Math.abs(totalEntradas - totalSaidas).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-3 pt-4">
+            <Wallet className={`h-7 w-7 shrink-0 ${caixaFinal >= 0 ? "text-success" : "text-destructive"}`} />
+            <div>
+              <p className="text-xs text-muted-foreground">Caixa Final</p>
+              <p className={`text-lg font-bold ${caixaFinal >= 0 ? "text-success" : "text-destructive"}`}>
+                {caixaFinal < 0 ? "-" : ""}R$ {Math.abs(caixaFinal).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+              </p>
             </div>
           </CardContent>
         </Card>
