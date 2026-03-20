@@ -83,6 +83,7 @@ const FK = {
   cards: ["fin-cards"] as const,
   transactions: (y: number, m: number) => ["fin-transactions", y, m] as const,
   goals: (y: number) => ["fin-goals", y] as const,
+  openingBalances: (y: number) => ["fin-opening-balances", y] as const,
 };
 
 // ── Clients ──
