@@ -472,7 +472,7 @@ export function FinLancamentosTab() {
               {totalEntradas - totalSaidas >= 0 ? "+" : "−"}
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Resultado</p>
+              <p className="text-xs text-muted-foreground">Lucro</p>
               <p className="text-lg font-bold">R$ {Math.abs(totalEntradas - totalSaidas).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
             </div>
           </CardContent>

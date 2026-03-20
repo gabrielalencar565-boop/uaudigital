@@ -109,7 +109,7 @@ export function FinVisaoAnualTab() {
           <CardContent><p className="text-2xl font-bold">{fmt(totalDespesa)}</p></CardContent>
         </Card>
         <Card className="text-center">
-          <CardHeader className="pb-1"><CardTitle className="text-xs uppercase">Resultado Anual</CardTitle></CardHeader>
+          <CardHeader className="pb-1"><CardTitle className="text-xs uppercase">Lucro Anual</CardTitle></CardHeader>
           <CardContent><p className={`text-2xl font-bold ${resultadoAnual >= 0 ? "text-success" : "text-destructive"}`}>{fmtSign(resultadoAnual)}</p></CardContent>
         </Card>
         <Card className="text-center">
@@ -128,7 +128,7 @@ export function FinVisaoAnualTab() {
                   <th className="px-3 py-2 text-left font-bold">Mês</th>
                   <th className="px-3 py-2 text-right font-bold">Receita</th>
                   <th className="px-3 py-2 text-right font-bold">Despesa</th>
-                  <th className="px-3 py-2 text-right font-bold">Resultado</th>
+                  <th className="px-3 py-2 text-right font-bold">Lucro</th>
                   <th className="px-3 py-2 text-right font-bold">Caixa</th>
                 </tr>
               </thead>
@@ -156,7 +156,7 @@ export function FinVisaoAnualTab() {
                   <th className="px-3 py-2 text-left font-bold">Trimestre</th>
                   <th className="px-3 py-2 text-right font-bold">Receita</th>
                   <th className="px-3 py-2 text-right font-bold">Despesa</th>
-                  <th className="px-3 py-2 text-right font-bold">Resultado</th>
+                  <th className="px-3 py-2 text-right font-bold">Lucro</th>
                   <th className="px-3 py-2 text-right font-bold">Caixa</th>
                 </tr>
               </thead>
