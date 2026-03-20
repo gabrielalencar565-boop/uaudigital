@@ -166,6 +166,16 @@ export function FinLancamentosTab() {
 
   const totalEntradas = filtered.filter((t) => t.type === "entrada").reduce((s, t) => s + Number(t.amount), 0);
   const totalSaidas = filtered.filter((t) => t.type === "saida").reduce((s, t) => s + Number(t.amount), 0);
+  const caixaFinal = caixaInicial + totalEntradas - totalSaidas;
+
+  // Editing opening balance inline
+  const [editingOpening, setEditingOpening] = useState(false);
+  const [openingVal, setOpeningVal] = useState("");
+  const handleSaveOpening = () => {
+    const amt = parseFloat(openingVal) || 0;
+    upsertOpening.mutate({ year, month, amount: amt, ...(openingRecord ? { id: openingRecord.id } : {}) });
+    setEditingOpening(false);
+  };
 
   const openNew = () => {
     setEditingTx(null);
