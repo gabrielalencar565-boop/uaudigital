@@ -136,8 +136,13 @@ export function FinLancamentosTab() {
   const upsertTx = useUpsertFinTransaction();
   const deleteTx = useDeleteFinTransaction();
   const bulkInsert = useBulkInsertTransactions();
+  const openingQ = useFinOpeningBalances(year);
+  const upsertOpening = useUpsertOpeningBalance();
 
   const transactions = txQ.data ?? [];
+  const openingBalances = openingQ.data ?? [];
+  const openingRecord = openingBalances.find((b) => b.month === month);
+  const caixaInicial = openingRecord ? Number(openingRecord.amount) : 0;
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTx, setEditingTx] = useState<FinTransaction | null>(null);
