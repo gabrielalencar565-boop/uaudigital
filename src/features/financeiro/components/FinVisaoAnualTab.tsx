@@ -55,7 +55,7 @@ export function FinVisaoAnualTab() {
   const totalReceita = monthlyData.reduce((s, d) => s + d.receita, 0);
   const totalDespesa = monthlyData.reduce((s, d) => s + d.despesa, 0);
   const lucroAnual = totalReceita - totalDespesa;
-  const caixaAnual = monthlyData[11]?.caixa ?? 0;
+  const caixaAnual = monthlyWithCaixa[11]?.caixa ?? 0;
   const margemLucro = totalReceita > 0 ? (lucroAnual / totalReceita) * 100 : 0;
   const ticketMedio = clients.length > 0 ? totalReceita / 12 / clients.length : 0;
   const avgClients = clients.length;
