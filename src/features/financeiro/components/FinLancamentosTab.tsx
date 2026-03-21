@@ -166,15 +166,23 @@ export function FinLancamentosTab() {
   const totalEntradas = filtered.filter((t) => t.type === "entrada").reduce((s, t) => s + Number(t.amount), 0);
   const totalSaidas = filtered.filter((t) => t.type === "saida").reduce((s, t) => s + Number(t.amount), 0);
 
-  // Caixa Final = cumulative balance through end of selected month
+  // Caixa Final = last "caixa" record of the month, or fallback to cumulative calc excluding caixa records
   const caixaFinal = useMemo(() => {
+    // Check if there's a "caixa" type transaction for this month
+    const caixaRecords = transactions.filter((t) => t.type === "caixa" || t.category === "caixa");
+    if (caixaRecords.length > 0) {
+      // Use the last caixa record of the month
+      return Number(caixaRecords[caixaRecords.length - 1].amount);
+    }
+    // Fallback: cumulative balance from non-caixa transactions
     return allTransactions
       .filter((t) => {
+        if (t.type === "caixa" || t.category === "caixa") return false;
         const d = new Date(t.date);
         return d.getMonth() + 1 <= month;
       })
       .reduce((s, t) => s + (t.type === "entrada" ? Number(t.amount) : -Number(t.amount)), 0);
-  }, [allTransactions, month]);
+  }, [transactions, allTransactions, month]);
 
   const openNew = () => {
     setEditingTx(null);
