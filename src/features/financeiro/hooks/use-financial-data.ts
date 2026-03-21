@@ -481,3 +481,46 @@ export function useFinAllTransactions(year: number) {
     },
   });
 }
+
+// ── Opening Balances ──
+export type FinOpeningBalance = {
+  id: string;
+  year: number;
+  month: number;
+  amount: number;
+};
+
+export function useFinOpeningBalances(year: number) {
+  return useQuery({
+    queryKey: ["fin-opening-balances", year],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("financial_opening_balances" as any)
+        .select("*")
+        .eq("year", year)
+        .order("month");
+      if (error) throw error;
+      return (data ?? []) as unknown as FinOpeningBalance[];
+    },
+  });
+}
+
+export function useUpsertOpeningBalance() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (bal: { year: number; month: number; amount: number; id?: string }) => {
+      if (bal.id) {
+        const { error } = await supabase.from("financial_opening_balances" as any).update({ amount: bal.amount } as any).eq("id", bal.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("financial_opening_balances" as any).insert({ year: bal.year, month: bal.month, amount: bal.amount } as any);
+        if (error) throw error;
+      }
+    },
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ["fin-opening-balances", v.year] });
+      toast.success("Saldo inicial salvo");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+}
