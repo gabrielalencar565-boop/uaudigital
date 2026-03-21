@@ -34,6 +34,7 @@ const TRANSACTION_CATEGORIES = [
 ];
 
 const getTypeFromCategory = (cat: string): string => {
+  if (cat === "caixa") return "caixa";
   if (cat.startsWith("receita")) return "entrada";
   return "saida";
 };
