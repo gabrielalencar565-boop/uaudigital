@@ -30,7 +30,7 @@ const TRANSACTION_CATEGORIES = [
   { value: "despesa_outros", label: "Despesas Outros" },
   { value: "despesa_variavel", label: "Despesas Variáveis" },
   { value: "investimentos", label: "Investimentos" },
-  { value: "caixa", label: "Caixa" },
+  { value: "caixa", label: "Caixa Final" },
 ];
 
 const getTypeFromCategory = (cat: string): string => {
