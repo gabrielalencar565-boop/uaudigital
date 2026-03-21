@@ -134,11 +134,13 @@ export function FinLancamentosTab() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const txQ = useFinTransactions(year, month);
+  const allTxQ = useFinAllTransactions(year);
   const upsertTx = useUpsertFinTransaction();
   const deleteTx = useDeleteFinTransaction();
   const bulkInsert = useBulkInsertTransactions();
 
   const transactions = txQ.data ?? [];
+  const allTransactions = allTxQ.data ?? [];
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTx, setEditingTx] = useState<FinTransaction | null>(null);
@@ -162,6 +164,16 @@ export function FinLancamentosTab() {
 
   const totalEntradas = filtered.filter((t) => t.type === "entrada").reduce((s, t) => s + Number(t.amount), 0);
   const totalSaidas = filtered.filter((t) => t.type === "saida").reduce((s, t) => s + Number(t.amount), 0);
+
+  // Caixa Final = cumulative balance through end of selected month
+  const caixaFinal = useMemo(() => {
+    return allTransactions
+      .filter((t) => {
+        const d = new Date(t.date);
+        return d.getMonth() + 1 <= month;
+      })
+      .reduce((s, t) => s + (t.type === "entrada" ? Number(t.amount) : -Number(t.amount)), 0);
+  }, [allTransactions, month]);
 
   const openNew = () => {
     setEditingTx(null);
