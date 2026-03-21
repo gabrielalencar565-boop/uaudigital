@@ -75,14 +75,14 @@ export function FinVisaoAnualTab() {
   // Quarterly data
   const quarterlyData = useMemo(() => {
     return [0, 1, 2, 3].map((q) => {
-      const months = monthlyData.slice(q * 3, q * 3 + 3);
+      const months = monthlyWithCaixa.slice(q * 3, q * 3 + 3);
       const rec = months.reduce((s, m) => s + m.receita, 0);
       const desp = months.reduce((s, m) => s + m.despesa, 0);
       const luc = rec - desp;
       const caixa = months[2]?.caixa ?? 0;
       return { label: `${q + 1}º TRI`, receita: rec, despesa: desp, lucro: luc, caixa };
     });
-  }, [monthlyData]);
+  }, [monthlyWithCaixa]);
 
   // Annual goal
   const annualGoal = goals.find((g) => g.month === null);
