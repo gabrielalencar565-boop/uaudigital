@@ -22,20 +22,35 @@ export function FinVisaoAnualTab() {
   const transactions = transactionsQ.data ?? [];
 
   const monthlyData = useMemo(() => {
-    let cumCaixa = 0;
     return Array.from({ length: 12 }, (_, i) => {
       const m = i + 1;
       const monthTxs = transactions.filter((t) => {
         const d = new Date(t.date);
         return d.getMonth() + 1 === m;
       });
-      const rev = monthTxs.filter((t) => t.type === "entrada").reduce((s, t) => s + Number(t.amount), 0);
-      const exp = monthTxs.filter((t) => t.type === "saida").reduce((s, t) => s + Number(t.amount), 0);
+      const nonCaixa = monthTxs.filter((t) => t.type !== "caixa" && t.category !== "caixa");
+      const rev = nonCaixa.filter((t) => t.type === "entrada").reduce((s, t) => s + Number(t.amount), 0);
+      const exp = nonCaixa.filter((t) => t.type === "saida").reduce((s, t) => s + Number(t.amount), 0);
       const lucro = rev - exp;
-      cumCaixa += lucro;
-      return { month: MONTH_LABELS[i], short: MONTH_SHORT[i], receita: rev, despesa: exp, lucro, caixa: cumCaixa };
+      // Caixa = use "caixa" record if exists
+      const caixaRecords = monthTxs.filter((t) => t.type === "caixa" || t.category === "caixa");
+      const caixa = caixaRecords.length > 0 ? Number(caixaRecords[caixaRecords.length - 1].amount) : null;
+      return { month: MONTH_LABELS[i], short: MONTH_SHORT[i], receita: rev, despesa: exp, lucro, caixaRecord: caixa };
     });
   }, [transactions]);
+
+  // Build cumulative caixa: use caixa records when available, otherwise accumulate
+  const monthlyWithCaixa = useMemo(() => {
+    let cumCaixa = 0;
+    return monthlyData.map((d) => {
+      if (d.caixaRecord !== null) {
+        cumCaixa = d.caixaRecord;
+      } else {
+        cumCaixa += d.lucro;
+      }
+      return { ...d, caixa: cumCaixa };
+    });
+  }, [monthlyData]);
 
   const totalReceita = monthlyData.reduce((s, d) => s + d.receita, 0);
   const totalDespesa = monthlyData.reduce((s, d) => s + d.despesa, 0);

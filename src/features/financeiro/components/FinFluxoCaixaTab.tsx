@@ -16,7 +16,7 @@ export function FinFluxoCaixaTab() {
   const clients = clientsQ.data?.filter((c) => c.is_active) ?? [];
   const transactions = transactionsQ.data ?? [];
 
-  // Calculate from transactions only
+  // Calculate from transactions only (exclude caixa records from receita/despesa)
   const monthTxs = useMemo(() => {
     return transactions.filter((t) => {
       const d = new Date(t.date);
@@ -24,26 +24,47 @@ export function FinFluxoCaixaTab() {
     });
   }, [transactions, month]);
 
-  const totalReceita = monthTxs.filter((t) => t.type === "entrada").reduce((s, t) => s + Number(t.amount), 0);
-  const totalDespesa = monthTxs.filter((t) => t.type === "saida").reduce((s, t) => s + Number(t.amount), 0);
+  const nonCaixaTxs = monthTxs.filter((t) => t.type !== "caixa" && t.category !== "caixa");
+  const totalReceita = nonCaixaTxs.filter((t) => t.type === "entrada").reduce((s, t) => s + Number(t.amount), 0);
+  const totalDespesa = nonCaixaTxs.filter((t) => t.type === "saida").reduce((s, t) => s + Number(t.amount), 0);
   const lucro = totalReceita - totalDespesa;
   const ticketMedio = clients.length > 0 ? totalReceita / clients.length : 0;
   const margemLucro = totalReceita > 0 ? (lucro / totalReceita) * 100 : 0;
 
+  // Caixa = use "caixa" record if exists, otherwise cumulative
   const caixaAcumulado = useMemo(() => {
-    const txs = transactions.filter((t) => {
-      const d = new Date(t.date);
-      return d.getMonth() + 1 <= month;
-    });
-    return txs.reduce((s, t) => s + (t.type === "entrada" ? Number(t.amount) : -Number(t.amount)), 0);
-  }, [transactions, month]);
+    const caixaRecords = monthTxs.filter((t) => t.type === "caixa" || t.category === "caixa");
+    if (caixaRecords.length > 0) {
+      return Number(caixaRecords[caixaRecords.length - 1].amount);
+    }
+    // Fallback: cumulative from non-caixa transactions
+    return transactions
+      .filter((t) => {
+        if (t.type === "caixa" || t.category === "caixa") return false;
+        const d = new Date(t.date);
+        return d.getMonth() + 1 <= month;
+      })
+      .reduce((s, t) => s + (t.type === "entrada" ? Number(t.amount) : -Number(t.amount)), 0);
+  }, [transactions, monthTxs, month]);
 
   const caixaInicial = useMemo(() => {
-    const beforeTxs = transactions.filter((t) => {
+    // Check previous month's caixa record
+    const prevMonthTxs = transactions.filter((t) => {
       const d = new Date(t.date);
-      return d.getMonth() + 1 < month;
+      return d.getMonth() + 1 === month - 1;
     });
-    return beforeTxs.reduce((s, t) => s + (t.type === "entrada" ? Number(t.amount) : -Number(t.amount)), 0);
+    const prevCaixaRecords = prevMonthTxs.filter((t) => t.type === "caixa" || t.category === "caixa");
+    if (prevCaixaRecords.length > 0) {
+      return Number(prevCaixaRecords[prevCaixaRecords.length - 1].amount);
+    }
+    // Fallback: cumulative before this month
+    return transactions
+      .filter((t) => {
+        if (t.type === "caixa" || t.category === "caixa") return false;
+        const d = new Date(t.date);
+        return d.getMonth() + 1 < month;
+      })
+      .reduce((s, t) => s + (t.type === "entrada" ? Number(t.amount) : -Number(t.amount)), 0);
   }, [transactions, month]);
 
   // Category breakdown from transactions
