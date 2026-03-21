@@ -137,7 +137,7 @@ export function FinVisaoAnualTab() {
                 </tr>
               </thead>
               <tbody>
-                {monthlyData.map((d, i) => (
+                {monthlyWithCaixa.map((d, i) => (
                   <tr key={i} className="border-b last:border-0 hover:bg-accent/30">
                     <td className="px-3 py-2 font-semibold uppercase text-xs">{d.month}</td>
                     <td className="px-3 py-2 text-right">{fmt(d.receita)}</td>
