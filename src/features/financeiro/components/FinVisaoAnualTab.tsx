@@ -22,25 +22,40 @@ export function FinVisaoAnualTab() {
   const transactions = transactionsQ.data ?? [];
 
   const monthlyData = useMemo(() => {
-    let cumCaixa = 0;
     return Array.from({ length: 12 }, (_, i) => {
       const m = i + 1;
       const monthTxs = transactions.filter((t) => {
         const d = new Date(t.date);
         return d.getMonth() + 1 === m;
       });
-      const rev = monthTxs.filter((t) => t.type === "entrada").reduce((s, t) => s + Number(t.amount), 0);
-      const exp = monthTxs.filter((t) => t.type === "saida").reduce((s, t) => s + Number(t.amount), 0);
+      const nonCaixa = monthTxs.filter((t) => t.type !== "caixa" && t.category !== "caixa");
+      const rev = nonCaixa.filter((t) => t.type === "entrada").reduce((s, t) => s + Number(t.amount), 0);
+      const exp = nonCaixa.filter((t) => t.type === "saida").reduce((s, t) => s + Number(t.amount), 0);
       const lucro = rev - exp;
-      cumCaixa += lucro;
-      return { month: MONTH_LABELS[i], short: MONTH_SHORT[i], receita: rev, despesa: exp, lucro, caixa: cumCaixa };
+      // Caixa = use "caixa" record if exists
+      const caixaRecords = monthTxs.filter((t) => t.type === "caixa" || t.category === "caixa");
+      const caixa = caixaRecords.length > 0 ? Number(caixaRecords[caixaRecords.length - 1].amount) : null;
+      return { month: MONTH_LABELS[i], short: MONTH_SHORT[i], receita: rev, despesa: exp, lucro, caixaRecord: caixa };
     });
   }, [transactions]);
+
+  // Build cumulative caixa: use caixa records when available, otherwise accumulate
+  const monthlyWithCaixa = useMemo(() => {
+    let cumCaixa = 0;
+    return monthlyData.map((d) => {
+      if (d.caixaRecord !== null) {
+        cumCaixa = d.caixaRecord;
+      } else {
+        cumCaixa += d.lucro;
+      }
+      return { ...d, caixa: cumCaixa };
+    });
+  }, [monthlyData]);
 
   const totalReceita = monthlyData.reduce((s, d) => s + d.receita, 0);
   const totalDespesa = monthlyData.reduce((s, d) => s + d.despesa, 0);
   const lucroAnual = totalReceita - totalDespesa;
-  const caixaAnual = monthlyData[11]?.caixa ?? 0;
+  const caixaAnual = monthlyWithCaixa[11]?.caixa ?? 0;
   const margemLucro = totalReceita > 0 ? (lucroAnual / totalReceita) * 100 : 0;
   const ticketMedio = clients.length > 0 ? totalReceita / 12 / clients.length : 0;
   const avgClients = clients.length;
@@ -60,14 +75,14 @@ export function FinVisaoAnualTab() {
   // Quarterly data
   const quarterlyData = useMemo(() => {
     return [0, 1, 2, 3].map((q) => {
-      const months = monthlyData.slice(q * 3, q * 3 + 3);
+      const months = monthlyWithCaixa.slice(q * 3, q * 3 + 3);
       const rec = months.reduce((s, m) => s + m.receita, 0);
       const desp = months.reduce((s, m) => s + m.despesa, 0);
       const luc = rec - desp;
       const caixa = months[2]?.caixa ?? 0;
       return { label: `${q + 1}º TRI`, receita: rec, despesa: desp, lucro: luc, caixa };
     });
-  }, [monthlyData]);
+  }, [monthlyWithCaixa]);
 
   // Annual goal
   const annualGoal = goals.find((g) => g.month === null);
@@ -122,7 +137,7 @@ export function FinVisaoAnualTab() {
                 </tr>
               </thead>
               <tbody>
-                {monthlyData.map((d, i) => (
+                {monthlyWithCaixa.map((d, i) => (
                   <tr key={i} className="border-b last:border-0 hover:bg-accent/30">
                     <td className="px-3 py-2 font-semibold uppercase text-xs">{d.month}</td>
                     <td className="px-3 py-2 text-right">{fmt(d.receita)}</td>
@@ -171,7 +186,7 @@ export function FinVisaoAnualTab() {
           <CardHeader><CardTitle className="text-base uppercase text-center">Gráfico de Acompanhamento Mensal</CardTitle></CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={monthlyData}>
+              <BarChart data={monthlyWithCaixa}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                 <XAxis dataKey="short" className="text-xs" />
                 <YAxis className="text-xs" tickFormatter={(v: number) => `R$ ${(v / 1000).toFixed(0)}k`} />
