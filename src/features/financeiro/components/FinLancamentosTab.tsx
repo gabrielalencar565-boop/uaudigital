@@ -423,7 +423,7 @@ export function FinLancamentosTab() {
       </div>
 
       {/* Summary */}
-      <div className="grid gap-4 sm:grid-cols-3 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.1s" }}>
+      <div className="grid gap-4 sm:grid-cols-4 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.1s" }}>
         <Card>
           <CardContent className="flex items-center gap-3 pt-4">
             <ArrowUpCircle className="h-8 w-8 text-success" />
@@ -448,8 +448,21 @@ export function FinLancamentosTab() {
               {totalEntradas - totalSaidas >= 0 ? "+" : "−"}
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Saldo</p>
+              <p className="text-xs text-muted-foreground">Saldo do Mês</p>
               <p className="text-xl font-bold">R$ {Math.abs(totalEntradas - totalSaidas).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-3 pt-4">
+            <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold ${caixaFinal >= 0 ? "bg-success/20 text-success" : "bg-destructive/20 text-destructive"}`}>
+              $
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Caixa Final</p>
+              <p className={`text-xl font-bold ${caixaFinal >= 0 ? "text-success" : "text-destructive"}`}>
+                {caixaFinal < 0 ? "-" : ""}R$ {Math.abs(caixaFinal).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+              </p>
             </div>
           </CardContent>
         </Card>
