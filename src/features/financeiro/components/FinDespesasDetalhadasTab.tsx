@@ -132,8 +132,8 @@ export function FinDespesasDetalhadasTab() {
   };
 
   const saveCard = () => {
-    upsertCard.mutate({ name: cardForm.name, last_digits: cardForm.last_digits || null, closing_day: parseInt(cardForm.closing_day) || 1, due_day: parseInt(cardForm.due_day) || 10 } as any,
-      { onSuccess: () => { setCardDialogOpen(false); setCardForm({ name: "", last_digits: "", closing_day: "1", due_day: "10" }); } });
+    upsertCard.mutate({ name: cardForm.name, last_digits: cardForm.last_digits || null, closing_day: parseInt(cardForm.closing_day) || 1, due_day: parseInt(cardForm.due_day) || 10, brand: cardForm.brand } as any,
+      { onSuccess: () => { setCardDialogOpen(false); setCardForm({ name: "", last_digits: "", closing_day: "1", due_day: "10", brand: "visa" }); } });
   };
 
   const toggleCardExpanded = (cardId: string) => {
