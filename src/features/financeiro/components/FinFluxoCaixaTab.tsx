@@ -167,6 +167,7 @@ export function FinFluxoCaixaTab() {
           value={Math.abs(lucro)}
           prefix={lucro < 0 ? "-R$" : "R$"}
           tone={lucro >= 0 ? "success" : "danger"}
+          variation={varLucro}
           icon={<DollarSign className="h-4 w-4" />}
         />
         <FinMetricCard
