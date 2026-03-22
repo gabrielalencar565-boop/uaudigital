@@ -109,6 +109,7 @@ export function FinDespesasDetalhadasTab() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [cardDialogOpen, setCardDialogOpen] = useState(false);
+  const [editingCard, setEditingCard] = useState<FinCreditCard | null>(null);
   const [editing, setEditing] = useState<FinExpense | null>(null);
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
   const emptyForm = { description: "", category: "administrativa", amount: "", is_recurring: false, installment_total: "", installment_current: "", credit_card_id: "", notes: "", due_day: "10" };
@@ -121,6 +122,16 @@ export function FinDespesasDetalhadasTab() {
     setForm({ description: e.description, category: e.category, amount: String(e.amount), is_recurring: e.is_recurring, installment_total: e.installment_total ? String(e.installment_total) : "", installment_current: e.installment_current ? String(e.installment_current) : "", credit_card_id: e.credit_card_id ?? "", notes: e.notes ?? "", due_day: e.due_day ? String(e.due_day) : "10" });
     setDialogOpen(true);
   };
+  const openEditCard = (c: FinCreditCard) => {
+    setEditingCard(c);
+    setCardForm({ name: c.name, last_digits: c.last_digits || "", closing_day: String(c.closing_day), due_day: String(c.due_day), brand: (c as any).brand || "visa" });
+    setCardDialogOpen(true);
+  };
+  const openNewCard = () => {
+    setEditingCard(null);
+    setCardForm({ name: "", last_digits: "", closing_day: "1", due_day: "10", brand: "visa" });
+    setCardDialogOpen(true);
+  };
 
   const save = () => {
     upsertExp.mutate({
@@ -132,8 +143,8 @@ export function FinDespesasDetalhadasTab() {
   };
 
   const saveCard = () => {
-    upsertCard.mutate({ name: cardForm.name, last_digits: cardForm.last_digits || null, closing_day: parseInt(cardForm.closing_day) || 1, due_day: parseInt(cardForm.due_day) || 10, brand: cardForm.brand } as any,
-      { onSuccess: () => { setCardDialogOpen(false); setCardForm({ name: "", last_digits: "", closing_day: "1", due_day: "10", brand: "visa" }); } });
+    upsertCard.mutate({ ...(editingCard ? { id: editingCard.id } : {}), name: cardForm.name, last_digits: cardForm.last_digits || null, closing_day: parseInt(cardForm.closing_day) || 1, due_day: parseInt(cardForm.due_day) || 10, brand: cardForm.brand } as any,
+      { onSuccess: () => { setCardDialogOpen(false); setEditingCard(null); setCardForm({ name: "", last_digits: "", closing_day: "1", due_day: "10", brand: "visa" }); } });
   };
 
   const toggleCardExpanded = (cardId: string) => {
@@ -154,76 +165,112 @@ export function FinDespesasDetalhadasTab() {
       <div className="flex items-center justify-between opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0s" }}>
         <FinMonthYearSelector month={month} year={year} onMonthChange={setMonth} onYearChange={setYear} />
         <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => setCardDialogOpen(true)}><CreditCard className="mr-1 h-4 w-4" /> Novo Cartão</Button>
+          <Button size="sm" variant="outline" onClick={openNewCard}><CreditCard className="mr-1 h-4 w-4" /> Novo Cartão</Button>
           <Button size="sm" onClick={() => openNew()}><Plus className="mr-1 h-4 w-4" /> Nova Despesa</Button>
         </div>
       </div>
 
-      {/* Credit Cards */}
-      {cards.map((card) => {
-        const cardExpenses = expenses.filter((e) => e.credit_card_id === card.id);
-        const cardTotal = cardExpenses.reduce((s, e) => s + Number(e.amount), 0);
-        const isExpanded = expandedCards.has(card.id);
-        return (
-          <Card key={card.id} className="overflow-hidden transition-all duration-200 hover:shadow-lg opacity-0 p-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.1s" }}>
-            {/* Card Header - Brand gradient style */}
-            <button
-              onClick={() => toggleCardExpanded(card.id)}
-              className={`w-full flex items-center justify-between px-6 py-5 bg-gradient-to-br ${BRAND_GRADIENTS[(card as any).brand ?? "outro"]} text-white`}
-              style={{ borderRadius: isExpanded ? "16px 16px 0 0" : "16px" }}
-            >
-              <div className="flex items-center gap-4">
-                {isExpanded ? <ChevronDown className="h-4 w-4 text-white/50 transition-transform" /> : <ChevronRight className="h-4 w-4 text-white/50 transition-transform" />}
-                <div>
-                  <div className="flex items-center gap-3">
-                    <p className="font-bold text-base">{card.name}</p>
-                    <CardBrandLogo brand={(card as any).brand ?? "outro"} className="h-6" />
-                  </div>
-                  <p className="text-sm text-white/60 font-mono tracking-widest mt-1">
-                    •••• •••• •••• {card.last_digits || "****"}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <p className="text-[10px] uppercase tracking-wider text-white/50 font-medium">Fatura do mês</p>
-                  <p className="text-xl font-bold">R$ {cardTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
-                  <p className="text-[10px] text-white/50 mt-0.5">
-                    {cardExpenses.length} itens • Fecha dia {card.closing_day} • Vence dia {card.due_day}
-                  </p>
-                </div>
-                <Button size="sm" variant="ghost" className="h-8 text-white hover:bg-white/10 border border-white/20 text-[11px] rounded-lg" onClick={(ev) => { ev.stopPropagation(); openNew(card.id); }}><Plus className="mr-1 h-3 w-3" /> Adicionar</Button>
-              </div>
-            </button>
+      {/* Credit Cards Grid */}
+      {cards.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.1s" }}>
+          {cards.map((card) => {
+            const cardExpenses = expenses.filter((e) => e.credit_card_id === card.id);
+            const cardTotal = cardExpenses.reduce((s, e) => s + Number(e.amount), 0);
+            const brand = (card as any).brand ?? "visa";
+            return (
+              <div key={card.id} className="group relative">
+                {/* Visual Credit Card */}
+                <div
+                  className={`relative rounded-2xl p-6 bg-gradient-to-br ${BRAND_GRADIENTS[brand]} text-white aspect-[1.6/1] flex flex-col justify-between cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl overflow-hidden`}
+                  onClick={() => toggleCardExpanded(card.id)}
+                >
+                  {/* Decorative circles */}
+                  <div className="absolute top-0 right-0 w-40 h-40 rounded-full bg-white/5 -translate-y-10 translate-x-10" />
+                  <div className="absolute bottom-0 left-0 w-32 h-32 rounded-full bg-white/5 translate-y-8 -translate-x-8" />
 
-            {/* Card Expenses List */}
-            {isExpanded && (
-              <div className="divide-y divide-border">
-                {cardExpenses.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-6 text-center">Nenhum item neste cartão</p>
-                ) : (
-                  cardExpenses.map((e) => (
-                    <div key={e.id} className="flex items-center justify-between py-3 px-5 hover:bg-accent/30 transition-colors group">
-                      <div className="flex items-center gap-3">
-                        <div className="h-2 w-2 rounded-full bg-primary/60" />
-                        <span className="font-medium text-sm">{e.description}</span>
-                        {e.is_recurring && !e.installment_total && <Badge variant="secondary" className="text-[9px]">Recorrente</Badge>}
-                        {e.installment_total && (
-                          <Badge variant="outline" className="text-[9px] font-mono">{e.installment_current}/{e.installment_total}</Badge>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="font-semibold text-sm tabular-nums">R$ {Number(e.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
-                        <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => openEdit(e)}><Pencil className="h-3 w-3" /></Button>
-                          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => deleteExp.mutate({ id: e.id, year, month })}><Trash2 className="h-3 w-3 text-destructive" /></Button>
-                        </div>
+                  {/* Top row: chip + brand */}
+                  <div className="flex items-start justify-between relative z-10">
+                    <div className="flex items-center gap-3">
+                      {/* Chip */}
+                      <div className="w-10 h-7 rounded-md bg-gradient-to-br from-yellow-300/80 to-yellow-500/80 border border-yellow-400/30" />
+                      <div>
+                        <p className="font-bold text-base leading-tight">{card.name}</p>
+                        <p className="text-[10px] text-white/50 mt-0.5">Fecha dia {card.closing_day} • Vence dia {card.due_day}</p>
                       </div>
                     </div>
-                  ))
-                )}
+                    <CardBrandLogo brand={brand} className="h-8" />
+                  </div>
+
+                  {/* Card number */}
+                  <div className="relative z-10">
+                    <p className="font-mono text-lg tracking-[0.25em] text-white/90">
+                      •••• •••• •••• {card.last_digits || "****"}
+                    </p>
+                  </div>
+
+                  {/* Bottom row: total + actions */}
+                  <div className="flex items-end justify-between relative z-10">
+                    <div>
+                      <p className="text-[9px] uppercase tracking-wider text-white/40 font-medium">Fatura do mês</p>
+                      <p className="text-xl font-bold leading-tight">R$ {cardTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                      <p className="text-[10px] text-white/40">{cardExpenses.length} itens</p>
+                    </div>
+                    <div className="flex gap-1.5">
+                      <Button size="sm" variant="ghost" className="h-7 text-white/70 hover:text-white hover:bg-white/10 text-[10px] px-2" onClick={(ev) => { ev.stopPropagation(); openEditCard(card); }}>
+                        <Pencil className="h-3 w-3 mr-1" /> Editar
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-7 text-white/70 hover:text-white hover:bg-white/10 text-[10px] px-2" onClick={(ev) => { ev.stopPropagation(); openNew(card.id); }}>
+                        <Plus className="h-3 w-3 mr-1" /> Despesa
+                      </Button>
+                    </div>
+                  </div>
+                </div>
               </div>
-            )}
+            );
+          })}
+        </div>
+      )}
+
+      {/* Expanded Card Expenses */}
+      {cards.map((card) => {
+        const cardExpenses = expenses.filter((e) => e.credit_card_id === card.id);
+        const isExpanded = expandedCards.has(card.id);
+        if (!isExpanded) return null;
+        return (
+          <Card key={`exp-${card.id}`} className="p-0 overflow-hidden">
+            <div className="px-5 py-3 border-b border-border flex items-center justify-between bg-muted/30">
+              <div className="flex items-center gap-2">
+                <CreditCard className="h-4 w-4 text-muted-foreground" />
+                <span className="font-semibold text-sm">{card.name}</span>
+                <span className="text-xs text-muted-foreground">• {cardExpenses.length} itens</span>
+              </div>
+              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => toggleCardExpanded(card.id)}>Fechar</Button>
+            </div>
+            <div className="divide-y divide-border">
+              {cardExpenses.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-6 text-center">Nenhum item neste cartão</p>
+              ) : (
+                cardExpenses.map((e) => (
+                  <div key={e.id} className="flex items-center justify-between py-3 px-5 hover:bg-accent/30 transition-colors group">
+                    <div className="flex items-center gap-3">
+                      <div className="h-2 w-2 rounded-full bg-primary/60" />
+                      <span className="font-medium text-sm">{e.description}</span>
+                      {e.is_recurring && !e.installment_total && <Badge variant="secondary" className="text-[9px]">Recorrente</Badge>}
+                      {e.installment_total && (
+                        <Badge variant="outline" className="text-[9px] font-mono">{e.installment_current}/{e.installment_total}</Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="font-semibold text-sm tabular-nums">R$ {Number(e.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                      <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => openEdit(e)}><Pencil className="h-3 w-3" /></Button>
+                        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => deleteExp.mutate({ id: e.id, year, month })}><Trash2 className="h-3 w-3 text-destructive" /></Button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </Card>
         );
       })}
@@ -297,7 +344,7 @@ export function FinDespesasDetalhadasTab() {
       {/* Card dialog */}
       <Dialog open={cardDialogOpen} onOpenChange={setCardDialogOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Novo Cartão de Crédito</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editingCard ? "Editar Cartão" : "Novo Cartão de Crédito"}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2"><Label>Nome *</Label><Input value={cardForm.name} onChange={(e) => setCardForm((p) => ({ ...p, name: e.target.value }))} placeholder="Ex: Nubank" /></div>
