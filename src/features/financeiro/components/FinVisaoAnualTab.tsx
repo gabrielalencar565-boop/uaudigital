@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { ProgressRing } from "@/components/metrics/ProgressRing";
-import { useFinClients, useFinGoals, useFinAllTransactions, useFinOpeningBalances } from "../hooks/use-financial-data";
+import { useFinClients, useFinGoals, useFinAllTransactions, useFinOpeningBalances, useFinAllRevenues } from "../hooks/use-financial-data";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, AreaChart, Area, Cell } from "recharts";
 import { FinMonthYearSelector } from "./FinMonthYearSelector";
 import { FinAnnualCharts } from "./FinAnnualCharts";
