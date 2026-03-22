@@ -10,6 +10,8 @@ interface FinMetricCardProps {
   suffix?: string;
   decimals?: number;
   variation?: number | null;
+  /** Show variation as absolute number instead of percentage */
+  variationAbsolute?: boolean;
   variationLabel?: string;
   icon?: React.ReactNode;
   tone?: "default" | "success" | "danger" | "warning" | "muted";
