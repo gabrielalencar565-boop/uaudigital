@@ -184,7 +184,7 @@ export function FinDespesasDetalhadasTab() {
 
       {/* Credit Cards Grid */}
       {cards.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.1s" }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.1s" }}>
           {cards.map((card) => {
             const cardExpenses = expenses.filter((e) => e.credit_card_id === card.id);
             const cardTotal = cardExpenses.reduce((s, e) => s + Number(e.amount), 0);
