@@ -20,11 +20,13 @@ export function FinVisaoAnualTab() {
   const goalsQ = useFinGoals(year);
   const transactionsQ = useFinAllTransactions(year);
   const balancesQ = useFinOpeningBalances(year);
+  const revenuesQ = useFinAllRevenues(year);
 
   const clients = clientsQ.data?.filter((c) => c.is_active) ?? [];
   const goals = goalsQ.data ?? [];
   const transactions = transactionsQ.data ?? [];
   const balances = balancesQ.data ?? [];
+  const revenues = revenuesQ.data ?? [];
 
   const monthlyData = useMemo(() => {
     return Array.from({ length: 12 }, (_, i) => {
