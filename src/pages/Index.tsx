@@ -170,6 +170,10 @@ const Index = () => {
     if (tab === "visao_geral_projetos") return <ProjetosPanel />;
     if (tab === "configuracoes" && isAdmin) return <AdminContainer />;
     if (tab === "financeiro" && isAdmin) return <FinanceiroPanel />;
+    if (tab === "fin_clientes" && isAdmin) return <FinClientesTab />;
+    if (tab === "fin_receitas_despesas" && isAdmin) return <FinReceitasDespesasTab />;
+    if (tab === "fin_despesas_detalhadas" && isAdmin) return <FinDespesasDetalhadasTab />;
+    if (tab === "fin_lancamentos" && isAdmin) return <FinLancamentosTab />;
     if (tab === "metas" && isAdmin) return <FinMetasTab />;
     if (tab === "visao_do_dia") return <DayViewPanel />;
     if (tab === "meu_painel") return <MeuPainelPanel />;
