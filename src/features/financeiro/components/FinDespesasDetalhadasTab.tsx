@@ -184,7 +184,7 @@ export function FinDespesasDetalhadasTab() {
 
       {/* Credit Cards Grid */}
       {cards.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.1s" }}>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.1s" }}>
           {cards.map((card) => {
             const cardExpenses = expenses.filter((e) => e.credit_card_id === card.id);
             const cardTotal = cardExpenses.reduce((s, e) => s + Number(e.amount), 0);
@@ -198,8 +198,8 @@ export function FinDespesasDetalhadasTab() {
             return (
               <div key={card.id} className="group relative">
                 <div
-                  className={`relative rounded-xl p-4 bg-gradient-to-br ${BRAND_GRADIENTS[brand]} ${txtMain} flex flex-col justify-between cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-xl overflow-hidden`}
-                  style={{ minHeight: 160 }}
+                  className={`relative rounded-xl p-3 bg-gradient-to-br ${BRAND_GRADIENTS[brand]} ${txtMain} flex flex-col justify-between cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-xl overflow-hidden`}
+                  style={{ minHeight: 130 }}
                   onClick={() => toggleCardExpanded(card.id)}
                 >
                   <div className={`absolute top-0 right-0 w-28 h-28 rounded-full ${circleColor} -translate-y-6 translate-x-6`} />
