@@ -191,7 +191,7 @@ export function FinVisaoAnualTab() {
                 tone={margemLucro >= 20 ? "success" : margemLucro >= 0 ? "warning" : "danger"}
                 label={<span className={`text-lg font-bold ${margemLucro >= 0 ? "" : "text-destructive"}`}>{margemLucro.toFixed(1)}%</span>} />
             </Card>
-            <FinMetricCard title="Clientes" value={clients.length} prefix="" decimals={0} icon={<Users className="h-4 w-4" />} />
+            <FinMetricCard title="Clientes no Ano" value={totalClientesAno} prefix="" decimals={0} icon={<Users className="h-4 w-4" />} />
             <FinMetricCard title="Ticket Médio" value={ticketMedio} icon={<DollarSign className="h-4 w-4" />} />
           </div>
 
