@@ -1,8 +1,8 @@
 import { PropsWithChildren, useMemo, useState } from "react";
 import {
   CalendarDays, ChevronDown, ClipboardList, DollarSign,
-  Eye, FolderOpen, LayoutGrid, Settings, Target, TrendingUp, Trophy,
-  UserRound, Workflow, CalendarRange, PieChart, PanelLeftClose } from
+  Eye, FileSpreadsheet, FolderOpen, LayoutGrid, Receipt, Settings, Target, TrendingUp, Trophy,
+  UserRound, Users, Workflow, CalendarRange, PieChart, PanelLeftClose, ArrowRightLeft } from
 "lucide-react";
 import { useAppSettings } from "@/features/data/queries";
 import { cn } from "@/lib/utils";
@@ -36,6 +36,10 @@ export type MainTab =
 "desempenho" |
 "financeiro" |
 "metas" |
+"fin_clientes" |
+"fin_receitas_despesas" |
+"fin_despesas_detalhadas" |
+"fin_lancamentos" |
 "configuracoes";
 
 type NavGroup = {
@@ -87,8 +91,12 @@ const NAV: NavEntry[] = [
   label: "Financeiro",
   icon: DollarSign,
   adminOnly: true,
+  landingTab: "financeiro",
   children: [
-  { key: "financeiro", label: "Financeiro", icon: DollarSign },
+  { key: "fin_clientes", label: "Clientes", icon: Users },
+  { key: "fin_receitas_despesas", label: "Receitas & Despesas", icon: Receipt },
+  { key: "fin_despesas_detalhadas", label: "Despesas Detalhadas", icon: FileSpreadsheet },
+  { key: "fin_lancamentos", label: "Lançamentos", icon: ArrowRightLeft },
   { key: "metas", label: "Metas", icon: TrendingUp }]
 
 },
