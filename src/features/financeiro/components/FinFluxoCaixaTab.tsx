@@ -28,10 +28,18 @@ const EXPENSE_COLORS: Record<string, string> = {
 
 const DONUT_COLORS = ["#8b5cf6", "#a78bfa", "#c4b5fd", "#7c3aed", "#6d28d9", "#5b21b6", "#ddd6fe", "#ede9fe"];
 
-export function FinFluxoCaixaTab() {
+interface FinFluxoCaixaProps {
+  externalMonth?: number;
+  externalYear?: number;
+}
+
+export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaProps = {}) {
   const now = new Date();
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth() + 1);
+  const [internalYear, setYear] = useState(now.getFullYear());
+  const [internalMonth, setMonth] = useState(now.getMonth() + 1);
+  const year = externalYear ?? internalYear;
+  const month = externalMonth ?? internalMonth;
+  const hasExternal = externalMonth !== undefined;
 
   const clientsQ = useFinClients();
   const transactionsQ = useFinAllTransactions(year);
@@ -154,9 +162,11 @@ export function FinFluxoCaixaTab() {
 
   return (
     <div className="space-y-6">
-      <div className="opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0s" }}>
-        <FinMonthYearSelector month={month} year={year} onMonthChange={setMonth} onYearChange={setYear} />
-      </div>
+      {!hasExternal && (
+        <div className="opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0s" }}>
+          <FinMonthYearSelector month={month} year={year} onMonthChange={setMonth} onYearChange={setYear} />
+        </div>
+      )}
 
       {/* KPIs Row */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.1s" }}>

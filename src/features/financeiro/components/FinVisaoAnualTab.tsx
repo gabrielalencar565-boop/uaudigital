@@ -12,9 +12,15 @@ import { DollarSign, TrendingDown, TrendingUp, Wallet, Activity, Users, Target }
 const MONTH_LABELS = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 const MONTH_SHORT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
-export function FinVisaoAnualTab() {
+interface FinVisaoAnualProps {
+  externalYear?: number;
+}
+
+export function FinVisaoAnualTab({ externalYear }: FinVisaoAnualProps = {}) {
   const now = new Date();
-  const [year, setYear] = useState(now.getFullYear());
+  const [internalYear, setYear] = useState(now.getFullYear());
+  const year = externalYear ?? internalYear;
+  const hasExternal = externalYear !== undefined;
 
   const clientsQ = useFinClients();
   const goalsQ = useFinGoals(year);
@@ -147,9 +153,11 @@ export function FinVisaoAnualTab() {
 
   return (
     <div className="space-y-6">
-      <div className="opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0s" }}>
-        <FinMonthYearSelector month={1} year={year} onMonthChange={() => {}} onYearChange={setYear} yearOnly />
-      </div>
+      {!hasExternal && (
+        <div className="opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0s" }}>
+          <FinMonthYearSelector month={1} year={year} onMonthChange={() => {}} onYearChange={setYear} yearOnly />
+        </div>
+      )}
 
       {/* Annual KPIs */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.1s" }}>
