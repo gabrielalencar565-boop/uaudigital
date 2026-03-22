@@ -12,9 +12,15 @@ import { DollarSign, TrendingDown, TrendingUp, Wallet, Activity, Users, Target }
 const MONTH_LABELS = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 const MONTH_SHORT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
-export function FinVisaoAnualTab() {
+interface FinVisaoAnualProps {
+  externalYear?: number;
+}
+
+export function FinVisaoAnualTab({ externalYear }: FinVisaoAnualProps = {}) {
   const now = new Date();
-  const [year, setYear] = useState(now.getFullYear());
+  const [internalYear, setYear] = useState(now.getFullYear());
+  const year = externalYear ?? internalYear;
+  const hasExternal = externalYear !== undefined;
 
   const clientsQ = useFinClients();
   const goalsQ = useFinGoals(year);

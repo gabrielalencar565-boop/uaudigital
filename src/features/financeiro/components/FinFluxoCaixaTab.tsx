@@ -28,10 +28,18 @@ const EXPENSE_COLORS: Record<string, string> = {
 
 const DONUT_COLORS = ["#8b5cf6", "#a78bfa", "#c4b5fd", "#7c3aed", "#6d28d9", "#5b21b6", "#ddd6fe", "#ede9fe"];
 
-export function FinFluxoCaixaTab() {
+interface FinFluxoCaixaProps {
+  externalMonth?: number;
+  externalYear?: number;
+}
+
+export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaProps = {}) {
   const now = new Date();
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth() + 1);
+  const [internalYear, setYear] = useState(now.getFullYear());
+  const [internalMonth, setMonth] = useState(now.getMonth() + 1);
+  const year = externalYear ?? internalYear;
+  const month = externalMonth ?? internalMonth;
+  const hasExternal = externalMonth !== undefined;
 
   const clientsQ = useFinClients();
   const transactionsQ = useFinAllTransactions(year);
