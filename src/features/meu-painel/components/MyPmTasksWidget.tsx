@@ -274,7 +274,7 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
     );
   };
 
-  if (myTasks.length === 0 && alteracoesTasks.length === 0 && !pmTasksQ.isLoading) return null;
+  if (myTasks.length === 0 && !pmTasksQ.isLoading) return null;
 
   return (
     <div className="space-y-3">
