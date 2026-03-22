@@ -78,12 +78,11 @@ export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaP
     return new Set(prevMonthTxs.filter(t => t.type === "entrada").map(t => t.description)).size;
   }, [prevMonthTxs]);
 
-  const varClientes = prevClientesRecorrentes > 0 ? ((clientesRecorrentes - prevClientesRecorrentes) / prevClientesRecorrentes) * 100 : null;
+  const varClientesAbs = clientesRecorrentes - prevClientesRecorrentes;
 
   const totalReceita = monthTxs.filter((t) => t.type === "entrada").reduce((s, t) => s + Number(t.amount), 0);
   const totalDespesa = monthTxs.filter((t) => t.type === "saida").reduce((s, t) => s + Number(t.amount), 0);
   const lucro = totalReceita - totalDespesa;
-  const ticketMedio = clientesRecorrentes > 0 ? totalReceita / clientesRecorrentes : 0;
   const margemLucro = totalReceita > 0 ? (lucro / totalReceita) * 100 : 0;
 
   const caixaFinal = balances.find(b => b.month === month);
@@ -98,6 +97,10 @@ export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaP
   const varReceita = prevReceita > 0 ? ((totalReceita - prevReceita) / prevReceita) * 100 : null;
   const varDespesa = prevDespesa > 0 ? ((totalDespesa - prevDespesa) / prevDespesa) * 100 : null;
   const varLucro = prevLucro !== 0 ? ((lucro - prevLucro) / Math.abs(prevLucro)) * 100 : null;
+
+  const ticketMedio = clientesRecorrentes > 0 ? totalReceita / clientesRecorrentes : 0;
+  const prevTicketMedio = prevClientesRecorrentes > 0 ? prevReceita / prevClientesRecorrentes : 0;
+  const varTicketMedio = prevTicketMedio > 0 ? ((ticketMedio - prevTicketMedio) / prevTicketMedio) * 100 : null;
 
   // Revenue distribution donut - by description
   const revenueData = useMemo(() => {
@@ -218,8 +221,8 @@ export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaP
             label={<span className={`text-xl font-bold ${margemLucro >= 0 ? "" : "text-destructive"}`}>{margemLucro.toFixed(0)}%</span>}
           />
         </Card>
-        <FinMetricCard title="Clientes" value={clientesRecorrentes} prefix="" decimals={0} variation={varClientes} icon={<Users className="h-4 w-4" />} />
-        <FinMetricCard title="Ticket Médio" value={ticketMedio} icon={<DollarSign className="h-4 w-4" />} />
+        <FinMetricCard title="Clientes" value={clientesRecorrentes} prefix="" decimals={0} variation={varClientesAbs !== 0 ? varClientesAbs : null} variationAbsolute icon={<Users className="h-4 w-4" />} />
+        <FinMetricCard title="Ticket Médio" value={ticketMedio} variation={varTicketMedio} icon={<DollarSign className="h-4 w-4" />} />
         <FinMetricCard
           title="Caixa Inicial"
           value={Math.abs(caixaInicial ?? 0)}
