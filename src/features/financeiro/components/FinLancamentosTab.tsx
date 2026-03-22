@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo, useCallback } from "react";
-import { Plus, Upload, ArrowUpCircle, ArrowDownCircle, Eye, Pencil, Trash2, FileSpreadsheet, Check, X } from "lucide-react";
+import { Plus, Upload, ArrowUpCircle, ArrowDownCircle, Eye, Pencil, Trash2, FileSpreadsheet, Check, X, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { useFinTransactions, useUpsertFinTransaction, useDeleteFinTransaction, useBulkInsertTransactions, useFinAllTransactions, type FinTransaction } from "../hooks/use-financial-data";
+import { useFinTransactions, useUpsertFinTransaction, useDeleteFinTransaction, useBulkInsertTransactions, useFinAllTransactions, useFinOpeningBalances, useUpsertOpeningBalance, type FinTransaction } from "../hooks/use-financial-data";
 import { format } from "date-fns";
 import { FinMonthYearSelector } from "./FinMonthYearSelector";
 import * as XLSX from "xlsx";
@@ -30,7 +30,6 @@ const TRANSACTION_CATEGORIES = [
   { value: "despesa_outros", label: "Despesas Outros" },
   { value: "despesa_variavel", label: "Despesas Variáveis" },
   { value: "investimentos", label: "Investimentos" },
-  { value: "caixa", label: "Caixa Final" },
 ];
 
 const getTypeFromCategory = (cat: string): string => {
