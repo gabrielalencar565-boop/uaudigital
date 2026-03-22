@@ -48,7 +48,23 @@ export function FinVisaoAnualTab() {
   const lastCaixa = [...monthlyData].reverse().find(d => d.caixa !== null);
   const caixaAnual = lastCaixa?.caixa ?? null;
   const margemLucro = totalReceita > 0 ? (lucroAnual / totalReceita) * 100 : 0;
-  const ticketMedio = clients.length > 0 ? totalReceita / 12 / clients.length : 0;
+
+  // Clientes acumulativo: quantos clientes tiveram receita em cada mês
+  const monthlyClientCounts = useMemo(() => {
+    return Array.from({ length: 12 }, (_, i) => {
+      const m = i + 1;
+      const uniqueClients = new Set(revenues.filter(r => r.month === m).map(r => r.client_id));
+      return uniqueClients.size;
+    });
+  }, [revenues]);
+
+  // Total de clientes = maior quantidade mensal (ou média, aqui usamos o acumulado do mês mais recente com dados)
+  const totalClientesAno = useMemo(() => {
+    const allUniqueClients = new Set(revenues.map(r => r.client_id));
+    return allUniqueClients.size;
+  }, [revenues]);
+
+  const ticketMedio = totalClientesAno > 0 ? totalReceita / 12 / totalClientesAno : 0;
 
   const healthScore = useMemo(() => {
     let score = 0;
