@@ -106,47 +106,64 @@ export function FinDespesasDetalhadasTab() {
         const cardTotal = cardExpenses.reduce((s, e) => s + Number(e.amount), 0);
         const isExpanded = expandedCards.has(card.id);
         return (
-          <Card key={card.id} className="transition-all duration-200 hover:shadow-md opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.1s" }}>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <button onClick={() => toggleCardExpanded(card.id)} className="flex items-center gap-2 text-left group">
-                  {isExpanded ? <ChevronDown className="h-4 w-4 transition-transform" /> : <ChevronRight className="h-4 w-4 transition-transform" />}
-                  <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center"><CreditCard className="h-4 w-4 text-primary" /></div>
-                  <div>
-                    <CardTitle className="text-sm">{card.name}</CardTitle>
-                    {card.last_digits && <span className="text-[10px] text-muted-foreground">****{card.last_digits}</span>}
-                  </div>
-                </button>
-                <div className="flex items-center gap-3">
-                  <span className="text-lg font-bold">R$ {cardTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
-                  <Button size="sm" variant="outline" className="h-7" onClick={() => openNew(card.id)}><Plus className="mr-1 h-3 w-3" /> Adicionar</Button>
+          <Card key={card.id} className="overflow-hidden transition-all duration-200 hover:shadow-lg opacity-0 p-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.1s" }}>
+            {/* Card Header - Dark gradient style */}
+            <button
+              onClick={() => toggleCardExpanded(card.id)}
+              className="w-full flex items-center justify-between px-5 py-4 bg-gradient-to-r from-slate-900 to-slate-800 dark:from-slate-800 dark:to-slate-700 text-white rounded-t-2xl"
+            >
+              <div className="flex items-center gap-3">
+                {isExpanded ? <ChevronDown className="h-4 w-4 text-slate-400 transition-transform" /> : <ChevronRight className="h-4 w-4 text-slate-400 transition-transform" />}
+                <div className="h-10 w-10 rounded-xl bg-white/10 backdrop-blur flex items-center justify-center">
+                  <CreditCard className="h-5 w-5 text-white" />
+                </div>
+                <div className="text-left">
+                  <p className="font-semibold text-sm">{card.name}</p>
+                  <p className="text-[11px] text-slate-400 flex items-center gap-2">
+                    {card.last_digits && <span>•••• {card.last_digits}</span>}
+                    <span>Fecha dia {card.closing_day}</span>
+                    <span>•</span>
+                    <span>Vence dia {card.due_day}</span>
+                  </p>
                 </div>
               </div>
-              <p className="text-[10px] text-muted-foreground mt-1 ml-14">{cardExpenses.length} itens • Fecha dia {card.closing_day} • Vence dia {card.due_day}</p>
-            </CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <p className="text-[10px] uppercase tracking-wider text-slate-400 font-medium">Fatura</p>
+                  <p className="text-lg font-bold">R$ {cardTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                </div>
+                <Badge variant="secondary" className="bg-white/10 text-white border-0 text-[10px]">{cardExpenses.length} itens</Badge>
+                <Button size="sm" variant="ghost" className="h-7 text-white hover:bg-white/10 border border-white/20 text-[11px]" onClick={(ev) => { ev.stopPropagation(); openNew(card.id); }}><Plus className="mr-1 h-3 w-3" /> Adicionar</Button>
+              </div>
+            </button>
+
+            {/* Card Expenses List */}
             {isExpanded && (
-              <CardContent className="pt-0">
-                {cardExpenses.length === 0 ? <p className="text-sm text-muted-foreground py-2 ml-14">Nenhum item</p> : (
-                  <div className="space-y-1 ml-14">
-                    {cardExpenses.map((e) => (
-                      <div key={e.id} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-accent/30 transition-colors group">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-sm">{e.description}</span>
-                          {e.is_recurring && !e.installment_total && <Badge variant="secondary" className="text-[9px]">Recorrente</Badge>}
-                          {e.installment_total && <span className="text-[10px] text-muted-foreground">{e.installment_current}/{e.installment_total}</span>}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-sm">R$ {Number(e.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
-                          <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => openEdit(e)}><Pencil className="h-3 w-3" /></Button>
-                            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => deleteExp.mutate({ id: e.id, year, month })}><Trash2 className="h-3 w-3 text-destructive" /></Button>
-                          </div>
+              <div className="divide-y divide-border">
+                {cardExpenses.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-6 text-center">Nenhum item neste cartão</p>
+                ) : (
+                  cardExpenses.map((e) => (
+                    <div key={e.id} className="flex items-center justify-between py-3 px-5 hover:bg-accent/30 transition-colors group">
+                      <div className="flex items-center gap-3">
+                        <div className="h-2 w-2 rounded-full bg-primary/60" />
+                        <span className="font-medium text-sm">{e.description}</span>
+                        {e.is_recurring && !e.installment_total && <Badge variant="secondary" className="text-[9px]">Recorrente</Badge>}
+                        {e.installment_total && (
+                          <Badge variant="outline" className="text-[9px] font-mono">{e.installment_current}/{e.installment_total}</Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="font-semibold text-sm tabular-nums">R$ {Number(e.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                        <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => openEdit(e)}><Pencil className="h-3 w-3" /></Button>
+                          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => deleteExp.mutate({ id: e.id, year, month })}><Trash2 className="h-3 w-3 text-destructive" /></Button>
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))
                 )}
-              </CardContent>
+              </div>
             )}
           </Card>
         );
