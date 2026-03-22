@@ -98,6 +98,38 @@ export function FinVisaoAnualTab() {
   const fmtSign = (v: number) => `${v < 0 ? "-" : ""}R$ ${Math.abs(v).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
   const fmtCaixa = (v: number | null) => v != null ? fmtSign(v) : "—";
 
+  const GradientBarGreen = (props: any) => {
+    const { x, y, width, height, index } = props;
+    const id = `anBG-${index}`;
+    return (
+      <g>
+        <defs>
+          <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="hsl(var(--success))" stopOpacity={1} />
+            <stop offset="100%" stopColor="hsl(var(--success))" stopOpacity={0.4} />
+          </linearGradient>
+        </defs>
+        <rect x={x} y={y} width={width} height={height} rx={6} ry={6} fill={`url(#${id})`} />
+      </g>
+    );
+  };
+
+  const GradientBarRed = (props: any) => {
+    const { x, y, width, height, index } = props;
+    const id = `anBR-${index}`;
+    return (
+      <g>
+        <defs>
+          <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="hsl(var(--destructive))" stopOpacity={0.9} />
+            <stop offset="100%" stopColor="hsl(var(--destructive))" stopOpacity={0.3} />
+          </linearGradient>
+        </defs>
+        <rect x={x} y={y} width={width} height={height} rx={6} ry={6} fill={`url(#${id})`} />
+      </g>
+    );
+  };
+
   return (
     <div className="space-y-6">
       <div className="opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0s" }}>
