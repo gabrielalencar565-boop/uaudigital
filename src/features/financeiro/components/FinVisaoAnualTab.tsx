@@ -254,10 +254,9 @@ export function FinVisaoAnualTab() {
               <YAxis className="text-xs" tickFormatter={(v: number) => `R$ ${(v / 1000).toFixed(0)}k`} />
               <Tooltip formatter={(v: number) => fmtSign(v)} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }} />
               <Bar dataKey="lucro" name="Lucro" radius={[6, 6, 0, 0]}>
-                {monthlyData.map((d, i) => {
-                  const { Cell } = require("recharts");
-                  return <Cell key={i} fill={d.lucro >= 0 ? "#22c55e" : "#ef4444"} />;
-                })}
+                {monthlyData.map((d, i) => (
+                  <Cell key={i} fill={d.lucro >= 0 ? "#22c55e" : "#ef4444"} />
+                ))}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
