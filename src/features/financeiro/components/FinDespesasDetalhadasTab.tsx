@@ -113,7 +113,7 @@ export function FinDespesasDetalhadasTab() {
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
   const emptyForm = { description: "", category: "administrativa", amount: "", is_recurring: false, installment_total: "", installment_current: "", credit_card_id: "", notes: "", due_day: "10" };
   const [form, setForm] = useState(emptyForm);
-  const [cardForm, setCardForm] = useState({ name: "", last_digits: "", closing_day: "1", due_day: "10" });
+  const [cardForm, setCardForm] = useState({ name: "", last_digits: "", closing_day: "1", due_day: "10", brand: "visa" });
 
   const openNew = (cardId?: string) => { setEditing(null); setForm({ ...emptyForm, credit_card_id: cardId ?? "" }); setDialogOpen(true); };
   const openEdit = (e: FinExpense) => {
