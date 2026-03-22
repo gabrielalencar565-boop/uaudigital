@@ -219,7 +219,7 @@ export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaP
             label={<span className={`text-xl font-bold ${margemLucro >= 0 ? "" : "text-destructive"}`}>{margemLucro.toFixed(0)}%</span>}
           />
         </Card>
-        <FinMetricCard title="Clientes" value={clients.length} prefix="" decimals={0} icon={<Users className="h-4 w-4" />} />
+        <FinMetricCard title="Clientes" value={clientesRecorrentes} prefix="" decimals={0} variation={varClientes} icon={<Users className="h-4 w-4" />} />
         <FinMetricCard title="Ticket Médio" value={ticketMedio} icon={<DollarSign className="h-4 w-4" />} />
         <FinMetricCard
           title="Caixa Inicial"

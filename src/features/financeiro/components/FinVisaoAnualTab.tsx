@@ -250,26 +250,6 @@ export function FinVisaoAnualTab({ externalYear }: FinVisaoAnualProps = {}) {
             <FinMetricCard title="Ticket Médio" value={ticketMedio} icon={<DollarSign className="h-4 w-4" />} />
           </div>
 
-          {metaReceita > 0 && (
-            <Card className="transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
-              <CardContent className="p-5 space-y-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center"><Target className="h-4 w-4 text-muted-foreground" /></div>
-                  <div>
-                    <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Meta de Receita Anual</p>
-                    <p className="text-lg font-bold">{fmt(metaReceita)}</p>
-                  </div>
-                </div>
-                <div>
-                  <div className="flex items-center justify-between text-xs mb-1.5">
-                    <span className="text-muted-foreground">Realizado: {fmt(totalReceita)}</span>
-                    <span className="font-bold">{progressoMeta.toFixed(1)}%</span>
-                  </div>
-                  <Progress value={Math.min(progressoMeta, 100)} className="h-2" />
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </div>
       </div>
 
