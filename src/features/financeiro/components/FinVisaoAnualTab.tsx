@@ -261,36 +261,8 @@ export function FinVisaoAnualTab() {
                 <XAxis dataKey="short" className="text-xs" axisLine={false} tickLine={false} />
                 <YAxis className="text-xs" axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
                 <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }} cursor={{ fill: "hsl(var(--muted))", opacity: 0.3, radius: 6 }} />
-                <Bar dataKey="receita" name="Receita" barSize={18}>
-                  {monthlyData.map((_, i) => {
-                    const id = `anBarG-${i}`;
-                    return (
-                      <Cell key={i} fill={`url(#${id})`}>
-                        <defs>
-                          <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="hsl(var(--success))" stopOpacity={1} />
-                            <stop offset="100%" stopColor="hsl(var(--success))" stopOpacity={0.4} />
-                          </linearGradient>
-                        </defs>
-                      </Cell>
-                    );
-                  })}
-                </Bar>
-                <Bar dataKey="despesa" name="Despesa" barSize={18}>
-                  {monthlyData.map((_, i) => {
-                    const id = `anBarR-${i}`;
-                    return (
-                      <Cell key={i} fill={`url(#${id})`}>
-                        <defs>
-                          <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="hsl(var(--destructive))" stopOpacity={0.9} />
-                            <stop offset="100%" stopColor="hsl(var(--destructive))" stopOpacity={0.3} />
-                          </linearGradient>
-                        </defs>
-                      </Cell>
-                    );
-                  })}
-                </Bar>
+                <Bar dataKey="receita" name="Receita" shape={<GradientBarGreen />} barSize={18} />
+                <Bar dataKey="despesa" name="Despesa" shape={<GradientBarRed />} barSize={18} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
