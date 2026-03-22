@@ -1,8 +1,8 @@
 import { PropsWithChildren, useMemo, useState } from "react";
 import {
   CalendarDays, ChevronDown, ClipboardList, DollarSign,
-  Eye, FolderOpen, LayoutGrid, Settings, Target, TrendingUp, Trophy,
-  UserRound, Workflow, CalendarRange, PieChart, PanelLeftClose } from
+  Eye, FileSpreadsheet, FolderOpen, LayoutGrid, Receipt, Settings, Target, TrendingUp, Trophy,
+  UserRound, Users, Workflow, CalendarRange, PieChart, PanelLeftClose, ArrowRightLeft } from
 "lucide-react";
 import { useAppSettings } from "@/features/data/queries";
 import { cn } from "@/lib/utils";
