@@ -71,8 +71,22 @@ export function FinFluxoCaixaTab() {
   }, [transactions, month]);
   const prevReceita = prevMonthTxs.filter((t) => t.type === "entrada").reduce((s, t) => s + Number(t.amount), 0);
   const prevDespesa = prevMonthTxs.filter((t) => t.type === "saida").reduce((s, t) => s + Number(t.amount), 0);
+  const prevLucro = prevReceita - prevDespesa;
   const varReceita = prevReceita > 0 ? ((totalReceita - prevReceita) / prevReceita) * 100 : null;
   const varDespesa = prevDespesa > 0 ? ((totalDespesa - prevDespesa) / prevDespesa) * 100 : null;
+  const varLucro = prevLucro !== 0 ? ((lucro - prevLucro) / Math.abs(prevLucro)) * 100 : null;
+
+  // Revenue distribution donut - by description
+  const revenueData = useMemo(() => {
+    const map: Record<string, number> = {};
+    monthTxs.filter(t => t.type === "entrada").forEach((t) => {
+      const label = t.description || "Outros";
+      map[label] = (map[label] || 0) + Number(t.amount);
+    });
+    return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+  }, [monthTxs]);
+  const totalRevDonut = revenueData.reduce((s, d) => s + d.value, 0);
+  const REVENUE_DONUT_COLORS = ["#22c55e", "#4ade80", "#86efac", "#16a34a", "#15803d", "#166534", "#bbf7d0", "#dcfce7"];
 
   // Category breakdown (donut) - expense only
   const categoryData = useMemo(() => {
@@ -153,6 +167,7 @@ export function FinFluxoCaixaTab() {
           value={Math.abs(lucro)}
           prefix={lucro < 0 ? "-R$" : "R$"}
           tone={lucro >= 0 ? "success" : "danger"}
+          variation={varLucro}
           icon={<DollarSign className="h-4 w-4" />}
         />
         <FinMetricCard
@@ -247,6 +262,49 @@ export function FinFluxoCaixaTab() {
                       <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: DONUT_COLORS[idx % DONUT_COLORS.length] }} />
                       <span className="text-muted-foreground">{d.name}</span>
                       <span className="font-bold">{totalExpDonut > 0 ? ((d.value / totalExpDonut) * 100).toFixed(0) : 0}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <p className="text-center text-sm text-muted-foreground py-12">Nenhum dado para o mês selecionado</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Donut — Distribuição de Receita */}
+        <Card className="opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.3s" }}>
+          <CardHeader><CardTitle className="text-sm font-bold uppercase tracking-wider text-center">Distribuição de Receita</CardTitle></CardHeader>
+          <CardContent>
+            {revenueData.length > 0 ? (
+              <div className="flex flex-col items-center">
+                <div className="relative">
+                  <ResponsiveContainer width={240} height={240}>
+                    <PieChart>
+                      <Pie
+                        data={revenueData} dataKey="value" nameKey="name"
+                        cx="50%" cy="50%" innerRadius={65} outerRadius={105}
+                        paddingAngle={3} strokeWidth={0}
+                        cornerRadius={8}
+                      >
+                        {revenueData.map((_, idx) => (
+                          <Cell key={idx} fill={REVENUE_DONUT_COLORS[idx % REVENUE_DONUT_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Total</span>
+                    <span className="text-lg font-bold">{fmt(totalRevDonut)}</span>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-1.5 justify-center mt-4">
+                  {revenueData.map((d, idx) => (
+                    <div key={d.name} className="flex items-center gap-1.5 text-[11px]">
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: REVENUE_DONUT_COLORS[idx % REVENUE_DONUT_COLORS.length] }} />
+                      <span className="text-muted-foreground">{d.name}</span>
+                      <span className="font-bold">{totalRevDonut > 0 ? ((d.value / totalRevDonut) * 100).toFixed(0) : 0}%</span>
                     </div>
                   ))}
                 </div>
