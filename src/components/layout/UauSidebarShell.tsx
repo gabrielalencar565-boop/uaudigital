@@ -36,6 +36,10 @@ export type MainTab =
 "desempenho" |
 "financeiro" |
 "metas" |
+"fin_clientes" |
+"fin_receitas_despesas" |
+"fin_despesas_detalhadas" |
+"fin_lancamentos" |
 "configuracoes";
 
 type NavGroup = {
