@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProgressRing } from "@/components/metrics/ProgressRing";
-import { useFinClients, useFinAllTransactions, useFinOpeningBalances } from "../hooks/use-financial-data";
+import { useFinClients, useFinAllTransactions, useFinOpeningBalances, useFinAllRevenues } from "../hooks/use-financial-data";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
@@ -44,10 +44,26 @@ export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaP
   const clientsQ = useFinClients();
   const transactionsQ = useFinAllTransactions(year);
   const balancesQ = useFinOpeningBalances(year);
+  const revenuesQ = useFinAllRevenues(year);
 
   const clients = clientsQ.data?.filter((c) => c.is_active) ?? [];
   const transactions = transactionsQ.data ?? [];
   const balances = balancesQ.data ?? [];
+  const revenues = revenuesQ.data ?? [];
+
+  // Clientes com receita recorrente no mês atual
+  const clientesRecorrentes = useMemo(() => {
+    return new Set(revenues.filter(r => r.month === month).map(r => r.client_id)).size;
+  }, [revenues, month]);
+
+  // Clientes com receita recorrente no mês anterior
+  const prevClientesRecorrentes = useMemo(() => {
+    const pm = month - 1;
+    if (pm < 1) return 0;
+    return new Set(revenues.filter(r => r.month === pm).map(r => r.client_id)).size;
+  }, [revenues, month]);
+
+  const varClientes = prevClientesRecorrentes > 0 ? ((clientesRecorrentes - prevClientesRecorrentes) / prevClientesRecorrentes) * 100 : null;
 
   const monthTxs = useMemo(() => {
     return transactions.filter((t) => {
@@ -60,7 +76,7 @@ export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaP
   const totalReceita = monthTxs.filter((t) => t.type === "entrada").reduce((s, t) => s + Number(t.amount), 0);
   const totalDespesa = monthTxs.filter((t) => t.type === "saida").reduce((s, t) => s + Number(t.amount), 0);
   const lucro = totalReceita - totalDespesa;
-  const ticketMedio = clients.length > 0 ? totalReceita / clients.length : 0;
+  const ticketMedio = clientesRecorrentes > 0 ? totalReceita / clientesRecorrentes : 0;
   const margemLucro = totalReceita > 0 ? (lucro / totalReceita) * 100 : 0;
 
   const caixaFinal = balances.find(b => b.month === month);
@@ -203,7 +219,7 @@ export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaP
             label={<span className={`text-xl font-bold ${margemLucro >= 0 ? "" : "text-destructive"}`}>{margemLucro.toFixed(0)}%</span>}
           />
         </Card>
-        <FinMetricCard title="Clientes" value={clients.length} prefix="" decimals={0} icon={<Users className="h-4 w-4" />} />
+        <FinMetricCard title="Clientes" value={clientesRecorrentes} prefix="" decimals={0} variation={varClientes} icon={<Users className="h-4 w-4" />} />
         <FinMetricCard title="Ticket Médio" value={ticketMedio} icon={<DollarSign className="h-4 w-4" />} />
         <FinMetricCard
           title="Caixa Inicial"
