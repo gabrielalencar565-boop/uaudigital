@@ -219,19 +219,46 @@ export function FinVisaoAnualTab() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Revenue vs Expense bar chart */}
+        {/* Entradas vs Saídas — gradient bar chart */}
         <Card className="opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.2s" }}>
-          <CardHeader><CardTitle className="text-sm font-bold uppercase tracking-wider text-center">Receita vs Despesa</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-sm font-bold uppercase tracking-wider text-center">Entradas vs Saídas</CardTitle></CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={monthlyData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis dataKey="short" className="text-xs" />
-                <YAxis className="text-xs" tickFormatter={(v: number) => `R$ ${(v / 1000).toFixed(0)}k`} />
-                <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }} />
-                <Legend />
-                <Bar dataKey="receita" name="Receita" fill="#22c55e" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="despesa" name="Despesa" fill="#ef4444" radius={[6, 6, 0, 0]} />
+              <BarChart data={monthlyData} barGap={4}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
+                <XAxis dataKey="short" className="text-xs" axisLine={false} tickLine={false} />
+                <YAxis className="text-xs" axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+                <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }} cursor={{ fill: "hsl(var(--muted))", opacity: 0.3, radius: 6 }} />
+                <Bar dataKey="receita" name="Receita" barSize={18}>
+                  {monthlyData.map((_, i) => {
+                    const id = `anBarG-${i}`;
+                    return (
+                      <Cell key={i} fill={`url(#${id})`}>
+                        <defs>
+                          <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="hsl(var(--success))" stopOpacity={1} />
+                            <stop offset="100%" stopColor="hsl(var(--success))" stopOpacity={0.4} />
+                          </linearGradient>
+                        </defs>
+                      </Cell>
+                    );
+                  })}
+                </Bar>
+                <Bar dataKey="despesa" name="Despesa" barSize={18}>
+                  {monthlyData.map((_, i) => {
+                    const id = `anBarR-${i}`;
+                    return (
+                      <Cell key={i} fill={`url(#${id})`}>
+                        <defs>
+                          <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="hsl(var(--destructive))" stopOpacity={0.9} />
+                            <stop offset="100%" stopColor="hsl(var(--destructive))" stopOpacity={0.3} />
+                          </linearGradient>
+                        </defs>
+                      </Cell>
+                    );
+                  })}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </CardContent>

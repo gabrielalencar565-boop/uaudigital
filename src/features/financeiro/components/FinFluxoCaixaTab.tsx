@@ -113,8 +113,8 @@ export function FinFluxoCaixaTab() {
       <g>
         <defs>
           <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={1} />
-            <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
+            <stop offset="0%" stopColor="hsl(var(--success))" stopOpacity={1} />
+            <stop offset="100%" stopColor="hsl(var(--success))" stopOpacity={0.4} />
           </linearGradient>
         </defs>
         <rect x={x} y={y} width={width} height={height} rx={6} ry={6} fill={`url(#${id})`} />
