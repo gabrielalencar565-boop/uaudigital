@@ -36,6 +36,7 @@ const CARD_BRANDS = [
   { value: "elo", label: "Elo" },
   { value: "amex", label: "American Express" },
   { value: "hipercard", label: "Hipercard" },
+  { value: "nubank", label: "Nubank" },
   { value: "outro", label: "Outro" },
 ];
 
