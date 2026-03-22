@@ -106,6 +106,20 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
     );
   }, [pmTasksQ.data, user?.id]);
 
+  // Tasks/subtasks in "alteracoes" stage assigned to me
+  const alteracoesTasks = useMemo(() => {
+    if (!user?.id) return [];
+    const allData = pmTasksQ.data ?? [];
+    const childData = allChildQ.data ?? [];
+    const combined = [...allData, ...childData];
+    return combined.filter(t =>
+      t.stage_current === "alteracoes" &&
+      (t.assignee_id === user.id || (t.watchers ?? []).includes(user.id)) &&
+      !["concluido", "cancelado"].includes(t.status_global) &&
+      !(t as any).is_draft
+    );
+  }, [pmTasksQ.data, allChildQ.data, user?.id]);
+
   // Group by overdue, today, upcoming
   const groups = useMemo(() => {
     const overdue: PmTask[] = [];
