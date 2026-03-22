@@ -30,6 +30,65 @@ const CATEGORY_COLORS: Record<string, string> = {
   comercial: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20",
 };
 
+const CARD_BRANDS = [
+  { value: "visa", label: "Visa" },
+  { value: "mastercard", label: "Mastercard" },
+  { value: "elo", label: "Elo" },
+  { value: "amex", label: "American Express" },
+  { value: "hipercard", label: "Hipercard" },
+  { value: "outro", label: "Outro" },
+];
+
+const BRAND_GRADIENTS: Record<string, string> = {
+  visa: "from-blue-900 to-blue-700",
+  mastercard: "from-gray-900 to-gray-700",
+  elo: "from-yellow-900 to-yellow-700",
+  amex: "from-emerald-900 to-emerald-700",
+  hipercard: "from-red-900 to-red-700",
+  outro: "from-slate-900 to-slate-800",
+};
+
+function CardBrandLogo({ brand, className = "h-8" }: { brand: string; className?: string }) {
+  switch (brand) {
+    case "visa":
+      return (
+        <svg viewBox="0 0 780 500" className={className} fill="none">
+          <path d="M293.2 348.7l33.4-195.8h53.4l-33.4 195.8h-53.4zM531.3 157.9c-10.6-4-27.2-8.3-47.9-8.3-52.8 0-90 26.6-90.2 64.7-.3 28.2 26.5 43.9 46.8 53.3 20.8 9.6 27.8 15.8 27.7 24.4-.1 13.2-16.6 19.2-32 19.2-21.4 0-32.7-3-50.3-10.2l-6.9-3.1-7.5 43.8c12.5 5.5 35.6 10.2 59.6 10.5 56.2 0 92.6-26.3 93-67 .2-22.3-14-39.3-44.8-53.3-18.7-9.1-30.1-15.1-30-24.3 0-8.1 9.7-16.8 30.6-16.8 17.5-.3 30.1 3.5 40 7.5l4.8 2.2 7.1-42.5zM646.6 152.9h-41.3c-12.8 0-22.4 3.5-28 16.2l-79.4 179.6h56.2l11.2-29.3h68.6l6.5 29.3h49.6l-43.4-195.8zm-66 126.4c4.4-11.3 21.5-54.7 21.5-54.7-.3.5 4.4-11.4 7.1-18.8l3.6 17s10.3 47.2 12.5 57.1h-44.7v-.6zM232.8 152.9l-52.3 133.5-5.6-27.1c-9.7-31.3-40-65.2-73.9-82.2l47.9 171.4h56.6l84.2-195.6h-56.9z" fill="white"/>
+          <path d="M124.7 152.9H38.5l-.7 3.8c67.2 16.3 111.7 55.6 130.1 102.8l-18.8-90.5c-3.2-12.4-12.8-15.7-24.4-16.1z" fill="hsl(40, 100%, 60%)"/>
+        </svg>
+      );
+    case "mastercard":
+      return (
+        <svg viewBox="0 0 780 500" className={className} fill="none">
+          <circle cx="330" cy="250" r="130" fill="hsl(0, 80%, 55%)" opacity="0.9"/>
+          <circle cx="450" cy="250" r="130" fill="hsl(40, 100%, 55%)" opacity="0.9"/>
+          <path d="M390 155c24.5 20.5 42.5 49.5 48.5 83h-97c6-33.5 24-62.5 48.5-83z" fill="hsl(25, 100%, 50%)"/>
+          <path d="M390 345c-24.5-20.5-42.5-49.5-48.5-83h97c-6 33.5-24 62.5-48.5 83z" fill="hsl(25, 100%, 50%)"/>
+        </svg>
+      );
+    case "elo":
+      return (
+        <div className={`${className} flex items-center`}>
+          <span className="font-black text-xl tracking-tighter text-yellow-400">elo</span>
+        </div>
+      );
+    case "amex":
+      return (
+        <div className={`${className} flex items-center`}>
+          <span className="font-bold text-xs tracking-wider text-white/90">AMEX</span>
+        </div>
+      );
+    case "hipercard":
+      return (
+        <div className={`${className} flex items-center`}>
+          <span className="font-bold text-xs tracking-wider text-white/90">HIPERCARD</span>
+        </div>
+      );
+    default:
+      return <CreditCard className="h-6 w-6 text-white/80" />;
+  }
+}
+
 export function FinDespesasDetalhadasTab() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
