@@ -76,7 +76,7 @@ export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaP
   const totalReceita = monthTxs.filter((t) => t.type === "entrada").reduce((s, t) => s + Number(t.amount), 0);
   const totalDespesa = monthTxs.filter((t) => t.type === "saida").reduce((s, t) => s + Number(t.amount), 0);
   const lucro = totalReceita - totalDespesa;
-  const ticketMedio = clients.length > 0 ? totalReceita / clients.length : 0;
+  const ticketMedio = clientesRecorrentes > 0 ? totalReceita / clientesRecorrentes : 0;
   const margemLucro = totalReceita > 0 ? (lucro / totalReceita) * 100 : 0;
 
   const caixaFinal = balances.find(b => b.month === month);
