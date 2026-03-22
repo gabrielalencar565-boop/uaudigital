@@ -299,11 +299,24 @@ export function FinDespesasDetalhadasTab() {
         <DialogContent>
           <DialogHeader><DialogTitle>Novo Cartão de Crédito</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2"><Label>Nome *</Label><Input value={cardForm.name} onChange={(e) => setCardForm((p) => ({ ...p, name: e.target.value }))} placeholder="Ex: Nubank" /></div>
-            <div className="space-y-2"><Label>Últimos 4 dígitos</Label><Input value={cardForm.last_digits} onChange={(e) => setCardForm((p) => ({ ...p, last_digits: e.target.value }))} maxLength={4} /></div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2"><Label>Nome *</Label><Input value={cardForm.name} onChange={(e) => setCardForm((p) => ({ ...p, name: e.target.value }))} placeholder="Ex: Nubank" /></div>
+              <div className="space-y-2"><Label>Bandeira</Label><Select value={cardForm.brand} onValueChange={(v) => setCardForm((p) => ({ ...p, brand: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{CARD_BRANDS.map((b) => <SelectItem key={b.value} value={b.value}>{b.label}</SelectItem>)}</SelectContent></Select></div>
+            </div>
+            <div className="space-y-2"><Label>Últimos 4 dígitos</Label><Input value={cardForm.last_digits} onChange={(e) => setCardForm((p) => ({ ...p, last_digits: e.target.value }))} maxLength={4} placeholder="Ex: 1234" /></div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2"><Label>Dia fechamento</Label><Input type="number" value={cardForm.closing_day} onChange={(e) => setCardForm((p) => ({ ...p, closing_day: e.target.value }))} /></div>
               <div className="space-y-2"><Label>Dia vencimento</Label><Input type="number" value={cardForm.due_day} onChange={(e) => setCardForm((p) => ({ ...p, due_day: e.target.value }))} /></div>
+            </div>
+            {/* Preview */}
+            <div className={`rounded-xl p-4 bg-gradient-to-br ${BRAND_GRADIENTS[cardForm.brand]} text-white`}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-bold text-sm">{cardForm.name || "Nome do Cartão"}</p>
+                  <p className="text-xs text-white/60 font-mono mt-1">•••• •••• •••• {cardForm.last_digits || "****"}</p>
+                </div>
+                <CardBrandLogo brand={cardForm.brand} className="h-6" />
+              </div>
             </div>
           </div>
           <DialogFooter><DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose><Button onClick={saveCard} disabled={!cardForm.name}>Salvar</Button></DialogFooter>
