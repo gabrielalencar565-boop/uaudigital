@@ -71,10 +71,9 @@ export function FinVisaoAnualTab() {
   const metaReceita = annualGoal ? Number(annualGoal.revenue_goal) : 0;
   const progressoMeta = metaReceita > 0 ? (totalReceita / metaReceita) * 100 : 0;
 
-  // Receita acumulada
-  const receitaAcumulada = useMemo(() => {
-    let acc = 0;
-    return monthlyData.map(d => { acc += d.receita; return { ...d, acumulada: acc }; });
+  // Receita mensal (progresso durante o ano, não acumulada)
+  const receitaMensal = useMemo(() => {
+    return monthlyData.map(d => ({ ...d, receitaMes: d.receita }));
   }, [monthlyData]);
 
   const fmt = (v: number) => `R$ ${Math.abs(v).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
