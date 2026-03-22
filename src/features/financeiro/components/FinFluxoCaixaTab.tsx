@@ -44,10 +44,26 @@ export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaP
   const clientsQ = useFinClients();
   const transactionsQ = useFinAllTransactions(year);
   const balancesQ = useFinOpeningBalances(year);
+  const revenuesQ = useFinAllRevenues(year);
 
   const clients = clientsQ.data?.filter((c) => c.is_active) ?? [];
   const transactions = transactionsQ.data ?? [];
   const balances = balancesQ.data ?? [];
+  const revenues = revenuesQ.data ?? [];
+
+  // Clientes com receita recorrente no mês atual
+  const clientesRecorrentes = useMemo(() => {
+    return new Set(revenues.filter(r => r.month === month).map(r => r.client_id)).size;
+  }, [revenues, month]);
+
+  // Clientes com receita recorrente no mês anterior
+  const prevClientesRecorrentes = useMemo(() => {
+    const pm = month - 1;
+    if (pm < 1) return 0;
+    return new Set(revenues.filter(r => r.month === pm).map(r => r.client_id)).size;
+  }, [revenues, month]);
+
+  const varClientes = prevClientesRecorrentes > 0 ? ((clientesRecorrentes - prevClientesRecorrentes) / prevClientesRecorrentes) * 100 : null;
 
   const monthTxs = useMemo(() => {
     return transactions.filter((t) => {
