@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { ProgressRing } from "@/components/metrics/ProgressRing";
-import { useFinClients, useFinGoals, useFinAllTransactions, useFinOpeningBalances } from "../hooks/use-financial-data";
+import { useFinClients, useFinGoals, useFinAllTransactions, useFinOpeningBalances, useFinAllRevenues } from "../hooks/use-financial-data";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, AreaChart, Area, Cell } from "recharts";
 import { FinMonthYearSelector } from "./FinMonthYearSelector";
 import { FinAnnualCharts } from "./FinAnnualCharts";
@@ -20,11 +20,13 @@ export function FinVisaoAnualTab() {
   const goalsQ = useFinGoals(year);
   const transactionsQ = useFinAllTransactions(year);
   const balancesQ = useFinOpeningBalances(year);
+  const revenuesQ = useFinAllRevenues(year);
 
   const clients = clientsQ.data?.filter((c) => c.is_active) ?? [];
   const goals = goalsQ.data ?? [];
   const transactions = transactionsQ.data ?? [];
   const balances = balancesQ.data ?? [];
+  const revenues = revenuesQ.data ?? [];
 
   const monthlyData = useMemo(() => {
     return Array.from({ length: 12 }, (_, i) => {
@@ -46,7 +48,23 @@ export function FinVisaoAnualTab() {
   const lastCaixa = [...monthlyData].reverse().find(d => d.caixa !== null);
   const caixaAnual = lastCaixa?.caixa ?? null;
   const margemLucro = totalReceita > 0 ? (lucroAnual / totalReceita) * 100 : 0;
-  const ticketMedio = clients.length > 0 ? totalReceita / 12 / clients.length : 0;
+
+  // Clientes acumulativo: quantos clientes tiveram receita em cada mês
+  const monthlyClientCounts = useMemo(() => {
+    return Array.from({ length: 12 }, (_, i) => {
+      const m = i + 1;
+      const uniqueClients = new Set(revenues.filter(r => r.month === m).map(r => r.client_id));
+      return uniqueClients.size;
+    });
+  }, [revenues]);
+
+  // Total de clientes = maior quantidade mensal (ou média, aqui usamos o acumulado do mês mais recente com dados)
+  const totalClientesAno = useMemo(() => {
+    const allUniqueClients = new Set(revenues.map(r => r.client_id));
+    return allUniqueClients.size;
+  }, [revenues]);
+
+  const ticketMedio = totalClientesAno > 0 ? totalReceita / 12 / totalClientesAno : 0;
 
   const healthScore = useMemo(() => {
     let score = 0;
@@ -173,7 +191,7 @@ export function FinVisaoAnualTab() {
                 tone={margemLucro >= 20 ? "success" : margemLucro >= 0 ? "warning" : "danger"}
                 label={<span className={`text-lg font-bold ${margemLucro >= 0 ? "" : "text-destructive"}`}>{margemLucro.toFixed(1)}%</span>} />
             </Card>
-            <FinMetricCard title="Clientes" value={clients.length} prefix="" decimals={0} icon={<Users className="h-4 w-4" />} />
+            <FinMetricCard title="Clientes no Ano" value={totalClientesAno} prefix="" decimals={0} icon={<Users className="h-4 w-4" />} />
             <FinMetricCard title="Ticket Médio" value={ticketMedio} icon={<DollarSign className="h-4 w-4" />} />
           </div>
 

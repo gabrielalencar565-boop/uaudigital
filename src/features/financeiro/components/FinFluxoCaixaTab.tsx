@@ -3,8 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProgressRing } from "@/components/metrics/ProgressRing";
 import { useFinClients, useFinAllTransactions, useFinOpeningBalances } from "../hooks/use-financial-data";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
-  AreaChart, Area, PieChart, Pie, Cell,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell,
 } from "recharts";
 import { FinMonthYearSelector } from "./FinMonthYearSelector";
 import { FinMetricCard } from "./FinMetricCard";
@@ -25,6 +25,8 @@ const EXPENSE_COLORS: Record<string, string> = {
   "Despesas Variáveis": "#8b5cf6",
   "Investimentos": "#3b82f6",
 };
+
+const DONUT_COLORS = ["#8b5cf6", "#a78bfa", "#c4b5fd", "#7c3aed", "#6d28d9", "#5b21b6", "#ddd6fe", "#ede9fe"];
 
 export function FinFluxoCaixaTab() {
   const now = new Date();
@@ -72,7 +74,7 @@ export function FinFluxoCaixaTab() {
   const varReceita = prevReceita > 0 ? ((totalReceita - prevReceita) / prevReceita) * 100 : null;
   const varDespesa = prevDespesa > 0 ? ((totalDespesa - prevDespesa) / prevDespesa) * 100 : null;
 
-  // Category breakdown (donut)
+  // Category breakdown (donut) - expense only
   const categoryData = useMemo(() => {
     const CATEGORY_LABELS: Record<string, string> = {
       receita_recorrente: "Receita Recorrente", receita_variavel: "Receita Variável", receita_outros: "Receita Outros",
@@ -85,25 +87,56 @@ export function FinFluxoCaixaTab() {
       const label = CATEGORY_LABELS[t.category ?? ""] ?? t.category ?? "Outros";
       cats[label] = (cats[label] || 0) + Number(t.amount);
     });
-    return Object.entries(cats).map(([name, value]) => ({ name, value, color: EXPENSE_COLORS[name] ?? "#94a3b8" })).sort((a, b) => b.value - a.value);
+    return Object.entries(cats).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
   }, [monthTxs]);
 
   const totalExpDonut = categoryData.reduce((s, d) => s + d.value, 0);
 
-  // Caixa acumulado chart (monthly line)
-  const caixaLineData = useMemo(() => {
+  // Entradas vs Saídas — monthly bar data
+  const barData = useMemo(() => {
     return Array.from({ length: 12 }, (_, i) => {
       const m = i + 1;
-      const bal = balances.find(b => b.month === m);
       const mTxs = transactions.filter(t => t.type !== "caixa" && t.category !== "caixa" && new Date(t.date).getMonth() + 1 === m);
       const rec = mTxs.filter(t => t.type === "entrada").reduce((s, t) => s + Number(t.amount), 0);
       const desp = mTxs.filter(t => t.type === "saida").reduce((s, t) => s + Number(t.amount), 0);
-      return { month: MONTH_SHORT[i], caixa: bal ? Number(bal.amount) : null, receita: rec, despesa: desp };
+      return { month: MONTH_SHORT[i], receita: rec, despesa: desp };
     });
-  }, [transactions, balances]);
+  }, [transactions]);
 
   const fmt = (v: number) => `R$ ${Math.abs(v).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
-  const fmtVal = (v: number | null) => v != null ? `${v < 0 ? "-" : ""}R$ ${Math.abs(v).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—";
+
+  // Custom bar shape with gradient
+  const GradientBar = (props: any) => {
+    const { x, y, width, height, index } = props;
+    const id = `barGrad-${index}`;
+    return (
+      <g>
+        <defs>
+          <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={1} />
+            <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
+          </linearGradient>
+        </defs>
+        <rect x={x} y={y} width={width} height={height} rx={6} ry={6} fill={`url(#${id})`} />
+      </g>
+    );
+  };
+
+  const GradientBarRed = (props: any) => {
+    const { x, y, width, height, index } = props;
+    const id = `barGradR-${index}`;
+    return (
+      <g>
+        <defs>
+          <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="hsl(var(--destructive))" stopOpacity={0.9} />
+            <stop offset="100%" stopColor="hsl(var(--destructive))" stopOpacity={0.3} />
+          </linearGradient>
+        </defs>
+        <rect x={x} y={y} width={width} height={height} rx={6} ry={6} fill={`url(#${id})`} />
+      </g>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -158,81 +191,66 @@ export function FinFluxoCaixaTab() {
         </FinMetricCard>
       </div>
 
-      {/* Main chart — Caixa acumulado */}
-      <Card className="opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.2s" }}>
-        <CardHeader><CardTitle className="text-sm font-bold uppercase tracking-wider text-center">Caixa Acumulado</CardTitle></CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={280}>
-            <AreaChart data={caixaLineData}>
-              <defs>
-                <linearGradient id="caixaGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(var(--success))" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="hsl(var(--success))" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-              <XAxis dataKey="month" className="text-xs" />
-              <YAxis className="text-xs" tickFormatter={(v: number) => `R$ ${(v / 1000).toFixed(0)}k`} />
-              <Tooltip formatter={(v: any) => v != null ? fmt(v) : "—"} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }} />
-              <Area type="monotone" dataKey="caixa" name="Caixa" stroke="hsl(var(--success))" fill="url(#caixaGrad)" strokeWidth={2.5} connectNulls dot={{ r: 4, fill: "hsl(var(--success))" }} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
-
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Entradas vs Saídas bar chart */}
-        <Card className="opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.25s" }}>
+        {/* Entradas vs Saídas — gradient bar chart */}
+        <Card className="opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.2s" }}>
           <CardHeader><CardTitle className="text-sm font-bold uppercase tracking-wider text-center">Entradas vs Saídas</CardTitle></CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={caixaLineData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis dataKey="month" className="text-xs" />
-                <YAxis className="text-xs" tickFormatter={(v: number) => `R$ ${(v / 1000).toFixed(0)}k`} />
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={barData} barGap={4}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
+                <XAxis dataKey="month" className="text-xs" axisLine={false} tickLine={false} />
+                <YAxis className="text-xs" axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
                 <Tooltip
                   formatter={(v: number, name: string) => [fmt(v), name]}
                   contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }}
+                  cursor={{ fill: "hsl(var(--muted))", opacity: 0.3, radius: 6 }}
                 />
-                <Legend />
-                <Bar dataKey="receita" name="Receita" fill="#22c55e" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="despesa" name="Despesa" fill="#ef4444" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="receita" name="Receita" shape={<GradientBar />} barSize={18} />
+                <Bar dataKey="despesa" name="Despesa" shape={<GradientBarRed />} barSize={18} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        {/* Donut — Distribuição de despesas */}
-        <Card className="opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.3s" }}>
+        {/* Donut — Distribuição de despesas (modern style) */}
+        <Card className="opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.25s" }}>
           <CardHeader><CardTitle className="text-sm font-bold uppercase tracking-wider text-center">Distribuição de Despesas</CardTitle></CardHeader>
           <CardContent>
             {categoryData.length > 0 ? (
-              <>
-                <ResponsiveContainer width="100%" height={220}>
-                  <PieChart>
-                    <Pie
-                      data={categoryData} dataKey="value" nameKey="name"
-                      cx="50%" cy="50%" innerRadius={55} outerRadius={95}
-                      paddingAngle={2} strokeWidth={0}
-                    >
-                      {categoryData.map((d, idx) => <Cell key={idx} fill={d.color} />)}
-                    </Pie>
-                    <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }} />
-                    {/* Center label */}
-                    <text x="50%" y="48%" textAnchor="middle" dominantBaseline="middle" className="fill-foreground text-xs font-medium">Total</text>
-                    <text x="50%" y="56%" textAnchor="middle" dominantBaseline="middle" className="fill-foreground text-sm font-bold">{fmt(totalExpDonut)}</text>
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="flex flex-wrap gap-2 justify-center mt-2">
-                  {categoryData.map((d) => (
-                    <div key={d.name} className="flex items-center gap-1.5 text-[10px]">
-                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: d.color }} />
+              <div className="flex flex-col items-center">
+                <div className="relative">
+                  <ResponsiveContainer width={240} height={240}>
+                    <PieChart>
+                      <Pie
+                        data={categoryData} dataKey="value" nameKey="name"
+                        cx="50%" cy="50%" innerRadius={65} outerRadius={105}
+                        paddingAngle={3} strokeWidth={0}
+                        cornerRadius={8}
+                      >
+                        {categoryData.map((_, idx) => (
+                          <Cell key={idx} fill={DONUT_COLORS[idx % DONUT_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  {/* Center label */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Total</span>
+                    <span className="text-lg font-bold">{fmt(totalExpDonut)}</span>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-1.5 justify-center mt-4">
+                  {categoryData.map((d, idx) => (
+                    <div key={d.name} className="flex items-center gap-1.5 text-[11px]">
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: DONUT_COLORS[idx % DONUT_COLORS.length] }} />
                       <span className="text-muted-foreground">{d.name}</span>
-                      <span className="font-semibold">{totalExpDonut > 0 ? ((d.value / totalExpDonut) * 100).toFixed(0) : 0}%</span>
+                      <span className="font-bold">{totalExpDonut > 0 ? ((d.value / totalExpDonut) * 100).toFixed(0) : 0}%</span>
                     </div>
                   ))}
                 </div>
-              </>
+              </div>
             ) : (
               <p className="text-center text-sm text-muted-foreground py-12">Nenhum dado para o mês selecionado</p>
             )}
