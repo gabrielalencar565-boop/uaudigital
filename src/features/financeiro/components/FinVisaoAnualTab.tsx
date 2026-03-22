@@ -237,6 +237,7 @@ export function FinVisaoAnualTab() {
           )}
         </div>
       </div>
+      {/* Annual charts section */}
+      <FinAnnualCharts transactions={transactions as any} />
     </div>
-  );
 }
