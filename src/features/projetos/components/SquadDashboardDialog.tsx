@@ -31,7 +31,8 @@ const ROLE_STAGES: Record<string, string[]> = {
   "designer": ["design"],
 };
 
-function getRoleStages(roleTitle: string): string[] {
+function getRoleStages(roleTitle: string | undefined | null): string[] {
+  if (!roleTitle) return [...STAGE_ORDER];
   const normalized = roleTitle.toLowerCase().trim();
   for (const [key, stages] of Object.entries(ROLE_STAGES)) {
     if (normalized.includes(key)) return stages;
