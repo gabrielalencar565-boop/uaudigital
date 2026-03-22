@@ -90,6 +90,12 @@ function CardBrandLogo({ brand, className = "h-8" }: { brand: string; className?
           <span className="font-bold text-xs tracking-wider text-white/90">HIPERCARD</span>
         </div>
       );
+    case "nubank":
+      return (
+        <div className={`${className} flex items-center`}>
+          <span className="font-black text-sm tracking-tight text-purple-600">Nu</span>
+        </div>
+      );
     default:
       return <CreditCard className="h-6 w-6 text-white/80" />;
   }
