@@ -30,7 +30,7 @@ const toneClasses: Record<string, string> = {
 
 export function FinMetricCard({
   title, value, prefix = "R$", suffix, decimals = 2,
-  variation, variationLabel = "vs mês anterior",
+  variation, variationAbsolute, variationLabel = "vs mês anterior",
   icon, tone = "default", className, onClick, children,
 }: FinMetricCardProps) {
   const isPositiveVar = variation != null && variation > 0;
