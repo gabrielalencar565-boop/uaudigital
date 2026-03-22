@@ -109,6 +109,7 @@ export function FinDespesasDetalhadasTab() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [cardDialogOpen, setCardDialogOpen] = useState(false);
+  const [editingCard, setEditingCard] = useState<FinCreditCard | null>(null);
   const [editing, setEditing] = useState<FinExpense | null>(null);
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
   const emptyForm = { description: "", category: "administrativa", amount: "", is_recurring: false, installment_total: "", installment_current: "", credit_card_id: "", notes: "", due_day: "10" };
@@ -120,6 +121,16 @@ export function FinDespesasDetalhadasTab() {
     setEditing(e);
     setForm({ description: e.description, category: e.category, amount: String(e.amount), is_recurring: e.is_recurring, installment_total: e.installment_total ? String(e.installment_total) : "", installment_current: e.installment_current ? String(e.installment_current) : "", credit_card_id: e.credit_card_id ?? "", notes: e.notes ?? "", due_day: e.due_day ? String(e.due_day) : "10" });
     setDialogOpen(true);
+  };
+  const openEditCard = (c: FinCreditCard) => {
+    setEditingCard(c);
+    setCardForm({ name: c.name, last_digits: c.last_digits || "", closing_day: String(c.closing_day), due_day: String(c.due_day), brand: (c as any).brand || "visa" });
+    setCardDialogOpen(true);
+  };
+  const openNewCard = () => {
+    setEditingCard(null);
+    setCardForm({ name: "", last_digits: "", closing_day: "1", due_day: "10", brand: "visa" });
+    setCardDialogOpen(true);
   };
 
   const save = () => {
