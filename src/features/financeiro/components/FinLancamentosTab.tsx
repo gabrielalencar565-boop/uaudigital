@@ -461,17 +461,36 @@ export function FinLancamentosTab() {
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="cursor-pointer" onClick={() => { setEditingCaixa(true); setCaixaInput(caixaFinal != null ? String(caixaFinal) : ""); }}>
           <CardContent className="flex items-center gap-3 pt-4">
-            <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold ${caixaFinal >= 0 ? "bg-success/20 text-success" : "bg-destructive/20 text-destructive"}`}>
+            <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold ${(caixaFinal ?? 0) >= 0 ? "bg-success/20 text-success" : "bg-destructive/20 text-destructive"}`}>
               $
             </div>
-            <div>
+            <div className="flex-1">
               <p className="text-xs text-muted-foreground">Caixa Final</p>
-              <p className={`text-xl font-bold ${caixaFinal >= 0 ? "text-success" : "text-destructive"}`}>
-                {caixaFinal < 0 ? "-" : ""}R$ {Math.abs(caixaFinal).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-              </p>
+              {editingCaixa ? (
+                <div className="flex items-center gap-1 mt-1" onClick={e => e.stopPropagation()}>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={caixaInput}
+                    onChange={e => setCaixaInput(e.target.value)}
+                    className="h-7 w-32 text-sm"
+                    autoFocus
+                    onKeyDown={e => { if (e.key === "Enter") saveCaixaFinal(); if (e.key === "Escape") setEditingCaixa(false); }}
+                  />
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={saveCaixaFinal}><Check className="h-3 w-3" /></Button>
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingCaixa(false)}><X className="h-3 w-3" /></Button>
+                </div>
+              ) : (
+                <p className={`text-xl font-bold ${caixaFinal != null ? (caixaFinal >= 0 ? "text-success" : "text-destructive") : "text-muted-foreground"}`}>
+                  {caixaFinal != null
+                    ? `${caixaFinal < 0 ? "-" : ""}R$ ${Math.abs(caixaFinal).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+                    : "Não definido"}
+                </p>
+              )}
             </div>
+            {!editingCaixa && <Pencil className="h-3 w-3 text-muted-foreground" />}
           </CardContent>
         </Card>
       </div>
