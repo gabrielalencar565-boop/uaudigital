@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -24,6 +23,13 @@ const CATEGORIES = [
   { value: "comercial", label: "Comercial" },
 ];
 
+const CATEGORY_COLORS: Record<string, string> = {
+  administrativa: "bg-orange-500/10 text-orange-600 border-orange-500/20",
+  operacional: "bg-red-500/10 text-red-600 border-red-500/20",
+  financeira: "bg-slate-500/10 text-slate-600 border-slate-500/20",
+  comercial: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20",
+};
+
 export function FinDespesasDetalhadasTab() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
@@ -36,88 +42,50 @@ export function FinDespesasDetalhadasTab() {
   const deleteExp = useDeleteFinExpense();
   const upsertCard = useUpsertFinCreditCard();
 
-  const storedExpenses = expensesQ.data ?? [];
-  const allYearExpenses = allYearExpensesQ.data ?? [];
-  const cards = cardsQ.data ?? [];
-
   const expenses = useMemo(
-    () => buildEffectiveExpenses(storedExpenses, allYearExpenses, month, year),
-    [storedExpenses, allYearExpenses, month, year],
+    () => buildEffectiveExpenses(expensesQ.data ?? [], allYearExpensesQ.data ?? [], month, year),
+    [expensesQ.data, allYearExpensesQ.data, month, year],
   );
+  const cards = cardsQ.data ?? [];
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [cardDialogOpen, setCardDialogOpen] = useState(false);
   const [editing, setEditing] = useState<FinExpense | null>(null);
-  const [preselectedCardId, setPreselectedCardId] = useState<string | null>(null);
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
-
   const emptyForm = { description: "", category: "administrativa", amount: "", is_recurring: false, installment_total: "", installment_current: "", credit_card_id: "", notes: "", due_day: "10" };
   const [form, setForm] = useState(emptyForm);
   const [cardForm, setCardForm] = useState({ name: "", last_digits: "", closing_day: "1", due_day: "10" });
 
-  const openNew = (cardId?: string) => {
-    setEditing(null);
-    setForm({ ...emptyForm, credit_card_id: cardId ?? "" });
-    setPreselectedCardId(cardId ?? null);
-    setDialogOpen(true);
-  };
-
+  const openNew = (cardId?: string) => { setEditing(null); setForm({ ...emptyForm, credit_card_id: cardId ?? "" }); setDialogOpen(true); };
   const openEdit = (e: FinExpense) => {
     setEditing(e);
-    setForm({
-      description: e.description, category: e.category, amount: String(e.amount),
-      is_recurring: e.is_recurring, installment_total: e.installment_total ? String(e.installment_total) : "",
-      installment_current: e.installment_current ? String(e.installment_current) : "",
-      credit_card_id: e.credit_card_id ?? "", notes: e.notes ?? "",
-      due_day: e.due_day ? String(e.due_day) : "10",
-    });
-    setPreselectedCardId(null);
+    setForm({ description: e.description, category: e.category, amount: String(e.amount), is_recurring: e.is_recurring, installment_total: e.installment_total ? String(e.installment_total) : "", installment_current: e.installment_current ? String(e.installment_current) : "", credit_card_id: e.credit_card_id ?? "", notes: e.notes ?? "", due_day: e.due_day ? String(e.due_day) : "10" });
     setDialogOpen(true);
   };
 
   const save = () => {
-    upsertExp.mutate(
-      {
-        ...(editing ? { id: editing.id } : {}),
-        description: form.description,
-        category: form.category,
-        amount: parseFloat(form.amount) || 0,
-        year, month, status: "pendente",
-        is_recurring: form.is_recurring,
-        installment_total: form.installment_total ? parseInt(form.installment_total) : null,
-        installment_current: form.installment_current ? parseInt(form.installment_current) : null,
-        credit_card_id: form.credit_card_id && form.credit_card_id !== "none" ? form.credit_card_id : null,
-        notes: form.notes || null,
-        due_day: parseInt(form.due_day) || 10,
-        paid_at: null,
-      } as any,
-      { onSuccess: () => setDialogOpen(false) },
-    );
+    upsertExp.mutate({
+      ...(editing ? { id: editing.id } : {}), description: form.description, category: form.category, amount: parseFloat(form.amount) || 0,
+      year, month, status: "pendente", is_recurring: form.is_recurring, installment_total: form.installment_total ? parseInt(form.installment_total) : null,
+      installment_current: form.installment_current ? parseInt(form.installment_current) : null,
+      credit_card_id: form.credit_card_id && form.credit_card_id !== "none" ? form.credit_card_id : null, notes: form.notes || null, due_day: parseInt(form.due_day) || 10, paid_at: null,
+    } as any, { onSuccess: () => setDialogOpen(false) });
   };
 
   const saveCard = () => {
-    upsertCard.mutate(
-      { name: cardForm.name, last_digits: cardForm.last_digits || null, closing_day: parseInt(cardForm.closing_day) || 1, due_day: parseInt(cardForm.due_day) || 10 } as any,
-      { onSuccess: () => { setCardDialogOpen(false); setCardForm({ name: "", last_digits: "", closing_day: "1", due_day: "10" }); } },
-    );
+    upsertCard.mutate({ name: cardForm.name, last_digits: cardForm.last_digits || null, closing_day: parseInt(cardForm.closing_day) || 1, due_day: parseInt(cardForm.due_day) || 10 } as any,
+      { onSuccess: () => { setCardDialogOpen(false); setCardForm({ name: "", last_digits: "", closing_day: "1", due_day: "10" }); } });
   };
 
   const toggleCardExpanded = (cardId: string) => {
-    setExpandedCards(prev => {
-      const next = new Set(prev);
-      if (next.has(cardId)) next.delete(cardId);
-      else next.add(cardId);
-      return next;
-    });
+    setExpandedCards(prev => { const next = new Set(prev); if (next.has(cardId)) next.delete(cardId); else next.add(cardId); return next; });
   };
 
-  // Non-card expenses grouped by category
   const nonCardExpenses = useMemo(() => expenses.filter(e => !e.credit_card_id), [expenses]);
   const grouped = useMemo(() => {
     const map = new Map<string, FinExpense[]>();
     CATEGORIES.forEach((c) => map.set(c.value, []));
     nonCardExpenses.forEach((e) => map.get(e.category)?.push(e));
-    // Sort each category by due_day
     map.forEach((items, key) => map.set(key, items.sort((a, b) => (a.due_day ?? 10) - (b.due_day ?? 10))));
     return map;
   }, [nonCardExpenses]);
@@ -138,60 +106,44 @@ export function FinDespesasDetalhadasTab() {
         const cardTotal = cardExpenses.reduce((s, e) => s + Number(e.amount), 0);
         const isExpanded = expandedCards.has(card.id);
         return (
-          <Card key={card.id}>
+          <Card key={card.id} className="transition-all duration-200 hover:shadow-md opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.1s" }}>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <button onClick={() => toggleCardExpanded(card.id)} className="flex items-center gap-2 text-left">
-                  {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                  <CreditCard className="h-5 w-5 text-primary" />
-                  <CardTitle className="text-base">{card.name}</CardTitle>
-                  {card.last_digits && <span className="text-xs text-muted-foreground">****{card.last_digits}</span>}
+                <button onClick={() => toggleCardExpanded(card.id)} className="flex items-center gap-2 text-left group">
+                  {isExpanded ? <ChevronDown className="h-4 w-4 transition-transform" /> : <ChevronRight className="h-4 w-4 transition-transform" />}
+                  <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center"><CreditCard className="h-4 w-4 text-primary" /></div>
+                  <div>
+                    <CardTitle className="text-sm">{card.name}</CardTitle>
+                    {card.last_digits && <span className="text-[10px] text-muted-foreground">****{card.last_digits}</span>}
+                  </div>
                 </button>
                 <div className="flex items-center gap-3">
                   <span className="text-lg font-bold">R$ {cardTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
-                  <Button size="sm" variant="outline" onClick={() => openNew(card.id)}>
-                    <Plus className="mr-1 h-3.5 w-3.5" /> Adicionar
-                  </Button>
+                  <Button size="sm" variant="outline" className="h-7" onClick={() => openNew(card.id)}><Plus className="mr-1 h-3 w-3" /> Adicionar</Button>
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground mt-1">{cardExpenses.length} itens • Fecha dia {card.closing_day} • Vence dia {card.due_day}</p>
+              <p className="text-[10px] text-muted-foreground mt-1 ml-14">{cardExpenses.length} itens • Fecha dia {card.closing_day} • Vence dia {card.due_day}</p>
             </CardHeader>
             {isExpanded && (
               <CardContent className="pt-0">
-                {cardExpenses.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-2">Nenhum item neste cartão</p>
-                ) : (
-                  <div className="rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Descrição</TableHead>
-                          <TableHead className="text-center">Parcela</TableHead>
-                          <TableHead className="text-right">Valor</TableHead>
-                          <TableHead className="w-20" />
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {cardExpenses.map((e) => (
-                          <TableRow key={e.id}>
-                            <TableCell className="font-medium">
-                              {e.description}
-                              {e.is_recurring && !e.installment_total && <Badge variant="secondary" className="ml-2 text-xs">Recorrente</Badge>}
-                            </TableCell>
-                            <TableCell className="text-center text-sm text-muted-foreground">
-                              {e.installment_total ? `${e.installment_current}/${e.installment_total}` : "—"}
-                            </TableCell>
-                            <TableCell className="text-right">R$ {Number(e.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</TableCell>
-                            <TableCell>
-                              <div className="flex gap-1 justify-end">
-                                <Button size="icon" variant="ghost" onClick={() => openEdit(e)}><Pencil className="h-3.5 w-3.5" /></Button>
-                                <Button size="icon" variant="ghost" onClick={() => deleteExp.mutate({ id: e.id, year, month })}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                {cardExpenses.length === 0 ? <p className="text-sm text-muted-foreground py-2 ml-14">Nenhum item</p> : (
+                  <div className="space-y-1 ml-14">
+                    {cardExpenses.map((e) => (
+                      <div key={e.id} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-accent/30 transition-colors group">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-sm">{e.description}</span>
+                          {e.is_recurring && !e.installment_total && <Badge variant="secondary" className="text-[9px]">Recorrente</Badge>}
+                          {e.installment_total && <span className="text-[10px] text-muted-foreground">{e.installment_current}/{e.installment_total}</span>}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-sm">R$ {Number(e.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                          <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => openEdit(e)}><Pencil className="h-3 w-3" /></Button>
+                            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => deleteExp.mutate({ id: e.id, year, month })}><Trash2 className="h-3 w-3 text-destructive" /></Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </CardContent>
@@ -205,48 +157,37 @@ export function FinDespesasDetalhadasTab() {
         const items = grouped.get(cat.value) ?? [];
         const total = items.reduce((s, e) => s + Number(e.amount), 0);
         if (items.length === 0) return null;
+        const colorClasses = CATEGORY_COLORS[cat.value] ?? "";
         return (
-          <Card key={cat.value}>
+          <Card key={cat.value} className="transition-all duration-200 hover:shadow-md opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.15s" }}>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-base">{cat.label}</CardTitle>
-                <span className="text-sm font-semibold">R$ {total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                <div className="flex items-center gap-2">
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${colorClasses}`}>{cat.label}</span>
+                  <span className="text-xs text-muted-foreground">{items.length} itens</span>
+                </div>
+                <span className="text-lg font-bold">R$ {total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Descrição</TableHead>
-                      <TableHead className="text-center">Vencimento</TableHead>
-                      <TableHead className="text-right">Valor</TableHead>
-                      <TableHead className="text-center">Parcela</TableHead>
-                      <TableHead className="w-20" />
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {items.map((e) => (
-                      <TableRow key={e.id}>
-                        <TableCell className="font-medium">
-                          {e.description}
-                          {e.is_recurring && !e.installment_total && <Badge variant="secondary" className="ml-2 text-xs">Recorrente</Badge>}
-                        </TableCell>
-                        <TableCell className="text-center text-muted-foreground">Dia {e.due_day ?? 10}</TableCell>
-                        <TableCell className="text-right">R$ {Number(e.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</TableCell>
-                        <TableCell className="text-center text-sm text-muted-foreground">
-                          {e.installment_total ? `${e.installment_current}/${e.installment_total}` : "—"}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-1 justify-end">
-                            <Button size="icon" variant="ghost" onClick={() => openEdit(e)}><Pencil className="h-3.5 w-3.5" /></Button>
-                            <Button size="icon" variant="ghost" onClick={() => deleteExp.mutate({ id: e.id, year, month })}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+            <CardContent className="pt-0">
+              <div className="space-y-1">
+                {items.map((e) => (
+                  <div key={e.id} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-accent/30 transition-colors group">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-sm">{e.description}</span>
+                      {e.is_recurring && !e.installment_total && <Badge variant="secondary" className="text-[9px]">Recorrente</Badge>}
+                      {e.installment_total && <span className="text-[10px] text-muted-foreground">{e.installment_current}/{e.installment_total}</span>}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-muted-foreground">Dia {e.due_day ?? 10}</span>
+                      <span className="font-semibold text-sm">R$ {Number(e.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                      <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => openEdit(e)}><Pencil className="h-3 w-3" /></Button>
+                        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => deleteExp.mutate({ id: e.id, year, month })}><Trash2 className="h-3 w-3 text-destructive" /></Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
@@ -260,41 +201,20 @@ export function FinDespesasDetalhadasTab() {
           <div className="space-y-4">
             <div className="space-y-2"><Label>Descrição *</Label><Input value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} /></div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Categoria</Label>
-                <Select value={form.category} onValueChange={(v) => setForm((p) => ({ ...p, category: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{CATEGORIES.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
+              <div className="space-y-2"><Label>Categoria</Label><Select value={form.category} onValueChange={(v) => setForm((p) => ({ ...p, category: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{CATEGORIES.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent></Select></div>
               <div className="space-y-2"><Label>Valor (R$)</Label><Input type="number" step="0.01" value={form.amount} onChange={(e) => setForm((p) => ({ ...p, amount: e.target.value }))} /></div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Cartão</Label>
-                <Select value={form.credit_card_id} onValueChange={(v) => setForm((p) => ({ ...p, credit_card_id: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Nenhum</SelectItem>
-                    {cards.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2"><Label>Dia vencimento</Label><Input type="number" min={1} max={31} value={form.due_day} onChange={(e) => setForm((p) => ({ ...p, due_day: e.target.value }))} placeholder="Ex: 10" /></div>
+              <div className="space-y-2"><Label>Cartão</Label><Select value={form.credit_card_id} onValueChange={(v) => setForm((p) => ({ ...p, credit_card_id: v }))}><SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger><SelectContent><SelectItem value="none">Nenhum</SelectItem>{cards.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select></div>
+              <div className="space-y-2"><Label>Dia vencimento</Label><Input type="number" min={1} max={31} value={form.due_day} onChange={(e) => setForm((p) => ({ ...p, due_day: e.target.value }))} /></div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2"><Label>Parcela atual</Label><Input type="number" value={form.installment_current} onChange={(e) => setForm((p) => ({ ...p, installment_current: e.target.value }))} placeholder="Ex: 3" /></div>
               <div className="space-y-2"><Label>Total de parcelas</Label><Input type="number" value={form.installment_total} onChange={(e) => setForm((p) => ({ ...p, installment_total: e.target.value }))} placeholder="Ex: 12" /></div>
             </div>
-            <div className="flex items-center gap-2">
-              <Switch checked={form.is_recurring} onCheckedChange={(v) => setForm((p) => ({ ...p, is_recurring: v }))} />
-              <Label>Despesa recorrente (assinatura)</Label>
-            </div>
+            <div className="flex items-center gap-2"><Switch checked={form.is_recurring} onCheckedChange={(v) => setForm((p) => ({ ...p, is_recurring: v }))} /><Label>Despesa recorrente</Label></div>
           </div>
-          <DialogFooter>
-            <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
-            <Button onClick={save} disabled={!form.description || upsertExp.isPending}>Salvar</Button>
-          </DialogFooter>
+          <DialogFooter><DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose><Button onClick={save} disabled={!form.description || upsertExp.isPending}>Salvar</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -310,10 +230,7 @@ export function FinDespesasDetalhadasTab() {
               <div className="space-y-2"><Label>Dia vencimento</Label><Input type="number" value={cardForm.due_day} onChange={(e) => setCardForm((p) => ({ ...p, due_day: e.target.value }))} /></div>
             </div>
           </div>
-          <DialogFooter>
-            <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
-            <Button onClick={saveCard} disabled={!cardForm.name}>Salvar</Button>
-          </DialogFooter>
+          <DialogFooter><DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose><Button onClick={saveCard} disabled={!cardForm.name}>Salvar</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
