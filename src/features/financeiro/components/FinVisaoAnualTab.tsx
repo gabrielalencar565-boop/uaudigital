@@ -306,25 +306,49 @@ export function FinVisaoAnualTab() {
         </Card>
       </div>
 
-      {/* Lucro por mês */}
-      <Card className="opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.3s" }}>
-        <CardHeader><CardTitle className="text-sm font-bold uppercase tracking-wider text-center">Lucro por Mês</CardTitle></CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={monthlyData}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-              <XAxis dataKey="short" className="text-xs" />
-              <YAxis className="text-xs" tickFormatter={(v: number) => `R$ ${(v / 1000).toFixed(0)}k`} />
-              <Tooltip formatter={(v: number) => fmtSign(v)} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }} />
-              <Bar dataKey="lucro" name="Lucro" radius={[6, 6, 0, 0]}>
-                {monthlyData.map((d, i) => (
-                  <Cell key={i} fill={d.lucro >= 0 ? "#22c55e" : "#ef4444"} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Lucro por mês */}
+        <Card className="opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.3s" }}>
+          <CardHeader><CardTitle className="text-sm font-bold uppercase tracking-wider text-center">Lucro por Mês</CardTitle></CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={monthlyData}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                <XAxis dataKey="short" className="text-xs" />
+                <YAxis className="text-xs" tickFormatter={(v: number) => `R$ ${(v / 1000).toFixed(0)}k`} />
+                <Tooltip formatter={(v: number) => fmtSign(v)} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }} />
+                <Bar dataKey="lucro" name="Lucro" radius={[6, 6, 0, 0]}>
+                  {monthlyData.map((d, i) => (
+                    <Cell key={i} fill={d.lucro >= 0 ? "#22c55e" : "#ef4444"} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        {/* Progresso de Ticket Médio */}
+        <Card className="opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.35s" }}>
+          <CardHeader><CardTitle className="text-sm font-bold uppercase tracking-wider text-center">Progresso de Ticket Médio</CardTitle></CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={260}>
+              <AreaChart data={ticketMedioData}>
+                <defs>
+                  <linearGradient id="ticketGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                <XAxis dataKey="short" className="text-xs" />
+                <YAxis className="text-xs" tickFormatter={(v: number) => `R$ ${(v / 1000).toFixed(0)}k`} />
+                <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }} />
+                <Area type="monotone" dataKey="ticket" name="Ticket Médio" stroke="hsl(var(--primary))" fill="url(#ticketGrad)" strokeWidth={2.5} dot={{ r: 3, fill: "hsl(var(--primary))" }} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Annual charts */}
       <FinAnnualCharts transactions={transactions as any} />
