@@ -344,7 +344,7 @@ export function FinDespesasDetalhadasTab() {
       {/* Card dialog */}
       <Dialog open={cardDialogOpen} onOpenChange={setCardDialogOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Novo Cartão de Crédito</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editingCard ? "Editar Cartão" : "Novo Cartão de Crédito"}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2"><Label>Nome *</Label><Input value={cardForm.name} onChange={(e) => setCardForm((p) => ({ ...p, name: e.target.value }))} placeholder="Ex: Nubank" /></div>
