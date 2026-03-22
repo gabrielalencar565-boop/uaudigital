@@ -6,7 +6,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { FinMonthYearSelector } from "./FinMonthYearSelector";
 import { FinAnnualCharts } from "./FinAnnualCharts";
 import { FinMetricCard } from "./FinMetricCard";
-import { DollarSign, TrendingDown, TrendingUp, Wallet, Activity, Users, Target } from "lucide-react";
+import { DollarSign, TrendingDown, TrendingUp, Wallet, Activity, Users } from "lucide-react";
 
 const MONTH_LABELS = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 const MONTH_SHORT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
