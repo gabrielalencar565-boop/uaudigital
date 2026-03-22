@@ -166,33 +166,33 @@ export function FinDespesasDetalhadasTab() {
         const isExpanded = expandedCards.has(card.id);
         return (
           <Card key={card.id} className="overflow-hidden transition-all duration-200 hover:shadow-lg opacity-0 p-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.1s" }}>
-            {/* Card Header - Dark gradient style */}
+            {/* Card Header - Brand gradient style */}
             <button
               onClick={() => toggleCardExpanded(card.id)}
-              className="w-full flex items-center justify-between px-5 py-4 bg-gradient-to-r from-slate-900 to-slate-800 dark:from-slate-800 dark:to-slate-700 text-white rounded-t-2xl"
+              className={`w-full flex items-center justify-between px-6 py-5 bg-gradient-to-br ${BRAND_GRADIENTS[(card as any).brand ?? "outro"]} text-white`}
+              style={{ borderRadius: isExpanded ? "16px 16px 0 0" : "16px" }}
             >
-              <div className="flex items-center gap-3">
-                {isExpanded ? <ChevronDown className="h-4 w-4 text-slate-400 transition-transform" /> : <ChevronRight className="h-4 w-4 text-slate-400 transition-transform" />}
-                <div className="h-10 w-10 rounded-xl bg-white/10 backdrop-blur flex items-center justify-center">
-                  <CreditCard className="h-5 w-5 text-white" />
-                </div>
-                <div className="text-left">
-                  <p className="font-semibold text-sm">{card.name}</p>
-                  <p className="text-[11px] text-slate-400 flex items-center gap-2">
-                    {card.last_digits && <span>•••• {card.last_digits}</span>}
-                    <span>Fecha dia {card.closing_day}</span>
-                    <span>•</span>
-                    <span>Vence dia {card.due_day}</span>
+              <div className="flex items-center gap-4">
+                {isExpanded ? <ChevronDown className="h-4 w-4 text-white/50 transition-transform" /> : <ChevronRight className="h-4 w-4 text-white/50 transition-transform" />}
+                <div>
+                  <div className="flex items-center gap-3">
+                    <p className="font-bold text-base">{card.name}</p>
+                    <CardBrandLogo brand={(card as any).brand ?? "outro"} className="h-6" />
+                  </div>
+                  <p className="text-sm text-white/60 font-mono tracking-widest mt-1">
+                    •••• •••• •••• {card.last_digits || "****"}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-4">
                 <div className="text-right">
-                  <p className="text-[10px] uppercase tracking-wider text-slate-400 font-medium">Fatura</p>
-                  <p className="text-lg font-bold">R$ {cardTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                  <p className="text-[10px] uppercase tracking-wider text-white/50 font-medium">Fatura do mês</p>
+                  <p className="text-xl font-bold">R$ {cardTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                  <p className="text-[10px] text-white/50 mt-0.5">
+                    {cardExpenses.length} itens • Fecha dia {card.closing_day} • Vence dia {card.due_day}
+                  </p>
                 </div>
-                <Badge variant="secondary" className="bg-white/10 text-white border-0 text-[10px]">{cardExpenses.length} itens</Badge>
-                <Button size="sm" variant="ghost" className="h-7 text-white hover:bg-white/10 border border-white/20 text-[11px]" onClick={(ev) => { ev.stopPropagation(); openNew(card.id); }}><Plus className="mr-1 h-3 w-3" /> Adicionar</Button>
+                <Button size="sm" variant="ghost" className="h-8 text-white hover:bg-white/10 border border-white/20 text-[11px] rounded-lg" onClick={(ev) => { ev.stopPropagation(); openNew(card.id); }}><Plus className="mr-1 h-3 w-3" /> Adicionar</Button>
               </div>
             </button>
 
