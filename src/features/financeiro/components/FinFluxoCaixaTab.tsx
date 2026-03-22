@@ -78,7 +78,7 @@ export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaP
     return new Set(prevMonthTxs.filter(t => t.type === "entrada").map(t => t.description)).size;
   }, [prevMonthTxs]);
 
-  const varClientes = prevClientesRecorrentes > 0 ? ((clientesRecorrentes - prevClientesRecorrentes) / prevClientesRecorrentes) * 100 : null;
+  const varClientesAbs = clientesRecorrentes - prevClientesRecorrentes;
 
   const totalReceita = monthTxs.filter((t) => t.type === "entrada").reduce((s, t) => s + Number(t.amount), 0);
   const totalDespesa = monthTxs.filter((t) => t.type === "saida").reduce((s, t) => s + Number(t.amount), 0);
