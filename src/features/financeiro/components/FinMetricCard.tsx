@@ -68,17 +68,17 @@ export function FinMetricCard({
             {isPositiveVar ? (
               <div className="flex items-center gap-1 text-success bg-success/10 px-1.5 py-0.5 rounded-md">
                 <TrendingUp className="h-3 w-3" />
-                <span className="text-xs font-semibold">+{variation.toFixed(1)}%</span>
+                <span className="text-xs font-semibold">+{variationAbsolute ? Math.round(variation!) : variation!.toFixed(1) + "%"}</span>
               </div>
             ) : isNegativeVar ? (
               <div className="flex items-center gap-1 text-destructive bg-destructive/10 px-1.5 py-0.5 rounded-md">
                 <TrendingDown className="h-3 w-3" />
-                <span className="text-xs font-semibold">{variation.toFixed(1)}%</span>
+                <span className="text-xs font-semibold">{variationAbsolute ? Math.round(variation!) : variation!.toFixed(1) + "%"}</span>
               </div>
             ) : (
               <div className="flex items-center gap-1 text-muted-foreground bg-muted px-1.5 py-0.5 rounded-md">
                 <Minus className="h-3 w-3" />
-                <span className="text-xs font-semibold">0%</span>
+                <span className="text-xs font-semibold">0</span>
               </div>
             )}
             <span className="text-[10px] text-muted-foreground">{variationLabel}</span>
