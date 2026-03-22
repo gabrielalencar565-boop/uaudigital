@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo, useCallback } from "react";
-import { Plus, Upload, ArrowUpCircle, ArrowDownCircle, Eye, Pencil, Trash2, FileSpreadsheet, Check, X } from "lucide-react";
+import { Plus, Upload, ArrowUpCircle, ArrowDownCircle, Eye, Pencil, Trash2, FileSpreadsheet, Check, X, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { useFinTransactions, useUpsertFinTransaction, useDeleteFinTransaction, useBulkInsertTransactions, useFinAllTransactions, type FinTransaction } from "../hooks/use-financial-data";
+import { useFinTransactions, useUpsertFinTransaction, useDeleteFinTransaction, useBulkInsertTransactions, useFinAllTransactions, useFinOpeningBalances, useUpsertOpeningBalance, type FinTransaction } from "../hooks/use-financial-data";
 import { format } from "date-fns";
 import { FinMonthYearSelector } from "./FinMonthYearSelector";
 import * as XLSX from "xlsx";
@@ -30,11 +30,9 @@ const TRANSACTION_CATEGORIES = [
   { value: "despesa_outros", label: "Despesas Outros" },
   { value: "despesa_variavel", label: "Despesas Variáveis" },
   { value: "investimentos", label: "Investimentos" },
-  { value: "caixa", label: "Caixa Final" },
 ];
 
 const getTypeFromCategory = (cat: string): string => {
-  if (cat === "caixa") return "caixa";
   if (cat.startsWith("receita")) return "entrada";
   return "saida";
 };
@@ -139,9 +137,11 @@ export function FinLancamentosTab() {
   const upsertTx = useUpsertFinTransaction();
   const deleteTx = useDeleteFinTransaction();
   const bulkInsert = useBulkInsertTransactions();
+  const balancesQ = useFinOpeningBalances(year);
+  const upsertBalance = useUpsertOpeningBalance();
 
   const transactions = txQ.data ?? [];
-  const allTransactions = allTxQ.data ?? [];
+  const balances = balancesQ.data ?? [];
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTx, setEditingTx] = useState<FinTransaction | null>(null);
@@ -151,12 +151,16 @@ export function FinLancamentosTab() {
 
   // Inline editing state
   const [editingCell, setEditingCell] = useState<EditingCell>(null);
+  const [editingCaixa, setEditingCaixa] = useState(false);
+  const [caixaInput, setCaixaInput] = useState("");
 
   const emptyForm = { description: "", amount: "", date: format(new Date(), "yyyy-MM-dd"), category: "", notes: "" };
   const [form, setForm] = useState(emptyForm);
 
+  // Filter out any legacy "caixa" transactions from display
   const filtered = useMemo(() => {
     return transactions.filter((t) => {
+      if (t.type === "caixa" || t.category === "caixa") return false;
       if (typeFilter !== "all" && t.type !== typeFilter) return false;
       if (statusFilter !== "all" && t.status !== statusFilter) return false;
       return true;
@@ -166,23 +170,18 @@ export function FinLancamentosTab() {
   const totalEntradas = filtered.filter((t) => t.type === "entrada").reduce((s, t) => s + Number(t.amount), 0);
   const totalSaidas = filtered.filter((t) => t.type === "saida").reduce((s, t) => s + Number(t.amount), 0);
 
-  // Caixa Final = last "caixa" record of the month, or fallback to cumulative calc excluding caixa records
-  const caixaFinal = useMemo(() => {
-    // Check if there's a "caixa" type transaction for this month
-    const caixaRecords = transactions.filter((t) => t.type === "caixa" || t.category === "caixa");
-    if (caixaRecords.length > 0) {
-      // Use the last caixa record of the month
-      return Number(caixaRecords[caixaRecords.length - 1].amount);
-    }
-    // Fallback: cumulative balance from non-caixa transactions
-    return allTransactions
-      .filter((t) => {
-        if (t.type === "caixa" || t.category === "caixa") return false;
-        const d = new Date(t.date);
-        return d.getMonth() + 1 <= month;
-      })
-      .reduce((s, t) => s + (t.type === "entrada" ? Number(t.amount) : -Number(t.amount)), 0);
-  }, [transactions, allTransactions, month]);
+  // Caixa Final from financial_opening_balances (manual value)
+  const currentBalance = balances.find(b => b.month === month);
+  const caixaFinal = currentBalance ? Number(currentBalance.amount) : null;
+
+  const saveCaixaFinal = () => {
+    const val = parseFloat(caixaInput);
+    if (isNaN(val)) return;
+    upsertBalance.mutate(
+      { year, month, amount: val, ...(currentBalance ? { id: currentBalance.id } : {}) },
+      { onSuccess: () => { setEditingCaixa(false); } }
+    );
+  };
 
   const openNew = () => {
     setEditingTx(null);
@@ -462,17 +461,36 @@ export function FinLancamentosTab() {
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="cursor-pointer" onClick={() => { setEditingCaixa(true); setCaixaInput(caixaFinal != null ? String(caixaFinal) : ""); }}>
           <CardContent className="flex items-center gap-3 pt-4">
-            <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold ${caixaFinal >= 0 ? "bg-success/20 text-success" : "bg-destructive/20 text-destructive"}`}>
+            <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold ${(caixaFinal ?? 0) >= 0 ? "bg-success/20 text-success" : "bg-destructive/20 text-destructive"}`}>
               $
             </div>
-            <div>
+            <div className="flex-1">
               <p className="text-xs text-muted-foreground">Caixa Final</p>
-              <p className={`text-xl font-bold ${caixaFinal >= 0 ? "text-success" : "text-destructive"}`}>
-                {caixaFinal < 0 ? "-" : ""}R$ {Math.abs(caixaFinal).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-              </p>
+              {editingCaixa ? (
+                <div className="flex items-center gap-1 mt-1" onClick={e => e.stopPropagation()}>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={caixaInput}
+                    onChange={e => setCaixaInput(e.target.value)}
+                    className="h-7 w-32 text-sm"
+                    autoFocus
+                    onKeyDown={e => { if (e.key === "Enter") saveCaixaFinal(); if (e.key === "Escape") setEditingCaixa(false); }}
+                  />
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={saveCaixaFinal}><Check className="h-3 w-3" /></Button>
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingCaixa(false)}><X className="h-3 w-3" /></Button>
+                </div>
+              ) : (
+                <p className={`text-xl font-bold ${caixaFinal != null ? (caixaFinal >= 0 ? "text-success" : "text-destructive") : "text-muted-foreground"}`}>
+                  {caixaFinal != null
+                    ? `${caixaFinal < 0 ? "-" : ""}R$ ${Math.abs(caixaFinal).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+                    : "Não definido"}
+                </p>
+              )}
             </div>
+            {!editingCaixa && <Pencil className="h-3 w-3 text-muted-foreground" />}
           </CardContent>
         </Card>
       </div>

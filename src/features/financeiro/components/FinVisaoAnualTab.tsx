@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { ProgressRing } from "@/components/metrics/ProgressRing";
-import { useFinClients, useFinGoals, useFinAllTransactions } from "../hooks/use-financial-data";
+import { useFinClients, useFinGoals, useFinAllTransactions, useFinOpeningBalances } from "../hooks/use-financial-data";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { FinMonthYearSelector } from "./FinMonthYearSelector";
 
@@ -16,46 +16,38 @@ export function FinVisaoAnualTab() {
   const clientsQ = useFinClients();
   const goalsQ = useFinGoals(year);
   const transactionsQ = useFinAllTransactions(year);
+  const balancesQ = useFinOpeningBalances(year);
 
   const clients = clientsQ.data?.filter((c) => c.is_active) ?? [];
   const goals = goalsQ.data ?? [];
   const transactions = transactionsQ.data ?? [];
+  const balances = balancesQ.data ?? [];
 
+  // Build monthly data from real transactions only (exclude caixa)
   const monthlyData = useMemo(() => {
     return Array.from({ length: 12 }, (_, i) => {
       const m = i + 1;
       const monthTxs = transactions.filter((t) => {
+        if (t.type === "caixa" || t.category === "caixa") return false;
         const d = new Date(t.date);
         return d.getMonth() + 1 === m;
       });
-      const nonCaixa = monthTxs.filter((t) => t.type !== "caixa" && t.category !== "caixa");
-      const rev = nonCaixa.filter((t) => t.type === "entrada").reduce((s, t) => s + Number(t.amount), 0);
-      const exp = nonCaixa.filter((t) => t.type === "saida").reduce((s, t) => s + Number(t.amount), 0);
+      const rev = monthTxs.filter((t) => t.type === "entrada").reduce((s, t) => s + Number(t.amount), 0);
+      const exp = monthTxs.filter((t) => t.type === "saida").reduce((s, t) => s + Number(t.amount), 0);
       const lucro = rev - exp;
-      // Caixa = use "caixa" record if exists
-      const caixaRecords = monthTxs.filter((t) => t.type === "caixa" || t.category === "caixa");
-      const caixa = caixaRecords.length > 0 ? Number(caixaRecords[caixaRecords.length - 1].amount) : null;
-      return { month: MONTH_LABELS[i], short: MONTH_SHORT[i], receita: rev, despesa: exp, lucro, caixaRecord: caixa };
+      // Caixa from manual balance
+      const bal = balances.find(b => b.month === m);
+      const caixa = bal ? Number(bal.amount) : null;
+      return { month: MONTH_LABELS[i], short: MONTH_SHORT[i], receita: rev, despesa: exp, lucro, caixa };
     });
-  }, [transactions]);
-
-  // Build cumulative caixa: use caixa records when available, otherwise accumulate
-  const monthlyWithCaixa = useMemo(() => {
-    let cumCaixa = 0;
-    return monthlyData.map((d) => {
-      if (d.caixaRecord !== null) {
-        cumCaixa = d.caixaRecord;
-      } else {
-        cumCaixa += d.lucro;
-      }
-      return { ...d, caixa: cumCaixa };
-    });
-  }, [monthlyData]);
+  }, [transactions, balances]);
 
   const totalReceita = monthlyData.reduce((s, d) => s + d.receita, 0);
   const totalDespesa = monthlyData.reduce((s, d) => s + d.despesa, 0);
   const lucroAnual = totalReceita - totalDespesa;
-  const caixaAnual = monthlyWithCaixa[11]?.caixa ?? 0;
+  // Caixa anual = last month with a manual balance
+  const lastCaixa = [...monthlyData].reverse().find(d => d.caixa !== null);
+  const caixaAnual = lastCaixa?.caixa ?? null;
   const margemLucro = totalReceita > 0 ? (lucroAnual / totalReceita) * 100 : 0;
   const ticketMedio = clients.length > 0 ? totalReceita / 12 / clients.length : 0;
   const avgClients = clients.length;
@@ -75,14 +67,16 @@ export function FinVisaoAnualTab() {
   // Quarterly data
   const quarterlyData = useMemo(() => {
     return [0, 1, 2, 3].map((q) => {
-      const months = monthlyWithCaixa.slice(q * 3, q * 3 + 3);
+      const months = monthlyData.slice(q * 3, q * 3 + 3);
       const rec = months.reduce((s, m) => s + m.receita, 0);
       const desp = months.reduce((s, m) => s + m.despesa, 0);
       const luc = rec - desp;
-      const caixa = months[2]?.caixa ?? 0;
+      // Caixa = last month of quarter with a value
+      const lastWithCaixa = [...months].reverse().find(m => m.caixa !== null);
+      const caixa = lastWithCaixa?.caixa ?? null;
       return { label: `${q + 1}º TRI`, receita: rec, despesa: desp, lucro: luc, caixa };
     });
-  }, [monthlyWithCaixa]);
+  }, [monthlyData]);
 
   // Annual goal
   const annualGoal = goals.find((g) => g.month === null);
@@ -91,6 +85,7 @@ export function FinVisaoAnualTab() {
 
   const fmt = (v: number) => `R$ ${Math.abs(v).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
   const fmtSign = (v: number) => `${v < 0 ? "-" : ""}R$ ${Math.abs(v).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
+  const fmtCaixa = (v: number | null) => v != null ? fmtSign(v) : "—";
 
   return (
     <div className="space-y-6">
@@ -98,7 +93,7 @@ export function FinVisaoAnualTab() {
         <FinMonthYearSelector month={1} year={year} onMonthChange={() => {}} onYearChange={setYear} yearOnly />
       </div>
 
-      {/* Annual summary header - removed Ano widget, 5 cols */}
+      {/* Annual summary header */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.1s" }}>
         <Card className="text-center">
           <CardHeader className="pb-1"><CardTitle className="text-xs uppercase">Receita Anual</CardTitle></CardHeader>
@@ -114,7 +109,7 @@ export function FinVisaoAnualTab() {
         </Card>
         <Card className="text-center">
           <CardHeader className="pb-1"><CardTitle className="text-xs uppercase">Caixa</CardTitle></CardHeader>
-          <CardContent><p className={`text-2xl font-bold ${caixaAnual >= 0 ? "text-success" : "text-destructive"}`}>{fmtSign(caixaAnual)}</p></CardContent>
+          <CardContent><p className={`text-2xl font-bold ${caixaAnual != null ? (caixaAnual >= 0 ? "text-success" : "text-destructive") : "text-muted-foreground"}`}>{fmtCaixa(caixaAnual)}</p></CardContent>
         </Card>
         <Card className="text-center">
           <CardHeader className="pb-1"><CardTitle className="text-xs uppercase">Saúde do Caixa</CardTitle></CardHeader>
@@ -137,13 +132,13 @@ export function FinVisaoAnualTab() {
                 </tr>
               </thead>
               <tbody>
-                {monthlyWithCaixa.map((d, i) => (
+                {monthlyData.map((d, i) => (
                   <tr key={i} className="border-b last:border-0 hover:bg-accent/30">
                     <td className="px-3 py-2 font-semibold uppercase text-xs">{d.month}</td>
                     <td className="px-3 py-2 text-right">{fmt(d.receita)}</td>
                     <td className="px-3 py-2 text-right">{fmt(d.despesa)}</td>
                     <td className={`px-3 py-2 text-right ${d.lucro >= 0 ? "text-success" : "text-destructive"}`}>{fmtSign(d.lucro)}</td>
-                    <td className={`px-3 py-2 text-right ${d.caixa >= 0 ? "text-success" : "text-destructive"}`}>{fmtSign(d.caixa)}</td>
+                    <td className={`px-3 py-2 text-right ${d.caixa != null ? (d.caixa >= 0 ? "text-success" : "text-destructive") : "text-muted-foreground"}`}>{fmtCaixa(d.caixa)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -171,7 +166,7 @@ export function FinVisaoAnualTab() {
                     <td className="px-3 py-2 text-right">{fmt(q.receita)}</td>
                     <td className="px-3 py-2 text-right">{fmt(q.despesa)}</td>
                     <td className={`px-3 py-2 text-right ${q.lucro >= 0 ? "text-success" : "text-destructive"}`}>{fmtSign(q.lucro)}</td>
-                    <td className={`px-3 py-2 text-right ${q.caixa >= 0 ? "text-success" : "text-destructive"}`}>{fmtSign(q.caixa)}</td>
+                    <td className={`px-3 py-2 text-right ${q.caixa != null ? (q.caixa >= 0 ? "text-success" : "text-destructive") : "text-muted-foreground"}`}>{fmtCaixa(q.caixa)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -186,7 +181,7 @@ export function FinVisaoAnualTab() {
           <CardHeader><CardTitle className="text-base uppercase text-center">Gráfico de Acompanhamento Mensal</CardTitle></CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={monthlyWithCaixa}>
+              <BarChart data={monthlyData}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                 <XAxis dataKey="short" className="text-xs" />
                 <YAxis className="text-xs" tickFormatter={(v: number) => `R$ ${(v / 1000).toFixed(0)}k`} />

@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProgressRing } from "@/components/metrics/ProgressRing";
-import { useFinClients, useFinAllTransactions } from "../hooks/use-financial-data";
+import { useFinClients, useFinAllTransactions, useFinOpeningBalances } from "../hooks/use-financial-data";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { FinMonthYearSelector } from "./FinMonthYearSelector";
 
@@ -12,62 +12,36 @@ export function FinFluxoCaixaTab() {
 
   const clientsQ = useFinClients();
   const transactionsQ = useFinAllTransactions(year);
+  const balancesQ = useFinOpeningBalances(year);
 
   const clients = clientsQ.data?.filter((c) => c.is_active) ?? [];
   const transactions = transactionsQ.data ?? [];
+  const balances = balancesQ.data ?? [];
 
-  // Calculate from transactions only (exclude caixa records from receita/despesa)
+  // Filter only real financial transactions (exclude legacy caixa records)
   const monthTxs = useMemo(() => {
     return transactions.filter((t) => {
+      if (t.type === "caixa" || t.category === "caixa") return false;
       const d = new Date(t.date);
       return d.getMonth() + 1 === month;
     });
   }, [transactions, month]);
 
-  const nonCaixaTxs = monthTxs.filter((t) => t.type !== "caixa" && t.category !== "caixa");
-  const totalReceita = nonCaixaTxs.filter((t) => t.type === "entrada").reduce((s, t) => s + Number(t.amount), 0);
-  const totalDespesa = nonCaixaTxs.filter((t) => t.type === "saida").reduce((s, t) => s + Number(t.amount), 0);
+  const totalReceita = monthTxs.filter((t) => t.type === "entrada").reduce((s, t) => s + Number(t.amount), 0);
+  const totalDespesa = monthTxs.filter((t) => t.type === "saida").reduce((s, t) => s + Number(t.amount), 0);
   const lucro = totalReceita - totalDespesa;
   const ticketMedio = clients.length > 0 ? totalReceita / clients.length : 0;
   const margemLucro = totalReceita > 0 ? (lucro / totalReceita) * 100 : 0;
 
-  // Caixa = use "caixa" record if exists, otherwise cumulative
-  const caixaAcumulado = useMemo(() => {
-    const caixaRecords = monthTxs.filter((t) => t.type === "caixa" || t.category === "caixa");
-    if (caixaRecords.length > 0) {
-      return Number(caixaRecords[caixaRecords.length - 1].amount);
-    }
-    // Fallback: cumulative from non-caixa transactions
-    return transactions
-      .filter((t) => {
-        if (t.type === "caixa" || t.category === "caixa") return false;
-        const d = new Date(t.date);
-        return d.getMonth() + 1 <= month;
-      })
-      .reduce((s, t) => s + (t.type === "entrada" ? Number(t.amount) : -Number(t.amount)), 0);
-  }, [transactions, monthTxs, month]);
+  // Caixa from manual balances only
+  const caixaFinal = balances.find(b => b.month === month);
+  const caixaAcumulado = caixaFinal ? Number(caixaFinal.amount) : null;
 
-  const caixaInicial = useMemo(() => {
-    // Check previous month's caixa record
-    const prevMonthTxs = transactions.filter((t) => {
-      const d = new Date(t.date);
-      return d.getMonth() + 1 === month - 1;
-    });
-    const prevCaixaRecords = prevMonthTxs.filter((t) => t.type === "caixa" || t.category === "caixa");
-    if (prevCaixaRecords.length > 0) {
-      return Number(prevCaixaRecords[prevCaixaRecords.length - 1].amount);
-    }
-    // Fallback: cumulative before this month
-    return transactions
-      .filter((t) => {
-        if (t.type === "caixa" || t.category === "caixa") return false;
-        const d = new Date(t.date);
-        return d.getMonth() + 1 < month;
-      })
-      .reduce((s, t) => s + (t.type === "entrada" ? Number(t.amount) : -Number(t.amount)), 0);
-  }, [transactions, month]);
+  // Caixa Inicial = previous month's manual balance
+  const prevBalance = balances.find(b => b.month === month - 1);
+  const caixaInicial = prevBalance ? Number(prevBalance.amount) : null;
 
-  // Category breakdown from transactions
+  // Category breakdown from transactions (excluding caixa)
   const categoryData = useMemo(() => {
     const CATEGORY_LABELS: Record<string, string> = {
       receita_recorrente: "Receita Recorrente",
@@ -81,7 +55,6 @@ export function FinFluxoCaixaTab() {
       despesa_outros: "Despesas Outros",
       despesa_variavel: "Despesas Variáveis",
       investimentos: "Investimentos",
-      caixa: "Caixa",
     };
     const cats: Record<string, number> = {};
     monthTxs.forEach((t) => {
@@ -92,6 +65,10 @@ export function FinFluxoCaixaTab() {
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
   }, [monthTxs]);
+
+  const fmtVal = (v: number | null) => v != null
+    ? `${v < 0 ? "-" : ""}R$ ${Math.abs(v).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+    : "—";
 
   return (
     <div className="space-y-6">
@@ -122,10 +99,10 @@ export function FinFluxoCaixaTab() {
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium uppercase">Caixa</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium uppercase">Caixa Final</CardTitle></CardHeader>
           <CardContent>
-            <p className={`text-4xl font-bold ${caixaAcumulado >= 0 ? "text-success" : "text-destructive"}`}>
-              {caixaAcumulado < 0 ? "-" : ""}R$ {Math.abs(caixaAcumulado).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+            <p className={`text-4xl font-bold ${caixaAcumulado != null ? (caixaAcumulado >= 0 ? "text-success" : "text-destructive") : "text-muted-foreground"}`}>
+              {fmtVal(caixaAcumulado)}
             </p>
           </CardContent>
         </Card>
@@ -154,7 +131,9 @@ export function FinFluxoCaixaTab() {
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm font-medium uppercase">Caixa Inicial</CardTitle></CardHeader>
           <CardContent>
-            <p className="text-4xl font-bold">R$ {Math.abs(caixaInicial).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+            <p className={`text-4xl font-bold ${caixaInicial != null ? "" : "text-muted-foreground"}`}>
+              {fmtVal(caixaInicial)}
+            </p>
           </CardContent>
         </Card>
       </div>
