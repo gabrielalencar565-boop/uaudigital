@@ -153,9 +153,11 @@ export function FinVisaoAnualTab({ externalYear }: FinVisaoAnualProps = {}) {
 
   return (
     <div className="space-y-6">
-      <div className="opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0s" }}>
-        <FinMonthYearSelector month={1} year={year} onMonthChange={() => {}} onYearChange={setYear} yearOnly />
-      </div>
+      {!hasExternal && (
+        <div className="opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0s" }}>
+          <FinMonthYearSelector month={1} year={year} onMonthChange={() => {}} onYearChange={setYear} yearOnly />
+        </div>
+      )}
 
       {/* Annual KPIs */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.1s" }}>

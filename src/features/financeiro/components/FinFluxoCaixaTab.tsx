@@ -162,9 +162,11 @@ export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaP
 
   return (
     <div className="space-y-6">
-      <div className="opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0s" }}>
-        <FinMonthYearSelector month={month} year={year} onMonthChange={setMonth} onYearChange={setYear} />
-      </div>
+      {!hasExternal && (
+        <div className="opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0s" }}>
+          <FinMonthYearSelector month={month} year={year} onMonthChange={setMonth} onYearChange={setYear} />
+        </div>
+      )}
 
       {/* KPIs Row */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.1s" }}>
