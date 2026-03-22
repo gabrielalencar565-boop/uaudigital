@@ -47,9 +47,13 @@ export function FinVisaoAnualTab() {
   const lucroAnual = totalReceita - totalDespesa;
   const lastCaixa = [...monthlyData].reverse().find(d => d.caixa !== null);
   const caixaAnual = lastCaixa?.caixa ?? null;
-  const margemLucro = totalReceita > 0 ? (lucroAnual / totalReceita) * 100 : 0;
+  // Margem média do ano (média das margens mensais que tiveram receita)
+  const margemLucro = useMemo(() => {
+    const margensMensais = monthlyData.filter(d => d.receita > 0).map(d => ((d.receita - d.despesa) / d.receita) * 100);
+    return margensMensais.length > 0 ? margensMensais.reduce((s, v) => s + v, 0) / margensMensais.length : 0;
+  }, [monthlyData]);
 
-  // Clientes acumulativo: quantos clientes tiveram receita em cada mês
+  // Clientes acumulativo
   const monthlyClientCounts = useMemo(() => {
     return Array.from({ length: 12 }, (_, i) => {
       const m = i + 1;
@@ -58,13 +62,24 @@ export function FinVisaoAnualTab() {
     });
   }, [revenues]);
 
-  // Total de clientes = maior quantidade mensal (ou média, aqui usamos o acumulado do mês mais recente com dados)
   const totalClientesAno = useMemo(() => {
     const allUniqueClients = new Set(revenues.map(r => r.client_id));
     return allUniqueClients.size;
   }, [revenues]);
 
-  const ticketMedio = totalClientesAno > 0 ? totalReceita / 12 / totalClientesAno : 0;
+  // Ticket médio = média dos tickets mensais (receita do mês / clientes do mês)
+  const ticketMedioData = useMemo(() => {
+    return monthlyData.map((d, i) => {
+      const clientCount = monthlyClientCounts[i];
+      const ticket = clientCount > 0 ? d.receita / clientCount : 0;
+      return { ...d, ticket };
+    });
+  }, [monthlyData, monthlyClientCounts]);
+
+  const ticketMedio = useMemo(() => {
+    const mesesComClientes = ticketMedioData.filter(d => d.ticket > 0);
+    return mesesComClientes.length > 0 ? mesesComClientes.reduce((s, d) => s + d.ticket, 0) / mesesComClientes.length : 0;
+  }, [ticketMedioData]);
 
   const healthScore = useMemo(() => {
     let score = 0;
