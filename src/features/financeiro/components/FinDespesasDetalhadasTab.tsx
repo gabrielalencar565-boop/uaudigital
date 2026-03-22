@@ -36,6 +36,7 @@ const CARD_BRANDS = [
   { value: "elo", label: "Elo" },
   { value: "amex", label: "American Express" },
   { value: "hipercard", label: "Hipercard" },
+  { value: "nubank", label: "Nubank" },
   { value: "outro", label: "Outro" },
 ];
 
@@ -45,7 +46,12 @@ const BRAND_GRADIENTS: Record<string, string> = {
   elo: "from-yellow-900 to-yellow-700",
   amex: "from-emerald-900 to-emerald-700",
   hipercard: "from-red-900 to-red-700",
+  nubank: "from-white to-gray-100",
   outro: "from-slate-900 to-slate-800",
+};
+
+const BRAND_TEXT_DARK: Record<string, boolean> = {
+  nubank: true,
 };
 
 function CardBrandLogo({ brand, className = "h-8" }: { brand: string; className?: string }) {
@@ -82,6 +88,12 @@ function CardBrandLogo({ brand, className = "h-8" }: { brand: string; className?
       return (
         <div className={`${className} flex items-center`}>
           <span className="font-bold text-xs tracking-wider text-white/90">HIPERCARD</span>
+        </div>
+      );
+    case "nubank":
+      return (
+        <div className={`${className} flex items-center`}>
+          <span className="font-black text-sm tracking-tight text-purple-600">Nu</span>
         </div>
       );
     default:
@@ -172,55 +184,54 @@ export function FinDespesasDetalhadasTab() {
 
       {/* Credit Cards Grid */}
       {cards.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.1s" }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.1s" }}>
           {cards.map((card) => {
             const cardExpenses = expenses.filter((e) => e.credit_card_id === card.id);
             const cardTotal = cardExpenses.reduce((s, e) => s + Number(e.amount), 0);
             const brand = (card as any).brand ?? "visa";
+            const isDark = BRAND_TEXT_DARK[brand];
+            const txtMain = isDark ? "text-gray-900" : "text-white";
+            const txtSub = isDark ? "text-gray-500" : "text-white/50";
+            const txtNum = isDark ? "text-gray-800" : "text-white/90";
+            const txtBtn = isDark ? "text-gray-600 hover:text-gray-900 hover:bg-gray-200/50" : "text-white/70 hover:text-white hover:bg-white/10";
+            const circleColor = isDark ? "bg-gray-200/40" : "bg-white/5";
             return (
               <div key={card.id} className="group relative">
-                {/* Visual Credit Card */}
                 <div
-                  className={`relative rounded-2xl p-6 bg-gradient-to-br ${BRAND_GRADIENTS[brand]} text-white aspect-[1.6/1] flex flex-col justify-between cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl overflow-hidden`}
+                  className={`relative rounded-xl p-4 bg-gradient-to-br ${BRAND_GRADIENTS[brand]} ${txtMain} flex flex-col justify-between cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-xl overflow-hidden`}
+                  style={{ minHeight: 160 }}
                   onClick={() => toggleCardExpanded(card.id)}
                 >
-                  {/* Decorative circles */}
-                  <div className="absolute top-0 right-0 w-40 h-40 rounded-full bg-white/5 -translate-y-10 translate-x-10" />
-                  <div className="absolute bottom-0 left-0 w-32 h-32 rounded-full bg-white/5 translate-y-8 -translate-x-8" />
+                  <div className={`absolute top-0 right-0 w-28 h-28 rounded-full ${circleColor} -translate-y-6 translate-x-6`} />
+                  <div className={`absolute bottom-0 left-0 w-20 h-20 rounded-full ${circleColor} translate-y-5 -translate-x-5`} />
 
-                  {/* Top row: chip + brand */}
                   <div className="flex items-start justify-between relative z-10">
-                    <div className="flex items-center gap-3">
-                      {/* Chip */}
-                      <div className="w-10 h-7 rounded-md bg-gradient-to-br from-yellow-300/80 to-yellow-500/80 border border-yellow-400/30" />
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-5 rounded bg-gradient-to-br from-yellow-300/80 to-yellow-500/80 border border-yellow-400/30" />
                       <div>
-                        <p className="font-bold text-base leading-tight">{card.name}</p>
-                        <p className="text-[10px] text-white/50 mt-0.5">Fecha dia {card.closing_day} • Vence dia {card.due_day}</p>
+                        <p className="font-bold text-sm leading-tight">{card.name}</p>
+                        <p className={`text-[9px] ${txtSub} mt-0.5`}>Fecha {card.closing_day} • Vence {card.due_day}</p>
                       </div>
                     </div>
-                    <CardBrandLogo brand={brand} className="h-8" />
+                    <CardBrandLogo brand={brand} className="h-6" />
                   </div>
 
-                  {/* Card number */}
-                  <div className="relative z-10">
-                    <p className="font-mono text-lg tracking-[0.25em] text-white/90">
-                      •••• •••• •••• {card.last_digits || "****"}
-                    </p>
-                  </div>
+                  <p className={`font-mono text-sm tracking-[0.2em] ${txtNum} relative z-10 my-2`}>
+                    •••• •••• •••• {card.last_digits || "****"}
+                  </p>
 
-                  {/* Bottom row: total + actions */}
                   <div className="flex items-end justify-between relative z-10">
                     <div>
-                      <p className="text-[9px] uppercase tracking-wider text-white/40 font-medium">Fatura do mês</p>
-                      <p className="text-xl font-bold leading-tight">R$ {cardTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
-                      <p className="text-[10px] text-white/40">{cardExpenses.length} itens</p>
+                      <p className={`text-[8px] uppercase tracking-wider ${txtSub} font-medium`}>Fatura</p>
+                      <p className="text-base font-bold leading-tight">R$ {cardTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                      <p className={`text-[9px] ${txtSub}`}>{cardExpenses.length} itens</p>
                     </div>
-                    <div className="flex gap-1.5">
-                      <Button size="sm" variant="ghost" className="h-7 text-white/70 hover:text-white hover:bg-white/10 text-[10px] px-2" onClick={(ev) => { ev.stopPropagation(); openEditCard(card); }}>
-                        <Pencil className="h-3 w-3 mr-1" /> Editar
+                    <div className="flex gap-1">
+                      <Button size="sm" variant="ghost" className={`h-6 ${txtBtn} text-[9px] px-1.5`} onClick={(ev) => { ev.stopPropagation(); openEditCard(card); }}>
+                        <Pencil className="h-3 w-3" />
                       </Button>
-                      <Button size="sm" variant="ghost" className="h-7 text-white/70 hover:text-white hover:bg-white/10 text-[10px] px-2" onClick={(ev) => { ev.stopPropagation(); openNew(card.id); }}>
-                        <Plus className="h-3 w-3 mr-1" /> Despesa
+                      <Button size="sm" variant="ghost" className={`h-6 ${txtBtn} text-[9px] px-1.5`} onClick={(ev) => { ev.stopPropagation(); openNew(card.id); }}>
+                        <Plus className="h-3 w-3" />
                       </Button>
                     </div>
                   </div>
