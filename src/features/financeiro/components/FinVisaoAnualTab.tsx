@@ -3,9 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { ProgressRing } from "@/components/metrics/ProgressRing";
 import { useFinClients, useFinGoals, useFinAllTransactions, useFinOpeningBalances } from "../hooks/use-financial-data";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, AreaChart, Area, Cell } from "recharts";
 import { FinMonthYearSelector } from "./FinMonthYearSelector";
 import { FinAnnualCharts } from "./FinAnnualCharts";
+import { FinMetricCard } from "./FinMetricCard";
+import { DollarSign, TrendingDown, TrendingUp, Wallet, Activity, Users, Target } from "lucide-react";
 
 const MONTH_LABELS = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 const MONTH_SHORT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -24,65 +26,56 @@ export function FinVisaoAnualTab() {
   const transactions = transactionsQ.data ?? [];
   const balances = balancesQ.data ?? [];
 
-  // Build monthly data from real transactions only (exclude caixa)
   const monthlyData = useMemo(() => {
     return Array.from({ length: 12 }, (_, i) => {
       const m = i + 1;
       const monthTxs = transactions.filter((t) => {
         if (t.type === "caixa" || t.category === "caixa") return false;
-        const d = new Date(t.date);
-        return d.getMonth() + 1 === m;
+        return new Date(t.date).getMonth() + 1 === m;
       });
       const rev = monthTxs.filter((t) => t.type === "entrada").reduce((s, t) => s + Number(t.amount), 0);
       const exp = monthTxs.filter((t) => t.type === "saida").reduce((s, t) => s + Number(t.amount), 0);
-      const lucro = rev - exp;
-      // Caixa from manual balance
       const bal = balances.find(b => b.month === m);
-      const caixa = bal ? Number(bal.amount) : null;
-      return { month: MONTH_LABELS[i], short: MONTH_SHORT[i], receita: rev, despesa: exp, lucro, caixa };
+      return { month: MONTH_LABELS[i], short: MONTH_SHORT[i], receita: rev, despesa: exp, lucro: rev - exp, caixa: bal ? Number(bal.amount) : null };
     });
   }, [transactions, balances]);
 
   const totalReceita = monthlyData.reduce((s, d) => s + d.receita, 0);
   const totalDespesa = monthlyData.reduce((s, d) => s + d.despesa, 0);
   const lucroAnual = totalReceita - totalDespesa;
-  // Caixa anual = last month with a manual balance
   const lastCaixa = [...monthlyData].reverse().find(d => d.caixa !== null);
   const caixaAnual = lastCaixa?.caixa ?? null;
   const margemLucro = totalReceita > 0 ? (lucroAnual / totalReceita) * 100 : 0;
   const ticketMedio = clients.length > 0 ? totalReceita / 12 / clients.length : 0;
-  const avgClients = clients.length;
 
-  // Health score
   const healthScore = useMemo(() => {
     let score = 0;
     if (lucroAnual > 0) score += 30;
     const positiveMonths = monthlyData.filter((d) => d.lucro > 0).length;
     score += (positiveMonths / 12) * 40;
-    if (margemLucro > 20) score += 30;
-    else if (margemLucro > 10) score += 20;
-    else if (margemLucro > 0) score += 10;
+    if (margemLucro > 20) score += 30; else if (margemLucro > 10) score += 20; else if (margemLucro > 0) score += 10;
     return Math.round(score);
   }, [monthlyData, lucroAnual, margemLucro]);
 
-  // Quarterly data
   const quarterlyData = useMemo(() => {
     return [0, 1, 2, 3].map((q) => {
       const months = monthlyData.slice(q * 3, q * 3 + 3);
       const rec = months.reduce((s, m) => s + m.receita, 0);
       const desp = months.reduce((s, m) => s + m.despesa, 0);
-      const luc = rec - desp;
-      // Caixa = last month of quarter with a value
       const lastWithCaixa = [...months].reverse().find(m => m.caixa !== null);
-      const caixa = lastWithCaixa?.caixa ?? null;
-      return { label: `${q + 1}º TRI`, receita: rec, despesa: desp, lucro: luc, caixa };
+      return { label: `${q + 1}º TRI`, receita: rec, despesa: desp, lucro: rec - desp, caixa: lastWithCaixa?.caixa ?? null };
     });
   }, [monthlyData]);
 
-  // Annual goal
   const annualGoal = goals.find((g) => g.month === null);
   const metaReceita = annualGoal ? Number(annualGoal.revenue_goal) : 0;
   const progressoMeta = metaReceita > 0 ? (totalReceita / metaReceita) * 100 : 0;
+
+  // Receita acumulada
+  const receitaAcumulada = useMemo(() => {
+    let acc = 0;
+    return monthlyData.map(d => { acc += d.receita; return { ...d, acumulada: acc }; });
+  }, [monthlyData]);
 
   const fmt = (v: number) => `R$ ${Math.abs(v).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
   const fmtSign = (v: number) => `${v < 0 ? "-" : ""}R$ ${Math.abs(v).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
@@ -94,52 +87,50 @@ export function FinVisaoAnualTab() {
         <FinMonthYearSelector month={1} year={year} onMonthChange={() => {}} onYearChange={setYear} yearOnly />
       </div>
 
-      {/* Annual summary header */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.1s" }}>
-        <Card className="text-center">
-          <CardHeader className="pb-1"><CardTitle className="text-xs uppercase">Receita Anual</CardTitle></CardHeader>
-          <CardContent><p className="text-2xl font-bold">{fmt(totalReceita)}</p></CardContent>
-        </Card>
-        <Card className="text-center">
-          <CardHeader className="pb-1"><CardTitle className="text-xs uppercase">Despesa Anual</CardTitle></CardHeader>
-          <CardContent><p className="text-2xl font-bold">{fmt(totalDespesa)}</p></CardContent>
-        </Card>
-        <Card className="text-center">
-          <CardHeader className="pb-1"><CardTitle className="text-xs uppercase">Lucro Anual</CardTitle></CardHeader>
-          <CardContent><p className={`text-2xl font-bold ${lucroAnual >= 0 ? "text-success" : "text-destructive"}`}>{fmtSign(lucroAnual)}</p></CardContent>
-        </Card>
-        <Card className="text-center">
-          <CardHeader className="pb-1"><CardTitle className="text-xs uppercase">Caixa</CardTitle></CardHeader>
-          <CardContent><p className={`text-2xl font-bold ${caixaAnual != null ? (caixaAnual >= 0 ? "text-success" : "text-destructive") : "text-muted-foreground"}`}>{fmtCaixa(caixaAnual)}</p></CardContent>
-        </Card>
-        <Card className="text-center">
-          <CardHeader className="pb-1"><CardTitle className="text-xs uppercase">Saúde do Caixa</CardTitle></CardHeader>
-          <CardContent><p className="text-2xl font-bold">{(healthScore / 10).toFixed(1)}</p></CardContent>
-        </Card>
+      {/* Annual KPIs */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.1s" }}>
+        <FinMetricCard title="Receita Anual" value={totalReceita} tone="success" icon={<TrendingUp className="h-4 w-4" />} />
+        <FinMetricCard title="Despesa Anual" value={totalDespesa} tone="danger" icon={<TrendingDown className="h-4 w-4" />} />
+        <FinMetricCard title="Lucro Anual" value={Math.abs(lucroAnual)} prefix={lucroAnual < 0 ? "-R$" : "R$"} tone={lucroAnual >= 0 ? "success" : "danger"} icon={<DollarSign className="h-4 w-4" />} />
+        <FinMetricCard
+          title="Caixa"
+          value={Math.abs(caixaAnual ?? 0)}
+          prefix={caixaAnual != null ? (caixaAnual < 0 ? "-R$" : "R$") : ""}
+          tone={caixaAnual != null ? (caixaAnual >= 0 ? "success" : "danger") : "muted"}
+          icon={<Wallet className="h-4 w-4" />}
+        />
+        <FinMetricCard
+          title="Saúde do Caixa"
+          value={healthScore / 10}
+          prefix=""
+          decimals={1}
+          tone={healthScore >= 70 ? "success" : healthScore >= 40 ? "warning" : "danger"}
+          icon={<Activity className="h-4 w-4" />}
+        />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Monthly table */}
-        <Card>
+        <Card className="opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.15s" }}>
           <CardContent className="p-0">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-muted/50">
-                  <th className="px-3 py-2 text-left font-bold">Mês</th>
-                  <th className="px-3 py-2 text-right font-bold">Receita</th>
-                  <th className="px-3 py-2 text-right font-bold">Despesa</th>
-                  <th className="px-3 py-2 text-right font-bold">Lucro</th>
-                  <th className="px-3 py-2 text-right font-bold">Caixa</th>
+                <tr className="border-b bg-muted/30">
+                  <th className="px-3 py-3 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Mês</th>
+                  <th className="px-3 py-3 text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Receita</th>
+                  <th className="px-3 py-3 text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Despesa</th>
+                  <th className="px-3 py-3 text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Lucro</th>
+                  <th className="px-3 py-3 text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Caixa</th>
                 </tr>
               </thead>
               <tbody>
                 {monthlyData.map((d, i) => (
-                  <tr key={i} className="border-b last:border-0 hover:bg-accent/30">
-                    <td className="px-3 py-2 font-semibold uppercase text-xs">{d.month}</td>
-                    <td className="px-3 py-2 text-right">{fmt(d.receita)}</td>
-                    <td className="px-3 py-2 text-right">{fmt(d.despesa)}</td>
-                    <td className={`px-3 py-2 text-right ${d.lucro >= 0 ? "text-success" : "text-destructive"}`}>{fmtSign(d.lucro)}</td>
-                    <td className={`px-3 py-2 text-right ${d.caixa != null ? (d.caixa >= 0 ? "text-success" : "text-destructive") : "text-muted-foreground"}`}>{fmtCaixa(d.caixa)}</td>
+                  <tr key={i} className="border-b last:border-0 hover:bg-accent/30 transition-colors">
+                    <td className="px-3 py-2 font-semibold text-xs">{d.short}</td>
+                    <td className="px-3 py-2 text-right text-xs">{fmt(d.receita)}</td>
+                    <td className="px-3 py-2 text-right text-xs">{fmt(d.despesa)}</td>
+                    <td className={`px-3 py-2 text-right text-xs font-semibold ${d.lucro >= 0 ? "text-success" : "text-destructive"}`}>{fmtSign(d.lucro)}</td>
+                    <td className={`px-3 py-2 text-right text-xs ${d.caixa != null ? (d.caixa >= 0 ? "text-success" : "text-destructive") : "text-muted-foreground"}`}>{fmtCaixa(d.caixa)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -147,97 +138,132 @@ export function FinVisaoAnualTab() {
           </CardContent>
         </Card>
 
-        {/* Quarterly table */}
-        <Card>
-          <CardContent className="p-0">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/50">
-                  <th className="px-3 py-2 text-left font-bold">Trimestre</th>
-                  <th className="px-3 py-2 text-right font-bold">Receita</th>
-                  <th className="px-3 py-2 text-right font-bold">Despesa</th>
-                  <th className="px-3 py-2 text-right font-bold">Lucro</th>
-                  <th className="px-3 py-2 text-right font-bold">Caixa</th>
-                </tr>
-              </thead>
-              <tbody>
-                {quarterlyData.map((q, i) => (
-                  <tr key={i} className="border-b last:border-0 hover:bg-accent/30">
-                    <td className="px-3 py-2 font-bold text-lg">{q.label}</td>
-                    <td className="px-3 py-2 text-right">{fmt(q.receita)}</td>
-                    <td className="px-3 py-2 text-right">{fmt(q.despesa)}</td>
-                    <td className={`px-3 py-2 text-right ${q.lucro >= 0 ? "text-success" : "text-destructive"}`}>{fmtSign(q.lucro)}</td>
-                    <td className={`px-3 py-2 text-right ${q.caixa != null ? (q.caixa >= 0 ? "text-success" : "text-destructive") : "text-muted-foreground"}`}>{fmtCaixa(q.caixa)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Monthly bar chart */}
-        <Card>
-          <CardHeader><CardTitle className="text-base uppercase text-center">Gráfico de Acompanhamento Mensal</CardTitle></CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={monthlyData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis dataKey="short" className="text-xs" />
-                <YAxis className="text-xs" tickFormatter={(v: number) => `R$ ${(v / 1000).toFixed(0)}k`} />
-                <Tooltip formatter={(v: number) => fmt(v)} />
-                <Legend />
-                <Bar dataKey="receita" name="Receita" fill="hsl(var(--primary) / 0.4)" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="despesa" name="Despesa" fill="hsl(var(--primary) / 0.7)" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Right side KPIs */}
+        {/* Quarterly + KPIs */}
         <div className="space-y-4">
+          <Card className="opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.15s" }}>
+            <CardContent className="p-0">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/30">
+                    <th className="px-3 py-3 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Trimestre</th>
+                    <th className="px-3 py-3 text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Receita</th>
+                    <th className="px-3 py-3 text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Despesa</th>
+                    <th className="px-3 py-3 text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Lucro</th>
+                    <th className="px-3 py-3 text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Caixa</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {quarterlyData.map((q, i) => (
+                    <tr key={i} className="border-b last:border-0 hover:bg-accent/30 transition-colors">
+                      <td className="px-3 py-2.5 font-bold text-sm">{q.label}</td>
+                      <td className="px-3 py-2.5 text-right text-xs">{fmt(q.receita)}</td>
+                      <td className="px-3 py-2.5 text-right text-xs">{fmt(q.despesa)}</td>
+                      <td className={`px-3 py-2.5 text-right text-xs font-semibold ${q.lucro >= 0 ? "text-success" : "text-destructive"}`}>{fmtSign(q.lucro)}</td>
+                      <td className={`px-3 py-2.5 text-right text-xs ${q.caixa != null ? (q.caixa >= 0 ? "text-success" : "text-destructive") : "text-muted-foreground"}`}>{fmtCaixa(q.caixa)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
+
           <div className="grid gap-4 sm:grid-cols-3">
-            {/* Margem Ring */}
-            <Card className="flex flex-col items-center justify-center py-4">
-              <CardTitle className="text-xs font-medium uppercase mb-2">Margem de Lucro</CardTitle>
-              <ProgressRing
-                value={Math.min(Math.abs(margemLucro), 100)}
-                size={110}
-                stroke={12}
+            <Card className="flex flex-col items-center justify-center p-5 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
+              <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mb-2">Margem</span>
+              <ProgressRing value={Math.min(Math.abs(margemLucro), 100)} size={80} stroke={7}
                 tone={margemLucro >= 20 ? "success" : margemLucro >= 0 ? "warning" : "danger"}
-                label={<span className={`text-2xl font-bold ${margemLucro >= 0 ? "" : "text-destructive"}`}>{margemLucro.toFixed(1)}%</span>}
-              />
+                label={<span className={`text-lg font-bold ${margemLucro >= 0 ? "" : "text-destructive"}`}>{margemLucro.toFixed(1)}%</span>} />
             </Card>
-            <Card className="text-center">
-              <CardHeader className="pb-1"><CardTitle className="text-xs uppercase">Clientes</CardTitle></CardHeader>
-              <CardContent><p className="text-4xl font-bold">{avgClients}</p></CardContent>
-            </Card>
-            <Card className="text-center">
-              <CardHeader className="pb-1"><CardTitle className="text-xs uppercase">Ticket Médio</CardTitle></CardHeader>
-              <CardContent><p className="text-2xl font-bold">{fmt(ticketMedio)}</p></CardContent>
-            </Card>
+            <FinMetricCard title="Clientes" value={clients.length} prefix="" decimals={0} icon={<Users className="h-4 w-4" />} />
+            <FinMetricCard title="Ticket Médio" value={ticketMedio} icon={<DollarSign className="h-4 w-4" />} />
           </div>
 
-          {/* Meta */}
           {metaReceita > 0 && (
-            <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-xs uppercase text-center">Meta de Receita Anual</CardTitle></CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-3xl font-bold text-center">{fmt(metaReceita)}</p>
+            <Card className="transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
+              <CardContent className="p-5 space-y-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center"><Target className="h-4 w-4 text-muted-foreground" /></div>
+                  <div>
+                    <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Meta de Receita Anual</p>
+                    <p className="text-lg font-bold">{fmt(metaReceita)}</p>
+                  </div>
+                </div>
                 <div>
-                  <div className="flex items-center justify-between text-sm mb-1">
-                    <span className="uppercase font-medium text-xs">Progresso</span>
+                  <div className="flex items-center justify-between text-xs mb-1.5">
+                    <span className="text-muted-foreground">Realizado: {fmt(totalReceita)}</span>
                     <span className="font-bold">{progressoMeta.toFixed(1)}%</span>
                   </div>
-                  <Progress value={Math.min(progressoMeta, 100)} className="h-3" />
+                  <Progress value={Math.min(progressoMeta, 100)} className="h-2" />
                 </div>
               </CardContent>
             </Card>
           )}
         </div>
       </div>
-      {/* Annual charts section */}
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Revenue vs Expense bar chart */}
+        <Card className="opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.2s" }}>
+          <CardHeader><CardTitle className="text-sm font-bold uppercase tracking-wider text-center">Receita vs Despesa</CardTitle></CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={monthlyData}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                <XAxis dataKey="short" className="text-xs" />
+                <YAxis className="text-xs" tickFormatter={(v: number) => `R$ ${(v / 1000).toFixed(0)}k`} />
+                <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }} />
+                <Legend />
+                <Bar dataKey="receita" name="Receita" fill="#22c55e" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="despesa" name="Despesa" fill="#ef4444" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        {/* Receita Acumulada */}
+        <Card className="opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.25s" }}>
+          <CardHeader><CardTitle className="text-sm font-bold uppercase tracking-wider text-center">Receita Acumulada</CardTitle></CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={280}>
+              <AreaChart data={receitaAcumulada}>
+                <defs>
+                  <linearGradient id="recAcGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                <XAxis dataKey="short" className="text-xs" />
+                <YAxis className="text-xs" tickFormatter={(v: number) => `R$ ${(v / 1000).toFixed(0)}k`} />
+                <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }} />
+                <Area type="monotone" dataKey="acumulada" name="Acumulada" stroke="#22c55e" fill="url(#recAcGrad)" strokeWidth={2.5} dot={{ r: 3, fill: "#22c55e" }} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Lucro por mês */}
+      <Card className="opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.3s" }}>
+        <CardHeader><CardTitle className="text-sm font-bold uppercase tracking-wider text-center">Lucro por Mês</CardTitle></CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={monthlyData}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+              <XAxis dataKey="short" className="text-xs" />
+              <YAxis className="text-xs" tickFormatter={(v: number) => `R$ ${(v / 1000).toFixed(0)}k`} />
+              <Tooltip formatter={(v: number) => fmtSign(v)} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }} />
+              <Bar dataKey="lucro" name="Lucro" radius={[6, 6, 0, 0]}>
+                {monthlyData.map((d, i) => (
+                  <Cell key={i} fill={d.lucro >= 0 ? "#22c55e" : "#ef4444"} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      {/* Annual charts */}
       <FinAnnualCharts transactions={transactions as any} />
     </div>
   );
