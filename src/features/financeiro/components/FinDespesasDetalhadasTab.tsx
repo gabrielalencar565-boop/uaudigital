@@ -198,8 +198,8 @@ export function FinDespesasDetalhadasTab() {
             return (
               <div key={card.id} className="group relative">
                 <div
-                  className={`relative rounded-xl p-4 bg-gradient-to-br ${BRAND_GRADIENTS[brand]} ${txtMain} flex flex-col justify-between cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-xl overflow-hidden`}
-                  style={{ minHeight: 160 }}
+                  className={`relative rounded-xl p-3 bg-gradient-to-br ${BRAND_GRADIENTS[brand]} ${txtMain} flex flex-col justify-between cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-xl overflow-hidden`}
+                  style={{ minHeight: 130 }}
                   onClick={() => toggleCardExpanded(card.id)}
                 >
                   <div className={`absolute top-0 right-0 w-28 h-28 rounded-full ${circleColor} -translate-y-6 translate-x-6`} />
