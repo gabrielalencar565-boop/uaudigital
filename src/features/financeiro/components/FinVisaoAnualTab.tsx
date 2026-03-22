@@ -71,10 +71,9 @@ export function FinVisaoAnualTab() {
   const metaReceita = annualGoal ? Number(annualGoal.revenue_goal) : 0;
   const progressoMeta = metaReceita > 0 ? (totalReceita / metaReceita) * 100 : 0;
 
-  // Receita acumulada
-  const receitaAcumulada = useMemo(() => {
-    let acc = 0;
-    return monthlyData.map(d => { acc += d.receita; return { ...d, acumulada: acc }; });
+  // Receita mensal (progresso durante o ano, não acumulada)
+  const receitaMensal = useMemo(() => {
+    return monthlyData.map(d => ({ ...d, receitaMes: d.receita }));
   }, [monthlyData]);
 
   const fmt = (v: number) => `R$ ${Math.abs(v).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
@@ -220,23 +219,23 @@ export function FinVisaoAnualTab() {
           </CardContent>
         </Card>
 
-        {/* Receita Acumulada */}
+        {/* Progresso da Receita */}
         <Card className="opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.25s" }}>
-          <CardHeader><CardTitle className="text-sm font-bold uppercase tracking-wider text-center">Receita Acumulada</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-sm font-bold uppercase tracking-wider text-center">Progresso da Receita</CardTitle></CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={280}>
-              <AreaChart data={receitaAcumulada}>
+              <AreaChart data={receitaMensal}>
                 <defs>
-                  <linearGradient id="recAcGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                  <linearGradient id="recMesGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(var(--success))" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="hsl(var(--success))" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                 <XAxis dataKey="short" className="text-xs" />
                 <YAxis className="text-xs" tickFormatter={(v: number) => `R$ ${(v / 1000).toFixed(0)}k`} />
                 <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }} />
-                <Area type="monotone" dataKey="acumulada" name="Acumulada" stroke="#22c55e" fill="url(#recAcGrad)" strokeWidth={2.5} dot={{ r: 3, fill: "#22c55e" }} />
+                <Area type="monotone" dataKey="receitaMes" name="Receita" stroke="hsl(var(--success))" fill="url(#recMesGrad)" strokeWidth={2.5} dot={{ r: 3, fill: "hsl(var(--success))" }} />
               </AreaChart>
             </ResponsiveContainer>
           </CardContent>
