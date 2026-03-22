@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, Flag, GitBranch, MessageSquare, Paperclip, FileText } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronRight, Flag, GitBranch, MessageSquare, FileText } from "lucide-react";
 import { differenceInCalendarDays, format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 
@@ -105,6 +105,20 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
       !(t as any).is_draft
     );
   }, [pmTasksQ.data, user?.id]);
+
+  // Tasks/subtasks in "alteracoes" stage assigned to me
+  const alteracoesTasks = useMemo(() => {
+    if (!user?.id) return [];
+    const allData = pmTasksQ.data ?? [];
+    const childData = allChildQ.data ?? [];
+    const combined = [...allData, ...childData];
+    return combined.filter(t =>
+      t.stage_current === "alteracoes" &&
+      (t.assignee_id === user.id || (t.watchers ?? []).includes(user.id)) &&
+      !["concluido", "cancelado"].includes(t.status_global) &&
+      !(t as any).is_draft
+    );
+  }, [pmTasksQ.data, allChildQ.data, user?.id]);
 
   // Group by overdue, today, upcoming
   const groups = useMemo(() => {
@@ -263,11 +277,38 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
   if (myTasks.length === 0 && !pmTasksQ.isLoading) return null;
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base">Atribuídas a mim</CardTitle>
-      </CardHeader>
-      <CardContent className="p-0">
+    <div className="space-y-3">
+      {/* Alert for tasks in Alterações */}
+      {alteracoesTasks.length > 0 && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className="h-5 w-5 text-amber-500" />
+            <span className="text-sm font-semibold text-amber-500">
+              {alteracoesTasks.length} {alteracoesTasks.length === 1 ? "tarefa" : "tarefas"} em Alteração
+            </span>
+          </div>
+          <div className="space-y-1.5">
+            {alteracoesTasks.map(t => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => onOpenTask(t.id)}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition hover:bg-amber-500/10"
+              >
+                <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-amber-500" />
+                <span className="truncate font-medium text-foreground">{t.title}</span>
+                <span className="ml-auto text-xs text-muted-foreground">{clientsMap[t.client_id] ?? ""}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Atribuídas a mim</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
         {/* Em atraso */}
         {groups.overdue.length > 0 && (
           <Collapsible open={openOverdue} onOpenChange={setOpenOverdue}>
@@ -338,5 +379,6 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
         )}
       </CardContent>
     </Card>
+    </div>
   );
 }

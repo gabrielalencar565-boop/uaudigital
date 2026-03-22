@@ -61,8 +61,12 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
     ...(sub.watchers ?? []).filter(w => w !== sub.assignee_id),
   ];
 
-  const changeStage = (subId: string, newStage: string) => {
-    updateTask.mutate({ id: subId, stage_current: newStage as any });
+  const changeStage = (_subId: string, newStage: string) => {
+    // Sync ALL subtasks + parent to the same stage
+    updateTask.mutate({ id: parentTask.id, stage_current: newStage as any });
+    childTasks.forEach(child => {
+      updateTask.mutate({ id: child.id, stage_current: newStage as any });
+    });
   };
 
   return (
