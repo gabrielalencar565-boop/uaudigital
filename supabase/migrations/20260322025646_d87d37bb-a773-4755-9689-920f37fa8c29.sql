@@ -1,0 +1,1 @@
+ALTER TABLE public.financial_credit_cards ADD COLUMN brand text DEFAULT 'visa';

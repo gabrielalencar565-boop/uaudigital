@@ -425,6 +425,7 @@ export type Database = {
       }
       financial_credit_cards: {
         Row: {
+          brand: string | null
           closing_day: number
           created_at: string
           due_day: number
@@ -435,6 +436,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          brand?: string | null
           closing_day?: number
           created_at?: string
           due_day?: number
@@ -445,6 +447,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          brand?: string | null
           closing_day?: number
           created_at?: string
           due_day?: number
