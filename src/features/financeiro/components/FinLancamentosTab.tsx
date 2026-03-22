@@ -137,9 +137,11 @@ export function FinLancamentosTab() {
   const upsertTx = useUpsertFinTransaction();
   const deleteTx = useDeleteFinTransaction();
   const bulkInsert = useBulkInsertTransactions();
+  const balancesQ = useFinOpeningBalances(year);
+  const upsertBalance = useUpsertOpeningBalance();
 
   const transactions = txQ.data ?? [];
-  const allTransactions = allTxQ.data ?? [];
+  const balances = balancesQ.data ?? [];
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTx, setEditingTx] = useState<FinTransaction | null>(null);
@@ -149,12 +151,16 @@ export function FinLancamentosTab() {
 
   // Inline editing state
   const [editingCell, setEditingCell] = useState<EditingCell>(null);
+  const [editingCaixa, setEditingCaixa] = useState(false);
+  const [caixaInput, setCaixaInput] = useState("");
 
   const emptyForm = { description: "", amount: "", date: format(new Date(), "yyyy-MM-dd"), category: "", notes: "" };
   const [form, setForm] = useState(emptyForm);
 
+  // Filter out any legacy "caixa" transactions from display
   const filtered = useMemo(() => {
     return transactions.filter((t) => {
+      if (t.type === "caixa" || t.category === "caixa") return false;
       if (typeFilter !== "all" && t.type !== typeFilter) return false;
       if (statusFilter !== "all" && t.status !== statusFilter) return false;
       return true;
@@ -164,23 +170,18 @@ export function FinLancamentosTab() {
   const totalEntradas = filtered.filter((t) => t.type === "entrada").reduce((s, t) => s + Number(t.amount), 0);
   const totalSaidas = filtered.filter((t) => t.type === "saida").reduce((s, t) => s + Number(t.amount), 0);
 
-  // Caixa Final = last "caixa" record of the month, or fallback to cumulative calc excluding caixa records
-  const caixaFinal = useMemo(() => {
-    // Check if there's a "caixa" type transaction for this month
-    const caixaRecords = transactions.filter((t) => t.type === "caixa" || t.category === "caixa");
-    if (caixaRecords.length > 0) {
-      // Use the last caixa record of the month
-      return Number(caixaRecords[caixaRecords.length - 1].amount);
-    }
-    // Fallback: cumulative balance from non-caixa transactions
-    return allTransactions
-      .filter((t) => {
-        if (t.type === "caixa" || t.category === "caixa") return false;
-        const d = new Date(t.date);
-        return d.getMonth() + 1 <= month;
-      })
-      .reduce((s, t) => s + (t.type === "entrada" ? Number(t.amount) : -Number(t.amount)), 0);
-  }, [transactions, allTransactions, month]);
+  // Caixa Final from financial_opening_balances (manual value)
+  const currentBalance = balances.find(b => b.month === month);
+  const caixaFinal = currentBalance ? Number(currentBalance.amount) : null;
+
+  const saveCaixaFinal = () => {
+    const val = parseFloat(caixaInput);
+    if (isNaN(val)) return;
+    upsertBalance.mutate(
+      { year, month, amount: val, ...(currentBalance ? { id: currentBalance.id } : {}) },
+      { onSuccess: () => { setEditingCaixa(false); } }
+    );
+  };
 
   const openNew = () => {
     setEditingTx(null);
