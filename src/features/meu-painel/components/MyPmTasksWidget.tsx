@@ -379,5 +379,6 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
         )}
       </CardContent>
     </Card>
+    </div>
   );
 }
