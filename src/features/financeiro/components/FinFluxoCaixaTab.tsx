@@ -83,9 +83,6 @@ export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaP
   const totalReceita = monthTxs.filter((t) => t.type === "entrada").reduce((s, t) => s + Number(t.amount), 0);
   const totalDespesa = monthTxs.filter((t) => t.type === "saida").reduce((s, t) => s + Number(t.amount), 0);
   const lucro = totalReceita - totalDespesa;
-  const ticketMedio = clientesRecorrentes > 0 ? totalReceita / clientesRecorrentes : 0;
-  const prevTicketMedio = prevClientesRecorrentes > 0 ? prevReceita / prevClientesRecorrentes : 0;
-  const varTicketMedio = prevTicketMedio > 0 ? ((ticketMedio - prevTicketMedio) / prevTicketMedio) * 100 : null;
   const margemLucro = totalReceita > 0 ? (lucro / totalReceita) * 100 : 0;
 
   const caixaFinal = balances.find(b => b.month === month);
@@ -100,6 +97,10 @@ export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaP
   const varReceita = prevReceita > 0 ? ((totalReceita - prevReceita) / prevReceita) * 100 : null;
   const varDespesa = prevDespesa > 0 ? ((totalDespesa - prevDespesa) / prevDespesa) * 100 : null;
   const varLucro = prevLucro !== 0 ? ((lucro - prevLucro) / Math.abs(prevLucro)) * 100 : null;
+
+  const ticketMedio = clientesRecorrentes > 0 ? totalReceita / clientesRecorrentes : 0;
+  const prevTicketMedio = prevClientesRecorrentes > 0 ? prevReceita / prevClientesRecorrentes : 0;
+  const varTicketMedio = prevTicketMedio > 0 ? ((ticketMedio - prevTicketMedio) / prevTicketMedio) * 100 : null;
 
   // Revenue distribution donut - by description
   const revenueData = useMemo(() => {
