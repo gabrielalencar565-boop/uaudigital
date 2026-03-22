@@ -1,29 +1,19 @@
 
 
-## Plano: Vincular tarefa existente ao concluir etapa no Dialog
+## Plan: Add "Unmark as Completed" option on tasks
 
-### Problema
-Ao clicar "Concluir" no dialog de detalhes da tarefa e avançar para a próxima etapa, o sistema não verifica se já existe uma tarefa na agenda (pm_tasks com status "concluido") do mesmo cliente na etapa de destino. Essa verificação já funciona no drag-and-drop do Kanban, mas falta no fluxo de conclusão via botão.
+**Problem**: When a task reaches the "entrega" (delivered) stage, only a static "Entregue" badge is shown with no way to undo the completion.
 
-### Solução
-Adicionar a mesma lógica de verificação/vinculação no `TaskContentView` dentro de `PmTaskDetailDialog.tsx`:
+**Solution**: Replace the static badge with a button that allows reverting from "entrega" back to the previous stage, reusing the existing `handleRevert` logic.
 
-1. **Importar `LinkOrDateDialog`** no `PmTaskDetailDialog.tsx`
-2. **Adicionar estado** para controlar o dialog de vinculação (`linkDialogOpen`, `linkExistingTask`, `pendingNextStage`)
-3. **Modificar `advanceStage`**: Antes de executar o avanço, fazer query em `pm_tasks` para verificar se existe tarefa concluída do mesmo `client_id` + etapa de destino. Se existir, abrir o `LinkOrDateDialog` em vez de avançar diretamente
-4. **Implementar callback `handleLinkChoice`**: Quando o usuário escolhe vincular ou selecionar data, chamar o avanço original com a `due_date` escolhida
+### Changes
 
-### Arquivo editado
-- `src/features/gestao/components/PmTaskDetailDialog.tsx` - adicionar verificação de tarefa existente antes de avançar etapa, reutilizando o `LinkOrDateDialog` já criado
+**File: `src/features/gestao/components/PmTaskDetailDialog.tsx`**
 
-### Fluxo
-```text
-Usuário clica "Concluir"
-  → handleConcluido determina nextStage
-  → advanceStage verifica pm_tasks existentes (mesmo client_id + nextStage + concluido)
-  → Se existe: abre LinkOrDateDialog
-    → "Vincular": usa due_date da tarefa existente
-    → "Selecionar data": usuário escolhe
-  → Se não existe: avança normalmente (comportamento atual)
-```
+1. In the action buttons section (lines 837-841), replace the static "Entregue" badge with a clickable button that calls `handleRevert` to go back to the previous stage
+2. Also show the Revert button when `isDone` is true (line 866 currently hides it when `isDone`)
+
+Specifically:
+- Lines 837-841: Change the `Badge` to a `Button` styled in emerald with a revert action — something like "Entregue ✓" that on click triggers `handleRevert` to undo completion
+- Line 866: Remove the `!isDone &&` condition so the Revert button is also available when the task is in "entrega"
 
