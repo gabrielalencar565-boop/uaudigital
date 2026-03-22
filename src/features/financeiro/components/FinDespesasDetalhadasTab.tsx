@@ -45,7 +45,12 @@ const BRAND_GRADIENTS: Record<string, string> = {
   elo: "from-yellow-900 to-yellow-700",
   amex: "from-emerald-900 to-emerald-700",
   hipercard: "from-red-900 to-red-700",
+  nubank: "from-white to-gray-100",
   outro: "from-slate-900 to-slate-800",
+};
+
+const BRAND_TEXT_DARK: Record<string, boolean> = {
+  nubank: true,
 };
 
 function CardBrandLogo({ brand, className = "h-8" }: { brand: string; className?: string }) {
