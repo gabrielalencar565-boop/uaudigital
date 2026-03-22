@@ -40,7 +40,8 @@ function getRoleStages(roleTitle: string | undefined | null): string[] {
   return [...STAGE_ORDER]; // fallback: all
 }
 
-function getRoleLabel(roleTitle: string): string {
+function getRoleLabel(roleTitle: string | undefined | null): string {
+  if (!roleTitle) return "—";
   const normalized = roleTitle.toLowerCase().trim();
   if (normalized.includes("social media")) return "Social Media";
   if (normalized.includes("videomaker")) return "Videomaker";
