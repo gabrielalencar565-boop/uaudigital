@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Send } from "lucide-react";
+import { Send, ChevronDown, ChevronUp } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -151,54 +151,79 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
     m.name.toLowerCase().includes(mentionSearch)
   );
 
+  const [expanded, setExpanded] = useState(false);
+
+  const renderTimelineItem = (item: { type: "comment" | "activity"; data: any; timestamp: string }) => {
+    if (item.type === "comment") {
+      const c = item.data as PmComment;
+      const member = membersMap[c.author_id];
+      return (
+        <div key={`c-${c.id}`} className="flex gap-2.5">
+          <Avatar className="h-6 w-6 shrink-0 mt-0.5">
+            <AvatarImage src={member?.avatar} />
+            <AvatarFallback className="text-[8px] bg-primary/10 text-primary">{initials(member?.name ?? "?")}</AvatarFallback>
+          </Avatar>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-baseline gap-2">
+              <span className="text-xs font-semibold">{member?.name ?? "Usuário"}</span>
+              <span className="text-[10px] text-muted-foreground">
+                {format(new Date(c.created_at), "MMM d 'às' HH:mm", { locale: ptBR })}
+              </span>
+            </div>
+            <p className="mt-1 whitespace-pre-wrap text-[13px] text-foreground/90 leading-relaxed">{formatMentions(c.content)}</p>
+          </div>
+        </div>
+      );
+    } else {
+      const a = item.data;
+      const member = membersMap[a.created_by];
+      const actionText = formatActionText(a.action, a.metadata, membersMap);
+      return (
+        <div key={`a-${a.id}`} className="flex items-start gap-2.5 py-1">
+          <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40 mt-2 shrink-0 ml-2" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              <span className="font-medium text-foreground/70">{member?.name ?? "Usuário"}</span>
+              {" "}{actionText}
+            </p>
+            <span className="text-[10px] text-muted-foreground/60">
+              {format(new Date(a.created_at), "MMM d 'às' HH:mm", { locale: ptBR })}
+            </span>
+          </div>
+        </div>
+      );
+    }
+  };
+
+  const firstItem = timeline.length > 0 ? timeline[0] : null;
+  const lastItem = timeline.length > 1 ? timeline[timeline.length - 1] : null;
+  const middleItems = timeline.length > 2 ? timeline.slice(1, -1) : [];
+  const hiddenCount = middleItems.length;
+
   return (
     <div className="flex flex-col gap-3 h-full">
       <div className="flex-1 space-y-3 min-h-0 overflow-y-auto">
-        {timeline.map((item, idx) => {
-          if (item.type === "comment") {
-            const c = item.data as PmComment;
-            const member = membersMap[c.author_id];
-            return (
-              <div key={`c-${c.id}`} className="flex gap-2.5">
-                <Avatar className="h-6 w-6 shrink-0 mt-0.5">
-                  <AvatarImage src={member?.avatar} />
-                  <AvatarFallback className="text-[8px] bg-primary/10 text-primary">{initials(member?.name ?? "?")}</AvatarFallback>
-                </Avatar>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-xs font-semibold">{member?.name ?? "Usuário"}</span>
-                    <span className="text-[10px] text-muted-foreground">
-                      {format(new Date(c.created_at), "MMM d 'às' HH:mm", { locale: ptBR })}
-                    </span>
-                  </div>
-                  <p className="mt-1 whitespace-pre-wrap text-[13px] text-foreground/90 leading-relaxed">{formatMentions(c.content)}</p>
-                </div>
-              </div>
-            );
-          } else {
-            // Activity log entry
-            const a = item.data;
-            const member = membersMap[a.created_by];
-            const actionText = formatActionText(a.action, a.metadata, membersMap);
-            return (
-              <div key={`a-${a.id}`} className="flex items-start gap-2.5 py-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40 mt-2 shrink-0 ml-2" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    <span className="font-medium text-foreground/70">{member?.name ?? "Usuário"}</span>
-                    {" "}{actionText}
-                  </p>
-                  <span className="text-[10px] text-muted-foreground/60">
-                    {format(new Date(a.created_at), "MMM d 'às' HH:mm", { locale: ptBR })}
-                  </span>
-                </div>
-              </div>
-            );
-          }
-        })}
         {timeline.length === 0 && (
           <p className="text-xs text-muted-foreground text-center py-4">Nenhuma atividade ainda.</p>
         )}
+
+        {firstItem && renderTimelineItem(firstItem)}
+
+        {hiddenCount > 0 && (
+          <>
+            <button
+              type="button"
+              onClick={() => setExpanded(prev => !prev)}
+              className="flex items-center gap-1.5 w-full text-xs text-primary/80 hover:text-primary transition py-1 px-2"
+            >
+              {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+              {expanded ? "Mostrar menos" : `Mostrar mais ${hiddenCount} atividade${hiddenCount > 1 ? "s" : ""}`}
+            </button>
+            {expanded && middleItems.map(item => renderTimelineItem(item))}
+          </>
+        )}
+
+        {lastItem && renderTimelineItem(lastItem)}
       </div>
 
       <div className="border-t border-border/30 pt-3 relative">
