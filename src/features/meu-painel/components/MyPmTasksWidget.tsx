@@ -294,12 +294,12 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
   return (
     <div className="space-y-3">
       {/* Alert for tasks in Alterações */}
-      {alteracoesTasks.length > 0 && (
-        <div className="rounded-xl border p-4" style={{ borderColor: '#FFFF00', backgroundColor: '#FFFF00' }}>
+      {alteracoesParents.length > 0 && (
+        <div className="rounded-xl border p-4" style={{ borderColor: '#E5C94E', backgroundColor: '#E5C94E' }}>
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle className="h-5 w-5 text-black" />
             <span className="text-sm font-semibold text-black">
-              {alteracoesTasks.length} {alteracoesTasks.length === 1 ? "tarefa" : "tarefas"} em Alteração
+              {alteracoesParents.length} {alteracoesParents.length === 1 ? "tarefa" : "tarefas"} em Alteração
             </span>
           </div>
           <div className="space-y-1.5">
