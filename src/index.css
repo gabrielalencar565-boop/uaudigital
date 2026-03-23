@@ -209,12 +209,12 @@ All colors MUST be HSL.
     --stage-captacao-foreground: 0 0% 100%;
     --stage-edicao_videos: 275 78% 62%;
     --stage-edicao_videos-foreground: 0 0% 100%;
-    --stage-design: 28 96% 60%;
+    --stage-design: 174 58% 46%;
     --stage-design-foreground: 0 0% 100%;
     --stage-pdf: 46 96% 62%;
     --stage-pdf-foreground: 222 27% 5.5%;
-    --stage-alteracoes: 24 33% 42%;
-    --stage-alteracoes-foreground: 0 0% 100%;
+    --stage-alteracoes: 47 72% 60%;
+    --stage-alteracoes-foreground: 0 0% 0%;
     --stage-agendamento: 160 68% 52%;
     --stage-agendamento-foreground: 0 0% 100%;
   }
