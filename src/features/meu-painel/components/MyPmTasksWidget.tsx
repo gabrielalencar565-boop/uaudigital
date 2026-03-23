@@ -120,6 +120,17 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
     );
   }, [pmTasksQ.data, allChildQ.data, user?.id]);
 
+  const alteracoesParents = useMemo(() => alteracoesTasks.filter(t => !t.parent_task_id), [alteracoesTasks]);
+  const alteracoesChildren = useMemo(() => {
+    const m: Record<string, PmTask[]> = {};
+    alteracoesTasks.filter(t => t.parent_task_id).forEach(t => {
+      const pid = t.parent_task_id!;
+      if (!m[pid]) m[pid] = [];
+      m[pid].push(t);
+    });
+    return m;
+  }, [alteracoesTasks]);
+
   // Group by overdue, today, upcoming, completed
   const groups = useMemo(() => {
     const overdue: PmTask[] = [];
