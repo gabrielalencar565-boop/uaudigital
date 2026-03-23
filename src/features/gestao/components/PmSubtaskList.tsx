@@ -65,11 +65,38 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
     ...(sub.watchers ?? []).filter(w => w !== sub.assignee_id),
   ];
 
-  const changeStage = (_subId: string, newStage: string) => {
-    // Sync ALL subtasks + parent to the same stage
-    updateTask.mutate({ id: parentTask.id, stage_current: newStage as any });
+  const changeStage = (subId: string, newStage: string) => {
+    // For "alteracoes", only change the individual subtask (not all siblings)
+    if (newStage === "alteracoes") {
+      const fixedAssignee = getFixedAssignee(stageAssignees, newStage, parentTask.client_id);
+      const fixedWatchers = getFixedWatchers(stageAssignees, newStage, parentTask.client_id);
+      const updates: any = { id: subId, stage_current: newStage as any };
+      if (fixedAssignee !== undefined) {
+        updates.assignee_id = fixedAssignee;
+        updates.watchers = fixedWatchers;
+      }
+      updateTask.mutate(updates);
+      return;
+    }
+
+    // For other stages, sync ALL subtasks + parent
+    const fixedAssignee = getFixedAssignee(stageAssignees, newStage, parentTask.client_id);
+    const fixedWatchers = getFixedWatchers(stageAssignees, newStage, parentTask.client_id);
+    
+    const parentUpdates: any = { id: parentTask.id, stage_current: newStage as any };
+    if (fixedAssignee !== undefined) {
+      parentUpdates.assignee_id = fixedAssignee;
+      parentUpdates.watchers = fixedWatchers;
+    }
+    updateTask.mutate(parentUpdates);
+
     childTasks.forEach(child => {
-      updateTask.mutate({ id: child.id, stage_current: newStage as any });
+      const childUpdates: any = { id: child.id, stage_current: newStage as any };
+      if (fixedAssignee !== undefined) {
+        childUpdates.assignee_id = fixedAssignee;
+        childUpdates.watchers = fixedWatchers;
+      }
+      updateTask.mutate(childUpdates);
     });
   };
 
