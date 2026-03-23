@@ -265,7 +265,7 @@ function PautaTaskCard({ task, clientsMap, membersMap, onTaskClick, onDelete, ex
   expanded?: boolean;
 }) {
   const isDone = task.stage_current === "entrega";
-  const stageBg = STAGE_BADGE_BG[task.stage_current] ?? "bg-muted";
+  const stageTone = STAGE_BADGE_STYLE[task.stage_current] ?? { bg: "bg-muted", fg: "text-foreground" };
   const abbr = STAGE_ABBR[task.stage_current] ?? task.stage_current.toUpperCase().slice(0, 4);
   const member = task.assignee_id ? membersMap[task.assignee_id] : undefined;
   const clientName = clientsMap[task.client_id] ?? "—";
@@ -278,7 +278,7 @@ function PautaTaskCard({ task, clientsMap, membersMap, onTaskClick, onDelete, ex
       )}
     >
       <div className="flex items-center justify-between gap-1">
-        <div className={cn("inline-flex h-5 items-center rounded px-2 text-[10px] font-bold text-white", stageBg)}>
+        <div className={cn("inline-flex h-5 items-center rounded px-2 text-[10px] font-bold", stageTone.bg, stageTone.fg)}>
           {abbr}
         </div>
         <div className="flex items-center gap-1">
