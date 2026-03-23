@@ -371,9 +371,58 @@ export function DayViewPanel() {
     [cleaningCompletionsQ.data]
   );
 
+  // ─── Normalize pm_tasks into a compatible shape for display ───
+  type UnifiedTask = {
+    id: string;
+    client_id: string;
+    assigned_user_id: string;
+    due_date: string;
+    status: string;
+    stage: string;
+    title: string | null;
+    is_extra_demand: boolean;
+    completed_at: string | null;
+    source: "agenda" | "pm";
+    subtaskCount?: number;
+  };
+
+  const unifiedTasks = useMemo(() => {
+    const agendaTasks: UnifiedTask[] = (tasksQ.data ?? []).map(t => ({
+      ...t,
+      source: "agenda" as const,
+    }));
+
+    // pm_tasks that DON'T have a snapshot in the agenda tasks (avoid duplicates)
+    const agendaDescriptions = new Set(agendaTasks.map(t => t.title).filter(Boolean));
+    const childCounts = pmChildCountQ.data ?? new Map<string, number>();
+    
+    const pmTasks: UnifiedTask[] = (pmTasksQ.data ?? [])
+      .filter(t => {
+        // Skip if there's already an agenda snapshot for this pm_task
+        const pmDesc = `pm:${t.id}:`;
+        return !(tasksQ.data ?? []).some(at => at.description?.startsWith(pmDesc));
+      })
+      .map(t => ({
+        id: `pm_${t.id}`,
+        client_id: t.client_id,
+        assigned_user_id: t.assignee_id ?? "",
+        due_date: t.due_date ?? "",
+        status: t.status_global === "concluido" ? "concluido" : "pendente",
+        stage: t.stage_current,
+        title: t.title,
+        is_extra_demand: t.is_extra_demand,
+        completed_at: null,
+        source: "pm" as const,
+        subtaskCount: childCounts.get(t.id) ?? 0,
+      }));
+
+    return [...agendaTasks, ...pmTasks];
+  }, [tasksQ.data, pmTasksQ.data, pmChildCountQ.data]);
+
   // Tarefas de hoje (exceto concluídas - elas vão separadas)
   const todayPendingTasks = useMemo(() => {
-    const tasks = (tasksQ.data ?? []).filter((t) => {
+    const tasks = unifiedTasks.filter((t) => {
+      if (!t.due_date) return false;
       if (!isCurrentMonth) return t.status !== "concluido";
       return t.due_date === todayKey && t.status !== "concluido";
     });
@@ -385,11 +434,12 @@ export function DayViewPanel() {
       const nb = teamByUserId.get(b.assigned_user_id)?.display_name ?? "";
       return na.localeCompare(nb);
     });
-  }, [tasksQ.data, todayKey, teamByUserId, isCurrentMonth]);
+  }, [unifiedTasks, todayKey, teamByUserId, isCurrentMonth]);
 
   // Tarefas concluídas de hoje
   const todayCompletedTasks = useMemo(() => {
-    const tasks = (tasksQ.data ?? []).filter((t) => {
+    const tasks = unifiedTasks.filter((t) => {
+      if (!t.due_date) return false;
       if (!isCurrentMonth) return t.status === "concluido";
       return t.due_date === todayKey && t.status === "concluido";
     });
@@ -398,12 +448,12 @@ export function DayViewPanel() {
       const nb = teamByUserId.get(b.assigned_user_id)?.display_name ?? "";
       return na.localeCompare(nb);
     });
-  }, [tasksQ.data, todayKey, teamByUserId, isCurrentMonth]);
+  }, [unifiedTasks, todayKey, teamByUserId, isCurrentMonth]);
   const overdueTasks = useMemo(() => {
-    return (tasksQ.data ?? []).filter((t) => t.status !== "concluido" && t.due_date < todayKey).sort((a, b) => a.due_date.localeCompare(b.due_date));
-  }, [tasksQ.data, todayKey]);
-  const completedTasksCount = useMemo(() => (tasksQ.data ?? []).filter((t) => t.status === "concluido").length, [tasksQ.data]);
-  const totalTasks = tasksQ.data?.length ?? 0;
+    return unifiedTasks.filter((t) => t.status !== "concluido" && t.due_date && t.due_date < todayKey).sort((a, b) => a.due_date.localeCompare(b.due_date));
+  }, [unifiedTasks, todayKey]);
+  const completedTasksCount = useMemo(() => unifiedTasks.filter((t) => t.status === "concluido").length, [unifiedTasks]);
+  const totalTasks = unifiedTasks.length + (pmChildCountQ.data ? Array.from(pmChildCountQ.data.values()).reduce((a, b) => a + b, 0) : 0);
 
   // Navegação rápida para hoje
   const goToToday = () => {
