@@ -106,6 +106,45 @@ export function DayViewPanel() {
     },
   });
 
+  // ─── PM tasks (Gestão) for agenda sync ───
+  const pmTasksQ = useQuery({
+    queryKey: ["pm_tasks_for_dayview", monthKey],
+    queryFn: async () => {
+      const startDate = `${monthKey}-01`;
+      const endDate = `${monthKey}-31`;
+      const { data, error } = await supabase
+        .from("pm_tasks")
+        .select("id, title, client_id, assignee_id, watchers, due_date, stage_current, status_global, is_extra_demand, parent_task_id")
+        .is("parent_task_id", null)
+        .gte("due_date", startDate)
+        .lte("due_date", endDate);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  // ─── PM child tasks count per parent ───
+  const pmChildCountQ = useQuery({
+    queryKey: ["pm_child_count_for_dayview", monthKey],
+    queryFn: async () => {
+      const parentIds = (pmTasksQ.data ?? []).map(t => t.id);
+      if (!parentIds.length) return new Map<string, number>();
+      const { data, error } = await supabase
+        .from("pm_tasks")
+        .select("parent_task_id")
+        .in("parent_task_id", parentIds);
+      if (error) throw error;
+      const counts = new Map<string, number>();
+      for (const row of data ?? []) {
+        if (row.parent_task_id) {
+          counts.set(row.parent_task_id, (counts.get(row.parent_task_id) ?? 0) + 1);
+        }
+      }
+      return counts;
+    },
+    enabled: (pmTasksQ.data ?? []).length > 0,
+  });
+
   // ─── Cleaning ───
   const cleaningSchedulesQ = useCleaningSchedules();
   const cleaningCategoriesQ = useCleaningCategories();
