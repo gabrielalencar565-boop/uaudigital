@@ -223,7 +223,6 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   const [newTagColor, setNewTagColor] = useState("blue");
   const [stageChoiceOpen, setStageChoiceOpen] = useState(false);
   const [stageChoiceOptions, setStageChoiceOptions] = useState<string[]>([]);
-  const [alteracaoChoiceOpen, setAlteracaoChoiceOpen] = useState(false);
 
   // Date on completion state
   const [completionDateOpen, setCompletionDateOpen] = useState(false);
@@ -239,8 +238,6 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   // Possible next stages from flow
   const nextStages = getNextStages(flowConfig, task.stage_current);
   const isDone = task.stage_current === "entrega";
-
-  const alteracaoTargets = ["design", "edicao_videos"].filter(s => s !== task.stage_current);
 
   const syncCompletedStage = async (completedStage: string) => {
     if (task.parent_task_id) return;
@@ -269,26 +266,24 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   };
 
   const doAdvance = (completedStage: string, nextStage: string, newDueDate?: string, linkedTaskId?: string) => {
-    // Mark the CURRENT task as completed (snapshot in the agenda)
-    const snapshotDueDate = task.due_date ?? format(new Date(), "yyyy-MM-dd");
-    updateTask.mutate({
-      id: task.id,
-      stage_current: completedStage as any,
-      status_global: "concluido" as any,
-      due_date: snapshotDueDate,
-    });
-
-    // Mark all child tasks as completed too
-    for (const child of childTasks) {
+    if (linkedTaskId) {
+      // Snapshot: mark current task as completed at current stage
+      const snapshotDueDate = task.due_date ?? format(new Date(), "yyyy-MM-dd");
       updateTask.mutate({
-        id: child.id,
+        id: task.id,
         stage_current: completedStage as any,
         status_global: "concluido" as any,
+        due_date: snapshotDueDate,
       });
-    }
+      for (const child of childTasks) {
+        updateTask.mutate({
+          id: child.id,
+          stage_current: completedStage as any,
+          status_global: "concluido" as any,
+        });
+      }
 
-    if (linkedTaskId) {
-      // We linked to an existing agenda task — update its status and transfer subtasks
+      // Update linked task and transfer children
       const linkedUpdates: any = { id: linkedTaskId, status_global: "backlog" as any };
       const fixedAssignee = getFixedAssignee(stageAssignees, nextStage, task.client_id);
       const fixedWatchers = getFixedWatchers(stageAssignees, nextStage, task.client_id);
@@ -298,7 +293,6 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       }
       updateTask.mutate(linkedUpdates);
 
-      // Transfer all child tasks to the linked task + auto-assign stage responsible
       for (const child of childTasks) {
         const childUpdates: any = {
           id: child.id,
@@ -311,6 +305,46 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           childUpdates.watchers = fixedWatchers;
         }
         updateTask.mutate(childUpdates as any);
+      }
+    } else if (nextStage === "entrega") {
+      // Final stage: mark as delivered
+      updateTask.mutate({
+        id: task.id,
+        stage_current: "entrega" as any,
+        status_global: "concluido" as any,
+      });
+      for (const child of childTasks) {
+        updateTask.mutate({
+          id: child.id,
+          stage_current: "entrega" as any,
+          status_global: "concluido" as any,
+        });
+      }
+    } else {
+      // No linked task: advance directly to next stage
+      const fixedAssignee = getFixedAssignee(stageAssignees, nextStage, task.client_id);
+      const fixedWatchers = getFixedWatchers(stageAssignees, nextStage, task.client_id);
+      const updates: any = {
+        id: task.id,
+        stage_current: nextStage as any,
+        due_date: newDueDate ?? task.due_date,
+      };
+      if (fixedAssignee !== undefined) {
+        updates.assignee_id = fixedAssignee;
+        updates.watchers = fixedWatchers;
+      }
+      updateTask.mutate(updates);
+
+      for (const child of childTasks) {
+        const childUpdates: any = {
+          id: child.id,
+          stage_current: nextStage as any,
+        };
+        if (fixedAssignee !== undefined) {
+          childUpdates.assignee_id = fixedAssignee;
+          childUpdates.watchers = fixedWatchers;
+        }
+        updateTask.mutate(childUpdates);
       }
     }
 
@@ -488,49 +522,24 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   };
 
   const handleAlteracao = () => {
-    if (alteracaoTargets.length === 1) {
-      const targetStage = alteracaoTargets[0];
-      const updates: any = { id: task.id, stage_current: targetStage as any };
-      const fixedAssignee = getFixedAssignee(stageAssignees, targetStage, task.client_id);
-      const fixedWatchers = getFixedWatchers(stageAssignees, targetStage, task.client_id);
-      if (fixedAssignee !== undefined) {
-        updates.assignee_id = fixedAssignee;
-        updates.watchers = fixedWatchers;
-      }
-      updateTask.mutate(updates);
-      for (const child of childTasks) {
-        const childUpdates: any = { id: child.id, stage_current: targetStage as any };
-        if (fixedAssignee !== undefined) {
-          childUpdates.assignee_id = fixedAssignee;
-          childUpdates.watchers = fixedWatchers;
-        }
-        updateTask.mutate(childUpdates);
-      }
-      toast.success(`Retornou para ${stageLabel(targetStage)}`);
-    } else {
-      setAlteracaoChoiceOpen(true);
-    }
-  };
-
-  const handleChooseAlteracao = (stageKey: string) => {
-    const updates: any = { id: task.id, stage_current: stageKey as any };
-    const fixedAssignee = getFixedAssignee(stageAssignees, stageKey, task.client_id);
-    const fixedWatchers = getFixedWatchers(stageAssignees, stageKey, task.client_id);
+    // Set stage to "alteracoes" — keeps agenda checked, shows yellow widget
+    const updates: any = { id: task.id, stage_current: "alteracoes" as any };
+    const fixedAssignee = getFixedAssignee(stageAssignees, "alteracoes", task.client_id);
+    const fixedWatchers = getFixedWatchers(stageAssignees, "alteracoes", task.client_id);
     if (fixedAssignee !== undefined) {
       updates.assignee_id = fixedAssignee;
       updates.watchers = fixedWatchers;
     }
     updateTask.mutate(updates);
     for (const child of childTasks) {
-      const childUpdates: any = { id: child.id, stage_current: stageKey as any };
+      const childUpdates: any = { id: child.id, stage_current: "alteracoes" as any };
       if (fixedAssignee !== undefined) {
         childUpdates.assignee_id = fixedAssignee;
         childUpdates.watchers = fixedWatchers;
       }
       updateTask.mutate(childUpdates);
     }
-    toast.success(`Retornou para ${stageLabel(stageKey)}`);
-    setAlteracaoChoiceOpen(false);
+    toast.success("Tarefa marcada para Alteração");
   };
 
   const saveTitle = () => {
@@ -840,27 +849,9 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
             </Badge>
           )}
 
-          <Popover open={alteracaoChoiceOpen} onOpenChange={setAlteracaoChoiceOpen}>
-            <PopoverTrigger asChild>
-              <Button size="sm" variant="outline" className="gap-1.5 text-amber-500 border-amber-500/30 hover:bg-amber-500/10" onClick={handleAlteracao}>
-                <RotateCcw className="h-3.5 w-3.5" /> Alteração
-              </Button>
-            </PopoverTrigger>
-            {alteracaoTargets.length > 1 && (
-              <PopoverContent className="w-52 p-1" align="start">
-                <p className="text-xs text-muted-foreground px-3 py-2 font-medium">Retornar para qual etapa?</p>
-                {alteracaoTargets.map(sk => {
-                  const sc = getStageCircleColor(sk);
-                  return (
-                    <button key={sk} className="flex items-center gap-2 w-full px-3 py-2 rounded text-sm hover:bg-accent transition" onClick={() => handleChooseAlteracao(sk)}>
-                      <span className={cn("h-4 w-4 rounded-full border-2 shrink-0", sc.border)} />
-                      <span className="font-medium">{stageLabel(sk)}</span>
-                    </button>
-                  );
-                })}
-              </PopoverContent>
-            )}
-          </Popover>
+          <Button size="sm" variant="outline" className="gap-1.5 text-amber-500 border-amber-500/30 hover:bg-amber-500/10" onClick={handleAlteracao}>
+            <RotateCcw className="h-3.5 w-3.5" /> Alteração
+          </Button>
 
           {/* Revert button — go back to previous stage */}
           {!isDone && task.stage_current !== "captacao" && (
