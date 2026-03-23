@@ -236,7 +236,11 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   const [pendingAdvance, setPendingAdvance] = useState<{ completedStage: string; nextStage: string } | null>(null);
 
   // Possible next stages from flow
-  const nextStages = getNextStages(flowConfig, task.stage_current);
+  // Extra demands go straight to entrega after revisão
+  const rawNextStages = getNextStages(flowConfig, task.stage_current);
+  const nextStages = (task.is_extra_demand && task.stage_current === "revisao")
+    ? ["entrega"]
+    : rawNextStages;
   const isDone = task.stage_current === "entrega";
 
   const syncCompletedStage = async (completedStage: string) => {
