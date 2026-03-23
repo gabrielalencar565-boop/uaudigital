@@ -90,6 +90,22 @@ export function DayViewPanel() {
   const assigneesQ = useTaskAssigneesByMonth(monthKey);
   const { user: sessionUser } = useSession();
 
+  // ─── PM subtasks for podium totals ───
+  const pmSubtasksQ = useQuery({
+    queryKey: ["pm_subtasks_for_podium", monthKey],
+    queryFn: async () => {
+      const startDate = `${monthKey}-01`;
+      const endDate = `${monthKey}-31`;
+      const { data, error } = await supabase
+        .from("pm_subtasks")
+        .select("id, task_id, assignee_id, status, due_date")
+        .gte("due_date", startDate)
+        .lte("due_date", endDate);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   // ─── Cleaning ───
   const cleaningSchedulesQ = useCleaningSchedules();
   const cleaningCategoriesQ = useCleaningCategories();
