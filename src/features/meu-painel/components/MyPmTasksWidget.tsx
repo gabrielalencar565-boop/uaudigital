@@ -120,14 +120,16 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
     );
   }, [pmTasksQ.data, allChildQ.data, user?.id]);
 
-  // Group by overdue, today, upcoming
+  // Group by overdue, today, upcoming, completed
   const groups = useMemo(() => {
     const overdue: PmTask[] = [];
     const todayGroup: PmTask[] = [];
     const upcoming: PmTask[] = [];
     const noDue: PmTask[] = [];
+    const completed: PmTask[] = [];
 
     myTasks.forEach(t => {
+      if (t.status_global === "concluido") { completed.push(t); return; }
       if (!t.due_date) { noDue.push(t); return; }
       const diff = differenceInCalendarDays(new Date(t.due_date + "T00:00:00"), today);
       if (diff < 0) overdue.push(t);
@@ -135,7 +137,7 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
       else upcoming.push(t);
     });
 
-    return { overdue, today: todayGroup, upcoming, noDue };
+    return { overdue, today: todayGroup, upcoming, noDue, completed };
   }, [myTasks, todayKey]);
 
   const [openOverdue, setOpenOverdue] = useState(true);
