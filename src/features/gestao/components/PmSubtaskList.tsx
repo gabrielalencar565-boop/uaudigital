@@ -26,6 +26,7 @@ interface Props {
 export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onSelectSubtask, activeSubtaskId }: Props) {
   const updateTask = useUpdatePmTask();
   const createTask = useCreatePmTask();
+  const { stageAssignees } = useDefaultFlowWithDates();
   const [newTitle, setNewTitle] = useState("");
 
   const done = childTasks.filter(s => s.stage_current === "entrega").length;
@@ -38,7 +39,9 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
       client_id: parentTask.client_id,
       title: newTitle.trim(),
       parent_task_id: parentTask.id,
-      stage_current: "captacao",
+      stage_current: parentTask.stage_current,
+      assignee_id: parentTask.assignee_id ?? undefined,
+      watchers: parentTask.watchers ?? [],
     });
     setNewTitle("");
   };
