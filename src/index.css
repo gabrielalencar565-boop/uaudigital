@@ -180,16 +180,16 @@ All colors MUST be HSL.
     --chart-4: 40 90% 62%;
     --chart-5: 350 90% 64%;
 
-    /* Sidebar — rich purple, distinct from bg */
-    --sidebar-background: 260 55% 28%;
-    --sidebar-foreground: 0 0% 96%;
+    /* Sidebar — same purple as light mode */
+    --sidebar-background: 263 70% 50%;
+    --sidebar-foreground: 0 0% 100%;
     --sidebar-primary: 0 0% 100%;
-    --sidebar-primary-foreground: 260 55% 28%;
-    --sidebar-accent: 260 50% 22%;
-    --sidebar-accent-foreground: 0 0% 96%;
-    --sidebar-border: 260 40% 20%;
+    --sidebar-primary-foreground: 263 70% 50%;
+    --sidebar-accent: 263 70% 42%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 263 70% 38%;
     --sidebar-ring: 0 0% 100%;
-    --sidebar: 260 55% 28%;
+    --sidebar: 263 70% 50%;
 
     /* Shadows – soft depth, not harsh */
     --shadow-2xs: 0 1px 2px 0px hsl(0 0% 0% / 0.15);
