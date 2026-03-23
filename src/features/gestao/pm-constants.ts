@@ -31,7 +31,7 @@ export const PM_STAGES = [
 
 // Active stages (visible in UI, in display order)
 export const PM_ACTIVE_STAGES = PM_STAGES.filter(
-  (s) => !["roteiro", "edicao", "alteracoes"].includes(s.key)
+  (s) => !["roteiro", "edicao"].includes(s.key)
 );
 
 // Stage flow: maps each stage to the next one when marked "concluído"
