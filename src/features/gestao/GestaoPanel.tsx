@@ -33,6 +33,7 @@ import { AgendaQuickCreateDialog } from "./components/AgendaQuickCreateDialog";
 import { useAgendaSpecialDates } from "@/features/agenda/hooks/use-agenda-dates";
 import { getIconById } from "@/features/agenda/components/IconPicker";
 import { AgendaReportsPanel } from "@/features/agenda/components/AgendaReportsPanel";
+import { TaskTrashPanel } from "@/features/agenda/components/TaskTrashPanel";
 function initials(n: string) {
   return n.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("");
 }
