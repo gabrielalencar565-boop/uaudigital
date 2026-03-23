@@ -432,6 +432,8 @@ export function AgendaPanel() {
   };
 
   // Drag and drop handler
+  const pointerSensor = useSensor(PointerSensor, { activationConstraint: { distance: 5 } });
+  const sensors = useSensors(pointerSensor);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const activeTask = useMemo(() => {
     if (!activeTaskId) return null;
