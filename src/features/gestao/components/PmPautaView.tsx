@@ -369,7 +369,7 @@ function PautaCreateDialog({ open, onClose, dayKey, clients, members, membersMap
             <Popover>
               <PopoverTrigger asChild>
                 <button className="flex items-center gap-2 h-8 w-full border rounded-md px-3 text-xs hover:bg-accent transition">
-                  <span className={cn("h-3 w-3 rounded-full", STAGE_BADGE_BG[stage] ?? "bg-muted")} />
+                  <span className={cn("h-3 w-3 rounded-full", STAGE_BADGE_STYLE[stage]?.bg ?? "bg-muted")} />
                   {stageLabel(stage)}
                 </button>
               </PopoverTrigger>
