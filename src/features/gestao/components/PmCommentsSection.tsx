@@ -132,7 +132,7 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
   const contentToStorage = (text: string): string => {
     let result = text;
     for (const [name, id] of Object.entries(mentionMap)) {
-      result = result.replaceAll(`@${name}`, `@${id}`);
+      result = result.split(`@${name}`).join(`@${id}`);
     }
     return result;
   };
