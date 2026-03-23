@@ -266,9 +266,26 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   };
 
   const doAdvance = (completedStage: string, nextStage: string, newDueDate?: string, linkedTaskId?: string) => {
+    const transferChildren = (targetTaskId: string, targetStage: string) => {
+      const fixedAssignee = getFixedAssignee(stageAssignees, targetStage, task.client_id);
+      const fixedWatchers = getFixedWatchers(stageAssignees, targetStage, task.client_id);
+      for (const child of childTasks) {
+        const childUpdates: any = {
+          id: child.id,
+          parent_task_id: targetTaskId,
+          stage_current: targetStage as any,
+          status_global: "backlog" as any,
+        };
+        if (fixedAssignee !== undefined) {
+          childUpdates.assignee_id = fixedAssignee;
+          childUpdates.watchers = fixedWatchers;
+        }
+        updateTask.mutate(childUpdates as any);
+      }
+    };
+
     if (linkedTaskId) {
       // Snapshot: mark current task as completed at current stage
-      // Children STAY with the original task (not transferred)
       const snapshotDueDate = task.due_date ?? format(new Date(), "yyyy-MM-dd");
       updateTask.mutate({
         id: task.id,
@@ -277,7 +294,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         due_date: snapshotDueDate,
       });
 
-      // Update linked task (no children transfer)
+      // Update linked task and transfer children
       const linkedUpdates: any = { id: linkedTaskId, status_global: "backlog" as any };
       const fixedAssignee = getFixedAssignee(stageAssignees, nextStage, task.client_id);
       const fixedWatchers = getFixedWatchers(stageAssignees, nextStage, task.client_id);
@@ -286,6 +303,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         linkedUpdates.watchers = fixedWatchers;
       }
       updateTask.mutate(linkedUpdates);
+      transferChildren(linkedTaskId, nextStage);
     } else if (nextStage === "entrega") {
       // Final stage: mark as delivered
       updateTask.mutate({
@@ -301,8 +319,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         });
       }
     } else {
-      // Snapshot: mark current task as completed at current stage (stays in agenda)
-      // Children STAY with the original task — they are NOT transferred
+      // Snapshot current task as completed (stays in agenda)
       const snapshotDueDate = task.due_date ?? format(new Date(), "yyyy-MM-dd");
       updateTask.mutate({
         id: task.id,
@@ -311,7 +328,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         due_date: snapshotDueDate,
       });
 
-      // Create a lightweight new task for the next stage (no children)
+      // Create new task for the next stage and transfer all children
       const fixedAssignee = getFixedAssignee(stageAssignees, nextStage, task.client_id);
       const fixedWatchers = getFixedWatchers(stageAssignees, nextStage, task.client_id);
       const nextDueDate = newDueDate ?? format(addDays(new Date(snapshotDueDate + "T12:00:00"), 1), "yyyy-MM-dd");
@@ -329,6 +346,8 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         tags: task.tags ?? [],
         is_extra_demand: task.is_extra_demand,
         status_global: "backlog",
+      }).then((newTask) => {
+        transferChildren(newTask.id, nextStage);
       });
     }
 
