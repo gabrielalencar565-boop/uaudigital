@@ -91,7 +91,7 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, membersMap
 
     let title: string;
     if (isExtra) {
-      title = customTitle.trim() || `[${client.name}] - ${stageLabel}`;
+      title = customTitle.trim() || `[${client.name}] - ${stageLabel} - Extra`;
     } else {
       title = `[${client.name}] - ${stageLabel} - ${monthLabel}`;
     }
