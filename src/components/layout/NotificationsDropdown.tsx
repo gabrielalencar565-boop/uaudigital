@@ -1,17 +1,19 @@
-import { useMemo, useState } from "react";
-import { Bell, AlertTriangle, AtSign, UserPlus, Clock } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useMemo, useCallback } from "react";
+import { Bell, AlertTriangle, AtSign, UserPlus, Clock, Check, CheckCheck } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, differenceInCalendarDays } from "date-fns";
 
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
 
 type NotificationItem = {
   id: string;
+  key: string; // unique key for read tracking
   type: "mention" | "assigned" | "overdue" | "upcoming";
   title: string;
   subtitle: string;
@@ -26,7 +28,7 @@ interface NotificationsDropdownProps {
 export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps) {
   const { user } = useSession();
   const today = new Date();
-  const [isRead, setIsRead] = useState(false);
+  const queryClient = useQueryClient();
 
   const mentionsQ = useQuery({
     queryKey: ["notifications_mentions", user?.id],
@@ -65,6 +67,40 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
     },
   });
 
+  // Fetch read notification keys
+  const readsQ = useQuery({
+    queryKey: ["notification_reads", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("notification_reads")
+        .select("notification_key")
+        .eq("user_id", user!.id);
+      return new Set((data ?? []).map((r: any) => r.notification_key));
+    },
+  });
+
+  const readKeys = readsQ.data ?? new Set<string>();
+
+  const markAsRead = useMutation({
+    mutationFn: async (key: string) => {
+      await (supabase as any)
+        .from("notification_reads")
+        .upsert({ user_id: user!.id, notification_key: key }, { onConflict: "user_id,notification_key" });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notification_reads"] }),
+  });
+
+  const markAllAsRead = useMutation({
+    mutationFn: async (keys: string[]) => {
+      const rows = keys.map(k => ({ user_id: user!.id, notification_key: k }));
+      await (supabase as any)
+        .from("notification_reads")
+        .upsert(rows, { onConflict: "user_id,notification_key" });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notification_reads"] }),
+  });
+
   const membersMap = useMemo(() => {
     const m: Record<string, { name: string; avatar?: string }> = {};
     (membersQ.data ?? []).forEach(tm => {
@@ -73,6 +109,13 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
     return m;
   }, [membersQ.data]);
 
+  const formatMentionContent = useCallback((text: string) => {
+    return text.replace(/@([a-f0-9-]{36})/gi, (_, id) => {
+      const m = membersMap[id];
+      return m ? `@${m.name}` : "@alguém";
+    });
+  }, [membersMap]);
+
   const notifications = useMemo<NotificationItem[]>(() => {
     const items: NotificationItem[] = [];
 
@@ -80,9 +123,10 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
       const author = membersMap[c.author_id];
       items.push({
         id: `mention-${c.id}`,
+        key: `mention-${c.id}`,
         type: "mention",
         title: `${author?.name ?? "Alguém"} te mencionou`,
-        subtitle: c.content?.substring(0, 80) ?? "",
+        subtitle: formatMentionContent(c.content?.substring(0, 80) ?? ""),
         timestamp: c.created_at,
         taskId: c.task_id,
       });
@@ -94,6 +138,7 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
         if (daysLeft < 0) {
           items.push({
             id: `overdue-${t.id}`,
+            key: `overdue-${t.id}`,
             type: "overdue",
             title: `Tarefa atrasada: ${t.title}`,
             subtitle: `Venceu há ${Math.abs(daysLeft)} dia${Math.abs(daysLeft) === 1 ? "" : "s"}`,
@@ -103,6 +148,7 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
         } else if (daysLeft <= 3) {
           items.push({
             id: `upcoming-${t.id}`,
+            key: `upcoming-${t.id}`,
             type: "upcoming",
             title: `Tarefa próxima: ${t.title}`,
             subtitle: daysLeft === 0 ? "Vence hoje" : `Vence em ${daysLeft} dia${daysLeft === 1 ? "" : "s"}`,
@@ -115,7 +161,9 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
 
     items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     return items.slice(0, 30);
-  }, [mentionsQ.data, assignedQ.data, membersMap, today]);
+  }, [mentionsQ.data, assignedQ.data, membersMap, today, formatMentionContent]);
+
+  const unreadCount = notifications.filter(n => !readKeys.has(n.key)).length;
 
   const typeIcon = {
     mention: AtSign,
@@ -131,33 +179,47 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
     upcoming: "text-warning",
   };
 
-  const handleOpenChange = (open: boolean) => {
-    if (open && notifications.length > 0) {
-      setIsRead(true);
-    }
-  };
-
   const handleClickNotification = (n: NotificationItem) => {
+    if (!readKeys.has(n.key)) {
+      markAsRead.mutate(n.key);
+    }
     if (n.taskId && onOpenTask) {
       onOpenTask(n.taskId);
     }
   };
 
+  const handleMarkAllRead = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const unreadKeys = notifications.filter(n => !readKeys.has(n.key)).map(n => n.key);
+    if (unreadKeys.length > 0) markAllAsRead.mutate(unreadKeys);
+  };
+
   return (
-    <Popover onOpenChange={handleOpenChange}>
+    <Popover>
       <PopoverTrigger asChild>
         <button className="relative flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-accent/50 focus:outline-none">
           <Bell className="h-4 w-4 text-muted-foreground" />
-          {notifications.length > 0 && !isRead && (
+          {unreadCount > 0 && (
             <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">
-              {notifications.length > 99 ? "99+" : notifications.length}
+              {unreadCount > 99 ? "99+" : unreadCount}
             </span>
           )}
         </button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-96 rounded-xl p-0">
-        <div className="border-b border-border/40 px-4 py-3">
+        <div className="flex items-center justify-between border-b border-border/40 px-4 py-3">
           <h3 className="text-sm font-semibold">Notificações</h3>
+          {unreadCount > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+              onClick={handleMarkAllRead}
+            >
+              <CheckCheck className="h-3.5 w-3.5" />
+              Marcar tudo como lido
+            </Button>
+          )}
         </div>
         <ScrollArea className="max-h-[400px]">
           {notifications.length === 0 ? (
@@ -168,12 +230,16 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
             <div className="divide-y divide-border/30">
               {notifications.map(n => {
                 const Icon = typeIcon[n.type];
+                const isUnread = !readKeys.has(n.key);
                 return (
                   <button
                     key={n.id}
                     type="button"
                     onClick={() => handleClickNotification(n)}
-                    className="flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-accent/30 cursor-pointer"
+                    className={cn(
+                      "flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-accent/30 cursor-pointer",
+                      isUnread && "bg-primary/5"
+                    )}
                   >
                     <div className={cn("mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted/50", typeColor[n.type])}>
                       <Icon className="h-3.5 w-3.5" />
@@ -182,6 +248,12 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
                       <p className="text-[13px] font-medium text-foreground leading-snug">{n.title}</p>
                       <p className="mt-0.5 truncate text-xs text-muted-foreground">{n.subtitle}</p>
                     </div>
+                    {isUnread && (
+                      <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />
+                    )}
+                    {!isUnread && (
+                      <Check className="mt-1.5 h-3 w-3 shrink-0 text-muted-foreground/40" />
+                    )}
                   </button>
                 );
               })}
