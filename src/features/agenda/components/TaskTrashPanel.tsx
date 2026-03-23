@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { differenceInDays } from "date-fns";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Trash2, RotateCcw, AlertTriangle, Loader2 } from "lucide-react";
+import { Trash2, RotateCcw, AlertTriangle, Loader2, Clock } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,6 +44,28 @@ export function TaskTrashPanel({ onClose }: { onClose: () => void }) {
 
   const clientsById = new Map((clientsQ.data ?? []).map(c => [c.id, c]));
   const teamByUserId = new Map((teamQ.data ?? []).map(m => [m.user_id, m]));
+
+  // Auto-delete tasks older than 30 days
+  useEffect(() => {
+    const deletedTasks = deletedTasksQ.data ?? [];
+    const now = new Date();
+    const expiredTasks = deletedTasks.filter(t => {
+      if (!t.deleted_at) return false;
+      return differenceInDays(now, new Date(t.deleted_at)) >= 30;
+    });
+    if (expiredTasks.length === 0) return;
+    
+    (async () => {
+      for (const t of expiredTasks) {
+        try {
+          await permanentlyDeleteTask.mutateAsync({ taskId: t.id });
+        } catch (e) {
+          console.error("Auto-delete expired task failed:", e);
+        }
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deletedTasksQ.data]);
 
   const handleRestore = async (taskId: string) => {
     setRestoringId(taskId);
@@ -184,11 +207,20 @@ export function TaskTrashPanel({ onClose }: { onClose: () => void }) {
                       <p className="text-xs text-muted-foreground truncate">
                         {client?.name ?? "Cliente removido"} • {format(new Date(`${task.due_date}T00:00:00`), "dd/MM/yyyy")}
                       </p>
-                      {deletedAt && (
-                        <p className="text-xs text-muted-foreground/70">
-                          Excluída em {format(deletedAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                        </p>
-                      )}
+                      {deletedAt && (() => {
+                        const daysLeft = 30 - differenceInDays(new Date(), deletedAt);
+                        return (
+                          <div className="flex items-center gap-2">
+                            <p className="text-xs text-muted-foreground/70">
+                              Excluída em {format(deletedAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                            </p>
+                            <Badge variant={daysLeft <= 7 ? "destructive" : "secondary"} className="text-[10px] gap-1">
+                              <Clock className="h-3 w-3" />
+                              {daysLeft > 0 ? `${daysLeft}d restantes` : "Expirando..."}
+                            </Badge>
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     <div className="flex items-center gap-1 shrink-0">

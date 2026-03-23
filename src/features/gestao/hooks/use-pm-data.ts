@@ -210,10 +210,10 @@ export function useDeletePmTask() {
     mutationFn: async (id: string) => {
       const { data: { user } } = await supabase.auth.getUser();
 
-      // Get task info before deleting (for snapshot cleanup)
+      // Get task info before deleting
       const { data: taskInfo } = await sb
         .from("pm_tasks")
-        .select("title, client_id")
+        .select("title, client_id, due_date, stage_current")
         .eq("id", id)
         .single();
 
@@ -247,7 +247,6 @@ export function useDeletePmTask() {
         .eq("parent_task_id", id);
       if (children?.length) {
         for (const child of children) {
-          // Collect child affected users too
           const { data: childAffected } = await sb
             .from("tasks")
             .select("assigned_user_id, due_date")
@@ -268,7 +267,90 @@ export function useDeletePmTask() {
         }
       }
 
-      // NOTE: Do NOT delete previous snapshot tasks — they represent completed history in the agenda
+      // ═══ UNMARK MAGIC NUMBER ═══
+      // Reverse what pm_sync_stage_completion did for magic2
+      if (taskInfo?.client_id && taskInfo?.due_date) {
+        try {
+          const dueDate = new Date(taskInfo.due_date);
+          const year = dueDate.getFullYear();
+          const month = dueDate.getMonth() + 1;
+
+          // Find magic2 client link
+          const { data: link } = await sb
+            .from("magic2_client_links")
+            .select("magic2_client_id")
+            .eq("agenda_client_id", taskInfo.client_id)
+            .limit(1)
+            .maybeSingle();
+
+          if (link?.magic2_client_id) {
+            const { data: cycle } = await sb
+              .from("magic2_cycles")
+              .select("id")
+              .eq("client_id", link.magic2_client_id)
+              .eq("year", year)
+              .eq("month", month)
+              .limit(1)
+              .maybeSingle();
+
+            if (cycle?.id) {
+              // Check if there are OTHER completed tasks for same client/stage/month
+              // (excluding the one we're deleting and its children)
+              const idsToExclude = [id, ...(children?.map(c => c.id) ?? [])];
+              
+              // Get all stages that were completed by this task
+              const completedStages = new Set<string>();
+              (affectedRows ?? []).forEach((r: any) => {
+                // description format: pm:{taskId}:{stage}:{userId}
+                const desc = r.description as string;
+                if (desc) {
+                  const parts = desc.split(":");
+                  if (parts.length >= 3) completedStages.add(parts[2]);
+                }
+              });
+
+              // Actually get from tasks table descriptions
+              const { data: allSnapshots } = await sb
+                .from("tasks")
+                .select("description")
+                .like("description", `pm:${id}:%`)
+                .is("deleted_at", null);
+              // Already soft-deleted above, check from affectedRows
+              (affectedRows ?? []).forEach((r: any) => {});
+
+              // For each stage this task completed, check if other pm_tasks also completed it
+              for (const stage of completedStages) {
+                // Check if any other active pm:*:{stage} tasks exist for this client/month
+                const { data: otherTasks } = await sb
+                  .from("tasks")
+                  .select("id")
+                  .like("description", `pm:%:${stage}:%`)
+                  .is("deleted_at", null)
+                  .eq("client_id", taskInfo.client_id)
+                  .eq("status", "concluido")
+                  .limit(1);
+
+                const hasOther = (otherTasks ?? []).length > 0;
+                if (!hasOther) {
+                  // Unmark the magic2 stage
+                  await sb
+                    .from("magic2_cycle_stages")
+                    .update({
+                      completed: false,
+                      completed_at: null,
+                      completed_by: null,
+                      updated_at: new Date().toISOString(),
+                    })
+                    .eq("cycle_id", cycle.id)
+                    .eq("stage", stage);
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.error("Error unchecking magic number:", e);
+        }
+      }
 
       const { error } = await sb.from("pm_tasks").delete().eq("id", id);
       if (error) throw error;
@@ -292,6 +374,7 @@ export function useDeletePmTask() {
       qc.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
       qc.invalidateQueries({ queryKey: ["magic2"] });
       qc.invalidateQueries({ queryKey: ["tasks"] });
+      qc.invalidateQueries({ queryKey: ["performance_scores"] });
     },
   });
 }
