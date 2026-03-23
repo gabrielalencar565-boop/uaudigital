@@ -268,6 +268,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   const doAdvance = (completedStage: string, nextStage: string, newDueDate?: string, linkedTaskId?: string) => {
     if (linkedTaskId) {
       // Snapshot: mark current task as completed at current stage
+      // Children STAY with the original task (not transferred)
       const snapshotDueDate = task.due_date ?? format(new Date(), "yyyy-MM-dd");
       updateTask.mutate({
         id: task.id,
@@ -275,15 +276,8 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         status_global: "concluido" as any,
         due_date: snapshotDueDate,
       });
-      for (const child of childTasks) {
-        updateTask.mutate({
-          id: child.id,
-          stage_current: completedStage as any,
-          status_global: "concluido" as any,
-        });
-      }
 
-      // Update linked task and transfer children
+      // Update linked task (no children transfer)
       const linkedUpdates: any = { id: linkedTaskId, status_global: "backlog" as any };
       const fixedAssignee = getFixedAssignee(stageAssignees, nextStage, task.client_id);
       const fixedWatchers = getFixedWatchers(stageAssignees, nextStage, task.client_id);
@@ -292,20 +286,6 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         linkedUpdates.watchers = fixedWatchers;
       }
       updateTask.mutate(linkedUpdates);
-
-      for (const child of childTasks) {
-        const childUpdates: any = {
-          id: child.id,
-          parent_task_id: linkedTaskId,
-          stage_current: nextStage as any,
-          status_global: "backlog" as any,
-        };
-        if (fixedAssignee !== undefined) {
-          childUpdates.assignee_id = fixedAssignee;
-          childUpdates.watchers = fixedWatchers;
-        }
-        updateTask.mutate(childUpdates as any);
-      }
     } else if (nextStage === "entrega") {
       // Final stage: mark as delivered
       updateTask.mutate({
@@ -321,25 +301,17 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         });
       }
     } else {
-      // No linked task: snapshot current as completed, CREATE new task for next stage
+      // Snapshot: mark current task as completed at current stage (stays in agenda)
+      // Children STAY with the original task — they are NOT transferred
       const snapshotDueDate = task.due_date ?? format(new Date(), "yyyy-MM-dd");
-      
-      // 1) Mark current task as completed at current stage (stays in agenda as done)
       updateTask.mutate({
         id: task.id,
         stage_current: completedStage as any,
         status_global: "concluido" as any,
         due_date: snapshotDueDate,
       });
-      for (const child of childTasks) {
-        updateTask.mutate({
-          id: child.id,
-          stage_current: completedStage as any,
-          status_global: "concluido" as any,
-        });
-      }
 
-      // 2) Create a new task for the next stage
+      // Create a lightweight new task for the next stage (no children)
       const fixedAssignee = getFixedAssignee(stageAssignees, nextStage, task.client_id);
       const fixedWatchers = getFixedWatchers(stageAssignees, nextStage, task.client_id);
       const nextDueDate = newDueDate ?? format(addDays(new Date(snapshotDueDate + "T12:00:00"), 1), "yyyy-MM-dd");
@@ -357,21 +329,6 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         tags: task.tags ?? [],
         is_extra_demand: task.is_extra_demand,
         status_global: "backlog",
-      }).then((newTask) => {
-        // 3) Transfer children to the new task
-        for (const child of childTasks) {
-          const childUpdates: any = {
-            id: child.id,
-            parent_task_id: newTask.id,
-            stage_current: nextStage as any,
-            status_global: "backlog" as any,
-          };
-          if (fixedAssignee !== undefined) {
-            childUpdates.assignee_id = fixedAssignee;
-            childUpdates.watchers = fixedWatchers;
-          }
-          updateTask.mutate(childUpdates as any);
-        }
       });
     }
 
