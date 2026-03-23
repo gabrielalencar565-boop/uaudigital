@@ -143,6 +143,7 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
   const [openOverdue, setOpenOverdue] = useState(true);
   const [openToday, setOpenToday] = useState(true);
   const [openUpcoming, setOpenUpcoming] = useState(false);
+  const [openCompleted, setOpenCompleted] = useState(false);
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
 
   const toggleExpand = (taskId: string) => {
