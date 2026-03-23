@@ -223,7 +223,6 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   const [newTagColor, setNewTagColor] = useState("blue");
   const [stageChoiceOpen, setStageChoiceOpen] = useState(false);
   const [stageChoiceOptions, setStageChoiceOptions] = useState<string[]>([]);
-  const [alteracaoChoiceOpen, setAlteracaoChoiceOpen] = useState(false);
 
   // Date on completion state
   const [completionDateOpen, setCompletionDateOpen] = useState(false);
