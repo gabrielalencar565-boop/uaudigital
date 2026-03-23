@@ -38,12 +38,12 @@ function initials(n: string) {
 
 const STAGE_ABBR: Record<string, string> = {
   captacao: "CAP", planejamento: "PLAN", design: "DSG", edicao_videos: "VDO",
-  revisao: "REV", pdf: "PDF", agendamento: "AGN", entrega: "ENT"
+  revisao: "REV", alteracoes: "ALT", pdf: "PDF", agendamento: "AGN", entrega: "ENT"
 };
 
 const STAGE_BADGE_BG: Record<string, string> = {
-  captacao: "bg-red-500", planejamento: "bg-blue-500", design: "bg-yellow-500",
-  edicao_videos: "bg-purple-500", revisao: "bg-pink-500", pdf: "bg-indigo-500",
+  captacao: "bg-red-500", planejamento: "bg-blue-500", design: "bg-stage-design",
+  edicao_videos: "bg-purple-500", revisao: "bg-pink-500", alteracoes: "bg-stage-alteracoes", pdf: "bg-indigo-500",
   agendamento: "bg-violet-500", entrega: "bg-emerald-500"
 };
 
