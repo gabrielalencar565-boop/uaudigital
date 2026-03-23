@@ -1,9 +1,10 @@
 import { useRef, useState, useCallback } from "react";
 import { format } from "date-fns";
-import { Upload, FileText, Download, MoreHorizontal, Link2, ImagePlus, GripVertical, Trash2 } from "lucide-react";
+import { Upload, FileText, Download, MoreHorizontal, Link2, ImagePlus, GripVertical, Trash2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Progress } from "@/components/ui/progress";
 import { useUploadPmAttachment } from "../hooks/use-pm-data";
 import type { PmAttachment } from "../pm-types";
 import { toast } from "sonner";
@@ -16,6 +17,19 @@ const sb = supabase as any;
 
 function initials(n: string) {
   return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
+}
+
+function formatFileSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+}
+
+interface UploadingFile {
+  name: string;
+  size: number;
+  progress: number;
 }
 
 interface Props {
@@ -34,13 +48,37 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
   const [viewerIndex, setViewerIndex] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
 
   const doUpload = useCallback(async (file: File) => {
     if (file.size > 1024 * 1024 * 1024) { toast.error("Arquivo muito grande (máx 1GB)"); return; }
+
+    const uploadEntry: UploadingFile = { name: file.name, size: file.size, progress: 0 };
+    setUploadingFiles(prev => [...prev, uploadEntry]);
+
+    // Simulate progress for UX since supabase doesn't expose upload progress
+    const interval = setInterval(() => {
+      setUploadingFiles(prev =>
+        prev.map(f => f.name === file.name && f.progress < 90
+          ? { ...f, progress: Math.min(f.progress + (file.size > 10 * 1024 * 1024 ? 2 : 15), 90) }
+          : f
+        )
+      );
+    }, 300);
+
     try {
       await upload.mutateAsync({ task_id: taskId, file });
+      clearInterval(interval);
+      setUploadingFiles(prev =>
+        prev.map(f => f.name === file.name ? { ...f, progress: 100 } : f)
+      );
+      setTimeout(() => {
+        setUploadingFiles(prev => prev.filter(f => f.name !== file.name));
+      }, 800);
       toast.success("Arquivo anexado!");
     } catch (err: any) {
+      clearInterval(interval);
+      setUploadingFiles(prev => prev.filter(f => f.name !== file.name));
       toast.error(err?.message ?? "Erro ao enviar arquivo");
     }
   }, [taskId, upload]);
@@ -148,12 +186,39 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
       onDragLeave={handleDragLeave}
     >
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium">Anexos ({attachments.length})</span>
-        <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={upload.isPending}>
-          <Upload className="mr-1 h-3 w-3" /> Upload
+        <span className="text-sm font-medium">
+          Anexos ({attachments.length})
+          {uploadingFiles.length > 0 && (
+            <span className="ml-2 text-xs text-muted-foreground">
+              <Loader2 className="inline h-3 w-3 animate-spin mr-1" />
+              Enviando {uploadingFiles.length} arquivo{uploadingFiles.length > 1 ? 's' : ''}...
+            </span>
+          )}
+        </span>
+        <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploadingFiles.length > 0}>
+          {uploadingFiles.length > 0 ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Upload className="mr-1 h-3 w-3" />}
+          Upload
         </Button>
         <input ref={fileRef} type="file" multiple className="hidden" onChange={handleUpload} />
       </div>
+
+      {/* Upload progress indicators */}
+      {uploadingFiles.length > 0 && (
+        <div className="space-y-2">
+          {uploadingFiles.map((f) => (
+            <div key={f.name} className="rounded-lg border border-border/40 bg-card/50 p-2.5 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium truncate max-w-[70%]">{f.name}</p>
+                <span className="text-[10px] text-muted-foreground">{formatFileSize(f.size)}</span>
+              </div>
+              <Progress value={f.progress} className="h-1.5" />
+              <p className="text-[10px] text-muted-foreground">
+                {f.progress < 100 ? `${f.progress}% enviado...` : "Concluído!"}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Drop zone overlay */}
       {dragging && !draggedId && (
