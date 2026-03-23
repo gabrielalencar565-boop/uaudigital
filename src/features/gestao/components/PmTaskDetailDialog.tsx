@@ -239,7 +239,6 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   const nextStages = getNextStages(flowConfig, task.stage_current);
   const isDone = task.stage_current === "entrega";
 
-  const isDone = task.stage_current === "entrega";
   const syncCompletedStage = async (completedStage: string) => {
     if (task.parent_task_id) return;
     try {
