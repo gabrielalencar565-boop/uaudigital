@@ -619,7 +619,25 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
+
+        <div className="flex items-center gap-2">
+          {isAdmin && (
+            <Button variant="outline" size="sm" onClick={() => { setReportDefaultTab("dates"); setReportOpen(true); }} className="gap-2 rounded-xl">
+              <FileText className="h-4 w-4" /> Relatório
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={() => { setReportDefaultTab("trash"); setReportOpen(true); }} className="gap-2 rounded-xl">
+            <Trash2 className="h-4 w-4" /> Lixeira
+          </Button>
+        </div>
       </div>
+
+      {/* Dialog de relatórios & lixeira */}
+      <Dialog open={reportOpen} onOpenChange={setReportOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] p-0 overflow-hidden">
+          <AgendaReportsPanel onClose={() => setReportOpen(false)} isAdmin={isAdmin} defaultTab={reportDefaultTab} />
+        </DialogContent>
+      </Dialog>
 
       {agendaView === "week" ? (
         /* ── WEEK VIEW ── */
