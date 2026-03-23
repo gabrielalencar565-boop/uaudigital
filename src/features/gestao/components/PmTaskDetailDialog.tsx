@@ -852,27 +852,9 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
             </Badge>
           )}
 
-          <Popover open={alteracaoChoiceOpen} onOpenChange={setAlteracaoChoiceOpen}>
-            <PopoverTrigger asChild>
-              <Button size="sm" variant="outline" className="gap-1.5 text-amber-500 border-amber-500/30 hover:bg-amber-500/10" onClick={handleAlteracao}>
-                <RotateCcw className="h-3.5 w-3.5" /> Alteração
-              </Button>
-            </PopoverTrigger>
-            {alteracaoTargets.length > 1 && (
-              <PopoverContent className="w-52 p-1" align="start">
-                <p className="text-xs text-muted-foreground px-3 py-2 font-medium">Retornar para qual etapa?</p>
-                {alteracaoTargets.map(sk => {
-                  const sc = getStageCircleColor(sk);
-                  return (
-                    <button key={sk} className="flex items-center gap-2 w-full px-3 py-2 rounded text-sm hover:bg-accent transition" onClick={() => handleChooseAlteracao(sk)}>
-                      <span className={cn("h-4 w-4 rounded-full border-2 shrink-0", sc.border)} />
-                      <span className="font-medium">{stageLabel(sk)}</span>
-                    </button>
-                  );
-                })}
-              </PopoverContent>
-            )}
-          </Popover>
+          <Button size="sm" variant="outline" className="gap-1.5 text-amber-500 border-amber-500/30 hover:bg-amber-500/10" onClick={handleAlteracao}>
+            <RotateCcw className="h-3.5 w-3.5" /> Alteração
+          </Button>
 
           {/* Revert button — go back to previous stage */}
           {!isDone && task.stage_current !== "captacao" && (
