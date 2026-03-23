@@ -7,7 +7,7 @@ import { useAgendaSpecialDates, type SpecialDate } from "@/features/agenda/hooks
 import { getIconById as getInternalDateIcon } from "@/features/agenda/components/IconPicker";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { DndContext, DragEndEvent, DragOverlay, closestCenter } from "@dnd-kit/core";
+import { DndContext, DragEndEvent, DragOverlay, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -432,6 +432,8 @@ export function AgendaPanel() {
   };
 
   // Drag and drop handler
+  const pointerSensor = useSensor(PointerSensor, { activationConstraint: { distance: 5 } });
+  const sensors = useSensors(pointerSensor);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const activeTask = useMemo(() => {
     if (!activeTaskId) return null;
@@ -466,6 +468,7 @@ export function AgendaPanel() {
   };
 
   return <DndContext
+    sensors={sensors}
     collisionDetection={closestCenter}
     onDragStart={handleDragStart}
     onDragEnd={handleDragEnd}

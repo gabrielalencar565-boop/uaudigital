@@ -90,6 +90,22 @@ export function DayViewPanel() {
   const assigneesQ = useTaskAssigneesByMonth(monthKey);
   const { user: sessionUser } = useSession();
 
+  // ─── PM subtasks for podium totals ───
+  const pmSubtasksQ = useQuery({
+    queryKey: ["pm_subtasks_for_podium", monthKey],
+    queryFn: async () => {
+      const startDate = `${monthKey}-01`;
+      const endDate = `${monthKey}-31`;
+      const { data, error } = await supabase
+        .from("pm_subtasks")
+        .select("id, task_id, assignee_id, status, due_date")
+        .gte("due_date", startDate)
+        .lte("due_date", endDate);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   // ─── Cleaning ───
   const cleaningSchedulesQ = useCleaningSchedules();
   const cleaningCategoriesQ = useCleaningCategories();
@@ -141,13 +157,14 @@ export function DayViewPanel() {
     }
   });
 
-  // Task completion stats per user (total assigned vs completed)
+  // Task completion stats per user (total assigned vs completed) — includes subtasks
   const taskStatsByUser = useMemo(() => {
     const tasks = tasksQ.data ?? [];
     const assignees = assigneesQ.data ?? [];
+    const subtasks = pmSubtasksQ.data ?? [];
     const stats = new Map<string, {total: number;completed: number;}>();
 
-    const addTask = (userId: string, isCompleted: boolean) => {
+    const addItem = (userId: string, isCompleted: boolean) => {
       const prev = stats.get(userId) ?? { total: 0, completed: 0 };
       prev.total += 1;
       if (isCompleted) prev.completed += 1;
@@ -155,19 +172,24 @@ export function DayViewPanel() {
     };
 
     for (const t of tasks) {
-      // Check if task has assignees
       const taskAssignees = assignees.filter((a) => a.task_id === t.id);
       if (taskAssignees.length > 0) {
         for (const a of taskAssignees) {
-          addTask(a.user_id, t.status === "concluido");
+          addItem(a.user_id, t.status === "concluido");
         }
       } else {
-        addTask(t.assigned_user_id, t.status === "concluido");
+        addItem(t.assigned_user_id, t.status === "concluido");
       }
     }
 
+    // Add pm_subtasks
+    for (const st of subtasks) {
+      if (!st.assignee_id) continue;
+      addItem(st.assignee_id, st.status === "concluido");
+    }
+
     return stats;
-  }, [tasksQ.data, assigneesQ.data]);
+  }, [tasksQ.data, assigneesQ.data, pmSubtasksQ.data]);
 
   const monthlyRank = useMemo(() => {
     const scores = scoresQ.data ?? [];
