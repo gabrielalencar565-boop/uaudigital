@@ -800,6 +800,21 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
               return (
                 <div
                   key={key}
+                  onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add("ring-2", "ring-primary/40"); }}
+                  onDragLeave={(e) => { e.currentTarget.classList.remove("ring-2", "ring-primary/40"); }}
+                  onDrop={async (e) => {
+                    e.preventDefault();
+                    e.currentTarget.classList.remove("ring-2", "ring-primary/40");
+                    const taskId = e.dataTransfer.getData("text/plain");
+                    if (!taskId || !inMonth) return;
+                    try {
+                      await updateTask.mutateAsync({ id: taskId, due_date: key });
+                      toast.success("Tarefa movida para " + format(d, "dd/MM", { locale: ptBR }));
+                    } catch (err: any) {
+                      toast.error(err?.message ?? "Erro ao mover tarefa");
+                    }
+                    setDraggedTask(null);
+                  }}
                   className={cn("group/cell relative min-h-28 rounded-2xl border border-[#d9d9d9] bg-card/30 backdrop-blur-sm p-2.5 transition-all calendar-card-hover",
                     inMonth ? "opacity-100" : "opacity-30 border-transparent",
                     isToday && "border-primary/50 ring-2 ring-primary/15 bg-primary/5"
