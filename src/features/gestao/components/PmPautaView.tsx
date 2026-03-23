@@ -26,20 +26,22 @@ const STAGE_ABBR: Record<string, string> = {
   design: "DSG",
   edicao_videos: "VDO",
   revisao: "REV",
+  alteracoes: "ALT",
   pdf: "PDF",
   agendamento: "AGN",
   entrega: "OK",
 };
 
-const STAGE_BADGE_BG: Record<string, string> = {
-  captacao: "bg-red-500",
-  planejamento: "bg-blue-500",
-  design: "bg-yellow-500",
-  edicao_videos: "bg-purple-500",
-  revisao: "bg-pink-500",
-  pdf: "bg-indigo-500",
-  agendamento: "bg-violet-500",
-  entrega: "bg-emerald-500",
+const STAGE_BADGE_STYLE: Record<string, { bg: string; fg: string }> = {
+  captacao: { bg: "bg-red-500", fg: "text-white" },
+  planejamento: { bg: "bg-blue-500", fg: "text-white" },
+  design: { bg: "bg-stage-design", fg: "text-stage-foreground-design" },
+  edicao_videos: { bg: "bg-purple-500", fg: "text-white" },
+  revisao: { bg: "bg-pink-500", fg: "text-white" },
+  alteracoes: { bg: "bg-stage-alteracoes", fg: "text-stage-foreground-alteracoes" },
+  pdf: { bg: "bg-indigo-500", fg: "text-white" },
+  agendamento: { bg: "bg-violet-500", fg: "text-white" },
+  entrega: { bg: "bg-emerald-500", fg: "text-white" },
 };
 
 interface Props {
@@ -263,7 +265,7 @@ function PautaTaskCard({ task, clientsMap, membersMap, onTaskClick, onDelete, ex
   expanded?: boolean;
 }) {
   const isDone = task.stage_current === "entrega";
-  const stageBg = STAGE_BADGE_BG[task.stage_current] ?? "bg-muted";
+  const stageTone = STAGE_BADGE_STYLE[task.stage_current] ?? { bg: "bg-muted", fg: "text-foreground" };
   const abbr = STAGE_ABBR[task.stage_current] ?? task.stage_current.toUpperCase().slice(0, 4);
   const member = task.assignee_id ? membersMap[task.assignee_id] : undefined;
   const clientName = clientsMap[task.client_id] ?? "—";
@@ -276,7 +278,7 @@ function PautaTaskCard({ task, clientsMap, membersMap, onTaskClick, onDelete, ex
       )}
     >
       <div className="flex items-center justify-between gap-1">
-        <div className={cn("inline-flex h-5 items-center rounded px-2 text-[10px] font-bold text-white", stageBg)}>
+        <div className={cn("inline-flex h-5 items-center rounded px-2 text-[10px] font-bold", stageTone.bg, stageTone.fg)}>
           {abbr}
         </div>
         <div className="flex items-center gap-1">
@@ -367,7 +369,7 @@ function PautaCreateDialog({ open, onClose, dayKey, clients, members, membersMap
             <Popover>
               <PopoverTrigger asChild>
                 <button className="flex items-center gap-2 h-8 w-full border rounded-md px-3 text-xs hover:bg-accent transition">
-                  <span className={cn("h-3 w-3 rounded-full", STAGE_BADGE_BG[stage] ?? "bg-muted")} />
+                  <span className={cn("h-3 w-3 rounded-full", STAGE_BADGE_STYLE[stage]?.bg ?? "bg-muted")} />
                   {stageLabel(stage)}
                 </button>
               </PopoverTrigger>
