@@ -186,12 +186,39 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
       onDragLeave={handleDragLeave}
     >
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium">Anexos ({attachments.length})</span>
-        <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={upload.isPending}>
-          <Upload className="mr-1 h-3 w-3" /> Upload
+        <span className="text-sm font-medium">
+          Anexos ({attachments.length})
+          {uploadingFiles.length > 0 && (
+            <span className="ml-2 text-xs text-muted-foreground">
+              <Loader2 className="inline h-3 w-3 animate-spin mr-1" />
+              Enviando {uploadingFiles.length} arquivo{uploadingFiles.length > 1 ? 's' : ''}...
+            </span>
+          )}
+        </span>
+        <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploadingFiles.length > 0}>
+          {uploadingFiles.length > 0 ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Upload className="mr-1 h-3 w-3" />}
+          Upload
         </Button>
         <input ref={fileRef} type="file" multiple className="hidden" onChange={handleUpload} />
       </div>
+
+      {/* Upload progress indicators */}
+      {uploadingFiles.length > 0 && (
+        <div className="space-y-2">
+          {uploadingFiles.map((f) => (
+            <div key={f.name} className="rounded-lg border border-border/40 bg-card/50 p-2.5 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium truncate max-w-[70%]">{f.name}</p>
+                <span className="text-[10px] text-muted-foreground">{formatFileSize(f.size)}</span>
+              </div>
+              <Progress value={f.progress} className="h-1.5" />
+              <p className="text-[10px] text-muted-foreground">
+                {f.progress < 100 ? `${f.progress}% enviado...` : "Concluído!"}
+              </p>
+            </div>
+          ))}
+        </div>
+      )
 
       {/* Drop zone overlay */}
       {dragging && !draggedId && (
