@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { PM_ACTIVE_STAGES, getStageCircleColor, stageLabel, tagColor, tagDisplay } from "../pm-constants";
 import { useUpdatePmTask, useCreatePmTask } from "../hooks/use-pm-data";
 import { PmAssigneeSelector } from "./PmAssigneeSelector";
+import { getFixedAssignee, getFixedWatchers, useDefaultFlowWithDates } from "./PmStageFlowConfig";
 import type { PmTask } from "../pm-types";
 
 function initials(n: string) { return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join(""); }
@@ -25,6 +26,7 @@ interface Props {
 export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onSelectSubtask, activeSubtaskId }: Props) {
   const updateTask = useUpdatePmTask();
   const createTask = useCreatePmTask();
+  const { stageAssignees } = useDefaultFlowWithDates();
   const [newTitle, setNewTitle] = useState("");
 
   const done = childTasks.filter(s => s.stage_current === "entrega").length;
@@ -37,7 +39,9 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
       client_id: parentTask.client_id,
       title: newTitle.trim(),
       parent_task_id: parentTask.id,
-      stage_current: "captacao",
+      stage_current: parentTask.stage_current,
+      assignee_id: parentTask.assignee_id ?? undefined,
+      watchers: parentTask.watchers ?? [],
     });
     setNewTitle("");
   };
@@ -61,11 +65,38 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
     ...(sub.watchers ?? []).filter(w => w !== sub.assignee_id),
   ];
 
-  const changeStage = (_subId: string, newStage: string) => {
-    // Sync ALL subtasks + parent to the same stage
-    updateTask.mutate({ id: parentTask.id, stage_current: newStage as any });
+  const changeStage = (subId: string, newStage: string) => {
+    // For "alteracoes", only change the individual subtask (not all siblings)
+    if (newStage === "alteracoes") {
+      const fixedAssignee = getFixedAssignee(stageAssignees, newStage, parentTask.client_id);
+      const fixedWatchers = getFixedWatchers(stageAssignees, newStage, parentTask.client_id);
+      const updates: any = { id: subId, stage_current: newStage as any };
+      if (fixedAssignee !== undefined) {
+        updates.assignee_id = fixedAssignee;
+        updates.watchers = fixedWatchers;
+      }
+      updateTask.mutate(updates);
+      return;
+    }
+
+    // For other stages, sync ALL subtasks + parent
+    const fixedAssignee = getFixedAssignee(stageAssignees, newStage, parentTask.client_id);
+    const fixedWatchers = getFixedWatchers(stageAssignees, newStage, parentTask.client_id);
+    
+    const parentUpdates: any = { id: parentTask.id, stage_current: newStage as any };
+    if (fixedAssignee !== undefined) {
+      parentUpdates.assignee_id = fixedAssignee;
+      parentUpdates.watchers = fixedWatchers;
+    }
+    updateTask.mutate(parentUpdates);
+
     childTasks.forEach(child => {
-      updateTask.mutate({ id: child.id, stage_current: newStage as any });
+      const childUpdates: any = { id: child.id, stage_current: newStage as any };
+      if (fixedAssignee !== undefined) {
+        childUpdates.assignee_id = fixedAssignee;
+        childUpdates.watchers = fixedWatchers;
+      }
+      updateTask.mutate(childUpdates);
     });
   };
 
