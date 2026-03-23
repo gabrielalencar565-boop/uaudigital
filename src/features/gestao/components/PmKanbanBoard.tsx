@@ -21,6 +21,7 @@ const KANBAN_COLUMNS = [
   { key: "design", label: "Design" },
   { key: "edicao_videos", label: "Vídeo" },
   { key: "revisao", label: "Revisão" },
+  { key: "alteracoes", label: "Alteração" },
   { key: "pdf", label: "PDF" },
   { key: "agendamento", label: "Agendamento" },
   { key: "entrega", label: "Concluído" },

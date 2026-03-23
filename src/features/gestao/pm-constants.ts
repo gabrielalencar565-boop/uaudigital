@@ -95,13 +95,13 @@ export function subtaskStatusMeta(key: string) {
 export const STAGE_CIRCLE_COLORS: Record<string, { border: string; bg: string; text: string }> = {
   captacao: { border: "border-red-500", bg: "bg-red-500", text: "text-red-500" },
   planejamento: { border: "border-orange-500", bg: "bg-orange-500", text: "text-orange-500" },
-  design: { border: "border-yellow-500", bg: "bg-yellow-500", text: "text-yellow-500" },
+  design: { border: "border-teal-500", bg: "bg-teal-500", text: "text-teal-500" },
   edicao_videos: { border: "border-blue-500", bg: "bg-blue-500", text: "text-blue-500" },
   revisao: { border: "border-pink-500", bg: "bg-pink-500", text: "text-pink-500" },
+  alteracoes: { border: "border-yellow-400", bg: "bg-yellow-400", text: "text-yellow-400" },
   pdf: { border: "border-indigo-500", bg: "bg-indigo-500", text: "text-indigo-500" },
   agendamento: { border: "border-violet-500", bg: "bg-violet-500", text: "text-violet-500" },
   entrega: { border: "border-emerald-500", bg: "bg-emerald-500", text: "text-emerald-500" },
-  alteracoes: { border: "border-red-600", bg: "bg-red-600", text: "text-red-600" },
 };
 
 export function getStageCircleColor(key: string) {
