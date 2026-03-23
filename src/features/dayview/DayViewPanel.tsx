@@ -106,6 +106,45 @@ export function DayViewPanel() {
     },
   });
 
+  // ─── PM tasks (Gestão) for agenda sync ───
+  const pmTasksQ = useQuery({
+    queryKey: ["pm_tasks_for_dayview", monthKey],
+    queryFn: async () => {
+      const startDate = `${monthKey}-01`;
+      const endDate = `${monthKey}-31`;
+      const { data, error } = await supabase
+        .from("pm_tasks")
+        .select("id, title, client_id, assignee_id, watchers, due_date, stage_current, status_global, is_extra_demand, parent_task_id")
+        .is("parent_task_id", null)
+        .gte("due_date", startDate)
+        .lte("due_date", endDate);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  // ─── PM child tasks count per parent ───
+  const pmChildCountQ = useQuery({
+    queryKey: ["pm_child_count_for_dayview", monthKey],
+    queryFn: async () => {
+      const parentIds = (pmTasksQ.data ?? []).map(t => t.id);
+      if (!parentIds.length) return new Map<string, number>();
+      const { data, error } = await supabase
+        .from("pm_tasks")
+        .select("parent_task_id")
+        .in("parent_task_id", parentIds);
+      if (error) throw error;
+      const counts = new Map<string, number>();
+      for (const row of data ?? []) {
+        if (row.parent_task_id) {
+          counts.set(row.parent_task_id, (counts.get(row.parent_task_id) ?? 0) + 1);
+        }
+      }
+      return counts;
+    },
+    enabled: (pmTasksQ.data ?? []).length > 0,
+  });
+
   // ─── Cleaning ───
   const cleaningSchedulesQ = useCleaningSchedules();
   const cleaningCategoriesQ = useCleaningCategories();
@@ -332,9 +371,58 @@ export function DayViewPanel() {
     [cleaningCompletionsQ.data]
   );
 
+  // ─── Normalize pm_tasks into a compatible shape for display ───
+  type UnifiedTask = {
+    id: string;
+    client_id: string;
+    assigned_user_id: string;
+    due_date: string;
+    status: string;
+    stage: string;
+    title: string | null;
+    is_extra_demand: boolean;
+    completed_at: string | null;
+    source: "agenda" | "pm";
+    subtaskCount?: number;
+  };
+
+  const unifiedTasks = useMemo(() => {
+    const agendaTasks: UnifiedTask[] = (tasksQ.data ?? []).map(t => ({
+      ...t,
+      source: "agenda" as const,
+    }));
+
+    // pm_tasks that DON'T have a snapshot in the agenda tasks (avoid duplicates)
+    const agendaDescriptions = new Set(agendaTasks.map(t => t.title).filter(Boolean));
+    const childCounts = pmChildCountQ.data ?? new Map<string, number>();
+    
+    const pmTasks: UnifiedTask[] = (pmTasksQ.data ?? [])
+      .filter(t => {
+        // Skip if there's already an agenda snapshot for this pm_task
+        const pmDesc = `pm:${t.id}:`;
+        return !(tasksQ.data ?? []).some(at => at.description?.startsWith(pmDesc));
+      })
+      .map(t => ({
+        id: `pm_${t.id}`,
+        client_id: t.client_id,
+        assigned_user_id: t.assignee_id ?? "",
+        due_date: t.due_date ?? "",
+        status: t.status_global === "concluido" ? "concluido" : "pendente",
+        stage: t.stage_current,
+        title: t.title,
+        is_extra_demand: t.is_extra_demand,
+        completed_at: null,
+        source: "pm" as const,
+        subtaskCount: childCounts.get(t.id) ?? 0,
+      }));
+
+    return [...agendaTasks, ...pmTasks];
+  }, [tasksQ.data, pmTasksQ.data, pmChildCountQ.data]);
+
   // Tarefas de hoje (exceto concluídas - elas vão separadas)
   const todayPendingTasks = useMemo(() => {
-    const tasks = (tasksQ.data ?? []).filter((t) => {
+    const tasks = unifiedTasks.filter((t) => {
+      if (!t.due_date) return false;
       if (!isCurrentMonth) return t.status !== "concluido";
       return t.due_date === todayKey && t.status !== "concluido";
     });
@@ -346,11 +434,12 @@ export function DayViewPanel() {
       const nb = teamByUserId.get(b.assigned_user_id)?.display_name ?? "";
       return na.localeCompare(nb);
     });
-  }, [tasksQ.data, todayKey, teamByUserId, isCurrentMonth]);
+  }, [unifiedTasks, todayKey, teamByUserId, isCurrentMonth]);
 
   // Tarefas concluídas de hoje
   const todayCompletedTasks = useMemo(() => {
-    const tasks = (tasksQ.data ?? []).filter((t) => {
+    const tasks = unifiedTasks.filter((t) => {
+      if (!t.due_date) return false;
       if (!isCurrentMonth) return t.status === "concluido";
       return t.due_date === todayKey && t.status === "concluido";
     });
@@ -359,12 +448,12 @@ export function DayViewPanel() {
       const nb = teamByUserId.get(b.assigned_user_id)?.display_name ?? "";
       return na.localeCompare(nb);
     });
-  }, [tasksQ.data, todayKey, teamByUserId, isCurrentMonth]);
+  }, [unifiedTasks, todayKey, teamByUserId, isCurrentMonth]);
   const overdueTasks = useMemo(() => {
-    return (tasksQ.data ?? []).filter((t) => t.status !== "concluido" && t.due_date < todayKey).sort((a, b) => a.due_date.localeCompare(b.due_date));
-  }, [tasksQ.data, todayKey]);
-  const completedTasksCount = useMemo(() => (tasksQ.data ?? []).filter((t) => t.status === "concluido").length, [tasksQ.data]);
-  const totalTasks = tasksQ.data?.length ?? 0;
+    return unifiedTasks.filter((t) => t.status !== "concluido" && t.due_date && t.due_date < todayKey).sort((a, b) => a.due_date.localeCompare(b.due_date));
+  }, [unifiedTasks, todayKey]);
+  const completedTasksCount = useMemo(() => unifiedTasks.filter((t) => t.status === "concluido").length, [unifiedTasks]);
+  const totalTasks = unifiedTasks.length + (pmChildCountQ.data ? Array.from(pmChildCountQ.data.values()).reduce((a, b) => a + b, 0) : 0);
 
   // Navegação rápida para hoje
   const goToToday = () => {
@@ -624,6 +713,7 @@ export function DayViewPanel() {
                         <p className="text-sm font-semibold truncate text-destructive-foreground">
                           {displayMembers.length > 1 ? displayMembers.map((m) => m.display_name).join(", ") : person?.display_name}
                           {" "}•{" "}({resolveClientName(t)}) • {stageLabel}
+                          {t.subtaskCount ? ` (${t.subtaskCount} sub)` : ""}
                         </p>
                       </div>
                       <span className="text-sm font-bold text-destructive-foreground shrink-0">
@@ -680,6 +770,7 @@ export function DayViewPanel() {
                         <p className="text-sm font-semibold truncate">
                           {displayMembers.length > 1 ? displayMembers.map((m) => m.display_name).join(", ") : person?.display_name}
                           {" "}•{" "}({resolveClientName(t)}) • {stageLabel}
+                          {t.subtaskCount ? ` (${t.subtaskCount} sub)` : ""}
                         </p>
                       </div>
                       <Badge variant={t.status === "em_andamento" ? "warning" : "secondary"} className="text-xs shrink-0">
@@ -734,6 +825,7 @@ export function DayViewPanel() {
                         <p className="text-sm font-semibold truncate text-success-foreground">
                           {displayMembers.length > 1 ? displayMembers.map((m) => m.display_name).join(", ") : person?.display_name}
                           {" "}•{" "}({resolveClientName(t)}) • {stageLabel}
+                          {t.subtaskCount ? ` (${t.subtaskCount} sub)` : ""}
                         </p>
                       </div>
                       <span className="text-sm font-bold text-success-foreground shrink-0">

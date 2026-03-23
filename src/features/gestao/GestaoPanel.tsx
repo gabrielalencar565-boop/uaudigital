@@ -33,6 +33,7 @@ import { AgendaQuickCreateDialog } from "./components/AgendaQuickCreateDialog";
 import { useAgendaSpecialDates } from "@/features/agenda/hooks/use-agenda-dates";
 import { getIconById } from "@/features/agenda/components/IconPicker";
 import { AgendaReportsPanel } from "@/features/agenda/components/AgendaReportsPanel";
+import { TaskTrashPanel } from "@/features/agenda/components/TaskTrashPanel";
 function initials(n: string) {
   return n.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("");
 }
@@ -399,6 +400,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
 }) {
   const isMobile = useIsMobile();
   const deleteTask = useDeletePmTask();
+  const updateTask = useUpdatePmTask();
   const [moreOpen, setMoreOpen] = useState(false);
   const [moreDayKey, setMoreDayKey] = useState<string | null>(null);
   const [agendaView, setAgendaView] = useState<"month" | "week">("month");
@@ -406,7 +408,8 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
   const [quickCreateOpen, setQuickCreateOpen] = useState(false);
   const [quickCreateDate, setQuickCreateDate] = useState<string | undefined>();
   const [reportOpen, setReportOpen] = useState(false);
-  const [reportDefaultTab, setReportDefaultTab] = useState("trash");
+  const [trashOpen, setTrashOpen] = useState(false);
+  const [draggedTask, setDraggedTask] = useState<PmTask | null>(null);
 
   const todayKey = format(new Date(), "yyyy-MM-dd");
 
@@ -537,7 +540,13 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
     return (
       <div
         key={t.id}
-        className="w-full rounded-xl border border-border/20 bg-card/60 backdrop-blur-sm p-2 text-left transition-all hover:bg-card hover:shadow-sm hover:-translate-y-0.5 cursor-pointer group/card"
+        draggable
+        onDragStart={(e) => {
+          e.dataTransfer.setData("text/plain", t.id);
+          setDraggedTask(t);
+        }}
+        onDragEnd={() => setDraggedTask(null)}
+        className="w-full rounded-xl border border-border/20 bg-card/60 backdrop-blur-sm p-2 text-left transition-all hover:bg-card hover:shadow-sm hover:-translate-y-0.5 cursor-grab active:cursor-grabbing group/card"
         onClick={() => onTaskClick(t)}>
         <div className="flex items-center justify-between gap-1">
           <div className={cn("inline-flex h-5 items-center rounded-md px-2 text-[9px] font-bold text-white tracking-wide", stageBg)}>
@@ -623,20 +632,29 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
 
         <div className="flex items-center gap-2">
           {isAdmin && (
-            <Button variant="outline" size="sm" onClick={() => { setReportDefaultTab("dates"); setReportOpen(true); }} className="gap-2 rounded-xl">
+            <Button variant="outline" size="sm" onClick={() => setReportOpen(true)} className="gap-2 rounded-xl">
               <FileText className="h-4 w-4" /> Relatório
             </Button>
           )}
-          <Button variant="outline" size="sm" onClick={() => { setReportDefaultTab("trash"); setReportOpen(true); }} className="gap-2 rounded-xl">
+          <Button variant="outline" size="sm" onClick={() => setTrashOpen(true)} className="gap-2 rounded-xl">
             <Trash2 className="h-4 w-4" /> Lixeira
           </Button>
         </div>
       </div>
 
-      {/* Dialog de relatórios & lixeira */}
-      <Dialog open={reportOpen} onOpenChange={setReportOpen}>
+      {/* Dialog de relatórios (admin only) */}
+      {isAdmin && (
+        <Dialog open={reportOpen} onOpenChange={setReportOpen}>
+          <DialogContent className="max-w-2xl max-h-[80vh] p-0 overflow-hidden">
+            <AgendaReportsPanel onClose={() => setReportOpen(false)} isAdmin={isAdmin} />
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Dialog de lixeira */}
+      <Dialog open={trashOpen} onOpenChange={setTrashOpen}>
         <DialogContent className="max-w-2xl max-h-[80vh] p-0 overflow-hidden">
-          <AgendaReportsPanel onClose={() => setReportOpen(false)} isAdmin={isAdmin} defaultTab={reportDefaultTab} />
+          <TaskTrashPanel onClose={() => setTrashOpen(false)} />
         </DialogContent>
       </Dialog>
 
@@ -782,6 +800,21 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
               return (
                 <div
                   key={key}
+                  onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add("ring-2", "ring-primary/40"); }}
+                  onDragLeave={(e) => { e.currentTarget.classList.remove("ring-2", "ring-primary/40"); }}
+                  onDrop={async (e) => {
+                    e.preventDefault();
+                    e.currentTarget.classList.remove("ring-2", "ring-primary/40");
+                    const taskId = e.dataTransfer.getData("text/plain");
+                    if (!taskId || !inMonth) return;
+                    try {
+                      await updateTask.mutateAsync({ id: taskId, due_date: key });
+                      toast.success("Tarefa movida para " + format(d, "dd/MM", { locale: ptBR }));
+                    } catch (err: any) {
+                      toast.error(err?.message ?? "Erro ao mover tarefa");
+                    }
+                    setDraggedTask(null);
+                  }}
                   className={cn("group/cell relative min-h-28 rounded-2xl border border-[#d9d9d9] bg-card/30 backdrop-blur-sm p-2.5 transition-all calendar-card-hover",
                     inMonth ? "opacity-100" : "opacity-30 border-transparent",
                     isToday && "border-primary/50 ring-2 ring-primary/15 bg-primary/5"
