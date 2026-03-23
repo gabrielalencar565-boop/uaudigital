@@ -713,7 +713,8 @@ export function DayViewPanel() {
                         <p className="text-sm font-semibold truncate text-destructive-foreground">
                           {displayMembers.length > 1 ? displayMembers.map((m) => m.display_name).join(", ") : person?.display_name}
                           {" "}•{" "}({resolveClientName(t)}) • {stageLabel}
-                          {t.subtaskCount ? ` (${t.subtaskCount} sub)` : ""}
+
+
                         </p>
                       </div>
                       <span className="text-sm font-bold text-destructive-foreground shrink-0">
@@ -770,7 +771,8 @@ export function DayViewPanel() {
                         <p className="text-sm font-semibold truncate">
                           {displayMembers.length > 1 ? displayMembers.map((m) => m.display_name).join(", ") : person?.display_name}
                           {" "}•{" "}({resolveClientName(t)}) • {stageLabel}
-                          {t.subtaskCount ? ` (${t.subtaskCount} sub)` : ""}
+
+
                         </p>
                       </div>
                       <Badge variant={t.status === "em_andamento" ? "warning" : "secondary"} className="text-xs shrink-0">
@@ -825,7 +827,7 @@ export function DayViewPanel() {
                         <p className="text-sm font-semibold truncate text-success-foreground">
                           {displayMembers.length > 1 ? displayMembers.map((m) => m.display_name).join(", ") : person?.display_name}
                           {" "}•{" "}({resolveClientName(t)}) • {stageLabel}
-                          {t.subtaskCount ? ` (${t.subtaskCount} sub)` : ""}
+                          
                         </p>
                       </div>
                       <span className="text-sm font-bold text-success-foreground shrink-0">
