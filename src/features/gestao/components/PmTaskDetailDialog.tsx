@@ -529,23 +529,54 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
   const handleAlteracao = () => {
     // Set stage to "alteracoes" — keeps agenda checked, shows yellow widget
+    // Auto-assign to Design or Vídeo responsible (the stage before revisão)
     const updates: any = { id: task.id, stage_current: "alteracoes" as any };
-    const fixedAssignee = getFixedAssignee(stageAssignees, "alteracoes", task.client_id);
-    const fixedWatchers = getFixedWatchers(stageAssignees, "alteracoes", task.client_id);
+    // Try to find the responsible from design or edicao_videos for auto-assignment
+    const designAssignee = getFixedAssignee(stageAssignees, "design", task.client_id);
+    const videoAssignee = getFixedAssignee(stageAssignees, "edicao_videos", task.client_id);
+    const alteracaoAssignee = getFixedAssignee(stageAssignees, "alteracoes", task.client_id);
+    // Priority: alteracoes config > design > video
+    const targetAssignee = alteracaoAssignee !== undefined ? alteracaoAssignee : (designAssignee !== undefined ? designAssignee : videoAssignee);
+    const targetWatchers = alteracaoAssignee !== undefined
+      ? getFixedWatchers(stageAssignees, "alteracoes", task.client_id)
+      : (designAssignee !== undefined
+        ? getFixedWatchers(stageAssignees, "design", task.client_id)
+        : getFixedWatchers(stageAssignees, "edicao_videos", task.client_id));
+    if (targetAssignee !== undefined) {
+      updates.assignee_id = targetAssignee;
+      updates.watchers = targetWatchers;
+    }
+    updateTask.mutate(updates);
+    for (const child of childTasks) {
+      const childUpdates: any = { id: child.id, stage_current: "alteracoes" as any };
+      if (targetAssignee !== undefined) {
+        childUpdates.assignee_id = targetAssignee;
+        childUpdates.watchers = targetWatchers;
+      }
+      updateTask.mutate(childUpdates);
+    }
+    toast.success("Tarefa enviada para Alteração");
+  };
+
+  const handleReturnFromAlteracao = () => {
+    // Return from alteracoes back to revisão — no scoring impact
+    const updates: any = { id: task.id, stage_current: "revisao" as any };
+    const fixedAssignee = getFixedAssignee(stageAssignees, "revisao", task.client_id);
+    const fixedWatchers = getFixedWatchers(stageAssignees, "revisao", task.client_id);
     if (fixedAssignee !== undefined) {
       updates.assignee_id = fixedAssignee;
       updates.watchers = fixedWatchers;
     }
     updateTask.mutate(updates);
     for (const child of childTasks) {
-      const childUpdates: any = { id: child.id, stage_current: "alteracoes" as any };
+      const childUpdates: any = { id: child.id, stage_current: "revisao" as any };
       if (fixedAssignee !== undefined) {
         childUpdates.assignee_id = fixedAssignee;
         childUpdates.watchers = fixedWatchers;
       }
       updateTask.mutate(childUpdates);
     }
-    toast.success("Tarefa marcada para Alteração");
+    toast.success("Ajuste concluído — retornou para Revisão");
   };
 
   const saveTitle = () => {
@@ -788,13 +819,31 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         </div>
 
         {/* ── Concluído / Alteração action buttons ── */}
+        {task.stage_current === "alteracoes" && (
+          <div className="flex items-center gap-2 pt-2">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-red-600/10 border border-red-600/30 text-red-500 text-xs font-semibold">
+              <RotateCcw className="h-3.5 w-3.5" /> Em Alteração
+            </div>
+            <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={handleReturnFromAlteracao}>
+              <CheckCircle2 className="h-4 w-4" /> Ajuste Concluído
+            </Button>
+            {/* Revert button */}
+            <Button size="sm" variant="outline" className="gap-1.5 text-muted-foreground border-border/40 hover:bg-muted/60" onClick={handleRevert}>
+              <RotateCcw className="h-3.5 w-3.5" /> Reverter
+            </Button>
+          </div>
+        )}
+
+        {task.stage_current !== "alteracoes" && (
         <div className="flex items-center gap-2 pt-2">
           {!isDone ? (
             <>
               <Popover open={stageChoiceOpen} onOpenChange={setStageChoiceOpen}>
                 <PopoverTrigger asChild>
               <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={handleConcluido}>
-                    <CheckCircle2 className="h-4 w-4" /> Concluído <ChevronRight className="h-3.5 w-3.5" />
+                    <CheckCircle2 className="h-4 w-4" />
+                    {task.stage_current === "revisao" ? "Aprovar e seguir fluxo" : "Concluído"}
+                    <ChevronRight className="h-3.5 w-3.5" />
                   </Button>
                 </PopoverTrigger>
                 {stageChoiceOptions.length > 1 && (
@@ -855,9 +904,12 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
             </Badge>
           )}
 
-          <Button size="sm" variant="outline" className="gap-1.5 text-amber-500 border-amber-500/30 hover:bg-amber-500/10" onClick={handleAlteracao}>
-            <RotateCcw className="h-3.5 w-3.5" /> Alteração
-          </Button>
+          {/* Enviar para Alteração — only from Revisão */}
+          {task.stage_current === "revisao" && (
+            <Button size="sm" variant="outline" className="gap-1.5 text-red-500 border-red-500/30 hover:bg-red-500/10" onClick={handleAlteracao}>
+              <RotateCcw className="h-3.5 w-3.5" /> Enviar para Alteração
+            </Button>
+          )}
 
           {/* Revert button — go back to previous stage */}
           {!isDone && task.stage_current !== "captacao" && (
@@ -866,6 +918,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
             </Button>
           )}
         </div>
+        )}
 
         {/* Description */}
         <div className="border-t border-border/20 pt-4">

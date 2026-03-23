@@ -101,7 +101,7 @@ export const STAGE_CIRCLE_COLORS: Record<string, { border: string; bg: string; t
   pdf: { border: "border-indigo-500", bg: "bg-indigo-500", text: "text-indigo-500" },
   agendamento: { border: "border-violet-500", bg: "bg-violet-500", text: "text-violet-500" },
   entrega: { border: "border-emerald-500", bg: "bg-emerald-500", text: "text-emerald-500" },
-  alteracoes: { border: "border-amber-500", bg: "bg-amber-500", text: "text-amber-500" },
+  alteracoes: { border: "border-red-600", bg: "bg-red-600", text: "text-red-600" },
 };
 
 export function getStageCircleColor(key: string) {

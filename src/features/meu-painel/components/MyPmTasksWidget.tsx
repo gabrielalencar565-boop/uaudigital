@@ -280,10 +280,10 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
     <div className="space-y-3">
       {/* Alert for tasks in Alterações */}
       {alteracoesTasks.length > 0 && (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
+        <div className="rounded-xl border border-red-600/30 bg-red-600/10 p-4">
           <div className="flex items-center gap-2 mb-2">
-            <AlertTriangle className="h-5 w-5 text-amber-500" />
-            <span className="text-sm font-semibold text-amber-500">
+            <AlertTriangle className="h-5 w-5 text-red-500" />
+            <span className="text-sm font-semibold text-red-500">
               {alteracoesTasks.length} {alteracoesTasks.length === 1 ? "tarefa" : "tarefas"} em Alteração
             </span>
           </div>
@@ -293,9 +293,9 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
                 key={t.id}
                 type="button"
                 onClick={() => onOpenTask(t.id)}
-                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition hover:bg-amber-500/10"
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition hover:bg-red-600/10"
               >
-                <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-amber-500" />
+                <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-red-600" />
                 <span className="truncate font-medium text-foreground">{t.title}</span>
                 <span className="ml-auto text-xs text-muted-foreground">{clientsMap[t.client_id] ?? ""}</span>
               </button>
