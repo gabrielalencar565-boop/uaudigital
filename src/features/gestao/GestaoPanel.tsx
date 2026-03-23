@@ -380,7 +380,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
 }
 
 // ─── Agenda Calendar View (matches main Agenda module) ───
-function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTaskClick, filterClient, filterAssignee, search, cursor, setCursor, fixedAssigneeClientIds, clients, members }: {
+function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTaskClick, filterClient, filterAssignee, search, cursor, setCursor, fixedAssigneeClientIds, clients, members, isAdmin }: {
   tasks: PmTask[];
   clientsMap: Record<string, string>;
   membersMap: Record<string, { name: string; avatar?: string }>;
@@ -394,6 +394,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
   fixedAssigneeClientIds: Set<string>;
   clients: { id: string; name: string }[];
   members: { id: string; name: string }[];
+  isAdmin: boolean;
 }) {
   const isMobile = useIsMobile();
   const deleteTask = useDeletePmTask();
@@ -403,6 +404,8 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [quickCreateOpen, setQuickCreateOpen] = useState(false);
   const [quickCreateDate, setQuickCreateDate] = useState<string | undefined>();
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportDefaultTab, setReportDefaultTab] = useState("trash");
 
   const todayKey = format(new Date(), "yyyy-MM-dd");
 
