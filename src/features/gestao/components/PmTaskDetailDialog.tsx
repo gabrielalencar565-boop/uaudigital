@@ -321,31 +321,58 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         });
       }
     } else {
-      // No linked task: advance directly to next stage
+      // No linked task: snapshot current as completed, CREATE new task for next stage
+      const snapshotDueDate = task.due_date ?? format(new Date(), "yyyy-MM-dd");
+      
+      // 1) Mark current task as completed at current stage (stays in agenda as done)
+      updateTask.mutate({
+        id: task.id,
+        stage_current: completedStage as any,
+        status_global: "concluido" as any,
+        due_date: snapshotDueDate,
+      });
+      for (const child of childTasks) {
+        updateTask.mutate({
+          id: child.id,
+          stage_current: completedStage as any,
+          status_global: "concluido" as any,
+        });
+      }
+
+      // 2) Create a new task for the next stage
       const fixedAssignee = getFixedAssignee(stageAssignees, nextStage, task.client_id);
       const fixedWatchers = getFixedWatchers(stageAssignees, nextStage, task.client_id);
-      const updates: any = {
-        id: task.id,
-        stage_current: nextStage as any,
-        due_date: newDueDate ?? task.due_date,
-      };
-      if (fixedAssignee !== undefined) {
-        updates.assignee_id = fixedAssignee;
-        updates.watchers = fixedWatchers;
-      }
-      updateTask.mutate(updates);
+      const nextDueDate = newDueDate ?? format(addDays(new Date(snapshotDueDate + "T12:00:00"), 1), "yyyy-MM-dd");
 
-      for (const child of childTasks) {
-        const childUpdates: any = {
-          id: child.id,
-          stage_current: nextStage as any,
-        };
-        if (fixedAssignee !== undefined) {
-          childUpdates.assignee_id = fixedAssignee;
-          childUpdates.watchers = fixedWatchers;
+      createTask.mutateAsync({
+        client_id: task.client_id,
+        title: task.title,
+        description: task.description ?? undefined,
+        stage_current: nextStage,
+        due_date: nextDueDate,
+        assignee_id: fixedAssignee !== undefined ? (fixedAssignee ?? undefined) : (task.assignee_id ?? undefined),
+        watchers: fixedAssignee !== undefined ? fixedWatchers : (task.watchers ?? []),
+        priority: task.priority,
+        project_id: task.project_id ?? undefined,
+        tags: task.tags ?? [],
+        is_extra_demand: task.is_extra_demand,
+        status_global: "backlog",
+      }).then((newTask) => {
+        // 3) Transfer children to the new task
+        for (const child of childTasks) {
+          const childUpdates: any = {
+            id: child.id,
+            parent_task_id: newTask.id,
+            stage_current: nextStage as any,
+            status_global: "backlog" as any,
+          };
+          if (fixedAssignee !== undefined) {
+            childUpdates.assignee_id = fixedAssignee;
+            childUpdates.watchers = fixedWatchers;
+          }
+          updateTask.mutate(childUpdates as any);
         }
-        updateTask.mutate(childUpdates);
-      }
+      });
     }
 
     // Skip scoring when completing from "alteracoes" — it was already scored before
