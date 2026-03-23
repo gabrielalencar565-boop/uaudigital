@@ -32,6 +32,7 @@ import { toast } from "sonner";
 import { AgendaQuickCreateDialog } from "./components/AgendaQuickCreateDialog";
 import { useAgendaSpecialDates } from "@/features/agenda/hooks/use-agenda-dates";
 import { getIconById } from "@/features/agenda/components/IconPicker";
+import { AgendaReportsPanel } from "@/features/agenda/components/AgendaReportsPanel";
 function initials(n: string) {
   return n.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("");
 }
