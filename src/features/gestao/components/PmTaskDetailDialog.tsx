@@ -527,31 +527,54 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     setPendingDueDate(undefined);
   };
 
-  const handleAlteracao = () => {
-    // Set stage to "alteracoes" — keeps agenda checked, shows yellow widget
-    // Auto-assign to Design or Vídeo responsible (the stage before revisão)
+  const handleAlteracao = async () => {
+    // Find who completed design or video by looking at the snapshot task
+    const sb = supabase as any;
+    let snapshotAssignee: string | null = null;
+    let snapshotWatchers: string[] = [];
+
+    // Look for the completed snapshot of design or edicao_videos for this task's client+title
+    for (const stage of ["design", "edicao_videos"]) {
+      const { data: snapshot } = await sb
+        .from("pm_tasks")
+        .select("assignee_id, watchers")
+        .eq("client_id", task.client_id)
+        .eq("title", task.title)
+        .eq("stage_current", stage)
+        .eq("status_global", "concluido")
+        .order("updated_at", { ascending: false })
+        .limit(1);
+      if (snapshot && snapshot.length > 0 && snapshot[0].assignee_id) {
+        snapshotAssignee = snapshot[0].assignee_id;
+        snapshotWatchers = snapshot[0].watchers ?? [];
+        break;
+      }
+    }
+
+    // Fallback to flow config if no snapshot found
+    if (!snapshotAssignee) {
+      const designAssignee = getFixedAssignee(stageAssignees, "design", task.client_id);
+      const videoAssignee = getFixedAssignee(stageAssignees, "edicao_videos", task.client_id);
+      const alteracaoAssignee = getFixedAssignee(stageAssignees, "alteracoes", task.client_id);
+      snapshotAssignee = (alteracaoAssignee !== undefined ? alteracaoAssignee : (designAssignee !== undefined ? designAssignee : (videoAssignee ?? null))) as string | null;
+      snapshotWatchers = alteracaoAssignee !== undefined
+        ? getFixedWatchers(stageAssignees, "alteracoes", task.client_id)
+        : (designAssignee !== undefined
+          ? getFixedWatchers(stageAssignees, "design", task.client_id)
+          : getFixedWatchers(stageAssignees, "edicao_videos", task.client_id));
+    }
+
     const updates: any = { id: task.id, stage_current: "alteracoes" as any };
-    // Try to find the responsible from design or edicao_videos for auto-assignment
-    const designAssignee = getFixedAssignee(stageAssignees, "design", task.client_id);
-    const videoAssignee = getFixedAssignee(stageAssignees, "edicao_videos", task.client_id);
-    const alteracaoAssignee = getFixedAssignee(stageAssignees, "alteracoes", task.client_id);
-    // Priority: alteracoes config > design > video
-    const targetAssignee = alteracaoAssignee !== undefined ? alteracaoAssignee : (designAssignee !== undefined ? designAssignee : videoAssignee);
-    const targetWatchers = alteracaoAssignee !== undefined
-      ? getFixedWatchers(stageAssignees, "alteracoes", task.client_id)
-      : (designAssignee !== undefined
-        ? getFixedWatchers(stageAssignees, "design", task.client_id)
-        : getFixedWatchers(stageAssignees, "edicao_videos", task.client_id));
-    if (targetAssignee !== undefined) {
-      updates.assignee_id = targetAssignee;
-      updates.watchers = targetWatchers;
+    if (snapshotAssignee) {
+      updates.assignee_id = snapshotAssignee;
+      updates.watchers = snapshotWatchers;
     }
     updateTask.mutate(updates);
     for (const child of childTasks) {
       const childUpdates: any = { id: child.id, stage_current: "alteracoes" as any };
-      if (targetAssignee !== undefined) {
-        childUpdates.assignee_id = targetAssignee;
-        childUpdates.watchers = targetWatchers;
+      if (snapshotAssignee) {
+        childUpdates.assignee_id = snapshotAssignee;
+        childUpdates.watchers = snapshotWatchers;
       }
       updateTask.mutate(childUpdates);
     }
