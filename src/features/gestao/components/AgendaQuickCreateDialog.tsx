@@ -97,7 +97,7 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
     // Build title
     let title: string;
     if (isExtra) {
-      title = customTitle.trim() || `[${clientName}] - ${stageLabel}`;
+      title = customTitle.trim() || `[${clientName}] - ${stageLabel} - Extra`;
     } else {
       const m = parseInt(monthRef, 10);
       const monthLabel = MONTH_LABELS[m - 1] ?? "";
