@@ -268,16 +268,7 @@ export function useDeletePmTask() {
         }
       }
 
-      // Delete agenda snapshots (concluído copies created by advanceStage)
-      if (taskInfo) {
-        await sb
-          .from("pm_tasks")
-          .delete()
-          .eq("client_id", taskInfo.client_id)
-          .eq("title", taskInfo.title)
-          .eq("status_global", "concluido")
-          .neq("id", id);
-      }
+      // NOTE: Do NOT delete previous snapshot tasks — they represent completed history in the agenda
 
       const { error } = await sb.from("pm_tasks").delete().eq("id", id);
       if (error) throw error;

@@ -333,9 +333,19 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       const fixedWatchers = getFixedWatchers(stageAssignees, nextStage, task.client_id);
       const nextDueDate = newDueDate ?? format(addDays(new Date(snapshotDueDate + "T12:00:00"), 1), "yyyy-MM-dd");
 
+      // Build new title replacing the stage portion
+      const nextStageLabel = stageLabel(nextStage);
+      const currentStageLabel = stageLabel(completedStage);
+      let newTitle = task.title;
+      if (task.title.includes(` - ${currentStageLabel} - `)) {
+        newTitle = task.title.replace(` - ${currentStageLabel} - `, ` - ${nextStageLabel} - `);
+      } else if (task.title.includes(` - ${currentStageLabel}`)) {
+        newTitle = task.title.replace(` - ${currentStageLabel}`, ` - ${nextStageLabel}`);
+      }
+
       createTask.mutateAsync({
         client_id: task.client_id,
-        title: task.title,
+        title: newTitle,
         description: task.description ?? undefined,
         stage_current: nextStage,
         due_date: nextDueDate,

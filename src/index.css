@@ -56,7 +56,7 @@ All colors MUST be HSL.
     --stage-design-foreground: 0 0% 100%;
     --stage-pdf: 46 96% 56%;
     --stage-pdf-foreground: 228 36% 8%;
-    --stage-alteracoes: 47 72% 60%;
+    --stage-alteracoes: 48 100% 50%;
     --stage-alteracoes-foreground: 0 0% 0%;
     --stage-agendamento: 125 51% 51%;
     --stage-agendamento-foreground: 210 40% 98%;
@@ -213,7 +213,7 @@ All colors MUST be HSL.
     --stage-design-foreground: 0 0% 100%;
     --stage-pdf: 46 96% 62%;
     --stage-pdf-foreground: 222 27% 5.5%;
-    --stage-alteracoes: 47 72% 60%;
+    --stage-alteracoes: 48 100% 50%;
     --stage-alteracoes-foreground: 0 0% 0%;
     --stage-agendamento: 160 68% 52%;
     --stage-agendamento-foreground: 0 0% 100%;

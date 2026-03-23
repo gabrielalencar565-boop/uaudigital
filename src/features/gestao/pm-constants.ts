@@ -98,7 +98,7 @@ export const STAGE_CIRCLE_COLORS: Record<string, { border: string; bg: string; t
   design: { border: "border-teal-500", bg: "bg-teal-500", text: "text-teal-500" },
   edicao_videos: { border: "border-blue-500", bg: "bg-blue-500", text: "text-blue-500" },
   revisao: { border: "border-pink-500", bg: "bg-pink-500", text: "text-pink-500" },
-  alteracoes: { border: "border-[#E5C94E]", bg: "bg-[#E5C94E]", text: "text-[#E5C94E]" },
+  alteracoes: { border: "border-[#ffcc01]", bg: "bg-[#ffcc01]", text: "text-[#ffcc01]" },
   pdf: { border: "border-indigo-500", bg: "bg-indigo-500", text: "text-indigo-500" },
   agendamento: { border: "border-violet-500", bg: "bg-violet-500", text: "text-violet-500" },
   entrega: { border: "border-emerald-500", bg: "bg-emerald-500", text: "text-emerald-500" },

@@ -295,14 +295,21 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
     <div className="space-y-3">
       {/* Alert for tasks in Alterações */}
       {alteracoesParents.length > 0 && (
-        <div className="rounded-xl border p-4" style={{ borderColor: '#E5C94E', backgroundColor: '#E5C94E' }}>
-          <div className="flex items-center gap-2 mb-2">
-            <AlertTriangle className="h-5 w-5 text-black" />
-            <span className="text-sm font-semibold text-black">
-              {alteracoesParents.length} {alteracoesParents.length === 1 ? "tarefa" : "tarefas"} em Alteração
-            </span>
+        <div className="rounded-2xl overflow-hidden shadow-lg" style={{ background: 'linear-gradient(135deg, #ffcc01 0%, #f5b800 100%)' }}>
+          <div className="px-5 pt-4 pb-3 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-xl bg-black/10 backdrop-blur-sm flex items-center justify-center">
+                <AlertTriangle className="h-5 w-5 text-black/80" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-black/90 tracking-tight">
+                  {alteracoesParents.length} {alteracoesParents.length === 1 ? "tarefa" : "tarefas"} em Alteração
+                </p>
+                <p className="text-[11px] text-black/50 font-medium">Aguardando correção</p>
+              </div>
+            </div>
           </div>
-          <div className="space-y-1.5">
+          <div className="px-3 pb-3 space-y-1">
             {alteracoesParents.map(t => {
               const subs = alteracoesChildren[t.id] ?? [];
               const isExp = expandedAlteracoes.has(t.id);
@@ -311,12 +318,12 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
                   <button
                     type="button"
                     onClick={() => onOpenTask(t.id)}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition hover:bg-black/10"
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm transition-all hover:bg-black/8 active:scale-[0.99]"
                   >
                     {subs.length > 0 && (
                       <span
                         role="button"
-                        className="shrink-0 p-0.5 rounded hover:bg-black/10 transition"
+                        className="shrink-0 p-1 rounded-lg hover:bg-black/10 transition"
                         onClick={(e) => {
                           e.stopPropagation();
                           setExpandedAlteracoes(prev => {
@@ -326,24 +333,26 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
                           });
                         }}
                       >
-                        <ChevronRight className={cn("h-3.5 w-3.5 text-black/60 transition-transform", isExp && "rotate-90")} />
+                        <ChevronRight className={cn("h-3.5 w-3.5 text-black/50 transition-transform", isExp && "rotate-90")} />
                       </span>
                     )}
-                    <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-black" />
-                    <span className="truncate font-medium text-black">{t.title}</span>
-                    <span className="ml-auto text-xs text-black/60">{clientsMap[t.client_id] ?? ""}</span>
+                    <span className="h-2 w-2 shrink-0 rounded-full bg-black/70 ring-2 ring-black/10" />
+                    <span className="truncate font-semibold text-black/85">{t.title}</span>
+                    <span className="ml-auto shrink-0 rounded-md bg-black/8 px-2 py-0.5 text-[10px] font-bold text-black/50 tracking-wide">
+                      {clientsMap[t.client_id] ?? ""}
+                    </span>
                   </button>
                   {isExp && subs.length > 0 && (
-                    <div className="pl-8 space-y-0.5">
+                    <div className="pl-10 space-y-0.5 pb-1">
                       {subs.map(sub => (
                         <button
                           key={sub.id}
                           type="button"
                           onClick={() => onOpenTask(sub.id)}
-                          className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-xs transition hover:bg-black/10"
+                          className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-xs transition hover:bg-black/8"
                         >
-                          <span className="h-2 w-2 shrink-0 rounded-full bg-black/60" />
-                          <span className="truncate font-medium text-black/80">{sub.title}</span>
+                          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-black/40" />
+                          <span className="truncate font-medium text-black/70">{sub.title}</span>
                         </button>
                       ))}
                     </div>
@@ -356,11 +365,13 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
                 key={t.id}
                 type="button"
                 onClick={() => onOpenTask(t.id)}
-                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition hover:bg-black/10"
+                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm transition-all hover:bg-black/8"
               >
-                <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-black" />
-                <span className="truncate font-medium text-black">{t.title}</span>
-                <span className="ml-auto text-xs text-black/60">{clientsMap[t.client_id] ?? ""}</span>
+                <span className="h-2 w-2 shrink-0 rounded-full bg-black/70 ring-2 ring-black/10" />
+                <span className="truncate font-semibold text-black/85">{t.title}</span>
+                <span className="ml-auto shrink-0 rounded-md bg-black/8 px-2 py-0.5 text-[10px] font-bold text-black/50 tracking-wide">
+                  {clientsMap[t.client_id] ?? ""}
+                </span>
               </button>
             ))}
           </div>
