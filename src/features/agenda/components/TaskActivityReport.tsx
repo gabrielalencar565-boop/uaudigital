@@ -65,8 +65,8 @@ function formatDateOnly(dateStr: string) {
 
 const sb = supabase as any;
 
-export function TaskActivityReport({ onClose }: { onClose: () => void }) {
-  const [filterAction, setFilterAction] = useState<string>("all");
+export function TaskActivityReport({ onClose, filterAction: externalFilter }: { onClose: () => void; filterAction?: string }) {
+  const [filterAction, setFilterAction] = useState<string>(externalFilter ?? "all");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [emptyingAll, setEmptyingAll] = useState(false);
   const qc = useQueryClient();
