@@ -183,15 +183,19 @@ export function TaskActivityReport({ onClose, filterAction: externalFilter }: { 
 
   const totalLogs = logsQ.data?.length ?? 0;
 
+  const isEmbedded = !!externalFilter;
+
   return (
-    <Card className="h-full flex flex-col">
+    <Card className={cn("h-full flex flex-col", isEmbedded && "border-0 shadow-none")}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Relatório de Atividades
-            </CardTitle>
+            {!isEmbedded && (
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Relatório de Atividades
+              </CardTitle>
+            )}
             <CardDescription>
               {filteredLogs.length} registro{filteredLogs.length !== 1 ? "s" : ""}
             </CardDescription>
@@ -231,20 +235,24 @@ export function TaskActivityReport({ onClose, filterAction: externalFilter }: { 
                 </AlertDialogContent>
               </AlertDialog>
             )}
-            <Select value={filterAction} onValueChange={setFilterAction}>
-              <SelectTrigger className="w-[150px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="date_changed">Datas alteradas</SelectItem>
-                <SelectItem value="completed">Concluídas</SelectItem>
-                <SelectItem value="uncompleted">Desmarcadas</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button variant="outline" size="sm" onClick={onClose}>
-              Fechar
-            </Button>
+            {!isEmbedded && (
+              <>
+                <Select value={filterAction} onValueChange={setFilterAction}>
+                  <SelectTrigger className="w-[150px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="date_changed">Datas alteradas</SelectItem>
+                    <SelectItem value="completed">Concluídas</SelectItem>
+                    <SelectItem value="uncompleted">Desmarcadas</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button variant="outline" size="sm" onClick={onClose}>
+                  Fechar
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </CardHeader>
