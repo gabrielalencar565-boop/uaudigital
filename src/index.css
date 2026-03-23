@@ -124,98 +124,105 @@ All colors MUST be HSL.
   }
 
   .dark {
-    /* ClickUp-inspired dark theme */
-    --background: 222 27% 5.5%;
-    --foreground: 220 38% 94%;
+    /* ── Premium SaaS Dark Theme ── */
+    /* Deep charcoal, never pure black */
+    --background: 225 20% 7%;
+    --foreground: 220 20% 93%;
 
-    --card: 222 24% 8.5%;
-    --card-foreground: 220 38% 94%;
+    /* Cards: lighter layer for depth */
+    --card: 224 18% 10%;
+    --card-foreground: 220 20% 93%;
 
-    --popover: 218 22% 11%;
-    --popover-foreground: 220 38% 94%;
+    /* Popovers: slightly elevated */
+    --popover: 224 18% 11%;
+    --popover-foreground: 220 20% 93%;
 
-    --primary: 253 100% 68%;
+    /* Primary: vibrant purple */
+    --primary: 253 90% 68%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 218 22% 11%;
-    --secondary-foreground: 220 38% 94%;
+    --secondary: 224 18% 12%;
+    --secondary-foreground: 220 20% 88%;
 
-    --muted: 220 29% 15%;
-    --muted-foreground: 220 14% 54%;
+    /* Muted: soft separation */
+    --muted: 224 16% 14%;
+    --muted-foreground: 220 10% 50%;
 
-    --accent: 220 29% 14.5%;
-    --accent-foreground: 220 20% 72%;
+    /* Accent: subtle hover layer */
+    --accent: 224 16% 13%;
+    --accent-foreground: 220 14% 70%;
 
-    --border: 220 27% 17%;
-    --input: 222 24% 8.5%;
-    --ring: 253 100% 68%;
+    /* Borders: whisper-thin, low opacity feel */
+    --border: 224 14% 18%;
+    --input: 224 18% 12%;
+    --ring: 253 90% 68%;
 
-    --destructive: 350 100% 68%;
+    --destructive: 350 90% 64%;
     --destructive-foreground: 0 0% 100%;
 
-    --brand: 253 100% 68%;
+    --brand: 253 90% 68%;
     --brand-foreground: 0 0% 100%;
 
-    --success: 160 68% 52%;
+    --success: 160 60% 48%;
     --success-foreground: 0 0% 100%;
-    --warning: 40 100% 65%;
-    --warning-foreground: 222 27% 5.5%;
-    --danger: 350 100% 68%;
+    --warning: 40 90% 62%;
+    --warning-foreground: 225 20% 7%;
+    --danger: 350 90% 64%;
     --danger-foreground: 0 0% 100%;
 
     /* Overdue */
-    --overdue: 350 100% 68%;
+    --overdue: 350 90% 64%;
     --overdue-foreground: 0 0% 100%;
 
-    --chart-1: 253 100% 68%;
-    --chart-2: 160 68% 52%;
-    --chart-3: 220 100% 62%;
-    --chart-4: 40 100% 65%;
-    --chart-5: 350 100% 68%;
+    --chart-1: 253 90% 68%;
+    --chart-2: 160 60% 48%;
+    --chart-3: 220 80% 60%;
+    --chart-4: 40 90% 62%;
+    --chart-5: 350 90% 64%;
 
-    /* Sidebar — purple brand (dark) */
-    --sidebar-background: 263 70% 50%;
-    --sidebar-foreground: 0 0% 100%;
+    /* Sidebar — rich purple, distinct from bg */
+    --sidebar-background: 260 55% 28%;
+    --sidebar-foreground: 0 0% 96%;
     --sidebar-primary: 0 0% 100%;
-    --sidebar-primary-foreground: 263 70% 50%;
-    --sidebar-accent: 263 70% 42%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 263 70% 38%;
+    --sidebar-primary-foreground: 260 55% 28%;
+    --sidebar-accent: 260 50% 22%;
+    --sidebar-accent-foreground: 0 0% 96%;
+    --sidebar-border: 260 40% 20%;
     --sidebar-ring: 0 0% 100%;
-    --sidebar: 263 70% 50%;
+    --sidebar: 260 55% 28%;
 
-    /* Shadows – deeper for dark */
-    --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.2);
-    --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
-    --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.3), 0 1px 2px -1px hsl(0 0% 0% / 0.25);
-    --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.3), 0 1px 2px -1px hsl(0 0% 0% / 0.25);
-    --shadow-md: 0 2px 6px 0px hsl(0 0% 0% / 0.35), 0 2px 4px -1px hsl(0 0% 0% / 0.3);
-    --shadow-lg: 0 4px 12px 0px hsl(0 0% 0% / 0.35), 0 4px 6px -1px hsl(0 0% 0% / 0.3);
-    --shadow-xl: 0 8px 20px 0px hsl(0 0% 0% / 0.4), 0 8px 10px -1px hsl(0 0% 0% / 0.35);
-    --shadow-2xl: 0 12px 30px 0px hsl(0 0% 0% / 0.5);
-    --shadow-elevated: 0 18px 45px -24px hsl(0 0% 0% / 0.7);
-    --shadow-glow: 0 0 0 1px hsl(253 100% 68% / 0.22), 0 16px 60px -18px hsl(253 100% 68% / 0.2);
+    /* Shadows – soft depth, not harsh */
+    --shadow-2xs: 0 1px 2px 0px hsl(0 0% 0% / 0.15);
+    --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.2);
+    --shadow-sm: 0 2px 4px 0px hsl(0 0% 0% / 0.2), 0 1px 2px -1px hsl(0 0% 0% / 0.15);
+    --shadow: 0 4px 12px -2px hsl(0 0% 0% / 0.25), 0 1px 3px -1px hsl(0 0% 0% / 0.15);
+    --shadow-md: 0 4px 16px -4px hsl(0 0% 0% / 0.3), 0 2px 6px -2px hsl(0 0% 0% / 0.2);
+    --shadow-lg: 0 8px 24px -6px hsl(0 0% 0% / 0.3), 0 4px 10px -4px hsl(0 0% 0% / 0.2);
+    --shadow-xl: 0 12px 32px -8px hsl(0 0% 0% / 0.35), 0 6px 14px -6px hsl(0 0% 0% / 0.25);
+    --shadow-2xl: 0 20px 50px -12px hsl(0 0% 0% / 0.45);
+    --shadow-elevated: 0 4px 20px -4px hsl(0 0% 0% / 0.35);
+    --shadow-glow: 0 0 0 1px hsl(253 90% 68% / 0.15), 0 8px 30px -8px hsl(253 90% 68% / 0.12);
 
     /* Gradient overrides */
-    --gradient-hero: radial-gradient(900px circle at var(--spotlight-x, 30%) var(--spotlight-y, 30%), hsl(253 100% 68% / 0.08), transparent 45%),
-      radial-gradient(800px circle at 80% 20%, hsl(220 100% 62% / 0.06), transparent 40%),
-      linear-gradient(180deg, hsl(var(--background)), hsl(222 27% 4%));
-    --gradient-panel: linear-gradient(135deg, hsl(253 100% 68% / 0.06), hsl(220 100% 62% / 0.04));
+    --gradient-hero: radial-gradient(900px circle at var(--spotlight-x, 30%) var(--spotlight-y, 30%), hsl(253 90% 68% / 0.06), transparent 45%),
+      radial-gradient(800px circle at 80% 20%, hsl(220 80% 60% / 0.04), transparent 40%),
+      linear-gradient(180deg, hsl(var(--background)), hsl(225 22% 5%));
+    --gradient-panel: linear-gradient(135deg, hsl(253 90% 68% / 0.04), hsl(220 80% 60% / 0.03));
 
-    /* Stage colors (dark) */
-    --stage-planejamento: 214 88% 60%;
+    /* Stage colors (dark — softer, translucent feel) */
+    --stage-planejamento: 214 80% 58%;
     --stage-planejamento-foreground: 0 0% 100%;
-    --stage-captacao: 0 84% 60%;
+    --stage-captacao: 0 75% 58%;
     --stage-captacao-foreground: 0 0% 100%;
-    --stage-edicao_videos: 275 78% 62%;
+    --stage-edicao_videos: 275 68% 60%;
     --stage-edicao_videos-foreground: 0 0% 100%;
-    --stage-design: 174 58% 46%;
+    --stage-design: 174 50% 44%;
     --stage-design-foreground: 0 0% 100%;
-    --stage-pdf: 46 96% 62%;
-    --stage-pdf-foreground: 222 27% 5.5%;
-    --stage-alteracoes: 48 100% 50%;
+    --stage-pdf: 46 85% 58%;
+    --stage-pdf-foreground: 225 20% 7%;
+    --stage-alteracoes: 45 90% 55%;
     --stage-alteracoes-foreground: 0 0% 0%;
-    --stage-agendamento: 160 68% 52%;
+    --stage-agendamento: 160 60% 48%;
     --stage-agendamento-foreground: 0 0% 100%;
   }
 }
