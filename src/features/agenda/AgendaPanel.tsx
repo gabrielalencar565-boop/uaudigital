@@ -35,6 +35,7 @@ import { DraggableTaskCard } from "@/features/agenda/components/DraggableTaskCar
 import { DayDropZone } from "@/features/agenda/components/DayDropZone";
 import { TaskTrashPanel } from "@/features/agenda/components/TaskTrashPanel";
 import { TaskActivityReport } from "@/features/agenda/components/TaskActivityReport";
+import { AgendaReportsPanel } from "@/features/agenda/components/AgendaReportsPanel";
 import { useAddTaskAssignees, useTaskAssigneesByMonth } from "@/features/data/task-assignees-queries";
 import { useMagic2InactiveAgendaClients } from "@/features/magic2/hooks/use-magic2";
 import { useRole } from "@/hooks/use-role";
