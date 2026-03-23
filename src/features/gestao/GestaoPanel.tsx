@@ -626,20 +626,29 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
 
         <div className="flex items-center gap-2">
           {isAdmin && (
-            <Button variant="outline" size="sm" onClick={() => { setReportDefaultTab("dates"); setReportOpen(true); }} className="gap-2 rounded-xl">
+            <Button variant="outline" size="sm" onClick={() => setReportOpen(true)} className="gap-2 rounded-xl">
               <FileText className="h-4 w-4" /> Relatório
             </Button>
           )}
-          <Button variant="outline" size="sm" onClick={() => { setReportDefaultTab("trash"); setReportOpen(true); }} className="gap-2 rounded-xl">
+          <Button variant="outline" size="sm" onClick={() => setTrashOpen(true)} className="gap-2 rounded-xl">
             <Trash2 className="h-4 w-4" /> Lixeira
           </Button>
         </div>
       </div>
 
-      {/* Dialog de relatórios & lixeira */}
-      <Dialog open={reportOpen} onOpenChange={setReportOpen}>
+      {/* Dialog de relatórios (admin only) */}
+      {isAdmin && (
+        <Dialog open={reportOpen} onOpenChange={setReportOpen}>
+          <DialogContent className="max-w-2xl max-h-[80vh] p-0 overflow-hidden">
+            <AgendaReportsPanel onClose={() => setReportOpen(false)} isAdmin={isAdmin} />
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Dialog de lixeira */}
+      <Dialog open={trashOpen} onOpenChange={setTrashOpen}>
         <DialogContent className="max-w-2xl max-h-[80vh] p-0 overflow-hidden">
-          <AgendaReportsPanel onClose={() => setReportOpen(false)} isAdmin={isAdmin} defaultTab={reportDefaultTab} />
+          <TaskTrashPanel onClose={() => setTrashOpen(false)} />
         </DialogContent>
       </Dialog>
 
