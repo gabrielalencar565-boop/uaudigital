@@ -295,7 +295,7 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
     <div className="space-y-3">
       {/* Alert for tasks in Alterações */}
       {alteracoesTasks.length > 0 && (
-        <div className="rounded-xl border border-amber-500 bg-amber-500 p-4">
+        <div className="rounded-xl border p-4" style={{ borderColor: '#FFFF00', backgroundColor: '#FFFF00' }}>
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle className="h-5 w-5 text-black" />
             <span className="text-sm font-semibold text-black">
@@ -303,7 +303,55 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
             </span>
           </div>
           <div className="space-y-1.5">
-            {alteracoesTasks.map(t => (
+            {alteracoesParents.map(t => {
+              const subs = alteracoesChildren[t.id] ?? [];
+              const isExp = expandedAlteracoes.has(t.id);
+              return (
+                <div key={t.id}>
+                  <button
+                    type="button"
+                    onClick={() => onOpenTask(t.id)}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition hover:bg-black/10"
+                  >
+                    {subs.length > 0 && (
+                      <span
+                        role="button"
+                        className="shrink-0 p-0.5 rounded hover:bg-black/10 transition"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setExpandedAlteracoes(prev => {
+                            const next = new Set(prev);
+                            if (next.has(t.id)) next.delete(t.id); else next.add(t.id);
+                            return next;
+                          });
+                        }}
+                      >
+                        <ChevronRight className={cn("h-3.5 w-3.5 text-black/60 transition-transform", isExp && "rotate-90")} />
+                      </span>
+                    )}
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-black" />
+                    <span className="truncate font-medium text-black">{t.title}</span>
+                    <span className="ml-auto text-xs text-black/60">{clientsMap[t.client_id] ?? ""}</span>
+                  </button>
+                  {isExp && subs.length > 0 && (
+                    <div className="pl-8 space-y-0.5">
+                      {subs.map(sub => (
+                        <button
+                          key={sub.id}
+                          type="button"
+                          onClick={() => onOpenTask(sub.id)}
+                          className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-xs transition hover:bg-black/10"
+                        >
+                          <span className="h-2 w-2 shrink-0 rounded-full bg-black/60" />
+                          <span className="truncate font-medium text-black/80">{sub.title}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {alteracoesTasks.filter(t => t.parent_task_id && !alteracoesParents.some(p => p.id === t.parent_task_id)).map(t => (
               <button
                 key={t.id}
                 type="button"
@@ -311,8 +359,8 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
                 className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition hover:bg-black/10"
               >
                 <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-black" />
-                <span className="truncate font-medium text-foreground">{t.title}</span>
-                <span className="ml-auto text-xs text-muted-foreground">{clientsMap[t.client_id] ?? ""}</span>
+                <span className="truncate font-medium text-black">{t.title}</span>
+                <span className="ml-auto text-xs text-black/60">{clientsMap[t.client_id] ?? ""}</span>
               </button>
             ))}
           </div>
