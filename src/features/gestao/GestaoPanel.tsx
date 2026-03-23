@@ -400,6 +400,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
 }) {
   const isMobile = useIsMobile();
   const deleteTask = useDeletePmTask();
+  const updateTask = useUpdatePmTask();
   const [moreOpen, setMoreOpen] = useState(false);
   const [moreDayKey, setMoreDayKey] = useState<string | null>(null);
   const [agendaView, setAgendaView] = useState<"month" | "week">("month");
@@ -407,7 +408,8 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
   const [quickCreateOpen, setQuickCreateOpen] = useState(false);
   const [quickCreateDate, setQuickCreateDate] = useState<string | undefined>();
   const [reportOpen, setReportOpen] = useState(false);
-  const [reportDefaultTab, setReportDefaultTab] = useState("trash");
+  const [trashOpen, setTrashOpen] = useState(false);
+  const [draggedTask, setDraggedTask] = useState<PmTask | null>(null);
 
   const todayKey = format(new Date(), "yyyy-MM-dd");
 
