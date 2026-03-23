@@ -96,12 +96,12 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
     return m;
   }, [childTasksByParent]);
 
-  // My tasks (assigned to me, not completed/cancelled)
+  // My tasks (assigned to me, including completed and overdue)
   const myTasks = useMemo(() => {
     if (!user?.id) return [];
     return (pmTasksQ.data ?? []).filter(t =>
       t.assignee_id === user.id &&
-      !["concluido", "cancelado"].includes(t.status_global) &&
+      !["cancelado"].includes(t.status_global) &&
       !(t as any).is_draft
     );
   }, [pmTasksQ.data, user?.id]);
@@ -120,14 +120,16 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
     );
   }, [pmTasksQ.data, allChildQ.data, user?.id]);
 
-  // Group by overdue, today, upcoming
+  // Group by overdue, today, upcoming, completed
   const groups = useMemo(() => {
     const overdue: PmTask[] = [];
     const todayGroup: PmTask[] = [];
     const upcoming: PmTask[] = [];
     const noDue: PmTask[] = [];
+    const completed: PmTask[] = [];
 
     myTasks.forEach(t => {
+      if (t.status_global === "concluido") { completed.push(t); return; }
       if (!t.due_date) { noDue.push(t); return; }
       const diff = differenceInCalendarDays(new Date(t.due_date + "T00:00:00"), today);
       if (diff < 0) overdue.push(t);
@@ -135,12 +137,13 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
       else upcoming.push(t);
     });
 
-    return { overdue, today: todayGroup, upcoming, noDue };
+    return { overdue, today: todayGroup, upcoming, noDue, completed };
   }, [myTasks, todayKey]);
 
   const [openOverdue, setOpenOverdue] = useState(true);
   const [openToday, setOpenToday] = useState(true);
   const [openUpcoming, setOpenUpcoming] = useState(false);
+  const [openCompleted, setOpenCompleted] = useState(false);
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
 
   const toggleExpand = (taskId: string) => {
@@ -370,6 +373,23 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
             {renderHeader()}
             {groups.noDue.map(renderRow)}
           </>
+        )}
+
+        {/* Concluídas */}
+        {groups.completed.length > 0 && (
+          <Collapsible open={openCompleted} onOpenChange={setOpenCompleted}>
+            <CollapsibleTrigger asChild>
+              <button type="button" className="flex w-full items-center gap-2 px-4 py-2 text-left hover:bg-accent/20">
+                <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", !openCompleted && "-rotate-90")} />
+                <span className="text-sm font-semibold text-success">Concluídas</span>
+                <span className="text-xs text-muted-foreground">{groups.completed.length}</span>
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              {renderHeader()}
+              {groups.completed.map(renderRow)}
+            </CollapsibleContent>
+          </Collapsible>
         )}
 
         {myTasks.length === 0 && !pmTasksQ.isLoading && (
