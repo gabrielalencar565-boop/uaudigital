@@ -529,23 +529,54 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
   const handleAlteracao = () => {
     // Set stage to "alteracoes" — keeps agenda checked, shows yellow widget
+    // Auto-assign to Design or Vídeo responsible (the stage before revisão)
     const updates: any = { id: task.id, stage_current: "alteracoes" as any };
-    const fixedAssignee = getFixedAssignee(stageAssignees, "alteracoes", task.client_id);
-    const fixedWatchers = getFixedWatchers(stageAssignees, "alteracoes", task.client_id);
+    // Try to find the responsible from design or edicao_videos for auto-assignment
+    const designAssignee = getFixedAssignee(stageAssignees, "design", task.client_id);
+    const videoAssignee = getFixedAssignee(stageAssignees, "edicao_videos", task.client_id);
+    const alteracaoAssignee = getFixedAssignee(stageAssignees, "alteracoes", task.client_id);
+    // Priority: alteracoes config > design > video
+    const targetAssignee = alteracaoAssignee !== undefined ? alteracaoAssignee : (designAssignee !== undefined ? designAssignee : videoAssignee);
+    const targetWatchers = alteracaoAssignee !== undefined
+      ? getFixedWatchers(stageAssignees, "alteracoes", task.client_id)
+      : (designAssignee !== undefined
+        ? getFixedWatchers(stageAssignees, "design", task.client_id)
+        : getFixedWatchers(stageAssignees, "edicao_videos", task.client_id));
+    if (targetAssignee !== undefined) {
+      updates.assignee_id = targetAssignee;
+      updates.watchers = targetWatchers;
+    }
+    updateTask.mutate(updates);
+    for (const child of childTasks) {
+      const childUpdates: any = { id: child.id, stage_current: "alteracoes" as any };
+      if (targetAssignee !== undefined) {
+        childUpdates.assignee_id = targetAssignee;
+        childUpdates.watchers = targetWatchers;
+      }
+      updateTask.mutate(childUpdates);
+    }
+    toast.success("Tarefa enviada para Alteração");
+  };
+
+  const handleReturnFromAlteracao = () => {
+    // Return from alteracoes back to revisão — no scoring impact
+    const updates: any = { id: task.id, stage_current: "revisao" as any };
+    const fixedAssignee = getFixedAssignee(stageAssignees, "revisao", task.client_id);
+    const fixedWatchers = getFixedWatchers(stageAssignees, "revisao", task.client_id);
     if (fixedAssignee !== undefined) {
       updates.assignee_id = fixedAssignee;
       updates.watchers = fixedWatchers;
     }
     updateTask.mutate(updates);
     for (const child of childTasks) {
-      const childUpdates: any = { id: child.id, stage_current: "alteracoes" as any };
+      const childUpdates: any = { id: child.id, stage_current: "revisao" as any };
       if (fixedAssignee !== undefined) {
         childUpdates.assignee_id = fixedAssignee;
         childUpdates.watchers = fixedWatchers;
       }
       updateTask.mutate(childUpdates);
     }
-    toast.success("Tarefa marcada para Alteração");
+    toast.success("Ajuste concluído — retornou para Revisão");
   };
 
   const saveTitle = () => {
