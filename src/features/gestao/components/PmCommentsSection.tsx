@@ -224,7 +224,6 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
         )}
 
         {lastItem && renderTimelineItem(lastItem)}
-        )}
       </div>
 
       <div className="border-t border-border/30 pt-3 relative">
