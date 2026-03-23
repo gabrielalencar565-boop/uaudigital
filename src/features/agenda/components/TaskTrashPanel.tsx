@@ -45,6 +45,28 @@ export function TaskTrashPanel({ onClose }: { onClose: () => void }) {
   const clientsById = new Map((clientsQ.data ?? []).map(c => [c.id, c]));
   const teamByUserId = new Map((teamQ.data ?? []).map(m => [m.user_id, m]));
 
+  // Auto-delete tasks older than 30 days
+  useEffect(() => {
+    const deletedTasks = deletedTasksQ.data ?? [];
+    const now = new Date();
+    const expiredTasks = deletedTasks.filter(t => {
+      if (!t.deleted_at) return false;
+      return differenceInDays(now, new Date(t.deleted_at)) >= 30;
+    });
+    if (expiredTasks.length === 0) return;
+    
+    (async () => {
+      for (const t of expiredTasks) {
+        try {
+          await permanentlyDeleteTask.mutateAsync({ taskId: t.id });
+        } catch (e) {
+          console.error("Auto-delete expired task failed:", e);
+        }
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deletedTasksQ.data]);
+
   const handleRestore = async (taskId: string) => {
     setRestoringId(taskId);
     try {
