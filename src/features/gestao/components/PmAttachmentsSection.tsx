@@ -218,7 +218,7 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
             </div>
           ))}
         </div>
-      )
+      )}
 
       {/* Drop zone overlay */}
       {dragging && !draggedId && (
