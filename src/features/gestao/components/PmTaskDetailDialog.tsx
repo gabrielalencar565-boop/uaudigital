@@ -270,7 +270,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   };
 
   const doAdvance = (completedStage: string, nextStage: string, newDueDate?: string, linkedTaskId?: string) => {
-    const transferChildren = (targetTaskId: string, targetStage: string) => {
+    const transferChildren = async (targetTaskId: string, targetStage: string) => {
       const fixedAssignee = getFixedAssignee(stageAssignees, targetStage, task.client_id);
       const fixedWatchers = getFixedWatchers(stageAssignees, targetStage, task.client_id);
       for (const child of childTasks) {
@@ -286,6 +286,12 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         }
         updateTask.mutate(childUpdates as any);
       }
+      // Transfer attachments from old task to the new task
+      const sb = supabase as any;
+      await sb
+        .from("pm_attachments")
+        .update({ task_id: targetTaskId })
+        .eq("task_id", task.id);
     };
 
     if (linkedTaskId) {
