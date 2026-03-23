@@ -96,12 +96,12 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
     return m;
   }, [childTasksByParent]);
 
-  // My tasks (assigned to me, not completed/cancelled)
+  // My tasks (assigned to me, including completed and overdue)
   const myTasks = useMemo(() => {
     if (!user?.id) return [];
     return (pmTasksQ.data ?? []).filter(t =>
       t.assignee_id === user.id &&
-      !["concluido", "cancelado"].includes(t.status_global) &&
+      !["cancelado"].includes(t.status_global) &&
       !(t as any).is_draft
     );
   }, [pmTasksQ.data, user?.id]);
