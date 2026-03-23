@@ -207,11 +207,20 @@ export function TaskTrashPanel({ onClose }: { onClose: () => void }) {
                       <p className="text-xs text-muted-foreground truncate">
                         {client?.name ?? "Cliente removido"} • {format(new Date(`${task.due_date}T00:00:00`), "dd/MM/yyyy")}
                       </p>
-                      {deletedAt && (
-                        <p className="text-xs text-muted-foreground/70">
-                          Excluída em {format(deletedAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                        </p>
-                      )}
+                      {deletedAt && (() => {
+                        const daysLeft = 30 - differenceInDays(new Date(), deletedAt);
+                        return (
+                          <div className="flex items-center gap-2">
+                            <p className="text-xs text-muted-foreground/70">
+                              Excluída em {format(deletedAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                            </p>
+                            <Badge variant={daysLeft <= 7 ? "destructive" : "secondary"} className="text-[10px] gap-1">
+                              <Clock className="h-3 w-3" />
+                              {daysLeft > 0 ? `${daysLeft}d restantes` : "Expirando..."}
+                            </Badge>
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     <div className="flex items-center gap-1 shrink-0">
