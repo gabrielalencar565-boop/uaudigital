@@ -269,26 +269,24 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   };
 
   const doAdvance = (completedStage: string, nextStage: string, newDueDate?: string, linkedTaskId?: string) => {
-    // Mark the CURRENT task as completed (snapshot in the agenda)
-    const snapshotDueDate = task.due_date ?? format(new Date(), "yyyy-MM-dd");
-    updateTask.mutate({
-      id: task.id,
-      stage_current: completedStage as any,
-      status_global: "concluido" as any,
-      due_date: snapshotDueDate,
-    });
-
-    // Mark all child tasks as completed too
-    for (const child of childTasks) {
+    if (linkedTaskId) {
+      // Snapshot: mark current task as completed at current stage
+      const snapshotDueDate = task.due_date ?? format(new Date(), "yyyy-MM-dd");
       updateTask.mutate({
-        id: child.id,
+        id: task.id,
         stage_current: completedStage as any,
         status_global: "concluido" as any,
+        due_date: snapshotDueDate,
       });
-    }
+      for (const child of childTasks) {
+        updateTask.mutate({
+          id: child.id,
+          stage_current: completedStage as any,
+          status_global: "concluido" as any,
+        });
+      }
 
-    if (linkedTaskId) {
-      // We linked to an existing agenda task — update its status and transfer subtasks
+      // Update linked task and transfer children
       const linkedUpdates: any = { id: linkedTaskId, status_global: "backlog" as any };
       const fixedAssignee = getFixedAssignee(stageAssignees, nextStage, task.client_id);
       const fixedWatchers = getFixedWatchers(stageAssignees, nextStage, task.client_id);
@@ -298,7 +296,6 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       }
       updateTask.mutate(linkedUpdates);
 
-      // Transfer all child tasks to the linked task + auto-assign stage responsible
       for (const child of childTasks) {
         const childUpdates: any = {
           id: child.id,
@@ -311,6 +308,46 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           childUpdates.watchers = fixedWatchers;
         }
         updateTask.mutate(childUpdates as any);
+      }
+    } else if (nextStage === "entrega") {
+      // Final stage: mark as delivered
+      updateTask.mutate({
+        id: task.id,
+        stage_current: "entrega" as any,
+        status_global: "concluido" as any,
+      });
+      for (const child of childTasks) {
+        updateTask.mutate({
+          id: child.id,
+          stage_current: "entrega" as any,
+          status_global: "concluido" as any,
+        });
+      }
+    } else {
+      // No linked task: advance directly to next stage
+      const fixedAssignee = getFixedAssignee(stageAssignees, nextStage, task.client_id);
+      const fixedWatchers = getFixedWatchers(stageAssignees, nextStage, task.client_id);
+      const updates: any = {
+        id: task.id,
+        stage_current: nextStage as any,
+        due_date: newDueDate ?? task.due_date,
+      };
+      if (fixedAssignee !== undefined) {
+        updates.assignee_id = fixedAssignee;
+        updates.watchers = fixedWatchers;
+      }
+      updateTask.mutate(updates);
+
+      for (const child of childTasks) {
+        const childUpdates: any = {
+          id: child.id,
+          stage_current: nextStage as any,
+        };
+        if (fixedAssignee !== undefined) {
+          childUpdates.assignee_id = fixedAssignee;
+          childUpdates.watchers = fixedWatchers;
+        }
+        updateTask.mutate(childUpdates);
       }
     }
 
