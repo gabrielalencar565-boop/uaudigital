@@ -365,8 +365,8 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       });
     }
 
-    // Skip scoring when completing from "alteracoes" — it was already scored before
-    if (completedStage !== "alteracoes") {
+    // Skip scoring for alteracoes and revisao — they don't generate points
+    if (completedStage !== "alteracoes" && completedStage !== "revisao") {
       syncCompletedStage(completedStage);
     }
     toast.success(nextStage === "entrega" ? "Tarefa marcada como Entregue!" : `Avançou para ${stageLabel(nextStage)}`);
