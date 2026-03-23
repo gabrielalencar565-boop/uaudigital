@@ -80,11 +80,13 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
 
   const handleSend = async () => {
     if (!content.trim()) return;
+    const storageContent = contentToStorage(content.trim());
     await addComment.mutateAsync({
       task_id: taskId,
-      content: content.trim(),
+      content: storageContent,
     });
     setContent("");
+    setMentionMap({});
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
