@@ -996,6 +996,27 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_reads: {
+        Row: {
+          id: string
+          notification_key: string
+          read_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          notification_key: string
+          read_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          notification_key?: string
+          read_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       performance_scores: {
         Row: {
           ambiente_organizado: number
