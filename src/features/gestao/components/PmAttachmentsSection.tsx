@@ -1,9 +1,10 @@
 import { useRef, useState, useCallback } from "react";
 import { format } from "date-fns";
-import { Upload, FileText, Download, MoreHorizontal, Link2, ImagePlus, GripVertical, Trash2 } from "lucide-react";
+import { Upload, FileText, Download, MoreHorizontal, Link2, ImagePlus, GripVertical, Trash2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Progress } from "@/components/ui/progress";
 import { useUploadPmAttachment } from "../hooks/use-pm-data";
 import type { PmAttachment } from "../pm-types";
 import { toast } from "sonner";
@@ -16,6 +17,19 @@ const sb = supabase as any;
 
 function initials(n: string) {
   return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
+}
+
+function formatFileSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+}
+
+interface UploadingFile {
+  name: string;
+  size: number;
+  progress: number;
 }
 
 interface Props {
@@ -34,13 +48,37 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
   const [viewerIndex, setViewerIndex] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
 
   const doUpload = useCallback(async (file: File) => {
     if (file.size > 1024 * 1024 * 1024) { toast.error("Arquivo muito grande (máx 1GB)"); return; }
+
+    const uploadEntry: UploadingFile = { name: file.name, size: file.size, progress: 0 };
+    setUploadingFiles(prev => [...prev, uploadEntry]);
+
+    // Simulate progress for UX since supabase doesn't expose upload progress
+    const interval = setInterval(() => {
+      setUploadingFiles(prev =>
+        prev.map(f => f.name === file.name && f.progress < 90
+          ? { ...f, progress: Math.min(f.progress + (file.size > 10 * 1024 * 1024 ? 2 : 15), 90) }
+          : f
+        )
+      );
+    }, 300);
+
     try {
       await upload.mutateAsync({ task_id: taskId, file });
+      clearInterval(interval);
+      setUploadingFiles(prev =>
+        prev.map(f => f.name === file.name ? { ...f, progress: 100 } : f)
+      );
+      setTimeout(() => {
+        setUploadingFiles(prev => prev.filter(f => f.name !== file.name));
+      }, 800);
       toast.success("Arquivo anexado!");
     } catch (err: any) {
+      clearInterval(interval);
+      setUploadingFiles(prev => prev.filter(f => f.name !== file.name));
       toast.error(err?.message ?? "Erro ao enviar arquivo");
     }
   }, [taskId, upload]);
