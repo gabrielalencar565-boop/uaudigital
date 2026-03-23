@@ -26,20 +26,22 @@ const STAGE_ABBR: Record<string, string> = {
   design: "DSG",
   edicao_videos: "VDO",
   revisao: "REV",
+  alteracoes: "ALT",
   pdf: "PDF",
   agendamento: "AGN",
   entrega: "OK",
 };
 
-const STAGE_BADGE_BG: Record<string, string> = {
-  captacao: "bg-red-500",
-  planejamento: "bg-blue-500",
-  design: "bg-yellow-500",
-  edicao_videos: "bg-purple-500",
-  revisao: "bg-pink-500",
-  pdf: "bg-indigo-500",
-  agendamento: "bg-violet-500",
-  entrega: "bg-emerald-500",
+const STAGE_BADGE_STYLE: Record<string, { bg: string; fg: string }> = {
+  captacao: { bg: "bg-red-500", fg: "text-white" },
+  planejamento: { bg: "bg-blue-500", fg: "text-white" },
+  design: { bg: "bg-stage-design", fg: "text-stage-foreground-design" },
+  edicao_videos: { bg: "bg-purple-500", fg: "text-white" },
+  revisao: { bg: "bg-pink-500", fg: "text-white" },
+  alteracoes: { bg: "bg-stage-alteracoes", fg: "text-stage-foreground-alteracoes" },
+  pdf: { bg: "bg-indigo-500", fg: "text-white" },
+  agendamento: { bg: "bg-violet-500", fg: "text-white" },
+  entrega: { bg: "bg-emerald-500", fg: "text-white" },
 };
 
 interface Props {
