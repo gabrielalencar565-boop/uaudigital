@@ -429,7 +429,7 @@ export function MeuPainelPanel() {
         <Card>
           <CardContent className="flex items-center gap-4 p-5">
             <div className="h-10 w-10 rounded-xl bg-sidebar/10 flex items-center justify-center shrink-0">
-              <CheckCircle2 className="h-5 w-5 text-sidebar" />
+              <ListChecks className="h-5 w-5 text-sidebar" />
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Tarefas do mês</p>

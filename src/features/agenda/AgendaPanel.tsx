@@ -468,6 +468,7 @@ export function AgendaPanel() {
   };
 
   return <DndContext
+    sensors={sensors}
     collisionDetection={closestCenter}
     onDragStart={handleDragStart}
     onDragEnd={handleDragEnd}
