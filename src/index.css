@@ -268,6 +268,37 @@ All colors MUST be HSL.
   .uau-number-flash {
     animation: numberFlash 0.5s ease-out;
   }
+
+  /* Premium card depth for dark mode */
+  .dark .uau-card-depth {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border) / 0.5);
+    box-shadow: 0 4px 20px -4px hsl(0 0% 0% / 0.25);
+  }
+
+  /* Smooth hover lift */
+  .uau-hover-lift {
+    transition: transform 200ms ease, box-shadow 200ms ease;
+  }
+  .uau-hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px -6px hsl(0 0% 0% / 0.3);
+  }
+
+  /* Badge glow for status indicators */
+  .uau-badge-glow {
+    position: relative;
+  }
+  .uau-badge-glow::after {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    opacity: 0.3;
+    filter: blur(4px);
+    background: inherit;
+    z-index: -1;
+  }
 }
 
 @keyframes fadeUp {
