@@ -375,6 +375,23 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
           </>
         )}
 
+        {/* Concluídas */}
+        {groups.completed.length > 0 && (
+          <Collapsible open={openCompleted} onOpenChange={setOpenCompleted}>
+            <CollapsibleTrigger asChild>
+              <button type="button" className="flex w-full items-center gap-2 px-4 py-2 text-left hover:bg-accent/20">
+                <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", !openCompleted && "-rotate-90")} />
+                <span className="text-sm font-semibold text-success">Concluídas</span>
+                <span className="text-xs text-muted-foreground">{groups.completed.length}</span>
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              {renderHeader()}
+              {groups.completed.map(renderRow)}
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+
         {myTasks.length === 0 && !pmTasksQ.isLoading && (
           <div className="py-8 text-center text-sm text-muted-foreground">
             Nenhuma tarefa atribuída a você
