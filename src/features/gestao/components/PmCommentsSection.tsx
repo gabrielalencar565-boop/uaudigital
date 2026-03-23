@@ -113,14 +113,28 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
     setShowMentions(false);
   };
 
+  // Map to track display names for hidden UUIDs
+  const [mentionMap, setMentionMap] = useState<Record<string, string>>({});
+
   const insertMention = (memberId: string, name: string) => {
     const lastAtIdx = content.lastIndexOf("@");
     if (lastAtIdx >= 0) {
       const before = content.slice(0, lastAtIdx);
-      setContent(`${before}@${memberId} `);
+      const displayTag = `@${name}`;
+      setContent(`${before}${displayTag} `);
+      setMentionMap(prev => ({ ...prev, [name]: memberId }));
     }
     setShowMentions(false);
     textareaRef.current?.focus();
+  };
+
+  /** Convert display @Name back to @UUID for storage */
+  const contentToStorage = (text: string): string => {
+    let result = text;
+    for (const [name, id] of Object.entries(mentionMap)) {
+      result = result.replaceAll(`@${name}`, `@${id}`);
+    }
+    return result;
   };
 
   /** Replace @userId with @Name for display */
