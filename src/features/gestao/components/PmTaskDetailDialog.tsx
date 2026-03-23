@@ -525,49 +525,24 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   };
 
   const handleAlteracao = () => {
-    if (alteracaoTargets.length === 1) {
-      const targetStage = alteracaoTargets[0];
-      const updates: any = { id: task.id, stage_current: targetStage as any };
-      const fixedAssignee = getFixedAssignee(stageAssignees, targetStage, task.client_id);
-      const fixedWatchers = getFixedWatchers(stageAssignees, targetStage, task.client_id);
-      if (fixedAssignee !== undefined) {
-        updates.assignee_id = fixedAssignee;
-        updates.watchers = fixedWatchers;
-      }
-      updateTask.mutate(updates);
-      for (const child of childTasks) {
-        const childUpdates: any = { id: child.id, stage_current: targetStage as any };
-        if (fixedAssignee !== undefined) {
-          childUpdates.assignee_id = fixedAssignee;
-          childUpdates.watchers = fixedWatchers;
-        }
-        updateTask.mutate(childUpdates);
-      }
-      toast.success(`Retornou para ${stageLabel(targetStage)}`);
-    } else {
-      setAlteracaoChoiceOpen(true);
-    }
-  };
-
-  const handleChooseAlteracao = (stageKey: string) => {
-    const updates: any = { id: task.id, stage_current: stageKey as any };
-    const fixedAssignee = getFixedAssignee(stageAssignees, stageKey, task.client_id);
-    const fixedWatchers = getFixedWatchers(stageAssignees, stageKey, task.client_id);
+    // Set stage to "alteracoes" — keeps agenda checked, shows yellow widget
+    const updates: any = { id: task.id, stage_current: "alteracoes" as any };
+    const fixedAssignee = getFixedAssignee(stageAssignees, "alteracoes", task.client_id);
+    const fixedWatchers = getFixedWatchers(stageAssignees, "alteracoes", task.client_id);
     if (fixedAssignee !== undefined) {
       updates.assignee_id = fixedAssignee;
       updates.watchers = fixedWatchers;
     }
     updateTask.mutate(updates);
     for (const child of childTasks) {
-      const childUpdates: any = { id: child.id, stage_current: stageKey as any };
+      const childUpdates: any = { id: child.id, stage_current: "alteracoes" as any };
       if (fixedAssignee !== undefined) {
         childUpdates.assignee_id = fixedAssignee;
         childUpdates.watchers = fixedWatchers;
       }
       updateTask.mutate(childUpdates);
     }
-    toast.success(`Retornou para ${stageLabel(stageKey)}`);
-    setAlteracaoChoiceOpen(false);
+    toast.success("Tarefa marcada para Alteração");
   };
 
   const saveTitle = () => {
