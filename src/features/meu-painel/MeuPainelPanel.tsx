@@ -207,6 +207,37 @@ export function MeuPainelPanel() {
     };
   }, [myTasks, overdueTasks.length]);
 
+  // ── Data for new widgets ──
+  const prevMonthKey = useMemo(() => {
+    const pm = selected.month === 1 ? 12 : selected.month - 1;
+    const py = selected.month === 1 ? selected.year - 1 : selected.year;
+    return `${py}-${String(pm).padStart(2, "0")}`;
+  }, [selected]);
+
+  const prevTasksQ = useTasks({ month: prevMonthKey, assignedUserId: user?.id });
+  const prevMonthDone = useMemo(
+    () => (prevTasksQ.data ?? []).filter((t) => t.status === "concluido").length,
+    [prevTasksQ.data],
+  );
+
+  // Team average score
+  const teamPerfQ = useQuery({
+    queryKey: ["performance_scores_team_avg", selected.year, selected.month],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("performance_scores")
+        .select("metas_prazos")
+        .eq("year", selected.year)
+        .eq("month", selected.month);
+      if (!data || data.length === 0) return null;
+      const avg = data.reduce((s, r) => s + Number(r.metas_prazos), 0) / data.length;
+      return Math.round(avg * 10) / 10;
+    },
+    staleTime: 60_000,
+  });
+
+  const myScore = useMemo(() => Number(perf.score ?? 0), [perf.score]);
+
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
