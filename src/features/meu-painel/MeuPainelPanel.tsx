@@ -25,6 +25,8 @@ import { MyPmTasksWidget } from "@/features/meu-painel/components/MyPmTasksWidge
 import { PmTaskDetailDialog } from "@/features/gestao/components/PmTaskDetailDialog";
 import { usePmTasks } from "@/features/gestao/hooks/use-pm-data";
 import { useQuery } from "@tanstack/react-query";
+import { ProductivityWidget } from "@/features/meu-painel/components/ProductivityWidget";
+import { SmartFeedbackWidget } from "@/features/meu-painel/components/SmartFeedbackWidget";
 import {
   useCleaningSchedules,
   useCleaningCategories,
@@ -204,6 +206,37 @@ export function MeuPainelPanel() {
       overdue: overdueTasks.length,
     };
   }, [myTasks, overdueTasks.length]);
+
+  // ── Data for new widgets ──
+  const prevMonthKey = useMemo(() => {
+    const pm = selected.month === 1 ? 12 : selected.month - 1;
+    const py = selected.month === 1 ? selected.year - 1 : selected.year;
+    return `${py}-${String(pm).padStart(2, "0")}`;
+  }, [selected]);
+
+  const prevTasksQ = useTasks({ month: prevMonthKey, assignedUserId: user?.id });
+  const prevMonthDone = useMemo(
+    () => (prevTasksQ.data ?? []).filter((t) => t.status === "concluido").length,
+    [prevTasksQ.data],
+  );
+
+  // Team average score
+  const teamPerfQ = useQuery({
+    queryKey: ["performance_scores_team_avg", selected.year, selected.month],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("performance_scores")
+        .select("metas_prazos")
+        .eq("year", selected.year)
+        .eq("month", selected.month);
+      if (!data || data.length === 0) return null;
+      const avg = data.reduce((s, r) => s + Number(r.metas_prazos), 0) / data.length;
+      return Math.round(avg * 10) / 10;
+    },
+    staleTime: 60_000,
+  });
+
+  const myScore = useMemo(() => Number(perf.total ?? 0), [perf.total]);
 
   useEffect(() => {
     if (!user) return;
@@ -475,7 +508,22 @@ export function MeuPainelPanel() {
         </Card>
       </div>
 
-      {/* Tarefas de Gestão atribuídas (estilo ClickUp) */}
+      {/* Produtividade + Feedback */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.25s" }}>
+        <ProductivityWidget
+          tasks={myTasks}
+          allMonthTasks={myTasks}
+          todayKey={todayKey}
+        />
+        <SmartFeedbackWidget
+          myTasks={myTasks.map((t) => ({ ...t, completed_at: t.completed_at ?? null, point_value: (t as any).point_value ?? null }))}
+          teamAvgScore={teamPerfQ.data ?? null}
+          myScore={myScore}
+          todayKey={todayKey}
+          prevMonthDone={prevMonthDone}
+        />
+      </div>
+
       <div className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.3s" }}>
         <MyPmTasksWidget onOpenTask={(taskId) => setSelectedPmTaskId(taskId)} />
       </div>
