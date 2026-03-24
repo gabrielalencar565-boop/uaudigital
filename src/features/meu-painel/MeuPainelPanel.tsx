@@ -35,6 +35,7 @@ import {
   useToggleCleaningCompletion,
 } from "@/features/cleaning/hooks/use-cleaning";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 // ── Helpers ──────────────────────────────────────────────
 
@@ -321,14 +322,22 @@ export function MeuPainelPanel() {
             <div className="flex items-center gap-2">
               {/* Streak badge */}
               {streak >= 2 && (
-                <div
-                  className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold text-white backdrop-blur-xl border border-orange-400/30 shadow-lg cursor-default"
-                  style={{ background: "rgba(251,146,60,0.2)" }}
-                  title={`🔥 Sequência de ${streak} dias consecutivos concluindo tarefas`}
-                >
-                  <Flame className="h-4 w-4 text-orange-400" />
-                  <span className="tabular-nums">{streak}</span>
-                </div>
+                <TooltipProvider delayDuration={200}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div
+                        className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold text-white backdrop-blur-xl border border-orange-400/30 shadow-lg cursor-default"
+                        style={{ background: "rgba(251,146,60,0.2)" }}
+                      >
+                        <Flame className="h-4 w-4 text-orange-400" />
+                        <span className="tabular-nums">{streak}</span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="text-xs">
+                      🔥 Sequência de {streak} dias consecutivos concluindo tarefas
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               )}
               <div className="inline-flex items-center rounded-full px-4 py-1.5 text-sm font-semibold tabular-nums text-white backdrop-blur-xl border border-white/15 shadow-lg shadow-black/10" style={{ background: "rgba(255,255,255,0.12)" }}>
                 {format(today, "dd/MM")}
