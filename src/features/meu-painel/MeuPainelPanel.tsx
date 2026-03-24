@@ -35,6 +35,7 @@ import {
   useToggleCleaningCompletion,
 } from "@/features/cleaning/hooks/use-cleaning";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 // ── Helpers ──────────────────────────────────────────────
 
