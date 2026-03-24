@@ -333,7 +333,7 @@ export function MeuPainelPanel() {
                         <span className="tabular-nums">{streak}</span>
                       </div>
                     </TooltipTrigger>
-                    <TooltipContent side="bottom" className="text-xs">
+                    <TooltipContent side="bottom" className="text-xs z-[9999] max-w-[260px] whitespace-normal">
                       🔥 Sequência de {streak} dias consecutivos concluindo tarefas
                     </TooltipContent>
                   </Tooltip>
