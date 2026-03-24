@@ -27,6 +27,7 @@ import { SmartFeedbackWidget } from "@/features/meu-painel/components/SmartFeedb
 import { DayQuickView } from "@/features/meu-painel/components/DayQuickView";
 import { BottleneckWidget } from "@/features/meu-painel/components/BottleneckWidget";
 import { MetricSparkCard } from "@/features/meu-painel/components/MetricSparkCard";
+import { FocusNowWidget } from "@/features/meu-painel/components/FocusNowWidget";
 import {
   useCleaningSchedules,
   useCleaningCategories,
