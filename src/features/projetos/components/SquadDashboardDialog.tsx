@@ -93,8 +93,6 @@ export function SquadDashboardDialog({
   squadStages, agendaTasks, squadClientIds,
 }: SquadDashboardDialogProps) {
   const [clientsCollapsed, setClientsCollapsed] = useState(false);
-  const [stagesCollapsed, setStagesCollapsed] = useState(false);
-  const [productivityCollapsed, setProductivityCollapsed] = useState(false);
   const now = new Date();
 
   // ── Bottleneck detection ──
