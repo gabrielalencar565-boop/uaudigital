@@ -56,13 +56,19 @@ export function MetricSparkCard({ label, value, prevValue, icon, accentClass = "
           <div className="flex items-baseline gap-2 mt-0.5">
             <AnimatedNumber value={value} className="text-2xl font-bold tabular-nums tracking-tight" />
             {variation && (
-              <span
-                className={cn("flex items-center gap-0.5 text-[10px] font-semibold tabular-nums cursor-default", variation.up ? "text-emerald-500" : "text-red-500")}
-                title={`${variation.up ? "Aumento" : "Queda"} de ${variation.pct}% em relação ao mês anterior`}
-              >
-                {variation.up ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                {variation.up ? "+" : "-"}{variation.pct}%
-              </span>
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className={cn("flex items-center gap-0.5 text-[10px] font-semibold tabular-nums cursor-default", variation.up ? "text-emerald-500" : "text-red-500")}>
+                      {variation.up ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                      {variation.up ? "+" : "-"}{variation.pct}%
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">
+                    {variation.up ? "Aumento" : "Queda"} de {variation.pct}% em relação ao mês anterior
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
           </div>
         </div>
