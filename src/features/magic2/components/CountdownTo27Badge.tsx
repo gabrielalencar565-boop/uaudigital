@@ -1,22 +1,25 @@
 import { differenceInCalendarDays } from "date-fns";
 
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 function pluralDia(n: number) {
   return n === 1 ? "dia" : "dias";
 }
 
-type Variant = "success" | "warning" | "destructive";
+const VARIANT_SOLID: Record<string, string> = {
+  success: "bg-success text-white border-success",
+  warning: "bg-warning text-white border-warning",
+  destructive: "bg-destructive text-white border-destructive",
+};
 
 export function CountdownTo27Badge({ due, now }: { due: Date; now?: Date }) {
   const ref = now ?? new Date();
   const daysLeft = differenceInCalendarDays(due, ref);
 
-  // Regra pedida: verde quando ainda dá tempo, amarelo quando faltam poucos dias,
-  // vermelho quando for no dia (e também quando já passou).
   const warningCutoffDays = 10;
 
-  const variant: Variant =
+  const variant =
     daysLeft > warningCutoffDays ? "success" : daysLeft > 0 ? "warning" : "destructive";
 
   const text =
@@ -29,7 +32,7 @@ export function CountdownTo27Badge({ due, now }: { due: Date; now?: Date }) {
           : `Venceu há ${Math.abs(daysLeft)} ${pluralDia(Math.abs(daysLeft))}`;
 
   return (
-    <Badge variant={variant} size="lg" className="w-fit">
+    <Badge variant={variant as any} size="lg" className={cn("w-fit", VARIANT_SOLID[variant])}>
       {text}
     </Badge>
   );
