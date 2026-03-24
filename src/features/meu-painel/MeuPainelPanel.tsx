@@ -368,19 +368,16 @@ export function MeuPainelPanel() {
         <MentionsWidget onOpenTask={(taskId) => setSelectedPmTaskId(taskId)} />
       </div>
 
-      {/* ── 7. PRODUCTIVITY + FEEDBACK + BOTTLENECK (below mentions) ── */}
+      {/* ── 7. PRODUCTIVITY + FEEDBACK (below mentions) ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.45s" }}>
         <ProductivityWidget tasks={myTasks} allMonthTasks={[...myTasks, ...(prevTasksQ.data ?? [])]} todayKey={todayKey} />
-        <div className="flex flex-col gap-4">
-          <SmartFeedbackWidget
-            myTasks={myTasks.map((t) => ({ ...t, completed_at: t.completed_at ?? null, point_value: (t as any).point_value ?? null }))}
-            teamAvgScore={teamPerfQ.data ?? null}
-            myScore={myScore}
-            todayKey={todayKey}
-            prevMonthDone={prevSummary.done}
-          />
-          <BottleneckWidget pendingByStage={pendingByStage} />
-        </div>
+        <SmartFeedbackWidget
+          myTasks={myTasks.map((t) => ({ ...t, completed_at: t.completed_at ?? null, point_value: (t as any).point_value ?? null }))}
+          teamAvgScore={teamPerfQ.data ?? null}
+          myScore={myScore}
+          todayKey={todayKey}
+          prevMonthDone={prevSummary.done}
+        />
       </div>
 
       {/* ── PM Task Dialog ── */}
