@@ -573,13 +573,13 @@ export function SquadDashboardDialog({
               </div>
             )}
 
-            {/* ── 2. Stage Progress Chart ── */}
-            {renderStagesSection()}
+            {/* ── 2. Pipeline + Progresso side by side ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {renderPipelineSection()}
+              {renderProgressoSection()}
+            </div>
 
-            {/* ── 3. Member Productivity ── */}
-            {memberProductivity.length > 0 && renderProductivitySection()}
-
-            {/* ── 4. Client Performance ── */}
+            {/* ── 3. Client Performance ── */}
             {clientPerformance.length > 0 && renderClientsSection()}
 
             {/* ── Squad Insights ── */}
