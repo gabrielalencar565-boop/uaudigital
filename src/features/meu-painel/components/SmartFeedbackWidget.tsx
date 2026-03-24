@@ -1,10 +1,9 @@
-import { useMemo, useCallback, useRef, useState } from "react";
+import { useMemo } from "react";
 import {
   CheckCircle2, AlertTriangle, TrendingUp, TrendingDown,
   RefreshCw, BarChart3, Zap, Shield, Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { STAGES } from "@/lib/uau";
 
 interface TaskData {
   id: string;
@@ -43,28 +42,12 @@ const ICON_TEXT: Record<string, string> = {
   yellow: "text-amber-500",
   blue: "text-blue-500",
 };
-const CARD_GLOW: Record<string, string> = {
-  green: "hover:shadow-emerald-500/10",
-  red: "hover:shadow-red-500/10",
-  yellow: "hover:shadow-amber-500/10",
-  blue: "hover:shadow-blue-500/10",
-};
 
 export function SmartFeedbackWidget({ myTasks, teamAvgScore, myScore, todayKey, prevMonthDone }: Props) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  const [isHovered, setIsHovered] = useState(false);
-
   const total = myTasks.length;
   const done = myTasks.filter((t) => t.status === "concluido").length;
   const overdue = myTasks.filter((t) => t.status !== "concluido" && t.due_date < todayKey).length;
   const pctDone = total > 0 ? Math.round((done / total) * 100) : 0;
-
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-  }, []);
 
   const insights = useMemo(() => {
     const list: Insight[] = [];
@@ -122,171 +105,108 @@ export function SmartFeedbackWidget({ myTasks, teamAvgScore, myScore, todayKey, 
   const positiveInsights = insights.filter((i) => i.color !== "red");
 
   return (
-    <div
-      ref={containerRef}
-      onMouseMove={handleMouseMove}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      className="relative group overflow-hidden transition-all duration-500 ease-out hover:-translate-y-1 hover:scale-[1.005]"
-      style={{
-        borderRadius: 24,
-        boxShadow: isHovered
-          ? "0 16px 48px -8px rgba(124,58,237,0.25), 0 0 0 1px rgba(139,92,246,0.2), inset 0 0 0 1px rgba(255,255,255,0.08)"
-          : "0 8px 32px -8px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.06), inset 0 0 0 1px rgba(255,255,255,0.04)",
-      }}
-    >
-      {/* Deep gradient background */}
-      <div className="absolute inset-0" style={{
-        background: "linear-gradient(145deg, hsl(263 50% 12%) 0%, hsl(240 30% 8%) 50%, hsl(263 40% 10%) 100%)",
-      }} />
+    <div className="rounded-2xl border border-border bg-card p-6 space-y-5 transition-all duration-300 hover:shadow-lg">
+      {/* Header */}
+      <div className="flex items-center gap-2">
+        <div className="h-7 w-7 rounded-lg bg-sidebar/20 flex items-center justify-center">
+          <Sparkles className="h-4 w-4 text-sidebar" />
+        </div>
+        <h3 className="text-base font-semibold text-foreground">Seu desempenho</h3>
+      </div>
 
-      {/* Subtle noise texture overlay */}
-      <div className="absolute inset-0 opacity-[0.03]" style={{
-        backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
-      }} />
-
-      {/* Vignette */}
-      <div className="absolute inset-0 pointer-events-none" style={{
-        background: "radial-gradient(ellipse 80% 80% at 50% 50%, transparent 40%, rgba(0,0,0,0.4) 100%)",
-      }} />
-
-      {/* Mouse light effect */}
-      {isHovered && (
-        <div
-          className="absolute pointer-events-none transition-opacity duration-300"
-          style={{
-            left: mousePos.x - 150,
-            top: mousePos.y - 150,
-            width: 300,
-            height: 300,
-            borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(139,92,246,0.12) 0%, transparent 70%)",
-          }}
-        />
-      )}
-
-      {/* Border glow on hover */}
-      <div className="absolute inset-0 pointer-events-none rounded-[24px] transition-opacity duration-500 opacity-0 group-hover:opacity-100" style={{
-        boxShadow: "inset 0 0 0 1.5px rgba(139,92,246,0.3), 0 0 20px rgba(124,58,237,0.1)",
-      }} />
-
-      {/* Content */}
-      <div className="relative z-10 p-6 space-y-5">
-        {/* Header */}
-        <div className="flex items-center gap-2">
-          <div className="h-7 w-7 rounded-lg bg-sidebar/20 flex items-center justify-center">
-            <Sparkles className="h-4 w-4 text-sidebar" />
-          </div>
-          <h3 className="text-base font-semibold text-white/90">Seu desempenho</h3>
+      {/* Headline + Metrics row */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex-1 min-w-0">
+          <p className={cn("text-xl font-bold tracking-tight", headline.positive ? "text-emerald-500" : "text-red-500")}>
+            {headline.emoji} {headline.text}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">{headline.sub}</p>
         </div>
 
-        {/* Headline + Metrics row */}
-        <div className="flex flex-col sm:flex-row gap-4">
-          {/* Left: Headline */}
-          <div className="flex-1 min-w-0">
-            <p className={cn("text-xl font-bold tracking-tight", headline.positive ? "text-emerald-400" : "text-red-400")}>
-              {headline.emoji} {headline.text}
-            </p>
-            <p className="text-xs text-white/50 mt-1">{headline.sub}</p>
-          </div>
-
-          {/* Right: Mini metric cards */}
-          {total > 0 && (
-            <div className="flex gap-2 shrink-0">
-              <div className="rounded-xl px-3.5 py-2.5 border border-white/8 text-center transition-all duration-200 hover:scale-105 hover:border-white/15" style={{ background: "rgba(255,255,255,0.04)" }}>
-                <p className="text-lg font-bold text-white tabular-nums">{done}</p>
-                <p className="text-[10px] text-white/40 font-medium">Feitas</p>
-              </div>
-              <div className="rounded-xl px-3.5 py-2.5 border border-white/8 text-center transition-all duration-200 hover:scale-105 hover:border-white/15" style={{ background: "rgba(255,255,255,0.04)" }}>
-                <p className={cn("text-lg font-bold tabular-nums", headline.positive ? "text-emerald-400" : "text-foreground")}>{pctDone}%</p>
-                <p className="text-[10px] text-white/40 font-medium">Concluído</p>
-              </div>
-              {teamAvgScore !== null && (
-                <div className="rounded-xl px-3.5 py-2.5 border border-white/8 text-center transition-all duration-200 hover:scale-105 hover:border-white/15" style={{ background: "rgba(255,255,255,0.04)" }}>
-                  <p className="text-lg font-bold text-white/80 tabular-nums">{teamAvgScore}</p>
-                  <p className="text-[10px] text-white/40 font-medium">Média</p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Progress bar */}
         {total > 0 && (
-          <div className="space-y-1.5">
-            <div className="h-2.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
-              <div
-                className="h-full rounded-full transition-all duration-1000 ease-out"
-                style={{
-                  width: `${pctDone}%`,
-                  background: headline.positive
-                    ? "linear-gradient(90deg, hsl(160 84% 39%), hsl(142 71% 45%))"
-                    : "linear-gradient(90deg, hsl(0 84% 60%), hsl(25 95% 53%))",
-                  boxShadow: headline.positive
-                    ? "0 0 12px rgba(16,185,129,0.4)"
-                    : "0 0 12px rgba(239,68,68,0.4)",
-                }}
-              />
+          <div className="flex gap-2 shrink-0">
+            <div className="rounded-xl px-3.5 py-2.5 border border-border bg-muted/50 text-center transition-all duration-200 hover:scale-105">
+              <p className="text-lg font-bold text-foreground tabular-nums">{done}</p>
+              <p className="text-[10px] text-muted-foreground font-medium">Feitas</p>
             </div>
-            <p className="text-[10px] text-white/30 tabular-nums">{done} de {total} tarefas</p>
-          </div>
-        )}
-
-        {/* Alert cards */}
-        {alerts.length > 0 && (
-          <div className="space-y-2">
-            {alerts.map((insight, i) => (
-              <div
-                key={`alert-${i}`}
-                className="flex items-center gap-3 rounded-xl p-3.5 border border-red-500/20 transition-all duration-200 hover:scale-[1.02] hover:shadow-lg hover:shadow-red-500/10 hover:border-red-500/40"
-                style={{ background: "linear-gradient(135deg, rgba(239,68,68,0.1) 0%, rgba(239,68,68,0.03) 100%)" }}
-              >
-                <div className="h-10 w-10 rounded-full bg-red-500/15 flex items-center justify-center shrink-0" style={{ boxShadow: "0 0 12px rgba(239,68,68,0.15)" }}>
-                  <span className="text-red-400">{insight.icon}</span>
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-red-400">{insight.title}</p>
-                  <p className="text-xs text-white/40">{insight.description}</p>
-                </div>
+            <div className="rounded-xl px-3.5 py-2.5 border border-border bg-muted/50 text-center transition-all duration-200 hover:scale-105">
+              <p className={cn("text-lg font-bold tabular-nums", headline.positive ? "text-emerald-500" : "text-foreground")}>{pctDone}%</p>
+              <p className="text-[10px] text-muted-foreground font-medium">Concluído</p>
+            </div>
+            {teamAvgScore !== null && (
+              <div className="rounded-xl px-3.5 py-2.5 border border-border bg-muted/50 text-center transition-all duration-200 hover:scale-105">
+                <p className="text-lg font-bold text-foreground tabular-nums">{teamAvgScore}</p>
+                <p className="text-[10px] text-muted-foreground font-medium">Média</p>
               </div>
-            ))}
+            )}
           </div>
-        )}
-
-        {/* Positive insight cards */}
-        {positiveInsights.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            {positiveInsights.map((insight, i) => (
-              <div
-                key={`insight-${i}`}
-                className={cn(
-                  "rounded-xl p-3.5 border border-white/8 transition-all duration-200 hover:scale-[1.03] hover:shadow-lg hover:border-white/15 opacity-0",
-                  CARD_GLOW[insight.color]
-                )}
-                style={{
-                  background: "rgba(255,255,255,0.03)",
-                  animation: `fadeUp 0.4s ease-out forwards`,
-                  animationDelay: `${(alerts.length + i) * 0.08}s`,
-                }}
-              >
-                <div className="flex items-start gap-3">
-                  <div className={cn("h-10 w-10 rounded-full flex items-center justify-center shrink-0", ICON_BG[insight.color])} style={{ boxShadow: `0 0 10px ${insight.color === "green" ? "rgba(16,185,129,0.12)" : insight.color === "yellow" ? "rgba(245,158,11,0.12)" : "rgba(59,130,246,0.12)"}` }}>
-                    <span className={ICON_TEXT[insight.color]}>{insight.icon}</span>
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-white/90">{insight.title}</p>
-                    <p className="text-[11px] text-white/40 leading-relaxed">{insight.description}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {insights.length === 0 && (
-          <p className="text-sm text-white/30 text-center py-4">Sem dados suficientes para gerar insights ainda.</p>
         )}
       </div>
+
+      {/* Progress bar */}
+      {total > 0 && (
+        <div className="space-y-1.5">
+          <div className="h-2.5 rounded-full overflow-hidden bg-muted">
+            <div
+              className="h-full rounded-full transition-all duration-1000 ease-out"
+              style={{
+                width: `${pctDone}%`,
+                background: headline.positive
+                  ? "linear-gradient(90deg, hsl(160 84% 39%), hsl(142 71% 45%))"
+                  : "linear-gradient(90deg, hsl(0 84% 60%), hsl(25 95% 53%))",
+              }}
+            />
+          </div>
+          <p className="text-[10px] text-muted-foreground tabular-nums">{done} de {total} tarefas</p>
+        </div>
+      )}
+
+      {/* Alert cards */}
+      {alerts.length > 0 && (
+        <div className="space-y-2">
+          {alerts.map((insight, i) => (
+            <div
+              key={`alert-${i}`}
+              className="flex items-center gap-3 rounded-xl p-3.5 border border-red-500/20 bg-red-50 dark:bg-red-500/5 transition-all duration-200 hover:scale-[1.02] hover:shadow-md"
+            >
+              <div className="h-10 w-10 rounded-full bg-red-500/15 flex items-center justify-center shrink-0">
+                <span className="text-red-500">{insight.icon}</span>
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-red-500">{insight.title}</p>
+                <p className="text-xs text-muted-foreground">{insight.description}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Positive insight cards */}
+      {positiveInsights.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          {positiveInsights.map((insight, i) => (
+            <div
+              key={`insight-${i}`}
+              className="rounded-xl p-3.5 border border-border bg-muted/30 transition-all duration-200 hover:scale-[1.03] hover:shadow-md opacity-0"
+              style={{ animation: `fadeUp 0.4s ease-out forwards`, animationDelay: `${(alerts.length + i) * 0.08}s` }}
+            >
+              <div className="flex items-start gap-3">
+                <div className={cn("h-10 w-10 rounded-full flex items-center justify-center shrink-0", ICON_BG[insight.color])}>
+                  <span className={ICON_TEXT[insight.color]}>{insight.icon}</span>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground">{insight.title}</p>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">{insight.description}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {insights.length === 0 && (
+        <p className="text-sm text-muted-foreground text-center py-4">Sem dados suficientes para gerar insights ainda.</p>
+      )}
     </div>
   );
 }
