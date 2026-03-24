@@ -25,6 +25,8 @@ import { MyPmTasksWidget } from "@/features/meu-painel/components/MyPmTasksWidge
 import { PmTaskDetailDialog } from "@/features/gestao/components/PmTaskDetailDialog";
 import { usePmTasks } from "@/features/gestao/hooks/use-pm-data";
 import { useQuery } from "@tanstack/react-query";
+import { ProductivityWidget } from "@/features/meu-painel/components/ProductivityWidget";
+import { SmartFeedbackWidget } from "@/features/meu-painel/components/SmartFeedbackWidget";
 import {
   useCleaningSchedules,
   useCleaningCategories,
