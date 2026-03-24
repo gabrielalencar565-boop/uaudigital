@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { format, subDays, startOfWeek, endOfWeek, isWithinInterval, subWeeks } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { TrendingUp, TrendingDown, BarChart3, Activity } from "lucide-react";
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Area, AreaChart } from "recharts";
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Area, AreaChart, Cell } from "recharts";
 import { cn } from "@/lib/utils";
 
 interface TaskData {
@@ -167,10 +167,12 @@ export function ProductivityWidget({ tasks, allMonthTasks, todayKey }: Props) {
           {/* Bar chart */}
           <div className="rounded-xl border border-border/30 p-4 flex-1" style={{ background: "hsl(var(--card) / 0.6)" }}>
             <p className="text-xs text-muted-foreground mb-2 font-medium">Por semana</p>
-            <div className="h-[100px]">
+            <div className="h-[140px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={weeklyData}>
-                  <XAxis dataKey="label" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                <BarChart data={weeklyData} barCategoryGap="20%">
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border) / 0.3)" horizontal vertical={false} />
+                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} allowDecimals={false} width={24} />
                   <Tooltip
                     contentStyle={{
                       background: "hsl(var(--popover))",
@@ -178,13 +180,18 @@ export function ProductivityWidget({ tasks, allMonthTasks, todayKey }: Props) {
                       borderRadius: 10,
                       fontSize: 12,
                     }}
+                    formatter={(v: number) => [v, mode === "tarefas" ? "Tarefas" : "Pontos"]}
                   />
                   <Bar
                     dataKey="value"
-                    radius={[4, 4, 0, 0]}
-                    fill="hsl(var(--muted) / 0.6)"
-                    // @ts-ignore - recharts allows function for fill via Cell but we handle with shape
-                  />
+                    radius={[6, 6, 0, 0]}
+                    fill="hsl(var(--muted) / 0.5)"
+                    label={{ position: "top", fontSize: 11, fill: "hsl(var(--foreground))" }}
+                  >
+                    {weeklyData.map((entry, index) => (
+                      <Cell key={index} fill={entry.isCurrent ? "hsl(263 70% 50%)" : "hsl(var(--muted) / 0.5)"} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
