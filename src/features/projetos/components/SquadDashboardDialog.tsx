@@ -142,50 +142,6 @@ export function SquadDashboardDialog({
   }, [clients, squadStages]);
 
   // ── Member productivity based on role-specific stages ──
-  const memberProductivity = useMemo(() => {
-    if (!squadMemberIds.length) return [];
-
-    const numClients = clientPerformance.length;
-
-    return squadMemberIds
-      .map(uid => {
-        const member = teamMap[uid];
-        if (!member) return null;
-        const roleStages = getRoleStages(member.role_title);
-        const roleStageSet = new Set(roleStages);
-
-        // Count stages completed by this person that match their role
-        let completed = 0;
-        const stageBreakdown: Record<string, number> = {};
-        roleStages.forEach(k => { stageBreakdown[k] = 0; });
-
-        for (const s of squadStages) {
-          if (!s.completed || s.completed_by !== uid) continue;
-          if (!roleStageSet.has(s.stage)) continue;
-          completed++;
-          stageBreakdown[s.stage] = (stageBreakdown[s.stage] ?? 0) + 1;
-        }
-
-        const totalPossible = numClients * roleStages.length;
-        const percent = totalPossible > 0 ? Math.round((completed / totalPossible) * 100) : 0;
-
-        return {
-          uid,
-          name: member.display_name,
-          avatar: member.avatar_url,
-          role: getRoleLabel(member.role_title),
-          roleStages,
-          completed,
-          totalPossible,
-          percent,
-          stageBreakdown,
-        };
-      })
-      .filter(Boolean)
-      .sort((a, b) => b!.percent - a!.percent || b!.completed - a!.completed) as NonNullable<typeof memberProductivity[number]>[];
-  }, [squadMemberIds, squadStages, teamMap, clientPerformance.length]);
-
-  const maxCompleted = Math.max(1, ...memberProductivity.map(m => m.completed));
 
   if (!squad) return null;
 
