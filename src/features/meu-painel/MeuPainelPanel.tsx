@@ -508,7 +508,22 @@ export function MeuPainelPanel() {
         </Card>
       </div>
 
-      {/* Tarefas de Gestão atribuídas (estilo ClickUp) */}
+      {/* Produtividade + Feedback */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.25s" }}>
+        <ProductivityWidget
+          tasks={myTasks}
+          allMonthTasks={myTasks}
+          todayKey={todayKey}
+        />
+        <SmartFeedbackWidget
+          myTasks={myTasks.map((t) => ({ ...t, completed_at: t.completed_at ?? null, point_value: (t as any).point_value ?? null }))}
+          teamAvgScore={teamPerfQ.data ?? null}
+          myScore={myScore}
+          todayKey={todayKey}
+          prevMonthDone={prevMonthDone}
+        />
+      </div>
+
       <div className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.3s" }}>
         <MyPmTasksWidget onOpenTask={(taskId) => setSelectedPmTaskId(taskId)} />
       </div>
