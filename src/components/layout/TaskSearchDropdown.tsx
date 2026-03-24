@@ -176,7 +176,7 @@ export function TaskSearchDropdown({ onSelectTask }: TaskSearchDropdownProps) {
 
       {/* Results dropdown */}
       {showResults && (
-        <div className="absolute left-0 top-full mt-1.5 w-[400px] max-h-[420px] overflow-y-auto rounded-xl border border-border bg-popover shadow-lg z-[60] animate-fade-in">
+        <div className="fixed mt-1.5 w-[420px] max-h-[70vh] overflow-y-auto rounded-xl border border-border bg-popover shadow-xl z-[9999]" style={{ top: containerRef.current ? containerRef.current.getBoundingClientRect().bottom + 4 : 60, left: containerRef.current ? containerRef.current.getBoundingClientRect().left : 0 }}>
           {results.length === 0 ? (
             <div className="px-4 py-6 text-center text-sm text-muted-foreground">
               Nenhuma tarefa encontrada.
