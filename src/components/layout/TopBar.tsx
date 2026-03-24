@@ -35,6 +35,7 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
   const appSettingsQ = useAppSettings();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const userName = myProfileQ.data?.full_name ?? "Usuário";
   const userRole = myProfileQ.data?.role_title ?? "Colaborador";
