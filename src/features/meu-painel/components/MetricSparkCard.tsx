@@ -64,7 +64,7 @@ export function MetricSparkCard({ label, value, prevValue, icon, accentClass = "
                       {variation.up ? "+" : "-"}{variation.pct}%
                     </span>
                   </TooltipTrigger>
-                  <TooltipContent side="bottom" className="text-xs">
+                  <TooltipContent side="bottom" className="text-xs z-[9999] max-w-[220px] whitespace-normal">
                     {variation.up ? "Aumento" : "Queda"} de {variation.pct}% em relação ao mês anterior
                   </TooltipContent>
                 </Tooltip>
