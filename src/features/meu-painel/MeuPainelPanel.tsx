@@ -321,7 +321,11 @@ export function MeuPainelPanel() {
             <div className="flex items-center gap-2">
               {/* Streak badge */}
               {streak >= 2 && (
-                <div className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold text-white backdrop-blur-xl border border-orange-400/30 shadow-lg" style={{ background: "rgba(251,146,60,0.2)" }}>
+                <div
+                  className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold text-white backdrop-blur-xl border border-orange-400/30 shadow-lg cursor-default"
+                  style={{ background: "rgba(251,146,60,0.2)" }}
+                  title={`🔥 Sequência de ${streak} dias consecutivos concluindo tarefas`}
+                >
                   <Flame className="h-4 w-4 text-orange-400" />
                   <span className="tabular-nums">{streak}</span>
                 </div>
