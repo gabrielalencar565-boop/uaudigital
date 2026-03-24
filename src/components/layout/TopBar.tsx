@@ -1,5 +1,6 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { LogOut, Moon, Palette, Pencil, Search, Sun } from "lucide-react";
+import { TaskSearchDialog } from "@/components/layout/TaskSearchDialog";
 import { useTheme } from "next-themes";
 import { WorkspaceDropdown } from "@/components/layout/WorkspaceDropdown";
 
@@ -34,6 +35,7 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
   const appSettingsQ = useAppSettings();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const userName = myProfileQ.data?.full_name ?? "Usuário";
   const userRole = myProfileQ.data?.role_title ?? "Colaborador";
@@ -102,12 +104,16 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
           <WorkspaceDropdown />
           <div className="relative hidden sm:block">
             <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Pesquisar cliente..."
-              className="h-8 w-56 rounded-full border border-border/50 bg-muted/30 pl-9 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/30 transition"
-              readOnly
-            />
+            <button
+              type="button"
+              onClick={() => setSearchOpen(true)}
+              className="h-8 w-56 rounded-full border border-border/50 bg-muted/30 pl-9 pr-4 text-left text-sm text-muted-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/30 transition"
+            >
+              Pesquisar tarefa...
+              <kbd className="pointer-events-none ml-auto inline-flex h-5 select-none items-center gap-1 rounded border border-border/50 bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground float-right mt-0.5">
+                ⌘K
+              </kbd>
+            </button>
           </div>
         </div>
 
@@ -179,6 +185,12 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
           </DropdownMenu>
         </div>
       </div>
+
+      <TaskSearchDialog
+        open={searchOpen}
+        onOpenChange={setSearchOpen}
+        onSelectTask={(id) => onOpenTask?.(id)}
+      />
     </header>
   );
 }
