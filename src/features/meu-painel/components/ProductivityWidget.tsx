@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { format, subDays, startOfWeek, endOfWeek, isWithinInterval, subWeeks } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { TrendingUp, TrendingDown, BarChart3, Activity } from "lucide-react";
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Area, AreaChart } from "recharts";
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Area, AreaChart, Cell } from "recharts";
 import { cn } from "@/lib/utils";
 
 interface TaskData {
