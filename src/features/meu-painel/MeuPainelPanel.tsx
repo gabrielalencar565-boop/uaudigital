@@ -236,7 +236,7 @@ export function MeuPainelPanel() {
     staleTime: 60_000,
   });
 
-  const myScore = useMemo(() => Number(perf.score ?? 0), [perf.score]);
+  const myScore = useMemo(() => Number(perf.total ?? 0), [perf.total]);
 
   useEffect(() => {
     if (!user) return;
