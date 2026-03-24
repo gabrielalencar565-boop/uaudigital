@@ -168,7 +168,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative flex-1 min-w-[140px] sm:flex-none">
             <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Buscar tarefa ou cliente..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 w-full sm:w-48 pl-9 rounded-xl text-sm" />
+            <Input placeholder="Buscar tarefa..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 w-full sm:w-48 pl-9 rounded-xl text-sm" />
           </div>
           <Select value={filterClient} onValueChange={setFilterClient}>
             <SelectTrigger className="h-9 flex-1 min-w-[120px] sm:flex-none sm:w-52 rounded-xl text-sm border-primary/30 bg-background/80">

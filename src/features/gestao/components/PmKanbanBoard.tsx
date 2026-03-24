@@ -106,7 +106,7 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, on
     }
     if (filters.search) {
       const q = filters.search.toLowerCase();
-      list = list.filter((t) => t.title.toLowerCase().includes(q) || (t.description ?? "").toLowerCase().includes(q) || (clientsMap[t.client_id] ?? "").toLowerCase().includes(q));
+      list = list.filter((t) => t.title.toLowerCase().includes(q) || (t.description ?? "").toLowerCase().includes(q));
     }
     return list;
   }, [tasks, filters]);
