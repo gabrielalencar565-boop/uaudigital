@@ -185,6 +185,12 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
           </DropdownMenu>
         </div>
       </div>
+
+      <TaskSearchDialog
+        open={searchOpen}
+        onOpenChange={setSearchOpen}
+        onSelectTask={(id) => onOpenTask?.(id)}
+      />
     </header>
   );
 }
