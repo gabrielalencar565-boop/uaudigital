@@ -27,7 +27,7 @@ import { SmartFeedbackWidget } from "@/features/meu-painel/components/SmartFeedb
 import { DayQuickView } from "@/features/meu-painel/components/DayQuickView";
 import { BottleneckWidget } from "@/features/meu-painel/components/BottleneckWidget";
 import { MetricSparkCard } from "@/features/meu-painel/components/MetricSparkCard";
-import { FocusNowWidget } from "@/features/meu-painel/components/FocusNowWidget";
+
 import {
   useCleaningSchedules,
   useCleaningCategories,
@@ -336,9 +336,6 @@ export function MeuPainelPanel() {
         <MeuPainelPerformanceRankCard label="Mensal" rank={perf.rank} total={perf.total} medal={perf.medal} isLoading={perf.isLoading} />
         <MeuPainelPerformanceRankCard label="Anual" rank={perfYear.rank} total={perfYear.total} medal={perfYear.medal} isLoading={perfYear.isLoading} />
       </div>
-
-      {/* ── 2. FOCUS NOW ── */}
-      <FocusNowWidget myTasks={myTasks} todayKey={todayKey} pendingByStage={pendingByStage} />
 
       {/* ── 3. METRIC CARDS ── */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.15s" }}>
