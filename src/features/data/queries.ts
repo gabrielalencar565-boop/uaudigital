@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { endOfMonth, format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { MAGIC_STAGES, STAGES, type StageKey } from "@/lib/uau";
+import { normalizeAvatarUrl } from "@/lib/avatar-url";
 
 function dueDate27(year: number, month: number) {
   return `${year}-${String(month).padStart(2, "0")}-27`;
@@ -126,7 +127,10 @@ export function useTeamMembers() {
         .eq("is_active", true)
         .order("display_name", { ascending: true });
       if (error) throw error;
-      return (data ?? []) as TeamMemberRow[];
+      return ((data ?? []) as TeamMemberRow[]).map((member) => ({
+        ...member,
+        avatar_url: normalizeAvatarUrl(member.avatar_url) ?? null,
+      }));
     },
   });
 }
