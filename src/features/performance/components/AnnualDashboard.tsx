@@ -6,6 +6,7 @@ import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend,
 } from "recharts";
+import { normalizeAvatarUrl } from "@/lib/avatar-url";
 
 function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join("");
@@ -270,6 +271,7 @@ export function AnnualDashboard({
                     const { cx, cy, value } = props;
                     if (value == null || cx == null || cy == null) return <g />;
                     const member = teamById.get(u.user_id);
+                    const avatarHref = normalizeAvatarUrl(member?.avatar_url ?? undefined);
                     const size = 20;
                     const r = size / 2;
                     const clipId = `clip-${u.user_id}-${props.index}`;
@@ -281,9 +283,9 @@ export function AnnualDashboard({
                           </clipPath>
                         </defs>
                         <circle cx={cx} cy={cy} r={r + 1} fill={PURPLE_COLORS[idx % PURPLE_COLORS.length]} />
-                        {member?.avatar_url ? (
+                        {avatarHref ? (
                           <image
-                            href={member.avatar_url}
+                            href={avatarHref}
                             x={cx - r}
                             y={cy - r}
                             width={size}
