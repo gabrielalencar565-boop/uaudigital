@@ -52,11 +52,11 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
 
     const userId = myProfileQ.data.user_id;
     const ext = file.name.split(".").pop() ?? "jpg";
-    const path = `avatars/${userId}.${ext}`;
+    const path = `${userId}/${crypto.randomUUID()}.${ext}`;
 
     const { error: uploadErr } = await supabase.storage
-      .from("pm-attachments")
-      .upload(path, file, { upsert: true });
+      .from("avatars")
+      .upload(path, file, { upsert: true, contentType: file.type });
 
     if (uploadErr) {
       toast.error("Erro ao enviar foto");
@@ -64,10 +64,10 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
     }
 
     const { data: urlData } = supabase.storage
-      .from("pm-attachments")
+      .from("avatars")
       .getPublicUrl(path);
 
-    const avatarUrl = urlData.publicUrl + "?t=" + Date.now();
+    const avatarUrl = urlData.publicUrl;
 
     await supabase.from("profiles").update({ avatar_url: avatarUrl }).eq("user_id", userId);
     await supabase.from("team_members").update({ avatar_url: avatarUrl }).eq("user_id", userId);
