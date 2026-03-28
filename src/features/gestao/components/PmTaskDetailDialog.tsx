@@ -878,7 +878,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         )}
 
         {task.stage_current !== "alteracoes" && (
-        <div className="flex items-center gap-2 pt-2">
+        <div className="flex flex-wrap items-center gap-2 pt-2">
           {!isDone ? (
             <>
               <Popover open={stageChoiceOpen} onOpenChange={setStageChoiceOpen}>
