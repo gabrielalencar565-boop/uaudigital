@@ -1,35 +1,23 @@
 
 
-## Plan: Widen bottom nav pill + show sub-tabs on tap
+## Plan: Remove "Menu" tab, add "Configurações" tab, fix mobile comments overlap
 
-### What changes
+### Changes
 
-**1. Increase pill width**
-- Change the pill container from auto-width to `mx-4 w-[calc(100%-2rem)]` so it stretches nearly edge-to-edge while keeping the rounded-full floating look.
-- Increase button touch targets from `h-10 w-10` to include labels beneath icons (icon + small text, like modern app nav bars).
+**1. MobileBottomNav.tsx — Remove "Menu", add "Configurações"**
+- Remove the `{ key: "menu", ... }` entry from `BOTTOM_TABS`
+- Add `{ key: "configuracoes", label: "Config", icon: Settings, tab: "configuracoes" }` as the 5th bottom tab (admin-only, same as current filter logic)
+- Remove the entire Drawer component and all drawer-related state/logic (`drawerOpen`, `openGroups`, `DRAWER_NAV`, `filteredDrawerNav`, etc.)
+- Update `resolveActiveBottom` to map `configuracoes` → `"configuracoes"`
+- For non-admin users, the bottom bar will show 4 tabs (Home, Tarefas, Dashboard, Financeiro)
 
-**2. Show sub-tabs inline when tapping a parent tab**
-- When the user taps "Tarefas", "Dashboard", or "Financeiro":
-  - Navigate to the parent tab (current behavior).
-  - Show a secondary horizontal scrollable bar just above the pill, displaying the sub-tabs for that group (e.g., Agenda, Cronograma, Painel de Squads, Fluxos for Tarefas).
-  - Tapping a sub-tab navigates to it; tapping the same parent again or another parent collapses/replaces the sub-tabs.
-- "Home" and "Menu" have no sub-tabs — they work as before.
-
-**3. Sub-tab bar design**
-- A second floating pill (or semi-transparent bar) positioned just above the main pill (`bottom: ~5.5rem`).
-- Same purple tint but slightly translucent (`bg-purple-900/80 backdrop-blur`).
-- Horizontally scrollable with `overflow-x-auto`, small rounded chips for each sub-tab.
-- Active sub-tab highlighted with `bg-white/20`.
+**2. PmTaskDetailDialog.tsx — Fix "Atividade" comments on mobile**
+- Line 1015: The mobile-only comments section passes `comments={[]}` (empty array) instead of the actual `comments` data. Fix by passing the real comments.
+- The comments sidebar (line 172) is `hidden md:flex` — on mobile (<768px) it's hidden, which is correct.
+- The issue is that `sidebarOpen` subtask panel (line 135-163) uses `hidden sm:flex` — if somehow triggered on mobile, it could overlap. This is already guarded but ensure the sidebar toggle button remains `hidden sm:inline-flex`.
+- The main fix: the `TaskContentView` component receives the comments section inline. Need to check if the sidebar overlay is somehow appearing. Will ensure `z-index` and layout don't cause the sidebar to cover the inline comments on mobile.
 
 ### Files to edit
-
-- `src/components/layout/MobileBottomNav.tsx` — all changes are here.
-
-### Technical details
-
-- Add state `expandedGroup: string | null` to track which parent's sub-tabs are showing.
-- Map from bottom tab key → children array (reuse `DRAWER_NAV` children).
-- On tap: if same group already expanded, collapse it; otherwise expand new group and navigate to parent tab.
-- Sub-tab bar renders conditionally above the main pill with `AnimatePresence`-style transition (or CSS transition).
-- Each bottom tab button gets a column layout: icon on top, label below (`flex-col gap-0.5`, `text-[10px]`), increasing effective width per item.
+- `src/components/layout/MobileBottomNav.tsx` — remove Menu/Drawer, add Configurações tab
+- `src/features/gestao/components/PmTaskDetailDialog.tsx` — fix mobile comments passing empty array
 
