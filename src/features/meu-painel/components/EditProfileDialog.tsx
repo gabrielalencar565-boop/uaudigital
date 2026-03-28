@@ -210,7 +210,7 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
           <div className="space-y-2">
             <Label htmlFor="edit_birth_date">Data de nascimento</Label>
             <DatePicker value={form.watch("birth_date") ?? ""} onChange={(v) => form.setValue("birth_date", v)} className="w-full" />
-            <p className="text-xs text-muted-foreground">Seu aniversário aparecerá no calendário e você receberá parabéns no dia.</p>
+            
           </div>
 
           <DialogFooter>
