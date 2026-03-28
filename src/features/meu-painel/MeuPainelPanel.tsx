@@ -360,6 +360,15 @@ export function MeuPainelPanel() {
       toggleCleaning.mutate({ scheduleId: taskId.replace("cleaning:", ""), date: todayKey, userId: user.id, isCompleted: current === "concluido" });
       return;
     }
+    if (taskId.startsWith("pm:")) {
+      const pmId = taskId.replace("pm:", "");
+      const nextStatus = current === "concluido" ? "backlog" : "concluido";
+      try {
+        await supabase.from("pm_tasks").update({ status_global: nextStatus, updated_at: new Date().toISOString() }).eq("id", pmId);
+        toast.success(nextStatus === "concluido" ? "Concluída! ✔" : "Voltou para backlog");
+      } catch (e: any) { toast.error(e?.message ?? "Erro ao atualizar tarefa"); }
+      return;
+    }
     const next = current === "concluido" ? "em_andamento" : "concluido";
     try {
       await setTaskStatus.mutateAsync({ taskId, status: next, userId: user.id });
