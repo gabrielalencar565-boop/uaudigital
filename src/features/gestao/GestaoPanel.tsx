@@ -735,26 +735,28 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
           </Select>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Badge variant="secondary" className="gap-1 rounded-xl px-2.5 py-1 text-xs font-semibold">
-            <Calendar className="h-3.5 w-3.5" />
-            {(() => {
-              const allDayTasks = Array.from(tasksByDay.entries());
-              return allDayTasks
-                .filter(([k]) => k === todayKey)
-                .reduce((sum, [, ts]) => sum + ts.filter(t => t.status_global !== "concluido").length, 0);
-            })()} hoje
-          </Badge>
+        <div className="flex items-center gap-2 ml-auto">
+          {(() => {
+            const todayCount = Array.from(tasksByDay.entries())
+              .filter(([k]) => k === todayKey)
+              .reduce((sum, [, ts]) => sum + ts.filter(t => t.status_global !== "concluido").length, 0);
+            return todayCount > 0 ? (
+              <Badge variant="secondary" className="gap-1 rounded-xl px-2.5 py-1 text-xs font-semibold">
+                <Calendar className="h-3.5 w-3.5" />
+                {todayCount} hoje
+              </Badge>
+            ) : null;
+          })()}
           {(() => {
             const overdueCount = Array.from(tasksByDay.entries())
               .filter(([k]) => k < todayKey)
               .reduce((sum, [, ts]) => sum + ts.filter(t => t.status_global !== "concluido").length, 0);
-            return (
-              <Badge variant={overdueCount > 0 ? "destructive" : "secondary"} className="gap-1 rounded-xl px-2.5 py-1 text-xs font-semibold">
+            return overdueCount > 0 ? (
+              <Badge variant="destructive" className="gap-1 rounded-xl px-2.5 py-1 text-xs font-semibold">
                 <TriangleAlert className="h-3.5 w-3.5" />
                 {overdueCount} atrasada{overdueCount !== 1 ? "s" : ""}
               </Badge>
-            );
+            ) : null;
           })()}
           {isAdmin && (
             <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => setReportOpen(true)} title="Relatório">
