@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  Home, ClipboardList, Eye, DollarSign, Menu, Plus,
+  Home, ClipboardList, Eye, DollarSign, Menu,
   CalendarDays, CalendarRange, PieChart, Workflow,
   Target, Trophy, Users, Receipt, FileSpreadsheet,
   ArrowRightLeft, TrendingUp, Settings, UserRound, X,
@@ -64,12 +64,6 @@ const DRAWER_NAV: DrawerNavItem[] = [
   { key: "configuracoes", label: "Configurações", icon: Settings, adminOnly: true },
 ];
 
-/* ── Quick actions for central FAB ── */
-const QUICK_ACTIONS = [
-  { label: "Nova tarefa", icon: ClipboardList, tab: "tarefas" as MainTab },
-  { label: "Cronograma", icon: CalendarRange, tab: "cronograma" as MainTab },
-];
-
 /* ── Helpers ── */
 function resolveActiveBottom(tab: MainTab): string {
   const tarefasTabs: MainTab[] = ["tarefas", "agenda_gestao", "cronograma", "visao_geral_projetos", "fluxos"];
@@ -90,7 +84,6 @@ interface Props {
 
 export function MobileBottomNav({ tab, onTabChange, isAdmin }: Props) {
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [fabOpen, setFabOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
   const activeKey = resolveActiveBottom(tab);
@@ -119,81 +112,31 @@ export function MobileBottomNav({ tab, onTabChange, isAdmin }: Props) {
 
   return (
     <>
-      {/* ── FAB overlay ── */}
-      {fabOpen && (
-        <div className="fixed inset-0 z-[90] bg-black/40 backdrop-blur-sm" onClick={() => setFabOpen(false)}>
-          <div className="absolute bottom-24 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3">
-            {QUICK_ACTIONS.map((qa) => (
-              <button
-                key={qa.tab}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onTabChange(qa.tab);
-                  setFabOpen(false);
-                }}
-                className="flex items-center gap-2.5 rounded-2xl bg-primary px-5 py-3 text-primary-foreground shadow-lg active:scale-95 transition-transform"
-              >
-                <qa.icon className="h-5 w-5" />
-                <span className="text-sm font-semibold">{qa.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── Bottom bar ── */}
+      {/* ── Floating pill bottom bar ── */}
       <nav
-        className="fixed bottom-0 inset-x-0 z-[80] border-t border-border/60 bg-background/95 backdrop-blur-lg"
+        className="fixed bottom-4 inset-x-0 z-[80] flex justify-center pointer-events-none"
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
-        <div className="mx-auto flex h-16 max-w-lg items-center justify-around px-2">
-          {filteredBottomTabs.map((item, idx) => {
-            const isCenter = idx === Math.floor(filteredBottomTabs.length / 2);
+        <div
+          className="pointer-events-auto flex h-14 items-center gap-1 rounded-full px-3 shadow-2xl"
+          style={{ background: "hsl(263 70% 50%)" }}
+        >
+          {filteredBottomTabs.map((item) => {
             const active = activeKey === item.key;
-
-            // Central FAB button
-            if (isCenter) {
-              return (
-                <div key="fab-wrapper" className="flex items-center gap-0">
-                  {/* regular tab before FAB */}
-                  <button
-                    onClick={() => handleBottomTap(item)}
-                    className={cn(
-                      "flex flex-col items-center justify-center gap-0.5 px-3 py-1 rounded-xl transition-colors",
-                      active ? "text-primary" : "text-muted-foreground"
-                    )}
-                  >
-                    {active && <div className="h-0.5 w-5 rounded-full bg-primary mb-0.5" />}
-                    <item.icon className="h-5 w-5" />
-                    <span className="text-[10px] font-medium">{item.label}</span>
-                  </button>
-
-                  {/* FAB */}
-                  <button
-                    onClick={() => setFabOpen((v) => !v)}
-                    className={cn(
-                      "mx-1 -mt-5 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform active:scale-90",
-                      fabOpen && "rotate-45"
-                    )}
-                  >
-                    <Plus className="h-6 w-6" />
-                  </button>
-                </div>
-              );
-            }
 
             return (
               <button
                 key={item.key}
                 onClick={() => handleBottomTap(item)}
                 className={cn(
-                  "flex flex-col items-center justify-center gap-0.5 px-3 py-1 rounded-xl transition-colors min-w-[52px]",
-                  active ? "text-primary" : "text-muted-foreground"
+                  "flex h-10 w-10 items-center justify-center rounded-full transition-all",
+                  active
+                    ? "bg-white/20 text-white scale-110"
+                    : "text-white/60 hover:text-white/90 active:scale-95"
                 )}
+                aria-label={item.label}
               >
-                {active && <div className="h-0.5 w-5 rounded-full bg-primary mb-0.5" />}
                 <item.icon className="h-5 w-5" />
-                <span className="text-[10px] font-medium">{item.label}</span>
               </button>
             );
           })}
