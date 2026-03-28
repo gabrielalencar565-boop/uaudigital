@@ -685,16 +685,16 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         </div>
       )}
 
-      <div className="px-6 py-5 space-y-6">
+      <div className="px-4 sm:px-6 py-4 sm:py-5 space-y-5 sm:space-y-6">
         {/* Title */}
         {editingTitle ? (
-          <Input autoFocus value={titleDraft} onChange={(e) => setTitleDraft(e.target.value)} onBlur={saveTitle} onKeyDown={(e) => e.key === "Enter" && saveTitle()} className="text-2xl font-bold border-0 bg-transparent p-0 h-auto focus-visible:ring-0 focus-visible:ring-offset-0" />
+          <Input autoFocus value={titleDraft} onChange={(e) => setTitleDraft(e.target.value)} onBlur={saveTitle} onKeyDown={(e) => e.key === "Enter" && saveTitle()} className="text-xl sm:text-2xl font-bold border-0 bg-transparent p-0 h-auto focus-visible:ring-0 focus-visible:ring-offset-0" />
         ) : (
-          <h1 className="cursor-pointer text-2xl font-bold hover:text-primary transition-colors" onClick={() => { setTitleDraft(task.title); setEditingTitle(true); }}>{task.title}</h1>
+          <h1 className="cursor-pointer text-xl sm:text-2xl font-bold hover:text-primary transition-colors" onClick={() => { setTitleDraft(task.title); setEditingTitle(true); }}>{task.title}</h1>
         )}
 
         {/* Properties grid */}
-        <div className="grid grid-cols-2 gap-x-8 gap-y-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2">
           {/* Assignee */}
           <PropertyRow icon={<UserCircle className="h-3.5 w-3.5" />} label="Responsável">
             <PmAssigneeSelector
