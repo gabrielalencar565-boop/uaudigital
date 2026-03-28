@@ -106,7 +106,7 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
-      <DialogContent hideClose className="max-w-[90vw] w-[90vw] max-h-[90vh] h-[90vh] max-sm:max-w-full max-sm:w-full max-sm:max-h-full max-sm:h-full max-sm:rounded-none p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border-border/30 shadow-2xl">
+      <DialogContent hideClose className="z-[120] max-w-[90vw] w-[90vw] max-h-[90vh] h-[90vh] max-sm:max-w-full max-sm:w-full max-sm:max-h-full max-sm:h-full max-sm:rounded-none p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border-border/30 shadow-2xl">
 
         {/* Breadcrumb bar */}
         <div className="flex items-center gap-1.5 border-b border-border/20 px-3 sm:px-5 py-2.5 bg-card/60 backdrop-blur-sm shrink-0">
@@ -685,7 +685,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         </div>
       )}
 
-      <div className="px-4 sm:px-6 py-4 sm:py-5 space-y-5 sm:space-y-6">
+      <div className="px-4 sm:px-6 py-4 sm:py-5 pb-[calc(env(safe-area-inset-bottom,0px)+6rem)] sm:pb-5 space-y-5 sm:space-y-6">
         {/* Title */}
         {editingTitle ? (
           <Input autoFocus value={titleDraft} onChange={(e) => setTitleDraft(e.target.value)} onBlur={saveTitle} onKeyDown={(e) => e.key === "Enter" && saveTitle()} className="text-xl sm:text-2xl font-bold border-0 bg-transparent p-0 h-auto focus-visible:ring-0 focus-visible:ring-offset-0" />
