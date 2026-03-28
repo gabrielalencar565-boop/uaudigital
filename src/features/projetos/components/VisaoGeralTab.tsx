@@ -1110,8 +1110,21 @@ export function VisaoGeralTab() {
         </FadeUp>
       )}
 
-      {/* Calendar full-width */}
+      {/* Health Score access */}
       <FadeUp delay={0.6}>
+        <Card className="cursor-pointer hover:border-primary/40 transition-colors" onClick={() => setShowHealthScore(true)}>
+          <CardContent className="flex items-center gap-4 py-4 px-5">
+            <div className="h-10 w-10 rounded-xl bg-sidebar/10 flex items-center justify-center"><HeartPulse className="h-5 w-5 text-sidebar" /></div>
+            <div>
+              <p className="text-sm font-semibold">Health Score</p>
+              <p className="text-xs text-muted-foreground">Avaliar saúde dos clientes</p>
+            </div>
+          </CardContent>
+        </Card>
+      </FadeUp>
+
+      {/* Calendar full-width */}
+      <FadeUp delay={0.65}>
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
           {/* Calendar — left 3 cols */}
           <Card className="lg:col-span-3">
@@ -1232,19 +1245,6 @@ export function VisaoGeralTab() {
       {/* Análise Mensal da Operação */}
       <FadeUp delay={0.7}>
         <MonthlyAnalysisSection />
-      </FadeUp>
-
-      {/* Health Score access */}
-      <FadeUp delay={0.75}>
-        <Card className="cursor-pointer hover:border-primary/40 transition-colors" onClick={() => setShowHealthScore(true)}>
-          <CardContent className="flex items-center gap-4 py-4 px-5">
-            <div className="h-10 w-10 rounded-xl bg-sidebar/10 flex items-center justify-center"><HeartPulse className="h-5 w-5 text-sidebar" /></div>
-            <div>
-              <p className="text-sm font-semibold">Health Score</p>
-              <p className="text-xs text-muted-foreground">Avaliar saúde dos clientes</p>
-            </div>
-          </CardContent>
-        </Card>
       </FadeUp>
 
       {/* Squad Dashboard Dialog */}
