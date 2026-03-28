@@ -160,7 +160,7 @@ export function ProductivityWidget({ tasks, allMonthTasks, todayKey }: Props) {
         {/* Area chart - 2 cols */}
         <div className="md:col-span-2 rounded-xl p-4 border border-border bg-muted/30">
           <p className="text-xs text-muted-foreground mb-3 font-medium">Últimos 7 dias</p>
-          <div className="h-[180px]">
+          <div className="h-[140px]">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={dailyData}>
                 <defs>
