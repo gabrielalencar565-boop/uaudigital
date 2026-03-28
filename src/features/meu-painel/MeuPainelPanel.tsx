@@ -362,13 +362,8 @@ export function MeuPainelPanel() {
         <MetricSparkCard label="Atrasadas" value={summary.overdue} icon={<AlertTriangle className="h-5 w-5" />} accentClass="text-red-500" />
       </div>
 
-      {/* ── 4. PM TASKS (Gestão) ── */}
+      {/* ── 4. AGENDA TASKS (Atribuídas a mim) ── */}
       <div className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.22s" }}>
-        <MyPmTasksWidget onOpenTask={(taskId) => setSelectedPmTaskId(taskId)} />
-      </div>
-
-      {/* ── 5. AGENDA TASKS ── */}
-      <div className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.30s" }}>
         <MeuPainelTasksGroupedCard
           overdue={overdueTasks.map(toVM)}
           today={todayTasks.map(toVM)}

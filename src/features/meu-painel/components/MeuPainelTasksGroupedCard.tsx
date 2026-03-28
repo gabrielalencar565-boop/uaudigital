@@ -69,8 +69,8 @@ export function MeuPainelTasksGroupedCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Minhas tarefas</CardTitle>
-        <CardDescription>Em atraso, hoje, próximas e concluídas</CardDescription>
+        <CardTitle>Atribuídas a mim</CardTitle>
+        <CardDescription>Tarefas da agenda e limpeza organizadas por status</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
