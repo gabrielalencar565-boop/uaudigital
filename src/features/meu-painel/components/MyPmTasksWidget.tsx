@@ -384,6 +384,7 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
         </CardHeader>
         <CardContent className="p-0">
         {/* Em atraso */}
+        {groups.overdue.length > 0 && (
           <Collapsible open={openOverdue} onOpenChange={setOpenOverdue}>
             <CollapsibleTrigger asChild>
               <button type="button" className="flex w-full items-center gap-2 px-4 py-2 text-left hover:bg-accent/20">
@@ -393,15 +394,13 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
               </button>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              {groups.overdue.length > 0 ? (
-                <>{renderHeader()}{groups.overdue.map(renderRow)}</>
-              ) : (
-                <p className="px-4 py-3 text-sm text-muted-foreground">Nenhuma tarefa em atraso</p>
-              )}
+              {renderHeader()}{groups.overdue.map(renderRow)}
             </CollapsibleContent>
           </Collapsible>
+        )}
 
         {/* Hoje */}
+        {groups.today.length > 0 && (
           <Collapsible open={openToday} onOpenChange={setOpenToday}>
             <CollapsibleTrigger asChild>
               <button type="button" className="flex w-full items-center gap-2 px-4 py-2 text-left hover:bg-accent/20">
@@ -411,15 +410,13 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
               </button>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              {groups.today.length > 0 ? (
-                <>{renderHeader()}{groups.today.map(renderRow)}</>
-              ) : (
-                <p className="px-4 py-3 text-sm text-muted-foreground">Nenhuma tarefa para hoje</p>
-              )}
+              {renderHeader()}{groups.today.map(renderRow)}
             </CollapsibleContent>
           </Collapsible>
+        )}
 
         {/* Próximas */}
+        {groups.upcoming.length > 0 && (
           <Collapsible open={openUpcoming} onOpenChange={setOpenUpcoming}>
             <CollapsibleTrigger asChild>
               <button type="button" className="flex w-full items-center gap-2 px-4 py-2 text-left hover:bg-accent/20">
@@ -429,13 +426,10 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
               </button>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              {groups.upcoming.length > 0 ? (
-                <>{renderHeader()}{groups.upcoming.map(renderRow)}</>
-              ) : (
-                <p className="px-4 py-3 text-sm text-muted-foreground">Nenhuma tarefa próxima</p>
-              )}
+              {renderHeader()}{groups.upcoming.map(renderRow)}
             </CollapsibleContent>
           </Collapsible>
+        )}
 
         {/* Sem data */}
         {groups.noDue.length > 0 && (
@@ -450,6 +444,7 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
         )}
 
         {/* Concluídas */}
+        {groups.completed.length > 0 && (
           <Collapsible open={openCompleted} onOpenChange={setOpenCompleted}>
             <CollapsibleTrigger asChild>
               <button type="button" className="flex w-full items-center gap-2 px-4 py-2 text-left hover:bg-accent/20">
@@ -459,13 +454,10 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
               </button>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              {groups.completed.length > 0 ? (
-                <>{renderHeader()}{groups.completed.map(renderRow)}</>
-              ) : (
-                <p className="px-4 py-3 text-sm text-muted-foreground">Nenhuma tarefa concluída</p>
-              )}
+              {renderHeader()}{groups.completed.map(renderRow)}
             </CollapsibleContent>
           </Collapsible>
+        )}
 
         {myTasks.length === 0 && !pmTasksQ.isLoading && (
           <div className="py-8 text-center text-sm text-muted-foreground">
