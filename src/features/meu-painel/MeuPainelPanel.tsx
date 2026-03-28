@@ -6,7 +6,7 @@ import confetti from "canvas-confetti";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-import { useClients, useSetTaskStatus, useTasks } from "@/features/data/queries";
+import { useClients, useSetTaskStatus, useTasks, useTeamMembers } from "@/features/data/queries";
 import { STAGES } from "@/lib/uau";
 import { useSession } from "@/hooks/use-session";
 import { useRole } from "@/hooks/use-role";
