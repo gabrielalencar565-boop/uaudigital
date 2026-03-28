@@ -23,6 +23,7 @@ import {
 import {
   Collapsible, CollapsibleContent, CollapsibleTrigger } from
 "@/components/ui/collapsible";
+import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 
 export type MainTab =
 "meu_painel" |
@@ -164,164 +165,143 @@ export function UauSidebarShell({
       <div className="min-h-svh w-full bg-background text-foreground" style={{ willChange: "background" }}>
         <TopBar onEditProfile={() => setEditProfileOpen(true)} onOpenTask={(id) => setNotifTaskId(id)} />
 
-        <Sidebar
-          collapsible={isMobile ? "offcanvas" : "none"}
-          className={cn(
-            !isMobile &&
-            "fixed left-0 top-[3.5rem] z-40 h-[calc(100svh-3.5rem)] border-r border-sidebar-border bg-sidebar",
-            !isMobile && (collapsed ? "w-16" : "w-56 xl:w-64")
-          )}>
-          
-          {/* Header: logo + collapse toggle */}
-          <div className={cn("px-3 pb-1 pt-3", collapsed && !isMobile && "px-2")}>
-            <div className={cn("flex items-center gap-2", collapsed && !isMobile && "justify-center")}>
-              {(!collapsed || isMobile) &&
-              <span className="text-sm font-bold text-sidebar-foreground truncate">{appSettingsQ.data?.workspace_name ?? "Uau Digital"}</span>
-              }
-              {!isMobile &&
-              <button
-                type="button"
-                onClick={() => setCollapsed((v) => !v)}
-                className={cn(
-                  "ml-auto inline-flex h-7 w-7 items-center justify-center rounded-md text-sidebar-foreground/70 transition hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                )}
-                aria-label={collapsed ? "Expandir" : "Recolher"}>
-                
-                  <PanelLeftClose className={cn("h-4 w-4 transition-transform", collapsed && "rotate-180")} />
-                </button>
-              }
-            </div>
-          </div>
-
-          <div className="mx-3 my-2 h-px bg-sidebar-foreground/15" />
-
-          <SidebarContent className="px-2">
-            <SidebarMenu>
-              {filteredNav.map((entry) => {
-                if (!isGroup(entry)) {
-                  const active = isActive(entry.key);
-                  return (
-                    <SidebarMenuItem key={entry.key}>
-                      <SidebarMenuButton
-                        tooltip={entry.label}
-                        isActive={active}
-                        onClick={() => onTabChange(entry.key)}
-                        className={cn(
-                          "h-10 gap-3 rounded-xl text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors",
-                          active && "bg-sidebar-accent text-sidebar-foreground font-semibold",
-                          collapsed && !isMobile && "justify-center"
-                        )}>
-                        
-                        <entry.icon className="h-[18px] w-[18px] shrink-0" />
-                        {(!collapsed || isMobile) && <span className="text-sm">{entry.label}</span>}
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>);
-
-                }
-
-                // Group with children
-                const groupOpen = !!openGroups[entry.key];
-                const hasActiveChild = entry.children.some((c) => isActive(c.key)) || entry.landingTab && isActive(entry.landingTab);
-
-                return (
-                  <Collapsible key={entry.key} open={groupOpen} onOpenChange={() => toggleGroup(entry.key)}>
-                    <SidebarMenuItem>
-                      {/* Group header: click label area to navigate to landing, click chevron to toggle */}
-                      <div className="flex items-center">
-                        <SidebarMenuButton
-                          tooltip={entry.label}
-                          onClick={() => {
-                            if (entry.landingTab) {
-                              onTabChange(entry.landingTab);
-                              if (!groupOpen) toggleGroup(entry.key);
-                            } else {
-                              toggleGroup(entry.key);
-                            }
-                          }}
-                          className={cn(
-                            "h-10 gap-3 rounded-xl text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors flex-1",
-                            hasActiveChild && "bg-sidebar-accent text-sidebar-foreground font-semibold",
-                            collapsed && !isMobile && "justify-center"
-                          )}>
-                          
-                          <entry.icon className="h-[18px] w-[18px] shrink-0" />
-                          {(!collapsed || isMobile) &&
-                          <>
-                              <span className="flex-1 text-sm">{entry.label}</span>
-                            </>
-                          }
-                        </SidebarMenuButton>
-                        {(!collapsed || isMobile) &&
-                        <CollapsibleTrigger asChild>
-                            <button
-                            type="button"
-                            className="inline-flex h-10 w-8 items-center justify-center text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors">
-                            
-                              <ChevronDown className={cn("h-4 w-4 transition-transform", groupOpen && "rotate-180")} />
-                            </button>
-                          </CollapsibleTrigger>
-                        }
-                      </div>
-
-                      {(!collapsed || isMobile) &&
-                      <CollapsibleContent>
-                          <div className="ml-5 mt-1 space-y-0.5 border-l border-sidebar-foreground/15 pl-3">
-                            {entry.children.map((child) => {
-                            const active = isActive(child.key);
-                            return (
-                              <button
-                                key={child.key}
-                                onClick={() => onTabChange(child.key)}
-                                className={cn("flex w-full items-center gap-2.5 px-2.5 py-2 text-sm text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground rounded-xl",
-
-                                active && "bg-sidebar-accent text-sidebar-foreground font-medium"
-                                )}>
-                                
-                                  <child.icon className="h-4 w-4 shrink-0" />
-                                  <span>{child.label}</span>
-                                </button>);
-
-                          })}
-                          </div>
-                        </CollapsibleContent>
-                      }
-                    </SidebarMenuItem>
-                  </Collapsible>);
-
-              })}
-            </SidebarMenu>
-          </SidebarContent>
-
-          <SidebarFooter>
-            {logoUrl && (!collapsed || isMobile) ?
-            <div className="flex items-center gap-2 px-3 pb-2">
-                <img src={logoUrl} alt="Uau Digital" className={cn("h-6 w-6 object-cover", logoClass)} />
-                <span className="text-[10px] text-sidebar-foreground/40">v1.0</span>
-              </div> :
-            null}
-          </SidebarFooter>
-        </Sidebar>
-
-        <SidebarInset>
-          {isMobile &&
-          <header className="sticky top-16 z-30 border-b border-border/60 bg-background/60 backdrop-blur">
-              <div className="flex items-center gap-3 px-4 py-3">
-                <SidebarTrigger />
-                <p className="truncate text-sm font-medium">{currentTabLabel}</p>
-              </div>
-            </header>
-          }
-
-          <div
+        {/* Desktop sidebar — hidden on mobile */}
+        {!isMobile && (
+          <Sidebar
+            collapsible="none"
             className={cn(
-              "w-full pb-10 pt-18 transition-[padding] duration-300",
-              isMobile ?
-              "px-4" :
-              collapsed ?
-              "pl-[5rem] pr-6 pt-[4.5rem]" :
-              "pl-[15rem] pr-6 pt-[4.5rem] xl:pl-[17rem] xl:pr-8"
+              "fixed left-0 top-[3.5rem] z-40 h-[calc(100svh-3.5rem)] border-r border-sidebar-border bg-sidebar",
+              collapsed ? "w-16" : "w-56 xl:w-64"
             )}>
             
+            {/* Header: logo + collapse toggle */}
+            <div className={cn("px-3 pb-1 pt-3", collapsed && "px-2")}>
+              <div className={cn("flex items-center gap-2", collapsed && "justify-center")}>
+                {!collapsed &&
+                <span className="text-sm font-bold text-sidebar-foreground truncate">{appSettingsQ.data?.workspace_name ?? "Uau Digital"}</span>
+                }
+                <button
+                  type="button"
+                  onClick={() => setCollapsed((v) => !v)}
+                  className={cn(
+                    "ml-auto inline-flex h-7 w-7 items-center justify-center rounded-md text-sidebar-foreground/70 transition hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  )}
+                  aria-label={collapsed ? "Expandir" : "Recolher"}>
+                  <PanelLeftClose className={cn("h-4 w-4 transition-transform", collapsed && "rotate-180")} />
+                </button>
+              </div>
+            </div>
+
+            <div className="mx-3 my-2 h-px bg-sidebar-foreground/15" />
+
+            <SidebarContent className="px-2">
+              <SidebarMenu>
+                {filteredNav.map((entry) => {
+                  if (!isGroup(entry)) {
+                    const active = isActive(entry.key);
+                    return (
+                      <SidebarMenuItem key={entry.key}>
+                        <SidebarMenuButton
+                          tooltip={entry.label}
+                          isActive={active}
+                          onClick={() => onTabChange(entry.key)}
+                          className={cn(
+                            "h-10 gap-3 rounded-xl text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors",
+                            active && "bg-sidebar-accent text-sidebar-foreground font-semibold",
+                            collapsed && "justify-center"
+                          )}>
+                          <entry.icon className="h-[18px] w-[18px] shrink-0" />
+                          {!collapsed && <span className="text-sm">{entry.label}</span>}
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>);
+                  }
+
+                  const groupOpen = !!openGroups[entry.key];
+                  const hasActiveChild = entry.children.some((c) => isActive(c.key)) || (entry.landingTab && isActive(entry.landingTab));
+
+                  return (
+                    <Collapsible key={entry.key} open={groupOpen} onOpenChange={() => toggleGroup(entry.key)}>
+                      <SidebarMenuItem>
+                        <div className="flex items-center">
+                          <SidebarMenuButton
+                            tooltip={entry.label}
+                            onClick={() => {
+                              if (entry.landingTab) {
+                                onTabChange(entry.landingTab);
+                                if (!groupOpen) toggleGroup(entry.key);
+                              } else {
+                                toggleGroup(entry.key);
+                              }
+                            }}
+                            className={cn(
+                              "h-10 gap-3 rounded-xl text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors flex-1",
+                              hasActiveChild && "bg-sidebar-accent text-sidebar-foreground font-semibold",
+                              collapsed && "justify-center"
+                            )}>
+                            <entry.icon className="h-[18px] w-[18px] shrink-0" />
+                            {!collapsed &&
+                            <>
+                                <span className="flex-1 text-sm">{entry.label}</span>
+                              </>
+                            }
+                          </SidebarMenuButton>
+                          {!collapsed &&
+                          <CollapsibleTrigger asChild>
+                              <button
+                              type="button"
+                              className="inline-flex h-10 w-8 items-center justify-center text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors">
+                                <ChevronDown className={cn("h-4 w-4 transition-transform", groupOpen && "rotate-180")} />
+                              </button>
+                            </CollapsibleTrigger>
+                          }
+                        </div>
+
+                        {!collapsed &&
+                        <CollapsibleContent>
+                            <div className="ml-5 mt-1 space-y-0.5 border-l border-sidebar-foreground/15 pl-3">
+                              {entry.children.map((child) => {
+                              const active = isActive(child.key);
+                              return (
+                                <button
+                                  key={child.key}
+                                  onClick={() => onTabChange(child.key)}
+                                  className={cn("flex w-full items-center gap-2.5 px-2.5 py-2 text-sm text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground rounded-xl",
+                                  active && "bg-sidebar-accent text-sidebar-foreground font-medium"
+                                  )}>
+                                    <child.icon className="h-4 w-4 shrink-0" />
+                                    <span>{child.label}</span>
+                                  </button>);
+                            })}
+                            </div>
+                          </CollapsibleContent>
+                        }
+                      </SidebarMenuItem>
+                    </Collapsible>);
+                })}
+              </SidebarMenu>
+            </SidebarContent>
+
+            <SidebarFooter>
+              {logoUrl && !collapsed ?
+              <div className="flex items-center gap-2 px-3 pb-2">
+                  <img src={logoUrl} alt="Uau Digital" className={cn("h-6 w-6 object-cover", logoClass)} />
+                  <span className="text-[10px] text-sidebar-foreground/40">v1.0</span>
+                </div> :
+              null}
+            </SidebarFooter>
+          </Sidebar>
+        )}
+
+        <SidebarInset>
+          <div
+            className={cn(
+              "w-full transition-[padding] duration-300",
+              isMobile
+                ? "px-3 pt-16 pb-24"
+                : collapsed
+                  ? "pl-[5rem] pr-6 pt-[4.5rem] pb-10"
+                  : "pl-[15rem] pr-6 pt-[4.5rem] pb-10 xl:pl-[17rem] xl:pr-8"
+            )}>
             <div className="mx-auto w-full">
               <div className="animate-fade-in overflow-x-auto p-2 sm:p-4 lg:p-6 2xl:p-8">
                 {children}
@@ -329,6 +309,11 @@ export function UauSidebarShell({
             </div>
           </div>
         </SidebarInset>
+
+        {/* Mobile bottom navigation */}
+        {isMobile && (
+          <MobileBottomNav tab={tab} onTabChange={onTabChange} isAdmin={isAdmin} />
+        )}
 
         <EditProfileDialog open={editProfileOpen} onOpenChange={setEditProfileOpen} />
         <NotifTaskDialogWrapper taskId={notifTaskId} onClose={() => setNotifTaskId(null)} isAdmin={isAdmin ?? false} />
