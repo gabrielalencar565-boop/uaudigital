@@ -483,16 +483,53 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
   const weekStart = useMemo(() => startOfWeek(cursor, { weekStartsOn: 0 }), [cursor]);
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
 
+  // Fetch legacy tasks from `tasks` table for the visible month range
+  const legacyMonth = format(cursor, "yyyy-MM");
+  const legacyTasksQ = useTasks({ month: legacyMonth });
+
   const tasksByDay = useMemo(() => {
     const map = new Map<string, PmTask[]>();
+    // Add pm_tasks
     for (const t of filteredTasks) {
       const key = t.due_date ?? "";
       if (!key) continue;
       const prev = map.get(key) ?? [];
       map.set(key, [...prev, t]);
     }
+    // Add legacy tasks converted to PmTask shape
+    for (const lt of legacyTasksQ.data ?? []) {
+      const key = lt.due_date ?? "";
+      if (!key) continue;
+      const asPm: PmTask = {
+        id: `legacy_${lt.id}`,
+        project_id: null,
+        client_id: lt.client_id,
+        title: lt.title ?? lt.stage,
+        description: lt.description ?? null,
+        priority: "media",
+        status_global: lt.status === "concluido" ? "concluido" : lt.status === "em_andamento" ? "em_andamento" : "backlog",
+        stage_current: lt.stage,
+        start_date: null,
+        due_date: lt.due_date,
+        created_by: lt.created_by,
+        assignee_id: lt.assigned_user_id,
+        watchers: [],
+        tags: [],
+        created_at: lt.created_at ?? "",
+        updated_at: lt.updated_at ?? "",
+        parent_task_id: null,
+        cover_url: null,
+        is_extra_demand: lt.is_extra_demand ?? false,
+        post_type: null,
+        posting_date: null,
+        posting_time: null,
+        caption: null,
+      };
+      const prev = map.get(key) ?? [];
+      map.set(key, [...prev, asPm]);
+    }
     return map;
-  }, [filteredTasks]);
+  }, [filteredTasks, legacyTasksQ.data]);
 
   const daySpecialDates = (dayKey: string) => specialDatesMap.get(dayKey) ?? [];
 
