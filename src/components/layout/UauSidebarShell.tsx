@@ -23,6 +23,7 @@ import {
 import {
   Collapsible, CollapsibleContent, CollapsibleTrigger } from
 "@/components/ui/collapsible";
+import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 
 export type MainTab =
 "meu_painel" |
