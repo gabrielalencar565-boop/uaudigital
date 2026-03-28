@@ -165,13 +165,21 @@ export function AgendaWeekTaskItem({
         {members && members.length > 0 ? (
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="flex flex-col -space-y-1 shrink-0">
-                {members.map((m) => (
-                  <Avatar key={m.user_id} className={cn(isCompact ? "h-4 w-4" : "h-5 w-5", "border border-background")}>
+              <div className="flex flex-col -space-y-1.5 shrink-0">
+                {members.slice(0, 2).map((m) => (
+                  <Avatar key={m.user_id} className={cn(isCompact ? "h-5 w-5" : "h-6 w-6", "border-2 border-background")}>
                     <AvatarImage src={m.avatar_url ?? undefined} alt={m.display_name} />
-                    <AvatarFallback className="text-[8px]">{initials(m.display_name)}</AvatarFallback>
+                    <AvatarFallback className="text-[10px]">{initials(m.display_name)}</AvatarFallback>
                   </Avatar>
                 ))}
+                {members.length > 2 && (
+                  <div className={cn(
+                    isCompact ? "h-5 w-5" : "h-6 w-6",
+                    "flex items-center justify-center rounded-full border-2 border-background bg-muted text-muted-foreground text-[9px] font-semibold"
+                  )}>
+                    +{members.length - 2}
+                  </div>
+                )}
               </div>
             </TooltipTrigger>
             <TooltipContent side="top" className="max-w-[200px]">
@@ -189,13 +197,13 @@ export function AgendaWeekTaskItem({
             </TooltipContent>
           </Tooltip>
         ) : (
-          <Avatar className={cn(isCompact ? "h-4 w-4" : "h-5 w-5")}>
+          <Avatar className={cn(isCompact ? "h-5 w-5" : "h-6 w-6")}>
             <AvatarImage src={assigneeAvatarUrl ?? undefined} alt="" />
-            <AvatarFallback className="text-[8px]">{initials(assigneeName || "?")}</AvatarFallback>
+            <AvatarFallback className="text-[10px]">{initials(assigneeName || "?")}</AvatarFallback>
           </Avatar>
         )}
         
-        <div className={cn("min-w-0 flex-1", members && members.length > 1 && "flex items-center")}>
+        <div className="min-w-0 flex-1">
           {/* Show name only for single member or no-member tasks */}
           {members && members.length > 1 ? null : (
             <p
@@ -212,9 +220,8 @@ export function AgendaWeekTaskItem({
           )}
           <p
             className={cn(
-              "whitespace-normal break-words text-muted-foreground",
+              "mt-1 whitespace-normal break-words text-muted-foreground",
               isCompact ? "text-[12px] leading-4" : "text-sm leading-5",
-              members && members.length > 1 ? "" : "mt-1",
             )}
           >
             {clientName || "—"}

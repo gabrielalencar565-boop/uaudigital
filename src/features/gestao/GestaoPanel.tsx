@@ -652,21 +652,26 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
           <Badge variant="secondary" className="text-[8px] h-4 px-1.5 gap-0.5 mt-1 rounded-md">★ Extra</Badge>
         }
         <div className="mt-2 flex items-center gap-2">
-          {assignees.length > 0 ? (
-            <div className="flex flex-col -space-y-1 shrink-0">
-              {assignees.map((member) => (
-                <Avatar key={member.id} className="h-5 w-5 ring-1 ring-background">
+          {visibleAssignees.length > 0 ? (
+            <div className="flex flex-col -space-y-1.5 shrink-0">
+              {visibleAssignees.map((member) => (
+                <Avatar key={member.id} className="h-7 w-7 ring-2 ring-background">
                   <AvatarImage src={member.avatar} />
-                  <AvatarFallback className="text-[7px] font-bold bg-primary/10 text-primary">{initials(member.name)}</AvatarFallback>
+                  <AvatarFallback className="text-[8px] font-bold bg-primary/10 text-primary">{initials(member.name)}</AvatarFallback>
                 </Avatar>
               ))}
+              {extraAssignees > 0 && (
+                <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-muted px-1 text-[9px] font-semibold text-muted-foreground ring-2 ring-background">
+                  +{extraAssignees}
+                </span>
+              )}
             </div>
           ) : (
-            <Avatar className="h-5 w-5 shrink-0 ring-1 ring-background">
-              <AvatarFallback className="text-[7px] font-bold bg-primary/10 text-primary">?</AvatarFallback>
+            <Avatar className="h-7 w-7 shrink-0 ring-2 ring-background">
+              <AvatarFallback className="text-[8px] font-bold bg-primary/10 text-primary">?</AvatarFallback>
             </Avatar>
           )}
-          <div className={cn("min-w-0", assignees.length > 1 && "flex items-center")}>
+          <div className="min-w-0">
             {assignees.length === 1 && mainAssignee ? (
               <>
                 <p className="truncate text-xs font-semibold leading-4">{mainAssignee.name.split(" ")[0]}</p>
@@ -949,29 +954,34 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
                   <div className={cn("inline-flex h-6 items-center rounded-md px-2.5 text-[10px] font-bold text-white shrink-0", STAGE_BADGE_BG[t.stage_current] ?? "bg-muted")}>
                     {STAGE_ABBR[t.stage_current] ?? t.stage_current.slice(0, 4).toUpperCase()}
                   </div>
-                  {assignees.length > 0 ? (
-                    <div className="flex flex-col -space-y-1 shrink-0">
-                      {assignees.map((member) => (
-                        <Avatar key={member.id} className="h-5 w-5 shrink-0 ring-1 ring-background">
+                  {visibleAssignees.length > 0 ? (
+                    <div className="flex flex-col -space-y-1.5 shrink-0">
+                      {visibleAssignees.map((member) => (
+                        <Avatar key={member.id} className="h-7 w-7 shrink-0 ring-2 ring-background">
                           <AvatarImage src={member.avatar} />
-                          <AvatarFallback className="text-[7px] font-bold bg-primary/10 text-primary">{initials(member.name)}</AvatarFallback>
+                          <AvatarFallback className="text-[8px] font-bold bg-primary/10 text-primary">{initials(member.name)}</AvatarFallback>
                         </Avatar>
                       ))}
+                      {extraAssignees > 0 && (
+                        <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-muted px-1 text-[9px] font-semibold text-muted-foreground ring-2 ring-background">
+                          +{extraAssignees}
+                        </span>
+                      )}
                     </div>
                   ) : (
-                    <Avatar className="h-5 w-5 shrink-0 ring-1 ring-background">
-                      <AvatarFallback className="text-[7px] font-bold bg-primary/10 text-primary">?</AvatarFallback>
+                    <Avatar className="h-7 w-7 shrink-0 ring-2 ring-background">
+                      <AvatarFallback className="text-[8px] font-bold bg-primary/10 text-primary">?</AvatarFallback>
                     </Avatar>
                   )}
-                  <div className={cn("min-w-0 flex-1", assignees.length > 1 && "flex items-center")}>
+                  <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">
                       {assignees.length === 1 && mainAssignee
                         ? mainAssignee.name
-                        : clientName}
+                        : assignees.length > 1
+                          ? `${assignees.length} responsáveis`
+                          : "—"}
                     </p>
-                    {assignees.length === 1 && (
-                      <p className="truncate text-xs text-muted-foreground/60">{clientName}</p>
-                    )}
+                    <p className="truncate text-xs text-muted-foreground/60">{clientName}</p>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     <button
