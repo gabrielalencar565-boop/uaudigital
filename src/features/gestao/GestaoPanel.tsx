@@ -857,7 +857,19 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
                     </div>
                     <div className="space-y-2.5 max-h-[500px] overflow-y-auto">
                       {renderSpecialDates(key)}
-                      {dayTasks.length ? dayTasks.map(renderTaskCard) : daySpecialDates(key).length === 0 ? (
+                      {dayTasks.length ? (
+                        <>
+                          {dayTasks.slice(0, 5).map(renderTaskCard)}
+                          {dayTasks.length > 5 && (
+                            <button
+                              type="button"
+                              className="w-full rounded-lg bg-foreground/5 px-2 py-1.5 text-[10px] font-medium text-muted-foreground/60 hover:bg-foreground/10 hover:text-muted-foreground transition"
+                              onClick={() => { setMoreDayKey(key); setMoreOpen(true); }}>
+                              +{dayTasks.length - 5} mais
+                            </button>
+                          )}
+                        </>
+                      ) : daySpecialDates(key).length === 0 ? (
                         <div className="grid min-h-[120px] place-items-center rounded-lg border border-dashed border-border/60 bg-card/5 p-4">
                           <p className="text-sm text-muted-foreground">Sem tarefas</p>
                         </div>
