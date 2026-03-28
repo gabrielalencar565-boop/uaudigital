@@ -184,7 +184,24 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
 
           <div className="space-y-2">
             <Label htmlFor="edit_role_title">Cargo</Label>
-            <Input id="edit_role_title" placeholder="Ex.: Designer" {...form.register("role_title")} />
+            <Controller
+              control={form.control}
+              name="role_title"
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger id="edit_role_title">
+                    <SelectValue placeholder="Selecione seu cargo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ROLE_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
             {form.formState.errors.role_title && (
               <p className="text-sm text-destructive">{form.formState.errors.role_title.message}</p>
             )}

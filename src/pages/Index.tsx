@@ -158,7 +158,24 @@ const Index = () => {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="role_title">Cargo</Label>
-                <Input id="role_title" placeholder="Ex.: Designer" {...form.register("role_title")} />
+                <Controller
+                  control={form.control}
+                  name="role_title"
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger id="role_title">
+                        <SelectValue placeholder="Selecione seu cargo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ROLE_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
                 {form.formState.errors.role_title && <p className="text-sm text-danger">{form.formState.errors.role_title.message}</p>}
               </div>
             </CardContent>
