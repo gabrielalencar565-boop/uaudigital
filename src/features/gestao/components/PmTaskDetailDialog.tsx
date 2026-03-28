@@ -106,18 +106,18 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
-      <DialogContent hideClose className="max-w-[90vw] w-[90vw] max-h-[90vh] h-[90vh] p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border-border/30 shadow-2xl">
+      <DialogContent hideClose className="max-w-[90vw] w-[90vw] max-h-[90vh] h-[90vh] max-sm:max-w-full max-sm:w-full max-sm:max-h-full max-sm:h-full max-sm:rounded-none p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border-border/30 shadow-2xl">
 
         {/* Breadcrumb bar */}
-        <div className="flex items-center gap-1.5 border-b border-border/20 px-5 py-2.5 bg-card/60 backdrop-blur-sm shrink-0">
-          <Button variant="ghost" size="icon" className={cn("h-7 w-7 shrink-0 rounded-lg", sidebarOpen && "bg-primary/10 text-primary")} onClick={() => setSidebarOpen(!sidebarOpen)} title="Sidebar de subtarefas">
+        <div className="flex items-center gap-1.5 border-b border-border/20 px-3 sm:px-5 py-2.5 bg-card/60 backdrop-blur-sm shrink-0">
+          <Button variant="ghost" size="icon" className={cn("h-7 w-7 shrink-0 rounded-lg hidden sm:inline-flex", sidebarOpen && "bg-primary/10 text-primary")} onClick={() => setSidebarOpen(!sidebarOpen)} title="Sidebar de subtarefas">
             <Layers className="h-4 w-4" />
           </Button>
           {isSubtaskView && (
             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleBackToParent}><ArrowLeft className="h-3.5 w-3.5" /></Button>
           )}
-          <span className="text-xs text-muted-foreground truncate">{clientsMap[resolvedRootTask.client_id] ?? "—"}</span>
-          <ChevronRight className="h-3 w-3 text-muted-foreground/50 shrink-0" />
+          <span className="text-xs text-muted-foreground truncate max-sm:hidden">{clientsMap[resolvedRootTask.client_id] ?? "—"}</span>
+          <ChevronRight className="h-3 w-3 text-muted-foreground/50 shrink-0 max-sm:hidden" />
           <span className={cn("text-xs truncate", isSubtaskView ? "text-muted-foreground cursor-pointer hover:text-foreground transition" : "font-medium")} onClick={isSubtaskView ? () => handleBreadcrumbClick(-1) : undefined}>{resolvedRootTask.title}</span>
           {stackTasks.map((stackTask, i) => (
             <span key={stackTask.id} className="contents">
@@ -131,9 +131,9 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
 
         {/* Main content */}
         <div className="flex flex-1 overflow-hidden min-h-0">
-          {/* LEFT: Subtask Sidebar */}
+          {/* LEFT: Subtask Sidebar (hidden on mobile) */}
           {sidebarOpen && (
-            <div className="w-64 shrink-0 flex flex-col bg-card/30 border-r border-border/30 animate-in slide-in-from-left-5 duration-200">
+            <div className="hidden sm:flex w-64 shrink-0 flex-col bg-card/30 border-r border-border/30 animate-in slide-in-from-left-5 duration-200">
               <div className="flex-1 overflow-y-auto min-h-0">
                 <div className={cn("flex items-center gap-2 px-4 py-3 cursor-pointer transition border-b border-border/20", taskStack.length === 0 ? "bg-primary/10 text-primary" : "hover:bg-card/40")} onClick={() => setTaskStack([])}>
                   <StageCircle stageKey={resolvedRootTask.stage_current} size="sm" />
