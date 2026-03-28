@@ -227,7 +227,7 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
         </div>
       )}
 
-      <div className="grid grid-cols-4 sm:grid-cols-5 gap-1.5">
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-1.5">
         {attachments.map((att) => {
           const isCover = currentCoverUrl === att.public_url;
           const isImg = isImage(att.file_type);
