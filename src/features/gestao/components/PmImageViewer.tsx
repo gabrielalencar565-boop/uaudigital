@@ -42,7 +42,7 @@ export function PmImageViewer({ images, initialIndex, open, onClose }: Props) {
           {hasPrev && (
             <button
               onClick={() => setIndex(i => i - 1)}
-              className="absolute left-4 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition"
+              className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 h-12 w-12 sm:h-10 sm:w-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition"
             >
               <ChevronLeft className="h-6 w-6" />
             </button>
