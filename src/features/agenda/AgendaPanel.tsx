@@ -1035,15 +1035,41 @@ export function AgendaPanel() {
             </Tabs>
 
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => setCursor(d => startOfMonth(subMonths(d, 1)))}>
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="text-base font-bold capitalize min-w-[160px] text-center">
-                {format(cursor, "MMMM yyyy", { locale: ptBR })}
-              </span>
-              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => setCursor(d => startOfMonth(addMonths(d, 1)))}>
-                <ChevronRight className="h-4 w-4" />
-              </Button>
+              <Select
+                value={String(cursor.getMonth())}
+                onValueChange={(v) => {
+                  const newMonth = Number(v);
+                  setCursor(d => new Date(d.getFullYear(), newMonth, 1));
+                }}
+              >
+                <SelectTrigger className="h-9 w-[130px] rounded-xl text-sm font-semibold bg-muted/30 border-border/30 capitalize">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-popover z-50">
+                  {Array.from({ length: 12 }, (_, i) => (
+                    <SelectItem key={i} value={String(i)} className="capitalize">
+                      {format(new Date(2024, i, 1), "MMMM", { locale: ptBR })}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={String(cursor.getFullYear())}
+                onValueChange={(v) => {
+                  const newYear = Number(v);
+                  setCursor(d => new Date(newYear, d.getMonth(), 1));
+                }}
+              >
+                <SelectTrigger className="h-9 w-[100px] rounded-xl text-sm font-semibold bg-muted/30 border-border/30">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-popover z-50">
+                  {Array.from({ length: 5 }, (_, i) => {
+                    const y = new Date().getFullYear() - 1 + i;
+                    return <SelectItem key={y} value={String(y)}>{y}</SelectItem>;
+                  })}
+                </SelectContent>
+              </Select>
             </div>
 
             {view === "week" && (
