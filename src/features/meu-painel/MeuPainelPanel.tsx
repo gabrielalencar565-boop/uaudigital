@@ -107,6 +107,7 @@ export function MeuPainelPanel() {
   const perf = useMyMonthlyPerformanceRank({ userId: user?.id, year: selected.year, month: selected.month });
   const perfYear = useMyAnnualPerformanceRank({ userId: user?.id, year: selected.year });
 
+  const teamMembersQ = useTeamMembers();
   const tasksQ = useTasks({ month: monthKey, assignedUserId: user?.id });
   const clientsQ = useClients();
   const setTaskStatus = useSetTaskStatus();
