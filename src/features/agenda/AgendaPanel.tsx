@@ -213,15 +213,28 @@ export function AgendaPanel() {
       const member = teamById.get(a.user_id);
       if (!member) continue;
       const prev = map.get(a.task_id) ?? [];
-      prev.push({
-        user_id: a.user_id,
-        display_name: member.display_name,
-        avatar_url: member.avatar_url,
-      });
+      // Evita duplicata
+      if (!prev.some(p => p.user_id === a.user_id)) {
+        prev.push({
+          user_id: a.user_id,
+          display_name: member.display_name,
+          avatar_url: member.avatar_url,
+        });
+      }
       map.set(a.task_id, prev);
     }
     return map;
   }, [assigneesQ.data, teamById]);
+
+  /** Retorna a lista de membros para um task, incluindo o assignee principal */
+  const getMembersForTask = useCallback((task: TaskRow) => {
+    const extra = assigneesByTaskId.get(task.id) ?? [];
+    const primary = teamById.get(task.assigned_user_id);
+    if (!primary) return extra;
+    // Merge primary into list if not already there
+    if (extra.some(m => m.user_id === primary.user_id)) return extra;
+    return [{ user_id: primary.user_id, display_name: primary.display_name, avatar_url: primary.avatar_url }, ...extra];
+  }, [assigneesByTaskId, teamById]);
   const createTask = useCreateTask();
   const addTaskAssignees = useAddTaskAssignees();
   const deleteTask = useDeleteTask();
