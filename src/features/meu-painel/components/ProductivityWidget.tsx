@@ -120,7 +120,7 @@ export function ProductivityWidget({ tasks, allMonthTasks, todayKey }: Props) {
   const dataKey = mode;
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-6 space-y-5 transition-all duration-300 hover:shadow-lg">
+    <div className="rounded-2xl border border-border bg-card p-4 space-y-3 transition-all duration-300 hover:shadow-lg">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
@@ -160,7 +160,7 @@ export function ProductivityWidget({ tasks, allMonthTasks, todayKey }: Props) {
         {/* Area chart - 2 cols */}
         <div className="md:col-span-2 rounded-xl p-4 border border-border bg-muted/30">
           <p className="text-xs text-muted-foreground mb-3 font-medium">Últimos 7 dias</p>
-          <div className="h-[180px]">
+          <div className="h-[140px]">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={dailyData}>
                 <defs>
