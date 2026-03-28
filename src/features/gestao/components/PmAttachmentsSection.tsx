@@ -227,7 +227,7 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
         </div>
       )}
 
-      <div className="grid grid-cols-4 sm:grid-cols-5 gap-1.5">
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-1.5">
         {attachments.map((att) => {
           const isCover = currentCoverUrl === att.public_url;
           const isImg = isImage(att.file_type);
@@ -271,7 +271,7 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
               <div className="absolute top-1 right-1">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button size="icon" variant="secondary" className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm">
+                    <Button size="icon" variant="secondary" className="h-5 w-5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm">
                       <MoreHorizontal className="h-3 w-3" />
                     </Button>
                   </DropdownMenuTrigger>
