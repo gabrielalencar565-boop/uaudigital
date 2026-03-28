@@ -501,10 +501,18 @@ export function AgendaPanel() {
           <Button variant="outline" size="sm" onClick={() => { setReportDefaultTab("trash"); setReportOpen(true); }} className="gap-2 rounded-xl">
             <Trash2 className="h-4 w-4" /> Lixeira
           </Button>
-          <div className="flex items-center gap-1.5 text-muted-foreground">
-            <Calendar className="h-4 w-4" />
-            <span className="text-sm font-semibold">{overdueCount}</span>
-          </div>
+          {dueTodayCount > 0 && (
+            <Badge variant="secondary" className="gap-1 rounded-xl px-2.5 py-1 text-xs font-semibold">
+              <Calendar className="h-3.5 w-3.5" />
+              {dueTodayCount} hoje
+            </Badge>
+          )}
+          {overdueCount > 0 && (
+            <Badge variant="destructive" className="gap-1 rounded-xl px-2.5 py-1 text-xs font-semibold">
+              <TriangleAlert className="h-3.5 w-3.5" />
+              {overdueCount} atrasada{overdueCount !== 1 ? "s" : ""}
+            </Badge>
+          )}
         </div>
       </div>
 
