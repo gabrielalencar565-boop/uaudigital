@@ -782,10 +782,10 @@ export function DayViewPanel() {
                           <AvatarFallback className="bg-success-foreground/20 text-success-foreground">{initials(person?.display_name ?? "?")}</AvatarFallback>
                         </Avatar>}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold truncate text-success-foreground">
-                          {displayMembers.length > 1 ? displayMembers.map((m) => m.display_name).join(", ") : person?.display_name}
-                          {" "}•{" "}({resolveClientName(t)}) • {stageLabel}
-                          
+                        <p className="text-sm font-semibold text-success-foreground leading-5">
+                          <span className="block sm:inline truncate">{displayMembers.length > 1 ? displayMembers.map((m) => m.display_name).join(", ") : person?.display_name}</span>
+                          <span className="hidden sm:inline">{" "}•{" "}</span>
+                          <span className="block sm:inline text-xs sm:text-sm opacity-90 truncate">({resolveClientName(t)}) • {stageLabel}</span>
                         </p>
                       </div>
                       <span className="text-sm font-bold text-success-foreground shrink-0">
