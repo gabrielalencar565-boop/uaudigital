@@ -349,12 +349,7 @@ export function MeuPainelPanel() {
     } catch (e: any) { toast.error(e?.message ?? "Erro ao atualizar tarefa"); }
   };
 
-  const toVM = (t: (typeof myTasks)[number] | MeuPainelTaskVM): MeuPainelTaskVM => {
-    if ("clientName" in t) return t;
-    const client = clientsById.get(t.client_id);
-    const stageLabel = STAGES.find((s) => s.key === t.stage)?.label ?? t.stage;
-    return { id: t.id, clientName: client?.name ?? "—", stageLabel, stage: t.stage, title: t.title, dueDate: t.due_date, status: t.status, completedAt: t.completed_at ?? null };
-  };
+  const toVM = (t: MeuPainelTaskVM): MeuPainelTaskVM => t;
 
   return (
     <div className="space-y-5">
