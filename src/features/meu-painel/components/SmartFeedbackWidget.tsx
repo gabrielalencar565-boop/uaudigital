@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import {
   CheckCircle2, AlertTriangle, TrendingUp, TrendingDown,
-  RefreshCw, BarChart3, Zap, Shield, Sparkles,
+  RefreshCw, BarChart3, Zap, Shield, Sparkles, Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
