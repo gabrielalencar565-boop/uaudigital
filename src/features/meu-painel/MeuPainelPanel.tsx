@@ -171,11 +171,17 @@ export function MeuPainelPanel() {
     const py = selected.month === 1 ? selected.year - 1 : selected.year;
     return `${py}-${String(pm).padStart(2, "0")}`;
   }, [selected]);
-  const prevTasksQ = useTasks({ month: prevMonthKey, assignedUserId: user?.id });
+  const prevTasksQ = useTasks({ month: prevMonthKey });
+  const prevAssigneesQ = useTaskAssigneesByMonth(prevMonthKey);
   const prevSummary = useMemo(() => {
-    const all = prevTasksQ.data ?? [];
+    if (!user) return { total: 0, done: 0, pending: 0 };
+    const allPrev = prevTasksQ.data ?? [];
+    const prevAssigneeTaskIds = new Set(
+      (prevAssigneesQ.data ?? []).filter((a) => a.user_id === user.id).map((a) => a.task_id)
+    );
+    const all = allPrev.filter((t) => t.assigned_user_id === user.id || prevAssigneeTaskIds.has(t.id));
     return { total: all.length, done: all.filter((t) => t.status === "concluido").length, pending: all.filter((t) => t.status !== "concluido").length };
-  }, [prevTasksQ.data]);
+  }, [prevTasksQ.data, prevAssigneesQ.data, user]);
 
   // ── Team avg score ──
   const teamPerfQ = useQuery({
