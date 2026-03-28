@@ -113,15 +113,30 @@ export function MeuPainelPanel() {
   const setTaskStatus = useSetTaskStatus();
   const clientsById = useMemo(() => new Map((clientsQ.data ?? []).map((c) => [c.id, c] as const)), [clientsQ.data]);
 
-  // Filtra tarefas onde o usuário é assigned_user_id OU está em task_assignees
-  const myTasks = useMemo(() => {
+  // Filtra tarefas onde o usuário é assigned_user_id OU está em task_assignees e converte para VM
+  const myAgendaVMs = useMemo((): MeuPainelTaskVM[] => {
     if (!user) return [];
     const allTasks = tasksQ.data ?? [];
     const assigneeTaskIds = new Set(
       (assigneesQ.data ?? []).filter((a) => a.user_id === user.id).map((a) => a.task_id)
     );
-    return allTasks.filter((t) => t.assigned_user_id === user.id || assigneeTaskIds.has(t.id));
-  }, [tasksQ.data, assigneesQ.data, user]);
+    return allTasks
+      .filter((t) => t.assigned_user_id === user.id || assigneeTaskIds.has(t.id))
+      .map((t): MeuPainelTaskVM => {
+        const client = clientsById.get(t.client_id);
+        const stageLabel = STAGES.find((s) => s.key === t.stage)?.label ?? t.stage;
+        return {
+          id: t.id,
+          clientName: client?.name ?? "—",
+          stageLabel,
+          stage: t.stage,
+          title: t.title,
+          dueDate: t.due_date,
+          status: t.status,
+          completedAt: t.completed_at ?? null,
+        };
+      });
+  }, [tasksQ.data, assigneesQ.data, user, clientsById]);
 
   // ── Cleaning ──
   const cleaningSchedulesQ = useCleaningSchedules();
@@ -162,7 +177,6 @@ export function MeuPainelPanel() {
     const allPm = pmTasksQ.data ?? [];
     return allPm
       .filter((t) => {
-        // Only include tasks assigned to the user (or where user is a watcher) with a due_date
         if (!t.due_date) return false;
         if (t.status_global === "cancelado") return false;
         return t.assignee_id === user.id || (t.watchers ?? []).includes(user.id);
@@ -184,28 +198,17 @@ export function MeuPainelPanel() {
       });
   }, [pmTasksQ.data, user, clientsById]);
 
-  // ── Merge all sources ──
-  const allMyTasks = useMemo(() => [...myTasks, ...myPmTaskVMs], [myTasks, myPmTaskVMs]);
+  // ── Merge all sources (all are MeuPainelTaskVM now) ──
+  const allMyTasks = useMemo((): MeuPainelTaskVM[] => [...myAgendaVMs, ...myPmTaskVMs], [myAgendaVMs, myPmTaskVMs]);
 
-  const todayTasks = useMemo(() => [...allMyTasks.filter((t) => t.due_date === todayKey || (t as any).dueDate === todayKey), ...cleaningVMs.filter((c) => c.status !== "concluido")], [allMyTasks, todayKey, cleaningVMs]);
-  const overdueTasks = useMemo(() => allMyTasks.filter((t) => {
-    const status = (t as any).status ?? (t as any).status;
-    const dueDate = (t as any).due_date ?? (t as any).dueDate;
-    return status !== "concluido" && dueDate < todayKey;
-  }), [allMyTasks, todayKey]);
-  const upcomingTasks = useMemo(() => allMyTasks.filter((t) => {
-    const status = (t as any).status ?? (t as any).status;
-    const dueDate = (t as any).due_date ?? (t as any).dueDate;
-    return status !== "concluido" && dueDate > todayKey;
-  }), [allMyTasks, todayKey]);
-  const completedTasks = useMemo(() => [...allMyTasks.filter((t) => {
-    const status = (t as any).status ?? (t as any).status;
-    return status === "concluido";
-  }), ...cleaningVMs.filter((c) => c.status === "concluido")], [allMyTasks, cleaningVMs]);
+  const todayTasks = useMemo(() => [...allMyTasks.filter((t) => t.dueDate === todayKey), ...cleaningVMs.filter((c) => c.status !== "concluido")], [allMyTasks, todayKey, cleaningVMs]);
+  const overdueTasks = useMemo(() => allMyTasks.filter((t) => t.status !== "concluido" && t.dueDate < todayKey), [allMyTasks, todayKey]);
+  const upcomingTasks = useMemo(() => allMyTasks.filter((t) => t.status !== "concluido" && t.dueDate > todayKey), [allMyTasks, todayKey]);
+  const completedTasks = useMemo(() => [...allMyTasks.filter((t) => t.status === "concluido"), ...cleaningVMs.filter((c) => c.status === "concluido")], [allMyTasks, cleaningVMs]);
 
   const summary = useMemo(() => {
-    const done = allMyTasks.filter((t) => ((t as any).status ?? (t as any).status) === "concluido").length;
-    const pending = allMyTasks.filter((t) => ((t as any).status ?? (t as any).status) !== "concluido").length;
+    const done = allMyTasks.filter((t) => t.status === "concluido").length;
+    const pending = allMyTasks.filter((t) => t.status !== "concluido").length;
     return { total: allMyTasks.length, done, pending, overdue: overdueTasks.length };
   }, [allMyTasks, overdueTasks.length]);
 
