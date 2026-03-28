@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { AlertTriangle, ChevronDown, ChevronRight, Flag, GitBranch, MessageSquare, FileText } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronRight, Flag, GitBranch, ListChecks, MessageSquare, FileText } from "lucide-react";
 import { differenceInCalendarDays, format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 
@@ -289,7 +289,21 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
     );
   };
 
-  if (myTasks.length === 0 && !pmTasksQ.isLoading) return null;
+  if (myTasks.length === 0 && !pmTasksQ.isLoading) {
+    return (
+      <Card className="rounded-2xl border border-border bg-card shadow-sm">
+        <CardHeader className="px-5 pt-4 pb-3">
+          <div className="flex items-center gap-2">
+            <ListChecks className="h-5 w-5 text-muted-foreground" />
+            <CardTitle className="text-base font-semibold">Atribuídas a mim</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="px-5 pb-5">
+          <p className="text-sm text-muted-foreground">Nenhuma tarefa atribuída no momento.</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-3">
