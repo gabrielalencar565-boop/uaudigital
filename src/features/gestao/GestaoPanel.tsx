@@ -560,6 +560,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
   };
 
   const renderTaskCard = (t: PmTask) => {
+    const isLegacy = t.id.startsWith("legacy_");
     const isDone = t.status_global === "concluido";
     const stageBg = STAGE_BADGE_BG[t.stage_current] ?? "bg-muted";
     const abbr = STAGE_ABBR[t.stage_current] ?? t.stage_current.toUpperCase().slice(0, 4);
