@@ -168,8 +168,8 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
             <TaskContentView task={currentTask} childTasks={childTasks} attachments={attachments} membersMap={membersMap} members={members} isAdmin={isAdmin} onSelectSubtask={handleSelectSubtask} activeSubtaskId={null} onClose={handleClose} clientsMap={clientsMap} allTags={allTags} parentStageCurrent={isSubtaskView ? resolvedRootTask.stage_current : undefined} globalTags={globalTagsQ.data ?? []} onEditTask={(taskId) => setTaskStack(prev => [...prev, taskId])} />
           </div>
 
-          {/* RIGHT: Comments sidebar */}
-          <div className="w-80 shrink-0 flex-col bg-card/10 border-l border-border/30 hidden sm:flex">
+          {/* RIGHT: Comments sidebar (hidden on mobile) */}
+          <div className="w-80 shrink-0 flex-col bg-card/10 border-l border-border/30 hidden md:flex">
             <div className="flex items-center gap-2 px-4 py-3 border-b border-border/30 shrink-0">
               <MessageSquare className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-semibold">Atividade</span>
