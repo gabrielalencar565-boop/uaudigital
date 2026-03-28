@@ -40,7 +40,10 @@ import { normalizeAvatarUrl } from "@/lib/avatar-url";
 
 // ── Helpers ──────────────────────────────────────────────
 
-function getMagicSyncedMonthYear(now: Date) {
+function getCurrentMonthYear(now: Date) {
+  return { year: now.getFullYear(), month: now.getMonth() + 1 };
+}
+
   const day = now.getDate();
   const y = now.getFullYear();
   const m = now.getMonth() + 1;
