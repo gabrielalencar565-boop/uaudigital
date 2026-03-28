@@ -16,7 +16,7 @@ import { FinReceitasDespesasTab } from "@/features/financeiro/components/FinRece
 import { FinDespesasDetalhadasTab } from "@/features/financeiro/components/FinDespesasDetalhadasTab";
 import { FinLancamentosTab } from "@/features/financeiro/components/FinLancamentosTab";
 import { GestaoPanel } from "@/features/gestao/GestaoPanel";
-import { AgendaPanel } from "@/features/agenda/AgendaPanel";
+
 import { ProjetosPanel } from "@/features/projetos/ProjetosPanel";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -167,7 +167,6 @@ const Index = () => {
         </Card>
       );
     }
-    if (tab === "agenda_mensal") return <AgendaPanel />;
     if (isGestaoTab) return <GestaoPanel forcedView={gestaoView} />;
     if (tab === "visao_geral_projetos") return <ProjetosPanel />;
     if (tab === "configuracoes" && isAdmin) return <AdminContainer />;

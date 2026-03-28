@@ -29,7 +29,6 @@ export type MainTab =
 "visao_geral_projetos" |
 "tarefas" |
 "agenda_gestao" |
-"agenda_mensal" |
 "cronograma" |
 "fluxos" |
 "visao_do_dia" |
@@ -70,7 +69,6 @@ const NAV: NavEntry[] = [
   icon: ClipboardList,
   landingTab: "tarefas",
   children: [
-  { key: "agenda_mensal", label: "Agenda mensal", icon: CalendarDays },
   { key: "agenda_gestao", label: "Agenda", icon: CalendarDays },
   { key: "cronograma", label: "Cronograma", icon: CalendarRange },
   { key: "visao_geral_projetos", label: "Painel de Squads", icon: PieChart },

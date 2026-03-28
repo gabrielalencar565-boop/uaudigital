@@ -17,6 +17,7 @@ import { useRole } from "@/hooks/use-role";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { usePmTasks, usePmAllChildTasks, useUpdatePmTask, useDeletePmTask } from "./hooks/use-pm-data";
+import { useTasks } from "@/features/data/queries";
 import { PmKanbanBoard } from "./components/PmKanbanBoard";
 import { PmClientView } from "./components/PmClientView";
 import { PmTaskDetailDialog } from "./components/PmTaskDetailDialog";
@@ -482,16 +483,53 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
   const weekStart = useMemo(() => startOfWeek(cursor, { weekStartsOn: 0 }), [cursor]);
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
 
+  // Fetch legacy tasks from `tasks` table for the visible month range
+  const legacyMonth = format(cursor, "yyyy-MM");
+  const legacyTasksQ = useTasks({ month: legacyMonth });
+
   const tasksByDay = useMemo(() => {
     const map = new Map<string, PmTask[]>();
+    // Add pm_tasks
     for (const t of filteredTasks) {
       const key = t.due_date ?? "";
       if (!key) continue;
       const prev = map.get(key) ?? [];
       map.set(key, [...prev, t]);
     }
+    // Add legacy tasks converted to PmTask shape
+    for (const lt of legacyTasksQ.data ?? []) {
+      const key = lt.due_date ?? "";
+      if (!key) continue;
+      const asPm: PmTask = {
+        id: `legacy_${lt.id}`,
+        project_id: null,
+        client_id: lt.client_id,
+        title: lt.title ?? lt.stage,
+        description: lt.description ?? null,
+        priority: "media",
+        status_global: lt.status === "concluido" ? "concluido" : lt.status === "em_andamento" ? "em_andamento" : "backlog",
+        stage_current: lt.stage,
+        start_date: null,
+        due_date: lt.due_date,
+        created_by: lt.created_by,
+        assignee_id: lt.assigned_user_id,
+        watchers: [],
+        tags: [],
+        created_at: "",
+        updated_at: "",
+        parent_task_id: null,
+        cover_url: null,
+        is_extra_demand: lt.is_extra_demand ?? false,
+        post_type: null,
+        posting_date: null,
+        posting_time: null,
+        caption: null,
+      };
+      const prev = map.get(key) ?? [];
+      map.set(key, [...prev, asPm]);
+    }
     return map;
-  }, [filteredTasks]);
+  }, [filteredTasks, legacyTasksQ.data]);
 
   const daySpecialDates = (dayKey: string) => specialDatesMap.get(dayKey) ?? [];
 
@@ -522,6 +560,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
   };
 
   const renderTaskCard = (t: PmTask) => {
+    const isLegacy = t.id.startsWith("legacy_");
     const isDone = t.status_global === "concluido";
     const stageBg = STAGE_BADGE_BG[t.stage_current] ?? "bg-muted";
     const abbr = STAGE_ABBR[t.stage_current] ?? t.stage_current.toUpperCase().slice(0, 4);
@@ -540,14 +579,16 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
     return (
       <div
         key={t.id}
-        draggable
-        onDragStart={(e) => {
+        draggable={!isLegacy}
+        onDragStart={isLegacy ? undefined : (e) => {
           e.dataTransfer.setData("text/plain", t.id);
           setDraggedTask(t);
         }}
-        onDragEnd={() => setDraggedTask(null)}
-        className="w-full rounded-xl border border-border/20 bg-card/60 backdrop-blur-sm p-2 text-left transition-all hover:bg-card hover:shadow-sm hover:-translate-y-0.5 cursor-grab active:cursor-grabbing group/card"
-        onClick={() => onTaskClick(t)}>
+        onDragEnd={isLegacy ? undefined : () => setDraggedTask(null)}
+        className={cn("w-full rounded-xl border border-border/20 bg-card/60 backdrop-blur-sm p-2 text-left transition-all hover:bg-card hover:shadow-sm hover:-translate-y-0.5 group/card",
+          isLegacy ? "cursor-default border-dashed opacity-80" : "cursor-grab active:cursor-grabbing"
+        )}
+        onClick={isLegacy ? undefined : () => onTaskClick(t)}>
         <div className="flex items-center justify-between gap-1">
           <div className={cn("inline-flex h-5 items-center rounded-md px-2 text-[9px] font-bold text-white tracking-wide", stageBg)}>
             {abbr}
@@ -560,13 +601,15 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
               title={isDone ? "Concluído" : "Pendente"}>
               {isDone && <CheckCircle2 className="h-3.5 w-3.5" />}
             </div>
-            <button
-              type="button"
-              className="h-5 w-5 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition"
-              onClick={(e) => handleDelete(t.id, e)}
-              title="Remover">
-              <Trash2 className="h-3 w-3" />
-            </button>
+            {!isLegacy && (
+              <button
+                type="button"
+                className="h-5 w-5 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition"
+                onClick={(e) => handleDelete(t.id, e)}
+                title="Remover">
+                <Trash2 className="h-3 w-3" />
+              </button>
+            )}
           </div>
         </div>
         {t.is_extra_demand &&
@@ -806,7 +849,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
                     e.preventDefault();
                     e.currentTarget.classList.remove("ring-2", "ring-primary/40");
                     const taskId = e.dataTransfer.getData("text/plain");
-                    if (!taskId || !inMonth) return;
+                    if (!taskId || !inMonth || taskId.startsWith("legacy_")) return;
                     try {
                       await updateTask.mutateAsync({ id: taskId, due_date: key });
                       toast.success("Tarefa movida para " + format(d, "dd/MM", { locale: ptBR }));
