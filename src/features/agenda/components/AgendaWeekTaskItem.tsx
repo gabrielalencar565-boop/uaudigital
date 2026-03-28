@@ -165,19 +165,19 @@ export function AgendaWeekTaskItem({
         {members && members.length > 0 ? (
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="flex flex-col -space-y-2 shrink-0">
-                {members.slice(0, 3).map((m) => (
+              <div className="flex flex-col -space-y-1.5 shrink-0">
+                {members.slice(0, 2).map((m) => (
                   <Avatar key={m.user_id} className={cn(isCompact ? "h-5 w-5" : "h-6 w-6", "border-2 border-background")}>
                     <AvatarImage src={m.avatar_url ?? undefined} alt={m.display_name} />
                     <AvatarFallback className="text-[10px]">{initials(m.display_name)}</AvatarFallback>
                   </Avatar>
                 ))}
-                {members.length > 3 && (
+                {members.length > 2 && (
                   <div className={cn(
                     isCompact ? "h-5 w-5" : "h-6 w-6",
-                    "flex items-center justify-center rounded-full border-2 border-background bg-muted text-muted-foreground text-[10px]"
+                    "flex items-center justify-center rounded-full border-2 border-background bg-muted text-muted-foreground text-[9px] font-semibold"
                   )}>
-                    +{members.length - 3}
+                    +{members.length - 2}
                   </div>
                 )}
               </div>
