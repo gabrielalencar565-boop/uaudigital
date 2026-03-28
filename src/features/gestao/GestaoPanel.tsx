@@ -17,7 +17,7 @@ import { useRole } from "@/hooks/use-role";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { usePmTasks, usePmAllChildTasks, useUpdatePmTask, useDeletePmTask } from "./hooks/use-pm-data";
-import { useTasks } from "@/features/data/queries";
+import { useDeleteTask, useTasks } from "@/features/data/queries";
 import { PmKanbanBoard } from "./components/PmKanbanBoard";
 import { PmClientView } from "./components/PmClientView";
 import { PmTaskDetailDialog } from "./components/PmTaskDetailDialog";
@@ -301,6 +301,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
           clientsMap={clientsMap}
           membersMap={membersMap}
           teamMembers={membersForSpecialDates}
+          userId={user?.id ?? null}
           onTaskClick={(t) => setSelectedTaskId(t.id)}
           filterClient={filterClient}
           filterAssignee={filterAssignee}
@@ -383,11 +384,12 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
 }
 
 // ─── Agenda Calendar View (matches main Agenda module) ───
-function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTaskClick, filterClient, filterAssignee, search, cursor, setCursor, fixedAssigneeClientIds, clients, members, isAdmin }: {
+function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId, onTaskClick, filterClient, filterAssignee, search, cursor, setCursor, fixedAssigneeClientIds, clients, members, isAdmin }: {
   tasks: PmTask[];
   clientsMap: Record<string, string>;
   membersMap: Record<string, { name: string; avatar?: string }>;
   teamMembers: Array<{ user_id: string; display_name: string; birth_date: string | null }>;
+  userId: string | null;
   onTaskClick: (t: PmTask) => void;
   filterClient: string;
   filterAssignee: string;
@@ -401,6 +403,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
 }) {
   const isMobile = useIsMobile();
   const deleteTask = useDeletePmTask();
+  const deleteLegacyTask = useDeleteTask();
   const updateTask = useUpdatePmTask();
   const [moreOpen, setMoreOpen] = useState(false);
   const [moreDayKey, setMoreDayKey] = useState<string | null>(null);
@@ -450,7 +453,20 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
 
   const confirmDeleteCronograma = async () => {
     if (!pendingDeleteId) return;
-    try { await deleteTask.mutateAsync(pendingDeleteId); toast.success("Tarefa removida"); } catch (err: any) { toast.error(err?.message ?? "Erro ao excluir"); }
+    try {
+      if (pendingDeleteId.startsWith("legacy_")) {
+        const legacyId = pendingDeleteId.replace("legacy_", "");
+        if (!userId) {
+          throw new Error("Sessão inválida para remover tarefa");
+        }
+        await deleteLegacyTask.mutateAsync({ taskId: legacyId, userId });
+      } else {
+        await deleteTask.mutateAsync(pendingDeleteId);
+      }
+      toast.success("Tarefa removida");
+    } catch (err: any) {
+      toast.error(err?.message ?? "Erro ao excluir");
+    }
     setPendingDeleteId(null);
   };
 
@@ -602,15 +618,13 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
               title={isDone ? "Concluído" : "Pendente"}>
               {isDone && <CheckCircle2 className="h-3.5 w-3.5" />}
             </div>
-            {!isLegacy && (
-              <button
-                type="button"
-                className="h-5 w-5 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition"
-                onClick={(e) => handleDelete(t.id, e)}
-                title="Remover">
-                <Trash2 className="h-3 w-3" />
-              </button>
-            )}
+            <button
+              type="button"
+              className="h-5 w-5 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition"
+              onClick={(e) => handleDelete(t.id, e)}
+              title="Remover">
+              <Trash2 className="h-3 w-3" />
+            </button>
           </div>
         </div>
         {t.is_extra_demand &&
@@ -934,15 +948,13 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
                       onClick={(e) => { e.stopPropagation(); }}>
                       {isDone && <CheckCircle2 className="h-4 w-4" />}
                     </button>
-                    {!isLegacy && (
-                      <button
-                        type="button"
-                        className="h-6 w-6 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition"
-                        onClick={(e) => { e.stopPropagation(); handleDelete(t.id, e); }}
-                        title="Remover">
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      className="h-6 w-6 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition"
+                      onClick={(e) => { e.stopPropagation(); handleDelete(t.id, e); }}
+                      title="Remover">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
                   </div>
                 </div>
               );
