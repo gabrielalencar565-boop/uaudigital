@@ -17,6 +17,7 @@ import { useRole } from "@/hooks/use-role";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { usePmTasks, usePmAllChildTasks, useUpdatePmTask, useDeletePmTask } from "./hooks/use-pm-data";
+import { useTasks } from "@/features/data/queries";
 import { PmKanbanBoard } from "./components/PmKanbanBoard";
 import { PmClientView } from "./components/PmClientView";
 import { PmTaskDetailDialog } from "./components/PmTaskDetailDialog";
