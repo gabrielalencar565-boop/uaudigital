@@ -98,7 +98,7 @@ export function MeuPainelPanel() {
   const today = useNow();
   const todayKey = format(today, "yyyy-MM-dd");
 
-  const [selected] = useState(() => getMagicSyncedMonthYear(today));
+  const selected = useMemo(() => getCurrentMonthYear(today), [today]);
   const monthKey = useMemo(() => `${selected.year}-${String(selected.month).padStart(2, "0")}`, [selected.month, selected.year]);
 
   const perf = useMyMonthlyPerformanceRank({ userId: user?.id, year: selected.year, month: selected.month });
