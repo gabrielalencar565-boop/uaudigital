@@ -849,7 +849,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
                     e.preventDefault();
                     e.currentTarget.classList.remove("ring-2", "ring-primary/40");
                     const taskId = e.dataTransfer.getData("text/plain");
-                    if (!taskId || !inMonth) return;
+                    if (!taskId || !inMonth || taskId.startsWith("legacy_")) return;
                     try {
                       await updateTask.mutateAsync({ id: taskId, due_date: key });
                       toast.success("Tarefa movida para " + format(d, "dd/MM", { locale: ptBR }));
