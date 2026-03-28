@@ -6,7 +6,7 @@ import confetti from "canvas-confetti";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-import { useClients, useSetTaskStatus, useTasks } from "@/features/data/queries";
+import { useClients, useSetTaskStatus, useTasks, useTeamMembers } from "@/features/data/queries";
 import { STAGES } from "@/lib/uau";
 import { useSession } from "@/hooks/use-session";
 import { useRole } from "@/hooks/use-role";
@@ -107,6 +107,7 @@ export function MeuPainelPanel() {
   const perf = useMyMonthlyPerformanceRank({ userId: user?.id, year: selected.year, month: selected.month });
   const perfYear = useMyAnnualPerformanceRank({ userId: user?.id, year: selected.year });
 
+  const teamMembersQ = useTeamMembers();
   const tasksQ = useTasks({ month: monthKey, assignedUserId: user?.id });
   const clientsQ = useClients();
   const setTaskStatus = useSetTaskStatus();
@@ -179,6 +180,23 @@ export function MeuPainelPanel() {
     staleTime: 60_000,
   });
   const myScore = useMemo(() => Number(perf.total ?? 0), [perf.total]);
+
+  // ── Qualitative scores for SmartFeedback ──
+  const myQualitativeQ = useQuery({
+    enabled: !!user?.id,
+    queryKey: ["my_qualitative_scores", selected.year, selected.month, user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("performance_scores")
+        .select("padrao_qualidade_uau, comprometimento, ambiente_organizado, aprendizado_continuo")
+        .eq("year", selected.year)
+        .eq("month", selected.month)
+        .eq("user_id", user!.id)
+        .maybeSingle();
+      return data ?? null;
+    },
+    staleTime: 60_000,
+  });
 
   // ── Streak calculation ──
   const streak = useMemo(() => {
@@ -378,6 +396,9 @@ export function MeuPainelPanel() {
           myScore={myScore}
           todayKey={todayKey}
           prevMonthDone={prevSummary.done}
+          qualitative={myQualitativeQ.data ?? null}
+          rank={perf.rank}
+          rankTotal={teamMembersQ.data?.length ?? null}
         />
       </div>
 
