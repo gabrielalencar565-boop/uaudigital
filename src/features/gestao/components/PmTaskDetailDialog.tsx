@@ -1010,6 +1010,15 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
             />
           </div>
         )}
+
+        {/* Mobile-only comments section (since sidebar is hidden) */}
+        <div className="border-t border-border/20 pt-4 md:hidden">
+          <div className="flex items-center gap-2 mb-2">
+            <MessageSquare className="h-4 w-4 text-muted-foreground" />
+            <h3 className="text-sm font-bold">Atividade</h3>
+          </div>
+          <PmCommentsSection taskId={task.id} comments={[]} membersMap={membersMap} members={members} />
+        </div>
       </div>
     </div>
   );
