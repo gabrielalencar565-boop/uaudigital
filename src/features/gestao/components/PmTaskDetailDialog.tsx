@@ -106,18 +106,18 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
-      <DialogContent hideClose className="max-w-[90vw] w-[90vw] max-h-[90vh] h-[90vh] p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border-border/30 shadow-2xl">
+      <DialogContent hideClose className="max-w-[90vw] w-[90vw] max-h-[90vh] h-[90vh] max-sm:max-w-full max-sm:w-full max-sm:max-h-full max-sm:h-full max-sm:rounded-none p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border-border/30 shadow-2xl">
 
         {/* Breadcrumb bar */}
-        <div className="flex items-center gap-1.5 border-b border-border/20 px-5 py-2.5 bg-card/60 backdrop-blur-sm shrink-0">
-          <Button variant="ghost" size="icon" className={cn("h-7 w-7 shrink-0 rounded-lg", sidebarOpen && "bg-primary/10 text-primary")} onClick={() => setSidebarOpen(!sidebarOpen)} title="Sidebar de subtarefas">
+        <div className="flex items-center gap-1.5 border-b border-border/20 px-3 sm:px-5 py-2.5 bg-card/60 backdrop-blur-sm shrink-0">
+          <Button variant="ghost" size="icon" className={cn("h-7 w-7 shrink-0 rounded-lg hidden sm:inline-flex", sidebarOpen && "bg-primary/10 text-primary")} onClick={() => setSidebarOpen(!sidebarOpen)} title="Sidebar de subtarefas">
             <Layers className="h-4 w-4" />
           </Button>
           {isSubtaskView && (
             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleBackToParent}><ArrowLeft className="h-3.5 w-3.5" /></Button>
           )}
-          <span className="text-xs text-muted-foreground truncate">{clientsMap[resolvedRootTask.client_id] ?? "—"}</span>
-          <ChevronRight className="h-3 w-3 text-muted-foreground/50 shrink-0" />
+          <span className="text-xs text-muted-foreground truncate max-sm:hidden">{clientsMap[resolvedRootTask.client_id] ?? "—"}</span>
+          <ChevronRight className="h-3 w-3 text-muted-foreground/50 shrink-0 max-sm:hidden" />
           <span className={cn("text-xs truncate", isSubtaskView ? "text-muted-foreground cursor-pointer hover:text-foreground transition" : "font-medium")} onClick={isSubtaskView ? () => handleBreadcrumbClick(-1) : undefined}>{resolvedRootTask.title}</span>
           {stackTasks.map((stackTask, i) => (
             <span key={stackTask.id} className="contents">
@@ -131,9 +131,9 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
 
         {/* Main content */}
         <div className="flex flex-1 overflow-hidden min-h-0">
-          {/* LEFT: Subtask Sidebar */}
+          {/* LEFT: Subtask Sidebar (hidden on mobile) */}
           {sidebarOpen && (
-            <div className="w-64 shrink-0 flex flex-col bg-card/30 border-r border-border/30 animate-in slide-in-from-left-5 duration-200">
+            <div className="hidden sm:flex w-64 shrink-0 flex-col bg-card/30 border-r border-border/30 animate-in slide-in-from-left-5 duration-200">
               <div className="flex-1 overflow-y-auto min-h-0">
                 <div className={cn("flex items-center gap-2 px-4 py-3 cursor-pointer transition border-b border-border/20", taskStack.length === 0 ? "bg-primary/10 text-primary" : "hover:bg-card/40")} onClick={() => setTaskStack([])}>
                   <StageCircle stageKey={resolvedRootTask.stage_current} size="sm" />
@@ -168,8 +168,8 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
             <TaskContentView task={currentTask} childTasks={childTasks} attachments={attachments} membersMap={membersMap} members={members} isAdmin={isAdmin} onSelectSubtask={handleSelectSubtask} activeSubtaskId={null} onClose={handleClose} clientsMap={clientsMap} allTags={allTags} parentStageCurrent={isSubtaskView ? resolvedRootTask.stage_current : undefined} globalTags={globalTagsQ.data ?? []} onEditTask={(taskId) => setTaskStack(prev => [...prev, taskId])} />
           </div>
 
-          {/* RIGHT: Comments sidebar */}
-          <div className="w-80 shrink-0 flex-col bg-card/10 border-l border-border/30 hidden sm:flex">
+          {/* RIGHT: Comments sidebar (hidden on mobile) */}
+          <div className="w-80 shrink-0 flex-col bg-card/10 border-l border-border/30 hidden md:flex">
             <div className="flex items-center gap-2 px-4 py-3 border-b border-border/30 shrink-0">
               <MessageSquare className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-semibold">Atividade</span>
@@ -685,16 +685,16 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         </div>
       )}
 
-      <div className="px-6 py-5 space-y-6">
+      <div className="px-4 sm:px-6 py-4 sm:py-5 space-y-5 sm:space-y-6">
         {/* Title */}
         {editingTitle ? (
-          <Input autoFocus value={titleDraft} onChange={(e) => setTitleDraft(e.target.value)} onBlur={saveTitle} onKeyDown={(e) => e.key === "Enter" && saveTitle()} className="text-2xl font-bold border-0 bg-transparent p-0 h-auto focus-visible:ring-0 focus-visible:ring-offset-0" />
+          <Input autoFocus value={titleDraft} onChange={(e) => setTitleDraft(e.target.value)} onBlur={saveTitle} onKeyDown={(e) => e.key === "Enter" && saveTitle()} className="text-xl sm:text-2xl font-bold border-0 bg-transparent p-0 h-auto focus-visible:ring-0 focus-visible:ring-offset-0" />
         ) : (
-          <h1 className="cursor-pointer text-2xl font-bold hover:text-primary transition-colors" onClick={() => { setTitleDraft(task.title); setEditingTitle(true); }}>{task.title}</h1>
+          <h1 className="cursor-pointer text-xl sm:text-2xl font-bold hover:text-primary transition-colors" onClick={() => { setTitleDraft(task.title); setEditingTitle(true); }}>{task.title}</h1>
         )}
 
         {/* Properties grid */}
-        <div className="grid grid-cols-2 gap-x-8 gap-y-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2">
           {/* Assignee */}
           <PropertyRow icon={<UserCircle className="h-3.5 w-3.5" />} label="Responsável">
             <PmAssigneeSelector
@@ -863,8 +863,8 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
         {/* ── Concluído / Alteração action buttons ── */}
         {task.stage_current === "alteracoes" && (
-          <div className="flex items-center gap-2 pt-2">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-red-600/10 border border-red-600/30 text-red-500 text-xs font-semibold">
+          <div className="flex flex-wrap items-center gap-2 pt-2">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-destructive/10 border border-destructive/30 text-destructive text-xs font-semibold">
               <RotateCcw className="h-3.5 w-3.5" /> Em Alteração
             </div>
             <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={handleReturnFromAlteracao}>
@@ -878,7 +878,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         )}
 
         {task.stage_current !== "alteracoes" && (
-        <div className="flex items-center gap-2 pt-2">
+        <div className="flex flex-wrap items-center gap-2 pt-2">
           {!isDone ? (
             <>
               <Popover open={stageChoiceOpen} onOpenChange={setStageChoiceOpen}>
@@ -1010,6 +1010,15 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
             />
           </div>
         )}
+
+        {/* Mobile-only comments section (since sidebar is hidden) */}
+        <div className="border-t border-border/20 pt-4 md:hidden">
+          <div className="flex items-center gap-2 mb-2">
+            <MessageSquare className="h-4 w-4 text-muted-foreground" />
+            <h3 className="text-sm font-bold">Atividade</h3>
+          </div>
+          <PmCommentsSection taskId={task.id} comments={[]} membersMap={membersMap} members={members} />
+        </div>
       </div>
     </div>
   );

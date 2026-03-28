@@ -168,7 +168,7 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
   };
 
   const renderHeader = () => (
-    <div className="grid grid-cols-[1fr_100px_140px_100px] gap-2 px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground border-b border-border/30">
+    <div className="hidden sm:grid grid-cols-[1fr_100px_140px_100px] gap-2 px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground border-b border-border/30">
       <span>Nome</span>
       <span>Prioridade</span>
       <span>Data de vencimento</span>
@@ -191,53 +191,85 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
         <button
           type="button"
           onClick={() => onOpenTask(t.id)}
-          className="group grid w-full grid-cols-[1fr_100px_140px_100px] items-center gap-2 border-b border-border/20 px-3 py-2 text-left transition hover:bg-accent/30"
+          className="group w-full border-b border-border/20 px-3 py-2 text-left transition hover:bg-accent/30"
         >
-          {/* Name */}
-          <div className="flex min-w-0 items-center gap-2">
+          {/* Mobile: stacked layout */}
+          <div className="flex sm:hidden min-w-0 items-start gap-2">
             {childCount > 0 && (
               <button
                 type="button"
-                className="shrink-0 p-0.5 rounded hover:bg-accent transition"
+                className="shrink-0 p-0.5 rounded hover:bg-accent transition mt-0.5"
                 onClick={(e) => { e.stopPropagation(); toggleExpand(t.id); }}
               >
                 <ChevronRight className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", isExpanded && "rotate-90")} />
               </button>
             )}
             <span className={cn(
-              "h-3 w-3 shrink-0 rounded-full border-2",
+              "h-3 w-3 shrink-0 rounded-full border-2 mt-0.5",
               stageColor.border,
               isDone && stageColor.bg,
             )} />
-            <span className="min-w-0 truncate text-[13px] font-medium text-foreground">
-              {t.title}
-            </span>
-            {t.description && (
-              <FileText className="h-3 w-3 shrink-0 text-muted-foreground/50" />
-            )}
-            {childCount > 0 && (
-              <span className="flex shrink-0 items-center gap-0.5 text-[11px] text-muted-foreground">
-                <GitBranch className="h-3 w-3" /> {childCount}
+            <div className="min-w-0 flex-1">
+              <span className="block truncate text-[13px] font-medium text-foreground">{t.title}</span>
+              <div className="flex items-center gap-2 mt-1">
+                <Flag className={cn("h-3 w-3 shrink-0", flagClass)} />
+                <span className={cn("text-[11px] font-medium", due.color)}>{due.text}</span>
+                {commentCount > 0 && (
+                  <span className="flex items-center gap-0.5 text-muted-foreground">
+                    <MessageSquare className="h-3 w-3" />
+                    <span className="text-[10px] font-medium text-foreground">{commentCount}</span>
+                  </span>
+                )}
+                {childCount > 0 && (
+                  <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                    <GitBranch className="h-3 w-3" /> {childCount}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop: grid layout */}
+          <div className="hidden sm:grid grid-cols-[1fr_100px_140px_100px] items-center gap-2">
+            <div className="flex min-w-0 items-center gap-2">
+              {childCount > 0 && (
+                <button
+                  type="button"
+                  className="shrink-0 p-0.5 rounded hover:bg-accent transition"
+                  onClick={(e) => { e.stopPropagation(); toggleExpand(t.id); }}
+                >
+                  <ChevronRight className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", isExpanded && "rotate-90")} />
+                </button>
+              )}
+              <span className={cn(
+                "h-3 w-3 shrink-0 rounded-full border-2",
+                stageColor.border,
+                isDone && stageColor.bg,
+              )} />
+              <span className="min-w-0 truncate text-[13px] font-medium text-foreground">
+                {t.title}
               </span>
-            )}
-          </div>
-
-          {/* Priority */}
-          <div>
-            <Flag className={cn("h-3.5 w-3.5", flagClass)} />
-          </div>
-
-          {/* Due date */}
-          <div className={cn("text-[13px] font-medium", due.color)}>
-            {due.text}
-          </div>
-
-          {/* Comments */}
-          <div className="flex items-center gap-1.5 text-muted-foreground">
-            <MessageSquare className="h-3.5 w-3.5" />
-            {commentCount > 0 && (
-              <span className="text-[12px] font-medium text-foreground">{commentCount}</span>
-            )}
+              {t.description && (
+                <FileText className="h-3 w-3 shrink-0 text-muted-foreground/50" />
+              )}
+              {childCount > 0 && (
+                <span className="flex shrink-0 items-center gap-0.5 text-[11px] text-muted-foreground">
+                  <GitBranch className="h-3 w-3" /> {childCount}
+                </span>
+              )}
+            </div>
+            <div>
+              <Flag className={cn("h-3.5 w-3.5", flagClass)} />
+            </div>
+            <div className={cn("text-[13px] font-medium", due.color)}>
+              {due.text}
+            </div>
+            <div className="flex items-center gap-1.5 text-muted-foreground">
+              <MessageSquare className="h-3.5 w-3.5" />
+              {commentCount > 0 && (
+                <span className="text-[12px] font-medium text-foreground">{commentCount}</span>
+              )}
+            </div>
           </div>
         </button>
 
@@ -256,29 +288,49 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
                   key={sub.id}
                   type="button"
                   onClick={() => onOpenTask(sub.id)}
-                  className="group grid w-full grid-cols-[1fr_100px_140px_100px] items-center gap-2 px-3 py-1.5 text-left transition hover:bg-accent/30 pl-10"
+                  className="w-full px-3 py-1.5 text-left transition hover:bg-accent/30 pl-8 sm:pl-10"
                 >
-                  <div className="flex min-w-0 items-center gap-2">
+                  {/* Mobile subtask */}
+                  <div className="flex sm:hidden min-w-0 items-start gap-2">
                     <span className={cn(
-                      "h-2.5 w-2.5 shrink-0 rounded-full border-2",
+                      "h-2.5 w-2.5 shrink-0 rounded-full border-2 mt-0.5",
                       subStageColor.border,
                       subIsDone && subStageColor.bg,
                     )} />
-                    <span className={cn("min-w-0 truncate text-[12px] font-medium text-foreground/80", subIsDone && "line-through text-muted-foreground")}>
-                      {sub.title}
-                    </span>
+                    <div className="min-w-0 flex-1">
+                      <span className={cn("block truncate text-[12px] font-medium text-foreground/80", subIsDone && "line-through text-muted-foreground")}>
+                        {sub.title}
+                      </span>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <Flag className={cn("h-2.5 w-2.5", subFlagClass)} />
+                        <span className={cn("text-[10px] font-medium", subDue.color)}>{subDue.text}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <Flag className={cn("h-3 w-3", subFlagClass)} />
-                  </div>
-                  <div className={cn("text-[12px] font-medium", subDue.color)}>
-                    {subDue.text}
-                  </div>
-                  <div className="flex items-center gap-1.5 text-muted-foreground">
-                    <MessageSquare className="h-3 w-3" />
-                    {subCommentCount > 0 && (
-                      <span className="text-[11px] font-medium text-foreground">{subCommentCount}</span>
-                    )}
+                  {/* Desktop subtask */}
+                  <div className="hidden sm:grid grid-cols-[1fr_100px_140px_100px] items-center gap-2">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className={cn(
+                        "h-2.5 w-2.5 shrink-0 rounded-full border-2",
+                        subStageColor.border,
+                        subIsDone && subStageColor.bg,
+                      )} />
+                      <span className={cn("min-w-0 truncate text-[12px] font-medium text-foreground/80", subIsDone && "line-through text-muted-foreground")}>
+                        {sub.title}
+                      </span>
+                    </div>
+                    <div>
+                      <Flag className={cn("h-3 w-3", subFlagClass)} />
+                    </div>
+                    <div className={cn("text-[12px] font-medium", subDue.color)}>
+                      {subDue.text}
+                    </div>
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <MessageSquare className="h-3 w-3" />
+                      {subCommentCount > 0 && (
+                        <span className="text-[11px] font-medium text-foreground">{subCommentCount}</span>
+                      )}
+                    </div>
                   </div>
                 </button>
               );
