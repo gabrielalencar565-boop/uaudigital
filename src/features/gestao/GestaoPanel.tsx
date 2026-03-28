@@ -496,8 +496,9 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
       const prev = map.get(key) ?? [];
       map.set(key, [...prev, t]);
     }
-    // Add legacy tasks converted to PmTask shape
+    // Add legacy tasks converted to PmTask shape (skip pm_sync snapshots)
     for (const lt of legacyTasksQ.data ?? []) {
+      if (lt.description?.startsWith("pm:")) continue;
       const key = lt.due_date ?? "";
       if (!key) continue;
       const asPm: PmTask = {
