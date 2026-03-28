@@ -138,7 +138,16 @@ export function MeuPainelPanel() {
       });
   }, [tasksQ.data, assigneesQ.data, user, clientsById]);
 
-  // ── Cleaning ──
+  // Raw agenda tasks filtered for user (for productivity/feedback widgets)
+  const agendaTasksRaw = useMemo(() => {
+    if (!user) return [];
+    const allTasks = tasksQ.data ?? [];
+    const assigneeTaskIds = new Set(
+      (assigneesQ.data ?? []).filter((a) => a.user_id === user.id).map((a) => a.task_id)
+    );
+    return allTasks.filter((t) => t.assigned_user_id === user.id || assigneeTaskIds.has(t.id));
+  }, [tasksQ.data, assigneesQ.data, user]);
+
   const cleaningSchedulesQ = useCleaningSchedules();
   const cleaningCategoriesQ = useCleaningCategories();
   const cleaningCompletionsQ = useCleaningCompletions(todayKey);
