@@ -180,6 +180,23 @@ export function MeuPainelPanel() {
   });
   const myScore = useMemo(() => Number(perf.total ?? 0), [perf.total]);
 
+  // ── Qualitative scores for SmartFeedback ──
+  const myQualitativeQ = useQuery({
+    enabled: !!user?.id,
+    queryKey: ["my_qualitative_scores", selected.year, selected.month, user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("performance_scores")
+        .select("padrao_qualidade_uau, comprometimento, ambiente_organizado, aprendizado_continuo")
+        .eq("year", selected.year)
+        .eq("month", selected.month)
+        .eq("user_id", user!.id)
+        .maybeSingle();
+      return data ?? null;
+    },
+    staleTime: 60_000,
+  });
+
   // ── Streak calculation ──
   const streak = useMemo(() => {
     let count = 0;
