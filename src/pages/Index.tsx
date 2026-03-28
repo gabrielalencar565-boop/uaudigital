@@ -167,7 +167,6 @@ const Index = () => {
         </Card>
       );
     }
-    if (tab === "agenda_mensal") return <AgendaPanel />;
     if (isGestaoTab) return <GestaoPanel forcedView={gestaoView} />;
     if (tab === "visao_geral_projetos") return <ProjetosPanel />;
     if (tab === "configuracoes" && isAdmin) return <AdminContainer />;
