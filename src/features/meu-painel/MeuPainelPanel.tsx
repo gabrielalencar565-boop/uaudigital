@@ -242,35 +242,35 @@ export function MeuPainelPanel() {
   });
   const myScore = useMemo(() => Number(perf.total ?? 0), [perf.total]);
 
-  // ── Streak calculation ──
+  // ── Streak calculation (uses all tasks) ──
   const streak = useMemo(() => {
     let count = 0;
     for (let i = 0; i < 30; i++) {
       const d = format(subDays(today, i), "yyyy-MM-dd");
-      const doneOnDay = myTasks.some((t) => t.status === "concluido" && t.completed_at && format(new Date(t.completed_at), "yyyy-MM-dd") === d);
+      const doneOnDay = allMyTasks.some((t) => t.status === "concluido" && t.completedAt && format(new Date(t.completedAt), "yyyy-MM-dd") === d);
       if (doneOnDay) count++;
-      else if (i > 0) break; // break on first gap (skip today if nothing yet)
+      else if (i > 0) break;
     }
     return count;
-  }, [myTasks, todayKey]);
+  }, [allMyTasks, todayKey]);
 
   // ── Sparkline data (last 7 days) ──
   const sparkData = useMemo(() => {
     const data: number[] = [];
     for (let i = 6; i >= 0; i--) {
       const d = format(subDays(today, i), "yyyy-MM-dd");
-      data.push(myTasks.filter((t) => t.status === "concluido" && t.completed_at && format(new Date(t.completed_at), "yyyy-MM-dd") === d).length);
+      data.push(allMyTasks.filter((t) => t.status === "concluido" && t.completedAt && format(new Date(t.completedAt), "yyyy-MM-dd") === d).length);
     }
     return data;
-  }, [myTasks, todayKey]);
+  }, [allMyTasks, todayKey]);
 
   // ── Bottleneck data ──
   const pendingByStage = useMemo(() => {
-    return myTasks.filter((t) => t.status !== "concluido").reduce((acc, t) => {
+    return allMyTasks.filter((t) => t.status !== "concluido").reduce((acc, t) => {
       acc[t.stage] = (acc[t.stage] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
-  }, [myTasks]);
+  }, [allMyTasks]);
 
   // ── Profile loading ──
   useEffect(() => {
