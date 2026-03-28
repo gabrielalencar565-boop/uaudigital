@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import {
   CheckCircle2, AlertTriangle, TrendingUp, TrendingDown,
-  RefreshCw, BarChart3, Zap, Shield, Sparkles,
+  RefreshCw, BarChart3, Zap, Shield, Sparkles, Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -46,8 +46,22 @@ const ICON_TEXT: Record<string, string> = {
 export function SmartFeedbackWidget({ myTasks, teamAvgScore, myScore, todayKey, prevMonthDone }: Props) {
   const total = myTasks.length;
   const done = myTasks.filter((t) => t.status === "concluido").length;
-  const overdue = myTasks.filter((t) => t.status !== "concluido" && t.due_date < todayKey).length;
+  // Tarefas pendentes que já passaram do prazo
+  const pendingOverdue = myTasks.filter((t) => t.status !== "concluido" && t.due_date < todayKey).length;
+  // Tarefas concluídas APÓS o prazo (completed_at > due_date)
+  const completedLate = myTasks.filter((t) => {
+    if (t.status !== "concluido" || !t.completed_at) return false;
+    const completedDate = t.completed_at.slice(0, 10);
+    return completedDate > t.due_date;
+  }).length;
+  const doneOnTime = myTasks.filter((t) => {
+    if (t.status !== "concluido" || !t.completed_at) return false;
+    return t.completed_at.slice(0, 10) <= t.due_date;
+  }).length;
+  // Total de problemas de prazo: pendentes atrasadas + concluídas com atraso
+  const totalLateIssues = pendingOverdue + completedLate;
   const pctDone = total > 0 ? Math.round((done / total) * 100) : 0;
+  const pctOnTime = done > 0 ? Math.round((doneOnTime / done) * 100) : 0;
 
   const insights = useMemo(() => {
     const list: Insight[] = [];
@@ -56,10 +70,16 @@ export function SmartFeedbackWidget({ myTasks, teamAvgScore, myScore, todayKey, 
       .reduce((acc, t) => { acc[t.stage] = (acc[t.stage] || 0) + 1; return acc; }, {} as Record<string, number>);
     const inAlteracao = pendingByStage["alteracoes"] ?? 0;
 
-    if (overdue === 0 && total > 0) {
-      list.push({ icon: <Shield className="h-4 w-4" />, title: "Organização impecável", description: "Nenhuma tarefa atrasada", color: "green", priority: 3 });
-    } else if (overdue > 0) {
-      list.push({ icon: <AlertTriangle className="h-4 w-4" />, title: `${overdue} tarefa${overdue > 1 ? "s" : ""} atrasada${overdue > 1 ? "s" : ""}`, description: "Priorize essas entregas o quanto antes", color: "red", priority: 1 });
+    // Insight principal: analisa tanto pendentes atrasadas quanto concluídas fora do prazo
+    if (totalLateIssues === 0 && total > 0) {
+      list.push({ icon: <Shield className="h-4 w-4" />, title: "Organização impecável", description: "Nenhuma tarefa atrasada ou entregue fora do prazo", color: "green", priority: 3 });
+    } else {
+      if (pendingOverdue > 0) {
+        list.push({ icon: <AlertTriangle className="h-4 w-4" />, title: `${pendingOverdue} tarefa${pendingOverdue > 1 ? "s" : ""} atrasada${pendingOverdue > 1 ? "s" : ""}`, description: "Priorize essas entregas o quanto antes", color: "red", priority: 1 });
+      }
+      if (completedLate > 0) {
+        list.push({ icon: <Clock className="h-4 w-4" />, title: `${completedLate} entregue${completedLate > 1 ? "s" : ""} fora do prazo`, description: `${pctOnTime}% das entregas foram no prazo — busque melhorar`, color: "yellow", priority: 2 });
+      }
     }
 
     if (teamAvgScore !== null && teamAvgScore > 0) {
@@ -70,7 +90,6 @@ export function SmartFeedbackWidget({ myTasks, teamAvgScore, myScore, todayKey, 
       }
     }
 
-    const doneOnTime = myTasks.filter((t) => t.status === "concluido" && t.completed_at && t.completed_at.slice(0, 10) <= t.due_date).length;
     if (doneOnTime >= 5 && doneOnTime === done) {
       list.push({ icon: <Zap className="h-4 w-4" />, title: "Consistência alta", description: "Todas as entregas no prazo", color: "green", priority: 5 });
     }
@@ -92,14 +111,16 @@ export function SmartFeedbackWidget({ myTasks, teamAvgScore, myScore, todayKey, 
     }
 
     return list.sort((a, b) => a.priority - b.priority).slice(0, 4);
-  }, [myTasks, teamAvgScore, myScore, todayKey, prevMonthDone, total, done, overdue, pctDone]);
+  }, [myTasks, teamAvgScore, myScore, todayKey, prevMonthDone, total, done, pendingOverdue, completedLate, totalLateIssues, pctDone, pctOnTime, doneOnTime]);
 
   const headline = useMemo(() => {
-    if (overdue >= 3) return { text: "Atenção: tarefas acumuladas", sub: "Reorganize suas prioridades para voltar ao ritmo", positive: false, emoji: "⚠️" };
-    if (total > 0 && done / total >= 0.7) return { text: "Alto desempenho", sub: "Seu ritmo está acima da média da equipe", positive: true, emoji: "🚀" };
-    if (overdue > 0) return { text: "Organize suas prioridades", sub: "Existem entregas que precisam de atenção", positive: false, emoji: "📋" };
+    if (pendingOverdue >= 3) return { text: "Atenção: tarefas acumuladas", sub: "Reorganize suas prioridades para voltar ao ritmo", positive: false, emoji: "⚠️" };
+    if (completedLate > 0 && pendingOverdue === 0) return { text: "Entregas fora do prazo", sub: `${completedLate} tarefa${completedLate > 1 ? "s foram marcadas" : " foi marcada"} após o prazo definido`, positive: false, emoji: "📋" };
+    if (total > 0 && done / total >= 0.7 && totalLateIssues === 0) return { text: "Alto desempenho", sub: "Seu ritmo está acima da média — tudo no prazo!", positive: true, emoji: "🚀" };
+    if (total > 0 && done / total >= 0.7) return { text: "Bom ritmo", sub: `${pctOnTime}% das entregas no prazo`, positive: true, emoji: "🚀" };
+    if (pendingOverdue > 0) return { text: "Organize suas prioridades", sub: "Existem entregas que precisam de atenção", positive: false, emoji: "📋" };
     return { text: "Continue avançando", sub: "Mantenha o ritmo e foco nas próximas tarefas", positive: true, emoji: "💪" };
-  }, [total, done, overdue]);
+  }, [total, done, pendingOverdue, completedLate, totalLateIssues, pctOnTime]);
 
   const alerts = insights.filter((i) => i.color === "red");
   const positiveInsights = insights.filter((i) => i.color !== "red");
