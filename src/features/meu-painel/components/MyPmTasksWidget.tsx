@@ -168,7 +168,7 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
   };
 
   const renderHeader = () => (
-    <div className="grid grid-cols-[1fr_100px_140px_100px] gap-2 px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground border-b border-border/30">
+    <div className="hidden sm:grid grid-cols-[1fr_100px_140px_100px] gap-2 px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground border-b border-border/30">
       <span>Nome</span>
       <span>Prioridade</span>
       <span>Data de vencimento</span>
