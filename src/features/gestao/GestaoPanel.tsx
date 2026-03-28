@@ -47,7 +47,7 @@ const STAGE_ABBR: Record<string, string> = {
 const STAGE_BADGE_BG: Record<string, string> = {
   captacao: "bg-red-500", planejamento: "bg-blue-500", design: "bg-stage-design",
   edicao_videos: "bg-purple-500", revisao: "bg-pink-500", alteracoes: "bg-stage-alteracoes", pdf: "bg-indigo-500",
-  agendamento: "bg-violet-500", entrega: "bg-emerald-500"
+  agendamento: "bg-lime-500", entrega: "bg-emerald-500"
 };
 
 const VIEW_TITLES: Record<string, string> = {
