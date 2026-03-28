@@ -499,89 +499,49 @@ export function DayViewPanel() {
   const daysUntilDeadline = differenceInCalendarDays(deadlineDate, today);
 
   return <div ref={containerRef} className={cn("space-y-6", isFullscreen && "bg-background px-4 py-2 overflow-hidden h-screen flex flex-col gap-3 space-y-0")}>
-      {/* Header em uma única linha */}
-      <div className={cn("flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between opacity-0", isFullscreen && "shrink-0")} style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
-        <div className="flex items-center gap-3">
-          <h2 className={cn("font-semibold tracking-tight text-3xl", isFullscreen && "text-xl")}>{isFullscreen ? "Visão do Dia" : "Visão do Dia"}</h2>
-          
-
-
-
-
-
-
-
-
-
-
-
-        
+      {/* Header */}
+      <div className={cn("flex flex-col gap-3 opacity-0", isFullscreen && "shrink-0")} style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
+        <div className="flex items-center justify-between">
+          <h2 className={cn("font-semibold tracking-tight text-xl sm:text-3xl", isFullscreen && "text-xl")}>Visão do Dia</h2>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <Button variant="outline" size="icon" onClick={handleRefresh} disabled={isRefreshing} className="h-8 w-8 sm:h-9 sm:w-9">
+              <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
+            </Button>
+            <Button variant="outline" size="icon" onClick={toggleFullscreen} className="h-8 w-8 sm:h-9 sm:w-9 hidden sm:inline-flex">
+              {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+            </Button>
+          </div>
         </div>
-        
-        {/* Controles à direita */}
-        <div className="flex items-center gap-2">
-          {/* Botão Rodando/Pausado */}
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
           <Button
-          variant={autoRotate ? "default" : "outline"}
-          size="sm"
-          onClick={() => setAutoRotate(!autoRotate)}
-          onMouseEnter={() => setIsHoveringRotateBtn(true)}
-          onMouseLeave={() => setIsHoveringRotateBtn(false)}
-          className={cn(
-            "h-9 min-w-[90px]",
-            autoRotate && "bg-success hover:bg-success/90 text-success-foreground"
-          )}>
-
-            {autoRotate ?
-          isHoveringRotateBtn ? "Pausado" : "Rodando" :
-          isHoveringRotateBtn ? "Rodando" : "Pausado"
-          }
+            variant={autoRotate ? "default" : "outline"}
+            size="sm"
+            onClick={() => setAutoRotate(!autoRotate)}
+            onMouseEnter={() => setIsHoveringRotateBtn(true)}
+            onMouseLeave={() => setIsHoveringRotateBtn(false)}
+            className={cn(
+              "h-8 sm:h-9 text-xs sm:text-sm min-w-[70px] sm:min-w-[90px]",
+              autoRotate && "bg-success hover:bg-success/90 text-success-foreground"
+            )}>
+            {autoRotate ? (isHoveringRotateBtn ? "Pausado" : "Rodando") : (isHoveringRotateBtn ? "Rodando" : "Pausado")}
           </Button>
-
-          {/* Botão tela cheia */}
-          <Button variant="outline" size="icon" onClick={toggleFullscreen} className="h-9 w-9">
-            {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+          <Button variant="outline" size="sm" onClick={handleManualTabChange} className="h-8 sm:h-9 text-xs sm:text-sm">
+            {active === "magic" ? "Agenda" : active === "agenda" ? "Pódio" : "Magic"}
           </Button>
-          
-          <Button
-          variant="outline"
-          size="sm"
-          onClick={handleManualTabChange}
-          className="h-9">
-
-            {active === "magic" ? "Ir para Agenda" : active === "agenda" ? "Ir para Pódio" : "Ir para Magic"}
-          </Button>
-
-          {/* Dropdown de intervalo */}
-          <select
-          value={String(rotateInterval)}
-          onChange={(e) => setRotateInterval(Number(e.target.value))}
-          className="h-9 rounded-md border border-input bg-background px-3 text-sm">
-
+          <select value={String(rotateInterval)} onChange={(e) => setRotateInterval(Number(e.target.value))} className="h-8 sm:h-9 rounded-md border border-input bg-background px-2 sm:px-3 text-xs sm:text-sm">
             <option value="5000">5s</option>
             <option value="10000">10s</option>
             <option value="15000">15s</option>
             <option value="30000">30s</option>
           </select>
-
-          {/* Seletores de mês/ano */}
-          <select value={String(selectedMonth)} onChange={(e) => setSelectedMonth(Number(e.target.value))} className="h-9 rounded-md border border-input bg-background px-3 text-sm">
-            {Array.from({
-            length: 12
-          }, (_, i) => i + 1).map((m) => <option key={m} value={m}>
-                {format(new Date(selectedYear, m - 1, 1), "MMMM", {
-              locale: ptBR
-            })}
-              </option>)}
+          <select value={String(selectedMonth)} onChange={(e) => setSelectedMonth(Number(e.target.value))} className="h-8 sm:h-9 rounded-md border border-input bg-background px-2 sm:px-3 text-xs sm:text-sm">
+            {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+              <option key={m} value={m}>{format(new Date(selectedYear, m - 1, 1), "MMM", { locale: ptBR })}</option>
+            ))}
           </select>
-
-          <select value={String(selectedYear)} onChange={(e) => setSelectedYear(Number(e.target.value))} className="h-9 rounded-md border border-input bg-background px-3 text-sm">
+          <select value={String(selectedYear)} onChange={(e) => setSelectedYear(Number(e.target.value))} className="h-8 sm:h-9 rounded-md border border-input bg-background px-2 sm:px-3 text-xs sm:text-sm">
             {[now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1].map((y) => <option key={y} value={y}>{y}</option>)}
           </select>
-
-          <Button variant="outline" size="icon" onClick={handleRefresh} disabled={isRefreshing} className="h-9 w-9">
-            <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
-          </Button>
         </div>
       </div>
 
@@ -710,11 +670,10 @@ export function DayViewPanel() {
                           <AvatarFallback className="bg-destructive-foreground/20 text-destructive-foreground">{initials(person?.display_name ?? "?")}</AvatarFallback>
                         </Avatar>}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold truncate text-destructive-foreground">
-                          {displayMembers.length > 1 ? displayMembers.map((m) => m.display_name).join(", ") : person?.display_name}
-                          {" "}•{" "}({resolveClientName(t)}) • {stageLabel}
-
-
+                        <p className="text-sm font-semibold text-destructive-foreground leading-5">
+                          <span className="block sm:inline truncate">{displayMembers.length > 1 ? displayMembers.map((m) => m.display_name).join(", ") : person?.display_name}</span>
+                          <span className="hidden sm:inline">{" "}•{" "}</span>
+                          <span className="block sm:inline text-xs sm:text-sm opacity-90 truncate">({resolveClientName(t)}) • {stageLabel}</span>
                         </p>
                       </div>
                       <span className="text-sm font-bold text-destructive-foreground shrink-0">
@@ -768,11 +727,10 @@ export function DayViewPanel() {
                           <AvatarFallback>{initials(person?.display_name ?? "?")}</AvatarFallback>
                         </Avatar>}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold truncate">
-                          {displayMembers.length > 1 ? displayMembers.map((m) => m.display_name).join(", ") : person?.display_name}
-                          {" "}•{" "}({resolveClientName(t)}) • {stageLabel}
-
-
+                        <p className="text-sm font-semibold leading-5">
+                          <span className="block sm:inline truncate">{displayMembers.length > 1 ? displayMembers.map((m) => m.display_name).join(", ") : person?.display_name}</span>
+                          <span className="hidden sm:inline">{" "}•{" "}</span>
+                          <span className="block sm:inline text-xs sm:text-sm text-muted-foreground truncate">({resolveClientName(t)}) • {stageLabel}</span>
                         </p>
                       </div>
                       <Badge variant={t.status === "em_andamento" ? "warning" : "secondary"} className="text-xs shrink-0">
@@ -824,10 +782,10 @@ export function DayViewPanel() {
                           <AvatarFallback className="bg-success-foreground/20 text-success-foreground">{initials(person?.display_name ?? "?")}</AvatarFallback>
                         </Avatar>}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold truncate text-success-foreground">
-                          {displayMembers.length > 1 ? displayMembers.map((m) => m.display_name).join(", ") : person?.display_name}
-                          {" "}•{" "}({resolveClientName(t)}) • {stageLabel}
-                          
+                        <p className="text-sm font-semibold text-success-foreground leading-5">
+                          <span className="block sm:inline truncate">{displayMembers.length > 1 ? displayMembers.map((m) => m.display_name).join(", ") : person?.display_name}</span>
+                          <span className="hidden sm:inline">{" "}•{" "}</span>
+                          <span className="block sm:inline text-xs sm:text-sm opacity-90 truncate">({resolveClientName(t)}) • {stageLabel}</span>
                         </p>
                       </div>
                       <span className="text-sm font-bold text-success-foreground shrink-0">
@@ -858,8 +816,8 @@ export function DayViewPanel() {
               </CardDescription>
             </CardHeader>
             <CardContent className={cn("space-y-3", isFullscreen && "flex-1")}>
-              {/* Header das colunas */}
-              <div className="flex items-center gap-3 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+              {/* Header das colunas — hidden on mobile */}
+              <div className="hidden sm:flex items-center gap-3 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
                 <span className="w-8 text-center shrink-0">#</span>
                 <span className="w-8 shrink-0" />
                 <span className="w-20 shrink-0">Nome</span>
@@ -877,62 +835,62 @@ export function DayViewPanel() {
           const prevPos = prevRankMap.current.get(row.user_id);
           const posChange = prevPos !== undefined ? prevPos - idx : 0;
           return (
-            <div key={row.user_id} className={cn("flex items-center gap-3", isFullscreen ? "py-3" : "py-1")}>
-                      {/* Posição */}
-                      <span className={cn("w-8 text-center font-semibold shrink-0", isFullscreen ? "text-lg" : "text-sm")}>{medal}</span>
-                      {/* Foto */}
-                      <Avatar className="h-8 w-8 shrink-0">
-                        <AvatarImage src={member?.avatar_url ?? undefined} />
-                        <AvatarFallback className="text-[10px]">{initials(member?.display_name ?? "?")}</AvatarFallback>
-                      </Avatar>
-                      {/* Nome */}
-                      <span className="w-20 truncate shrink-0 text-sm font-medium">
-                        {member?.display_name?.split(" ")[0] ?? "—"}
-                      </span>
-                      {/* Total de tarefas */}
-                      <span className="w-14 text-center shrink-0 text-sm font-medium">
-                        {row.taskTotal}
-                      </span>
-                      {/* Feitos */}
-                      <span className="w-14 text-center shrink-0 text-sm font-semibold text-success">
-                        {row.taskCompleted}
-                      </span>
-                      {/* Pendentes */}
-                      <span className="w-14 text-center shrink-0 text-sm font-semibold text-warning">
-                        {pending}
-                      </span>
-                      {/* Barra de progresso % */}
-                      <div className="flex-1 min-w-0">
-                        <div className="relative w-full rounded-full bg-muted/50 overflow-hidden h-6">
-                          <div
-                    className="absolute inset-y-0 left-0 rounded-full bg-success transition-all duration-500"
-                    style={{ width: `${row.completionPct}%` }} />
-
-                          <div className="absolute inset-0 flex items-center justify-end pr-3">
-                            <span className="font-bold tabular-nums text-foreground text-xs">
-                              {row.completionPct}%
-                            </span>
+            <div key={row.user_id} className={cn("rounded-lg sm:rounded-none border sm:border-0 border-border/40 p-2.5 sm:p-0", isFullscreen ? "py-3" : "sm:py-1")}>
+                      {/* Desktop layout */}
+                      <div className="hidden sm:flex items-center gap-3">
+                        <span className={cn("w-8 text-center font-semibold shrink-0", isFullscreen ? "text-lg" : "text-sm")}>{medal}</span>
+                        <Avatar className="h-8 w-8 shrink-0">
+                          <AvatarImage src={member?.avatar_url ?? undefined} />
+                          <AvatarFallback className="text-[10px]">{initials(member?.display_name ?? "?")}</AvatarFallback>
+                        </Avatar>
+                        <span className="w-20 truncate shrink-0 text-sm font-medium">{member?.display_name?.split(" ")[0] ?? "—"}</span>
+                        <span className="w-14 text-center shrink-0 text-sm font-medium">{row.taskTotal}</span>
+                        <span className="w-14 text-center shrink-0 text-sm font-semibold text-success">{row.taskCompleted}</span>
+                        <span className="w-14 text-center shrink-0 text-sm font-semibold text-warning">{pending}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="relative w-full rounded-full bg-muted/50 overflow-hidden h-6">
+                            <div className="absolute inset-y-0 left-0 rounded-full bg-success transition-all duration-500" style={{ width: `${row.completionPct}%` }} />
+                            <div className="absolute inset-0 flex items-center justify-end pr-3">
+                              <span className="font-bold tabular-nums text-foreground text-xs">{row.completionPct}%</span>
+                            </div>
                           </div>
                         </div>
+                        <span className="w-14 text-center shrink-0 text-sm font-bold">{row.total}</span>
+                        <div className="w-10 shrink-0 flex items-center justify-center gap-0.5">
+                          {posChange > 0 ? <ArrowUp className="h-3.5 w-3.5 text-success" /> :
+                  posChange < 0 ? <ArrowDown className="h-3.5 w-3.5 text-destructive" /> :
+                  (streakByUser.get(row.user_id) ?? 0) >= 1 ?
+                  <Tooltip>
+                    <TooltipTrigger asChild><span className="text-base leading-none cursor-default">⚡</span></TooltipTrigger>
+                    <TooltipContent side="top">🔥 {streakByUser.get(row.user_id)} dias consecutivos no prazo!</TooltipContent>
+                  </Tooltip> :
+                  <span className="text-muted-foreground text-[10px]">–</span>}
+                        </div>
                       </div>
-                      {/* Total de pontos */}
-                      <span className="w-14 text-center shrink-0 text-sm font-bold">
-                        {row.total}
-                      </span>
-                      {/* Seta de posição / Streak */}
-                      <div className="w-10 shrink-0 flex items-center justify-center gap-0.5">
-                        {posChange > 0 ? <ArrowUp className="h-3.5 w-3.5 text-success" /> :
-                posChange < 0 ? <ArrowDown className="h-3.5 w-3.5 text-destructive" /> :
-                (streakByUser.get(row.user_id) ?? 0) >= 1 ?
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="text-base leading-none cursor-default">⚡</span>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">
-                    🔥 {streakByUser.get(row.user_id)} dias consecutivos no prazo!
-                  </TooltipContent>
-                </Tooltip> :
-                <span className="text-muted-foreground text-[10px]">–</span>}
+                      {/* Mobile layout */}
+                      <div className="flex sm:hidden items-center gap-2.5">
+                        <span className="text-sm font-semibold shrink-0">{medal}</span>
+                        <Avatar className="h-7 w-7 shrink-0">
+                          <AvatarImage src={member?.avatar_url ?? undefined} />
+                          <AvatarFallback className="text-[9px]">{initials(member?.display_name ?? "?")}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold truncate">{member?.display_name?.split(" ")[0] ?? "—"}</p>
+                          <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-0.5">
+                            <span className="text-success font-semibold">{row.taskCompleted}/{row.taskTotal}</span>
+                            <span>•</span>
+                            <span>{row.completionPct}%</span>
+                            <span>•</span>
+                            <span className="font-bold text-foreground">{row.total}pts</span>
+                          </div>
+                        </div>
+                        <div className="relative w-10 h-10 shrink-0">
+                          <svg viewBox="0 0 36 36" className="h-10 w-10 -rotate-90">
+                            <circle cx="18" cy="18" r="15" fill="none" stroke="hsl(var(--muted))" strokeWidth="3" />
+                            <circle cx="18" cy="18" r="15" fill="none" stroke="hsl(var(--success))" strokeWidth="3" strokeDasharray={`${row.completionPct * 0.9425} 94.25`} strokeLinecap="round" />
+                          </svg>
+                          <span className="absolute inset-0 flex items-center justify-center text-[8px] font-bold">{row.completionPct}%</span>
+                        </div>
                       </div>
                     </div>);
 
