@@ -239,6 +239,15 @@ export function MeuPainelPanel() {
     return { total: all.length, done: all.filter((t) => t.status === "concluido").length, pending: all.filter((t) => t.status !== "concluido").length };
   }, [prevTasksQ.data, prevAssigneesQ.data, user]);
 
+  const prevAgendaTasksRaw = useMemo(() => {
+    if (!user) return [];
+    const allPrev = prevTasksQ.data ?? [];
+    const prevAssigneeTaskIds = new Set(
+      (prevAssigneesQ.data ?? []).filter((a) => a.user_id === user.id).map((a) => a.task_id)
+    );
+    return allPrev.filter((t) => t.assigned_user_id === user.id || prevAssigneeTaskIds.has(t.id));
+  }, [prevTasksQ.data, prevAssigneesQ.data, user]);
+
   // ── Team avg score ──
   const teamPerfQ = useQuery({
     queryKey: ["performance_scores_team_avg", selected.year, selected.month],
