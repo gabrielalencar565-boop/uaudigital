@@ -601,13 +601,15 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
               title={isDone ? "Concluído" : "Pendente"}>
               {isDone && <CheckCircle2 className="h-3.5 w-3.5" />}
             </div>
-            <button
-              type="button"
-              className="h-5 w-5 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition"
-              onClick={(e) => handleDelete(t.id, e)}
-              title="Remover">
-              <Trash2 className="h-3 w-3" />
-            </button>
+            {!isLegacy && (
+              <button
+                type="button"
+                className="h-5 w-5 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition"
+                onClick={(e) => handleDelete(t.id, e)}
+                title="Remover">
+                <Trash2 className="h-3 w-3" />
+              </button>
+            )}
           </div>
         </div>
         {t.is_extra_demand &&
