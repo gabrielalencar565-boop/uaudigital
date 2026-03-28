@@ -105,11 +105,22 @@ export function MeuPainelPanel() {
   const perf = useMyMonthlyPerformanceRank({ userId: user?.id, year: selected.year, month: selected.month });
   const perfYear = useMyAnnualPerformanceRank({ userId: user?.id, year: selected.year });
 
-  const tasksQ = useTasks({ month: monthKey, assignedUserId: user?.id });
+  // Busca TODAS as tarefas do mês (sem filtro de assignee) para depois filtrar client-side
+  const tasksQ = useTasks({ month: monthKey });
+  const assigneesQ = useTaskAssigneesByMonth(monthKey);
   const clientsQ = useClients();
   const setTaskStatus = useSetTaskStatus();
   const clientsById = useMemo(() => new Map((clientsQ.data ?? []).map((c) => [c.id, c] as const)), [clientsQ.data]);
-  const myTasks = useMemo(() => tasksQ.data ?? [], [tasksQ.data]);
+
+  // Filtra tarefas onde o usuário é assigned_user_id OU está em task_assignees
+  const myTasks = useMemo(() => {
+    if (!user) return [];
+    const allTasks = tasksQ.data ?? [];
+    const assigneeTaskIds = new Set(
+      (assigneesQ.data ?? []).filter((a) => a.user_id === user.id).map((a) => a.task_id)
+    );
+    return allTasks.filter((t) => t.assigned_user_id === user.id || assigneeTaskIds.has(t.id));
+  }, [tasksQ.data, assigneesQ.data, user]);
 
   // ── Cleaning ──
   const cleaningSchedulesQ = useCleaningSchedules();
