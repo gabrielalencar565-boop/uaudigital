@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useClients, useSetTaskStatus, useTasks } from "@/features/data/queries";
 import { useTaskAssigneesByMonth } from "@/features/data/task-assignees-queries";
 import { STAGES } from "@/lib/uau";
+import { PM_STAGES } from "@/features/gestao/pm-constants";
 import { useSession } from "@/hooks/use-session";
 import { useRole } from "@/hooks/use-role";
 import { toast } from "sonner";
@@ -112,8 +113,33 @@ export function MeuPainelPanel() {
   const setTaskStatus = useSetTaskStatus();
   const clientsById = useMemo(() => new Map((clientsQ.data ?? []).map((c) => [c.id, c] as const)), [clientsQ.data]);
 
-  // Filtra tarefas onde o usuário é assigned_user_id OU está em task_assignees
-  const myTasks = useMemo(() => {
+  // Filtra tarefas onde o usuário é assigned_user_id OU está em task_assignees e converte para VM
+  const myAgendaVMs = useMemo((): MeuPainelTaskVM[] => {
+    if (!user) return [];
+    const allTasks = tasksQ.data ?? [];
+    const assigneeTaskIds = new Set(
+      (assigneesQ.data ?? []).filter((a) => a.user_id === user.id).map((a) => a.task_id)
+    );
+    return allTasks
+      .filter((t) => t.assigned_user_id === user.id || assigneeTaskIds.has(t.id))
+      .map((t): MeuPainelTaskVM => {
+        const client = clientsById.get(t.client_id);
+        const stageLabel = STAGES.find((s) => s.key === t.stage)?.label ?? t.stage;
+        return {
+          id: t.id,
+          clientName: client?.name ?? "—",
+          stageLabel,
+          stage: t.stage,
+          title: t.title,
+          dueDate: t.due_date,
+          status: t.status,
+          completedAt: t.completed_at ?? null,
+        };
+      });
+  }, [tasksQ.data, assigneesQ.data, user, clientsById]);
+
+  // Raw agenda tasks filtered for user (for productivity/feedback widgets)
+  const agendaTasksRaw = useMemo(() => {
     if (!user) return [];
     const allTasks = tasksQ.data ?? [];
     const assigneeTaskIds = new Set(
@@ -122,7 +148,6 @@ export function MeuPainelPanel() {
     return allTasks.filter((t) => t.assigned_user_id === user.id || assigneeTaskIds.has(t.id));
   }, [tasksQ.data, assigneesQ.data, user]);
 
-  // ── Cleaning ──
   const cleaningSchedulesQ = useCleaningSchedules();
   const cleaningCategoriesQ = useCleaningCategories();
   const cleaningCompletionsQ = useCleaningCompletions(todayKey);
@@ -154,16 +179,47 @@ export function MeuPainelPanel() {
     });
   }, [myCleaningTasks, cleaningCategoryById, completedScheduleIds, todayKey]);
 
-  const todayTasks = useMemo(() => [...myTasks.filter((t) => t.due_date === todayKey), ...cleaningVMs.filter((c) => c.status !== "concluido")], [myTasks, todayKey, cleaningVMs]);
-  const overdueTasks = useMemo(() => myTasks.filter((t) => t.status !== "concluido" && t.due_date < todayKey), [myTasks, todayKey]);
-  const upcomingTasks = useMemo(() => myTasks.filter((t) => t.status !== "concluido" && t.due_date > todayKey), [myTasks, todayKey]);
-  const completedTasks = useMemo(() => [...myTasks.filter((t) => t.status === "concluido"), ...cleaningVMs.filter((c) => c.status === "concluido")], [myTasks, cleaningVMs]);
+  // ── PM Tasks (Gestão) ──
+  const pmTasksQ = usePmTasks();
+  const myPmTaskVMs = useMemo((): MeuPainelTaskVM[] => {
+    if (!user) return [];
+    const allPm = pmTasksQ.data ?? [];
+    return allPm
+      .filter((t) => {
+        if (!t.due_date) return false;
+        if (t.status_global === "cancelado") return false;
+        return t.assignee_id === user.id || (t.watchers ?? []).includes(user.id);
+      })
+      .map((t): MeuPainelTaskVM => {
+        const client = clientsById.get(t.client_id);
+        const stageInfo = PM_STAGES.find((s) => s.key === t.stage_current);
+        const pmStatus = t.status_global === "concluido" ? "concluido" as const : "pendente" as const;
+        return {
+          id: `pm:${t.id}`,
+          clientName: client?.name ?? t.title ?? "—",
+          stageLabel: stageInfo?.label ?? t.stage_current,
+          stage: (t.stage_current as any),
+          title: t.title,
+          dueDate: t.due_date,
+          status: pmStatus,
+          completedAt: pmStatus === "concluido" ? t.updated_at : null,
+        };
+      });
+  }, [pmTasksQ.data, user, clientsById]);
+
+  // ── Merge all sources (all are MeuPainelTaskVM now) ──
+  const allMyTasks = useMemo((): MeuPainelTaskVM[] => [...myAgendaVMs, ...myPmTaskVMs], [myAgendaVMs, myPmTaskVMs]);
+
+  const todayTasks = useMemo(() => [...allMyTasks.filter((t) => t.dueDate === todayKey), ...cleaningVMs.filter((c) => c.status !== "concluido")], [allMyTasks, todayKey, cleaningVMs]);
+  const overdueTasks = useMemo(() => allMyTasks.filter((t) => t.status !== "concluido" && t.dueDate < todayKey), [allMyTasks, todayKey]);
+  const upcomingTasks = useMemo(() => allMyTasks.filter((t) => t.status !== "concluido" && t.dueDate > todayKey), [allMyTasks, todayKey]);
+  const completedTasks = useMemo(() => [...allMyTasks.filter((t) => t.status === "concluido"), ...cleaningVMs.filter((c) => c.status === "concluido")], [allMyTasks, cleaningVMs]);
 
   const summary = useMemo(() => {
-    const done = myTasks.filter((t) => t.status === "concluido").length;
-    const pending = myTasks.filter((t) => t.status !== "concluido").length;
-    return { total: myTasks.length, done, pending, overdue: overdueTasks.length };
-  }, [myTasks, overdueTasks.length]);
+    const done = allMyTasks.filter((t) => t.status === "concluido").length;
+    const pending = allMyTasks.filter((t) => t.status !== "concluido").length;
+    return { total: allMyTasks.length, done, pending, overdue: overdueTasks.length };
+  }, [allMyTasks, overdueTasks.length]);
 
   // ── Previous month for comparison ──
   const prevMonthKey = useMemo(() => {
@@ -183,6 +239,15 @@ export function MeuPainelPanel() {
     return { total: all.length, done: all.filter((t) => t.status === "concluido").length, pending: all.filter((t) => t.status !== "concluido").length };
   }, [prevTasksQ.data, prevAssigneesQ.data, user]);
 
+  const prevAgendaTasksRaw = useMemo(() => {
+    if (!user) return [];
+    const allPrev = prevTasksQ.data ?? [];
+    const prevAssigneeTaskIds = new Set(
+      (prevAssigneesQ.data ?? []).filter((a) => a.user_id === user.id).map((a) => a.task_id)
+    );
+    return allPrev.filter((t) => t.assigned_user_id === user.id || prevAssigneeTaskIds.has(t.id));
+  }, [prevTasksQ.data, prevAssigneesQ.data, user]);
+
   // ── Team avg score ──
   const teamPerfQ = useQuery({
     queryKey: ["performance_scores_team_avg", selected.year, selected.month],
@@ -195,35 +260,35 @@ export function MeuPainelPanel() {
   });
   const myScore = useMemo(() => Number(perf.total ?? 0), [perf.total]);
 
-  // ── Streak calculation ──
+  // ── Streak calculation (uses all tasks) ──
   const streak = useMemo(() => {
     let count = 0;
     for (let i = 0; i < 30; i++) {
       const d = format(subDays(today, i), "yyyy-MM-dd");
-      const doneOnDay = myTasks.some((t) => t.status === "concluido" && t.completed_at && format(new Date(t.completed_at), "yyyy-MM-dd") === d);
+      const doneOnDay = allMyTasks.some((t) => t.status === "concluido" && t.completedAt && format(new Date(t.completedAt), "yyyy-MM-dd") === d);
       if (doneOnDay) count++;
-      else if (i > 0) break; // break on first gap (skip today if nothing yet)
+      else if (i > 0) break;
     }
     return count;
-  }, [myTasks, todayKey]);
+  }, [allMyTasks, todayKey]);
 
   // ── Sparkline data (last 7 days) ──
   const sparkData = useMemo(() => {
     const data: number[] = [];
     for (let i = 6; i >= 0; i--) {
       const d = format(subDays(today, i), "yyyy-MM-dd");
-      data.push(myTasks.filter((t) => t.status === "concluido" && t.completed_at && format(new Date(t.completed_at), "yyyy-MM-dd") === d).length);
+      data.push(allMyTasks.filter((t) => t.status === "concluido" && t.completedAt && format(new Date(t.completedAt), "yyyy-MM-dd") === d).length);
     }
     return data;
-  }, [myTasks, todayKey]);
+  }, [allMyTasks, todayKey]);
 
   // ── Bottleneck data ──
   const pendingByStage = useMemo(() => {
-    return myTasks.filter((t) => t.status !== "concluido").reduce((acc, t) => {
+    return allMyTasks.filter((t) => t.status !== "concluido").reduce((acc, t) => {
       acc[t.stage] = (acc[t.stage] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
-  }, [myTasks]);
+  }, [allMyTasks]);
 
   // ── Profile loading ──
   useEffect(() => {
@@ -295,6 +360,15 @@ export function MeuPainelPanel() {
       toggleCleaning.mutate({ scheduleId: taskId.replace("cleaning:", ""), date: todayKey, userId: user.id, isCompleted: current === "concluido" });
       return;
     }
+    if (taskId.startsWith("pm:")) {
+      const pmId = taskId.replace("pm:", "");
+      const nextStatus = current === "concluido" ? "backlog" : "concluido";
+      try {
+        await supabase.from("pm_tasks").update({ status_global: nextStatus, updated_at: new Date().toISOString() }).eq("id", pmId);
+        toast.success(nextStatus === "concluido" ? "Concluída! ✔" : "Voltou para backlog");
+      } catch (e: any) { toast.error(e?.message ?? "Erro ao atualizar tarefa"); }
+      return;
+    }
     const next = current === "concluido" ? "em_andamento" : "concluido";
     try {
       await setTaskStatus.mutateAsync({ taskId, status: next, userId: user.id });
@@ -302,12 +376,7 @@ export function MeuPainelPanel() {
     } catch (e: any) { toast.error(e?.message ?? "Erro ao atualizar tarefa"); }
   };
 
-  const toVM = (t: (typeof myTasks)[number] | MeuPainelTaskVM): MeuPainelTaskVM => {
-    if ("clientName" in t) return t;
-    const client = clientsById.get(t.client_id);
-    const stageLabel = STAGES.find((s) => s.key === t.stage)?.label ?? t.stage;
-    return { id: t.id, clientName: client?.name ?? "—", stageLabel, stage: t.stage, title: t.title, dueDate: t.due_date, status: t.status, completedAt: t.completed_at ?? null };
-  };
+  const toVM = (t: MeuPainelTaskVM): MeuPainelTaskVM => t;
 
   return (
     <div className="space-y-5">
@@ -400,9 +469,9 @@ export function MeuPainelPanel() {
 
       {/* ── 6. PRODUCTIVITY + FEEDBACK ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.38s" }}>
-        <ProductivityWidget tasks={myTasks} allMonthTasks={[...myTasks, ...(prevTasksQ.data ?? [])]} todayKey={todayKey} />
+        <ProductivityWidget tasks={agendaTasksRaw} allMonthTasks={[...agendaTasksRaw, ...(prevAgendaTasksRaw)]} todayKey={todayKey} />
         <SmartFeedbackWidget
-          myTasks={myTasks.map((t) => ({ ...t, completed_at: t.completed_at ?? null, point_value: (t as any).point_value ?? null }))}
+          myTasks={agendaTasksRaw.map((t) => ({ ...t, completed_at: t.completed_at ?? null, point_value: t.point_value ?? null }))}
           teamAvgScore={teamPerfQ.data ?? null}
           myScore={myScore}
           todayKey={todayKey}
