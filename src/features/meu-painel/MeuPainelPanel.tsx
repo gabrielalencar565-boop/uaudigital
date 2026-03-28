@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useClients, useSetTaskStatus, useTasks } from "@/features/data/queries";
 import { useTaskAssigneesByMonth } from "@/features/data/task-assignees-queries";
 import { STAGES } from "@/lib/uau";
+import { PM_STAGES } from "@/features/gestao/pm-constants";
 import { useSession } from "@/hooks/use-session";
 import { useRole } from "@/hooks/use-role";
 import { toast } from "sonner";
