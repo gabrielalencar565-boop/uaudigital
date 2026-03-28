@@ -863,8 +863,8 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
         {/* ── Concluído / Alteração action buttons ── */}
         {task.stage_current === "alteracoes" && (
-          <div className="flex items-center gap-2 pt-2">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-red-600/10 border border-red-600/30 text-red-500 text-xs font-semibold">
+          <div className="flex flex-wrap items-center gap-2 pt-2">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-destructive/10 border border-destructive/30 text-destructive text-xs font-semibold">
               <RotateCcw className="h-3.5 w-3.5" /> Em Alteração
             </div>
             <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={handleReturnFromAlteracao}>
