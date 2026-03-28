@@ -442,9 +442,9 @@ export function MeuPainelPanel() {
 
       {/* ── 6. PRODUCTIVITY + FEEDBACK ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.38s" }}>
-        <ProductivityWidget tasks={myTasks} allMonthTasks={[...myTasks, ...(prevTasksQ.data ?? [])]} todayKey={todayKey} />
+        <ProductivityWidget tasks={agendaTasksRaw} allMonthTasks={[...agendaTasksRaw, ...(prevAgendaTasksRaw)]} todayKey={todayKey} />
         <SmartFeedbackWidget
-          myTasks={myTasks.map((t) => ({ ...t, completed_at: t.completed_at ?? null, point_value: (t as any).point_value ?? null }))}
+          myTasks={agendaTasksRaw.map((t) => ({ ...t, completed_at: t.completed_at ?? null, point_value: t.point_value ?? null }))}
           teamAvgScore={teamPerfQ.data ?? null}
           myScore={myScore}
           todayKey={todayKey}
