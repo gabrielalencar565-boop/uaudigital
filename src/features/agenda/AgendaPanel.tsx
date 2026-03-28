@@ -725,7 +725,7 @@ export function AgendaPanel() {
               const canInteract = canUserInteractWithTask(user?.id);
               const members = assigneesByTaskId.get(t.id) ?? [];
 
-              return <AgendaWeekTaskItem key={t.id} stageLabel={stageLabel} stage={t.stage} done={t.status === "concluido"} assigneeName={assigneeName} assigneeAvatarUrl={assignee?.avatar_url ?? undefined} members={members} clientName={clientName} dueTime={formatDueTime(t.due_at)} density="default" isExtraDemand={t.is_extra_demand} canInteract={canInteract} canDelete={!!canManageTasks} onToggle={() => {
+              return <AgendaWeekTaskItem key={t.id} stageLabel={stageLabel} stage={t.stage} done={t.status === "concluido"} assigneeName={assigneeName} assigneeAvatarUrl={assignee?.avatar_url ?? undefined} members={members} clientName={clientName} dueTime={formatDueTime(t.due_at)} density="default" isExtraDemand={t.is_extra_demand} canInteract={canInteract} canDelete={true} onToggle={() => {
                 const next = t.status === "concluido" ? "pendente" : "concluido";
                 toggleComplete(t.id, next);
               }} onDelete={() => onDeleteTask(t.id)} onClick={() => canManageTasks && openEditTask(t)} />;
@@ -908,7 +908,7 @@ export function AgendaPanel() {
                     const clientName = resolveClientName(t);
                     const canInteract = canUserInteractWithTask(user?.id);
                     const members = assigneesByTaskId.get(t.id) ?? [];
-                    return <AgendaWeekTaskItem key={t.id} stageLabel={stageLabel} stage={t.stage} done={t.status === "concluido"} assigneeName={assigneeName} assigneeAvatarUrl={assignee?.avatar_url ?? undefined} members={members} clientName={clientName} dueTime={formatDueTime(t.due_at)} isExtraDemand={t.is_extra_demand} canInteract={canInteract} canDelete={!!canManageTasks} onToggle={() => {
+                    return <AgendaWeekTaskItem key={t.id} stageLabel={stageLabel} stage={t.stage} done={t.status === "concluido"} assigneeName={assigneeName} assigneeAvatarUrl={assignee?.avatar_url ?? undefined} members={members} clientName={clientName} dueTime={formatDueTime(t.due_at)} isExtraDemand={t.is_extra_demand} canInteract={canInteract} canDelete={true} onToggle={() => {
                       const next = t.status === "concluido" ? "pendente" : "concluido";
                       toggleComplete(t.id, next);
                     }} onDelete={() => {
@@ -982,7 +982,7 @@ export function AgendaPanel() {
                         const canInteract = canUserInteractWithTask(user?.id);
                         const members = assigneesByTaskId.get(t.id) ?? [];
 
-                        return <AgendaWeekTaskItem key={t.id} stageLabel={stageLabel} stage={t.stage} done={t.status === "concluido"} assigneeName={assigneeName} assigneeAvatarUrl={assignee?.avatar_url ?? undefined} members={members} clientName={clientName} dueTime={formatDueTime(t.due_at)} density="default" isExtraDemand={t.is_extra_demand} canInteract={canInteract} canDelete={!!canManageTasks} onToggle={() => {
+                        return <AgendaWeekTaskItem key={t.id} stageLabel={stageLabel} stage={t.stage} done={t.status === "concluido"} assigneeName={assigneeName} assigneeAvatarUrl={assignee?.avatar_url ?? undefined} members={members} clientName={clientName} dueTime={formatDueTime(t.due_at)} density="default" isExtraDemand={t.is_extra_demand} canInteract={canInteract} canDelete={true} onToggle={() => {
                           const next = t.status === "concluido" ? "pendente" : "concluido";
                           toggleComplete(t.id, next);
                         }} onDelete={() => onDeleteTask(t.id)} onClick={() => canManageTasks && openEditTask(t)} />;
@@ -1194,7 +1194,7 @@ export function AgendaPanel() {
                     density="default"
                     isExtraDemand={t.is_extra_demand}
                     canInteract={canInteract} 
-                    canDelete={!!canManageTasks} 
+                    canDelete={true} 
                     onToggle={() => {
                       const next = t.status === "concluido" ? "pendente" : "concluido";
                       toggleComplete(t.id, next);
@@ -1325,7 +1325,7 @@ export function AgendaPanel() {
                                 clientName={clientName}
                                 dueTime={formatDueTime(t.due_at)}
                                 canInteract={canInteract}
-                                canDelete={!!canManageTasks}
+                                canDelete={true}
                                 canDrag={!!canManageTasks}
                                 onToggle={() => {
                                   const next = t.status === "concluido" ? "pendente" : "concluido";
