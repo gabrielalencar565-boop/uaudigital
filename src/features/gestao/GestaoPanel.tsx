@@ -593,20 +593,24 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
     );
   };
 
+  const getTaskAssignees = (task: PmTask) => {
+    const assigneeIds = Array.from(
+      new Set([task.assignee_id, ...(task.watchers ?? [])].filter((id): id is string => Boolean(id))),
+    );
+
+    return assigneeIds
+      .map((id) => ({ id, ...membersMap[id] }))
+      .filter((member): member is { id: string; name: string; avatar?: string } => Boolean(member.name));
+  };
+
   const renderTaskCard = (t: PmTask) => {
     const isLegacy = t.id.startsWith("legacy_");
     const isDone = t.status_global === "concluido";
     const stageBg = STAGE_BADGE_BG[t.stage_current] ?? "bg-muted";
     const abbr = STAGE_ABBR[t.stage_current] ?? t.stage_current.toUpperCase().slice(0, 4);
-    const assigneeIds = Array.from(new Set([
-      t.assignee_id,
-      ...(t.watchers ?? []),
-    ].filter((id): id is string => Boolean(id))));
-    const assignees = assigneeIds
-      .map((id) => ({ id, ...membersMap[id] }))
-      .filter((member): member is { id: string; name: string; avatar?: string } => Boolean(member.name));
+    const assignees = getTaskAssignees(t);
     const visibleAssignees = assignees.slice(0, 2);
-    const extraAssignees = Math.max(assignees.length - visibleAssignees.length, 0);
+    const extraAssignees = Math.max(assignees.length - 2, 0);
     const mainAssignee = assignees[0];
     const clientName = clientsMap[t.client_id] ?? "—";
 
@@ -649,15 +653,15 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
         }
         <div className="mt-2 flex items-center gap-2">
           {visibleAssignees.length > 0 ? (
-            <div className="flex items-center shrink-0">
-              {visibleAssignees.map((member, index) => (
-                <Avatar key={member.id} className={cn("h-7 w-7 ring-2 ring-background", index > 0 && "-ml-2")}>
+            <div className="flex flex-col -space-y-1.5 shrink-0">
+              {visibleAssignees.map((member) => (
+                <Avatar key={member.id} className="h-7 w-7 ring-2 ring-background">
                   <AvatarImage src={member.avatar} />
                   <AvatarFallback className="text-[8px] font-bold bg-primary/10 text-primary">{initials(member.name)}</AvatarFallback>
                 </Avatar>
               ))}
               {extraAssignees > 0 && (
-                <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1 text-[9px] font-semibold text-muted-foreground">
+                <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-muted px-1 text-[9px] font-semibold text-muted-foreground ring-2 ring-background">
                   +{extraAssignees}
                 </span>
               )}
@@ -940,19 +944,43 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
             {(moreDayKey ? tasksByDay.get(moreDayKey) ?? [] : []).map((t) => {
               const isLegacy = t.id.startsWith("legacy_");
               const isDone = t.status_global === "concluido";
-              const member = t.assignee_id ? membersMap[t.assignee_id] : undefined;
+              const assignees = getTaskAssignees(t);
+              const visibleAssignees = assignees.slice(0, 2);
+              const extraAssignees = Math.max(assignees.length - 2, 0);
+              const mainAssignee = assignees[0];
               const clientName = clientsMap[t.client_id] ?? "—";
               return (
                 <div key={t.id} className="flex items-center gap-3 p-3 rounded-xl border border-border/30 bg-card/60 shadow-[0_1px_3px_0_hsl(var(--foreground)/0.06)] cursor-pointer hover:bg-muted/40 transition" onClick={() => { if (!isLegacy) { setMoreOpen(false); onTaskClick(t); } }}>
                   <div className={cn("inline-flex h-6 items-center rounded-md px-2.5 text-[10px] font-bold text-white shrink-0", STAGE_BADGE_BG[t.stage_current] ?? "bg-muted")}>
                     {STAGE_ABBR[t.stage_current] ?? t.stage_current.slice(0, 4).toUpperCase()}
                   </div>
-                  <Avatar className="h-7 w-7 shrink-0 ring-2 ring-background">
-                    <AvatarImage src={member?.avatar} />
-                    <AvatarFallback className="text-[8px] font-bold bg-primary/10 text-primary">{member ? initials(member.name) : "?"}</AvatarFallback>
-                  </Avatar>
+                  {visibleAssignees.length > 0 ? (
+                    <div className="flex flex-col -space-y-1.5 shrink-0">
+                      {visibleAssignees.map((member) => (
+                        <Avatar key={member.id} className="h-7 w-7 shrink-0 ring-2 ring-background">
+                          <AvatarImage src={member.avatar} />
+                          <AvatarFallback className="text-[8px] font-bold bg-primary/10 text-primary">{initials(member.name)}</AvatarFallback>
+                        </Avatar>
+                      ))}
+                      {extraAssignees > 0 && (
+                        <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-muted px-1 text-[9px] font-semibold text-muted-foreground ring-2 ring-background">
+                          +{extraAssignees}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <Avatar className="h-7 w-7 shrink-0 ring-2 ring-background">
+                      <AvatarFallback className="text-[8px] font-bold bg-primary/10 text-primary">?</AvatarFallback>
+                    </Avatar>
+                  )}
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">{member?.name ?? "—"}</p>
+                    <p className="truncate text-sm font-semibold">
+                      {assignees.length === 1 && mainAssignee
+                        ? mainAssignee.name
+                        : assignees.length > 1
+                          ? `${assignees.length} responsáveis`
+                          : "—"}
+                    </p>
                     <p className="truncate text-xs text-muted-foreground/60">{clientName}</p>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
