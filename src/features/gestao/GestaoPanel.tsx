@@ -585,8 +585,8 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
           setDraggedTask(t);
         }}
         onDragEnd={isLegacy ? undefined : () => setDraggedTask(null)}
-        className={cn("w-full rounded-xl border border-border/20 bg-card/60 backdrop-blur-sm p-2 text-left transition-all hover:bg-card hover:shadow-sm hover:-translate-y-0.5 group/card",
-          isLegacy ? "cursor-default border-dashed opacity-80" : "cursor-grab active:cursor-grabbing"
+        className={cn("w-full rounded-xl border bg-card/60 backdrop-blur-sm p-2 text-left transition-all hover:bg-card hover:shadow-sm hover:-translate-y-0.5 group/card shadow-[0_1px_3px_0_hsl(var(--foreground)/0.06)]",
+          isLegacy ? "cursor-default border-border/40 border-dashed" : "cursor-grab active:cursor-grabbing border-border/30"
         )}
         onClick={isLegacy ? undefined : () => onTaskClick(t)}>
         <div className="flex items-center justify-between gap-1">
