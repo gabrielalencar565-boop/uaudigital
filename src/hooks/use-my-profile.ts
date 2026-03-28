@@ -1,6 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
+import { normalizeAvatarUrl } from "@/lib/avatar-url";
 
 export type MyProfileRow = {
   user_id: string;
@@ -18,6 +19,9 @@ export function useMyProfile() {
   return useQuery({
     enabled: !!user?.id,
     queryKey: ["my_profile", user?.id],
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    placeholderData: keepPreviousData,
     queryFn: async (): Promise<MyProfileRow | null> => {
       if (!user) return null;
 
@@ -29,7 +33,10 @@ export function useMyProfile() {
         .maybeSingle();
 
       if (!profErr && profile) {
-        return profile as MyProfileRow;
+        return {
+          ...profile,
+          avatar_url: normalizeAvatarUrl(profile.avatar_url) ?? null,
+        } as MyProfileRow;
       }
 
       // Fallback para team_members se não existir perfil
@@ -44,7 +51,7 @@ export function useMyProfile() {
           user_id: member.user_id,
           full_name: member.display_name,
           role_title: member.role_title,
-          avatar_url: member.avatar_url,
+          avatar_url: normalizeAvatarUrl(member.avatar_url) ?? null,
         } as MyProfileRow;
       }
 
