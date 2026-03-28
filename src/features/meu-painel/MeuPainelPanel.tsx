@@ -420,6 +420,10 @@ export function MeuPainelPanel() {
           qualitative={myQualitativeQ.data ?? null}
           rank={perf.rank}
           rankTotal={teamMembersQ.data?.length ?? null}
+          prevRank={prevPerf.rank}
+          prevRankTotal={teamMembersQ.data?.length ?? null}
+          prevQualitative={prevQualitativeQ.data ?? null}
+          prevTasks={(prevTasksQ.data ?? []).map((t) => ({ ...t, completed_at: t.completed_at ?? null, point_value: (t as any).point_value ?? null }))}
         />
       </div>
 
