@@ -21,7 +21,7 @@ export function PmImageViewer({ images, initialIndex, open, onClose }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent hideClose className="max-w-[100vw] w-[100vw] max-h-[100vh] h-[100vh] p-0 gap-0 bg-black/95 border-0 rounded-none flex flex-col">
+      <DialogContent hideClose className="z-[200] max-w-[100vw] w-[100vw] max-h-[100vh] h-[100vh] p-0 gap-0 bg-black/95 border-0 rounded-none flex flex-col">
         {/* Top bar */}
         <div className="flex items-center justify-between px-4 py-3 shrink-0">
           <span className="text-sm text-white/80 font-medium truncate">{current.name}</span>
