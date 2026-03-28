@@ -51,7 +51,7 @@ export function PmAssigneeSelector({ selectedIds, membersMap, members, onToggle,
           </button>
         )}
       </PopoverTrigger>
-      <PopoverContent className="w-72 p-0 rounded-xl" align="start" side="bottom" sideOffset={4}>
+      <PopoverContent className="w-72 p-0 rounded-xl z-[150]" align="start" side="bottom" sideOffset={4}>
         <div className="p-2.5 border-b border-border/20">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50" />
