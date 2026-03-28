@@ -363,18 +363,6 @@ export function MeuPainelPanel() {
         <MyPmTasksWidget onOpenTask={(taskId) => setSelectedPmTaskId(taskId)} />
       </div>
 
-      {/* ── 5. AGENDA TASKS ── */}
-      <div className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.30s" }}>
-        <MeuPainelTasksGroupedCard
-          overdue={overdueTasks.map(toVM)}
-          today={todayTasks.map(toVM)}
-          upcoming={upcomingTasks.map(toVM)}
-          completed={completedTasks.map(toVM)}
-          isUpdating={setTaskStatus.isPending}
-          onStart={onStart}
-          onToggleComplete={onToggleComplete}
-        />
-      </div>
 
       {/* ── 6. MENTIONS ── */}
       <div className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.38s" }}>
