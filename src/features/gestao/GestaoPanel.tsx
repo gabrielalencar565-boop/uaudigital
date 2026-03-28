@@ -905,21 +905,44 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, onTask
           <DialogTitle>
             {moreDayKey ? format(new Date(`${moreDayKey}T12:00:00`), "dd/MM · EEEE", { locale: ptBR }) : "Tarefas"}
           </DialogTitle>
-          <div className="max-h-[60vh] space-y-2 overflow-y-auto">
+          <div className="max-h-[60vh] space-y-2.5 overflow-y-auto">
             {(moreDayKey ? tasksByDay.get(moreDayKey) ?? [] : []).map((t) => {
+              const isLegacy = t.id.startsWith("legacy_");
+              const isDone = t.status_global === "concluido";
               const member = t.assignee_id ? membersMap[t.assignee_id] : undefined;
+              const clientName = clientsMap[t.client_id] ?? "—";
               return (
-                <div key={t.id} className="flex items-center gap-3 p-2.5 rounded-xl border border-border/20 cursor-pointer hover:bg-muted/40 transition" onClick={() => { setMoreOpen(false); onTaskClick(t); }}>
-                  <div className={cn("inline-flex h-5 items-center rounded-md px-2 text-[9px] font-bold text-white", STAGE_BADGE_BG[t.stage_current] ?? "bg-muted")}>
+                <div key={t.id} className="flex items-center gap-3 p-3 rounded-xl border border-border/30 bg-card/60 shadow-[0_1px_3px_0_hsl(var(--foreground)/0.06)] cursor-pointer hover:bg-muted/40 transition" onClick={() => { if (!isLegacy) { setMoreOpen(false); onTaskClick(t); } }}>
+                  <div className={cn("inline-flex h-6 items-center rounded-md px-2.5 text-[10px] font-bold text-white shrink-0", STAGE_BADGE_BG[t.stage_current] ?? "bg-muted")}>
                     {STAGE_ABBR[t.stage_current] ?? t.stage_current.slice(0, 4).toUpperCase()}
                   </div>
-                  <Avatar className="h-5 w-5 shrink-0 ring-1 ring-background">
+                  <Avatar className="h-7 w-7 shrink-0 ring-2 ring-background">
                     <AvatarImage src={member?.avatar} />
-                    <AvatarFallback className="text-[7px] font-bold">{member ? initials(member.name) : "?"}</AvatarFallback>
+                    <AvatarFallback className="text-[8px] font-bold bg-primary/10 text-primary">{member ? initials(member.name) : "?"}</AvatarFallback>
                   </Avatar>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-semibold">{member?.name ?? "—"}</p>
-                    <p className="truncate text-[10px] text-muted-foreground/60">{clientsMap[t.client_id] ?? "—"}</p>
+                    <p className="truncate text-sm font-semibold">{member?.name ?? "—"}</p>
+                    <p className="truncate text-xs text-muted-foreground/60">{clientName}</p>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      className={cn("h-6 w-6 rounded-full flex items-center justify-center transition",
+                        isDone ? "bg-success text-success-foreground" : "border border-muted-foreground/25 hover:border-success hover:bg-success/10"
+                      )}
+                      title={isDone ? "Concluído" : "Marcar como concluído"}
+                      onClick={(e) => { e.stopPropagation(); }}>
+                      {isDone && <CheckCircle2 className="h-4 w-4" />}
+                    </button>
+                    {!isLegacy && (
+                      <button
+                        type="button"
+                        className="h-6 w-6 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition"
+                        onClick={(e) => { e.stopPropagation(); handleDelete(t.id, e); }}
+                        title="Remover">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
                   </div>
                 </div>
               );
