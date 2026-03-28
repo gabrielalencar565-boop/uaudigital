@@ -1017,7 +1017,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
             <MessageSquare className="h-4 w-4 text-muted-foreground" />
             <h3 className="text-sm font-bold">Atividade</h3>
           </div>
-          <PmCommentsSection taskId={task.id} comments={[]} membersMap={membersMap} members={members} />
+          <MobileCommentsInline taskId={task.id} membersMap={membersMap} members={members} />
         </div>
       </div>
     </div>
