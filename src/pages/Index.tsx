@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 
 import { UauSidebarShell, type MainTab } from "@/components/layout/UauSidebarShell";
 import { PerformancePanel } from "@/features/performance/PerformancePanel";
@@ -27,6 +27,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
 import { useRole } from "@/hooks/use-role";
 import { toast } from "sonner";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ROLE_OPTIONS } from "@/lib/role-options";
 
 function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join("");
@@ -156,7 +158,24 @@ const Index = () => {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="role_title">Cargo</Label>
-                <Input id="role_title" placeholder="Ex.: Designer" {...form.register("role_title")} />
+                <Controller
+                  control={form.control}
+                  name="role_title"
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger id="role_title">
+                        <SelectValue placeholder="Selecione seu cargo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ROLE_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
                 {form.formState.errors.role_title && <p className="text-sm text-danger">{form.formState.errors.role_title.message}</p>}
               </div>
             </CardContent>
