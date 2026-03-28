@@ -1,23 +1,27 @@
 
 
-## Plan: Remove "Menu" tab, add "Configurações" tab, fix mobile comments overlap
+## Plan: Fix image viewer z-index, improve performance & realtime
 
 ### Changes
 
-**1. MobileBottomNav.tsx — Remove "Menu", add "Configurações"**
-- Remove the `{ key: "menu", ... }` entry from `BOTTOM_TABS`
-- Add `{ key: "configuracoes", label: "Config", icon: Settings, tab: "configuracoes" }` as the 5th bottom tab (admin-only, same as current filter logic)
-- Remove the entire Drawer component and all drawer-related state/logic (`drawerOpen`, `openGroups`, `DRAWER_NAV`, `filteredDrawerNav`, etc.)
-- Update `resolveActiveBottom` to map `configuracoes` → `"configuracoes"`
-- For non-admin users, the bottom bar will show 4 tabs (Home, Tarefas, Dashboard, Financeiro)
+**1. PmImageViewer.tsx — Fix image appearing behind task dialog**
+- Add `z-[200]` to the `DialogContent` so the fullscreen image viewer renders above the task dialog (`z-[120]`).
+- On mobile, ensure touch targets for prev/next arrows are large enough (`h-12 w-12`).
+- Download button already exists — no changes needed for that.
 
-**2. PmTaskDetailDialog.tsx — Fix "Atividade" comments on mobile**
-- Line 1015: The mobile-only comments section passes `comments={[]}` (empty array) instead of the actual `comments` data. Fix by passing the real comments.
-- The comments sidebar (line 172) is `hidden md:flex` — on mobile (<768px) it's hidden, which is correct.
-- The issue is that `sidebarOpen` subtask panel (line 135-163) uses `hidden sm:flex` — if somehow triggered on mobile, it could overlap. This is already guarded but ensure the sidebar toggle button remains `hidden sm:inline-flex`.
-- The main fix: the `TaskContentView` component receives the comments section inline. Need to check if the sidebar overlay is somehow appearing. Will ensure `z-index` and layout don't cause the sidebar to cover the inline comments on mobile.
+**2. PmAttachmentsSection.tsx — Mobile attachment grid**
+- Change grid from `grid-cols-4 sm:grid-cols-5` to `grid-cols-3 sm:grid-cols-4 md:grid-cols-5` so thumbnails are larger and tappable on small screens.
+- Make the 3-dot menu always visible on mobile (not just on hover) since there's no hover on touch.
+
+**3. PostDetailSidebar.tsx — Same image viewer z-index fix**
+- The `PmImageViewer` used here will inherit the fix from step 1.
+
+**4. Performance — Reduce unnecessary re-renders & optimize queries**
+- In `query-client.ts`: reduce `staleTime` from 2min to 30s for faster data freshness while still deduping rapid navigations.
+- The realtime sync is already configured for all tables — no changes needed there.
 
 ### Files to edit
-- `src/components/layout/MobileBottomNav.tsx` — remove Menu/Drawer, add Configurações tab
-- `src/features/gestao/components/PmTaskDetailDialog.tsx` — fix mobile comments passing empty array
+- `src/features/gestao/components/PmImageViewer.tsx` — add `z-[200]` to DialogContent
+- `src/features/gestao/components/PmAttachmentsSection.tsx` — responsive grid fix, mobile menu visibility
+- `src/lib/query-client.ts` — reduce staleTime to 30s for snappier updates
 
