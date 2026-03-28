@@ -1110,8 +1110,13 @@ export function VisaoGeralTab() {
         </FadeUp>
       )}
 
-      {/* Health Score access */}
+      {/* Análise Mensal da Operação */}
       <FadeUp delay={0.6}>
+        <MonthlyAnalysisSection />
+      </FadeUp>
+
+      {/* Health Score access */}
+      <FadeUp delay={0.65}>
         <Card className="cursor-pointer hover:border-primary/40 transition-colors" onClick={() => setShowHealthScore(true)}>
           <CardContent className="flex items-center gap-4 py-4 px-5">
             <div className="h-10 w-10 rounded-xl bg-sidebar/10 flex items-center justify-center"><HeartPulse className="h-5 w-5 text-sidebar" /></div>
@@ -1124,7 +1129,7 @@ export function VisaoGeralTab() {
       </FadeUp>
 
       {/* Calendar full-width */}
-      <FadeUp delay={0.65}>
+      <FadeUp delay={0.7}>
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
           {/* Calendar — left 3 cols */}
           <Card className="lg:col-span-3">
@@ -1240,11 +1245,6 @@ export function VisaoGeralTab() {
             </CardContent>
           </Card>
         </div>
-      </FadeUp>
-
-      {/* Análise Mensal da Operação */}
-      <FadeUp delay={0.7}>
-        <MonthlyAnalysisSection />
       </FadeUp>
 
       {/* Squad Dashboard Dialog */}
