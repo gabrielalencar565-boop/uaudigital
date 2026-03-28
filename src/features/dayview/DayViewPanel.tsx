@@ -727,11 +727,10 @@ export function DayViewPanel() {
                           <AvatarFallback>{initials(person?.display_name ?? "?")}</AvatarFallback>
                         </Avatar>}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold truncate">
-                          {displayMembers.length > 1 ? displayMembers.map((m) => m.display_name).join(", ") : person?.display_name}
-                          {" "}•{" "}({resolveClientName(t)}) • {stageLabel}
-
-
+                        <p className="text-sm font-semibold leading-5">
+                          <span className="block sm:inline truncate">{displayMembers.length > 1 ? displayMembers.map((m) => m.display_name).join(", ") : person?.display_name}</span>
+                          <span className="hidden sm:inline">{" "}•{" "}</span>
+                          <span className="block sm:inline text-xs sm:text-sm text-muted-foreground truncate">({resolveClientName(t)}) • {stageLabel}</span>
                         </p>
                       </div>
                       <Badge variant={t.status === "em_andamento" ? "warning" : "secondary"} className="text-xs shrink-0">
