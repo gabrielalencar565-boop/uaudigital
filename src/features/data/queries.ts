@@ -120,6 +120,8 @@ export function useProfiles(options?: { enabled?: boolean }) {
 export function useTeamMembers() {
   return useQuery({
     queryKey: ["team_members"],
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
     queryFn: async (): Promise<TeamMemberRow[]> => {
       const { data, error } = await supabase
         .from("team_members")
