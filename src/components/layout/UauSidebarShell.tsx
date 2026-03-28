@@ -29,6 +29,7 @@ export type MainTab =
 "visao_geral_projetos" |
 "tarefas" |
 "agenda_gestao" |
+"agenda_mensal" |
 "cronograma" |
 "fluxos" |
 "visao_do_dia" |
