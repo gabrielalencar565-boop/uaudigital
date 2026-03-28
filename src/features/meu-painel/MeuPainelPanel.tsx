@@ -158,16 +158,20 @@ export function MeuPainelPanel() {
   }, [myTasks, overdueTasks.length]);
 
   // ── Previous month for comparison ──
-  const prevMonthKey = useMemo(() => {
+  const prevMonth = useMemo(() => {
     const pm = selected.month === 1 ? 12 : selected.month - 1;
     const py = selected.month === 1 ? selected.year - 1 : selected.year;
-    return `${py}-${String(pm).padStart(2, "0")}`;
+    return { year: py, month: pm };
   }, [selected]);
+  const prevMonthKey = useMemo(() => `${prevMonth.year}-${String(prevMonth.month).padStart(2, "0")}`, [prevMonth]);
   const prevTasksQ = useTasks({ month: prevMonthKey, assignedUserId: user?.id });
   const prevSummary = useMemo(() => {
     const all = prevTasksQ.data ?? [];
     return { total: all.length, done: all.filter((t) => t.status === "concluido").length, pending: all.filter((t) => t.status !== "concluido").length };
   }, [prevTasksQ.data]);
+
+  // ── Previous month rank ──
+  const prevPerf = useMyMonthlyPerformanceRank({ userId: user?.id, year: prevMonth.year, month: prevMonth.month });
 
   // ── Team avg score ──
   const teamPerfQ = useQuery({
@@ -191,6 +195,23 @@ export function MeuPainelPanel() {
         .select("padrao_qualidade_uau, comprometimento, ambiente_organizado, aprendizado_continuo")
         .eq("year", selected.year)
         .eq("month", selected.month)
+        .eq("user_id", user!.id)
+        .maybeSingle();
+      return data ?? null;
+    },
+    staleTime: 60_000,
+  });
+
+  // ── Previous month qualitative scores ──
+  const prevQualitativeQ = useQuery({
+    enabled: !!user?.id,
+    queryKey: ["my_qualitative_scores", prevMonth.year, prevMonth.month, user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("performance_scores")
+        .select("padrao_qualidade_uau, comprometimento, ambiente_organizado, aprendizado_continuo")
+        .eq("year", prevMonth.year)
+        .eq("month", prevMonth.month)
         .eq("user_id", user!.id)
         .maybeSingle();
       return data ?? null;
