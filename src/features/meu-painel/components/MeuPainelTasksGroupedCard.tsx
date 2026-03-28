@@ -56,9 +56,9 @@ export function MeuPainelTasksGroupedCard({
   onStart: (taskId: string) => void | Promise<void>;
   onToggleComplete: (taskId: string, current: TaskStatus) => void | Promise<void>;
 }) {
-  const [openOverdue, setOpenOverdue] = useState(false);
+  const [openOverdue, setOpenOverdue] = useState(true);
   const [openToday, setOpenToday] = useState(true);
-  const [openUpcoming, setOpenUpcoming] = useState(false);
+  const [openUpcoming, setOpenUpcoming] = useState(true);
   const [openCompleted, setOpenCompleted] = useState(false);
 
   const totals = useMemo(
