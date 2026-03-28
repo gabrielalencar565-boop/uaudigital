@@ -45,11 +45,6 @@ function getCurrentMonthYear(now: Date) {
 }
 
   const day = now.getDate();
-  const y = now.getFullYear();
-  const m = now.getMonth() + 1;
-  if (day < 28) return { year: y, month: m };
-  if (m < 12) return { year: y, month: m + 1 };
-  return { year: y + 1, month: 1 };
 }
 
 function initials(name: string) {
