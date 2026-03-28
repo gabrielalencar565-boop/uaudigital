@@ -395,6 +395,9 @@ export function MeuPainelPanel() {
           myScore={myScore}
           todayKey={todayKey}
           prevMonthDone={prevSummary.done}
+          qualitative={myQualitativeQ.data ?? null}
+          rank={perf.rank}
+          rankTotal={teamMembersQ.data?.length ?? null}
         />
       </div>
 
