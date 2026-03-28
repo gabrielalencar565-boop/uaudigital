@@ -155,16 +155,59 @@ export function MeuPainelPanel() {
     });
   }, [myCleaningTasks, cleaningCategoryById, completedScheduleIds, todayKey]);
 
-  const todayTasks = useMemo(() => [...myTasks.filter((t) => t.due_date === todayKey), ...cleaningVMs.filter((c) => c.status !== "concluido")], [myTasks, todayKey, cleaningVMs]);
-  const overdueTasks = useMemo(() => myTasks.filter((t) => t.status !== "concluido" && t.due_date < todayKey), [myTasks, todayKey]);
-  const upcomingTasks = useMemo(() => myTasks.filter((t) => t.status !== "concluido" && t.due_date > todayKey), [myTasks, todayKey]);
-  const completedTasks = useMemo(() => [...myTasks.filter((t) => t.status === "concluido"), ...cleaningVMs.filter((c) => c.status === "concluido")], [myTasks, cleaningVMs]);
+  // ── PM Tasks (Gestão) ──
+  const pmTasksQ = usePmTasks();
+  const myPmTaskVMs = useMemo((): MeuPainelTaskVM[] => {
+    if (!user) return [];
+    const allPm = pmTasksQ.data ?? [];
+    return allPm
+      .filter((t) => {
+        // Only include tasks assigned to the user (or where user is a watcher) with a due_date
+        if (!t.due_date) return false;
+        if (t.status_global === "cancelado") return false;
+        return t.assignee_id === user.id || (t.watchers ?? []).includes(user.id);
+      })
+      .map((t): MeuPainelTaskVM => {
+        const client = clientsById.get(t.client_id);
+        const stageInfo = PM_STAGES.find((s) => s.key === t.stage_current);
+        const pmStatus = t.status_global === "concluido" ? "concluido" as const : "pendente" as const;
+        return {
+          id: `pm:${t.id}`,
+          clientName: client?.name ?? t.title ?? "—",
+          stageLabel: stageInfo?.label ?? t.stage_current,
+          stage: (t.stage_current as any),
+          title: t.title,
+          dueDate: t.due_date,
+          status: pmStatus,
+          completedAt: pmStatus === "concluido" ? t.updated_at : null,
+        };
+      });
+  }, [pmTasksQ.data, user, clientsById]);
+
+  // ── Merge all sources ──
+  const allMyTasks = useMemo(() => [...myTasks, ...myPmTaskVMs], [myTasks, myPmTaskVMs]);
+
+  const todayTasks = useMemo(() => [...allMyTasks.filter((t) => t.due_date === todayKey || (t as any).dueDate === todayKey), ...cleaningVMs.filter((c) => c.status !== "concluido")], [allMyTasks, todayKey, cleaningVMs]);
+  const overdueTasks = useMemo(() => allMyTasks.filter((t) => {
+    const status = (t as any).status ?? (t as any).status;
+    const dueDate = (t as any).due_date ?? (t as any).dueDate;
+    return status !== "concluido" && dueDate < todayKey;
+  }), [allMyTasks, todayKey]);
+  const upcomingTasks = useMemo(() => allMyTasks.filter((t) => {
+    const status = (t as any).status ?? (t as any).status;
+    const dueDate = (t as any).due_date ?? (t as any).dueDate;
+    return status !== "concluido" && dueDate > todayKey;
+  }), [allMyTasks, todayKey]);
+  const completedTasks = useMemo(() => [...allMyTasks.filter((t) => {
+    const status = (t as any).status ?? (t as any).status;
+    return status === "concluido";
+  }), ...cleaningVMs.filter((c) => c.status === "concluido")], [allMyTasks, cleaningVMs]);
 
   const summary = useMemo(() => {
-    const done = myTasks.filter((t) => t.status === "concluido").length;
-    const pending = myTasks.filter((t) => t.status !== "concluido").length;
-    return { total: myTasks.length, done, pending, overdue: overdueTasks.length };
-  }, [myTasks, overdueTasks.length]);
+    const done = allMyTasks.filter((t) => ((t as any).status ?? (t as any).status) === "concluido").length;
+    const pending = allMyTasks.filter((t) => ((t as any).status ?? (t as any).status) !== "concluido").length;
+    return { total: allMyTasks.length, done, pending, overdue: overdueTasks.length };
+  }, [allMyTasks, overdueTasks.length]);
 
   // ── Previous month for comparison ──
   const prevMonthKey = useMemo(() => {
