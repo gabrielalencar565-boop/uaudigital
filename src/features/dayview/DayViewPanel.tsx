@@ -499,89 +499,49 @@ export function DayViewPanel() {
   const daysUntilDeadline = differenceInCalendarDays(deadlineDate, today);
 
   return <div ref={containerRef} className={cn("space-y-6", isFullscreen && "bg-background px-4 py-2 overflow-hidden h-screen flex flex-col gap-3 space-y-0")}>
-      {/* Header em uma única linha */}
-      <div className={cn("flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between opacity-0", isFullscreen && "shrink-0")} style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
-        <div className="flex items-center gap-3">
-          <h2 className={cn("font-semibold tracking-tight text-3xl", isFullscreen && "text-xl")}>{isFullscreen ? "Visão do Dia" : "Visão do Dia"}</h2>
-          
-
-
-
-
-
-
-
-
-
-
-
-        
+      {/* Header */}
+      <div className={cn("flex flex-col gap-3 opacity-0", isFullscreen && "shrink-0")} style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
+        <div className="flex items-center justify-between">
+          <h2 className={cn("font-semibold tracking-tight text-xl sm:text-3xl", isFullscreen && "text-xl")}>Visão do Dia</h2>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <Button variant="outline" size="icon" onClick={handleRefresh} disabled={isRefreshing} className="h-8 w-8 sm:h-9 sm:w-9">
+              <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
+            </Button>
+            <Button variant="outline" size="icon" onClick={toggleFullscreen} className="h-8 w-8 sm:h-9 sm:w-9 hidden sm:inline-flex">
+              {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+            </Button>
+          </div>
         </div>
-        
-        {/* Controles à direita */}
-        <div className="flex items-center gap-2">
-          {/* Botão Rodando/Pausado */}
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
           <Button
-          variant={autoRotate ? "default" : "outline"}
-          size="sm"
-          onClick={() => setAutoRotate(!autoRotate)}
-          onMouseEnter={() => setIsHoveringRotateBtn(true)}
-          onMouseLeave={() => setIsHoveringRotateBtn(false)}
-          className={cn(
-            "h-9 min-w-[90px]",
-            autoRotate && "bg-success hover:bg-success/90 text-success-foreground"
-          )}>
-
-            {autoRotate ?
-          isHoveringRotateBtn ? "Pausado" : "Rodando" :
-          isHoveringRotateBtn ? "Rodando" : "Pausado"
-          }
+            variant={autoRotate ? "default" : "outline"}
+            size="sm"
+            onClick={() => setAutoRotate(!autoRotate)}
+            onMouseEnter={() => setIsHoveringRotateBtn(true)}
+            onMouseLeave={() => setIsHoveringRotateBtn(false)}
+            className={cn(
+              "h-8 sm:h-9 text-xs sm:text-sm min-w-[70px] sm:min-w-[90px]",
+              autoRotate && "bg-success hover:bg-success/90 text-success-foreground"
+            )}>
+            {autoRotate ? (isHoveringRotateBtn ? "Pausado" : "Rodando") : (isHoveringRotateBtn ? "Rodando" : "Pausado")}
           </Button>
-
-          {/* Botão tela cheia */}
-          <Button variant="outline" size="icon" onClick={toggleFullscreen} className="h-9 w-9">
-            {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+          <Button variant="outline" size="sm" onClick={handleManualTabChange} className="h-8 sm:h-9 text-xs sm:text-sm">
+            {active === "magic" ? "Agenda" : active === "agenda" ? "Pódio" : "Magic"}
           </Button>
-          
-          <Button
-          variant="outline"
-          size="sm"
-          onClick={handleManualTabChange}
-          className="h-9">
-
-            {active === "magic" ? "Ir para Agenda" : active === "agenda" ? "Ir para Pódio" : "Ir para Magic"}
-          </Button>
-
-          {/* Dropdown de intervalo */}
-          <select
-          value={String(rotateInterval)}
-          onChange={(e) => setRotateInterval(Number(e.target.value))}
-          className="h-9 rounded-md border border-input bg-background px-3 text-sm">
-
+          <select value={String(rotateInterval)} onChange={(e) => setRotateInterval(Number(e.target.value))} className="h-8 sm:h-9 rounded-md border border-input bg-background px-2 sm:px-3 text-xs sm:text-sm">
             <option value="5000">5s</option>
             <option value="10000">10s</option>
             <option value="15000">15s</option>
             <option value="30000">30s</option>
           </select>
-
-          {/* Seletores de mês/ano */}
-          <select value={String(selectedMonth)} onChange={(e) => setSelectedMonth(Number(e.target.value))} className="h-9 rounded-md border border-input bg-background px-3 text-sm">
-            {Array.from({
-            length: 12
-          }, (_, i) => i + 1).map((m) => <option key={m} value={m}>
-                {format(new Date(selectedYear, m - 1, 1), "MMMM", {
-              locale: ptBR
-            })}
-              </option>)}
+          <select value={String(selectedMonth)} onChange={(e) => setSelectedMonth(Number(e.target.value))} className="h-8 sm:h-9 rounded-md border border-input bg-background px-2 sm:px-3 text-xs sm:text-sm">
+            {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+              <option key={m} value={m}>{format(new Date(selectedYear, m - 1, 1), "MMM", { locale: ptBR })}</option>
+            ))}
           </select>
-
-          <select value={String(selectedYear)} onChange={(e) => setSelectedYear(Number(e.target.value))} className="h-9 rounded-md border border-input bg-background px-3 text-sm">
+          <select value={String(selectedYear)} onChange={(e) => setSelectedYear(Number(e.target.value))} className="h-8 sm:h-9 rounded-md border border-input bg-background px-2 sm:px-3 text-xs sm:text-sm">
             {[now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1].map((y) => <option key={y} value={y}>{y}</option>)}
           </select>
-
-          <Button variant="outline" size="icon" onClick={handleRefresh} disabled={isRefreshing} className="h-9 w-9">
-            <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
-          </Button>
         </div>
       </div>
 
