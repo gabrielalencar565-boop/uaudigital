@@ -503,6 +503,19 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
   // Fetch legacy tasks from `tasks` table for the visible month range
   const legacyMonth = format(cursor, "yyyy-MM");
   const legacyTasksQ = useTasks({ month: legacyMonth });
+  const legacyAssigneesQ = useTaskAssigneesByMonth(legacyMonth);
+
+  const legacyAssigneesByTaskId = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const row of legacyAssigneesQ.data ?? []) {
+      const prev = map.get(row.task_id) ?? [];
+      if (!prev.includes(row.user_id)) {
+        prev.push(row.user_id);
+      }
+      map.set(row.task_id, prev);
+    }
+    return map;
+  }, [legacyAssigneesQ.data]);
 
   const tasksByDay = useMemo(() => {
     const map = new Map<string, PmTask[]>();
@@ -518,6 +531,9 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
       if (lt.description?.startsWith("pm:")) continue;
       const key = lt.due_date ?? "";
       if (!key) continue;
+      const legacyExtraAssignees = legacyAssigneesByTaskId.get(lt.id) ?? [];
+      const legacyWatchers = legacyExtraAssignees.filter((id) => id !== lt.assigned_user_id);
+
       const asPm: PmTask = {
         id: `legacy_${lt.id}`,
         project_id: null,
@@ -531,7 +547,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
         due_date: lt.due_date,
         created_by: lt.created_by,
         assignee_id: lt.assigned_user_id,
-        watchers: [],
+        watchers: legacyWatchers,
         tags: [],
         created_at: "",
         updated_at: "",
@@ -547,7 +563,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
       map.set(key, [...prev, asPm]);
     }
     return map;
-  }, [filteredTasks, legacyTasksQ.data]);
+  }, [filteredTasks, legacyTasksQ.data, legacyAssigneesByTaskId]);
 
   const daySpecialDates = (dayKey: string) => specialDatesMap.get(dayKey) ?? [];
 
