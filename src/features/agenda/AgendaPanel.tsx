@@ -493,14 +493,6 @@ export function AgendaPanel() {
       <div className="flex items-center justify-between opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
         <h2 className="text-2xl font-bold tracking-tight">Agenda de projetos</h2>
         <div className="flex items-center gap-2">
-          {isAdmin && (
-            <Button variant="outline" size="sm" onClick={() => { setReportDefaultTab("dates"); setReportOpen(true); }} className="gap-2 rounded-xl">
-              <FileText className="h-4 w-4" /> Relatório
-            </Button>
-          )}
-          <Button variant="outline" size="sm" onClick={() => { setReportDefaultTab("trash"); setReportOpen(true); }} className="gap-2 rounded-xl">
-            <Trash2 className="h-4 w-4" /> Lixeira
-          </Button>
           <Badge variant="secondary" className="gap-1 rounded-xl px-2.5 py-1 text-xs font-semibold">
             <Calendar className="h-3.5 w-3.5" />
             {dueTodayCount} hoje
@@ -509,6 +501,14 @@ export function AgendaPanel() {
             <TriangleAlert className="h-3.5 w-3.5" />
             {overdueCount} atrasada{overdueCount !== 1 ? "s" : ""}
           </Badge>
+          {isAdmin && (
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => { setReportDefaultTab("dates"); setReportOpen(true); }} title="Relatório">
+              <FileText className="h-4 w-4" />
+            </Button>
+          )}
+          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => { setReportDefaultTab("trash"); setReportOpen(true); }} title="Lixeira">
+            <Trash2 className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
