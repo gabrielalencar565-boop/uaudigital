@@ -736,7 +736,7 @@ export function AgendaPanel() {
               const assigneeName = assignee?.display_name ?? "—";
               const clientName = resolveClientName(t);
               const canInteract = canUserInteractWithTask(user?.id);
-              const members = assigneesByTaskId.get(t.id) ?? [];
+              const members = getMembersForTask(t);
 
               return <AgendaWeekTaskItem key={t.id} stageLabel={stageLabel} stage={t.stage} done={t.status === "concluido"} assigneeName={assigneeName} assigneeAvatarUrl={assignee?.avatar_url ?? undefined} members={members} clientName={clientName} dueTime={formatDueTime(t.due_at)} density="default" isExtraDemand={t.is_extra_demand} canInteract={canInteract} canDelete={true} onToggle={() => {
                 const next = t.status === "concluido" ? "pendente" : "concluido";
@@ -920,7 +920,7 @@ export function AgendaPanel() {
                     const assigneeName = assignee?.display_name ?? "—";
                     const clientName = resolveClientName(t);
                     const canInteract = canUserInteractWithTask(user?.id);
-                    const members = assigneesByTaskId.get(t.id) ?? [];
+                    const members = getMembersForTask(t);
                     return <AgendaWeekTaskItem key={t.id} stageLabel={stageLabel} stage={t.stage} done={t.status === "concluido"} assigneeName={assigneeName} assigneeAvatarUrl={assignee?.avatar_url ?? undefined} members={members} clientName={clientName} dueTime={formatDueTime(t.due_at)} isExtraDemand={t.is_extra_demand} canInteract={canInteract} canDelete={true} onToggle={() => {
                       const next = t.status === "concluido" ? "pendente" : "concluido";
                       toggleComplete(t.id, next);
@@ -993,7 +993,7 @@ export function AgendaPanel() {
                         const assigneeName = assignee?.display_name ?? "—";
                         const clientName = resolveClientName(t);
                         const canInteract = canUserInteractWithTask(user?.id);
-                        const members = assigneesByTaskId.get(t.id) ?? [];
+                        const members = getMembersForTask(t);
 
                         return <AgendaWeekTaskItem key={t.id} stageLabel={stageLabel} stage={t.stage} done={t.status === "concluido"} assigneeName={assigneeName} assigneeAvatarUrl={assignee?.avatar_url ?? undefined} members={members} clientName={clientName} dueTime={formatDueTime(t.due_at)} density="default" isExtraDemand={t.is_extra_demand} canInteract={canInteract} canDelete={true} onToggle={() => {
                           const next = t.status === "concluido" ? "pendente" : "concluido";
@@ -1192,7 +1192,7 @@ export function AgendaPanel() {
                   const assigneeName = assignee?.display_name ?? "—";
                   const clientName = resolveClientName(t);
                   const canInteract = canUserInteractWithTask(user?.id);
-                  const members = assigneesByTaskId.get(t.id) ?? [];
+                  const members = getMembersForTask(t);
                   
                   return <AgendaWeekTaskItem 
                     key={t.id} 
@@ -1324,7 +1324,7 @@ export function AgendaPanel() {
                             const assigneeName = assignee?.display_name ?? "—";
                             const clientName = resolveClientName(t);
                             const canInteract = canUserInteractWithTask(user?.id);
-                            const members = assigneesByTaskId.get(t.id) ?? [];
+                            const members = getMembersForTask(t);
 
                             return (
                               <DraggableTaskCard
