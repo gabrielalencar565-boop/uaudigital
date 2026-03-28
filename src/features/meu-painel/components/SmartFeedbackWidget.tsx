@@ -105,7 +105,7 @@ export function SmartFeedbackWidget({ myTasks, teamAvgScore, myScore, todayKey, 
   const positiveInsights = insights.filter((i) => i.color !== "red");
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-6 space-y-5 transition-all duration-300 hover:shadow-lg">
+    <div className="rounded-2xl border border-border bg-card p-4 space-y-3 transition-all duration-300 hover:shadow-lg">
       {/* Header */}
       <div className="flex items-center gap-2">
         <div className="h-7 w-7 rounded-lg bg-sidebar/20 flex items-center justify-center">
