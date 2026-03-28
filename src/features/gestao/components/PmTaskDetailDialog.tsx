@@ -1045,3 +1045,13 @@ function PropertyRow({ icon, label, children }: { icon: React.ReactNode; label: 
     </div>
   );
 }
+
+/* Small wrapper so the mobile inline comments fetch their own data */
+function MobileCommentsInline({ taskId, membersMap, members }: {
+  taskId: string;
+  membersMap: Record<string, { name: string; avatar?: string }>;
+  members: { id: string; name: string }[];
+}) {
+  const commentsQ = usePmComments(taskId);
+  return <PmCommentsSection taskId={taskId} comments={commentsQ.data ?? []} membersMap={membersMap} members={members} />;
+}
