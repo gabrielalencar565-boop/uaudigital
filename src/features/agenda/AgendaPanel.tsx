@@ -149,34 +149,14 @@ export function AgendaPanel() {
   const inactiveQ = useMagic2InactiveAgendaClients(cursor.getFullYear(), cursor.getMonth() + 1);
   const tasks = useMemo(() => {
     let list = tasksQ.data ?? [];
-    const inactiveAgendaIds = inactiveQ.data?.inactiveAgendaIds;
-    const inactiveNames = inactiveQ.data?.inactiveNames;
-    if ((inactiveAgendaIds && inactiveAgendaIds.size > 0) || (inactiveNames && inactiveNames.size > 0)) {
-      const clientNameById = new Map((clientsQ.data ?? []).map(c => [c.id, c.name] as const));
-      list = list.filter(t => {
-        if (inactiveAgendaIds?.has(t.client_id)) return false;
-        const name = clientNameById.get(t.client_id);
-        if (name && inactiveNames?.has(normalizeName(name))) return false;
-        return true;
-      });
-    }
-    // Filtro por etapa
+    // Mantém histórico completo da agenda (inclui tarefas antigas)
     if (filterStage !== "all") {
-      list = list.filter(t => t.stage === filterStage);
+      list = list.filter((t) => t.stage === filterStage);
     }
     return list;
-  }, [clientsQ.data, inactiveQ.data, normalizeName, tasksQ.data, filterStage]);
-  const clients = useMemo(() => {
-    const list = clientsQ.data ?? [];
-    const inactiveAgendaIds = inactiveQ.data?.inactiveAgendaIds;
-    const inactiveNames = inactiveQ.data?.inactiveNames;
-    if ((!inactiveAgendaIds || inactiveAgendaIds.size === 0) && (!inactiveNames || inactiveNames.size === 0)) return list;
-    return list.filter(c => {
-      if (inactiveAgendaIds?.has(c.id)) return false;
-      if (c.name && inactiveNames?.has(normalizeName(c.name))) return false;
-      return true;
-    });
-  }, [clientsQ.data, inactiveQ.data, normalizeName]);
+  }, [tasksQ.data, filterStage]);
+
+  const clients = useMemo(() => clientsQ.data ?? [], [clientsQ.data]);
   const clientNameById = useMemo(() => new Map(clients.map(c => [c.id, c.name] as const)), [clients]);
 
   /** Resolve client name: for freelancer tasks, show title (freelancer name) instead */
@@ -193,16 +173,10 @@ export function AgendaPanel() {
   const profiles = profilesQ.data ?? [];
   const activeProfiles = useMemo(() => profiles.filter((p) => teamById.has(p.user_id)), [profiles, teamById]);
   useEffect(() => {
-    // Se o cliente selecionado no filtro foi removido no Magic v2, volta para "Todos"
     if (filterClientId === "all") return;
-    const inactiveAgendaIds = inactiveQ.data?.inactiveAgendaIds;
-    const inactiveNames = inactiveQ.data?.inactiveNames;
-    const rawClients = clientsQ.data ?? [];
-    const selected = rawClients.find(c => c.id === filterClientId);
-    if (!selected) return;
-    const removed = (inactiveAgendaIds?.has(selected.id) ?? false) || (selected.name ? inactiveNames?.has(normalizeName(selected.name)) ?? false : false);
-    if (removed) setFilterClientId("all");
-  }, [clientsQ.data, filterClientId, inactiveQ.data, normalizeName]);
+    const selected = (clientsQ.data ?? []).find((c) => c.id === filterClientId);
+    if (!selected) setFilterClientId("all");
+  }, [clientsQ.data, filterClientId]);
   const profilesById = useMemo(() => new Map(profiles.map(p => [p.user_id, p] as const)), [profiles]);
 
   // Busca múltiplos assignees por tarefa

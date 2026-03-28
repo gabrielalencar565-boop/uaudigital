@@ -36,6 +36,7 @@ import {
 } from "@/features/cleaning/hooks/use-cleaning";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { normalizeAvatarUrl } from "@/lib/avatar-url";
 
 // ── Helpers ──────────────────────────────────────────────
 
@@ -220,8 +221,15 @@ export function MeuPainelPanel() {
     ]).then(([profileRes, tmRes]) => {
       if (cancelled) return;
       const data = profileRes.data;
-      if (!data?.full_name) { setMyProfile(null); return; }
-      setMyProfile({ full_name: data.full_name, avatar_url: data.avatar_url ?? null, birth_date: (tmRes.data as any)?.birth_date ?? null });
+      if (!data?.full_name) {
+        setMyProfile(null);
+        return;
+      }
+      setMyProfile({
+        full_name: data.full_name,
+        avatar_url: normalizeAvatarUrl(data.avatar_url) ?? null,
+        birth_date: (tmRes.data as any)?.birth_date ?? null,
+      });
     });
     return () => { cancelled = true; };
   }, [user?.id, profileVersion]);
