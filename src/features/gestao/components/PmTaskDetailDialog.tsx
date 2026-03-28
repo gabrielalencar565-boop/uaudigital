@@ -1017,7 +1017,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
             <MessageSquare className="h-4 w-4 text-muted-foreground" />
             <h3 className="text-sm font-bold">Atividade</h3>
           </div>
-          <PmCommentsSection taskId={task.id} comments={[]} membersMap={membersMap} members={members} />
+          <MobileCommentsInline taskId={task.id} membersMap={membersMap} members={members} />
         </div>
       </div>
     </div>
@@ -1044,4 +1044,14 @@ function PropertyRow({ icon, label, children }: { icon: React.ReactNode; label: 
       <div className="flex-1 min-w-0">{children}</div>
     </div>
   );
+}
+
+/* Small wrapper so the mobile inline comments fetch their own data */
+function MobileCommentsInline({ taskId, membersMap, members }: {
+  taskId: string;
+  membersMap: Record<string, { name: string; avatar?: string }>;
+  members: { id: string; name: string }[];
+}) {
+  const commentsQ = usePmComments(taskId);
+  return <PmCommentsSection taskId={taskId} comments={commentsQ.data ?? []} membersMap={membersMap} members={members} />;
 }
