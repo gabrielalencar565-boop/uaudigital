@@ -18,7 +18,7 @@ import { MeuPainelPerformanceRankCard } from "@/features/meu-painel/components/M
 import { useMyAnnualPerformanceRank } from "@/features/meu-painel/hooks/use-my-annual-performance-rank";
 import { useNow } from "@/hooks/use-now";
 import { MentionsWidget } from "@/features/meu-painel/components/MentionsWidget";
-import { MyPmTasksWidget } from "@/features/meu-painel/components/MyPmTasksWidget";
+
 import { PmTaskDetailDialog } from "@/features/gestao/components/PmTaskDetailDialog";
 import { usePmTasks } from "@/features/gestao/hooks/use-pm-data";
 import { useQuery } from "@tanstack/react-query";
@@ -40,14 +40,10 @@ import { normalizeAvatarUrl } from "@/lib/avatar-url";
 
 // ── Helpers ──────────────────────────────────────────────
 
-function getMagicSyncedMonthYear(now: Date) {
-  const day = now.getDate();
-  const y = now.getFullYear();
-  const m = now.getMonth() + 1;
-  if (day < 28) return { year: y, month: m };
-  if (m < 12) return { year: y, month: m + 1 };
-  return { year: y + 1, month: 1 };
+function getCurrentMonthYear(now: Date) {
+  return { year: now.getFullYear(), month: now.getMonth() + 1 };
 }
+
 
 function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join("");
@@ -102,7 +98,7 @@ export function MeuPainelPanel() {
   const today = useNow();
   const todayKey = format(today, "yyyy-MM-dd");
 
-  const [selected] = useState(() => getMagicSyncedMonthYear(today));
+  const selected = useMemo(() => getCurrentMonthYear(today), [today]);
   const monthKey = useMemo(() => `${selected.year}-${String(selected.month).padStart(2, "0")}`, [selected.month, selected.year]);
 
   const perf = useMyMonthlyPerformanceRank({ userId: user?.id, year: selected.year, month: selected.month });
@@ -366,13 +362,8 @@ export function MeuPainelPanel() {
         <MetricSparkCard label="Atrasadas" value={summary.overdue} icon={<AlertTriangle className="h-5 w-5" />} accentClass="text-red-500" />
       </div>
 
-      {/* ── 4. PM TASKS (Gestão) ── */}
+      {/* ── 4. AGENDA TASKS (Atribuídas a mim) ── */}
       <div className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.22s" }}>
-        <MyPmTasksWidget onOpenTask={(taskId) => setSelectedPmTaskId(taskId)} />
-      </div>
-
-      {/* ── 5. AGENDA TASKS ── */}
-      <div className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.30s" }}>
         <MeuPainelTasksGroupedCard
           overdue={overdueTasks.map(toVM)}
           today={todayTasks.map(toVM)}
@@ -384,13 +375,13 @@ export function MeuPainelPanel() {
         />
       </div>
 
-      {/* ── 6. MENTIONS ── */}
-      <div className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.38s" }}>
+      {/* ── 5. MENTIONS ── */}
+      <div className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.30s" }}>
         <MentionsWidget onOpenTask={(taskId) => setSelectedPmTaskId(taskId)} />
       </div>
 
-      {/* ── 7. PRODUCTIVITY + FEEDBACK (below mentions) ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.45s" }}>
+      {/* ── 6. PRODUCTIVITY + FEEDBACK ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.38s" }}>
         <ProductivityWidget tasks={myTasks} allMonthTasks={[...myTasks, ...(prevTasksQ.data ?? [])]} todayKey={todayKey} />
         <SmartFeedbackWidget
           myTasks={myTasks.map((t) => ({ ...t, completed_at: t.completed_at ?? null, point_value: (t as any).point_value ?? null }))}
