@@ -816,8 +816,8 @@ export function DayViewPanel() {
               </CardDescription>
             </CardHeader>
             <CardContent className={cn("space-y-3", isFullscreen && "flex-1")}>
-              {/* Header das colunas */}
-              <div className="flex items-center gap-3 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+              {/* Header das colunas — hidden on mobile */}
+              <div className="hidden sm:flex items-center gap-3 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
                 <span className="w-8 text-center shrink-0">#</span>
                 <span className="w-8 shrink-0" />
                 <span className="w-20 shrink-0">Nome</span>
@@ -835,62 +835,62 @@ export function DayViewPanel() {
           const prevPos = prevRankMap.current.get(row.user_id);
           const posChange = prevPos !== undefined ? prevPos - idx : 0;
           return (
-            <div key={row.user_id} className={cn("flex items-center gap-3", isFullscreen ? "py-3" : "py-1")}>
-                      {/* Posição */}
-                      <span className={cn("w-8 text-center font-semibold shrink-0", isFullscreen ? "text-lg" : "text-sm")}>{medal}</span>
-                      {/* Foto */}
-                      <Avatar className="h-8 w-8 shrink-0">
-                        <AvatarImage src={member?.avatar_url ?? undefined} />
-                        <AvatarFallback className="text-[10px]">{initials(member?.display_name ?? "?")}</AvatarFallback>
-                      </Avatar>
-                      {/* Nome */}
-                      <span className="w-20 truncate shrink-0 text-sm font-medium">
-                        {member?.display_name?.split(" ")[0] ?? "—"}
-                      </span>
-                      {/* Total de tarefas */}
-                      <span className="w-14 text-center shrink-0 text-sm font-medium">
-                        {row.taskTotal}
-                      </span>
-                      {/* Feitos */}
-                      <span className="w-14 text-center shrink-0 text-sm font-semibold text-success">
-                        {row.taskCompleted}
-                      </span>
-                      {/* Pendentes */}
-                      <span className="w-14 text-center shrink-0 text-sm font-semibold text-warning">
-                        {pending}
-                      </span>
-                      {/* Barra de progresso % */}
-                      <div className="flex-1 min-w-0">
-                        <div className="relative w-full rounded-full bg-muted/50 overflow-hidden h-6">
-                          <div
-                    className="absolute inset-y-0 left-0 rounded-full bg-success transition-all duration-500"
-                    style={{ width: `${row.completionPct}%` }} />
-
-                          <div className="absolute inset-0 flex items-center justify-end pr-3">
-                            <span className="font-bold tabular-nums text-foreground text-xs">
-                              {row.completionPct}%
-                            </span>
+            <div key={row.user_id} className={cn("rounded-lg sm:rounded-none border sm:border-0 border-border/40 p-2.5 sm:p-0", isFullscreen ? "py-3" : "sm:py-1")}>
+                      {/* Desktop layout */}
+                      <div className="hidden sm:flex items-center gap-3">
+                        <span className={cn("w-8 text-center font-semibold shrink-0", isFullscreen ? "text-lg" : "text-sm")}>{medal}</span>
+                        <Avatar className="h-8 w-8 shrink-0">
+                          <AvatarImage src={member?.avatar_url ?? undefined} />
+                          <AvatarFallback className="text-[10px]">{initials(member?.display_name ?? "?")}</AvatarFallback>
+                        </Avatar>
+                        <span className="w-20 truncate shrink-0 text-sm font-medium">{member?.display_name?.split(" ")[0] ?? "—"}</span>
+                        <span className="w-14 text-center shrink-0 text-sm font-medium">{row.taskTotal}</span>
+                        <span className="w-14 text-center shrink-0 text-sm font-semibold text-success">{row.taskCompleted}</span>
+                        <span className="w-14 text-center shrink-0 text-sm font-semibold text-warning">{pending}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="relative w-full rounded-full bg-muted/50 overflow-hidden h-6">
+                            <div className="absolute inset-y-0 left-0 rounded-full bg-success transition-all duration-500" style={{ width: `${row.completionPct}%` }} />
+                            <div className="absolute inset-0 flex items-center justify-end pr-3">
+                              <span className="font-bold tabular-nums text-foreground text-xs">{row.completionPct}%</span>
+                            </div>
                           </div>
                         </div>
+                        <span className="w-14 text-center shrink-0 text-sm font-bold">{row.total}</span>
+                        <div className="w-10 shrink-0 flex items-center justify-center gap-0.5">
+                          {posChange > 0 ? <ArrowUp className="h-3.5 w-3.5 text-success" /> :
+                  posChange < 0 ? <ArrowDown className="h-3.5 w-3.5 text-destructive" /> :
+                  (streakByUser.get(row.user_id) ?? 0) >= 1 ?
+                  <Tooltip>
+                    <TooltipTrigger asChild><span className="text-base leading-none cursor-default">⚡</span></TooltipTrigger>
+                    <TooltipContent side="top">🔥 {streakByUser.get(row.user_id)} dias consecutivos no prazo!</TooltipContent>
+                  </Tooltip> :
+                  <span className="text-muted-foreground text-[10px]">–</span>}
+                        </div>
                       </div>
-                      {/* Total de pontos */}
-                      <span className="w-14 text-center shrink-0 text-sm font-bold">
-                        {row.total}
-                      </span>
-                      {/* Seta de posição / Streak */}
-                      <div className="w-10 shrink-0 flex items-center justify-center gap-0.5">
-                        {posChange > 0 ? <ArrowUp className="h-3.5 w-3.5 text-success" /> :
-                posChange < 0 ? <ArrowDown className="h-3.5 w-3.5 text-destructive" /> :
-                (streakByUser.get(row.user_id) ?? 0) >= 1 ?
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="text-base leading-none cursor-default">⚡</span>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">
-                    🔥 {streakByUser.get(row.user_id)} dias consecutivos no prazo!
-                  </TooltipContent>
-                </Tooltip> :
-                <span className="text-muted-foreground text-[10px]">–</span>}
+                      {/* Mobile layout */}
+                      <div className="flex sm:hidden items-center gap-2.5">
+                        <span className="text-sm font-semibold shrink-0">{medal}</span>
+                        <Avatar className="h-7 w-7 shrink-0">
+                          <AvatarImage src={member?.avatar_url ?? undefined} />
+                          <AvatarFallback className="text-[9px]">{initials(member?.display_name ?? "?")}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold truncate">{member?.display_name?.split(" ")[0] ?? "—"}</p>
+                          <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-0.5">
+                            <span className="text-success font-semibold">{row.taskCompleted}/{row.taskTotal}</span>
+                            <span>•</span>
+                            <span>{row.completionPct}%</span>
+                            <span>•</span>
+                            <span className="font-bold text-foreground">{row.total}pts</span>
+                          </div>
+                        </div>
+                        <div className="relative w-10 h-10 shrink-0">
+                          <svg viewBox="0 0 36 36" className="h-10 w-10 -rotate-90">
+                            <circle cx="18" cy="18" r="15" fill="none" stroke="hsl(var(--muted))" strokeWidth="3" />
+                            <circle cx="18" cy="18" r="15" fill="none" stroke="hsl(var(--success))" strokeWidth="3" strokeDasharray={`${row.completionPct * 0.9425} 94.25`} strokeLinecap="round" />
+                          </svg>
+                          <span className="absolute inset-0 flex items-center justify-center text-[8px] font-bold">{row.completionPct}%</span>
+                        </div>
                       </div>
                     </div>);
 
