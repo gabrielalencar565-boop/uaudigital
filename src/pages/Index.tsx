@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 
 import { UauSidebarShell, type MainTab } from "@/components/layout/UauSidebarShell";
 import { PerformancePanel } from "@/features/performance/PerformancePanel";
