@@ -698,25 +698,71 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
         </Tabs>
 
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => setCursor((d) => agendaView === "week" ? addDays(d, -7) : startOfMonth(subMonths(d, 1)))}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="text-base font-bold capitalize min-w-[160px] text-center">
-            {format(cursor, "MMMM yyyy", { locale: ptBR })}
-          </span>
-          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => setCursor((d) => agendaView === "week" ? addDays(d, 7) : startOfMonth(addMonths(d, 1)))}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+          <Select
+            value={String(cursor.getMonth())}
+            onValueChange={(v) => {
+              const newMonth = Number(v);
+              setCursor(d => new Date(d.getFullYear(), newMonth, 1));
+            }}
+          >
+            <SelectTrigger className="h-9 w-[130px] rounded-xl text-sm font-semibold bg-muted/30 border-border/30 capitalize">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-popover z-50">
+              {Array.from({ length: 12 }, (_, i) => (
+                <SelectItem key={i} value={String(i)} className="capitalize">
+                  {format(new Date(2024, i, 1), "MMMM", { locale: ptBR })}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={String(cursor.getFullYear())}
+            onValueChange={(v) => {
+              const newYear = Number(v);
+              setCursor(d => new Date(newYear, d.getMonth(), 1));
+            }}
+          >
+            <SelectTrigger className="h-9 w-[100px] rounded-xl text-sm font-semibold bg-muted/30 border-border/30">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-popover z-50">
+              {Array.from({ length: 5 }, (_, i) => {
+                const y = new Date().getFullYear() - 1 + i;
+                return <SelectItem key={y} value={String(y)}>{y}</SelectItem>;
+              })}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="flex items-center gap-2">
+          <Badge variant="secondary" className="gap-1 rounded-xl px-2.5 py-1 text-xs font-semibold">
+            <Calendar className="h-3.5 w-3.5" />
+            {(() => {
+              const allDayTasks = Array.from(tasksByDay.entries());
+              return allDayTasks
+                .filter(([k]) => k === todayKey)
+                .reduce((sum, [, ts]) => sum + ts.filter(t => t.status_global !== "concluido").length, 0);
+            })()} hoje
+          </Badge>
+          {(() => {
+            const overdueCount = Array.from(tasksByDay.entries())
+              .filter(([k]) => k < todayKey)
+              .reduce((sum, [, ts]) => sum + ts.filter(t => t.status_global !== "concluido").length, 0);
+            return (
+              <Badge variant={overdueCount > 0 ? "destructive" : "secondary"} className="gap-1 rounded-xl px-2.5 py-1 text-xs font-semibold">
+                <TriangleAlert className="h-3.5 w-3.5" />
+                {overdueCount} atrasada{overdueCount !== 1 ? "s" : ""}
+              </Badge>
+            );
+          })()}
           {isAdmin && (
-            <Button variant="outline" size="sm" onClick={() => setReportOpen(true)} className="gap-2 rounded-xl">
-              <FileText className="h-4 w-4" /> Relatório
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => setReportOpen(true)} title="Relatório">
+              <FileText className="h-4 w-4" />
             </Button>
           )}
-          <Button variant="outline" size="sm" onClick={() => setTrashOpen(true)} className="gap-2 rounded-xl">
-            <Trash2 className="h-4 w-4" /> Lixeira
+          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => setTrashOpen(true)} title="Lixeira">
+            <Trash2 className="h-4 w-4" />
           </Button>
         </div>
       </div>
