@@ -19,8 +19,9 @@ export function useMyProfile() {
   return useQuery({
     enabled: !!user?.id,
     queryKey: ["my_profile", user?.id],
-    staleTime: 5 * 60 * 1000, // 5 min — evita refetch desnecessário que causa flash
+    staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
+    placeholderData: keepPreviousData,
     queryFn: async (): Promise<MyProfileRow | null> => {
       if (!user) return null;
 
