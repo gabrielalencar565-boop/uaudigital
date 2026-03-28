@@ -56,9 +56,9 @@ export function MeuPainelTasksGroupedCard({
   onStart: (taskId: string) => void | Promise<void>;
   onToggleComplete: (taskId: string, current: TaskStatus) => void | Promise<void>;
 }) {
-  const [openOverdue, setOpenOverdue] = useState(true);
+  const [openOverdue, setOpenOverdue] = useState(false);
   const [openToday, setOpenToday] = useState(true);
-  const [openUpcoming, setOpenUpcoming] = useState(true);
+  const [openUpcoming, setOpenUpcoming] = useState(false);
   const [openCompleted, setOpenCompleted] = useState(false);
 
   const totals = useMemo(
@@ -69,8 +69,8 @@ export function MeuPainelTasksGroupedCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Atribuídas a mim</CardTitle>
-        <CardDescription>Tarefas da agenda e limpeza organizadas por status</CardDescription>
+        <CardTitle>Minhas tarefas</CardTitle>
+        <CardDescription>Em atraso, hoje, próximas e concluídas</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">

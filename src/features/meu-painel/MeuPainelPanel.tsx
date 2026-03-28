@@ -7,9 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 import { useClients, useSetTaskStatus, useTasks } from "@/features/data/queries";
-import { useTaskAssigneesByMonth } from "@/features/data/task-assignees-queries";
 import { STAGES } from "@/lib/uau";
-import { PM_STAGES } from "@/features/gestao/pm-constants";
 import { useSession } from "@/hooks/use-session";
 import { useRole } from "@/hooks/use-role";
 import { toast } from "sonner";
@@ -20,7 +18,7 @@ import { MeuPainelPerformanceRankCard } from "@/features/meu-painel/components/M
 import { useMyAnnualPerformanceRank } from "@/features/meu-painel/hooks/use-my-annual-performance-rank";
 import { useNow } from "@/hooks/use-now";
 import { MentionsWidget } from "@/features/meu-painel/components/MentionsWidget";
-
+import { MyPmTasksWidget } from "@/features/meu-painel/components/MyPmTasksWidget";
 import { PmTaskDetailDialog } from "@/features/gestao/components/PmTaskDetailDialog";
 import { usePmTasks } from "@/features/gestao/hooks/use-pm-data";
 import { useQuery } from "@tanstack/react-query";
@@ -38,14 +36,17 @@ import {
 } from "@/features/cleaning/hooks/use-cleaning";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { normalizeAvatarUrl } from "@/lib/avatar-url";
 
 // ── Helpers ──────────────────────────────────────────────
 
-function getCurrentMonthYear(now: Date) {
-  return { year: now.getFullYear(), month: now.getMonth() + 1 };
+function getMagicSyncedMonthYear(now: Date) {
+  const day = now.getDate();
+  const y = now.getFullYear();
+  const m = now.getMonth() + 1;
+  if (day < 28) return { year: y, month: m };
+  if (m < 12) return { year: y, month: m + 1 };
+  return { year: y + 1, month: 1 };
 }
-
 
 function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join("");
@@ -100,54 +101,19 @@ export function MeuPainelPanel() {
   const today = useNow();
   const todayKey = format(today, "yyyy-MM-dd");
 
-  const selected = useMemo(() => getCurrentMonthYear(today), [today]);
+  const [selected] = useState(() => getMagicSyncedMonthYear(today));
   const monthKey = useMemo(() => `${selected.year}-${String(selected.month).padStart(2, "0")}`, [selected.month, selected.year]);
 
   const perf = useMyMonthlyPerformanceRank({ userId: user?.id, year: selected.year, month: selected.month });
   const perfYear = useMyAnnualPerformanceRank({ userId: user?.id, year: selected.year });
 
-  // Busca TODAS as tarefas do mês (sem filtro de assignee) para depois filtrar client-side
-  const tasksQ = useTasks({ month: monthKey });
-  const assigneesQ = useTaskAssigneesByMonth(monthKey);
+  const tasksQ = useTasks({ month: monthKey, assignedUserId: user?.id });
   const clientsQ = useClients();
   const setTaskStatus = useSetTaskStatus();
   const clientsById = useMemo(() => new Map((clientsQ.data ?? []).map((c) => [c.id, c] as const)), [clientsQ.data]);
+  const myTasks = useMemo(() => tasksQ.data ?? [], [tasksQ.data]);
 
-  // Filtra tarefas onde o usuário é assigned_user_id OU está em task_assignees e converte para VM
-  const myAgendaVMs = useMemo((): MeuPainelTaskVM[] => {
-    if (!user) return [];
-    const allTasks = tasksQ.data ?? [];
-    const assigneeTaskIds = new Set(
-      (assigneesQ.data ?? []).filter((a) => a.user_id === user.id).map((a) => a.task_id)
-    );
-    return allTasks
-      .filter((t) => t.assigned_user_id === user.id || assigneeTaskIds.has(t.id))
-      .map((t): MeuPainelTaskVM => {
-        const client = clientsById.get(t.client_id);
-        const stageLabel = STAGES.find((s) => s.key === t.stage)?.label ?? t.stage;
-        return {
-          id: t.id,
-          clientName: client?.name ?? "—",
-          stageLabel,
-          stage: t.stage,
-          title: t.title,
-          dueDate: t.due_date,
-          status: t.status,
-          completedAt: t.completed_at ?? null,
-        };
-      });
-  }, [tasksQ.data, assigneesQ.data, user, clientsById]);
-
-  // Raw agenda tasks filtered for user (for productivity/feedback widgets)
-  const agendaTasksRaw = useMemo(() => {
-    if (!user) return [];
-    const allTasks = tasksQ.data ?? [];
-    const assigneeTaskIds = new Set(
-      (assigneesQ.data ?? []).filter((a) => a.user_id === user.id).map((a) => a.task_id)
-    );
-    return allTasks.filter((t) => t.assigned_user_id === user.id || assigneeTaskIds.has(t.id));
-  }, [tasksQ.data, assigneesQ.data, user]);
-
+  // ── Cleaning ──
   const cleaningSchedulesQ = useCleaningSchedules();
   const cleaningCategoriesQ = useCleaningCategories();
   const cleaningCompletionsQ = useCleaningCompletions(todayKey);
@@ -179,47 +145,16 @@ export function MeuPainelPanel() {
     });
   }, [myCleaningTasks, cleaningCategoryById, completedScheduleIds, todayKey]);
 
-  // ── PM Tasks (Gestão) ──
-  const pmTasksQ = usePmTasks();
-  const myPmTaskVMs = useMemo((): MeuPainelTaskVM[] => {
-    if (!user) return [];
-    const allPm = pmTasksQ.data ?? [];
-    return allPm
-      .filter((t) => {
-        if (!t.due_date) return false;
-        if (t.status_global === "cancelado") return false;
-        return t.assignee_id === user.id || (t.watchers ?? []).includes(user.id);
-      })
-      .map((t): MeuPainelTaskVM => {
-        const client = clientsById.get(t.client_id);
-        const stageInfo = PM_STAGES.find((s) => s.key === t.stage_current);
-        const pmStatus = t.status_global === "concluido" ? "concluido" as const : "pendente" as const;
-        return {
-          id: `pm:${t.id}`,
-          clientName: client?.name ?? t.title ?? "—",
-          stageLabel: stageInfo?.label ?? t.stage_current,
-          stage: (t.stage_current as any),
-          title: t.title,
-          dueDate: t.due_date,
-          status: pmStatus,
-          completedAt: pmStatus === "concluido" ? t.updated_at : null,
-        };
-      });
-  }, [pmTasksQ.data, user, clientsById]);
-
-  // ── Merge all sources (all are MeuPainelTaskVM now) ──
-  const allMyTasks = useMemo((): MeuPainelTaskVM[] => [...myAgendaVMs, ...myPmTaskVMs], [myAgendaVMs, myPmTaskVMs]);
-
-  const todayTasks = useMemo(() => [...allMyTasks.filter((t) => t.dueDate === todayKey), ...cleaningVMs.filter((c) => c.status !== "concluido")], [allMyTasks, todayKey, cleaningVMs]);
-  const overdueTasks = useMemo(() => allMyTasks.filter((t) => t.status !== "concluido" && t.dueDate < todayKey), [allMyTasks, todayKey]);
-  const upcomingTasks = useMemo(() => allMyTasks.filter((t) => t.status !== "concluido" && t.dueDate > todayKey), [allMyTasks, todayKey]);
-  const completedTasks = useMemo(() => [...allMyTasks.filter((t) => t.status === "concluido"), ...cleaningVMs.filter((c) => c.status === "concluido")], [allMyTasks, cleaningVMs]);
+  const todayTasks = useMemo(() => [...myTasks.filter((t) => t.due_date === todayKey), ...cleaningVMs.filter((c) => c.status !== "concluido")], [myTasks, todayKey, cleaningVMs]);
+  const overdueTasks = useMemo(() => myTasks.filter((t) => t.status !== "concluido" && t.due_date < todayKey), [myTasks, todayKey]);
+  const upcomingTasks = useMemo(() => myTasks.filter((t) => t.status !== "concluido" && t.due_date > todayKey), [myTasks, todayKey]);
+  const completedTasks = useMemo(() => [...myTasks.filter((t) => t.status === "concluido"), ...cleaningVMs.filter((c) => c.status === "concluido")], [myTasks, cleaningVMs]);
 
   const summary = useMemo(() => {
-    const done = allMyTasks.filter((t) => t.status === "concluido").length;
-    const pending = allMyTasks.filter((t) => t.status !== "concluido").length;
-    return { total: allMyTasks.length, done, pending, overdue: overdueTasks.length };
-  }, [allMyTasks, overdueTasks.length]);
+    const done = myTasks.filter((t) => t.status === "concluido").length;
+    const pending = myTasks.filter((t) => t.status !== "concluido").length;
+    return { total: myTasks.length, done, pending, overdue: overdueTasks.length };
+  }, [myTasks, overdueTasks.length]);
 
   // ── Previous month for comparison ──
   const prevMonthKey = useMemo(() => {
@@ -227,26 +162,11 @@ export function MeuPainelPanel() {
     const py = selected.month === 1 ? selected.year - 1 : selected.year;
     return `${py}-${String(pm).padStart(2, "0")}`;
   }, [selected]);
-  const prevTasksQ = useTasks({ month: prevMonthKey });
-  const prevAssigneesQ = useTaskAssigneesByMonth(prevMonthKey);
+  const prevTasksQ = useTasks({ month: prevMonthKey, assignedUserId: user?.id });
   const prevSummary = useMemo(() => {
-    if (!user) return { total: 0, done: 0, pending: 0 };
-    const allPrev = prevTasksQ.data ?? [];
-    const prevAssigneeTaskIds = new Set(
-      (prevAssigneesQ.data ?? []).filter((a) => a.user_id === user.id).map((a) => a.task_id)
-    );
-    const all = allPrev.filter((t) => t.assigned_user_id === user.id || prevAssigneeTaskIds.has(t.id));
+    const all = prevTasksQ.data ?? [];
     return { total: all.length, done: all.filter((t) => t.status === "concluido").length, pending: all.filter((t) => t.status !== "concluido").length };
-  }, [prevTasksQ.data, prevAssigneesQ.data, user]);
-
-  const prevAgendaTasksRaw = useMemo(() => {
-    if (!user) return [];
-    const allPrev = prevTasksQ.data ?? [];
-    const prevAssigneeTaskIds = new Set(
-      (prevAssigneesQ.data ?? []).filter((a) => a.user_id === user.id).map((a) => a.task_id)
-    );
-    return allPrev.filter((t) => t.assigned_user_id === user.id || prevAssigneeTaskIds.has(t.id));
-  }, [prevTasksQ.data, prevAssigneesQ.data, user]);
+  }, [prevTasksQ.data]);
 
   // ── Team avg score ──
   const teamPerfQ = useQuery({
@@ -260,35 +180,35 @@ export function MeuPainelPanel() {
   });
   const myScore = useMemo(() => Number(perf.total ?? 0), [perf.total]);
 
-  // ── Streak calculation (uses all tasks) ──
+  // ── Streak calculation ──
   const streak = useMemo(() => {
     let count = 0;
     for (let i = 0; i < 30; i++) {
       const d = format(subDays(today, i), "yyyy-MM-dd");
-      const doneOnDay = allMyTasks.some((t) => t.status === "concluido" && t.completedAt && format(new Date(t.completedAt), "yyyy-MM-dd") === d);
+      const doneOnDay = myTasks.some((t) => t.status === "concluido" && t.completed_at && format(new Date(t.completed_at), "yyyy-MM-dd") === d);
       if (doneOnDay) count++;
-      else if (i > 0) break;
+      else if (i > 0) break; // break on first gap (skip today if nothing yet)
     }
     return count;
-  }, [allMyTasks, todayKey]);
+  }, [myTasks, todayKey]);
 
   // ── Sparkline data (last 7 days) ──
   const sparkData = useMemo(() => {
     const data: number[] = [];
     for (let i = 6; i >= 0; i--) {
       const d = format(subDays(today, i), "yyyy-MM-dd");
-      data.push(allMyTasks.filter((t) => t.status === "concluido" && t.completedAt && format(new Date(t.completedAt), "yyyy-MM-dd") === d).length);
+      data.push(myTasks.filter((t) => t.status === "concluido" && t.completed_at && format(new Date(t.completed_at), "yyyy-MM-dd") === d).length);
     }
     return data;
-  }, [allMyTasks, todayKey]);
+  }, [myTasks, todayKey]);
 
   // ── Bottleneck data ──
   const pendingByStage = useMemo(() => {
-    return allMyTasks.filter((t) => t.status !== "concluido").reduce((acc, t) => {
+    return myTasks.filter((t) => t.status !== "concluido").reduce((acc, t) => {
       acc[t.stage] = (acc[t.stage] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
-  }, [allMyTasks]);
+  }, [myTasks]);
 
   // ── Profile loading ──
   useEffect(() => {
@@ -300,15 +220,8 @@ export function MeuPainelPanel() {
     ]).then(([profileRes, tmRes]) => {
       if (cancelled) return;
       const data = profileRes.data;
-      if (!data?.full_name) {
-        setMyProfile(null);
-        return;
-      }
-      setMyProfile({
-        full_name: data.full_name,
-        avatar_url: normalizeAvatarUrl(data.avatar_url) ?? null,
-        birth_date: (tmRes.data as any)?.birth_date ?? null,
-      });
+      if (!data?.full_name) { setMyProfile(null); return; }
+      setMyProfile({ full_name: data.full_name, avatar_url: data.avatar_url ?? null, birth_date: (tmRes.data as any)?.birth_date ?? null });
     });
     return () => { cancelled = true; };
   }, [user?.id, profileVersion]);
@@ -360,15 +273,6 @@ export function MeuPainelPanel() {
       toggleCleaning.mutate({ scheduleId: taskId.replace("cleaning:", ""), date: todayKey, userId: user.id, isCompleted: current === "concluido" });
       return;
     }
-    if (taskId.startsWith("pm:")) {
-      const pmId = taskId.replace("pm:", "");
-      const nextStatus = current === "concluido" ? "backlog" : "concluido";
-      try {
-        await supabase.from("pm_tasks").update({ status_global: nextStatus, updated_at: new Date().toISOString() }).eq("id", pmId);
-        toast.success(nextStatus === "concluido" ? "Concluída! ✔" : "Voltou para backlog");
-      } catch (e: any) { toast.error(e?.message ?? "Erro ao atualizar tarefa"); }
-      return;
-    }
     const next = current === "concluido" ? "em_andamento" : "concluido";
     try {
       await setTaskStatus.mutateAsync({ taskId, status: next, userId: user.id });
@@ -376,7 +280,12 @@ export function MeuPainelPanel() {
     } catch (e: any) { toast.error(e?.message ?? "Erro ao atualizar tarefa"); }
   };
 
-  const toVM = (t: MeuPainelTaskVM): MeuPainelTaskVM => t;
+  const toVM = (t: (typeof myTasks)[number] | MeuPainelTaskVM): MeuPainelTaskVM => {
+    if ("clientName" in t) return t;
+    const client = clientsById.get(t.client_id);
+    const stageLabel = STAGES.find((s) => s.key === t.stage)?.label ?? t.stage;
+    return { id: t.id, clientName: client?.name ?? "—", stageLabel, stage: t.stage, title: t.title, dueDate: t.due_date, status: t.status, completedAt: t.completed_at ?? null };
+  };
 
   return (
     <div className="space-y-5">
@@ -449,8 +358,13 @@ export function MeuPainelPanel() {
         <MetricSparkCard label="Atrasadas" value={summary.overdue} icon={<AlertTriangle className="h-5 w-5" />} accentClass="text-red-500" />
       </div>
 
-      {/* ── 4. AGENDA TASKS (Atribuídas a mim) ── */}
+      {/* ── 4. PM TASKS (Gestão) ── */}
       <div className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.22s" }}>
+        <MyPmTasksWidget onOpenTask={(taskId) => setSelectedPmTaskId(taskId)} />
+      </div>
+
+      {/* ── 5. AGENDA TASKS ── */}
+      <div className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.30s" }}>
         <MeuPainelTasksGroupedCard
           overdue={overdueTasks.map(toVM)}
           today={todayTasks.map(toVM)}
@@ -462,16 +376,16 @@ export function MeuPainelPanel() {
         />
       </div>
 
-      {/* ── 5. MENTIONS ── */}
-      <div className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.30s" }}>
+      {/* ── 6. MENTIONS ── */}
+      <div className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.38s" }}>
         <MentionsWidget onOpenTask={(taskId) => setSelectedPmTaskId(taskId)} />
       </div>
 
-      {/* ── 6. PRODUCTIVITY + FEEDBACK ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.38s" }}>
-        <ProductivityWidget tasks={agendaTasksRaw} allMonthTasks={[...agendaTasksRaw, ...(prevAgendaTasksRaw)]} todayKey={todayKey} />
+      {/* ── 7. PRODUCTIVITY + FEEDBACK (below mentions) ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.45s" }}>
+        <ProductivityWidget tasks={myTasks} allMonthTasks={[...myTasks, ...(prevTasksQ.data ?? [])]} todayKey={todayKey} />
         <SmartFeedbackWidget
-          myTasks={agendaTasksRaw.map((t) => ({ ...t, completed_at: t.completed_at ?? null, point_value: t.point_value ?? null }))}
+          myTasks={myTasks.map((t) => ({ ...t, completed_at: t.completed_at ?? null, point_value: (t as any).point_value ?? null }))}
           teamAvgScore={teamPerfQ.data ?? null}
           myScore={myScore}
           todayKey={todayKey}
