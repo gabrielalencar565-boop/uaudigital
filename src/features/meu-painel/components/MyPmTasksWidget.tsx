@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { AlertTriangle, ChevronDown, ChevronRight, Flag, GitBranch, MessageSquare, FileText } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronRight, Flag, GitBranch, ListChecks, MessageSquare, FileText } from "lucide-react";
 import { differenceInCalendarDays, format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 
