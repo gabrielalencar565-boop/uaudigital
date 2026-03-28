@@ -89,22 +89,7 @@ export function SmartFeedbackWidget({
   const prevMonthIdx = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
   const prevMonth = MONTH_NAMES[prevMonthIdx];
 
-  /* ── Current month stats ── */
-  const total = myTasks.length;
-  const done = myTasks.filter((t) => t.status === "concluido").length;
-  const doneOnTime = myTasks.filter((t) => {
-    if (t.status !== "concluido" || !t.completed_at) return false;
-    return t.completed_at.slice(0, 10) <= t.due_date;
-  }).length;
-  const pctOnTime = done > 0 ? Math.round((doneOnTime / done) * 100) : 100;
-
-  const nota = useMemo(() => {
-    if (total === 0) return 0;
-    const raw = (done / total) * 5 + (done > 0 ? doneOnTime / done : 1) * 5;
-    return Math.round(raw * 10) / 10;
-  }, [total, done, doneOnTime]);
-
-  /* ── Previous month stats ── */
+  /* ── Previous month ranking score (total from performance_scores) ── */
   const prevTotal = prevTasks.length;
   const prevDone = prevTasks.filter((t) => t.status === "concluido").length;
   const prevDoneOnTime = prevTasks.filter((t) => {
@@ -113,13 +98,17 @@ export function SmartFeedbackWidget({
   }).length;
   const prevPctOnTime = prevDone > 0 ? Math.round((prevDoneOnTime / prevDone) * 100) : 100;
 
-  const prevNota = useMemo(() => {
-    if (prevTotal === 0) return 0;
-    const raw = (prevDone / prevTotal) * 5 + (prevDone > 0 ? prevDoneOnTime / prevDone : 1) * 5;
-    return Math.round(raw * 10) / 10;
-  }, [prevTotal, prevDone, prevDoneOnTime]);
+  /* ── Headline based on ranking position ── */
+  const headline = useMemo(() => {
+    if (prevRank === null && rank === null) return { emoji: "📊", text: "Sem dados" };
+    const r = prevRank ?? rank;
+    if (r && r <= 1) return { emoji: "🏆", text: "Desempenho excepcional" };
+    if (r && r <= 3) return { emoji: "🚀", text: "Alto desempenho" };
+    if (r && r <= 5) return { emoji: "📋", text: "Desempenho mediano" };
+    return { emoji: "⚠️", text: "Atenção necessária" };
+  }, [prevRank, rank]);
 
-  /* ── Critical point (worst area) ── */
+  /* ── Critical point (worst qualitative criterion from ranking) ── */
   const criticalPoint = useMemo(() => {
     if (prevQualitative) {
       const worst = [...CRITERIA].sort((a, b) => (prevQualitative[a.key] ?? 0) - (prevQualitative[b.key] ?? 0))[0];
@@ -130,22 +119,21 @@ export function SmartFeedbackWidget({
     return null;
   }, [prevQualitative, prevPctOnTime, prevTotal, prevRank]);
 
-  /* ── Best strength (1 only) ── */
+  /* ── Best strength from ranking criteria (1 only) ── */
   const bestStrength = useMemo(() => {
-    if (prevPctOnTime >= 90 && prevTotal > 0) return { icon: <Clock className="h-3.5 w-3.5" />, text: "Boa pontualidade" };
     if (prevRank && prevRank <= 3) return { icon: <Trophy className="h-3.5 w-3.5" />, text: `Top ${prevRank} no ranking` };
     if (prevQualitative) {
       const best = [...CRITERIA].sort((a, b) => (prevQualitative[b.key] ?? 0) - (prevQualitative[a.key] ?? 0))[0];
       if (best && (prevQualitative[best.key] ?? 0) >= 3) return { icon: best.icon, text: getShortFeedback(best.key, prevQualitative[best.key]) };
     }
+    if (prevPctOnTime >= 90 && prevTotal > 0) return { icon: <Clock className="h-3.5 w-3.5" />, text: "Boa pontualidade" };
     if (prevTotal > 0) return { icon: <TrendingUp className="h-3.5 w-3.5" />, text: "Entregas consistentes" };
     return null;
   }, [prevPctOnTime, prevTotal, prevRank, prevQualitative]);
 
-  /* ── Weaknesses (max 2) ── */
+  /* ── Weaknesses from ranking criteria (max 2) ── */
   const weaknesses = useMemo(() => {
     const list: { icon: React.ReactNode; text: string }[] = [];
-    if (prevPctOnTime < 80 && prevTotal > 0) list.push({ icon: <Clock className="h-3.5 w-3.5" />, text: "Entregas fora do prazo" });
     if (prevRank && prevRank > 3) list.push({ icon: <Trophy className="h-3.5 w-3.5" />, text: "Ranking pode melhorar" });
     if (prevQualitative) {
       const sorted = [...CRITERIA].sort((a, b) => (prevQualitative[a.key] ?? 0) - (prevQualitative[b.key] ?? 0));
@@ -155,14 +143,13 @@ export function SmartFeedbackWidget({
         }
       }
     }
+    if (prevPctOnTime < 80 && prevTotal > 0 && list.length < 2) list.push({ icon: <Clock className="h-3.5 w-3.5" />, text: "Entregas fora do prazo" });
     return list.slice(0, 2);
   }, [prevPctOnTime, prevTotal, prevRank, prevQualitative]);
 
-  /* ── Direction tips (2-3) ── */
+  /* ── Direction tips based on ranking criteria (2-3) ── */
   const directionTips = useMemo(() => {
     const list: string[] = [];
-    if (prevPctOnTime < 80 && prevTotal > 0) list.push("Aumentar pontualidade nas entregas");
-    if (prevRank && prevRank > 3) list.push("Subir no ranking com mais volume");
     if (prevQualitative) {
       const sorted = [...CRITERIA].sort((a, b) => (prevQualitative[a.key] ?? 0) - (prevQualitative[b.key] ?? 0));
       for (const c of sorted) {
@@ -171,11 +158,13 @@ export function SmartFeedbackWidget({
         }
       }
     }
-    if (list.length === 0 && total > 0) list.push("Manter o ritmo de entregas");
+    if (prevRank && prevRank > 3 && list.length < 3) list.push("Subir no ranking com mais volume");
+    if (prevPctOnTime < 80 && prevTotal > 0 && list.length < 3) list.push("Aumentar pontualidade nas entregas");
+    if (list.length === 0) list.push("Manter o ritmo de entregas");
     return list.slice(0, 3);
-  }, [prevPctOnTime, prevTotal, prevRank, prevQualitative, total]);
+  }, [prevPctOnTime, prevTotal, prevRank, prevQualitative]);
 
-  /* ── Focus goal ── */
+  /* ── Focus goal based on ranking criteria ── */
   const focusGoal = useMemo(() => {
     if (prevQualitative) {
       const worst = [...CRITERIA].sort((a, b) => (prevQualitative[a.key] ?? 0) - (prevQualitative[b.key] ?? 0))[0];
@@ -183,12 +172,11 @@ export function SmartFeedbackWidget({
         return `Melhorar ${worst.label.toLowerCase()} para subir no ranking`;
       }
     }
-    if (prevPctOnTime < 70 && prevTotal > 0) return "Recuperar pontualidade nas entregas";
     if (prevRank && prevRank > 5) return "Subir no ranking com mais volume e consistência";
+    if (prevPctOnTime < 70 && prevTotal > 0) return "Recuperar pontualidade nas entregas";
     return "Manter o alto padrão de desempenho";
   }, [prevQualitative, prevPctOnTime, prevTotal, prevRank]);
 
-  const notaColor = nota >= 8 ? "text-emerald-500" : nota >= 6 ? "text-amber-500" : "text-red-500";
   const hasPrevData = prevTotal > 0 || prevQualitative !== null;
 
   return (
@@ -203,41 +191,46 @@ export function SmartFeedbackWidget({
           <div className="flex items-center gap-1.5">
             <Trophy className="h-4 w-4 text-sidebar shrink-0" />
             <h3 className="text-sm font-bold text-foreground tracking-tight truncate">
-              Desempenho em {prevMonth}
+              {headline.emoji} Desempenho em {prevMonth}
             </h3>
           </div>
           <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-xs text-muted-foreground">
-              Nota: <span className={cn("font-bold", notaColor)}>{nota.toFixed(1)}</span>
-            </span>
             {prevRank !== null && (
+              <span className="text-xs text-muted-foreground">
+                Ranking: <span className={cn("font-bold", prevRank <= 3 ? "text-emerald-500" : "text-foreground")}>{prevRank}º</span>
+                {prevRankTotal ? <span className="text-muted-foreground/50"> de {prevRankTotal}</span> : null}
+              </span>
+            )}
+            {myScore > 0 && (
               <>
-                <span className="text-muted-foreground/30">•</span>
+                {prevRank !== null && <span className="text-muted-foreground/30">•</span>}
                 <span className="text-xs text-muted-foreground">
-                  Ranking: <span className={cn("font-bold", prevRank <= 3 ? "text-emerald-500" : "text-foreground")}>{prevRank}º</span>
+                  Pontos: <span className="font-bold text-foreground">{myScore}</span>
                 </span>
               </>
             )}
           </div>
         </div>
 
-        {/* Badge nota */}
-        <div className={cn(
-          "flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold shrink-0",
-          nota >= 8 ? "bg-emerald-500/10 text-emerald-500" : nota >= 6 ? "bg-amber-500/10 text-amber-500" : "bg-red-500/10 text-red-500",
-        )}>
-          {nota >= 8 ? "🏆" : nota >= 6 ? "🚀" : "⚠️"} {nota.toFixed(1)}
-        </div>
+        {/* Badge ranking */}
+        {prevRank !== null && (
+          <div className={cn(
+            "flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold shrink-0",
+            prevRank <= 3 ? "bg-emerald-500/10 text-emerald-500" : prevRank <= 5 ? "bg-amber-500/10 text-amber-500" : "bg-red-500/10 text-red-500",
+          )}>
+            {prevRank <= 1 ? "🏆" : prevRank <= 3 ? "🚀" : "⚠️"} {prevRank}º
+          </div>
+        )}
       </div>
 
       {/* Critical point subtitle */}
       {criticalPoint && (
-        <p className="text-[11px] text-muted-foreground/60 -mt-1 ml-5.5 opacity-0" style={{ animation: "fadeUp 0.3s ease-out 0.1s forwards" }}>
+        <p className="text-[11px] text-muted-foreground/60 -mt-1 opacity-0" style={{ animation: "fadeUp 0.3s ease-out 0.1s forwards" }}>
           Principal melhoria: <span className="text-amber-500 font-medium">{criticalPoint}</span>
         </p>
       )}
 
-      {/* ── FEEDBACKS RÁPIDOS ── */}
+      {/* ── FEEDBACKS RÁPIDOS (baseados nos critérios do ranking) ── */}
       {hasPrevData && (
         <div className="space-y-1 opacity-0" style={{ animation: "fadeUp 0.4s ease-out 0.15s forwards" }}>
           {bestStrength && (
@@ -258,7 +251,7 @@ export function SmartFeedbackWidget({
       {/* Divider */}
       {hasPrevData && <div className="border-t border-border/20" />}
 
-      {/* ── DIRECIONAMENTO MÊS ATUAL ── */}
+      {/* ── DIRECIONAMENTO MÊS ATUAL (baseado nos critérios do ranking) ── */}
       <div className="space-y-1.5 opacity-0" style={{ animation: "fadeUp 0.4s ease-out 0.25s forwards" }}>
         <div className="flex items-center gap-1.5">
           <Target className="h-3.5 w-3.5 text-muted-foreground/50" />
@@ -288,7 +281,7 @@ export function SmartFeedbackWidget({
       </div>
 
       {/* ── Empty state ── */}
-      {total === 0 && !hasPrevData && (
+      {!hasPrevData && myScore === 0 && (
         <p className="text-xs text-muted-foreground/50 text-center py-2">Sem dados suficientes.</p>
       )}
     </div>
