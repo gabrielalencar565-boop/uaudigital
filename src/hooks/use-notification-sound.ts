@@ -28,6 +28,7 @@ const MAX_PENDING = 30;
  */
 export function useNotificationSound() {
   const { user } = useSession();
+  const queryClient = useQueryClient();
   const userIdRef = useRef<string | null>(null);
   const pendingRef = useRef<PendingNotif[]>([]);
   const shownKeysRef = useRef<Set<string>>(new Set());
