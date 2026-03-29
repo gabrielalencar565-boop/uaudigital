@@ -96,7 +96,7 @@ export function ConfiguracoesPanel() {
                 role_title: data.role_title ?? "",
                 birth_date: (tmData as any)?.birth_date ?? "",
               });
-              setAvatarUrl(data.avatar_url ?? null);
+              setAvatarUrl(normalizeAvatarUrl(data.avatar_url) ?? null);
             }
             setLoading(false);
           });
