@@ -363,10 +363,10 @@ export function ProductivityWidget({ tasks, allMonthTasks, todayKey }: Props) {
                       const isSelected = index === selectedWeekIndex;
                       return (
                         <text
-                          x={x + w / 2} y={y - 8} textAnchor="middle"
+                          x={x + w / 2} y={y - 6} textAnchor="middle"
                           fontSize={isCurrent || isSelected ? 13 : 11}
                           fontWeight={isCurrent || isSelected ? 700 : 500}
-                          fill={isCurrent || isSelected ? "hsl(263 70% 50%)" : "hsl(var(--muted-foreground))"}
+                          fill={isSelected ? "hsl(200 80% 50%)" : isCurrent ? "hsl(263 70% 50%)" : "hsl(var(--muted-foreground))"}
                         >
                           {value}
                         </text>
