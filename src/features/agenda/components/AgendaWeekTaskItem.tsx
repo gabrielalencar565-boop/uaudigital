@@ -107,7 +107,8 @@ export function AgendaWeekTaskItem({
   return (
     <div
       className={cn(
-        "rounded-lg border border-border/60 bg-card/20 shadow-sm",
+        "rounded-lg border shadow-sm",
+        isAlteracaoWithOrigin ? "bg-[#E5C94E] border-[#E5C94E]/60" : "bg-card/20 border-border/60",
         isCompact ? "p-2" : "p-2.5",
         !canInteract && "opacity-60",
         onClick && "cursor-pointer hover:border-primary/50 hover:bg-card/40 transition-colors",
