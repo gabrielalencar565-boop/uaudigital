@@ -72,7 +72,7 @@ const NAV: NavEntry[] = [
   children: [
   { key: "agenda_gestao", label: "Agenda", icon: CalendarDays },
   { key: "cronograma", label: "Cronograma", icon: CalendarRange },
-  { key: "fluxos", label: "Fluxos", icon: Workflow }]
+  { key: "fluxos", label: "Fluxos", icon: Workflow, adminOnly: true }]
 },
 {
   key: "dashboard_group",
