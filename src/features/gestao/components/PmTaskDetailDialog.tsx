@@ -694,26 +694,42 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     }
   };
 
-  const handleReturnFromAlteracao = () => {
-    // After alteração is done, advance to the next stage in the flow (skip revisão, go directly to next)
-    // Find the next stage after revisão from the flow config
+  const handleReturnFromAlteracao = async () => {
+    // After alteração is done, advance directly to the next stage after revisão
     const nextAfterRevisao = getNextStages(flowConfig, "revisao");
     const targetStage = nextAfterRevisao.length > 0 ? nextAfterRevisao[0] : "pdf";
 
-    if (targetStage === "entrega") {
-      // Final stage: mark as delivered
-      updateTask.mutate({ id: task.id, stage_current: "entrega" as any, status_global: "concluido" as any });
-      for (const child of childTasks) {
-        updateTask.mutate({ id: child.id, stage_current: "entrega" as any, status_global: "concluido" as any });
-      }
-      syncCompletedStage("revisao");
-      toast.success("Tarefa marcada como Entregue!");
+    // First, temporarily set stage back to revisão so the advance logic works correctly
+    await (supabase as any).from("pm_tasks").update({ stage_current: "revisao" }).eq("id", task.id);
+    for (const child of childTasks) {
+      await (supabase as any).from("pm_tasks").update({ stage_current: "revisao" }).eq("id", child.id);
+    }
+
+    // Now advance using the normal flow (snapshot current as revisão, create next stage)
+    const dateConfig = transitionDates["revisao"];
+    let newDueDate: string | undefined;
+    if (typeof dateConfig === "number") {
+      const baseDate = task.due_date ? new Date(task.due_date + "T12:00:00") : new Date();
+      newDueDate = format(addDays(baseDate, dateConfig), "yyyy-MM-dd");
+    }
+
+    if (nextAfterRevisao.length > 1) {
+      setPendingCompletedStage("revisao");
+      setPendingDueDate(newDueDate);
+      setStageChoiceOptions(nextAfterRevisao);
+      setStageChoiceOpen(true);
       return;
     }
 
-    // Trigger the normal advance flow (snapshot + create next task)
-    // Use "revisao" as the completed stage since alteração is a loop back from revisão
-    handleConcluido();
+    if (dateConfig === "pick") {
+      setPendingCompletedStage("revisao");
+      setCompletionDate(task.due_date ?? format(new Date(), "yyyy-MM-dd"));
+      setCompletionDateOpen(true);
+      return;
+    }
+
+    advanceStage("revisao", targetStage, newDueDate);
+    toast.success(`Ajuste concluído — avançou para ${stageLabel(targetStage)}`);
   };
 
   const saveTitle = () => {
