@@ -126,12 +126,11 @@ export function AgendaWeekTaskItem({
               "inline-flex items-start rounded-full font-semibold",
               isCompact ? "px-2 py-1 text-[10px] leading-snug" : "px-2.5 py-1 text-xs leading-snug",
               stagePillWidth === "fit" ? "w-auto" : "w-full",
-              stageTone.bg,
-              stageTone.fg,
+              isRevisaoWithOrigin ? revisaoGradient : cn(stageTone.bg, stageTone.fg),
             )}
             title={stageLabel}
           >
-            <span className="whitespace-nowrap">{STAGE_SHORT[stage] ?? stageLabel}</span>
+            <span className="whitespace-nowrap">{isRevisaoWithOrigin ? revisaoShort : (STAGE_SHORT[stage] ?? stageLabel)}</span>
           </div>
         </div>
 
