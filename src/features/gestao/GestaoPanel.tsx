@@ -77,10 +77,10 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
   const [filterAssignee, setFilterAssignee] = useState(initialFilter);
 
   useEffect(() => {
-    if (user?.id && filterAssignee === "__all__" && effectiveView === "kanban") {
+    if (user?.id && effectiveView === "kanban") {
       setFilterAssignee(user.id);
     }
-  }, [user?.id]);
+  }, [user?.id, effectiveView]);
 
   // When switching views, adjust filter default
   const handleViewChange = (newView: typeof view) => {
