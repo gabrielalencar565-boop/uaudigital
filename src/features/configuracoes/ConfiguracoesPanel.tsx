@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { normalizeAvatarUrl } from "@/lib/avatar-url";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -95,7 +96,7 @@ export function ConfiguracoesPanel() {
                 role_title: data.role_title ?? "",
                 birth_date: (tmData as any)?.birth_date ?? "",
               });
-              setAvatarUrl(data.avatar_url ?? null);
+              setAvatarUrl(normalizeAvatarUrl(data.avatar_url) ?? null);
             }
             setLoading(false);
           });

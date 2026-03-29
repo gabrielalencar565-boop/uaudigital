@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { normalizeAvatarUrl } from "@/lib/avatar-url";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -40,7 +41,7 @@ export function MentionsWidget({ onOpenTask }: MentionsWidgetProps) {
     queryKey: ["team_members_mentions"],
     queryFn: async () => {
       const { data } = await supabase.from("team_members").select("user_id, display_name, avatar_url").eq("is_active", true);
-      return data ?? [];
+      return (data ?? []).map(tm => ({ ...tm, avatar_url: normalizeAvatarUrl(tm.avatar_url) ?? null }));
     },
   });
 

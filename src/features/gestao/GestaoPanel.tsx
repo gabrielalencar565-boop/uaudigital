@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { normalizeAvatarUrl } from "@/lib/avatar-url";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Plus, Search, LayoutGrid, CalendarDays, FolderOpen, Settings2, CheckCircle2, FileSpreadsheet, Trash2, FileText, Users, ChevronLeft, ChevronRight, CalendarRange, Cake, Star, Calendar, TriangleAlert } from "lucide-react";
 import { addDays, addMonths, subMonths, endOfMonth, format, startOfMonth, startOfWeek } from "date-fns";
@@ -160,7 +161,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
     queryKey: ["team_members"],
     queryFn: async () => {
       const { data } = await supabase.from("team_members").select("user_id, display_name, avatar_url, birth_date").eq("is_active", true);
-      return data ?? [];
+      return (data ?? []).map(tm => ({ ...tm, avatar_url: normalizeAvatarUrl(tm.avatar_url) ?? null }));
     }
   });
   const membersMap = useMemo(() => {

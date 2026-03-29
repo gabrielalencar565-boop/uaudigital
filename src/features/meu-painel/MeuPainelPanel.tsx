@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { normalizeAvatarUrl } from "@/lib/avatar-url";
 import { format, getDay, subDays } from "date-fns";
 import { ListChecks, CheckCircle2, Clock, AlertTriangle, Flame } from "lucide-react";
 import confetti from "canvas-confetti";
@@ -260,7 +261,7 @@ export function MeuPainelPanel() {
       if (cancelled) return;
       const data = profileRes.data;
       if (!data?.full_name) { setMyProfile(null); return; }
-      setMyProfile({ full_name: data.full_name, avatar_url: data.avatar_url ?? null, birth_date: (tmRes.data as any)?.birth_date ?? null });
+      setMyProfile({ full_name: data.full_name, avatar_url: normalizeAvatarUrl(data.avatar_url) ?? null, birth_date: (tmRes.data as any)?.birth_date ?? null });
     });
     return () => { cancelled = true; };
   }, [user?.id, profileVersion]);
@@ -457,7 +458,7 @@ function PmTaskDetailDialogWrapper({ taskId, onClose, isAdmin }: { taskId: strin
     queryKey: ["team_members"],
     queryFn: async () => {
       const { data } = await supabase.from("team_members").select("user_id, display_name, avatar_url").eq("is_active", true);
-      return data ?? [];
+      return (data ?? []).map(tm => ({ ...tm, avatar_url: normalizeAvatarUrl(tm.avatar_url) ?? null }));
     },
   });
   const membersMap = useMemo(() => {

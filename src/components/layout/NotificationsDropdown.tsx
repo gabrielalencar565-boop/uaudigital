@@ -1,4 +1,5 @@
 import { useMemo, useCallback } from "react";
+import { normalizeAvatarUrl } from "@/lib/avatar-url";
 import { Bell, AlertTriangle, AtSign, UserPlus, Clock, Check, CheckCheck } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, differenceInCalendarDays } from "date-fns";
@@ -65,7 +66,7 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
     queryKey: ["team_members_notif"],
     queryFn: async () => {
       const { data } = await supabase.from("team_members").select("user_id, display_name, avatar_url").eq("is_active", true);
-      return data ?? [];
+      return (data ?? []).map(tm => ({ ...tm, avatar_url: normalizeAvatarUrl(tm.avatar_url) ?? null }));
     },
   });
 
