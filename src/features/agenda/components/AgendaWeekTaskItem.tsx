@@ -93,10 +93,14 @@ export function AgendaWeekTaskItem({
   const stageTone = STAGE_BADGE_CLASS[stage];
   const isCompact = density === "compact";
 
-  // For revisão tasks with a post_type origin, show gradient badge
+  // For revisão or alteração tasks with a post_type origin, show gradient badge
   const isRevisaoWithOrigin = stage === "revisao" && !!postType;
-  const revisaoShort = postType === "video" ? "REV/VDO" : "REV/DSG";
-  const revisaoGradient = postType === "video"
+  const isAlteracaoWithOrigin = stage === "alteracoes" && !!postType;
+  const hasGradientPill = isRevisaoWithOrigin || isAlteracaoWithOrigin;
+  const gradientShort = isAlteracaoWithOrigin
+    ? (postType === "video" ? "ALT/VDO" : "ALT/DSG")
+    : (postType === "video" ? "REV/VDO" : "REV/DSG");
+  const gradientClass = postType === "video"
     ? "bg-gradient-to-r from-pink-500 to-blue-500 text-white"
     : "bg-gradient-to-r from-pink-500 to-teal-500 text-white";
 
