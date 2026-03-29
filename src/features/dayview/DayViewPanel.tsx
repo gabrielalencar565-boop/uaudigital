@@ -145,7 +145,66 @@ export function DayViewPanel() {
     enabled: (pmTasksQ.data ?? []).length > 0,
   });
 
-  // ─── Cleaning ───
+  // ─── All pending tasks per user (across all months) for "Pend." column ───
+  const allPendingTasksQ = useQuery({
+    queryKey: ["all_pending_tasks_for_podium"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tasks")
+        .select("id, assigned_user_id, status")
+        .neq("status", "concluido")
+        .is("deleted_at", null);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const allPendingPmTasksQ = useQuery({
+    queryKey: ["all_pending_pm_tasks_for_podium"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pm_tasks")
+        .select("id, assignee_id, status_global")
+        .is("parent_task_id", null)
+        .neq("status_global", "concluido")
+        .neq("status_global", "cancelado");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const allPendingSubtasksQ = useQuery({
+    queryKey: ["all_pending_pm_subtasks_for_podium", allPendingPmTasksQ.data],
+    queryFn: async () => {
+      const parentIds = (allPendingPmTasksQ.data ?? []).map(t => t.id);
+      if (!parentIds.length) return [];
+      const { data, error } = await supabase
+        .from("pm_subtasks")
+        .select("id, task_id, assignee_id, status")
+        .in("task_id", parentIds)
+        .neq("status", "concluido");
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: (allPendingPmTasksQ.data ?? []).length > 0,
+  });
+
+  const allPendingByUser = useMemo(() => {
+    const map = new Map<string, number>();
+    const add = (userId: string) => map.set(userId, (map.get(userId) ?? 0) + 1);
+
+    for (const t of allPendingTasksQ.data ?? []) {
+      add(t.assigned_user_id);
+    }
+    for (const t of allPendingPmTasksQ.data ?? []) {
+      if (t.assignee_id) add(t.assignee_id);
+    }
+    for (const st of allPendingSubtasksQ.data ?? []) {
+      if (st.assignee_id) add(st.assignee_id);
+    }
+    return map;
+  }, [allPendingTasksQ.data, allPendingPmTasksQ.data, allPendingSubtasksQ.data]);
+
   const cleaningSchedulesQ = useCleaningSchedules();
   const cleaningCategoriesQ = useCleaningCategories();
   const cleaningCompletionsQ = useCleaningCompletions(todayKey);
