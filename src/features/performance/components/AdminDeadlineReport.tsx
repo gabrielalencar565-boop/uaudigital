@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Trash2 } from "lucide-react";
+import { Trash2, ExternalLink } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import type { TaskAssigneeRow } from "@/features/data/task-assignees-queries";
@@ -16,6 +16,8 @@ import type { TeamMemberRow } from "@/features/data/queries";
 import { STAGES, type StageKey } from "@/lib/uau";
 import { STAGE_BADGE_CLASS } from "@/features/agenda/components/AgendaWeekTaskItem";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
 
 type TaskForReport = {
   id: string;
@@ -92,6 +94,7 @@ export function AdminDeadlineReport({
 }) {
   const qc = useQueryClient();
   const [selectedUserId, setSelectedUserId] = useState<string>(team[0]?.user_id ?? "");
+  const [detailTask, setDetailTask] = useState<TaskForReport | null>(null);
 
   const tasksQ = useQuery({
     queryKey: ["deadline_report_tasks", year, month],
@@ -402,10 +405,17 @@ export function AdminDeadlineReport({
                     return (
                       <TableRow key={t.id}>
                         <TableCell>
-                          <div className="min-w-0">
-                            <p className="truncate font-medium">{t.title ?? (t.client?.name ? `Cliente: ${t.client.name}` : "Tarefa")}</p>
+                          <button
+                            type="button"
+                            className="min-w-0 text-left group cursor-pointer"
+                            onClick={() => setDetailTask(t)}
+                          >
+                            <p className="truncate font-medium group-hover:text-primary group-hover:underline flex items-center gap-1">
+                              {t.title ?? (t.client?.name ? `Cliente: ${t.client.name}` : "Tarefa")}
+                              <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-60 shrink-0" />
+                            </p>
                             <p className="truncate text-xs text-muted-foreground">{teamById.get(t.assigned_user_id)?.role_title}</p>
-                          </div>
+                          </button>
                         </TableCell>
                         <TableCell className="text-center">
                           {(() => {
@@ -498,6 +508,82 @@ export function AdminDeadlineReport({
           </CardContent>
         </Card>
       </div>
+
+      {/* Task detail dialog */}
+      <Dialog open={!!detailTask} onOpenChange={(open) => !open && setDetailTask(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base">
+              {detailTask?.title ?? (detailTask?.client?.name ? `Cliente: ${detailTask.client.name}` : "Tarefa")}
+            </DialogTitle>
+          </DialogHeader>
+
+          {detailTask && (() => {
+            const stageDef = STAGES.find((s) => s.key === detailTask.stage);
+            const stageTone = STAGE_BADGE_CLASS[detailTask.stage];
+            const assignees = assigneesByTask.get(detailTask.id);
+            const assignedNames = (assignees && assignees.length > 0 ? assignees : [detailTask.assigned_user_id])
+              .map((uid) => teamById.get(uid)?.display_name ?? "—");
+            const override = overrideByTaskId.get(detailTask.id);
+            const auto = calcPoints(detailTask, scoringConfigMap);
+            const onTime = isOnTime(detailTask);
+
+            return (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-muted-foreground text-xs mb-0.5">Cliente</p>
+                    <p className="font-medium">{detailTask.client?.name ?? "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs mb-0.5">Etapa</p>
+                    <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold", stageTone.bg, stageTone.fg)}>
+                      {stageDef?.label ?? detailTask.stage}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs mb-0.5">Prazo</p>
+                    <p className="font-medium tabular-nums">{format(new Date(detailTask.due_date + "T12:00:00"), "dd/MM/yyyy")}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs mb-0.5">Concluída em</p>
+                    <p className="font-medium tabular-nums">
+                      {detailTask.completed_at ? format(new Date(detailTask.completed_at), "dd/MM/yyyy HH:mm") : "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs mb-0.5">Status</p>
+                    <Badge variant={onTime === true ? "secondary" : onTime === false ? "destructive" : "outline"}>
+                      {onTime === true ? "No prazo" : onTime === false ? "Atrasada" : "Pendente"}
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs mb-0.5">Pontuação</p>
+                    <p className="font-medium tabular-nums">
+                      {override ? `${override.override_points} (exceção)` : auto}
+                    </p>
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="text-sm">
+                  <p className="text-muted-foreground text-xs mb-1">Responsáveis</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {assignedNames.map((name, i) => (
+                      <Badge key={i} variant="outline" className="text-xs">{name}</Badge>
+                    ))}
+                  </div>
+                </div>
+
+                {detailTask.is_extra_demand && (
+                  <Badge variant="secondary" className="text-xs">Demanda extra • Qtd: {detailTask.quantity}</Badge>
+                )}
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
