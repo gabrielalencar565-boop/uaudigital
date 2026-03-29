@@ -229,6 +229,7 @@ export function AdminDeadlineReport({
 
   const recomputedRef = useRef(false);
   useEffect(() => { recomputedRef.current = false; }, [year, month]);
+  useEffect(() => {
     if (recomputedRef.current) return;
     if (!storedScoresQ.data || !summary.length || tasksQ.isLoading || scoringConfigQ.isLoading) return;
 
