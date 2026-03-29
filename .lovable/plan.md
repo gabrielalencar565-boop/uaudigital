@@ -1,44 +1,31 @@
 
 
-## Correções: Renomeação, Subtarefas e Filtro Automático
+## Plan: Trash Panel Improvements + Agenda Filter Fix
 
-### 3 problemas a resolver
+### Problem 1: Trash Panel — Show who deleted + Admin-only destructive actions
+The trash panel currently shows the assigned user but not who deleted the task. Also, "Esvaziar Lixeira" and "Excluir permanentemente" buttons are available to all users — they should be admin-only.
 
-1. **Renomeação removendo "Planejamento"** — A lógica de regex falha em alguns formatos de título. Solução: sempre construir o título como `[Cliente] - Planejamento (Vídeo/Design) - Mês`, usando o nome do cliente do `clientsMap` e o mês da `due_date` da tarefa, sem depender de parsing do título existente.
+### Problem 2: Agenda filter not working for Feb/March
+In `GestaoPanel.tsx`, legacy tasks from the `tasks` table are added to `tasksByDay` without going through the assignee/client/search filters. The `filteredTasks` memo only filters `pm_tasks`, but legacy tasks are appended raw. This causes all legacy tasks to appear regardless of filter selection.
 
-2. **Vídeo/Design aparece nas subtarefas** — O seletor deve aparecer apenas na tarefa principal (sem `parent_task_id`). Adicionar condição `!task.parent_task_id` junto com `task.stage_current === "planejamento"`.
+---
 
-3. **Filtro do Kanban não filtra por usuário ao abrir** — O `useState(user?.id ?? "__all__")` captura `null` no primeiro render (user ainda carregando). Adicionar `useEffect` para atualizar `filterAssignee` quando `user` carregar.
+### Changes
 
-### Alterações por arquivo
+**File 1: `src/features/agenda/components/TaskTrashPanel.tsx`**
+- Accept `isAdmin` prop (boolean)
+- Display "Excluída por: [name]" using `deleted_by` field mapped through `teamByUserId`
+- Conditionally render "Esvaziar Lixeira" button only when `isAdmin === true`
+- Conditionally render per-task "Excluir permanentemente" button only when `isAdmin === true`
+- Keep "Restaurar" available to all users
 
-**`src/features/gestao/components/PmTaskDetailDialog.tsx`**
-- Linha 832: mudar condição para `task.stage_current === "planejamento" && !task.parent_task_id`
-- Linhas 851-875: substituir lógica de renomeação por abordagem direta:
-  - Buscar nome do cliente via prop `clientsMap[task.client_id]`
-  - Buscar mês via `task.due_date` (format com date-fns ptBR, capitalizado)
-  - Construir: `${clientName} - Planejamento (${typeLabel}) - ${month}`
-  - Se não houver `due_date`, omitir o mês
-  - Precisa receber `clientsMap` como prop (verificar se já recebe)
+**File 2: `src/features/gestao/GestaoPanel.tsx`** (AgendaCalendarView)
+- Apply the same client/assignee/search filters to legacy tasks before adding them to `tasksByDay`
+- In the legacy task loop (~line 549), filter by `filterClient`, `filterAssignee` (checking both `assigned_user_id` and extra assignees from `legacyAssigneesByTaskId`), and `search` before converting to PmTask shape
 
-**`src/features/gestao/GestaoPanel.tsx`**
-- Após linha 75: adicionar `useEffect` que seta `filterAssignee` para `user.id` quando user carrega e filterAssignee ainda é `"__all__"`
+**File 3: `src/features/gestao/GestaoPanel.tsx`** (TrashPanel usage)
+- Pass `isAdmin` prop to `<TaskTrashPanel>` where it's rendered
 
-### Detalhes técnicos
-
-```text
-Renomeação (simplificada):
-  clientName = clientsMap[task.client_id] ?? task.title.split(" - ")[0]
-  month = task.due_date ? capitalize(format(parseISO(due_date), "MMMM", {locale: ptBR})) : null
-  title = month 
-    ? `${clientName} - Planejamento (${typeLabel}) - ${month}`
-    : `${clientName} - Planejamento (${typeLabel})`
-
-Filtro auto:
-  useEffect(() => {
-    if (user?.id && filterAssignee === "__all__") {
-      setFilterAssignee(user.id);
-    }
-  }, [user?.id]);
-```
+**File 4: `src/features/agenda/AgendaPanel.tsx`** (if TrashPanel is also used here)
+- Pass `isAdmin` prop to `<TaskTrashPanel>` where it's rendered
 
