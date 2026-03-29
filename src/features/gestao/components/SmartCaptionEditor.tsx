@@ -61,15 +61,23 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
   const [history, setHistory] = useState<{ html: string; time: Date }[]>([]);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
-  // Init content
+  // Sync content when value changes externally (e.g. switching between subtasks)
+  const lastSyncedValue = useRef(value);
   useEffect(() => {
-    if (editorRef.current && !editorRef.current.innerHTML && value) {
+    if (!editorRef.current) return;
+    // Only update DOM if the value actually changed from outside
+    if (value !== lastSyncedValue.current) {
+      editorRef.current.innerHTML = value || "";
+      lastSyncedValue.current = value;
+      if (value) {
+        setHistory([{ html: value, time: new Date() }]);
+      }
+    } else if (!editorRef.current.innerHTML && value) {
+      // Initial mount
       editorRef.current.innerHTML = value;
-    }
-    if (value) {
       setHistory([{ html: value, time: new Date() }]);
     }
-  }, []);
+  }, [value]);
 
   // Debounced auto-save
   const handleInput = useCallback(() => {
