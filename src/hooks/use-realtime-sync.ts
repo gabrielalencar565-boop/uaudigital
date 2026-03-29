@@ -207,5 +207,6 @@ export function useRealtimeSyncAll() {
     "squads",
     "squad_members",
     "client_squads",
+    "notification_reads",
   ]);
 }
