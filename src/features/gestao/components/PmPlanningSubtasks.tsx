@@ -1,7 +1,6 @@
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { Clapperboard, Palette, ChevronDown, Plus, Check, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -99,22 +98,12 @@ function PlanningSection({
   const createTask = useCreatePmTask();
   const { stageAssignees } = useDefaultFlowWithDates();
   const [isOpen, setIsOpen] = useState(true);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState("");
-  const editRef = useRef<HTMLInputElement>(null);
 
   const total = tasks.length;
   const progress = total > 0 ? Math.round((doneCount / total) * 100) : 0;
 
-  useEffect(() => {
-    if (editingId && editRef.current) {
-      editRef.current.focus();
-      editRef.current.select();
-    }
-  }, [editingId]);
-
   const handleQuickAdd = async () => {
-    const newTask = await createTask.mutateAsync({
+    await createTask.mutateAsync({
       client_id: parentTask.client_id,
       title: `Nova subtarefa de ${label.toLowerCase()}`,
       parent_task_id: parentTask.id,
@@ -123,25 +112,6 @@ function PlanningSection({
       watchers: parentTask.watchers ?? [],
       post_type: type,
     } as any);
-    // Start editing the new task's name immediately
-    if (newTask?.id) {
-      setEditingId(newTask.id);
-      setEditValue(`Nova subtarefa de ${label.toLowerCase()}`);
-    }
-  };
-
-  const handleRenameSubmit = (subId: string) => {
-    if (editValue.trim() && editValue.trim() !== "") {
-      updateTask.mutate({ id: subId, title: editValue.trim() } as any);
-    }
-    setEditingId(null);
-    setEditValue("");
-  };
-
-  const startEditing = (sub: PmTask, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setEditingId(sub.id);
-    setEditValue(sub.title);
   };
 
   const toggleAssignee = (subId: string, sub: PmTask, memberId: string) => {
@@ -203,7 +173,6 @@ function PlanningSection({
           {tasks.map((sub) => {
             const isDone = sub.stage_current === "entrega";
             const isActive = activeSubtaskId === sub.id;
-            const isEditing = editingId === sub.id;
             const subAssignees = allAssigneeIds(sub);
             const circleColor = getStageCircleColor(sub.stage_current);
 
@@ -211,13 +180,14 @@ function PlanningSection({
               <div
                 key={sub.id}
                 className={cn(
-                  "group flex items-center gap-2 px-2 py-2 transition border-b border-border/10",
+                  "group flex items-center gap-2 px-2 py-2 transition border-b border-border/10 cursor-pointer",
                   isActive ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-card/40",
                   isDone && "opacity-60"
                 )}
+                onClick={() => onSelectSubtask?.(sub)}
               >
                 {/* Stage circle */}
-                <div className="w-8 flex justify-center">
+                <div className="w-8 flex justify-center" onClick={(e) => e.stopPropagation()}>
                   <Popover>
                     <PopoverTrigger asChild>
                       <button className={cn(
@@ -251,33 +221,18 @@ function PlanningSection({
                   </Popover>
                 </div>
 
-                {/* Tags + Title (click = inline edit) */}
-                <div className="flex-1 min-w-0 flex items-center gap-1.5" onClick={(e) => startEditing(sub, e)}>
+                {/* Tags + Title */}
+                <div className="flex-1 min-w-0 flex items-center gap-1.5">
                   {(sub.tags ?? []).map(rawTag => {
                     const tc = tagColor(rawTag);
                     const name = tagDisplay(rawTag);
                     return <Badge key={rawTag} className={cn("text-[8px] h-4 px-1 gap-0.5 border-0 shrink-0", tc.bg, tc.text)}>{name}</Badge>;
                   })}
-                  {isEditing ? (
-                    <Input
-                      ref={editRef}
-                      value={editValue}
-                      onChange={(e) => setEditValue(e.target.value)}
-                      className="h-6 text-sm border-0 bg-transparent shadow-none focus-visible:ring-1 focus-visible:ring-primary/50 p-0 px-1"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") handleRenameSubmit(sub.id);
-                        if (e.key === "Escape") { setEditingId(null); setEditValue(""); }
-                      }}
-                      onBlur={() => handleRenameSubmit(sub.id)}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  ) : (
-                    <span className={cn("truncate text-sm cursor-text hover:text-primary transition-colors", isDone && "line-through text-muted-foreground")}>{sub.title}</span>
-                  )}
+                  <span className={cn("truncate text-sm hover:text-primary transition-colors", isDone && "line-through text-muted-foreground")}>{sub.title}</span>
                 </div>
 
                 {/* Assignee */}
-                <div className="w-20 flex justify-center">
+                <div className="w-20 flex justify-center" onClick={(e) => e.stopPropagation()}>
                   {members && members.length > 0 ? (
                     <PmAssigneeSelector
                       selectedIds={subAssignees}
@@ -305,13 +260,9 @@ function PlanningSection({
                   )}
                 </div>
 
-                {/* Navigate arrow - only this navigates to subtask detail */}
-                <button
-                  className="w-6 flex justify-center cursor-pointer"
-                  onClick={() => onSelectSubtask?.(sub)}
-                >
+                <div className="w-6 flex justify-center">
                   <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 group-hover:text-primary transition" />
-                </button>
+                </div>
               </div>
             );
           })}
