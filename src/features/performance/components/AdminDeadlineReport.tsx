@@ -63,13 +63,21 @@ function isOnTime(task: TaskForReport) {
   return completedSP <= task.due_date;
 }
 
-function calcPoints(task: TaskForReport, configMap: Map<string, ScoringConfigRow>): number {
+function calcPoints(task: TaskForReport, configMap: Map<string, ScoringConfigRow>, year: number, month: number): number {
   const onTime = isOnTime(task);
   if (onTime === null) return 0;
+
+  // Legacy scoring for months before April 2026
+  const useOld = year < 2026 || (year === 2026 && month < 4);
+  if (useOld) {
+    if (task.stage === "pdf" || task.stage === "agendamento") return 0;
+    return onTime ? 1 : -1;
+  }
+
   const cfg = configMap.get(task.stage);
   if (!onTime) return cfg?.late_penalty ?? -1;
 
-  // On-time scoring
+  // On-time scoring — use snapshot if available
   if (task.point_value != null) return task.point_value;
   if (!cfg) return 1;
 
@@ -198,7 +206,7 @@ export function AdminDeadlineReport({
 
       const userIds = getTaskUserIds(t);
       const override = overrideByTaskId.get(t.id);
-      const pts = override ? override.override_points : calcPoints(t, scoringConfigMap);
+      const pts = override ? override.override_points : calcPoints(t, scoringConfigMap, year, month);
       const onTime = isOnTime(t);
 
       for (const uid of userIds) {
@@ -448,7 +456,7 @@ export function AdminDeadlineReport({
                 </TableHeader>
                 <TableBody>
                   {userTasks.map((t) => {
-                    const auto = calcPoints(t, scoringConfigMap);
+                    const auto = calcPoints(t, scoringConfigMap, year, month);
                     const override = overrideByTaskId.get(t.id);
                     const current = override ? String(override.override_points) : "auto";
 
@@ -575,7 +583,7 @@ export function AdminDeadlineReport({
             const assignedNames = (assignees && assignees.length > 0 ? assignees : [detailTask.assigned_user_id])
               .map((uid) => teamById.get(uid)?.display_name ?? "—");
             const override = overrideByTaskId.get(detailTask.id);
-            const auto = calcPoints(detailTask, scoringConfigMap);
+            const auto = calcPoints(detailTask, scoringConfigMap, year, month);
             const onTime = isOnTime(detailTask);
 
             return (
