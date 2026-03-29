@@ -62,6 +62,8 @@ const TABLE_TO_QUERY_KEYS: Record<RealtimeTable, string[][]> = {
     ["deadline_report_tasks"],
     ["my_monthly_rank"],
     ["my_annual_rank"],
+    ["all_pending_tasks_for_podium"],
+    ["all_my_pending_tasks"],
   ],
   clients: [["clients"], ["clients_all"], ["clients_admin_all"]],
   client_cycles: [["client_cycles"]],
