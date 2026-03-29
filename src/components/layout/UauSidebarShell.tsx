@@ -72,10 +72,7 @@ const NAV: NavEntry[] = [
   children: [
   { key: "agenda_gestao", label: "Agenda", icon: CalendarDays },
   { key: "cronograma", label: "Cronograma", icon: CalendarRange },
-  { key: "visao_geral_projetos", label: "Painel de Squads", icon: PieChart },
   { key: "fluxos", label: "Fluxos", icon: Workflow }]
-
-
 },
 {
   key: "dashboard_group",
@@ -84,8 +81,8 @@ const NAV: NavEntry[] = [
   icon: Eye,
   children: [
   { key: "magic2", label: "Magic Number", icon: Target },
-  { key: "desempenho", label: "Desempenho", icon: Trophy }]
-
+  { key: "desempenho", label: "Desempenho", icon: Trophy },
+  { key: "visao_geral_projetos", label: "Painel de Squads", icon: PieChart }]
 },
 {
   key: "financeiro_group",
@@ -99,7 +96,6 @@ const NAV: NavEntry[] = [
   { key: "fin_despesas_detalhadas", label: "Despesas Detalhadas", icon: FileSpreadsheet },
   { key: "fin_lancamentos", label: "Lançamentos", icon: ArrowRightLeft },
   { key: "metas", label: "Metas", icon: TrendingUp }]
-
 },
 { key: "configuracoes", label: "Configurações", icon: Settings, adminOnly: true }];
 
