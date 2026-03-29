@@ -324,7 +324,7 @@ export function ProductivityWidget({ tasks, allMonthTasks, todayKey }: Props) {
                       return (
                         <text
                           x={x} y={y + 12} textAnchor="middle" fontSize={11}
-                          fill={isSelected ? "hsl(200 80% 50%)" : isCurrent ? "hsl(263 70% 50%)" : "hsl(var(--muted-foreground))"}
+                          fill={isSelected ? "hsl(263 55% 65%)" : isCurrent ? "hsl(263 70% 50%)" : "hsl(var(--muted-foreground))"}
                           fontWeight={isSelected || isCurrent ? 700 : 400}
                           style={{ cursor: "pointer" }}
                         >
