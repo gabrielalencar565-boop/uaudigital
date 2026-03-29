@@ -25,6 +25,7 @@ import {
 import { usePmTags, useCreatePmTag, useDeletePmTag } from "../hooks/use-pm-tags";
 import { useDefaultFlowWithDates, getNextStages, getFixedAssignee, getFixedWatchers } from "./PmStageFlowConfig";
 import { PmSubtaskList } from "./PmSubtaskList";
+import { PmPlanningSubtasks } from "./PmPlanningSubtasks";
 import { PmCommentsSection } from "./PmCommentsSection";
 import { PmAttachmentsSection } from "./PmAttachmentsSection";
 import { PmAssigneeSelector } from "./PmAssigneeSelector";
