@@ -764,7 +764,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                   {clientsMap[task.client_id] ?? "—"}
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-56 p-1 max-h-64 overflow-y-auto" align="start">
+              <PopoverContent className="w-56 p-1 max-h-64 overflow-y-auto z-[150]" align="start">
                 {Object.entries(clientsMap).map(([cid, cname]) => (
                   <button key={cid} className={cn("flex items-center gap-2 w-full px-3 py-2 rounded text-sm hover:bg-accent transition text-left", task.client_id === cid && "bg-accent")} onClick={() => {
                     const oldClientName = clientsMap[task.client_id];
