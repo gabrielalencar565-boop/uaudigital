@@ -613,8 +613,21 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
   const renderTaskCard = (t: PmTask) => {
     const isLegacy = t.id.startsWith("legacy_");
     const isDone = t.status_global === "concluido";
-    const stageBg = STAGE_BADGE_BG[t.stage_current] ?? "bg-muted";
-    const abbr = STAGE_ABBR[t.stage_current] ?? t.stage_current.toUpperCase().slice(0, 4);
+    const isAlteracaoWithOrigin = t.stage_current === "alteracoes" && !!t.post_type;
+    const isRevisaoWithOrigin = t.stage_current === "revisao" && !!t.post_type;
+    const hasGradient = isAlteracaoWithOrigin || isRevisaoWithOrigin;
+    const gradientClass = hasGradient
+      ? t.post_type === "video"
+        ? "bg-gradient-to-r from-pink-500 to-blue-500"
+        : "bg-gradient-to-r from-pink-500 to-teal-500"
+      : undefined;
+    const gradientAbbr = isAlteracaoWithOrigin
+      ? (t.post_type === "video" ? "ALT/VDO" : "ALT/DSG")
+      : isRevisaoWithOrigin
+        ? (t.post_type === "video" ? "REV/VDO" : "REV/DSG")
+        : undefined;
+    const stageBg = gradientClass ?? (STAGE_BADGE_BG[t.stage_current] ?? "bg-muted");
+    const abbr = gradientAbbr ?? (STAGE_ABBR[t.stage_current] ?? t.stage_current.toUpperCase().slice(0, 4));
     const assignees = getTaskAssignees(t);
     const visibleAssignees = assignees.slice(0, 2);
     const extraAssignees = Math.max(assignees.length - 2, 0);
