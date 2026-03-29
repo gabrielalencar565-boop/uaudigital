@@ -296,7 +296,10 @@ export function useNotificationSound() {
           const row = payload.new as any;
           const old = payload.old as any;
           invalidateNotifications();
-          if (row.assignee_id === uid && old.assignee_id !== uid) {
+          // Trigger when assignee changed TO current user
+          // old may be partial, so also trigger if assignee is uid and old.assignee_id is absent
+          const wasAssignedBefore = old?.assignee_id === uid;
+          if (row.assignee_id === uid && !wasAssignedBefore) {
             enqueueOrShow({
               key: `assigned-${row.id}-${row.updated_at ?? ""}`,
               type: "task_assigned",
