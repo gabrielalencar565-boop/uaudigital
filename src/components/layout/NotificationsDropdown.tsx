@@ -33,6 +33,7 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
   const mentionsQ = useQuery({
     queryKey: ["notifications_mentions", user?.id],
     enabled: !!user?.id,
+    staleTime: 0, // Always refetch when invalidated by realtime
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from("pm_comments")
