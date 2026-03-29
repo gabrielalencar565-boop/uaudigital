@@ -1,0 +1,1 @@
+SELECT public.recompute_all_scores('e674c34f-b268-4dfd-82c5-9aea9cba853e'::uuid, 2026, 3);
