@@ -79,7 +79,7 @@ export function DatePicker({ value, onChange, placeholder = "Selecionar data", c
           {selectedDate ? format(selectedDate, "dd/MM/yyyy") : placeholder}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start" sideOffset={4}>
+      <PopoverContent className="w-auto p-0 z-[150]" align="start" sideOffset={4}>
         <div className="flex">
           {/* Quick options */}
           <div className="border-r border-border p-2 min-w-[200px]">
@@ -150,7 +150,7 @@ export function DatePickerInline({
           {selectedDate ? format(selectedDate, "dd/MM/yyyy") : "—"}
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start" sideOffset={4}>
+      <PopoverContent className="w-auto p-0 z-[150]" align="start" sideOffset={4}>
         <div className="flex">
           <div className="border-r border-border p-2 min-w-[200px]">
             {quickOptions.map((opt) => (
