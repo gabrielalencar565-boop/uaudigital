@@ -1,5 +1,5 @@
-import { useRef } from "react";
-import { LogOut, Moon, Palette, Pencil, Sun } from "lucide-react";
+import { useRef, useState, useEffect } from "react";
+import { LogOut, Moon, Palette, Pencil, Sun, Volume2, VolumeX } from "lucide-react";
 import { useTheme } from "next-themes";
 import { WorkspaceDropdown } from "@/components/layout/WorkspaceDropdown";
 import { TaskSearchDropdown } from "@/components/layout/TaskSearchDropdown";
