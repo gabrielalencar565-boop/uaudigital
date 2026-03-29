@@ -795,23 +795,6 @@ export function DayViewPanel() {
           })}
               </div>}
 
-  // Previous month scores for ranking comparison
-  const prevMonth = selectedMonth === 1 ? 12 : selectedMonth - 1;
-  const prevYear = selectedMonth === 1 ? selectedYear - 1 : selectedYear;
-  const prevScoresQ = useQuery({
-    queryKey: ["performance_scores_prev", prevYear, prevMonth],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("performance_scores")
-        .select("*")
-        .eq("year", prevYear)
-        .eq("month", prevMonth)
-        .order("user_id");
-      if (error) throw error;
-      return (data ?? []) as ScoreRow[];
-    },
-  });
-
 
             {/* Mensagem quando não há tarefas */}
             {todayPendingTasks.length === 0 && todayCompletedTasks.length === 0 && overdueTasks.length === 0 && todayCleaningTasks.length === 0 && <p className="text-muted-foreground text-center py-4">
