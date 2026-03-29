@@ -858,8 +858,10 @@ export function DayViewPanel() {
           const member = teamByUserId.get(row.user_id);
           const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx + 1}º`;
           const pending = row.taskTotal - row.taskCompleted;
-          const prevPos = prevRankMap.current.get(row.user_id);
-          const posChange = prevPos !== undefined ? prevPos - idx : 0;
+          const prevPos = prevMonthRankMap.get(row.user_id);
+          const hasPrevData = prevScoresQ.data && prevScoresQ.data.length > 0;
+          const posChange = hasPrevData && prevPos !== undefined ? prevPos - idx : 0;
+          const hasChange = hasPrevData && prevPos !== undefined;
           return (
             <div key={row.user_id} className={cn("rounded-lg sm:rounded-none border sm:border-0 border-border/40 p-2.5 sm:p-0", isFullscreen ? "py-3" : "sm:py-1")}>
                       {/* Desktop layout */}
@@ -882,16 +884,33 @@ export function DayViewPanel() {
                           </div>
                         </div>
                         <span className="w-14 text-center shrink-0 text-sm font-bold">{row.total}</span>
-                        <div className="w-10 shrink-0 flex items-center justify-center gap-0.5">
-                          {posChange > 0 ? <ArrowUp className="h-3.5 w-3.5 text-success" /> :
-                  posChange < 0 ? <ArrowDown className="h-3.5 w-3.5 text-destructive" /> :
-                  (streakByUser.get(row.user_id) ?? 0) >= 1 ?
-                  <Tooltip>
-                    <TooltipTrigger asChild><span className="text-base leading-none cursor-default">⚡</span></TooltipTrigger>
-                    <TooltipContent side="top">🔥 {streakByUser.get(row.user_id)} dias consecutivos no prazo!</TooltipContent>
-                  </Tooltip> :
-                  <span className="text-muted-foreground text-[10px]">–</span>}
-                        </div>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="w-14 shrink-0 flex items-center justify-center gap-0.5 cursor-default">
+                              {!hasChange ? (
+                                <span className="text-muted-foreground text-[10px]">—</span>
+                              ) : posChange > 0 ? (
+                                <>
+                                  <ArrowUp className="h-3.5 w-3.5 text-success" />
+                                  <span className="text-[11px] font-semibold text-success">+{posChange}</span>
+                                </>
+                              ) : posChange < 0 ? (
+                                <>
+                                  <ArrowDown className="h-3.5 w-3.5 text-destructive" />
+                                  <span className="text-[11px] font-semibold text-destructive">{posChange}</span>
+                                </>
+                              ) : (
+                                <span className="text-muted-foreground text-[10px]">—</span>
+                              )}
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent side="top">
+                            {!hasChange ? "Sem dados do mês anterior" :
+                              posChange > 0 ? `Subiu ${posChange} posição(ões) em relação ao mês anterior` :
+                              posChange < 0 ? `Caiu ${Math.abs(posChange)} posição(ões) no ranking` :
+                              "Manteve a mesma posição"}
+                          </TooltipContent>
+                        </Tooltip>
                       </div>
                       {/* Mobile layout */}
                       <div className="flex sm:hidden items-center gap-2.5">
