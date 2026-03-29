@@ -117,7 +117,7 @@ export function AgendaWeekTaskItem({
         !canInteract && "opacity-60",
         onClick && "cursor-pointer hover:border-primary/50 hover:bg-card/40 transition-colors",
       )}
-      style={isAlteracaoWithOrigin ? { background: 'linear-gradient(135deg, rgba(255,204,1,0.25) 0%, rgba(245,184,0,0.18) 100%)' } : undefined}
+      style={isAlteracaoWithOrigin ? { background: 'linear-gradient(135deg, #FED404 0%, #FF9A02 100%)' } : undefined}
       onClick={(e) => {
         // Evita abrir edição se clicar nos botões
         if ((e.target as HTMLElement).closest("button")) return;

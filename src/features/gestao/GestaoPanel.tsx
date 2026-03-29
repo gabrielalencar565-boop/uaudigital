@@ -651,7 +651,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
           isAlteracaoWithOrigin ? "border-[#f5b800]/40" : "bg-card/60 hover:bg-card border-border/30",
           isLegacy ? "cursor-default border-border/40 border-dashed" : "cursor-grab active:cursor-grabbing"
         )}
-        style={isAlteracaoWithOrigin ? { background: 'linear-gradient(135deg, rgba(255,204,1,0.25) 0%, rgba(245,184,0,0.18) 100%)' } : undefined}
+        style={isAlteracaoWithOrigin ? { background: 'linear-gradient(135deg, #FED404 0%, #FF9A02 100%)' } : undefined}
         onClick={isLegacy ? undefined : () => onTaskClick(t)}>
         <div className="flex items-center justify-between gap-1">
           <div className={cn("inline-flex h-5 items-center rounded-md px-2 text-[9px] font-bold text-white tracking-wide", stageBg)}>
