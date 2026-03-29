@@ -1096,10 +1096,12 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           )}
         </div>
 
-        {/* Attachments */}
-        <div className="border-t border-border/20 pt-4">
-          <PmAttachmentsSection taskId={task.id} attachments={attachments} membersMap={membersMap} onSetCover={handleSetCover} currentCoverUrl={task.cover_url} />
-        </div>
+        {/* Attachments — hidden for planning parent tasks */}
+        {!(task.stage_current === "planejamento" && !task.parent_task_id) && (
+          <div className="border-t border-border/20 pt-4">
+            <PmAttachmentsSection taskId={task.id} attachments={attachments} membersMap={membersMap} onSetCover={handleSetCover} currentCoverUrl={task.cover_url} />
+          </div>
+        )}
 
         {/* Cronograma tab (only for parent tasks in PDF stage with children) */}
         {!task.parent_task_id && task.stage_current === "pdf" && childTasks.length > 0 && (
