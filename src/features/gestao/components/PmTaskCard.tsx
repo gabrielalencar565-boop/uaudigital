@@ -94,7 +94,7 @@ export function PmTaskCard({ task, clientName, assignees = [], childTasks = [], 
             {task.post_type === "video" ? <><Clapperboard className="h-2.5 w-2.5" /> REV/Vídeo</> : <><Palette className="h-2.5 w-2.5" /> REV/DSG</>}
           </span>
         )}
-        {task.post_type && (task.stage_current === "planejamento") && (
+        {task.post_type && ["planejamento", "design", "edicao_videos", "alteracoes"].includes(task.stage_current) && (
           <span className={cn(
             "inline-flex items-center justify-center rounded-md h-5 w-5",
             task.post_type === "video"
