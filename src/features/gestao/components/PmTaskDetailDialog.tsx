@@ -390,7 +390,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     const monthStart = format(new Date(base.getFullYear(), base.getMonth(), 1), "yyyy-MM-dd");
     const monthEnd = format(new Date(base.getFullYear(), base.getMonth() + 1, 0), "yyyy-MM-dd");
 
-    const { data: existing } = await sb
+    let query = sb
       .from("pm_tasks")
       .select("id, due_date, title")
       .eq("client_id", task.client_id)
@@ -403,6 +403,14 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       .neq("id", task.id)
       .order("due_date", { ascending: true })
       .limit(1);
+
+    // When advancing to revisão, only link with same post_type origin
+    if (nextStage === "revisao" && task.post_type) {
+      query = query.eq("post_type", task.post_type);
+    }
+
+    const { data: existing } = await query;
+
 
     return existing && existing.length > 0 ? existing[0] : null;
   };
