@@ -63,6 +63,11 @@ export function useNotificationSound() {
           // Check if content mentions the current user
           if (row.content && row.content.includes(`@${uid}`)) {
             playNotificationSound();
+            toast("Você foi mencionado", {
+              description: row.content?.substring(0, 80)?.replace(/@([a-f0-9-]{36})/gi, "@alguém") ?? "",
+              duration: 5000,
+              position: "top-right",
+            });
           }
         }
       )
