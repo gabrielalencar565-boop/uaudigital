@@ -288,59 +288,6 @@ export function DayViewPanel() {
     return map;
   }, [prevScoresQ.data, teamQ.data]);
 
-  // ─── Streak: dias consecutivos concluindo tarefas dentro do prazo ───
-  const streakByUser = useMemo(() => {
-    const tasks = tasksQ.data ?? [];
-    const assignees = assigneesQ.data ?? [];
-    const map = new Map<string, number>();
-
-    // Agrupa tarefas concluídas por user+date
-    const userDays = new Map<string, Set<string>>();
-    // Agrupa tarefas atrasadas (concluídas após due_date) por user+date
-    const userLateDays = new Map<string, Set<string>>();
-
-    const addTaskForUser = (userId: string, t: typeof tasks[0]) => {
-      if (t.status !== "concluido") return;
-      const completedDate = t.completed_at ? format(new Date(t.completed_at), "yyyy-MM-dd") : t.due_date;
-      const isOnTime = completedDate <= t.due_date;
-
-      if (!userDays.has(userId)) userDays.set(userId, new Set());
-      userDays.get(userId)!.add(t.due_date);
-
-      if (!isOnTime) {
-        if (!userLateDays.has(userId)) userLateDays.set(userId, new Set());
-        userLateDays.get(userId)!.add(t.due_date);
-      }
-    };
-
-    for (const t of tasks) {
-      const taskAssignees = assignees.filter((a) => a.task_id === t.id);
-      if (taskAssignees.length > 0) {
-        for (const a of taskAssignees) addTaskForUser(a.user_id, t);
-      } else {
-        addTaskForUser(t.assigned_user_id, t);
-      }
-    }
-
-    // Para cada user, conta dias consecutivos até hoje sem atraso
-    for (const [userId, days] of userDays) {
-      const lateDays = userLateDays.get(userId) ?? new Set();
-      let streak = 0;
-      const d = new Date(todayKey + "T12:00:00");
-      for (let i = 0; i < 60; i++) {
-        const key = format(d, "yyyy-MM-dd");
-        if (days.has(key) && !lateDays.has(key)) {
-          streak++;
-        } else if (days.has(key) && lateDays.has(key)) {
-          break;
-        }
-        d.setDate(d.getDate() - 1);
-      }
-      map.set(userId, streak);
-    }
-
-    return map;
-  }, [tasksQ.data, assigneesQ.data, todayKey]);
 
   // Ranking com todos os membros (sem filtro)
   const filteredRank = monthlyRank;
