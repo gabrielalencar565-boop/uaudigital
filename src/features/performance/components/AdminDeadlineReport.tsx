@@ -63,13 +63,21 @@ function isOnTime(task: TaskForReport) {
   return completedSP <= task.due_date;
 }
 
-function calcPoints(task: TaskForReport, configMap: Map<string, ScoringConfigRow>): number {
+function calcPoints(task: TaskForReport, configMap: Map<string, ScoringConfigRow>, year: number, month: number): number {
   const onTime = isOnTime(task);
   if (onTime === null) return 0;
+
+  // Legacy scoring for months before April 2026
+  const useOld = year < 2026 || (year === 2026 && month < 4);
+  if (useOld) {
+    if (task.stage === "pdf" || task.stage === "agendamento") return 0;
+    return onTime ? 1 : -1;
+  }
+
   const cfg = configMap.get(task.stage);
   if (!onTime) return cfg?.late_penalty ?? -1;
 
-  // On-time scoring
+  // On-time scoring — use snapshot if available
   if (task.point_value != null) return task.point_value;
   if (!cfg) return 1;
 
