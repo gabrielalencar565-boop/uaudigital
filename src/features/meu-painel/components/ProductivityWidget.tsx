@@ -302,9 +302,9 @@ export function ProductivityWidget({ tasks, allMonthTasks, todayKey }: Props) {
               )}
             </div>
             <p className="text-[10px] text-muted-foreground/70 mb-2">Clique para detalhar</p>
-            <div className="h-[128px]">
+            <div className="h-[148px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={weeklyData} barCategoryGap="18%">
+                <BarChart data={weeklyData} barCategoryGap="18%" margin={{ top: 24, right: 4, bottom: 0, left: 4 }}>
                   <defs>
                     <filter id="barGlow">
                       <feGaussianBlur stdDeviation="3" result="blur" />
