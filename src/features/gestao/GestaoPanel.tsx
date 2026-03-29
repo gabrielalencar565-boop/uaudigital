@@ -616,14 +616,14 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
     const isAlteracaoWithOrigin = t.stage_current === "alteracoes" && !!t.post_type;
     const isRevisaoWithOrigin = t.stage_current === "revisao" && !!t.post_type;
     const hasGradient = isAlteracaoWithOrigin || isRevisaoWithOrigin;
-    const gradientClass = hasGradient
-      ? t.post_type === "video"
-        ? "bg-gradient-to-r from-[#E5C94E] to-blue-500"
-        : "bg-gradient-to-r from-[#E5C94E] to-teal-500"
+    const gradientClass = isAlteracaoWithOrigin
+      ? (t.post_type === "video"
+        ? "bg-gradient-to-r from-stage-alteracoes to-stage-edicao_videos"
+        : "bg-gradient-to-r from-stage-alteracoes to-stage-design")
       : isRevisaoWithOrigin
-      ? t.post_type === "video"
-        ? "bg-gradient-to-r from-pink-500 to-blue-500"
-        : "bg-gradient-to-r from-pink-500 to-teal-500"
+      ? (t.post_type === "video"
+        ? "bg-gradient-to-r from-pink-400 to-stage-edicao_videos"
+        : "bg-gradient-to-r from-pink-400 to-stage-design")
       : undefined;
     const gradientAbbr = isAlteracaoWithOrigin
       ? (t.post_type === "video" ? "ALT/VDO" : "ALT/DSG")

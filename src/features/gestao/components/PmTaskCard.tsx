@@ -94,11 +94,11 @@ export function PmTaskCard({ task, clientName, assignees = [], childTasks = [], 
             "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold text-white tracking-wide",
             task.stage_current === "alteracoes"
               ? (task.post_type === "video"
-                ? "bg-gradient-to-r from-[#E5C94E] to-blue-500"
-                : "bg-gradient-to-r from-[#E5C94E] to-teal-500")
+                ? "bg-gradient-to-r from-stage-alteracoes to-stage-edicao_videos"
+                : "bg-gradient-to-r from-stage-alteracoes to-stage-design")
               : (task.post_type === "video"
-                ? "bg-gradient-to-r from-pink-500 to-blue-500"
-                : "bg-gradient-to-r from-pink-500 to-teal-500")
+                ? "bg-gradient-to-r from-pink-400 to-stage-edicao_videos"
+                : "bg-gradient-to-r from-pink-400 to-stage-design")
           )}>
             {task.stage_current === "alteracoes"
               ? (task.post_type === "video" ? <><Clapperboard className="h-3 w-3" /> ALT/VDO</> : <><Palette className="h-3 w-3" /> ALT/DSG</>)

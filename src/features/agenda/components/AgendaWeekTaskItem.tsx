@@ -102,11 +102,11 @@ export function AgendaWeekTaskItem({
     : (postType === "video" ? "REV/VDO" : "REV/DSG");
   const gradientClass = isAlteracaoWithOrigin
     ? (postType === "video"
-      ? "bg-gradient-to-r from-[#E5C94E] to-blue-500 text-white"
-      : "bg-gradient-to-r from-[#E5C94E] to-teal-500 text-white")
+      ? "bg-gradient-to-r from-stage-alteracoes to-stage-edicao_videos text-white"
+      : "bg-gradient-to-r from-stage-alteracoes to-stage-design text-white")
     : (postType === "video"
-      ? "bg-gradient-to-r from-[#E88CA4] via-[#C074D4] to-[#7B8CE8] text-white"
-      : "bg-gradient-to-r from-pink-500 to-teal-500 text-white");
+      ? "bg-gradient-to-r from-pink-400 to-stage-edicao_videos text-white"
+      : "bg-gradient-to-r from-pink-400 to-stage-design text-white");
 
   return (
     <div
