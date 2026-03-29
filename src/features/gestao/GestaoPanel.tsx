@@ -564,8 +564,6 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
         const clientMatch = clientName.toLowerCase().includes(s);
         if (!titleMatch && !clientMatch) continue;
       }
-      if (!key) continue;
-      const legacyExtraAssignees = legacyAssigneesByTaskId.get(lt.id) ?? [];
       const legacyWatchers = legacyExtraAssignees.filter((id) => id !== lt.assigned_user_id);
 
       const asPm: PmTask = {
