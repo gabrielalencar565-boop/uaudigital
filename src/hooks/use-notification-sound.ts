@@ -37,7 +37,9 @@ export function useNotificationSound() {
   // ── helpers ──
   const isTabActive = useCallback(() => {
     if (typeof document === "undefined") return true;
-    return document.visibilityState === "visible" && document.hasFocus();
+    // In embedded previews/iframes, document.hasFocus() can stay false and block toasts.
+    // Visibility is enough to treat the app as active for realtime notifications.
+    return document.visibilityState === "visible";
   }, []);
 
   const showNotif = useCallback((item: PendingNotif) => {
