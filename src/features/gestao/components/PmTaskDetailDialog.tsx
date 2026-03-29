@@ -518,7 +518,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         }
         const nextDueDate = newDueDate ?? format(addDays(new Date(snapshotDueDate + "T12:00:00"), 1), "yyyy-MM-dd");
 
-        const createSplitTask = async (stage: string, stageLabel_: string, children: PmTask[]) => {
+        const createSplitTask = async (stage: string, stageLabel_: string, children: PmTask[], postType: string) => {
           const fixedAssignee = getFixedAssignee(stageAssignees, stage, task.client_id);
           const fixedWatchers_ = getFixedWatchers(stageAssignees, stage, task.client_id);
           const title = monthLabel
@@ -538,6 +538,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
             tags: task.tags ?? [],
             is_extra_demand: task.is_extra_demand,
             status_global: "backlog",
+            post_type: postType,
           });
 
           // Transfer children to new task
