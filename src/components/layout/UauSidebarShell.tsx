@@ -47,7 +47,7 @@ type NavGroup = {
   key: string;
   label: string;
   icon: React.ComponentType<any>;
-  children: {key: MainTab;label: string;icon: React.ComponentType<any>;}[];
+  children: {key: MainTab;label: string;icon: React.ComponentType<any>;adminOnly?: boolean;}[];
   adminOnly?: boolean;
   landingTab?: MainTab;
 };
