@@ -131,7 +131,7 @@ export function AgendaWeekTaskItem({
               "inline-flex items-start rounded-full font-semibold",
               isCompact ? "px-2 py-1 text-[10px] leading-snug" : "px-2.5 py-1 text-xs leading-snug",
               stagePillWidth === "fit" ? "w-auto" : "w-full",
-              isRevisaoWithOrigin ? revisaoGradient : cn(stageTone.bg, stageTone.fg),
+              hasGradientPill ? gradientClass : cn(stageTone.bg, stageTone.fg),
             )}
             title={stageLabel}
           >
