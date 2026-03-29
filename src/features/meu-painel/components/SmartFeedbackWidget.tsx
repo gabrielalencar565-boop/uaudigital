@@ -205,42 +205,29 @@ export function SmartFeedbackWidget({
   const hasData = analysisQ !== null;
 
   return (
-    <div className="rounded-2xl border border-border bg-card overflow-hidden transition-all duration-300 hover:shadow-lg">
+    <div className="overflow-hidden">
 
-      {/* ── HEADER with gradient ── */}
-      <div className="relative px-4 pt-4 pb-3" style={{ background: "linear-gradient(135deg, hsl(263 70% 50% / 0.08), transparent 70%)" }}>
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-xl bg-sidebar/15 flex items-center justify-center shadow-sm">
-              <Trophy className="h-4.5 w-4.5 text-sidebar" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-foreground tracking-tight">
-                🏆 Desempenho em {analysisLabel}
-              </h3>
-            </div>
-          </div>
-          {/* Toggle */}
-          <div className="flex rounded-lg overflow-hidden text-xs border border-border bg-background/50">
-            <button
-              onClick={() => setViewMode("mes")}
-              className={cn(
-                "px-3 py-1.5 font-medium transition-all duration-200",
-                viewMode === "mes" ? "bg-sidebar text-white" : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              Mês
-            </button>
-            <button
-              onClick={() => setViewMode("anual")}
-              className={cn(
-                "px-3 py-1.5 font-medium transition-all duration-200",
-                viewMode === "anual" ? "bg-sidebar text-white" : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              Anual
-            </button>
-          </div>
+      {/* ── Toggle only ── */}
+      <div className="px-4 pt-3 pb-2 flex justify-end">
+        <div className="flex rounded-lg overflow-hidden text-xs border border-border bg-background/50">
+          <button
+            onClick={() => setViewMode("mes")}
+            className={cn(
+              "px-3 py-1.5 font-medium transition-all duration-200",
+              viewMode === "mes" ? "bg-sidebar text-white" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Mês
+          </button>
+          <button
+            onClick={() => setViewMode("anual")}
+            className={cn(
+              "px-3 py-1.5 font-medium transition-all duration-200",
+              viewMode === "anual" ? "bg-sidebar text-white" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Anual
+          </button>
         </div>
       </div>
 
