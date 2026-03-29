@@ -119,7 +119,7 @@ export function TaskTrashPanel({ onClose, isAdmin = false }: { onClose: () => vo
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
-            {deletedTasks.length > 0 && (
+            {deletedTasks.length > 0 && isAdmin && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive" size="sm" disabled={emptyingTrash}>
