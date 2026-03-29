@@ -557,8 +557,8 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           }
         };
 
-        if (hasVideo) await createSplitTask("edicao_videos", "Vídeo", videoChildren);
-        if (hasDesign) await createSplitTask("design", "Design", designChildren);
+        if (hasVideo) await createSplitTask("edicao_videos", "Vídeo", videoChildren, "video");
+        if (hasDesign) await createSplitTask("design", "Design", designChildren, "design");
 
         toast.success("Planejamento concluído! Tarefas de Vídeo e Design criadas.");
         return;
