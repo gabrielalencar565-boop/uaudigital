@@ -345,17 +345,8 @@ export function DayViewPanel() {
   // Ranking com todos os membros (sem filtro)
   const filteredRank = monthlyRank;
 
-  // Rastreia posição anterior para mostrar setas de subida/descida
-  const prevRankMap = useRef(new Map<string, number>());
-  useEffect(() => {
-    // Atualiza o mapa anterior após a renderização
-    const timer = setTimeout(() => {
-      const map = new Map<string, number>();
-      filteredRank.forEach((r, i) => map.set(r.user_id, i));
-      prevRankMap.current = map;
-    }, 2000); // Delay para permitir visualização das setas
-    return () => clearTimeout(timer);
-  }, [filteredRank]);
+
+
 
   const clientsById = useMemo(() => new Map((clientsQ.data ?? []).map((c) => [c.id, c] as const)), [clientsQ.data]);
   const teamByUserId = useMemo(() => new Map((teamQ.data ?? []).map((m) => [m.user_id, m] as const)), [teamQ.data]);
