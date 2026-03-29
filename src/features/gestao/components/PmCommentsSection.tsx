@@ -231,7 +231,7 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
           ref={textareaRef}
           value={content}
           onChange={(e) => handleContentChange(e.target.value)}
-          placeholder="Escreva um comentário... Use @ para mencionar"
+          placeholder=""
           className="min-h-[60px] text-sm resize-none"
           onKeyDown={handleKeyDown}
         />
