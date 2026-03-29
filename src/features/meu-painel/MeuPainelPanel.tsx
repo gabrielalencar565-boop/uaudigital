@@ -152,11 +152,25 @@ export function MeuPainelPanel() {
   const upcomingTasks = useMemo(() => myTasks.filter((t) => t.status !== "concluido" && t.due_date > todayKey), [myTasks, todayKey]);
   const completedTasks = useMemo(() => [...myTasks.filter((t) => t.status === "concluido"), ...cleaningVMs.filter((c) => c.status === "concluido")], [myTasks, cleaningVMs]);
 
+  // ── All pending tasks (across all months) ──
+  const allMyPendingQ = useQuery({
+    enabled: !!user?.id,
+    queryKey: ["all_my_pending_tasks", user?.id],
+    queryFn: async () => {
+      const [tasksRes, pmRes] = await Promise.all([
+        supabase.from("tasks").select("id", { count: "exact", head: true }).eq("assigned_user_id", user!.id).neq("status", "concluido").is("deleted_at", null),
+        supabase.from("pm_tasks").select("id", { count: "exact", head: true }).eq("assignee_id", user!.id).is("parent_task_id", null).neq("status_global", "concluido").neq("status_global", "cancelado"),
+      ]);
+      return (tasksRes.count ?? 0) + (pmRes.count ?? 0);
+    },
+    staleTime: 30_000,
+  });
+
   const summary = useMemo(() => {
     const done = myTasks.filter((t) => t.status === "concluido").length;
-    const pending = myTasks.filter((t) => t.status !== "concluido").length;
+    const pending = allMyPendingQ.data ?? myTasks.filter((t) => t.status !== "concluido").length;
     return { total: myTasks.length, done, pending, overdue: overdueTasks.length };
-  }, [myTasks, overdueTasks.length]);
+  }, [myTasks, overdueTasks.length, allMyPendingQ.data]);
 
   // ── Previous month for comparison ──
   const prevMonth = useMemo(() => {
