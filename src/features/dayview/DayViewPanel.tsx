@@ -253,26 +253,36 @@ export function DayViewPanel() {
     return base;
   }, [scoresQ.data, teamQ.data, taskStatsByUser]);
 
-  // Previous month ranking positions map
-  const prevMonthRankMap = useMemo(() => {
-    const scores = prevScoresQ.data ?? [];
-    const byUser = new Map(scores.map((s) => [s.user_id, s]));
-    const members = teamQ.data ?? [];
-    const base = members.map((m) => {
-      const s = byUser.get(m.user_id);
-      const total =
-        (s?.aprendizado_continuo ?? 0) +
-        (s?.padrao_qualidade_uau ?? 0) +
-        (s?.metas_prazos ?? 0) +
-        (s?.ambiente_organizado ?? 0) +
-        (s?.comprometimento ?? 0);
-      return { user_id: m.user_id, total };
-    });
-    base.sort((a, b) => b.total - a.total);
+  // Update previous rank ref after monthlyRank changes
+  const currentRankMap = useMemo(() => {
     const map = new Map<string, number>();
-    base.forEach((r, i) => map.set(r.user_id, i));
+    monthlyRank.forEach((r, i) => map.set(r.user_id, i));
     return map;
-  }, [prevScoresQ.data, teamQ.data]);
+  }, [monthlyRank]);
+
+  // Compute variation from previously stored positions
+  const rankVariation = useMemo(() => {
+    const prev = prevRankRef.current;
+    const map = new Map<string, number>();
+    if (prev.size > 0) {
+      monthlyRank.forEach((r, idx) => {
+        const prevIdx = prev.get(r.user_id);
+        if (prevIdx !== undefined) {
+          map.set(r.user_id, prevIdx - idx); // positive = moved up
+        }
+      });
+    }
+    return map;
+  }, [monthlyRank]);
+
+  // Store current positions for next comparison
+  useEffect(() => {
+    if (monthlyRank.length > 0) {
+      const map = new Map<string, number>();
+      monthlyRank.forEach((r, i) => map.set(r.user_id, i));
+      prevRankRef.current = map;
+    }
+  }, [monthlyRank]);
 
 
   // Ranking com todos os membros (sem filtro)
