@@ -801,10 +801,8 @@ export function DayViewPanel() {
           const member = teamByUserId.get(row.user_id);
           const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx + 1}º`;
           const pending = row.taskTotal - row.taskCompleted;
-          const prevPos = prevMonthRankMap.get(row.user_id);
-          const hasPrevData = prevScoresQ.data && prevScoresQ.data.length > 0;
-          const posChange = hasPrevData && prevPos !== undefined ? prevPos - idx : 0;
-          const hasChange = hasPrevData && prevPos !== undefined;
+          const posChange = rankVariation.get(row.user_id) ?? 0;
+          const hasChange = rankVariation.has(row.user_id);
           return (
             <div key={row.user_id} className={cn("rounded-lg sm:rounded-none border sm:border-0 border-border/40 p-2.5 sm:p-0", isFullscreen ? "py-3" : "sm:py-1")}>
                       {/* Desktop layout */}
@@ -848,8 +846,8 @@ export function DayViewPanel() {
                             </div>
                           </TooltipTrigger>
                           <TooltipContent side="top">
-                            {!hasChange ? "Sem dados do mês anterior" :
-                              posChange > 0 ? `Subiu ${posChange} posição(ões) em relação ao mês anterior` :
+                            {!hasChange ? "Sem variação registrada" :
+                              posChange > 0 ? `Subiu ${posChange} posição(ões) no ranking` :
                               posChange < 0 ? `Caiu ${Math.abs(posChange)} posição(ões) no ranking` :
                               "Manteve a mesma posição"}
                           </TooltipContent>
