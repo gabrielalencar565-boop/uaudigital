@@ -1408,6 +1408,7 @@ export function AgendaPanel() {
                                 members={members}
                                 clientName={clientName}
                                 dueTime={formatDueTime(t.due_at)}
+                                postType={getPostType(t)}
                                 canInteract={canInteract}
                                 canDelete={true}
                                 canDrag={!!canManageTasks}
