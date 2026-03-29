@@ -838,7 +838,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                   <button
                     key={type}
                     className={cn(
-                      "flex items-center justify-center h-7 w-7 rounded-lg transition-all",
+                      "flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all",
                       type === "video"
                         ? "bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400"
                         : "bg-teal-100 text-teal-600 dark:bg-teal-900/40 dark:text-teal-400",
@@ -850,21 +850,17 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
                       if (newType) {
                         const typeLabel = newType === "video" ? "Vídeo" : "Design";
-                        // Strip any existing type/month suffixes
                         let baseTitle = task.title
                           .replace(/\s*\((?:Vídeo|Design)\)\s*(?:-\s*\S+)?$/i, "")
                           .replace(/\s*-\s*(?:Vídeo|Design)\s*(?:-\s*\S+)?$/i, "")
                           .trim();
 
-                        // Extract month from current title pattern "... - Mês"
                         const monthMatch = task.title.match(/-\s*([A-Za-zÀ-ú]+)$/);
                         const monthName = monthMatch ? monthMatch[1].trim() : null;
 
-                        // If title ends with "Planejamento - Mês", insert (Type) before month
                         if (monthName && baseTitle.endsWith(`- ${monthName}`)) {
                           baseTitle = baseTitle.replace(new RegExp(`\\s*-\\s*${monthName}$`), "").trim();
                         }
-                        // Also strip trailing "Planejamento" repetition cleanly
                         const planejamentoMatch = baseTitle.match(/^(.+?)\s*-\s*Planejamento$/i);
                         const beforePlanejamento = planejamentoMatch ? planejamentoMatch[1].trim() : null;
 
@@ -878,7 +874,6 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                           updates.title = `${baseTitle} (${typeLabel})`;
                         }
                       } else {
-                        // Remove (Type) suffix when deselecting
                         updates.title = task.title
                           .replace(/\s*\((?:Vídeo|Design)\)/i, "")
                           .replace(/\s*-\s*(?:Vídeo|Design)\s*(?:-\s*\S+)?$/i, "")
@@ -889,6 +884,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                     }}
                   >
                     <Icon className="h-3.5 w-3.5" />
+                    {type === "video" ? "Vídeo" : "Design"}
                   </button>
                 );
               })}
