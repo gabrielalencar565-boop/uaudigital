@@ -48,6 +48,7 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
   const assignedQ = useQuery({
     queryKey: ["notifications_assigned", user?.id],
     enabled: !!user?.id,
+    staleTime: 0,
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from("pm_tasks")
