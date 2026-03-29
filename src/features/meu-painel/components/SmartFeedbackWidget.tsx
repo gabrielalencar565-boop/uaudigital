@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import {
-  Trophy, Clock, Target, Crosshair,
+  Trophy, Target, Crosshair,
   Gem, ShieldCheck, FolderKanban, BookOpen,
-  ChevronRight, TrendingUp, AlertTriangle, CheckCircle2,
+  ChevronRight, AlertTriangle, CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -49,240 +49,286 @@ const MONTH_NAMES = [
 interface CriterionDef {
   key: keyof QualitativeScores;
   label: string;
+  maxScore: number;
+  weight: "alto" | "medio";
   icon: React.ReactNode;
 }
 
 const CRITERIA: CriterionDef[] = [
-  { key: "padrao_qualidade_uau", label: "Qualidade", icon: <Gem className="h-3.5 w-3.5" /> },
-  { key: "comprometimento", label: "Responsabilidade", icon: <ShieldCheck className="h-3.5 w-3.5" /> },
-  { key: "ambiente_organizado", label: "Organização", icon: <FolderKanban className="h-3.5 w-3.5" /> },
-  { key: "aprendizado_continuo", label: "Aprendizado", icon: <BookOpen className="h-3.5 w-3.5" /> },
+  { key: "padrao_qualidade_uau", label: "Qualidade", maxScore: 4, weight: "alto", icon: <Gem className="h-3.5 w-3.5" /> },
+  { key: "comprometimento", label: "Responsabilidade", maxScore: 4, weight: "alto", icon: <ShieldCheck className="h-3.5 w-3.5" /> },
+  { key: "ambiente_organizado", label: "Organização", maxScore: 3, weight: "medio", icon: <FolderKanban className="h-3.5 w-3.5" /> },
+  { key: "aprendizado_continuo", label: "Aprendizado", maxScore: 3, weight: "medio", icon: <BookOpen className="h-3.5 w-3.5" /> },
 ];
 
-function getShortFeedback(key: string, score: number): string {
-  const map: Record<string, Record<number, string>> = {
-    padrao_qualidade_uau: { 4: "Qualidade excelente", 3: "Qualidade pode evoluir", 2: "Qualidade precisa melhorar", 1: "Qualidade comprometida" },
-    comprometimento: { 4: "Comprometimento exemplar", 3: "Comprometimento pode ser mais constante", 2: "Comprometimento precisa de atenção", 1: "Falta de comprometimento" },
-    ambiente_organizado: { 4: "Organização impecável", 3: "Organização pode evoluir", 2: "Organização precisa melhorar", 1: "Desorganização prejudicando entregas" },
-    aprendizado_continuo: { 4: "Evolução contínua", 3: "Progresso pode acelerar", 2: "Precisa investir em aprendizado", 1: "Estagnação no aprendizado" },
-  };
-  const m = map[key];
-  if (!m) return "";
-  if (score >= 4) return m[4]!;
-  if (score >= 3) return m[3]!;
-  if (score >= 2) return m[2]!;
-  if (score >= 1) return m[1]!;
-  return "Sem avaliação";
+type Level = "alto" | "medio" | "baixo";
+
+function getLevel(score: number, maxScore: number): Level {
+  if (maxScore === 4) {
+    if (score >= 3) return "alto";
+    if (score === 2) return "medio";
+    return "baixo";
+  }
+  // maxScore === 3
+  if (score >= 3) return "alto";
+  if (score === 2) return "medio";
+  return "baixo";
+}
+
+const FEEDBACK_MAP: Record<string, Record<Level, string>> = {
+  padrao_qualidade_uau: {
+    alto: "Qualidade consistente, com baixo retrabalho",
+    medio: "Qualidade boa, mas ainda com ajustes frequentes",
+    baixo: "A qualidade está comprometendo as entregas",
+  },
+  comprometimento: {
+    alto: "Você mantém boa confiabilidade nas entregas",
+    medio: "Comprometimento razoável, mas com oscilações",
+    baixo: "Falta de comprometimento impactando resultados",
+  },
+  ambiente_organizado: {
+    alto: "Organização exemplar no fluxo de trabalho",
+    medio: "Organização razoável, mas pode melhorar",
+    baixo: "Desorganização comprometendo sua produtividade",
+  },
+  aprendizado_continuo: {
+    alto: "Evolução contínua e proativa",
+    medio: "Progresso presente, mas pode acelerar",
+    baixo: "Estagnação no aprendizado técnico",
+  },
+};
+
+const ACTION_MAP: Record<string, string> = {
+  padrao_qualidade_uau: "Melhore a qualidade para reduzir retrabalho",
+  comprometimento: "Aumente a consistência nas entregas e prazos",
+  ambiente_organizado: "Organize melhor suas tarefas antes da execução",
+  aprendizado_continuo: "Invista em aprendizado para evoluir tecnicamente",
+};
+
+const FOCUS_MAP: Record<string, string> = {
+  padrao_qualidade_uau: "Melhorar qualidade para evitar impacto nas entregas",
+  comprometimento: "Aumentar comprometimento para subir no ranking",
+  ambiente_organizado: "Organizar fluxo de trabalho para ganhar produtividade",
+  aprendizado_continuo: "Investir em aprendizado para crescimento técnico",
+};
+
+function getDiagnosis(rank: number | null, rankTotal: number | null): { label: string; color: string } {
+  if (rank === null) return { label: "Sem dados", color: "text-muted-foreground" };
+  const pct = rankTotal && rankTotal > 0 ? rank / rankTotal : 1;
+  if (pct <= 0.25) return { label: "Excelente", color: "text-emerald-500" };
+  if (pct <= 0.5) return { label: "Bom", color: "text-sky-500" };
+  if (pct <= 0.75) return { label: "Regular", color: "text-amber-500" };
+  return { label: "Alerta", color: "text-red-500" };
 }
 
 /* ── Component ── */
 
 export function SmartFeedbackWidget({
-  myTasks, teamAvgScore, myScore, todayKey,
-  rank, rankTotal, qualitative,
-  prevMonthDone, prevRank, prevRankTotal, prevQualitative, prevTasks,
+  myScore, qualitative,
+  rank, rankTotal,
+  prevRank, prevRankTotal, prevQualitative, prevTasks,
 }: Props) {
-
-  /* ── Dynamic months ── */
   const now = new Date();
   const curMonth = MONTH_NAMES[now.getMonth()];
   const prevMonthIdx = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
   const prevMonth = MONTH_NAMES[prevMonthIdx];
 
-  /* ── Previous month ranking score (total from performance_scores) ── */
-  const prevTotal = prevTasks.length;
-  const prevDone = prevTasks.filter((t) => t.status === "concluido").length;
-  const prevDoneOnTime = prevTasks.filter((t) => {
-    if (t.status !== "concluido" || !t.completed_at) return false;
-    return t.completed_at.slice(0, 10) <= t.due_date;
-  }).length;
-  const prevPctOnTime = prevDone > 0 ? Math.round((prevDoneOnTime / prevDone) * 100) : 100;
+  // Use previous month data for analysis; fallback to current
+  const analysisQ = prevQualitative ?? qualitative;
+  const analysisRank = prevRank ?? rank;
+  const analysisRankTotal = prevRankTotal ?? rankTotal;
+  const analysisMonth = prevQualitative ? prevMonth : curMonth;
 
-  /* ── Headline based on ranking position ── */
-  const headline = useMemo(() => {
-    if (prevRank === null && rank === null) return { emoji: "📊", text: "Sem dados" };
-    const r = prevRank ?? rank;
-    if (r && r <= 1) return { emoji: "🏆", text: "Desempenho excepcional" };
-    if (r && r <= 3) return { emoji: "🚀", text: "Alto desempenho" };
-    if (r && r <= 5) return { emoji: "📋", text: "Desempenho mediano" };
-    return { emoji: "⚠️", text: "Atenção necessária" };
-  }, [prevRank, rank]);
+  const diagnosis = getDiagnosis(analysisRank, analysisRankTotal);
 
-  /* ── Critical point (worst qualitative criterion from ranking) ── */
-  const criticalPoint = useMemo(() => {
-    if (prevQualitative) {
-      const worst = [...CRITERIA].sort((a, b) => (prevQualitative[a.key] ?? 0) - (prevQualitative[b.key] ?? 0))[0];
-      if (worst && (prevQualitative[worst.key] ?? 0) <= 2) return worst.label;
-    }
-    if (prevPctOnTime < 70 && prevTotal > 0) return "Pontualidade";
-    if (prevRank && prevRank > 5) return "Ranking";
-    return null;
-  }, [prevQualitative, prevPctOnTime, prevTotal, prevRank]);
+  /* ── Scored criteria with levels ── */
+  const scoredCriteria = useMemo(() => {
+    if (!analysisQ) return [];
+    return CRITERIA.map((c) => {
+      const score = analysisQ[c.key] ?? 0;
+      const level = getLevel(score, c.maxScore);
+      return { ...c, score, level };
+    });
+  }, [analysisQ]);
 
-  /* ── Best strength from ranking criteria (1 only) ── */
+  /* ── Best strength (1 only) — prioritize high-weight criteria ── */
   const bestStrength = useMemo(() => {
-    if (prevRank && prevRank <= 3) return { icon: <Trophy className="h-3.5 w-3.5" />, text: `Top ${prevRank} no ranking` };
-    if (prevQualitative) {
-      const best = [...CRITERIA].sort((a, b) => (prevQualitative[b.key] ?? 0) - (prevQualitative[a.key] ?? 0))[0];
-      if (best && (prevQualitative[best.key] ?? 0) >= 3) return { icon: best.icon, text: getShortFeedback(best.key, prevQualitative[best.key]) };
-    }
-    if (prevPctOnTime >= 90 && prevTotal > 0) return { icon: <Clock className="h-3.5 w-3.5" />, text: "Boa pontualidade" };
-    if (prevTotal > 0) return { icon: <TrendingUp className="h-3.5 w-3.5" />, text: "Entregas consistentes" };
-    return null;
-  }, [prevPctOnTime, prevTotal, prevRank, prevQualitative]);
+    const highLevel = scoredCriteria
+      .filter((c) => c.level === "alto")
+      .sort((a, b) => (a.weight === "alto" ? -1 : 1) - (b.weight === "alto" ? -1 : 1));
+    if (highLevel.length > 0) return highLevel[0];
+    // Fallback: best medium
+    const medLevel = scoredCriteria.filter((c) => c.level === "medio").sort((a, b) => b.score - a.score);
+    return medLevel[0] ?? null;
+  }, [scoredCriteria]);
 
-  /* ── Weaknesses from ranking criteria (max 2) ── */
-  const weaknesses = useMemo(() => {
-    const list: { icon: React.ReactNode; text: string }[] = [];
-    if (prevRank && prevRank > 3) list.push({ icon: <Trophy className="h-3.5 w-3.5" />, text: "Ranking pode melhorar" });
-    if (prevQualitative) {
-      const sorted = [...CRITERIA].sort((a, b) => (prevQualitative[a.key] ?? 0) - (prevQualitative[b.key] ?? 0));
-      for (const c of sorted) {
-        if ((prevQualitative[c.key] ?? 0) <= 2 && list.length < 2) {
-          list.push({ icon: c.icon, text: getShortFeedback(c.key, prevQualitative[c.key] ?? 0) });
-        }
-      }
+  /* ── Problems (max 2) — Qualidade always first if low ── */
+  const problems = useMemo(() => {
+    const low = scoredCriteria.filter((c) => c.level === "baixo" || c.level === "medio");
+    // Qualidade priority: if ≤ 2 always first
+    low.sort((a, b) => {
+      if (a.key === "padrao_qualidade_uau" && a.level !== "alto") return -1;
+      if (b.key === "padrao_qualidade_uau" && b.level !== "alto") return 1;
+      if (a.key === "comprometimento" && a.level !== "alto") return -1;
+      if (b.key === "comprometimento" && b.level !== "alto") return 1;
+      return a.score - b.score;
+    });
+    // Only show actual problems (baixo first, then medio)
+    const result = low.filter((c) => c.level === "baixo");
+    if (result.length < 2) {
+      const medProblems = low.filter((c) => c.level === "medio" && !result.includes(c));
+      result.push(...medProblems);
     }
-    if (prevPctOnTime < 80 && prevTotal > 0 && list.length < 2) list.push({ icon: <Clock className="h-3.5 w-3.5" />, text: "Entregas fora do prazo" });
-    return list.slice(0, 2);
-  }, [prevPctOnTime, prevTotal, prevRank, prevQualitative]);
+    // Exclude the best strength
+    return result.filter((c) => !bestStrength || c.key !== bestStrength.key).slice(0, 2);
+  }, [scoredCriteria, bestStrength]);
 
-  /* ── Direction tips based on ranking criteria (2-3) ── */
-  const directionTips = useMemo(() => {
-    const list: string[] = [];
-    if (prevQualitative) {
-      const sorted = [...CRITERIA].sort((a, b) => (prevQualitative[a.key] ?? 0) - (prevQualitative[b.key] ?? 0));
-      for (const c of sorted) {
-        if ((prevQualitative[c.key] ?? 0) <= 2 && list.length < 3) {
-          list.push(`Melhorar ${c.label.toLowerCase()}`);
-        }
-      }
-    }
-    if (prevRank && prevRank > 3 && list.length < 3) list.push("Subir no ranking com mais volume");
-    if (prevPctOnTime < 80 && prevTotal > 0 && list.length < 3) list.push("Aumentar pontualidade nas entregas");
-    if (list.length === 0) list.push("Manter o ritmo de entregas");
-    return list.slice(0, 3);
-  }, [prevPctOnTime, prevTotal, prevRank, prevQualitative]);
+  /* ── Actions (based on problems) ── */
+  const actions = useMemo(() => {
+    return problems.map((p) => ACTION_MAP[p.key]).filter(Boolean).slice(0, 2);
+  }, [problems]);
 
-  /* ── Focus goal based on ranking criteria ── */
+  /* ── Focus of the month (worst criterion) ── */
   const focusGoal = useMemo(() => {
-    if (prevQualitative) {
-      const worst = [...CRITERIA].sort((a, b) => (prevQualitative[a.key] ?? 0) - (prevQualitative[b.key] ?? 0))[0];
-      if (worst && (prevQualitative[worst.key] ?? 0) <= 2) {
-        return `Melhorar ${worst.label.toLowerCase()} para subir no ranking`;
-      }
-    }
-    if (prevRank && prevRank > 5) return "Subir no ranking com mais volume e consistência";
-    if (prevPctOnTime < 70 && prevTotal > 0) return "Recuperar pontualidade nas entregas";
+    if (scoredCriteria.length === 0) return "Manter o alto padrão de desempenho";
+    const worst = [...scoredCriteria].sort((a, b) => a.score - b.score)[0];
+    if (worst && worst.level !== "alto") return FOCUS_MAP[worst.key] ?? "Manter o ritmo de entregas";
     return "Manter o alto padrão de desempenho";
-  }, [prevQualitative, prevPctOnTime, prevTotal, prevRank]);
+  }, [scoredCriteria]);
 
-  const hasPrevData = prevTotal > 0 || prevQualitative !== null;
+  const hasData = analysisQ !== null;
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-card p-4 space-y-3 transition-all duration-300 hover:shadow-md">
+    <div className="rounded-2xl border border-border bg-card p-4 space-y-3 transition-all duration-300 hover:shadow-lg">
 
-      {/* ── TOPO: Resumo compacto ── */}
-      <div
-        className="flex items-center justify-between gap-3 opacity-0"
-        style={{ animation: "fadeUp 0.4s ease-out forwards" }}
-      >
+      {/* ── HEADER ── */}
+      <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
-            <Trophy className="h-4 w-4 text-sidebar shrink-0" />
-            <h3 className="text-sm font-bold text-foreground tracking-tight truncate">
-              {headline.emoji} Desempenho em {prevMonth}
-            </h3>
-          </div>
-          <div className="flex items-center gap-2 mt-0.5">
-            {prevRank !== null && (
-              <span className="text-xs text-muted-foreground">
-                Ranking: <span className={cn("font-bold", prevRank <= 3 ? "text-emerald-500" : "text-foreground")}>{prevRank}º</span>
-                {prevRankTotal ? <span className="text-muted-foreground/50"> de {prevRankTotal}</span> : null}
-              </span>
-            )}
-            {myScore > 0 && (
-              <>
-                {prevRank !== null && <span className="text-muted-foreground/30">•</span>}
-                <span className="text-xs text-muted-foreground">
-                  Pontos: <span className="font-bold text-foreground">{myScore}</span>
-                </span>
-              </>
-            )}
+            <div className="h-7 w-7 rounded-lg bg-sidebar/20 flex items-center justify-center">
+              <Trophy className="h-4 w-4 text-sidebar" />
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-foreground">Seu desempenho</h3>
+              <p className="text-[11px] text-muted-foreground">Diagnóstico de {analysisMonth}</p>
+            </div>
           </div>
         </div>
+      </div>
 
-        {/* Badge ranking */}
-        {prevRank !== null && (
-          <div className={cn(
-            "flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold shrink-0",
-            prevRank <= 3 ? "bg-emerald-500/10 text-emerald-500" : prevRank <= 5 ? "bg-amber-500/10 text-amber-500" : "bg-red-500/10 text-red-500",
+      {/* ── RANKING + DIAGNOSIS LINE ── */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {analysisRank !== null && (
+          <span className={cn(
+            "inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-bold",
+            analysisRank <= 3 ? "bg-emerald-500/10 text-emerald-500"
+              : analysisRank <= 5 ? "bg-amber-500/10 text-amber-500"
+              : "bg-red-500/10 text-red-500",
           )}>
-            {prevRank <= 1 ? "🏆" : prevRank <= 3 ? "🚀" : "⚠️"} {prevRank}º
-          </div>
+            {analysisRank <= 1 ? "🏆" : analysisRank <= 3 ? "🚀" : "⚠️"} {analysisRank}º
+            {analysisRankTotal ? <span className="font-normal text-muted-foreground">/{analysisRankTotal}</span> : null}
+          </span>
+        )}
+        <span className={cn("text-xs font-semibold", diagnosis.color)}>
+          {diagnosis.label}
+        </span>
+        {myScore > 0 && (
+          <>
+            <span className="text-muted-foreground/30">•</span>
+            <span className="text-xs text-muted-foreground">
+              <span className="font-bold text-foreground">{myScore}</span> pts
+            </span>
+          </>
         )}
       </div>
 
-      {/* Critical point subtitle */}
-      {criticalPoint && (
-        <p className="text-[11px] text-muted-foreground/60 -mt-1 opacity-0" style={{ animation: "fadeUp 0.3s ease-out 0.1s forwards" }}>
-          Principal melhoria: <span className="text-amber-500 font-medium">{criticalPoint}</span>
-        </p>
+      {/* ── CRITERIA BARS ── */}
+      {hasData && (
+        <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
+          {scoredCriteria.map((c) => {
+            const pct = Math.round((c.score / c.maxScore) * 100);
+            const barColor = c.level === "alto"
+              ? "bg-emerald-500"
+              : c.level === "medio"
+              ? "bg-amber-500"
+              : "bg-red-500";
+            return (
+              <div key={c.key} className="flex items-center gap-2">
+                <span className={cn(
+                  "shrink-0",
+                  c.level === "alto" ? "text-emerald-500" : c.level === "medio" ? "text-amber-500" : "text-red-500",
+                )}>
+                  {c.icon}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-0.5">
+                    <span className="text-[11px] text-muted-foreground truncate">{c.label}</span>
+                    <span className="text-[11px] font-bold text-foreground tabular-nums">{c.score}/{c.maxScore}</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-muted/50 overflow-hidden">
+                    <div className={cn("h-full rounded-full transition-all duration-500", barColor)} style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
 
-      {/* ── FEEDBACKS RÁPIDOS (baseados nos critérios do ranking) ── */}
-      {hasPrevData && (
-        <div className="space-y-1 opacity-0" style={{ animation: "fadeUp 0.4s ease-out 0.15s forwards" }}>
+      {hasData && <div className="border-t border-border/30" />}
+
+      {/* ── STRENGTH + PROBLEMS ── */}
+      {hasData && (
+        <div className="space-y-1">
           {bestStrength && (
-            <div className="flex items-center gap-2 py-0.5">
-              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-              <span className="text-xs text-foreground/80">{bestStrength.text}</span>
+            <div className="flex items-start gap-2 py-0.5">
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <span className="text-[11px] font-bold text-emerald-500">{bestStrength.label}</span>
+                <p className="text-[11px] text-foreground/70 leading-tight">{FEEDBACK_MAP[bestStrength.key]?.[bestStrength.level] ?? ""}</p>
+              </div>
             </div>
           )}
-          {weaknesses.map((w, i) => (
-            <div key={i} className="flex items-center gap-2 py-0.5">
-              <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-              <span className="text-xs text-foreground/80">{w.text}</span>
+          {problems.map((p, i) => (
+            <div key={i} className="flex items-start gap-2 py-0.5">
+              <AlertTriangle className={cn("h-3.5 w-3.5 shrink-0 mt-0.5", p.level === "baixo" ? "text-red-500" : "text-amber-500")} />
+              <div className="min-w-0">
+                <span className={cn("text-[11px] font-bold", p.level === "baixo" ? "text-red-500" : "text-amber-500")}>{p.label}</span>
+                <p className="text-[11px] text-foreground/70 leading-tight">{FEEDBACK_MAP[p.key]?.[p.level] ?? ""}</p>
+              </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Divider */}
-      {hasPrevData && <div className="border-t border-border/20" />}
-
-      {/* ── DIRECIONAMENTO MÊS ATUAL (baseado nos critérios do ranking) ── */}
-      <div className="space-y-1.5 opacity-0" style={{ animation: "fadeUp 0.4s ease-out 0.25s forwards" }}>
-        <div className="flex items-center gap-1.5">
-          <Target className="h-3.5 w-3.5 text-muted-foreground/50" />
-          <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-widest">
-            Para melhorar em {curMonth}
-          </p>
-        </div>
-
-        {directionTips.map((tip, i) => (
-          <div key={i} className="flex items-center gap-2 py-0.5">
-            <ChevronRight className="h-3 w-3 text-sidebar shrink-0" />
-            <span className="text-xs text-foreground/80">{tip}</span>
+      {/* ── ACTIONS ── */}
+      {actions.length > 0 && (
+        <div className="space-y-1">
+          <div className="flex items-center gap-1.5">
+            <Target className="h-3 w-3 text-muted-foreground/50" />
+            <span className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-widest">Ações</span>
           </div>
-        ))}
-      </div>
+          {actions.map((a, i) => (
+            <div key={i} className="flex items-center gap-2 py-0.5">
+              <ChevronRight className="h-3 w-3 text-sidebar shrink-0" />
+              <span className="text-[11px] text-foreground/80">{a}</span>
+            </div>
+          ))}
+        </div>
+      )}
 
-      {/* ── FOCO DO MÊS ── */}
-      <div
-        className="flex items-center gap-2.5 py-2 px-3 rounded-xl bg-sidebar/5 border border-sidebar/10 opacity-0"
-        style={{ animation: "fadeUp 0.4s ease-out 0.35s forwards" }}
-      >
+      {/* ── FOCUS ── */}
+      <div className="flex items-center gap-2.5 py-2 px-3 rounded-xl bg-sidebar/5 border border-sidebar/10">
         <Crosshair className="h-4 w-4 text-sidebar shrink-0" />
         <div className="min-w-0">
           <span className="text-[9px] font-semibold text-sidebar/50 uppercase tracking-widest">Foco do mês</span>
-          <p className="text-xs font-semibold text-sidebar leading-tight">{focusGoal}</p>
+          <p className="text-[11px] font-semibold text-sidebar leading-tight">{focusGoal}</p>
         </div>
       </div>
 
-      {/* ── Empty state ── */}
-      {!hasPrevData && myScore === 0 && (
-        <p className="text-xs text-muted-foreground/50 text-center py-2">Sem dados suficientes.</p>
+      {/* ── Empty ── */}
+      {!hasData && myScore === 0 && (
+        <p className="text-xs text-muted-foreground/50 text-center py-2">Sem dados de avaliação qualitativa.</p>
       )}
     </div>
   );
