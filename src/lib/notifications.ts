@@ -80,12 +80,9 @@ export function playNotificationSound() {
   lastSoundAt = now;
 
   try {
-    // Reuse or create AudioContext
     if (!audioCtx || audioCtx.state === "closed") {
       audioCtx = new AudioContext();
     }
-
-    // If suspended (browser policy), try to resume
     if (audioCtx.state === "suspended") {
       audioCtx.resume();
     }
@@ -93,34 +90,21 @@ export function playNotificationSound() {
     const ctx = audioCtx;
     const t = ctx.currentTime;
 
-    // --- Two-tone chime (modern notification feel) ---
-    // Tone 1: E6 (1318 Hz)
-    const osc1 = ctx.createOscillator();
-    const gain1 = ctx.createGain();
-    osc1.type = "sine";
-    osc1.frequency.setValueAtTime(1318, t);
-    osc1.frequency.exponentialRampToValueAtTime(1200, t + 0.15);
-    gain1.gain.setValueAtTime(0, t);
-    gain1.gain.linearRampToValueAtTime(0.06, t + 0.01);
-    gain1.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
-    osc1.connect(gain1);
-    gain1.connect(ctx.destination);
-    osc1.start(t);
-    osc1.stop(t + 0.25);
-
-    // Tone 2: G6 (1568 Hz) — offset by 100ms
-    const osc2 = ctx.createOscillator();
-    const gain2 = ctx.createGain();
-    osc2.type = "sine";
-    osc2.frequency.setValueAtTime(1568, t + 0.1);
-    osc2.frequency.exponentialRampToValueAtTime(1400, t + 0.25);
-    gain2.gain.setValueAtTime(0, t + 0.1);
-    gain2.gain.linearRampToValueAtTime(0.05, t + 0.115);
-    gain2.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
-    osc2.connect(gain2);
-    gain2.connect(ctx.destination);
-    osc2.start(t + 0.1);
-    osc2.stop(t + 0.4);
+    // --- Pop sound (short, bubbly, satisfying) ---
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    // Quick pitch drop: 900 Hz → 400 Hz (pop feel)
+    osc.frequency.setValueAtTime(900, t);
+    osc.frequency.exponentialRampToValueAtTime(400, t + 0.12);
+    // Sharp attack, fast decay
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(0.18, t + 0.005);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.2);
   } catch {
     // Audio not available — silently ignore
   }
