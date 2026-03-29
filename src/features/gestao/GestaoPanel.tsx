@@ -491,7 +491,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
   };
 
   const filteredTasks = useMemo(() => {
-    let list = tasks;
+    let list = tasks.filter((t) => t.status_global !== "pausado");
     if (filterClient && filterClient !== "__all__") list = list.filter((t) => t.client_id === filterClient);
     if (filterAssignee && filterAssignee !== "__all__") {
       list = list.filter((t) => t.assignee_id === filterAssignee || fixedAssigneeClientIds.has(t.client_id));
