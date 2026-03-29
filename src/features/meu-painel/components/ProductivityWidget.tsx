@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { format, subDays, startOfWeek, endOfWeek, isWithinInterval, subWeeks } from "date-fns";
+import { useMemo, useState, useCallback } from "react";
+import { format, subDays, startOfWeek, endOfWeek, isWithinInterval, subWeeks, eachDayOfInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { TrendingUp, TrendingDown, Activity } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Area, AreaChart, Cell } from "recharts";
@@ -22,14 +22,15 @@ interface Props {
 type MetricMode = "tarefas" | "pontos";
 
 function GlowBar(props: any) {
-  const { x, y, width, height, isCurrent } = props;
+  const { x, y, width, height, isCurrent, isSelected } = props;
   if (!height || height <= 0) return null;
+  const highlighted = isCurrent || isSelected;
   return (
-    <g>
-      {isCurrent && (
-        <rect x={x - 2} y={y - 2} width={width + 4} height={height + 4} rx={7} fill="none" stroke="hsl(263 70% 50%)" strokeWidth={0} filter="url(#barGlow)" />
+    <g style={{ cursor: "pointer" }}>
+      {highlighted && (
+        <rect x={x - 2} y={y - 2} width={width + 4} height={height + 4} rx={7} fill="none" stroke="hsl(263 70% 50%)" strokeWidth={isSelected ? 2 : 0} filter="url(#barGlow)" />
       )}
-      <rect x={x} y={y} width={width} height={height} rx={6} fill={isCurrent ? "hsl(263 70% 50%)" : "hsl(263 60% 70% / 0.35)"} />
+      <rect x={x} y={y} width={width} height={height} rx={6} fill={highlighted ? "hsl(263 70% 50%)" : "hsl(263 60% 70% / 0.35)"} />
     </g>
   );
 }
@@ -42,47 +43,73 @@ function getMetricValue(tasks: TaskData[], mode: MetricMode): number {
 
 export function ProductivityWidget({ tasks, allMonthTasks, todayKey }: Props) {
   const [mode, setMode] = useState<MetricMode>("tarefas");
+  const [selectedWeekIndex, setSelectedWeekIndex] = useState<number | null>(null);
   const today = new Date(todayKey + "T12:00:00");
 
-  // ── Daily data (last 7 days) ──
+  // ── Week ranges (last 4 weeks) ──
+  const weekRanges = useMemo(() => {
+    const ranges: { start: Date; end: Date; label: string; isCurrent: boolean }[] = [];
+    for (let i = 3; i >= 0; i--) {
+      const ws = startOfWeek(subWeeks(today, i), { weekStartsOn: 1 });
+      const we = endOfWeek(subWeeks(today, i), { weekStartsOn: 1 });
+      ranges.push({
+        start: ws,
+        end: we,
+        label: i === 0 ? "Atual" : `Sem ${4 - i}`,
+        isCurrent: i === 0,
+      });
+    }
+    return ranges;
+  }, [todayKey]);
+
+  // ── Weekly data (bar chart) ──
+  const weeklyData = useMemo(() => {
+    return weekRanges.map((w, idx) => {
+      const completed = allMonthTasks.filter((t) => {
+        if (t.status !== "concluido" || !t.completed_at) return false;
+        const d = new Date(t.completed_at);
+        return isWithinInterval(d, { start: w.start, end: w.end });
+      });
+      return {
+        label: w.label,
+        value: getMetricValue(completed, mode),
+        isCurrent: w.isCurrent,
+        index: idx,
+      };
+    });
+  }, [allMonthTasks, todayKey, mode, weekRanges]);
+
+  // ── Daily data based on selected week or last 7 days ──
   const dailyData = useMemo(() => {
-    const days: { label: string; date: string; tarefas: number; pontos: number }[] = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = subDays(today, i);
+    let days: Date[];
+    let chartTitle: string;
+
+    if (selectedWeekIndex !== null && weekRanges[selectedWeekIndex]) {
+      const range = weekRanges[selectedWeekIndex];
+      days = eachDayOfInterval({ start: range.start, end: range.end });
+      chartTitle = range.isCurrent ? "Semana atual" : range.label;
+    } else {
+      days = [];
+      for (let i = 6; i >= 0; i--) days.push(subDays(today, i));
+      chartTitle = "Últimos 7 dias";
+    }
+
+    const result = days.map((d) => {
       const key = format(d, "yyyy-MM-dd");
       const label = format(d, "EEE", { locale: ptBR }).replace(".", "");
       const completed = allMonthTasks.filter(
         (t) => t.status === "concluido" && t.completed_at && format(new Date(t.completed_at), "yyyy-MM-dd") === key
       );
-      days.push({
+      return {
         label: label.charAt(0).toUpperCase() + label.slice(1),
         date: key,
         tarefas: completed.length,
         pontos: completed.reduce((s, t) => s + (Number(t.point_value) || 0), 0),
-      });
-    }
-    return days;
-  }, [allMonthTasks, todayKey]);
+      };
+    });
 
-  // ── Weekly data (last 4 weeks) ──
-  const weeklyData = useMemo(() => {
-    const weeks: { label: string; value: number; isCurrent: boolean }[] = [];
-    for (let i = 3; i >= 0; i--) {
-      const weekStart = startOfWeek(subWeeks(today, i), { weekStartsOn: 1 });
-      const weekEnd = endOfWeek(subWeeks(today, i), { weekStartsOn: 1 });
-      const completed = allMonthTasks.filter((t) => {
-        if (t.status !== "concluido" || !t.completed_at) return false;
-        const d = new Date(t.completed_at);
-        return isWithinInterval(d, { start: weekStart, end: weekEnd });
-      });
-      weeks.push({
-        label: i === 0 ? "Atual" : `Sem ${4 - i}`,
-        value: getMetricValue(completed, mode),
-        isCurrent: i === 0,
-      });
-    }
-    return weeks;
-  }, [allMonthTasks, todayKey, mode]);
+    return { data: result, title: chartTitle };
+  }, [allMonthTasks, todayKey, selectedWeekIndex, weekRanges]);
 
   // ── Weekly trend text ──
   const weeklyTrend = useMemo(() => {
@@ -96,7 +123,7 @@ export function ProductivityWidget({ tasks, allMonthTasks, todayKey }: Props) {
     return null;
   }, [weeklyData]);
 
-  // ── Comparison (respects mode) ──
+  // ── Comparison ──
   const comparison = useMemo(() => {
     const thisWeekStart = startOfWeek(today, { weekStartsOn: 1 });
     const lastWeekStart = startOfWeek(subWeeks(today, 1), { weekStartsOn: 1 });
@@ -116,6 +143,10 @@ export function ProductivityWidget({ tasks, allMonthTasks, todayKey }: Props) {
     const pct = Math.round(((thisVal - lastVal) / lastVal) * 100);
     return { pct: Math.abs(pct), up: pct >= 0 };
   }, [allMonthTasks, todayKey, mode]);
+
+  const handleBarClick = useCallback((_: any, index: number) => {
+    setSelectedWeekIndex((prev) => (prev === index ? null : index));
+  }, []);
 
   const dataKey = mode;
 
@@ -159,10 +190,20 @@ export function ProductivityWidget({ tasks, allMonthTasks, todayKey }: Props) {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Area chart - 2 cols */}
         <div className="md:col-span-2 rounded-xl p-4 border border-border bg-muted/30">
-          <p className="text-xs text-muted-foreground mb-3 font-medium">Últimos 7 dias</p>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs text-muted-foreground font-medium">{dailyData.title}</p>
+            {selectedWeekIndex !== null && (
+              <button
+                onClick={() => setSelectedWeekIndex(null)}
+                className="text-[10px] text-primary hover:underline font-medium"
+              >
+                Ver últimos 7 dias
+              </button>
+            )}
+          </div>
           <div className="h-[140px]">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={dailyData}>
+              <AreaChart data={dailyData.data}>
                 <defs>
                   <linearGradient id="prodGradPremium" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="hsl(263 70% 50%)" stopOpacity={0.25} />
@@ -210,7 +251,8 @@ export function ProductivityWidget({ tasks, allMonthTasks, todayKey }: Props) {
                 </span>
               )}
             </div>
-            <div className="h-[140px]">
+            <p className="text-[10px] text-muted-foreground/70 mb-2">Clique para detalhar</p>
+            <div className="h-[128px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={weeklyData} barCategoryGap="18%">
                   <defs>
@@ -225,11 +267,21 @@ export function ProductivityWidget({ tasks, allMonthTasks, todayKey }: Props) {
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal vertical={false} />
                   <XAxis
                     dataKey="label"
-                    tick={({ x, y, payload }: any) => (
-                      <text x={x} y={y + 12} textAnchor="middle" fontSize={11} fill={payload.value === "Atual" ? "hsl(263 70% 50%)" : "hsl(var(--muted-foreground))"} fontWeight={payload.value === "Atual" ? 700 : 400}>
-                        {payload.value}
-                      </text>
-                    )}
+                    tick={({ x, y, payload }: any) => {
+                      const idx = weeklyData.findIndex((w) => w.label === payload.value);
+                      const isSelected = idx === selectedWeekIndex;
+                      const isCurrent = payload.value === "Atual";
+                      return (
+                        <text
+                          x={x} y={y + 12} textAnchor="middle" fontSize={11}
+                          fill={isSelected ? "hsl(263 70% 50%)" : isCurrent ? "hsl(263 70% 50%)" : "hsl(var(--muted-foreground))"}
+                          fontWeight={isSelected || isCurrent ? 700 : 400}
+                          style={{ cursor: "pointer" }}
+                        >
+                          {payload.value}
+                        </text>
+                      );
+                    }}
                     axisLine={false}
                     tickLine={false}
                   />
@@ -248,11 +300,23 @@ export function ProductivityWidget({ tasks, allMonthTasks, todayKey }: Props) {
                   />
                   <Bar
                     dataKey="value"
-                    shape={(props: any) => <GlowBar {...props} isCurrent={props.isCurrent ?? weeklyData[props.index]?.isCurrent} />}
+                    onClick={handleBarClick}
+                    style={{ cursor: "pointer" }}
+                    shape={(props: any) => {
+                      const idx = props.index;
+                      const isSelected = idx === selectedWeekIndex;
+                      return <GlowBar {...props} isCurrent={weeklyData[idx]?.isCurrent} isSelected={isSelected} />;
+                    }}
                     label={({ x, y, width: w, value, index }: any) => {
                       const isCurrent = weeklyData[index]?.isCurrent;
+                      const isSelected = index === selectedWeekIndex;
                       return (
-                        <text x={x + w / 2} y={y - 8} textAnchor="middle" fontSize={isCurrent ? 13 : 11} fontWeight={isCurrent ? 700 : 500} fill={isCurrent ? "hsl(263 70% 50%)" : "hsl(var(--muted-foreground))"}>
+                        <text
+                          x={x + w / 2} y={y - 8} textAnchor="middle"
+                          fontSize={isCurrent || isSelected ? 13 : 11}
+                          fontWeight={isCurrent || isSelected ? 700 : 500}
+                          fill={isCurrent || isSelected ? "hsl(263 70% 50%)" : "hsl(var(--muted-foreground))"}
+                        >
                           {value}
                         </text>
                       );
