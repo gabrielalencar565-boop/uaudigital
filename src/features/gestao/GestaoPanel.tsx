@@ -550,7 +550,20 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
       if (lt.description?.startsWith("pm:")) continue;
       const key = lt.due_date ?? "";
       if (!key) continue;
+
+      // Apply same filters as pm_tasks
       const legacyExtraAssignees = legacyAssigneesByTaskId.get(lt.id) ?? [];
+      const allAssignees = [lt.assigned_user_id, ...legacyExtraAssignees];
+
+      if (filterClient !== "__all__" && lt.client_id !== filterClient) continue;
+      if (filterAssignee !== "__all__" && !allAssignees.includes(filterAssignee)) continue;
+      if (search) {
+        const s = search.toLowerCase();
+        const clientName = clientsMap[lt.client_id] ?? "";
+        const titleMatch = (lt.title ?? "").toLowerCase().includes(s);
+        const clientMatch = clientName.toLowerCase().includes(s);
+        if (!titleMatch && !clientMatch) continue;
+      }
       const legacyWatchers = legacyExtraAssignees.filter((id) => id !== lt.assigned_user_id);
 
       const asPm: PmTask = {
@@ -582,7 +595,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
       map.set(key, [...prev, asPm]);
     }
     return map;
-  }, [filteredTasks, legacyTasksQ.data, legacyAssigneesByTaskId]);
+  }, [filteredTasks, legacyTasksQ.data, legacyAssigneesByTaskId, filterClient, filterAssignee, search, clientsMap]);
 
   const daySpecialDates = (dayKey: string) => specialDatesMap.get(dayKey) ?? [];
 
@@ -819,7 +832,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
       {/* Dialog de lixeira */}
       <Dialog open={trashOpen} onOpenChange={setTrashOpen}>
         <DialogContent className="max-w-2xl max-h-[80vh] p-0 overflow-hidden">
-          <TaskTrashPanel onClose={() => setTrashOpen(false)} />
+          <TaskTrashPanel onClose={() => setTrashOpen(false)} isAdmin={isAdmin} />
         </DialogContent>
       </Dialog>
 

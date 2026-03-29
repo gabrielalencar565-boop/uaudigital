@@ -30,7 +30,7 @@ function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]!.toUpperCase()).join("");
 }
 
-export function TaskTrashPanel({ onClose }: { onClose: () => void }) {
+export function TaskTrashPanel({ onClose, isAdmin = false }: { onClose: () => void; isAdmin?: boolean }) {
   const deletedTasksQ = useDeletedTasks();
   const clientsQ = useClients();
   const teamQ = useTeamMembers();
@@ -119,7 +119,7 @@ export function TaskTrashPanel({ onClose }: { onClose: () => void }) {
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
-            {deletedTasks.length > 0 && (
+            {deletedTasks.length > 0 && isAdmin && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive" size="sm" disabled={emptyingTrash}>
@@ -177,6 +177,7 @@ export function TaskTrashPanel({ onClose }: { onClose: () => void }) {
               {deletedTasks.map(task => {
                 const client = clientsById.get(task.client_id);
                 const member = teamByUserId.get(task.assigned_user_id);
+                const deletedByMember = task.deleted_by ? teamByUserId.get(task.deleted_by) : null;
                 const stageLabel = STAGES.find(s => s.key === task.stage)?.label ?? task.stage;
                 const deletedAt = task.deleted_at ? new Date(task.deleted_at) : null;
 
@@ -210,14 +211,21 @@ export function TaskTrashPanel({ onClose }: { onClose: () => void }) {
                       {deletedAt && (() => {
                         const daysLeft = 30 - differenceInDays(new Date(), deletedAt);
                         return (
-                          <div className="flex items-center gap-2">
-                            <p className="text-xs text-muted-foreground/70">
-                              Excluída em {format(deletedAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                            </p>
-                            <Badge variant={daysLeft <= 7 ? "destructive" : "secondary"} className="text-[10px] gap-1">
-                              <Clock className="h-3 w-3" />
-                              {daysLeft > 0 ? `${daysLeft}d restantes` : "Expirando..."}
-                            </Badge>
+                          <div className="flex flex-col gap-0.5">
+                            <div className="flex items-center gap-2">
+                              <p className="text-xs text-muted-foreground/70">
+                                Excluída em {format(deletedAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                              </p>
+                              <Badge variant={daysLeft <= 7 ? "destructive" : "secondary"} className="text-[10px] gap-1">
+                                <Clock className="h-3 w-3" />
+                                {daysLeft > 0 ? `${daysLeft}d restantes` : "Expirando..."}
+                              </Badge>
+                            </div>
+                            {deletedByMember && (
+                              <p className="text-xs text-muted-foreground/70">
+                                Excluída por: <span className="font-medium text-muted-foreground">{deletedByMember.display_name}</span>
+                              </p>
+                            )}
                           </div>
                         );
                       })()}
@@ -238,40 +246,42 @@ export function TaskTrashPanel({ onClose }: { onClose: () => void }) {
                         )}
                       </Button>
 
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-destructive hover:text-destructive"
-                            disabled={deletingId === task.id}
-                            title="Excluir permanentemente"
-                          >
-                            {deletingId === task.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Excluir permanentemente?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Esta tarefa será excluída permanentemente e não poderá ser recuperada.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handlePermanentDelete(task.id)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      {isAdmin && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:text-destructive"
+                              disabled={deletingId === task.id}
+                              title="Excluir permanentemente"
                             >
-                              Excluir
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                              {deletingId === task.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Excluir permanentemente?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Esta tarefa será excluída permanentemente e não poderá ser recuperada.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handlePermanentDelete(task.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Excluir
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
                     </div>
                   </div>
                 );
