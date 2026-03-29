@@ -38,6 +38,7 @@ export function DraggableTaskCard({
   members,
   clientName,
   dueTime,
+  postType,
   canInteract,
   canDelete,
   canDrag,
