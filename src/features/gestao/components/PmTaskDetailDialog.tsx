@@ -607,41 +607,35 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   };
 
   const handleReturnFromAlteracao = async () => {
-    // After alteração is done, advance directly to the next stage after revisão
-    const nextAfterRevisao = getNextStages(flowConfig, "revisao");
-    const targetStage = nextAfterRevisao.length > 0 ? nextAfterRevisao[0] : "pdf";
+    // After alteração is done, return to revisão (not pdf).
+    // PDF only happens when revisão marks as concluído.
+    const fixedAssignee = getFixedAssignee(stageAssignees, "revisao", task.client_id);
+    const fixedWatchers = getFixedWatchers(stageAssignees, "revisao", task.client_id);
 
-    // First, temporarily set stage back to revisão so the advance logic works correctly
-    await (supabase as any).from("pm_tasks").update({ stage_current: "revisao" }).eq("id", task.id);
+    const updates: any = {
+      id: task.id,
+      stage_current: "revisao" as any,
+    };
+    if (fixedAssignee !== undefined) {
+      updates.assignee_id = fixedAssignee;
+      updates.watchers = fixedWatchers;
+    }
+    updateTask.mutate(updates);
+
+    // Update children too
     for (const child of childTasks) {
-      await (supabase as any).from("pm_tasks").update({ stage_current: "revisao" }).eq("id", child.id);
+      const childUpdates: any = {
+        id: child.id,
+        stage_current: "revisao" as any,
+      };
+      if (fixedAssignee !== undefined) {
+        childUpdates.assignee_id = fixedAssignee;
+        childUpdates.watchers = fixedWatchers;
+      }
+      updateTask.mutate(childUpdates);
     }
 
-    // Now advance using the normal flow (snapshot current as revisão, create next stage)
-    const dateConfig = transitionDates["revisao"];
-    let newDueDate: string | undefined;
-    if (typeof dateConfig === "number") {
-      const baseDate = task.due_date ? new Date(task.due_date + "T12:00:00") : new Date();
-      newDueDate = format(addDays(baseDate, dateConfig), "yyyy-MM-dd");
-    }
-
-    if (nextAfterRevisao.length > 1) {
-      setPendingCompletedStage("revisao");
-      setPendingDueDate(newDueDate);
-      setStageChoiceOptions(nextAfterRevisao);
-      setStageChoiceOpen(true);
-      return;
-    }
-
-    if (dateConfig === "pick") {
-      setPendingCompletedStage("revisao");
-      setCompletionDate(task.due_date ?? format(new Date(), "yyyy-MM-dd"));
-      setCompletionDateOpen(true);
-      return;
-    }
-
-    advanceStage("revisao", targetStage, newDueDate);
-    toast.success(`Ajuste concluído — avançou para ${stageLabel(targetStage)}`);
+    toast.success("Ajuste concluído — retornou para Revisão");
   };
 
   const saveTitle = () => {

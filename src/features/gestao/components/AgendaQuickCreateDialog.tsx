@@ -104,12 +104,14 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
       title = `[${clientName}] - ${stageLabel} - ${monthLabel}`;
     }
 
+    const watchers = selectedMemberIds.slice(1);
     createTask.mutate({
       client_id: clientId,
       title,
       stage_current: stage,
       due_date: dueDate,
       assignee_id: mainAssignee,
+      watchers: watchers.length > 0 ? watchers : undefined,
       is_extra_demand: isExtra,
       status_global: "backlog",
     }, {
