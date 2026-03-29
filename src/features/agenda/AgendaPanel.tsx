@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { addDays, addMonths, subMonths, endOfMonth, format, startOfMonth, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Filter, TriangleAlert, Calendar, Trash2, FileText, Cake, Star } from "lucide-react";
