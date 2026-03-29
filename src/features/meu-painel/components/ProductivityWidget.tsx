@@ -37,7 +37,7 @@ interface ScoringRow {
 function GlowBar(props: any) {
   const { x, y, width, height, isCurrent, isSelected } = props;
   if (!height || height <= 0) return null;
-  const selectedColor = "hsl(200 80% 50%)";
+  const selectedColor = "hsl(263 55% 65%)";
   const currentColor = "hsl(263 70% 50%)";
   const barColor = isSelected ? selectedColor : isCurrent ? currentColor : "hsl(263 60% 70% / 0.35)";
   const highlighted = isCurrent || isSelected;
@@ -324,7 +324,7 @@ export function ProductivityWidget({ tasks, allMonthTasks, todayKey }: Props) {
                       return (
                         <text
                           x={x} y={y + 12} textAnchor="middle" fontSize={11}
-                          fill={isSelected ? "hsl(200 80% 50%)" : isCurrent ? "hsl(263 70% 50%)" : "hsl(var(--muted-foreground))"}
+                          fill={isSelected ? "hsl(263 55% 65%)" : isCurrent ? "hsl(263 70% 50%)" : "hsl(var(--muted-foreground))"}
                           fontWeight={isSelected || isCurrent ? 700 : 400}
                           style={{ cursor: "pointer" }}
                         >
@@ -366,7 +366,7 @@ export function ProductivityWidget({ tasks, allMonthTasks, todayKey }: Props) {
                           x={x + w / 2} y={y - 6} textAnchor="middle"
                           fontSize={isCurrent || isSelected ? 13 : 11}
                           fontWeight={isCurrent || isSelected ? 700 : 500}
-                          fill={isSelected ? "hsl(200 80% 50%)" : isCurrent ? "hsl(263 70% 50%)" : "hsl(var(--muted-foreground))"}
+                          fill={isSelected ? "hsl(263 55% 65%)" : isCurrent ? "hsl(263 70% 50%)" : "hsl(var(--muted-foreground))"}
                         >
                           {value}
                         </text>
