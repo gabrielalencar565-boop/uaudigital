@@ -607,12 +607,8 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     const completedStage = pendingCompletedStage;
     const newDueDate = completionDate || undefined;
 
-    // Resolve next stages considering post_type
+    // Resolve next stages
     let resolvedNext = nextStages;
-    if (completedStage === "planejamento" && task.post_type) {
-      if (task.post_type === "design") resolvedNext = ["design"];
-      else if (task.post_type === "video") resolvedNext = ["edicao_videos"];
-    }
 
     if (resolvedNext.length === 0) {
       advanceStage(completedStage, "entrega", newDueDate);
