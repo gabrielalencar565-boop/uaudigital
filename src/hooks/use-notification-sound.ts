@@ -91,6 +91,25 @@ export function useNotificationSound() {
           }
         }
       )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "pm_tasks" },
+        (payload) => {
+          const uid = userIdRef.current;
+          if (!uid) return;
+          const row = payload.new as any;
+          const old = payload.old as any;
+          // Notify only when assignee changed TO the current user
+          if (row.assignee_id === uid && old.assignee_id !== uid) {
+            playNotificationSound();
+            toast("Tarefa atribuída a você", {
+              description: row.title ?? "Uma tarefa foi atribuída",
+              duration: 5000,
+              position: "top-right",
+            });
+          }
+        }
+      )
       .subscribe();
 
     return () => {
