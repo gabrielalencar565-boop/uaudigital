@@ -695,24 +695,25 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   };
 
   const handleReturnFromAlteracao = () => {
-    // Return from alteracoes back to revisão — no scoring impact
-    const updates: any = { id: task.id, stage_current: "revisao" as any };
-    const fixedAssignee = getFixedAssignee(stageAssignees, "revisao", task.client_id);
-    const fixedWatchers = getFixedWatchers(stageAssignees, "revisao", task.client_id);
-    if (fixedAssignee !== undefined) {
-      updates.assignee_id = fixedAssignee;
-      updates.watchers = fixedWatchers;
-    }
-    updateTask.mutate(updates);
-    for (const child of childTasks) {
-      const childUpdates: any = { id: child.id, stage_current: "revisao" as any };
-      if (fixedAssignee !== undefined) {
-        childUpdates.assignee_id = fixedAssignee;
-        childUpdates.watchers = fixedWatchers;
+    // After alteração is done, advance to the next stage in the flow (skip revisão, go directly to next)
+    // Find the next stage after revisão from the flow config
+    const nextAfterRevisao = getNextStages(flowConfig, "revisao");
+    const targetStage = nextAfterRevisao.length > 0 ? nextAfterRevisao[0] : "pdf";
+
+    if (targetStage === "entrega") {
+      // Final stage: mark as delivered
+      updateTask.mutate({ id: task.id, stage_current: "entrega" as any, status_global: "concluido" as any });
+      for (const child of childTasks) {
+        updateTask.mutate({ id: child.id, stage_current: "entrega" as any, status_global: "concluido" as any });
       }
-      updateTask.mutate(childUpdates);
+      syncCompletedStage("revisao");
+      toast.success("Tarefa marcada como Entregue!");
+      return;
     }
-    toast.success("Ajuste concluído — retornou para Revisão");
+
+    // Trigger the normal advance flow (snapshot + create next task)
+    // Use "revisao" as the completed stage since alteração is a loop back from revisão
+    handleConcluido();
   };
 
   const saveTitle = () => {
