@@ -456,7 +456,7 @@ export function AdminDeadlineReport({
                 </TableHeader>
                 <TableBody>
                   {userTasks.map((t) => {
-                    const auto = calcPoints(t, scoringConfigMap);
+                    const auto = calcPoints(t, scoringConfigMap, year, month);
                     const override = overrideByTaskId.get(t.id);
                     const current = override ? String(override.override_points) : "auto";
 
