@@ -447,6 +447,10 @@ export function MeuPainelPanel() {
           prevRankTotal={teamMembersQ.data?.length ?? null}
           prevQualitative={prevQualitativeQ.data ?? null}
           prevTasks={(prevTasksQ.data ?? []).map((t) => ({ ...t, completed_at: t.completed_at ?? null, point_value: (t as any).point_value ?? null }))}
+          annualQualitative={annualQualitativeQ.data ?? null}
+          annualScore={Math.round((perfYear.total ?? 0) / Math.max(1, selected.month) * 10) / 10}
+          annualRank={perfYear.rank}
+          annualRankTotal={teamMembersQ.data?.length ?? null}
         />
       </div>
 
