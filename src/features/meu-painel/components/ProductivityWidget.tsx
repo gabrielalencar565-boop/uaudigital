@@ -201,19 +201,9 @@ export function ProductivityWidget({ tasks, allMonthTasks, todayKey }: Props) {
   const dataKey = mode;
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-4 space-y-3 transition-all duration-300 hover:shadow-lg">
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2">
-          <div className="h-7 w-7 rounded-lg bg-sidebar/20 flex items-center justify-center">
-            <Activity className="h-4 w-4 text-sidebar" />
-          </div>
-          <div>
-            <h3 className="text-base font-semibold text-foreground">Sua produtividade</h3>
-            <p className="text-[11px] text-muted-foreground">Performando ao longo do tempo</p>
-          </div>
-        </div>
-        {/* Toggle */}
+    <div className="p-4 space-y-3">
+      {/* Toggle */}
+      <div className="flex justify-end">
         <div className="flex rounded-lg overflow-hidden text-xs border border-border">
           <button
             onClick={() => setMode("tarefas")}
