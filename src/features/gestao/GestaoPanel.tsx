@@ -550,6 +550,21 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
       if (lt.description?.startsWith("pm:")) continue;
       const key = lt.due_date ?? "";
       if (!key) continue;
+
+      // Apply same filters as pm_tasks
+      const legacyExtraAssignees = legacyAssigneesByTaskId.get(lt.id) ?? [];
+      const allAssignees = [lt.assigned_user_id, ...legacyExtraAssignees];
+
+      if (filterClient !== "__all__" && lt.client_id !== filterClient) continue;
+      if (filterAssignee !== "__all__" && !allAssignees.includes(filterAssignee)) continue;
+      if (search) {
+        const s = search.toLowerCase();
+        const clientName = clientsMap[lt.client_id] ?? "";
+        const titleMatch = (lt.title ?? "").toLowerCase().includes(s);
+        const clientMatch = clientName.toLowerCase().includes(s);
+        if (!titleMatch && !clientMatch) continue;
+      }
+      if (!key) continue;
       const legacyExtraAssignees = legacyAssigneesByTaskId.get(lt.id) ?? [];
       const legacyWatchers = legacyExtraAssignees.filter((id) => id !== lt.assigned_user_id);
 
