@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { format, isPast, isToday } from "date-fns";
-import { Calendar, UserCircle, Flag, Plus, MoreHorizontal, Archive, Trash2, Pencil, Link2, AlertTriangle, Video, Palette } from "lucide-react";
+import { Calendar, UserCircle, Flag, Plus, MoreHorizontal, Archive, Trash2, Pencil, Link2, AlertTriangle, Clapperboard, Palette } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -87,9 +87,11 @@ export function PmTaskCard({ task, clientName, assignees = [], childTasks = [], 
         {task.post_type && (task.stage_current === "planejamento") && (
           <span className={cn(
             "inline-flex items-center justify-center rounded-md h-5 w-5",
-            task.post_type === "video" ? "bg-blue-500/15 text-blue-500" : "bg-teal-500/15 text-teal-500"
+            task.post_type === "video"
+              ? "bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400"
+              : "bg-teal-100 text-teal-600 dark:bg-teal-900/40 dark:text-teal-400"
           )}>
-            {task.post_type === "video" ? <Video className="h-2.5 w-2.5" /> : <Palette className="h-2.5 w-2.5" />}
+            {task.post_type === "video" ? <Clapperboard className="h-2.5 w-2.5" /> : <Palette className="h-2.5 w-2.5" />}
           </span>
         )}
 

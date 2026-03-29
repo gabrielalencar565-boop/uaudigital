@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import {
   Calendar, UserCircle, Flag, X, ChevronRight, ArrowLeft,
-  Layers, Tag, MessageSquare, Plus, Check, CheckCircle2, RotateCcw, Paperclip, ListTodo, FileText, CalendarDays, Video, Palette
+  Layers, Tag, MessageSquare, Plus, Check, CheckCircle2, RotateCcw, Paperclip, ListTodo, FileText, CalendarDays, Clapperboard, Palette
 } from "lucide-react";
 import { addDays, format } from "date-fns";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -830,49 +830,69 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
           {/* Planning type selector — only in planejamento */}
           {task.stage_current === "planejamento" && (
-            <PropertyRow icon={<Video className="h-3.5 w-3.5" />} label="Tipo">
-              <div className="flex items-center gap-2 min-h-[28px]">
-                {(["video", "design"] as const).map(type => {
-                  const isActive = task.post_type === type;
-                  const Icon = type === "video" ? Video : Palette;
-                  return (
-                    <button
-                      key={type}
-                      className={cn(
-                        "flex items-center justify-center h-7 w-7 rounded-lg transition-all",
-                        type === "video"
-                          ? "bg-blue-500/15 text-blue-500"
-                          : "bg-teal-500/15 text-teal-500",
-                        isActive && "ring-2 ring-current"
-                      )}
-                      onClick={() => {
-                        const newType = isActive ? null : type;
-                        const updates: any = { id: task.id, post_type: newType };
+            <div className="flex items-center gap-2 px-1 min-h-[28px]">
+              {(["video", "design"] as const).map(type => {
+                const isActive = task.post_type === type;
+                const Icon = type === "video" ? Clapperboard : Palette;
+                return (
+                  <button
+                    key={type}
+                    className={cn(
+                      "flex items-center justify-center h-7 w-7 rounded-lg transition-all",
+                      type === "video"
+                        ? "bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400"
+                        : "bg-teal-100 text-teal-600 dark:bg-teal-900/40 dark:text-teal-400",
+                      isActive && "ring-2 ring-current"
+                    )}
+                    onClick={() => {
+                      const newType = isActive ? null : type;
+                      const updates: any = { id: task.id, post_type: newType };
 
-                        if (newType) {
-                          const typeLabel = newType === "video" ? "Vídeo" : "Design";
-                          let baseTitle = task.title
-                            .replace(/\s*-\s*(Vídeo|Design)(\s*-\s*\w+)?$/i, "")
-                            .replace(/\s*\((Vídeo|Design)\)(\s*-\s*\w+)?$/i, "")
-                            .replace(/\s*\(Planejamento\s*(Vídeo|Design)\)(\s*-\s*\w+)?$/i, "")
-                            .trim();
-                          updates.title = `${baseTitle} - ${typeLabel}`;
-                        } else {
-                          updates.title = task.title
-                            .replace(/\s*-\s*(Vídeo|Design)(\s*-\s*\w+)?$/i, "")
-                            .replace(/\s*\((Vídeo|Design)\)(\s*-\s*\w+)?$/i, "")
-                            .trim();
+                      if (newType) {
+                        const typeLabel = newType === "video" ? "Vídeo" : "Design";
+                        // Strip any existing type/month suffixes
+                        let baseTitle = task.title
+                          .replace(/\s*\((?:Vídeo|Design)\)\s*(?:-\s*\S+)?$/i, "")
+                          .replace(/\s*-\s*(?:Vídeo|Design)\s*(?:-\s*\S+)?$/i, "")
+                          .trim();
+
+                        // Extract month from current title pattern "... - Mês"
+                        const monthMatch = task.title.match(/-\s*([A-Za-zÀ-ú]+)$/);
+                        const monthName = monthMatch ? monthMatch[1].trim() : null;
+
+                        // If title ends with "Planejamento - Mês", insert (Type) before month
+                        if (monthName && baseTitle.endsWith(`- ${monthName}`)) {
+                          baseTitle = baseTitle.replace(new RegExp(`\\s*-\\s*${monthName}$`), "").trim();
                         }
+                        // Also strip trailing "Planejamento" repetition cleanly
+                        const planejamentoMatch = baseTitle.match(/^(.+?)\s*-\s*Planejamento$/i);
+                        const beforePlanejamento = planejamentoMatch ? planejamentoMatch[1].trim() : null;
 
-                        updateTask.mutate(updates);
-                      }}
-                    >
-                      <Icon className="h-3.5 w-3.5" />
-                    </button>
-                  );
-                })}
-              </div>
-            </PropertyRow>
+                        if (beforePlanejamento && monthName) {
+                          updates.title = `${beforePlanejamento} - Planejamento (${typeLabel}) - ${monthName}`;
+                        } else if (beforePlanejamento) {
+                          updates.title = `${beforePlanejamento} - Planejamento (${typeLabel})`;
+                        } else if (monthName) {
+                          updates.title = `${baseTitle} (${typeLabel}) - ${monthName}`;
+                        } else {
+                          updates.title = `${baseTitle} (${typeLabel})`;
+                        }
+                      } else {
+                        // Remove (Type) suffix when deselecting
+                        updates.title = task.title
+                          .replace(/\s*\((?:Vídeo|Design)\)/i, "")
+                          .replace(/\s*-\s*(?:Vídeo|Design)\s*(?:-\s*\S+)?$/i, "")
+                          .trim();
+                      }
+
+                      updateTask.mutate(updates);
+                    }}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                  </button>
+                );
+              })}
+            </div>
           )}
 
           <PropertyRow icon={<Tag className="h-3.5 w-3.5" />} label="Etiquetas">
