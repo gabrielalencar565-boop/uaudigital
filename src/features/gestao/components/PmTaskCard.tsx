@@ -61,7 +61,12 @@ export function PmTaskCard({ task, clientName, assignees = [], childTasks = [], 
   const extraAssignees = Math.max(assignees.length - visibleAssignees.length, 0);
 
   return (
-    <div className="calendar-card-hover group w-full rounded-xl border border-border/20 bg-card shadow-sm transition-all duration-300 ease-out overflow-hidden">
+    <div className={cn(
+      "calendar-card-hover group w-full rounded-xl border shadow-sm transition-all duration-300 ease-out overflow-hidden",
+      task.stage_current === "alteracoes" && task.post_type
+        ? "bg-[#E5C94E] border-[#E5C94E]/60"
+        : "border-border/20 bg-card"
+    )}>
       {task.cover_url && (
         <div className="w-full h-20 overflow-hidden">
           <img src={task.cover_url} alt="" className="w-full h-full object-cover" />
