@@ -884,33 +884,6 @@ export function DayViewPanel() {
                           </div>
                         </div>
                         <span className="w-14 text-center shrink-0 text-sm font-bold">{row.total}</span>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div className="w-14 shrink-0 flex items-center justify-center gap-0.5 cursor-default">
-                              {!hasChange ? (
-                                <span className="text-muted-foreground text-[10px]">—</span>
-                              ) : posChange > 0 ? (
-                                <>
-                                  <ArrowUp className="h-3.5 w-3.5 text-success" />
-                                  <span className="text-[11px] font-semibold text-success">+{posChange}</span>
-                                </>
-                              ) : posChange < 0 ? (
-                                <>
-                                  <ArrowDown className="h-3.5 w-3.5 text-destructive" />
-                                  <span className="text-[11px] font-semibold text-destructive">{posChange}</span>
-                                </>
-                              ) : (
-                                <span className="text-muted-foreground text-[10px]">—</span>
-                              )}
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent side="top">
-                            {!hasChange ? "Sem variação registrada" :
-                              posChange > 0 ? `Subiu ${posChange} posição(ões) no ranking` :
-                              posChange < 0 ? `Caiu ${Math.abs(posChange)} posição(ões) no ranking` :
-                              "Manteve a mesma posição"}
-                          </TooltipContent>
-                        </Tooltip>
                       </div>
                       {/* Mobile layout */}
                       <div className="flex sm:hidden items-center gap-2.5">
