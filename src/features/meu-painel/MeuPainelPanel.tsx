@@ -220,6 +220,28 @@ export function MeuPainelPanel() {
     staleTime: 60_000,
   });
 
+  // ── Annual qualitative average ──
+  const annualQualitativeQ = useQuery({
+    enabled: !!user?.id,
+    queryKey: ["my_qualitative_annual", selected.year, user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("performance_scores")
+        .select("padrao_qualidade_uau, comprometimento, ambiente_organizado, aprendizado_continuo")
+        .eq("year", selected.year)
+        .eq("user_id", user!.id);
+      if (!data || data.length === 0) return null;
+      const count = data.length;
+      return {
+        padrao_qualidade_uau: Math.round((data.reduce((s, r) => s + r.padrao_qualidade_uau, 0) / count) * 10) / 10,
+        comprometimento: Math.round((data.reduce((s, r) => s + r.comprometimento, 0) / count) * 10) / 10,
+        ambiente_organizado: Math.round((data.reduce((s, r) => s + r.ambiente_organizado, 0) / count) * 10) / 10,
+        aprendizado_continuo: Math.round((data.reduce((s, r) => s + r.aprendizado_continuo, 0) / count) * 10) / 10,
+      };
+    },
+    staleTime: 60_000,
+  });
+
   // ── Streak calculation ──
   const streak = useMemo(() => {
     let count = 0;
