@@ -1,4 +1,5 @@
 import { useMemo, useCallback } from "react";
+import { normalizeAvatarUrl } from "@/lib/avatar-url";
 import { Bell, AlertTriangle, AtSign, UserPlus, Clock, Check, CheckCheck } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, differenceInCalendarDays } from "date-fns";

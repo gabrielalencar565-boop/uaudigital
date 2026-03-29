@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { normalizeAvatarUrl } from "@/lib/avatar-url";
 import { Users, Save } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";

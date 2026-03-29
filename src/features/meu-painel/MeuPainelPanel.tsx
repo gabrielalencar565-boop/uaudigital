@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { normalizeAvatarUrl } from "@/lib/avatar-url";
 import { format, getDay, subDays } from "date-fns";
 import { ListChecks, CheckCircle2, Clock, AlertTriangle, Flame } from "lucide-react";
 import confetti from "canvas-confetti";

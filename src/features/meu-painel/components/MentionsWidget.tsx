@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { normalizeAvatarUrl } from "@/lib/avatar-url";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";

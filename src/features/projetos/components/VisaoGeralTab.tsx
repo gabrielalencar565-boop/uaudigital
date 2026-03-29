@@ -1,4 +1,5 @@
 import { useMemo, useState, useCallback } from "react";
+import { normalizeAvatarUrl } from "@/lib/avatar-url";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

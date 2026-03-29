@@ -1,4 +1,5 @@
 import { PropsWithChildren, useMemo, useState } from "react";
+import { normalizeAvatarUrl } from "@/lib/avatar-url";
 import {
   CalendarDays, ChevronDown, ClipboardList, DollarSign,
   Eye, FileSpreadsheet, FolderOpen, LayoutGrid, Receipt, Settings, Target, TrendingUp, Trophy,
