@@ -3,7 +3,8 @@ import {
   Calendar, UserCircle, Flag, X, ChevronRight, ArrowLeft,
   Layers, Tag, MessageSquare, Plus, Check, CheckCircle2, RotateCcw, Paperclip, ListTodo, FileText, CalendarDays, Clapperboard, Palette
 } from "lucide-react";
-import { addDays, format } from "date-fns";
+import { addDays, format, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -829,7 +830,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           </PropertyRow>
 
           {/* Planning type selector — only in planejamento */}
-          {task.stage_current === "planejamento" && (
+          {task.stage_current === "planejamento" && !task.parent_task_id && (
             <div className="flex items-center gap-2 px-1 min-h-[28px]">
               {(["video", "design"] as const).map(type => {
                 const isActive = task.post_type === type;
@@ -850,34 +851,25 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
                       if (newType) {
                         const typeLabel = newType === "video" ? "Vídeo" : "Design";
-                        let baseTitle = task.title
-                          .replace(/\s*\((?:Vídeo|Design)\)\s*(?:-\s*\S+)?$/i, "")
-                          .replace(/\s*-\s*(?:Vídeo|Design)\s*(?:-\s*\S+)?$/i, "")
-                          .trim();
-
-                        const monthMatch = task.title.match(/-\s*([A-Za-zÀ-ú]+)$/);
-                        const monthName = monthMatch ? monthMatch[1].trim() : null;
-
-                        if (monthName && baseTitle.endsWith(`- ${monthName}`)) {
-                          baseTitle = baseTitle.replace(new RegExp(`\\s*-\\s*${monthName}$`), "").trim();
+                        const clientName = clientsMap[task.client_id] || task.title.split(" - ")[0];
+                        let month: string | null = null;
+                        if (task.due_date) {
+                          const raw = format(parseISO(task.due_date), "MMMM", { locale: ptBR });
+                          month = raw.charAt(0).toUpperCase() + raw.slice(1);
                         }
-                        const planejamentoMatch = baseTitle.match(/^(.+?)\s*-\s*Planejamento$/i);
-                        const beforePlanejamento = planejamentoMatch ? planejamentoMatch[1].trim() : null;
-
-                        if (beforePlanejamento && monthName) {
-                          updates.title = `${beforePlanejamento} - Planejamento (${typeLabel}) - ${monthName}`;
-                        } else if (beforePlanejamento) {
-                          updates.title = `${beforePlanejamento} - Planejamento (${typeLabel})`;
-                        } else if (monthName) {
-                          updates.title = `${baseTitle} (${typeLabel}) - ${monthName}`;
-                        } else {
-                          updates.title = `${baseTitle} (${typeLabel})`;
-                        }
+                        updates.title = month
+                          ? `${clientName} - Planejamento (${typeLabel}) - ${month}`
+                          : `${clientName} - Planejamento (${typeLabel})`;
                       } else {
-                        updates.title = task.title
-                          .replace(/\s*\((?:Vídeo|Design)\)/i, "")
-                          .replace(/\s*-\s*(?:Vídeo|Design)\s*(?:-\s*\S+)?$/i, "")
-                          .trim();
+                        const clientName = clientsMap[task.client_id] || task.title.split(" - ")[0];
+                        let month: string | null = null;
+                        if (task.due_date) {
+                          const raw = format(parseISO(task.due_date), "MMMM", { locale: ptBR });
+                          month = raw.charAt(0).toUpperCase() + raw.slice(1);
+                        }
+                        updates.title = month
+                          ? `${clientName} - Planejamento - ${month}`
+                          : `${clientName} - Planejamento`;
                       }
 
                       updateTask.mutate(updates);
