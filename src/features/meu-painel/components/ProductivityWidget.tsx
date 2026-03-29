@@ -37,13 +37,16 @@ interface ScoringRow {
 function GlowBar(props: any) {
   const { x, y, width, height, isCurrent, isSelected } = props;
   if (!height || height <= 0) return null;
+  const selectedColor = "hsl(200 80% 50%)";
+  const currentColor = "hsl(263 70% 50%)";
+  const barColor = isSelected ? selectedColor : isCurrent ? currentColor : "hsl(263 60% 70% / 0.35)";
   const highlighted = isCurrent || isSelected;
   return (
     <g style={{ cursor: "pointer" }}>
       {highlighted && (
-        <rect x={x - 2} y={y - 2} width={width + 4} height={height + 4} rx={7} fill="none" stroke="hsl(263 70% 50%)" strokeWidth={isSelected ? 2 : 0} filter="url(#barGlow)" />
+        <rect x={x - 2} y={y - 2} width={width + 4} height={height + 4} rx={7} fill="none" stroke={isSelected ? selectedColor : currentColor} strokeWidth={isSelected ? 2 : 0} filter="url(#barGlow)" />
       )}
-      <rect x={x} y={y} width={width} height={height} rx={6} fill={highlighted ? "hsl(263 70% 50%)" : "hsl(263 60% 70% / 0.35)"} />
+      <rect x={x} y={y} width={width} height={height} rx={6} fill={barColor} />
     </g>
   );
 }
@@ -299,9 +302,9 @@ export function ProductivityWidget({ tasks, allMonthTasks, todayKey }: Props) {
               )}
             </div>
             <p className="text-[10px] text-muted-foreground/70 mb-2">Clique para detalhar</p>
-            <div className="h-[128px]">
+            <div className="h-[148px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={weeklyData} barCategoryGap="18%">
+                <BarChart data={weeklyData} barCategoryGap="18%" margin={{ top: 24, right: 4, bottom: 0, left: 4 }}>
                   <defs>
                     <filter id="barGlow">
                       <feGaussianBlur stdDeviation="3" result="blur" />
@@ -321,7 +324,7 @@ export function ProductivityWidget({ tasks, allMonthTasks, todayKey }: Props) {
                       return (
                         <text
                           x={x} y={y + 12} textAnchor="middle" fontSize={11}
-                          fill={isSelected ? "hsl(263 70% 50%)" : isCurrent ? "hsl(263 70% 50%)" : "hsl(var(--muted-foreground))"}
+                          fill={isSelected ? "hsl(200 80% 50%)" : isCurrent ? "hsl(263 70% 50%)" : "hsl(var(--muted-foreground))"}
                           fontWeight={isSelected || isCurrent ? 700 : 400}
                           style={{ cursor: "pointer" }}
                         >
@@ -329,6 +332,7 @@ export function ProductivityWidget({ tasks, allMonthTasks, todayKey }: Props) {
                         </text>
                       );
                     }}
+                    interval={0}
                     axisLine={false}
                     tickLine={false}
                   />
@@ -359,10 +363,10 @@ export function ProductivityWidget({ tasks, allMonthTasks, todayKey }: Props) {
                       const isSelected = index === selectedWeekIndex;
                       return (
                         <text
-                          x={x + w / 2} y={y - 8} textAnchor="middle"
+                          x={x + w / 2} y={y - 6} textAnchor="middle"
                           fontSize={isCurrent || isSelected ? 13 : 11}
                           fontWeight={isCurrent || isSelected ? 700 : 500}
-                          fill={isCurrent || isSelected ? "hsl(263 70% 50%)" : "hsl(var(--muted-foreground))"}
+                          fill={isSelected ? "hsl(200 80% 50%)" : isCurrent ? "hsl(263 70% 50%)" : "hsl(var(--muted-foreground))"}
                         >
                           {value}
                         </text>
