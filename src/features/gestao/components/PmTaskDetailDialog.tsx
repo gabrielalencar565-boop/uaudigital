@@ -368,6 +368,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         tags: task.tags ?? [],
         is_extra_demand: task.is_extra_demand,
         status_global: "backlog",
+        post_type: task.post_type ?? undefined,
       }).then((newTask) => {
         transferChildren(newTask.id, nextStage);
       });
