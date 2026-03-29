@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Clapperboard, Palette, ChevronDown, Plus, Check, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -98,20 +99,39 @@ function PlanningSection({
   const createTask = useCreatePmTask();
   const { stageAssignees } = useDefaultFlowWithDates();
   const [isOpen, setIsOpen] = useState(true);
+  const [isAdding, setIsAdding] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const addInputRef = useRef<HTMLInputElement>(null);
 
   const total = tasks.length;
-  const progress = total > 0 ? Math.round((doneCount / total) * 100) : 0;
 
-  const handleQuickAdd = async () => {
+  useEffect(() => {
+    if (isAdding && addInputRef.current) {
+      addInputRef.current.focus();
+    }
+  }, [isAdding]);
+
+  const handleStartAdd = () => {
+    setNewTitle("");
+    setIsAdding(true);
+  };
+
+  const handleConfirmAdd = async () => {
+    if (!newTitle.trim()) {
+      setIsAdding(false);
+      return;
+    }
     await createTask.mutateAsync({
       client_id: parentTask.client_id,
-      title: `Nova subtarefa de ${label.toLowerCase()}`,
+      title: newTitle.trim(),
       parent_task_id: parentTask.id,
       stage_current: parentTask.stage_current,
       assignee_id: parentTask.assignee_id ?? undefined,
       watchers: parentTask.watchers ?? [],
       post_type: type,
     } as any);
+    setNewTitle("");
+    setIsAdding(false);
   };
 
   const toggleAssignee = (subId: string, sub: PmTask, memberId: string) => {
@@ -153,17 +173,7 @@ function PlanningSection({
         )}>
           {icon}
           <span className="font-semibold text-sm">{label}</span>
-          <span className="text-xs opacity-80">{doneCount}/{total}</span>
-          {total > 0 && (
-            <div className="w-16 mx-1">
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/20">
-                <div
-                  className={cn("h-full rounded-full transition-all", progress === 100 ? "bg-emerald-300" : "bg-white/70")}
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-            </div>
-          )}
+          <span className="text-xs opacity-80">{total}</span>
           <ChevronDown className={cn("h-3.5 w-3.5 ml-auto transition-transform", isOpen && "rotate-180")} />
         </button>
       </CollapsibleTrigger>
@@ -267,15 +277,32 @@ function PlanningSection({
             );
           })}
 
-          {/* Quick add button */}
-          <button
-            onClick={handleQuickAdd}
-            disabled={createTask.isPending}
-            className="flex items-center gap-2 px-2 py-2 w-full text-muted-foreground/60 hover:text-primary hover:bg-card/40 transition rounded-b-md"
-          >
-            <Plus className="h-3.5 w-3.5 shrink-0" />
-            <span className="text-xs">Adicionar subtarefa</span>
-          </button>
+          {/* Add subtask: input or button */}
+          {isAdding ? (
+            <div className="flex items-center gap-2 px-2 py-2">
+              <Plus className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <Input
+                ref={addInputRef}
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                placeholder={`Nome da subtarefa...`}
+                className="h-7 text-sm border-0 bg-transparent shadow-none focus-visible:ring-0 p-0 placeholder:text-muted-foreground/50"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleConfirmAdd();
+                  if (e.key === "Escape") { setIsAdding(false); setNewTitle(""); }
+                }}
+                onBlur={handleConfirmAdd}
+              />
+            </div>
+          ) : (
+            <button
+              onClick={handleStartAdd}
+              className="flex items-center gap-2 px-2 py-2 w-full text-muted-foreground/60 hover:text-primary hover:bg-card/40 transition rounded-b-md"
+            >
+              <Plus className="h-3.5 w-3.5 shrink-0" />
+              <span className="text-xs">Adicionar subtarefa</span>
+            </button>
+          )}
         </div>
       </CollapsibleContent>
     </Collapsible>
