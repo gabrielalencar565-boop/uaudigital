@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { normalizeAvatarUrl } from "@/lib/avatar-url";
 import { format, getDay, subDays } from "date-fns";
-import { ListChecks, CheckCircle2, Clock, AlertTriangle, Flame } from "lucide-react";
+import { ListChecks, CheckCircle2, Clock, AlertTriangle, Flame, Activity, Trophy, ChevronDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -35,7 +36,6 @@ import {
   useCleaningCompletions,
   useToggleCleaningCompletion,
 } from "@/features/cleaning/hooks/use-cleaning";
-import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 // ── Helpers ──────────────────────────────────────────────
@@ -433,7 +433,10 @@ export function MeuPainelPanel() {
 
       {/* ── 7. PRODUCTIVITY + FEEDBACK (below mentions) ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.45s" }}>
-        <ProductivityWidget tasks={myTasks} allMonthTasks={[...myTasks, ...(prevTasksQ.data ?? [])]} todayKey={todayKey} />
+        <CollapsibleWidget title="Sua produtividade" icon={<Activity className="h-4 w-4 text-sidebar" />}>
+          <ProductivityWidget tasks={myTasks} allMonthTasks={[...myTasks, ...(prevTasksQ.data ?? [])]} todayKey={todayKey} />
+        </CollapsibleWidget>
+        <CollapsibleWidget title="Seu desempenho" icon={<Trophy className="h-4 w-4 text-sidebar" />}>
         <SmartFeedbackWidget
           myTasks={myTasks.map((t) => ({ ...t, completed_at: t.completed_at ?? null, point_value: (t as any).point_value ?? null }))}
           teamAvgScore={teamPerfQ.data ?? null}
@@ -452,10 +455,37 @@ export function MeuPainelPanel() {
           annualRank={perfYear.rank}
           annualRankTotal={teamMembersQ.data?.length ?? null}
         />
+        </CollapsibleWidget>
       </div>
 
       {/* ── PM Task Dialog ── */}
       <PmTaskDetailDialogWrapper taskId={selectedPmTaskId} onClose={() => setSelectedPmTaskId(null)} isAdmin={isAdmin} />
+    </div>
+  );
+}
+
+// ── Collapsible widget wrapper ──
+
+function CollapsibleWidget({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-2xl border border-border bg-card overflow-hidden transition-all duration-300">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between gap-2 px-4 py-3 hover:bg-muted/40 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <div className="h-7 w-7 rounded-lg bg-sidebar/20 flex items-center justify-center">{icon}</div>
+          <span className="text-sm font-semibold text-foreground">{title}</span>
+        </div>
+        <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", open && "rotate-180")} />
+      </button>
+      <div
+        className="transition-all duration-300 ease-in-out overflow-hidden"
+        style={{ display: "grid", gridTemplateRows: open ? "1fr" : "0fr" }}
+      >
+        <div className="min-h-0">{children}</div>
+      </div>
     </div>
   );
 }
