@@ -177,6 +177,7 @@ export function TaskTrashPanel({ onClose, isAdmin = false }: { onClose: () => vo
               {deletedTasks.map(task => {
                 const client = clientsById.get(task.client_id);
                 const member = teamByUserId.get(task.assigned_user_id);
+                const deletedByMember = task.deleted_by ? teamByUserId.get(task.deleted_by) : null;
                 const stageLabel = STAGES.find(s => s.key === task.stage)?.label ?? task.stage;
                 const deletedAt = task.deleted_at ? new Date(task.deleted_at) : null;
 
@@ -210,14 +211,21 @@ export function TaskTrashPanel({ onClose, isAdmin = false }: { onClose: () => vo
                       {deletedAt && (() => {
                         const daysLeft = 30 - differenceInDays(new Date(), deletedAt);
                         return (
-                          <div className="flex items-center gap-2">
-                            <p className="text-xs text-muted-foreground/70">
-                              Excluída em {format(deletedAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                            </p>
-                            <Badge variant={daysLeft <= 7 ? "destructive" : "secondary"} className="text-[10px] gap-1">
-                              <Clock className="h-3 w-3" />
-                              {daysLeft > 0 ? `${daysLeft}d restantes` : "Expirando..."}
-                            </Badge>
+                          <div className="flex flex-col gap-0.5">
+                            <div className="flex items-center gap-2">
+                              <p className="text-xs text-muted-foreground/70">
+                                Excluída em {format(deletedAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                              </p>
+                              <Badge variant={daysLeft <= 7 ? "destructive" : "secondary"} className="text-[10px] gap-1">
+                                <Clock className="h-3 w-3" />
+                                {daysLeft > 0 ? `${daysLeft}d restantes` : "Expirando..."}
+                              </Badge>
+                            </div>
+                            {deletedByMember && (
+                              <p className="text-xs text-muted-foreground/70">
+                                Excluída por: <span className="font-medium text-muted-foreground">{deletedByMember.display_name}</span>
+                              </p>
+                            )}
                           </div>
                         );
                       })()}
