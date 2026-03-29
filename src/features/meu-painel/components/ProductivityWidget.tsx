@@ -37,13 +37,16 @@ interface ScoringRow {
 function GlowBar(props: any) {
   const { x, y, width, height, isCurrent, isSelected } = props;
   if (!height || height <= 0) return null;
+  const selectedColor = "hsl(200 80% 50%)";
+  const currentColor = "hsl(263 70% 50%)";
+  const barColor = isSelected ? selectedColor : isCurrent ? currentColor : "hsl(263 60% 70% / 0.35)";
   const highlighted = isCurrent || isSelected;
   return (
     <g style={{ cursor: "pointer" }}>
       {highlighted && (
-        <rect x={x - 2} y={y - 2} width={width + 4} height={height + 4} rx={7} fill="none" stroke="hsl(263 70% 50%)" strokeWidth={isSelected ? 2 : 0} filter="url(#barGlow)" />
+        <rect x={x - 2} y={y - 2} width={width + 4} height={height + 4} rx={7} fill="none" stroke={isSelected ? selectedColor : currentColor} strokeWidth={isSelected ? 2 : 0} filter="url(#barGlow)" />
       )}
-      <rect x={x} y={y} width={width} height={height} rx={6} fill={highlighted ? "hsl(263 70% 50%)" : "hsl(263 60% 70% / 0.35)"} />
+      <rect x={x} y={y} width={width} height={height} rx={6} fill={barColor} />
     </g>
   );
 }
