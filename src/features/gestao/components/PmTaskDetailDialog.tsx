@@ -805,7 +805,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                   <span className="text-xs font-medium">{stageLabel(task.stage_current)}</span>
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-56 p-1" align="start">
+              <PopoverContent className="w-56 p-1 z-[150]" align="start">
                 {PM_ACTIVE_STAGES.map(s => {
                   const color = getStageCircleColor(s.key);
                   const isDoneS = s.key === "entrega";
