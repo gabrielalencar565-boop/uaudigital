@@ -455,6 +455,7 @@ export function MeuPainelPanel() {
           annualRank={perfYear.rank}
           annualRankTotal={teamMembersQ.data?.length ?? null}
         />
+        </CollapsibleWidget>
       </div>
 
       {/* ── PM Task Dialog ── */}
