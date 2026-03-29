@@ -648,9 +648,10 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
         }}
         onDragEnd={isLegacy ? undefined : () => setDraggedTask(null)}
         className={cn("w-full rounded-xl border backdrop-blur-sm p-2 text-left transition-all hover:shadow-sm hover:-translate-y-0.5 group/card shadow-[0_1px_3px_0_hsl(var(--foreground)/0.06)]",
-          isAlteracaoWithOrigin ? "bg-[#E5C94E] border-[#E5C94E]/60 hover:bg-[#E5C94E]/90" : "bg-card/60 hover:bg-card border-border/30",
+          isAlteracaoWithOrigin ? "border-[#f5b800]/40" : "bg-card/60 hover:bg-card border-border/30",
           isLegacy ? "cursor-default border-border/40 border-dashed" : "cursor-grab active:cursor-grabbing"
         )}
+        style={isAlteracaoWithOrigin ? { background: 'linear-gradient(135deg, rgba(255,204,1,0.25) 0%, rgba(245,184,0,0.18) 100%)' } : undefined}
         onClick={isLegacy ? undefined : () => onTaskClick(t)}>
         <div className="flex items-center justify-between gap-1">
           <div className={cn("inline-flex h-5 items-center rounded-md px-2 text-[9px] font-bold text-white tracking-wide", stageBg)}>

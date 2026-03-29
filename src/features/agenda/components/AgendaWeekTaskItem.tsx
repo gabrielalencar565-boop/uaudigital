@@ -112,11 +112,12 @@ export function AgendaWeekTaskItem({
     <div
       className={cn(
         "rounded-lg border shadow-sm",
-        isAlteracaoWithOrigin ? "bg-[#E5C94E] border-[#E5C94E]/60" : "bg-card/20 border-border/60",
+        isAlteracaoWithOrigin ? "border-[#f5b800]/40" : "bg-card/20 border-border/60",
         isCompact ? "p-2" : "p-2.5",
         !canInteract && "opacity-60",
         onClick && "cursor-pointer hover:border-primary/50 hover:bg-card/40 transition-colors",
       )}
+      style={isAlteracaoWithOrigin ? { background: 'linear-gradient(135deg, rgba(255,204,1,0.25) 0%, rgba(245,184,0,0.18) 100%)' } : undefined}
       onClick={(e) => {
         // Evita abrir edição se clicar nos botões
         if ((e.target as HTMLElement).closest("button")) return;
