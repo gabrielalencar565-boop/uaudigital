@@ -925,7 +925,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
               {/* Completion date dialog */}
               <Dialog open={completionDateOpen} onOpenChange={setCompletionDateOpen}>
-                <DialogContent className="max-w-xs">
+                <DialogContent className="max-w-xs z-[130]">
                   <div className="space-y-4">
                     <h3 className="text-sm font-semibold">Data de entrega da próxima etapa</h3>
                     <p className="text-xs text-muted-foreground">
