@@ -538,13 +538,20 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     const completedStage = pendingCompletedStage;
     const newDueDate = completionDate || undefined;
 
-    if (nextStages.length === 0) {
+    // Resolve next stages considering post_type
+    let resolvedNext = nextStages;
+    if (completedStage === "planejamento" && task.post_type) {
+      if (task.post_type === "design") resolvedNext = ["design"];
+      else if (task.post_type === "video") resolvedNext = ["edicao_videos"];
+    }
+
+    if (resolvedNext.length === 0) {
       advanceStage(completedStage, "entrega", newDueDate);
-    } else if (nextStages.length === 1) {
-      advanceStage(completedStage, nextStages[0], newDueDate);
+    } else if (resolvedNext.length === 1) {
+      advanceStage(completedStage, resolvedNext[0], newDueDate);
     } else {
       setPendingDueDate(newDueDate);
-      setStageChoiceOptions(nextStages);
+      setStageChoiceOptions(resolvedNext);
       setStageChoiceOpen(true);
     }
     setCompletionDateOpen(false);
