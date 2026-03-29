@@ -1276,6 +1276,7 @@ export function AgendaPanel() {
                     dueTime={formatDueTime(t.due_at)} 
                     density="default"
                     isExtraDemand={t.is_extra_demand}
+                    postType={getPostType(t)}
                     canInteract={canInteract} 
                     canDelete={true} 
                     onToggle={() => {
