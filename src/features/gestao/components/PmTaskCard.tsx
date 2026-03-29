@@ -84,10 +84,10 @@ export function PmTaskCard({ task, clientName, assignees = [], childTasks = [], 
         )}
 
         {/* Post type badge */}
-        {task.post_type && (task.stage_current === "planejamento" || task.stage_current === "captacao") && (
+        {task.post_type && (task.stage_current === "planejamento") && (
           <span className={cn(
-            "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-semibold",
-            task.post_type === "video" ? "bg-primary/10 text-primary" : "bg-[hsl(var(--brand))]/10 text-[hsl(var(--brand))]"
+            "inline-flex items-center justify-center rounded-md h-5 w-5",
+            task.post_type === "video" ? "bg-blue-500/15 text-blue-500" : "bg-teal-500/15 text-teal-500"
           )}>
             {task.post_type === "video" ? <Video className="h-2.5 w-2.5" /> : <Palette className="h-2.5 w-2.5" />}
           </span>

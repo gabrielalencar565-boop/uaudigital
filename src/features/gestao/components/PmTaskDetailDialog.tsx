@@ -764,7 +764,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                   {clientsMap[task.client_id] ?? "—"}
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-56 p-1 max-h-64 overflow-y-auto" align="start">
+              <PopoverContent className="w-56 p-1 max-h-64 overflow-y-auto z-[150]" align="start">
                 {Object.entries(clientsMap).map(([cid, cname]) => (
                   <button key={cid} className={cn("flex items-center gap-2 w-full px-3 py-2 rounded text-sm hover:bg-accent transition text-left", task.client_id === cid && "bg-accent")} onClick={() => {
                     const oldClientName = clientsMap[task.client_id];
@@ -805,7 +805,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                   <span className="text-xs font-medium">{stageLabel(task.stage_current)}</span>
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-56 p-1" align="start">
+              <PopoverContent className="w-56 p-1 z-[150]" align="start">
                 {PM_ACTIVE_STAGES.map(s => {
                   const color = getStageCircleColor(s.key);
                   const isDoneS = s.key === "entrega";
@@ -828,54 +828,51 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
             </Popover>
           </PropertyRow>
 
-          {/* Planning type selector — only when stage is planejamento or captacao */}
-          {(task.stage_current === "planejamento" || task.stage_current === "captacao") && (
-            <div className="flex items-center gap-2 px-1 min-h-[28px]">
-              {(["video", "design"] as const).map(type => {
-                const isActive = task.post_type === type;
-                const Icon = type === "video" ? Video : Palette;
-                return (
-                  <button
-                    key={type}
-                    className={cn(
-                      "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
-                      isActive
-                        ? type === "video"
-                          ? "bg-primary/15 text-primary ring-1 ring-primary/30"
-                          : "bg-[hsl(var(--brand))]/15 text-[hsl(var(--brand))] ring-1 ring-[hsl(var(--brand))]/30"
-                        : "bg-muted/60 text-muted-foreground hover:bg-muted"
-                    )}
-                    onClick={() => {
-                      const newType = isActive ? null : type;
-                      const updates: any = { id: task.id, post_type: newType };
+          {/* Planning type selector — only in planejamento */}
+          {task.stage_current === "planejamento" && (
+            <PropertyRow icon={<Video className="h-3.5 w-3.5" />} label="Tipo">
+              <div className="flex items-center gap-2 min-h-[28px]">
+                {(["video", "design"] as const).map(type => {
+                  const isActive = task.post_type === type;
+                  const Icon = type === "video" ? Video : Palette;
+                  return (
+                    <button
+                      key={type}
+                      className={cn(
+                        "flex items-center justify-center h-7 w-7 rounded-lg transition-all",
+                        type === "video"
+                          ? "bg-blue-500/15 text-blue-500"
+                          : "bg-teal-500/15 text-teal-500",
+                        isActive && "ring-2 ring-current"
+                      )}
+                      onClick={() => {
+                        const newType = isActive ? null : type;
+                        const updates: any = { id: task.id, post_type: newType };
 
-                      // Auto-rename title with type suffix (no month)
-                      if (newType) {
-                        const typeLabel = newType === "video" ? "Vídeo" : "Design";
+                        if (newType) {
+                          const typeLabel = newType === "video" ? "Vídeo" : "Design";
+                          let baseTitle = task.title
+                            .replace(/\s*-\s*(Vídeo|Design)(\s*-\s*\w+)?$/i, "")
+                            .replace(/\s*\((Vídeo|Design)\)(\s*-\s*\w+)?$/i, "")
+                            .replace(/\s*\(Planejamento\s*(Vídeo|Design)\)(\s*-\s*\w+)?$/i, "")
+                            .trim();
+                          updates.title = `${baseTitle} - ${typeLabel}`;
+                        } else {
+                          updates.title = task.title
+                            .replace(/\s*-\s*(Vídeo|Design)(\s*-\s*\w+)?$/i, "")
+                            .replace(/\s*\((Vídeo|Design)\)(\s*-\s*\w+)?$/i, "")
+                            .trim();
+                        }
 
-                        // Remove existing type suffix patterns
-                        let baseTitle = task.title
-                          .replace(/\s*-\s*(Vídeo|Design)(\s*-\s*\w+)?$/i, "")
-                          .replace(/\s*\((Vídeo|Design)\)(\s*-\s*\w+)?$/i, "")
-                          .trim();
-
-                        updates.title = `${baseTitle} - ${typeLabel}`;
-                      } else if (!newType) {
-                        // Remove suffix when deselecting
-                        updates.title = task.title
-                          .replace(/\s*-\s*(Vídeo|Design)(\s*-\s*\w+)?$/i, "")
-                          .trim();
-                      }
-
-                      updateTask.mutate(updates);
-                    }}
-                  >
-                    <Icon className="h-3.5 w-3.5" />
-                    {type === "video" ? "Vídeo" : "Design"}
-                  </button>
-                );
-              })}
-            </div>
+                        updateTask.mutate(updates);
+                      }}
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                    </button>
+                  );
+                })}
+              </div>
+            </PropertyRow>
           )}
 
           <PropertyRow icon={<Tag className="h-3.5 w-3.5" />} label="Etiquetas">
@@ -889,7 +886,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                   }) : (<span className="text-xs text-muted-foreground">Adicionar...</span>)}
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-64 p-0" align="start">
+              <PopoverContent className="w-64 p-0 z-[150]" align="start">
                 <div className="p-3 border-b border-border/30">
                   <Input
                     value={newTagName}
