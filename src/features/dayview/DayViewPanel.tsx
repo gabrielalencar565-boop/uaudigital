@@ -267,6 +267,27 @@ export function DayViewPanel() {
     return base;
   }, [scoresQ.data, teamQ.data, taskStatsByUser]);
 
+  // Previous month ranking positions map
+  const prevMonthRankMap = useMemo(() => {
+    const scores = prevScoresQ.data ?? [];
+    const byUser = new Map(scores.map((s) => [s.user_id, s]));
+    const members = teamQ.data ?? [];
+    const base = members.map((m) => {
+      const s = byUser.get(m.user_id);
+      const total =
+        (s?.aprendizado_continuo ?? 0) +
+        (s?.padrao_qualidade_uau ?? 0) +
+        (s?.metas_prazos ?? 0) +
+        (s?.ambiente_organizado ?? 0) +
+        (s?.comprometimento ?? 0);
+      return { user_id: m.user_id, total };
+    });
+    base.sort((a, b) => b.total - a.total);
+    const map = new Map<string, number>();
+    base.forEach((r, i) => map.set(r.user_id, i));
+    return map;
+  }, [prevScoresQ.data, teamQ.data]);
+
   // ─── Streak: dias consecutivos concluindo tarefas dentro do prazo ───
   const streakByUser = useMemo(() => {
     const tasks = tasksQ.data ?? [];
