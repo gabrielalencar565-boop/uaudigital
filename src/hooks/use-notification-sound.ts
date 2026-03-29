@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
+import { toast } from "sonner";
 
 /**
  * Soft digital ping — UI notification sound.
@@ -62,6 +63,11 @@ export function useNotificationSound() {
           // Check if content mentions the current user
           if (row.content && row.content.includes(`@${uid}`)) {
             playNotificationSound();
+            toast("Você foi mencionado", {
+              description: row.content?.substring(0, 80)?.replace(/@([a-f0-9-]{36})/gi, "@alguém") ?? "",
+              duration: 5000,
+              position: "top-right",
+            });
           }
         }
       )
@@ -77,6 +83,30 @@ export function useNotificationSound() {
           // Notify if assigned to this user
           if (row.assignee_id === uid) {
             playNotificationSound();
+            toast("Nova tarefa atribuída a você", {
+              description: row.title ?? "Uma nova tarefa foi atribuída",
+              duration: 5000,
+              position: "top-right",
+            });
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "pm_tasks" },
+        (payload) => {
+          const uid = userIdRef.current;
+          if (!uid) return;
+          const row = payload.new as any;
+          const old = payload.old as any;
+          // Notify only when assignee changed TO the current user
+          if (row.assignee_id === uid && old.assignee_id !== uid) {
+            playNotificationSound();
+            toast("Tarefa atribuída a você", {
+              description: row.title ?? "Uma tarefa foi atribuída",
+              duration: 5000,
+              position: "top-right",
+            });
           }
         }
       )
