@@ -68,7 +68,7 @@ function calcPoints(task: TaskForReport, configMap: Map<string, ScoringConfigRow
   if (onTime === null) return 0;
 
   // Legacy scoring for months before April 2026
-  const useOld = year < 2026 || (year === 2026 && month < 4);
+  const useOld = year < 2026 || (year === 2026 && month < 3);
   if (useOld) {
     if (task.stage === "pdf" || task.stage === "agendamento") return 0;
     return onTime ? 1 : -1;
