@@ -1,10 +1,10 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, closestCenter, type DragStartEvent, type DragEndEvent } from "@dnd-kit/core";
 import { useDroppable } from "@dnd-kit/core";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { Plus } from "lucide-react";
+import { ChevronRight, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getStageCircleColor } from "../pm-constants";
 import type { PmTask } from "../pm-types";
