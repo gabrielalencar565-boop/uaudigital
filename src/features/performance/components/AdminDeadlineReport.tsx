@@ -405,10 +405,17 @@ export function AdminDeadlineReport({
                     return (
                       <TableRow key={t.id}>
                         <TableCell>
-                          <div className="min-w-0">
-                            <p className="truncate font-medium">{t.title ?? (t.client?.name ? `Cliente: ${t.client.name}` : "Tarefa")}</p>
+                          <button
+                            type="button"
+                            className="min-w-0 text-left group cursor-pointer"
+                            onClick={() => setDetailTask(t)}
+                          >
+                            <p className="truncate font-medium group-hover:text-primary group-hover:underline flex items-center gap-1">
+                              {t.title ?? (t.client?.name ? `Cliente: ${t.client.name}` : "Tarefa")}
+                              <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-60 shrink-0" />
+                            </p>
                             <p className="truncate text-xs text-muted-foreground">{teamById.get(t.assigned_user_id)?.role_title}</p>
-                          </div>
+                          </button>
                         </TableCell>
                         <TableCell className="text-center">
                           {(() => {
