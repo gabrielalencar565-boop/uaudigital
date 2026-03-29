@@ -235,6 +235,45 @@ export function AgendaPanel() {
     if (extra.some(m => m.user_id === primary.user_id)) return extra;
     return [{ user_id: primary.user_id, display_name: primary.display_name, avatar_url: primary.avatar_url }, ...extra];
   }, [assigneesByTaskId, teamById]);
+
+  // Batch-fetch post_type for revisão tasks coming from pm_tasks
+  const revisaoPostTypes = useMemo(() => {
+    const map = new Map<string, string>(); // taskId → pmTaskId
+    for (const t of tasks) {
+      if (t.stage === "revisao" && t.description?.startsWith("pm:")) {
+        const parts = t.description.split(":");
+        if (parts.length >= 3) map.set(t.id, parts[1]);
+      }
+    }
+    return map;
+  }, [tasks]);
+
+  const pmTaskIdsForPostType = useMemo(() => [...new Set(revisaoPostTypes.values())], [revisaoPostTypes]);
+
+  const pmPostTypeQ = useQuery<Record<string, string | null>>({
+    queryKey: ["pm_post_types", pmTaskIdsForPostType],
+    enabled: pmTaskIdsForPostType.length > 0,
+    queryFn: async () => {
+      const sb = supabase as any;
+      const { data } = await sb
+        .from("pm_tasks")
+        .select("id, post_type")
+        .in("id", pmTaskIdsForPostType);
+      const result: Record<string, string | null> = {};
+      for (const row of data ?? []) {
+        result[row.id] = row.post_type;
+      }
+      return result;
+    },
+    staleTime: 60_000,
+  });
+
+  const getPostType = useCallback((task: TaskRow): string | null => {
+    const pmTaskId = revisaoPostTypes.get(task.id);
+    if (!pmTaskId) return null;
+    return pmPostTypeQ.data?.[pmTaskId] ?? null;
+  }, [revisaoPostTypes, pmPostTypeQ.data]);
+
   const createTask = useCreateTask();
   const addTaskAssignees = useAddTaskAssignees();
   const deleteTask = useDeleteTask();
