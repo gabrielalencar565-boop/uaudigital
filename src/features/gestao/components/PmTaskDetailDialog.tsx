@@ -489,6 +489,27 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   const handleConcluido = async () => {
     if (isDone) return;
     const completedStage = task.stage_current;
+
+    // ═══ CAPTAÇÃO: just mark as done, no stage advancement ═══
+    if (completedStage === "captacao") {
+      updateTask.mutate({
+        id: task.id,
+        stage_current: "captacao" as any,
+        status_global: "concluido" as any,
+      });
+      for (const child of childTasks) {
+        updateTask.mutate({
+          id: child.id,
+          stage_current: "captacao" as any,
+          status_global: "concluido" as any,
+        });
+      }
+      // Sync scoring for captação
+      syncCompletedStage(completedStage);
+      toast.success("Captação concluída!");
+      return;
+    }
+
     const dateConfig = transitionDates[task.stage_current];
 
     // Calculate new due date
