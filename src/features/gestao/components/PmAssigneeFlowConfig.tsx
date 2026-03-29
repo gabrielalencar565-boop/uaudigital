@@ -60,7 +60,7 @@ export function PmAssigneeFlowConfig() {
     queryFn: async () => {
       const { data, error } = await supabase.from("team_members").select("user_id, display_name, avatar_url").eq("is_active", true);
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []).map(tm => ({ ...tm, avatar_url: normalizeAvatarUrl(tm.avatar_url) ?? null }));
     },
   });
 

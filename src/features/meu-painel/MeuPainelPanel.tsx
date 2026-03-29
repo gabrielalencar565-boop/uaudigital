@@ -260,7 +260,7 @@ export function MeuPainelPanel() {
       if (cancelled) return;
       const data = profileRes.data;
       if (!data?.full_name) { setMyProfile(null); return; }
-      setMyProfile({ full_name: data.full_name, avatar_url: data.avatar_url ?? null, birth_date: (tmRes.data as any)?.birth_date ?? null });
+      setMyProfile({ full_name: data.full_name, avatar_url: normalizeAvatarUrl(data.avatar_url) ?? null, birth_date: (tmRes.data as any)?.birth_date ?? null });
     });
     return () => { cancelled = true; };
   }, [user?.id, profileVersion]);
