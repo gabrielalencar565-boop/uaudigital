@@ -90,22 +90,6 @@ export function DayViewPanel() {
   const assigneesQ = useTaskAssigneesByMonth(monthKey);
   const { user: sessionUser } = useSession();
 
-  // ─── PM subtasks for podium totals (fetch by parent task in the month) ───
-  const pmSubtasksQ = useQuery({
-    queryKey: ["pm_subtasks_for_podium", monthKey, pmTasksQ.data],
-    queryFn: async () => {
-      const parentIds = (pmTasksQ.data ?? []).map(t => t.id);
-      if (!parentIds.length) return [];
-      const { data, error } = await supabase
-        .from("pm_subtasks")
-        .select("id, task_id, assignee_id, status, due_date")
-        .in("task_id", parentIds);
-      if (error) throw error;
-      return data ?? [];
-    },
-    enabled: (pmTasksQ.data ?? []).length > 0,
-  });
-
   // ─── PM tasks (Gestão) for agenda sync ───
   const pmTasksQ = useQuery({
     queryKey: ["pm_tasks_for_dayview", monthKey],
@@ -121,6 +105,22 @@ export function DayViewPanel() {
       if (error) throw error;
       return data ?? [];
     },
+  });
+
+  // ─── PM subtasks for podium totals (fetch by parent task in the month) ───
+  const pmSubtasksQ = useQuery({
+    queryKey: ["pm_subtasks_for_podium", monthKey, pmTasksQ.data],
+    queryFn: async () => {
+      const parentIds = (pmTasksQ.data ?? []).map(t => t.id);
+      if (!parentIds.length) return [];
+      const { data, error } = await supabase
+        .from("pm_subtasks")
+        .select("id, task_id, assignee_id, status, due_date")
+        .in("task_id", parentIds);
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: (pmTasksQ.data ?? []).length > 0,
   });
 
   // ─── PM child tasks count per parent ───
