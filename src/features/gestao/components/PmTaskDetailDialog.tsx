@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import {
   Calendar, UserCircle, Flag, X, ChevronRight, ArrowLeft,
-  Layers, Tag, MessageSquare, Plus, Check, CheckCircle2, RotateCcw, Paperclip, ListTodo, FileText, CalendarDays, Clapperboard, Palette
+  Layers, Tag, MessageSquare, Plus, Check, CheckCircle2, RotateCcw, Paperclip, ListTodo, FileText, CalendarDays
 } from "lucide-react";
 import { addDays, format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -25,6 +25,7 @@ import {
 import { usePmTags, useCreatePmTag, useDeletePmTag } from "../hooks/use-pm-tags";
 import { useDefaultFlowWithDates, getNextStages, getFixedAssignee, getFixedWatchers } from "./PmStageFlowConfig";
 import { PmSubtaskList } from "./PmSubtaskList";
+import { PmPlanningSubtasks } from "./PmPlanningSubtasks";
 import { PmCommentsSection } from "./PmCommentsSection";
 import { PmAttachmentsSection } from "./PmAttachmentsSection";
 import { PmAssigneeSelector } from "./PmAssigneeSelector";
@@ -489,15 +490,82 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       newDueDate = format(addDays(baseDate, dateConfig), "yyyy-MM-dd");
     }
 
-    // If planejamento has a post_type set, auto-select next stage
-    let resolvedNextStages = nextStages;
-    if (completedStage === "planejamento" && task.post_type) {
-      if (task.post_type === "design") {
-        resolvedNextStages = ["design"];
-      } else if (task.post_type === "video") {
-        resolvedNextStages = ["edicao_videos"];
+    // If planejamento → split into video + design tasks
+    if (completedStage === "planejamento" && !task.parent_task_id) {
+      const videoChildren = childTasks.filter(c => c.post_type === "video");
+      const designChildren = childTasks.filter(c => c.post_type === "design");
+      const hasVideo = videoChildren.length > 0;
+      const hasDesign = designChildren.length > 0;
+
+      if (hasVideo || hasDesign) {
+        // Snapshot current task as completed
+        const snapshotDueDate = task.due_date ?? format(new Date(), "yyyy-MM-dd");
+        updateTask.mutate({
+          id: task.id,
+          stage_current: completedStage as any,
+          status_global: "concluido" as any,
+          due_date: snapshotDueDate,
+        });
+
+        // Sync scoring for planejamento
+        syncCompletedStage(completedStage);
+
+        const clientName = clientsMap[task.client_id] || task.title.split(" - ")[0];
+        let monthLabel: string | null = null;
+        if (task.due_date) {
+          const raw = format(parseISO(task.due_date), "MMMM", { locale: ptBR });
+          monthLabel = raw.charAt(0).toUpperCase() + raw.slice(1);
+        }
+        const nextDueDate = newDueDate ?? format(addDays(new Date(snapshotDueDate + "T12:00:00"), 1), "yyyy-MM-dd");
+
+        const createSplitTask = async (stage: string, stageLabel_: string, children: PmTask[]) => {
+          const fixedAssignee = getFixedAssignee(stageAssignees, stage, task.client_id);
+          const fixedWatchers_ = getFixedWatchers(stageAssignees, stage, task.client_id);
+          const title = monthLabel
+            ? `${clientName} - ${stageLabel_} - ${monthLabel}`
+            : `${clientName} - ${stageLabel_}`;
+
+          const newTask = await createTask.mutateAsync({
+            client_id: task.client_id,
+            title,
+            description: task.description ?? undefined,
+            stage_current: stage,
+            due_date: nextDueDate,
+            assignee_id: fixedAssignee !== undefined ? (fixedAssignee ?? undefined) : (task.assignee_id ?? undefined),
+            watchers: fixedAssignee !== undefined ? fixedWatchers_ : (task.watchers ?? []),
+            priority: task.priority,
+            project_id: task.project_id ?? undefined,
+            tags: task.tags ?? [],
+            is_extra_demand: task.is_extra_demand,
+            status_global: "backlog",
+          });
+
+          // Transfer children to new task
+          for (const child of children) {
+            const childUpdates: any = {
+              id: child.id,
+              parent_task_id: newTask.id,
+              stage_current: stage as any,
+              status_global: "backlog" as any,
+            };
+            if (fixedAssignee !== undefined) {
+              childUpdates.assignee_id = fixedAssignee;
+              childUpdates.watchers = fixedWatchers_;
+            }
+            updateTask.mutate(childUpdates as any);
+          }
+        };
+
+        if (hasVideo) await createSplitTask("edicao_videos", "Vídeo", videoChildren);
+        if (hasDesign) await createSplitTask("design", "Design", designChildren);
+
+        toast.success("Planejamento concluído! Tarefas de Vídeo e Design criadas.");
+        return;
       }
     }
+
+    // Default flow for other stages
+    let resolvedNextStages = nextStages;
 
     // Multiple next stages → show stage choice first
     if (resolvedNextStages.length > 1) {
@@ -539,12 +607,8 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     const completedStage = pendingCompletedStage;
     const newDueDate = completionDate || undefined;
 
-    // Resolve next stages considering post_type
+    // Resolve next stages
     let resolvedNext = nextStages;
-    if (completedStage === "planejamento" && task.post_type) {
-      if (task.post_type === "design") resolvedNext = ["design"];
-      else if (task.post_type === "video") resolvedNext = ["edicao_videos"];
-    }
 
     if (resolvedNext.length === 0) {
       advanceStage(completedStage, "entrega", newDueDate);
@@ -829,59 +893,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
             </Popover>
           </PropertyRow>
 
-          {/* Planning type selector — only in planejamento */}
-          {task.stage_current === "planejamento" && !task.parent_task_id && (
-            <div className="flex items-center gap-2 px-1 min-h-[28px]">
-              {(["video", "design"] as const).map(type => {
-                const isActive = task.post_type === type;
-                const Icon = type === "video" ? Clapperboard : Palette;
-                return (
-                  <button
-                    key={type}
-                    className={cn(
-                      "flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all",
-                      type === "video"
-                        ? "bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400"
-                        : "bg-teal-100 text-teal-600 dark:bg-teal-900/40 dark:text-teal-400",
-                      isActive && "ring-2 ring-current"
-                    )}
-                    onClick={() => {
-                      const newType = isActive ? null : type;
-                      const updates: any = { id: task.id, post_type: newType };
-
-                      if (newType) {
-                        const typeLabel = newType === "video" ? "Vídeo" : "Design";
-                        const clientName = clientsMap[task.client_id] || task.title.split(" - ")[0];
-                        let month: string | null = null;
-                        if (task.due_date) {
-                          const raw = format(parseISO(task.due_date), "MMMM", { locale: ptBR });
-                          month = raw.charAt(0).toUpperCase() + raw.slice(1);
-                        }
-                        updates.title = month
-                          ? `${clientName} - Planejamento (${typeLabel}) - ${month}`
-                          : `${clientName} - Planejamento (${typeLabel})`;
-                      } else {
-                        const clientName = clientsMap[task.client_id] || task.title.split(" - ")[0];
-                        let month: string | null = null;
-                        if (task.due_date) {
-                          const raw = format(parseISO(task.due_date), "MMMM", { locale: ptBR });
-                          month = raw.charAt(0).toUpperCase() + raw.slice(1);
-                        }
-                        updates.title = month
-                          ? `${clientName} - Planejamento - ${month}`
-                          : `${clientName} - Planejamento`;
-                      }
-
-                      updateTask.mutate(updates);
-                    }}
-                  >
-                    <Icon className="h-3.5 w-3.5" />
-                    {type === "video" ? "Vídeo" : "Design"}
-                  </button>
-                );
-              })}
-            </div>
-          )}
+          {/* Planning type selector removed — now uses dual sections */}
 
           <PropertyRow icon={<Tag className="h-3.5 w-3.5" />} label="Etiquetas">
             <Popover>
@@ -1073,9 +1085,13 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           </div>
         )}
 
-        {/* Subtasks */}
+        {/* Subtasks — use planning layout for planejamento parent tasks */}
         <div className="border-t border-border/20 pt-4">
-          <PmSubtaskList parentTask={task} childTasks={childTasks} membersMap={membersMap} members={members} onSelectSubtask={onSelectSubtask} activeSubtaskId={activeSubtaskId} />
+          {task.stage_current === "planejamento" && !task.parent_task_id ? (
+            <PmPlanningSubtasks parentTask={task} childTasks={childTasks} membersMap={membersMap} members={members} onSelectSubtask={onSelectSubtask} activeSubtaskId={activeSubtaskId} />
+          ) : (
+            <PmSubtaskList parentTask={task} childTasks={childTasks} membersMap={membersMap} members={members} onSelectSubtask={onSelectSubtask} activeSubtaskId={activeSubtaskId} />
+          )}
         </div>
 
         {/* Attachments */}
