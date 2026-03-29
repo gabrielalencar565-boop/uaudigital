@@ -170,7 +170,7 @@ export function PmTaskCard({ task, clientName, assignees = [], childTasks = [], 
               <MoreHorizontal className="h-3.5 w-3.5" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-44 rounded-xl" onClick={(e) => e.stopPropagation()}>
+          <DropdownMenuContent align="end" className="w-44 rounded-xl z-[200]" onClick={(e) => e.stopPropagation()}>
             <DropdownMenuItem onClick={() => { setRenameDraft(task.title); setRenaming(true); }} className="text-xs gap-2 rounded-lg"><Pencil className="h-3.5 w-3.5" /> Renomear</DropdownMenuItem>
             <DropdownMenuItem onClick={handleArchive} className="text-xs gap-2 rounded-lg"><Archive className="h-3.5 w-3.5" /> Arquivar</DropdownMenuItem>
             {isAdmin && <DropdownMenuItem onClick={handleDelete} className="text-xs gap-2 text-destructive focus:text-destructive rounded-lg"><Trash2 className="h-3.5 w-3.5" /> Excluir</DropdownMenuItem>}
