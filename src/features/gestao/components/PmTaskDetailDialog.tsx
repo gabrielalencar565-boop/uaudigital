@@ -552,16 +552,9 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // Find which stage leads to the current stage (previous stage)
-    const prevStageEntry = Object.entries(flowConfig).find(([_, targets]) => {
-      const arr = Array.isArray(targets) ? targets : [targets];
-      return arr.includes(task.stage_current);
-    });
-    const prevStageKey = prevStageEntry?.[0];
-
-    // Find who completed design or video by looking at the snapshot task
-    let snapshotAssignee: string | null = null;
-    let snapshotWatchers: string[] = [];
+    // Find who should handle the alteração — look at the completed design/video snapshot
+    let alteracaoAssignee: string | null = null;
+    let alteracaoWatchers: string[] = [];
 
     for (const stage of ["design", "edicao_videos"]) {
       const { data: snapshot } = await sb
@@ -573,163 +566,76 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         .order("updated_at", { ascending: false })
         .limit(1);
       if (snapshot && snapshot.length > 0 && snapshot[0].assignee_id) {
-        snapshotAssignee = snapshot[0].assignee_id;
-        snapshotWatchers = snapshot[0].watchers ?? [];
+        alteracaoAssignee = snapshot[0].assignee_id;
+        alteracaoWatchers = snapshot[0].watchers ?? [];
         break;
       }
     }
 
-    // Fallback to flow config if no snapshot found
-    if (!snapshotAssignee) {
+    // Fallback to flow config
+    if (!alteracaoAssignee) {
+      const altAssignee = getFixedAssignee(stageAssignees, "alteracoes", task.client_id);
       const designAssignee = getFixedAssignee(stageAssignees, "design", task.client_id);
       const videoAssignee = getFixedAssignee(stageAssignees, "edicao_videos", task.client_id);
-      const alteracaoAssignee = getFixedAssignee(stageAssignees, "alteracoes", task.client_id);
-      snapshotAssignee = (alteracaoAssignee !== undefined ? alteracaoAssignee : (designAssignee !== undefined ? designAssignee : (videoAssignee ?? null))) as string | null;
-      snapshotWatchers = alteracaoAssignee !== undefined
+      alteracaoAssignee = (altAssignee !== undefined ? altAssignee : (designAssignee !== undefined ? designAssignee : (videoAssignee ?? null))) as string | null;
+      alteracaoWatchers = altAssignee !== undefined
         ? getFixedWatchers(stageAssignees, "alteracoes", task.client_id)
         : (designAssignee !== undefined
           ? getFixedWatchers(stageAssignees, "design", task.client_id)
           : getFixedWatchers(stageAssignees, "edicao_videos", task.client_id));
     }
 
-    // Try to find the previous snapshot task to reopen
-    let prevSnapshot: any = null;
-    if (prevStageKey) {
-      // Strategy 1: Match by reconstructed title
-      const currentStageLbl = stageLabel(task.stage_current);
-      const prevStageLbl = stageLabel(prevStageKey);
-      let expectedTitle = task.title;
-      if (task.title.includes(` - ${currentStageLbl} - `)) {
-        expectedTitle = task.title.replace(` - ${currentStageLbl} - `, ` - ${prevStageLbl} - `);
-      } else if (task.title.endsWith(` - ${currentStageLbl}`)) {
-        expectedTitle = task.title.replace(` - ${currentStageLbl}`, ` - ${prevStageLbl}`);
-      }
+    // Simply change the current task's stage to "alteracoes" — keep design/video snapshot as concluído
+    const updates: any = { id: task.id, stage_current: "alteracoes" as any };
+    if (alteracaoAssignee) {
+      updates.assignee_id = alteracaoAssignee;
+      updates.watchers = alteracaoWatchers;
+    }
+    updateTask.mutate(updates);
 
-      const { data: byTitle } = await sb
-        .from("pm_tasks")
-        .select("*")
-        .eq("client_id", task.client_id)
-        .eq("stage_current", prevStageKey)
-        .eq("status_global", "concluido")
-        .eq("title", expectedTitle)
-        .is("parent_task_id", null)
-        .order("updated_at", { ascending: false })
-        .limit(1);
-
-      if (byTitle?.length) {
-        prevSnapshot = byTitle[0];
-      } else {
-        // Strategy 2: Most recent concluído at previous stage for this client
-        const { data: byStage } = await sb
-          .from("pm_tasks")
-          .select("*")
-          .eq("client_id", task.client_id)
-          .eq("stage_current", prevStageKey)
-          .eq("status_global", "concluido")
-          .is("parent_task_id", null)
-          .order("updated_at", { ascending: false })
-          .limit(1);
-        if (byStage?.length) prevSnapshot = byStage[0];
+    // Update children too
+    for (const child of childTasks) {
+      const childUpdates: any = { id: child.id, stage_current: "alteracoes" as any };
+      if (alteracaoAssignee) {
+        childUpdates.assignee_id = alteracaoAssignee;
+        childUpdates.watchers = alteracaoWatchers;
       }
+      updateTask.mutate(childUpdates);
     }
 
-    if (prevSnapshot) {
-      // 1. Reopen the previous snapshot with stage "alteracoes"
-      const reopenUpdates: any = {
-        id: prevSnapshot.id,
-        stage_current: "alteracoes" as any,
-        status_global: "backlog" as any,
-      };
-      if (snapshotAssignee) {
-        reopenUpdates.assignee_id = snapshotAssignee;
-        reopenUpdates.watchers = snapshotWatchers;
-      }
-      updateTask.mutate(reopenUpdates);
-
-      // 2. Transfer children from current task to the reopened task
-      for (const child of childTasks) {
-        const childUpdates: any = {
-          id: child.id,
-          parent_task_id: prevSnapshot.id,
-          stage_current: "alteracoes" as any,
-        };
-        if (snapshotAssignee) {
-          childUpdates.assignee_id = snapshotAssignee;
-          childUpdates.watchers = snapshotWatchers;
-        }
-        updateTask.mutate(childUpdates);
-      }
-
-      // 3. Transfer attachments
-      await sb.from("pm_attachments").update({ task_id: prevSnapshot.id }).eq("task_id", task.id);
-
-      // 4. Soft-delete performance snapshot tasks for revisão (if any)
-      await sb.from("tasks")
-        .update({ deleted_at: new Date().toISOString(), deleted_by: user.id })
-        .like("description", `pm:${task.id}:${task.stage_current}%`)
-        .is("deleted_at", null);
-
-      // 5. Delete the current task (revisão)
-      await sb.from("pm_tasks").delete().eq("id", task.id);
-
-      toast.success("Tarefa enviada para Alteração");
-      onClose();
-    } else {
-      // Fallback: just change stage to alteracoes on the current task
-      const updates: any = { id: task.id, stage_current: "alteracoes" as any };
-      if (snapshotAssignee) {
-        updates.assignee_id = snapshotAssignee;
-        updates.watchers = snapshotWatchers;
-      }
-      updateTask.mutate(updates);
-      for (const child of childTasks) {
-        const childUpdates: any = { id: child.id, stage_current: "alteracoes" as any };
-        if (snapshotAssignee) {
-          childUpdates.assignee_id = snapshotAssignee;
-          childUpdates.watchers = snapshotWatchers;
-        }
-        updateTask.mutate(childUpdates);
-      }
-      toast.success("Tarefa enviada para Alteração");
-    }
+    toast.success("Tarefa enviada para Alteração");
   };
 
   const handleReturnFromAlteracao = async () => {
-    // After alteração is done, advance directly to the next stage after revisão
-    const nextAfterRevisao = getNextStages(flowConfig, "revisao");
-    const targetStage = nextAfterRevisao.length > 0 ? nextAfterRevisao[0] : "pdf";
+    // After alteração is done, return to revisão (not pdf).
+    // PDF only happens when revisão marks as concluído.
+    const fixedAssignee = getFixedAssignee(stageAssignees, "revisao", task.client_id);
+    const fixedWatchers = getFixedWatchers(stageAssignees, "revisao", task.client_id);
 
-    // First, temporarily set stage back to revisão so the advance logic works correctly
-    await (supabase as any).from("pm_tasks").update({ stage_current: "revisao" }).eq("id", task.id);
+    const updates: any = {
+      id: task.id,
+      stage_current: "revisao" as any,
+    };
+    if (fixedAssignee !== undefined) {
+      updates.assignee_id = fixedAssignee;
+      updates.watchers = fixedWatchers;
+    }
+    updateTask.mutate(updates);
+
+    // Update children too
     for (const child of childTasks) {
-      await (supabase as any).from("pm_tasks").update({ stage_current: "revisao" }).eq("id", child.id);
+      const childUpdates: any = {
+        id: child.id,
+        stage_current: "revisao" as any,
+      };
+      if (fixedAssignee !== undefined) {
+        childUpdates.assignee_id = fixedAssignee;
+        childUpdates.watchers = fixedWatchers;
+      }
+      updateTask.mutate(childUpdates);
     }
 
-    // Now advance using the normal flow (snapshot current as revisão, create next stage)
-    const dateConfig = transitionDates["revisao"];
-    let newDueDate: string | undefined;
-    if (typeof dateConfig === "number") {
-      const baseDate = task.due_date ? new Date(task.due_date + "T12:00:00") : new Date();
-      newDueDate = format(addDays(baseDate, dateConfig), "yyyy-MM-dd");
-    }
-
-    if (nextAfterRevisao.length > 1) {
-      setPendingCompletedStage("revisao");
-      setPendingDueDate(newDueDate);
-      setStageChoiceOptions(nextAfterRevisao);
-      setStageChoiceOpen(true);
-      return;
-    }
-
-    if (dateConfig === "pick") {
-      setPendingCompletedStage("revisao");
-      setCompletionDate(task.due_date ?? format(new Date(), "yyyy-MM-dd"));
-      setCompletionDateOpen(true);
-      return;
-    }
-
-    advanceStage("revisao", targetStage, newDueDate);
-    toast.success(`Ajuste concluído — avançou para ${stageLabel(targetStage)}`);
+    toast.success("Ajuste concluído — retornou para Revisão");
   };
 
   const saveTitle = () => {
