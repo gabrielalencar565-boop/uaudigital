@@ -830,59 +830,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
             </Popover>
           </PropertyRow>
 
-          {/* Planning type selector — only in planejamento */}
-          {task.stage_current === "planejamento" && !task.parent_task_id && (
-            <div className="flex items-center gap-2 px-1 min-h-[28px]">
-              {(["video", "design"] as const).map(type => {
-                const isActive = task.post_type === type;
-                const Icon = type === "video" ? Clapperboard : Palette;
-                return (
-                  <button
-                    key={type}
-                    className={cn(
-                      "flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all",
-                      type === "video"
-                        ? "bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400"
-                        : "bg-teal-100 text-teal-600 dark:bg-teal-900/40 dark:text-teal-400",
-                      isActive && "ring-2 ring-current"
-                    )}
-                    onClick={() => {
-                      const newType = isActive ? null : type;
-                      const updates: any = { id: task.id, post_type: newType };
-
-                      if (newType) {
-                        const typeLabel = newType === "video" ? "Vídeo" : "Design";
-                        const clientName = clientsMap[task.client_id] || task.title.split(" - ")[0];
-                        let month: string | null = null;
-                        if (task.due_date) {
-                          const raw = format(parseISO(task.due_date), "MMMM", { locale: ptBR });
-                          month = raw.charAt(0).toUpperCase() + raw.slice(1);
-                        }
-                        updates.title = month
-                          ? `${clientName} - Planejamento (${typeLabel}) - ${month}`
-                          : `${clientName} - Planejamento (${typeLabel})`;
-                      } else {
-                        const clientName = clientsMap[task.client_id] || task.title.split(" - ")[0];
-                        let month: string | null = null;
-                        if (task.due_date) {
-                          const raw = format(parseISO(task.due_date), "MMMM", { locale: ptBR });
-                          month = raw.charAt(0).toUpperCase() + raw.slice(1);
-                        }
-                        updates.title = month
-                          ? `${clientName} - Planejamento - ${month}`
-                          : `${clientName} - Planejamento`;
-                      }
-
-                      updateTask.mutate(updates);
-                    }}
-                  >
-                    <Icon className="h-3.5 w-3.5" />
-                    {type === "video" ? "Vídeo" : "Design"}
-                  </button>
-                );
-              })}
-            </div>
-          )}
+          {/* Planning type selector removed — now uses dual sections */}
 
           <PropertyRow icon={<Tag className="h-3.5 w-3.5" />} label="Etiquetas">
             <Popover>
