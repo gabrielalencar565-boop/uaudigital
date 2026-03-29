@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { addDays, addMonths, subMonths, endOfMonth, format, startOfMonth, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Filter, TriangleAlert, Calendar, Trash2, FileText, Cake, Star } from "lucide-react";
@@ -235,6 +236,45 @@ export function AgendaPanel() {
     if (extra.some(m => m.user_id === primary.user_id)) return extra;
     return [{ user_id: primary.user_id, display_name: primary.display_name, avatar_url: primary.avatar_url }, ...extra];
   }, [assigneesByTaskId, teamById]);
+
+  // Batch-fetch post_type for revisão tasks coming from pm_tasks
+  const revisaoPostTypes = useMemo(() => {
+    const map = new Map<string, string>(); // taskId → pmTaskId
+    for (const t of tasks) {
+      if (t.stage === "revisao" && t.description?.startsWith("pm:")) {
+        const parts = t.description.split(":");
+        if (parts.length >= 3) map.set(t.id, parts[1]);
+      }
+    }
+    return map;
+  }, [tasks]);
+
+  const pmTaskIdsForPostType = useMemo(() => [...new Set(revisaoPostTypes.values())], [revisaoPostTypes]);
+
+  const pmPostTypeQ = useQuery<Record<string, string | null>>({
+    queryKey: ["pm_post_types", pmTaskIdsForPostType],
+    enabled: pmTaskIdsForPostType.length > 0,
+    queryFn: async () => {
+      const sb = supabase as any;
+      const { data } = await sb
+        .from("pm_tasks")
+        .select("id, post_type")
+        .in("id", pmTaskIdsForPostType);
+      const result: Record<string, string | null> = {};
+      for (const row of data ?? []) {
+        result[row.id] = row.post_type;
+      }
+      return result;
+    },
+    staleTime: 60_000,
+  });
+
+  const getPostType = useCallback((task: TaskRow): string | null => {
+    const pmTaskId = revisaoPostTypes.get(task.id);
+    if (!pmTaskId) return null;
+    return pmPostTypeQ.data?.[pmTaskId] ?? null;
+  }, [revisaoPostTypes, pmPostTypeQ.data]);
+
   const createTask = useCreateTask();
   const addTaskAssignees = useAddTaskAssignees();
   const deleteTask = useDeleteTask();
@@ -742,7 +782,7 @@ export function AgendaPanel() {
               const canInteract = canUserInteractWithTask(user?.id);
               const members = getMembersForTask(t);
 
-              return <AgendaWeekTaskItem key={t.id} stageLabel={stageLabel} stage={t.stage} done={t.status === "concluido"} assigneeName={assigneeName} assigneeAvatarUrl={assignee?.avatar_url ?? undefined} members={members} clientName={clientName} dueTime={formatDueTime(t.due_at)} density="default" isExtraDemand={t.is_extra_demand} canInteract={canInteract} canDelete={true} onToggle={() => {
+              return <AgendaWeekTaskItem key={t.id} stageLabel={stageLabel} stage={t.stage} done={t.status === "concluido"} assigneeName={assigneeName} assigneeAvatarUrl={assignee?.avatar_url ?? undefined} members={members} clientName={clientName} dueTime={formatDueTime(t.due_at)} density="default" isExtraDemand={t.is_extra_demand} postType={getPostType(t)} canInteract={canInteract} canDelete={true} onToggle={() => {
                 const next = t.status === "concluido" ? "pendente" : "concluido";
                 toggleComplete(t.id, next);
               }} onDelete={() => onDeleteTask(t.id)} onClick={() => canManageTasks && openEditTask(t)} />;
@@ -925,7 +965,7 @@ export function AgendaPanel() {
                     const clientName = resolveClientName(t);
                     const canInteract = canUserInteractWithTask(user?.id);
                     const members = getMembersForTask(t);
-                    return <AgendaWeekTaskItem key={t.id} stageLabel={stageLabel} stage={t.stage} done={t.status === "concluido"} assigneeName={assigneeName} assigneeAvatarUrl={assignee?.avatar_url ?? undefined} members={members} clientName={clientName} dueTime={formatDueTime(t.due_at)} isExtraDemand={t.is_extra_demand} canInteract={canInteract} canDelete={true} onToggle={() => {
+                    return <AgendaWeekTaskItem key={t.id} stageLabel={stageLabel} stage={t.stage} done={t.status === "concluido"} assigneeName={assigneeName} assigneeAvatarUrl={assignee?.avatar_url ?? undefined} members={members} clientName={clientName} dueTime={formatDueTime(t.due_at)} isExtraDemand={t.is_extra_demand} postType={getPostType(t)} canInteract={canInteract} canDelete={true} onToggle={() => {
                       const next = t.status === "concluido" ? "pendente" : "concluido";
                       toggleComplete(t.id, next);
                     }} onDelete={() => {
@@ -999,7 +1039,7 @@ export function AgendaPanel() {
                         const canInteract = canUserInteractWithTask(user?.id);
                         const members = getMembersForTask(t);
 
-                        return <AgendaWeekTaskItem key={t.id} stageLabel={stageLabel} stage={t.stage} done={t.status === "concluido"} assigneeName={assigneeName} assigneeAvatarUrl={assignee?.avatar_url ?? undefined} members={members} clientName={clientName} dueTime={formatDueTime(t.due_at)} density="default" isExtraDemand={t.is_extra_demand} canInteract={canInteract} canDelete={true} onToggle={() => {
+                        return <AgendaWeekTaskItem key={t.id} stageLabel={stageLabel} stage={t.stage} done={t.status === "concluido"} assigneeName={assigneeName} assigneeAvatarUrl={assignee?.avatar_url ?? undefined} members={members} clientName={clientName} dueTime={formatDueTime(t.due_at)} density="default" isExtraDemand={t.is_extra_demand} postType={getPostType(t)} canInteract={canInteract} canDelete={true} onToggle={() => {
                           const next = t.status === "concluido" ? "pendente" : "concluido";
                           toggleComplete(t.id, next);
                         }} onDelete={() => onDeleteTask(t.id)} onClick={() => canManageTasks && openEditTask(t)} />;
@@ -1236,6 +1276,7 @@ export function AgendaPanel() {
                     dueTime={formatDueTime(t.due_at)} 
                     density="default"
                     isExtraDemand={t.is_extra_demand}
+                    postType={getPostType(t)}
                     canInteract={canInteract} 
                     canDelete={true} 
                     onToggle={() => {
@@ -1367,6 +1408,7 @@ export function AgendaPanel() {
                                 members={members}
                                 clientName={clientName}
                                 dueTime={formatDueTime(t.due_at)}
+                                postType={getPostType(t)}
                                 canInteract={canInteract}
                                 canDelete={true}
                                 canDrag={!!canManageTasks}

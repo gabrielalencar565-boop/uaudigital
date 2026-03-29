@@ -20,6 +20,7 @@ interface DraggableTaskCardProps {
   members?: TaskMember[];
   clientName: string;
   dueTime?: string;
+  postType?: string | null;
   canInteract: boolean;
   canDelete: boolean;
   canDrag: boolean;
@@ -37,6 +38,7 @@ export function DraggableTaskCard({
   members,
   clientName,
   dueTime,
+  postType,
   canInteract,
   canDelete,
   canDrag,
@@ -94,6 +96,7 @@ export function DraggableTaskCard({
         clientName={clientName}
         dueTime={dueTime}
         isExtraDemand={task.is_extra_demand}
+        postType={postType}
         canInteract={canInteract}
         canDelete={canDelete}
         onToggle={onToggle}
