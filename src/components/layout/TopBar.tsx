@@ -144,6 +144,26 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
                 </span>
               </DropdownMenuItem>
 
+              <DropdownMenuItem
+                onClick={() => {
+                  const next = !soundOn;
+                  setSoundOn(next);
+                  setSoundEnabled(next);
+                  toast.message(next ? "Som de notificações ativado" : "Som de notificações desativado");
+                }}
+                className="gap-2.5 rounded-lg px-3 py-2.5 cursor-pointer"
+              >
+                {soundOn ? (
+                  <Volume2 className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <VolumeX className="h-4 w-4 text-muted-foreground" />
+                )}
+                Som de notificações
+                <span className="ml-auto text-xs text-muted-foreground">
+                  {soundOn ? "Ligado" : "Desligado"}
+                </span>
+              </DropdownMenuItem>
+
               <DropdownMenuSeparator />
 
               <DropdownMenuItem
