@@ -1,10 +1,10 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, closestCenter, type DragStartEvent, type DragEndEvent } from "@dnd-kit/core";
 import { useDroppable } from "@dnd-kit/core";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { Plus } from "lucide-react";
+import { ChevronRight, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getStageCircleColor } from "../pm-constants";
 import type { PmTask } from "../pm-types";
@@ -80,6 +80,11 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, on
   const [pendingDragTask, setPendingDragTask] = useState<PmTask | null>(null);
   const [pendingDragStage, setPendingDragStage] = useState<string | null>(null);
 
+  // Collapsed columns state
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const manualOverrideRef = useRef<Set<string>>(new Set());
+  const prevFilterRef = useRef(filters.assigneeId);
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
@@ -117,6 +122,35 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, on
       tasks: filtered.filter((t) => t.stage_current === col.key),
     }));
   }, [filtered]);
+
+  // Auto-collapse empty columns when assignee filter changes
+  useEffect(() => {
+    const filterChanged = prevFilterRef.current !== filters.assigneeId;
+    prevFilterRef.current = filters.assigneeId;
+
+    if (filterChanged) {
+      manualOverrideRef.current.clear();
+    }
+
+    if (filters.assigneeId && filters.assigneeId !== "__all__") {
+      const next: Record<string, boolean> = {};
+      for (const col of columns) {
+        if (manualOverrideRef.current.has(col.key)) {
+          next[col.key] = collapsed[col.key] ?? false;
+        } else {
+          next[col.key] = col.tasks.length === 0;
+        }
+      }
+      setCollapsed(next);
+    } else if (filterChanged) {
+      setCollapsed({});
+    }
+  }, [filters.assigneeId, columns]);
+
+  const toggleCollapse = useCallback((key: string) => {
+    manualOverrideRef.current.add(key);
+    setCollapsed((prev) => ({ ...prev, [key]: !prev[key] }));
+  }, []);
 
   const handleDragStart = (event: DragStartEvent) => {
     const task = (event.active.data.current as any)?.task as PmTask | undefined;
@@ -210,18 +244,42 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, on
       <div className="flex gap-3 overflow-x-auto pb-4 -mx-1 px-1">
         {columns.map((col, idx) => {
           const circleColor = getStageCircleColor(col.key);
+          const isCollapsed = !!collapsed[col.key];
+
+          if (isCollapsed) {
+            return (
+              <button
+                key={col.key}
+                type="button"
+                onClick={() => toggleCollapse(col.key)}
+                className="flex min-w-[44px] w-[44px] flex-col items-center rounded-2xl bg-muted/40 backdrop-blur-sm border border-[#6932c8] py-3 gap-3 cursor-pointer transition-all duration-300 hover:bg-muted/60 hover:border-primary/60 opacity-0 shrink-0"
+                style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: `${idx * 0.07}s` }}
+              >
+                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/60" />
+                <span className={cn("h-2.5 w-2.5 rounded-full shrink-0", circleColor.bg)} />
+                <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/50 [writing-mode:vertical-lr] rotate-180">
+                  {col.label}
+                </span>
+                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-foreground/8 text-[10px] font-semibold text-foreground/50 px-1">
+                  {col.tasks.length}
+                </span>
+              </button>
+            );
+          }
+
           return (
-            <div key={col.key} className="flex w-[272px] min-w-[272px] flex-col rounded-2xl bg-muted/40 backdrop-blur-sm border border-[#6932c8] opacity-0"
+            <div key={col.key} className="flex w-[272px] min-w-[272px] flex-col rounded-2xl bg-muted/40 backdrop-blur-sm border border-[#6932c8] opacity-0 transition-all duration-300"
               style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: `${idx * 0.07}s` }}>
               {/* Column header */}
               <div className="flex items-center justify-between px-4 py-3">
-                <div className="flex items-center gap-2.5">
+                <button type="button" onClick={() => toggleCollapse(col.key)}
+                  className="flex items-center gap-2.5 group cursor-pointer">
                   <span className={cn("h-2.5 w-2.5 rounded-full", circleColor.bg)} />
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-foreground/70">{col.label}</span>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-foreground/70 group-hover:text-foreground transition-colors">{col.label}</span>
                   <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-foreground/8 text-[10px] font-semibold text-foreground/50 px-1.5">
                     {col.tasks.length}
                   </span>
-                </div>
+                </button>
                 <button type="button" onClick={() => onCreateClick(col.key)}
                   className="rounded-lg p-1.5 text-muted-foreground/60 transition-all hover:bg-primary/10 hover:text-primary active:scale-95">
                   <Plus className="h-4 w-4" strokeWidth={2.5} />
