@@ -20,6 +20,7 @@ interface DraggableTaskCardProps {
   members?: TaskMember[];
   clientName: string;
   dueTime?: string;
+  postType?: string | null;
   canInteract: boolean;
   canDelete: boolean;
   canDrag: boolean;
