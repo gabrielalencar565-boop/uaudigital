@@ -1,7 +1,6 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Clapperboard, Palette, ChevronDown, Plus, Check, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -46,8 +45,9 @@ export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members
         type="video"
         icon={<Clapperboard className="h-4 w-4" />}
         label="Vídeo"
-        colorClasses="bg-blue-500/10 text-blue-500 border-blue-500/20"
-        headerBg="bg-blue-500/5"
+        headerBg="bg-blue-500"
+        headerText="text-white"
+        borderColor="border-blue-500/30"
         parentTask={parentTask}
         tasks={videoTasks}
         doneCount={videoDone}
@@ -61,8 +61,9 @@ export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members
         type="design"
         icon={<Palette className="h-4 w-4" />}
         label="Design"
-        colorClasses="bg-teal-500/10 text-teal-500 border-teal-500/20"
-        headerBg="bg-teal-500/5"
+        headerBg="bg-teal-500"
+        headerText="text-white"
+        borderColor="border-teal-500/30"
         parentTask={parentTask}
         tasks={designTasks}
         doneCount={designDone}
@@ -76,15 +77,16 @@ export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members
 }
 
 function PlanningSection({
-  type, icon, label, colorClasses, headerBg,
+  type, icon, label, headerBg, headerText, borderColor,
   parentTask, tasks, doneCount,
   membersMap, members, onSelectSubtask, activeSubtaskId,
 }: {
   type: "video" | "design";
   icon: React.ReactNode;
   label: string;
-  colorClasses: string;
   headerBg: string;
+  headerText: string;
+  borderColor: string;
   parentTask: PmTask;
   tasks: PmTask[];
   doneCount: number;
@@ -96,24 +98,50 @@ function PlanningSection({
   const updateTask = useUpdatePmTask();
   const createTask = useCreatePmTask();
   const { stageAssignees } = useDefaultFlowWithDates();
-  const [newTitle, setNewTitle] = useState("");
   const [isOpen, setIsOpen] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
+  const editRef = useRef<HTMLInputElement>(null);
 
   const total = tasks.length;
   const progress = total > 0 ? Math.round((doneCount / total) * 100) : 0;
 
-  const handleAdd = async () => {
-    if (!newTitle.trim()) return;
-    await createTask.mutateAsync({
+  useEffect(() => {
+    if (editingId && editRef.current) {
+      editRef.current.focus();
+      editRef.current.select();
+    }
+  }, [editingId]);
+
+  const handleQuickAdd = async () => {
+    const newTask = await createTask.mutateAsync({
       client_id: parentTask.client_id,
-      title: newTitle.trim(),
+      title: `Nova subtarefa de ${label.toLowerCase()}`,
       parent_task_id: parentTask.id,
       stage_current: parentTask.stage_current,
       assignee_id: parentTask.assignee_id ?? undefined,
       watchers: parentTask.watchers ?? [],
       post_type: type,
     } as any);
-    setNewTitle("");
+    // Start editing the new task's name immediately
+    if (newTask?.id) {
+      setEditingId(newTask.id);
+      setEditValue(`Nova subtarefa de ${label.toLowerCase()}`);
+    }
+  };
+
+  const handleRenameSubmit = (subId: string) => {
+    if (editValue.trim() && editValue.trim() !== "") {
+      updateTask.mutate({ id: subId, title: editValue.trim() } as any);
+    }
+    setEditingId(null);
+    setEditValue("");
+  };
+
+  const startEditing = (sub: PmTask, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingId(sub.id);
+    setEditValue(sub.title);
   };
 
   const toggleAssignee = (subId: string, sub: PmTask, memberId: string) => {
@@ -150,17 +178,17 @@ function PlanningSection({
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <CollapsibleTrigger asChild>
         <button className={cn(
-          "flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg border transition-all hover:opacity-90",
-          colorClasses, headerBg
+          "flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg transition-all hover:opacity-90",
+          headerBg, headerText
         )}>
           {icon}
           <span className="font-semibold text-sm">{label}</span>
-          <span className="text-xs opacity-70">{doneCount}/{total}</span>
+          <span className="text-xs opacity-80">{doneCount}/{total}</span>
           {total > 0 && (
             <div className="w-16 mx-1">
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-background/30">
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/20">
                 <div
-                  className={cn("h-full rounded-full transition-all", progress === 100 ? "bg-emerald-500" : "bg-current opacity-60")}
+                  className={cn("h-full rounded-full transition-all", progress === 100 ? "bg-emerald-300" : "bg-white/70")}
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -171,11 +199,11 @@ function PlanningSection({
       </CollapsibleTrigger>
 
       <CollapsibleContent>
-        <div className={cn("ml-2 border-l-2 pl-2 mt-1", type === "video" ? "border-blue-500/20" : "border-teal-500/20")}>
-          {/* Rows */}
+        <div className={cn("ml-2 border-l-2 pl-2 mt-1", borderColor)}>
           {tasks.map((sub) => {
             const isDone = sub.stage_current === "entrega";
             const isActive = activeSubtaskId === sub.id;
+            const isEditing = editingId === sub.id;
             const subAssignees = allAssigneeIds(sub);
             const circleColor = getStageCircleColor(sub.stage_current);
 
@@ -183,14 +211,13 @@ function PlanningSection({
               <div
                 key={sub.id}
                 className={cn(
-                  "group flex items-center gap-2 px-2 py-2 transition border-b border-border/10 cursor-pointer",
+                  "group flex items-center gap-2 px-2 py-2 transition border-b border-border/10",
                   isActive ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-card/40",
                   isDone && "opacity-60"
                 )}
-                onClick={() => onSelectSubtask?.(sub)}
               >
                 {/* Stage circle */}
-                <div className="w-8 flex justify-center" onClick={(e) => e.stopPropagation()}>
+                <div className="w-8 flex justify-center">
                   <Popover>
                     <PopoverTrigger asChild>
                       <button className={cn(
@@ -224,18 +251,33 @@ function PlanningSection({
                   </Popover>
                 </div>
 
-                {/* Tags + Title */}
-                <div className="flex-1 min-w-0 flex items-center gap-1.5">
+                {/* Tags + Title (click = inline edit) */}
+                <div className="flex-1 min-w-0 flex items-center gap-1.5" onClick={(e) => startEditing(sub, e)}>
                   {(sub.tags ?? []).map(rawTag => {
                     const tc = tagColor(rawTag);
                     const name = tagDisplay(rawTag);
                     return <Badge key={rawTag} className={cn("text-[8px] h-4 px-1 gap-0.5 border-0 shrink-0", tc.bg, tc.text)}>{name}</Badge>;
                   })}
-                  <span className={cn("truncate text-sm hover:text-primary transition-colors", isDone && "line-through text-muted-foreground")}>{sub.title}</span>
+                  {isEditing ? (
+                    <Input
+                      ref={editRef}
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      className="h-6 text-sm border-0 bg-transparent shadow-none focus-visible:ring-1 focus-visible:ring-primary/50 p-0 px-1"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleRenameSubmit(sub.id);
+                        if (e.key === "Escape") { setEditingId(null); setEditValue(""); }
+                      }}
+                      onBlur={() => handleRenameSubmit(sub.id)}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  ) : (
+                    <span className={cn("truncate text-sm cursor-text hover:text-primary transition-colors", isDone && "line-through text-muted-foreground")}>{sub.title}</span>
+                  )}
                 </div>
 
                 {/* Assignee */}
-                <div className="w-20 flex justify-center" onClick={(e) => e.stopPropagation()}>
+                <div className="w-20 flex justify-center">
                   {members && members.length > 0 ? (
                     <PmAssigneeSelector
                       selectedIds={subAssignees}
@@ -263,29 +305,26 @@ function PlanningSection({
                   )}
                 </div>
 
-                <div className="w-6 flex justify-center">
+                {/* Navigate arrow - only this navigates to subtask detail */}
+                <button
+                  className="w-6 flex justify-center cursor-pointer"
+                  onClick={() => onSelectSubtask?.(sub)}
+                >
                   <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 group-hover:text-primary transition" />
-                </div>
+                </button>
               </div>
             );
           })}
 
-          {/* Add subtask */}
-          <div className="flex items-center gap-2 px-2 py-1.5">
-            <Plus className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-            <Input
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              placeholder={`Adicionar subtarefa de ${label.toLowerCase()}...`}
-              className="h-7 text-sm border-0 bg-transparent shadow-none focus-visible:ring-0 p-0 placeholder:text-muted-foreground/50"
-              onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-            />
-            {newTitle.trim() && (
-              <Button size="sm" variant="ghost" onClick={handleAdd} className="h-6 text-xs px-2">
-                Adicionar
-              </Button>
-            )}
-          </div>
+          {/* Quick add button */}
+          <button
+            onClick={handleQuickAdd}
+            disabled={createTask.isPending}
+            className="flex items-center gap-2 px-2 py-2 w-full text-muted-foreground/60 hover:text-primary hover:bg-card/40 transition rounded-b-md"
+          >
+            <Plus className="h-3.5 w-3.5 shrink-0" />
+            <span className="text-xs">Adicionar subtarefa</span>
+          </button>
         </div>
       </CollapsibleContent>
     </Collapsible>
