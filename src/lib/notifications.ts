@@ -68,9 +68,11 @@ export function setSoundEnabled(enabled: boolean) {
   localStorage.setItem("uau:notif:sound", enabled ? "true" : "false");
 }
 
+let notifAudio: HTMLAudioElement | null = null;
+
 /**
  * Play notification sound with debounce & overlap protection.
- * Uses Web Audio API — no external file needed.
+ * Uses the custom notification.mp3 file.
  */
 export function playNotificationSound() {
   if (!isSoundEnabled()) return;
@@ -80,33 +82,15 @@ export function playNotificationSound() {
   lastSoundAt = now;
 
   try {
-    if (!audioCtx || audioCtx.state === "closed") {
-      audioCtx = new AudioContext();
+    if (!notifAudio) {
+      notifAudio = new Audio("/sounds/notification.mp3");
+      notifAudio.volume = 0.5;
     }
-    if (audioCtx.state === "suspended") {
-      audioCtx.resume();
-    }
-
-    const ctx = audioCtx;
-    const t = ctx.currentTime;
-
-    // --- Pop sound (short, bubbly, satisfying) ---
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "sine";
-    // Quick pitch drop: 900 Hz → 400 Hz (pop feel)
-    osc.frequency.setValueAtTime(900, t);
-    osc.frequency.exponentialRampToValueAtTime(400, t + 0.12);
-    // Sharp attack, fast decay
-    gain.gain.setValueAtTime(0, t);
-    gain.gain.linearRampToValueAtTime(0.18, t + 0.005);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start(t);
-    osc.stop(t + 0.2);
+    // Reset and replay if already playing
+    notifAudio.currentTime = 0;
+    notifAudio.play().catch(() => {});
   } catch {
-    // Audio not available — silently ignore
+    // Audio not available
   }
 }
 
