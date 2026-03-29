@@ -548,18 +548,26 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   };
 
   const handleAlteracao = async () => {
-    // Find who completed design or video by looking at the snapshot task
     const sb = supabase as any;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // Find which stage leads to the current stage (previous stage)
+    const prevStageEntry = Object.entries(flowConfig).find(([_, targets]) => {
+      const arr = Array.isArray(targets) ? targets : [targets];
+      return arr.includes(task.stage_current);
+    });
+    const prevStageKey = prevStageEntry?.[0];
+
+    // Find who completed design or video by looking at the snapshot task
     let snapshotAssignee: string | null = null;
     let snapshotWatchers: string[] = [];
 
-    // Look for the completed snapshot of design or edicao_videos for this task's client+title
     for (const stage of ["design", "edicao_videos"]) {
       const { data: snapshot } = await sb
         .from("pm_tasks")
         .select("assignee_id, watchers")
         .eq("client_id", task.client_id)
-        .eq("title", task.title)
         .eq("stage_current", stage)
         .eq("status_global", "concluido")
         .order("updated_at", { ascending: false })
@@ -584,21 +592,106 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           : getFixedWatchers(stageAssignees, "edicao_videos", task.client_id));
     }
 
-    const updates: any = { id: task.id, stage_current: "alteracoes" as any };
-    if (snapshotAssignee) {
-      updates.assignee_id = snapshotAssignee;
-      updates.watchers = snapshotWatchers;
-    }
-    updateTask.mutate(updates);
-    for (const child of childTasks) {
-      const childUpdates: any = { id: child.id, stage_current: "alteracoes" as any };
-      if (snapshotAssignee) {
-        childUpdates.assignee_id = snapshotAssignee;
-        childUpdates.watchers = snapshotWatchers;
+    // Try to find the previous snapshot task to reopen
+    let prevSnapshot: any = null;
+    if (prevStageKey) {
+      // Strategy 1: Match by reconstructed title
+      const currentStageLbl = stageLabel(task.stage_current);
+      const prevStageLbl = stageLabel(prevStageKey);
+      let expectedTitle = task.title;
+      if (task.title.includes(` - ${currentStageLbl} - `)) {
+        expectedTitle = task.title.replace(` - ${currentStageLbl} - `, ` - ${prevStageLbl} - `);
+      } else if (task.title.endsWith(` - ${currentStageLbl}`)) {
+        expectedTitle = task.title.replace(` - ${currentStageLbl}`, ` - ${prevStageLbl}`);
       }
-      updateTask.mutate(childUpdates);
+
+      const { data: byTitle } = await sb
+        .from("pm_tasks")
+        .select("*")
+        .eq("client_id", task.client_id)
+        .eq("stage_current", prevStageKey)
+        .eq("status_global", "concluido")
+        .eq("title", expectedTitle)
+        .is("parent_task_id", null)
+        .order("updated_at", { ascending: false })
+        .limit(1);
+
+      if (byTitle?.length) {
+        prevSnapshot = byTitle[0];
+      } else {
+        // Strategy 2: Most recent concluído at previous stage for this client
+        const { data: byStage } = await sb
+          .from("pm_tasks")
+          .select("*")
+          .eq("client_id", task.client_id)
+          .eq("stage_current", prevStageKey)
+          .eq("status_global", "concluido")
+          .is("parent_task_id", null)
+          .order("updated_at", { ascending: false })
+          .limit(1);
+        if (byStage?.length) prevSnapshot = byStage[0];
+      }
     }
-    toast.success("Tarefa enviada para Alteração");
+
+    if (prevSnapshot) {
+      // 1. Reopen the previous snapshot with stage "alteracoes"
+      const reopenUpdates: any = {
+        id: prevSnapshot.id,
+        stage_current: "alteracoes" as any,
+        status_global: "backlog" as any,
+      };
+      if (snapshotAssignee) {
+        reopenUpdates.assignee_id = snapshotAssignee;
+        reopenUpdates.watchers = snapshotWatchers;
+      }
+      updateTask.mutate(reopenUpdates);
+
+      // 2. Transfer children from current task to the reopened task
+      for (const child of childTasks) {
+        const childUpdates: any = {
+          id: child.id,
+          parent_task_id: prevSnapshot.id,
+          stage_current: "alteracoes" as any,
+        };
+        if (snapshotAssignee) {
+          childUpdates.assignee_id = snapshotAssignee;
+          childUpdates.watchers = snapshotWatchers;
+        }
+        updateTask.mutate(childUpdates);
+      }
+
+      // 3. Transfer attachments
+      await sb.from("pm_attachments").update({ task_id: prevSnapshot.id }).eq("task_id", task.id);
+
+      // 4. Soft-delete performance snapshot tasks for revisão (if any)
+      await sb.from("tasks")
+        .update({ deleted_at: new Date().toISOString(), deleted_by: user.id })
+        .like("description", `pm:${task.id}:${task.stage_current}%`)
+        .is("deleted_at", null);
+
+      // 5. Delete the current task (revisão)
+      await sb.from("pm_tasks").delete().eq("id", task.id);
+
+      toast.success("Tarefa enviada para Alteração");
+      onClose();
+    } else {
+      // Fallback: just change stage to alteracoes on the current task
+      const updates: any = { id: task.id, stage_current: "alteracoes" as any };
+      if (snapshotAssignee) {
+        updates.assignee_id = snapshotAssignee;
+        updates.watchers = snapshotWatchers;
+      }
+      updateTask.mutate(updates);
+      for (const child of childTasks) {
+        const childUpdates: any = { id: child.id, stage_current: "alteracoes" as any };
+        if (snapshotAssignee) {
+          childUpdates.assignee_id = snapshotAssignee;
+          childUpdates.watchers = snapshotWatchers;
+        }
+        updateTask.mutate(childUpdates);
+      }
+      toast.success("Tarefa enviada para Alteração");
+    }
   };
 
   const handleReturnFromAlteracao = () => {

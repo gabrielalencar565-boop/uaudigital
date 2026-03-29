@@ -56,8 +56,10 @@ export function MeuPainelTaskCard({
   const dueText =
     status === "concluido" ? (completedAt ? completedLabel(completedAt, today) : "Concluída") : dueLabel(dueDate, today);
 
+  const isAlteracao = stage === "alteracoes";
+
   return (
-    <div className="space-y-2">
+    <div className={cn("space-y-2 rounded-lg px-2 py-1.5 -mx-2 transition-colors", isAlteracao && "bg-[#E5C94E]/15 ring-1 ring-[#E5C94E]/30")}>
       <div className="flex min-w-0 items-center gap-2">
         <p className="min-w-0 flex-1 truncate text-base font-semibold leading-6">{clientName || "—"}</p>
         <span
