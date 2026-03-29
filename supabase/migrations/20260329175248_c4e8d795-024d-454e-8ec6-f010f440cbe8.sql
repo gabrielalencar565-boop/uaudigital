@@ -1,0 +1,1 @@
+ALTER TABLE public.pm_tasks REPLICA IDENTITY FULL;
