@@ -173,22 +173,6 @@ export function DayViewPanel() {
     },
   });
 
-  const allPendingSubtasksQ = useQuery({
-    queryKey: ["all_pending_pm_subtasks_for_podium", allPendingPmTasksQ.data],
-    queryFn: async () => {
-      const parentIds = (allPendingPmTasksQ.data ?? []).map(t => t.id);
-      if (!parentIds.length) return [];
-      const { data, error } = await supabase
-        .from("pm_subtasks")
-        .select("id, task_id, assignee_id, status")
-        .in("task_id", parentIds)
-        .neq("status", "concluido");
-      if (error) throw error;
-      return data ?? [];
-    },
-    enabled: (allPendingPmTasksQ.data ?? []).length > 0,
-  });
-
   const allPendingByUser = useMemo(() => {
     const map = new Map<string, number>();
     const add = (userId: string) => map.set(userId, (map.get(userId) ?? 0) + 1);
@@ -199,11 +183,8 @@ export function DayViewPanel() {
     for (const t of allPendingPmTasksQ.data ?? []) {
       if (t.assignee_id) add(t.assignee_id);
     }
-    for (const st of allPendingSubtasksQ.data ?? []) {
-      if (st.assignee_id) add(st.assignee_id);
-    }
     return map;
-  }, [allPendingTasksQ.data, allPendingPmTasksQ.data, allPendingSubtasksQ.data]);
+  }, [allPendingTasksQ.data, allPendingPmTasksQ.data]);
 
   const cleaningSchedulesQ = useCleaningSchedules();
   const cleaningCategoriesQ = useCleaningCategories();
