@@ -4,6 +4,8 @@ import { ptBR } from "date-fns/locale";
 import { TrendingUp, TrendingDown, Activity } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Area, AreaChart, Cell } from "recharts";
 import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 interface TaskData {
   id: string;
@@ -11,6 +13,9 @@ interface TaskData {
   completed_at: string | null;
   due_date: string;
   point_value?: number | null;
+  stage: string;
+  quantity?: number;
+  is_extra_demand?: boolean;
 }
 
 interface Props {
@@ -20,6 +25,14 @@ interface Props {
 }
 
 type MetricMode = "tarefas" | "pontos";
+
+interface ScoringRow {
+  stage: string;
+  base_points: number;
+  late_penalty: number;
+  uses_quantity: boolean;
+  extra_demand_multiplier: number;
+}
 
 function GlowBar(props: any) {
   const { x, y, width, height, isCurrent, isSelected } = props;
@@ -35,10 +48,35 @@ function GlowBar(props: any) {
   );
 }
 
-function getMetricValue(tasks: TaskData[], mode: MetricMode): number {
-  return mode === "tarefas"
-    ? tasks.length
-    : tasks.reduce((s, t) => s + (Number(t.point_value) || 0), 0);
+function calcTaskPoints(task: TaskData, configMap: Map<string, ScoringRow>): number {
+  // If point_value is already set (snapshot), use it
+  if (task.point_value != null && task.point_value > 0) return task.point_value;
+
+  const cfg = configMap.get(task.stage);
+  if (!cfg) return 0;
+
+  const qty = cfg.uses_quantity ? (task.quantity ?? 1) : 1;
+  let pts = cfg.base_points * qty;
+
+  // Check if late (completed after due_date)
+  if (task.completed_at && task.due_date) {
+    const completedDate = format(new Date(task.completed_at), "yyyy-MM-dd");
+    if (completedDate > task.due_date) {
+      pts += cfg.late_penalty * qty;
+    }
+  }
+
+  // Extra demand multiplier
+  if (task.is_extra_demand) {
+    pts *= cfg.extra_demand_multiplier;
+  }
+
+  return Math.max(0, pts);
+}
+
+function getMetricValue(tasks: TaskData[], mode: MetricMode, configMap: Map<string, ScoringRow>): number {
+  if (mode === "tarefas") return tasks.length;
+  return tasks.reduce((s, t) => s + calcTaskPoints(t, configMap), 0);
 }
 
 export function ProductivityWidget({ tasks, allMonthTasks, todayKey }: Props) {
@@ -46,18 +84,29 @@ export function ProductivityWidget({ tasks, allMonthTasks, todayKey }: Props) {
   const [selectedWeekIndex, setSelectedWeekIndex] = useState<number | null>(null);
   const today = new Date(todayKey + "T12:00:00");
 
+  // ── Fetch scoring config ──
+  const scoringQ = useQuery({
+    queryKey: ["scoring_config"],
+    queryFn: async () => {
+      const { data } = await supabase.from("scoring_config").select("stage, base_points, late_penalty, uses_quantity, extra_demand_multiplier");
+      return (data ?? []) as ScoringRow[];
+    },
+    staleTime: 5 * 60_000,
+  });
+
+  const configMap = useMemo(() => {
+    const m = new Map<string, ScoringRow>();
+    for (const r of scoringQ.data ?? []) m.set(r.stage, r);
+    return m;
+  }, [scoringQ.data]);
+
   // ── Week ranges (last 4 weeks) ──
   const weekRanges = useMemo(() => {
     const ranges: { start: Date; end: Date; label: string; isCurrent: boolean }[] = [];
     for (let i = 3; i >= 0; i--) {
       const ws = startOfWeek(subWeeks(today, i), { weekStartsOn: 1 });
       const we = endOfWeek(subWeeks(today, i), { weekStartsOn: 1 });
-      ranges.push({
-        start: ws,
-        end: we,
-        label: i === 0 ? "Atual" : `Sem ${4 - i}`,
-        isCurrent: i === 0,
-      });
+      ranges.push({ start: ws, end: we, label: i === 0 ? "Atual" : `Sem ${4 - i}`, isCurrent: i === 0 });
     }
     return ranges;
   }, [todayKey]);
@@ -67,17 +116,16 @@ export function ProductivityWidget({ tasks, allMonthTasks, todayKey }: Props) {
     return weekRanges.map((w, idx) => {
       const completed = allMonthTasks.filter((t) => {
         if (t.status !== "concluido" || !t.completed_at) return false;
-        const d = new Date(t.completed_at);
-        return isWithinInterval(d, { start: w.start, end: w.end });
+        return isWithinInterval(new Date(t.completed_at), { start: w.start, end: w.end });
       });
       return {
         label: w.label,
-        value: getMetricValue(completed, mode),
+        value: getMetricValue(completed, mode, configMap),
         isCurrent: w.isCurrent,
         index: idx,
       };
     });
-  }, [allMonthTasks, todayKey, mode, weekRanges]);
+  }, [allMonthTasks, todayKey, mode, weekRanges, configMap]);
 
   // ── Daily data based on selected week or last 7 days ──
   const dailyData = useMemo(() => {
@@ -104,12 +152,12 @@ export function ProductivityWidget({ tasks, allMonthTasks, todayKey }: Props) {
         label: label.charAt(0).toUpperCase() + label.slice(1),
         date: key,
         tarefas: completed.length,
-        pontos: completed.reduce((s, t) => s + (Number(t.point_value) || 0), 0),
+        pontos: completed.reduce((s, t) => s + calcTaskPoints(t, configMap), 0),
       };
     });
 
     return { data: result, title: chartTitle };
-  }, [allMonthTasks, todayKey, selectedWeekIndex, weekRanges]);
+  }, [allMonthTasks, todayKey, selectedWeekIndex, weekRanges, configMap]);
 
   // ── Weekly trend text ──
   const weeklyTrend = useMemo(() => {
@@ -134,15 +182,14 @@ export function ProductivityWidget({ tasks, allMonthTasks, todayKey }: Props) {
     });
     const lastWeekCompleted = allMonthTasks.filter((t) => {
       if (t.status !== "concluido" || !t.completed_at) return false;
-      const d = new Date(t.completed_at);
-      return isWithinInterval(d, { start: lastWeekStart, end: lastWeekEnd });
+      return isWithinInterval(new Date(t.completed_at), { start: lastWeekStart, end: lastWeekEnd });
     });
-    const thisVal = getMetricValue(thisWeekCompleted, mode);
-    const lastVal = getMetricValue(lastWeekCompleted, mode);
+    const thisVal = getMetricValue(thisWeekCompleted, mode, configMap);
+    const lastVal = getMetricValue(lastWeekCompleted, mode, configMap);
     if (lastVal === 0) return { pct: thisVal > 0 ? 100 : 0, up: true };
     const pct = Math.round(((thisVal - lastVal) / lastVal) * 100);
     return { pct: Math.abs(pct), up: pct >= 0 };
-  }, [allMonthTasks, todayKey, mode]);
+  }, [allMonthTasks, todayKey, mode, configMap]);
 
   const handleBarClick = useCallback((_: any, index: number) => {
     setSelectedWeekIndex((prev) => (prev === index ? null : index));
