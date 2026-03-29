@@ -274,7 +274,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
 
       {/* View tabs — hidden when sidebar drives the view */}
       {!hideViewTabs &&
-      <Tabs value={effectiveView} onValueChange={(v) => setView(v as any)}>
+      <Tabs value={effectiveView} onValueChange={(v) => handleViewChange(v as any)}>
           <TabsList className="bg-muted/40 h-10 p-1 rounded-xl gap-0.5">
             <TabsTrigger value="kanban" className="gap-1.5 text-xs h-8 rounded-lg data-[state=active]:shadow-sm">
               <LayoutGrid className="h-3.5 w-3.5" /> Kanban
