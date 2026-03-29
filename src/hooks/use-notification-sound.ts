@@ -83,6 +83,11 @@ export function useNotificationSound() {
           // Notify if assigned to this user
           if (row.assignee_id === uid) {
             playNotificationSound();
+            toast("Nova tarefa atribuída a você", {
+              description: row.title ?? "Uma nova tarefa foi atribuída",
+              duration: 5000,
+              position: "top-right",
+            });
           }
         }
       )
