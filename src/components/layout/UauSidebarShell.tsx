@@ -255,7 +255,7 @@ export function UauSidebarShell({
                         {!collapsed &&
                         <CollapsibleContent>
                             <div className="ml-5 mt-1 space-y-0.5 border-l border-sidebar-foreground/15 pl-3">
-                              {entry.children.map((child) => {
+                              {entry.children.filter(child => !child.adminOnly || isAdmin).map((child) => {
                               const active = isActive(child.key);
                               return (
                                 <button
