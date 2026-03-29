@@ -47,7 +47,8 @@ type RealtimeTable =
   | "mrr_movements"
   | "squads"
   | "squad_members"
-  | "client_squads";
+  | "client_squads"
+  | "notification_reads";
 
 const TABLE_TO_QUERY_KEYS: Record<RealtimeTable, string[][]> = {
   client_cycle_stages: [["client_cycle_stages"], ["magic2"]],
