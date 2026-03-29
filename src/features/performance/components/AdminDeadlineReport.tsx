@@ -16,6 +16,8 @@ import type { TeamMemberRow } from "@/features/data/queries";
 import { STAGES, type StageKey } from "@/lib/uau";
 import { STAGE_BADGE_CLASS } from "@/features/agenda/components/AgendaWeekTaskItem";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
 
 type TaskForReport = {
   id: string;
