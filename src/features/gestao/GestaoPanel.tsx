@@ -819,7 +819,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
       {/* Dialog de lixeira */}
       <Dialog open={trashOpen} onOpenChange={setTrashOpen}>
         <DialogContent className="max-w-2xl max-h-[80vh] p-0 overflow-hidden">
-          <TaskTrashPanel onClose={() => setTrashOpen(false)} />
+          <TaskTrashPanel onClose={() => setTrashOpen(false)} isAdmin={isAdmin} />
         </DialogContent>
       </Dialog>
 
