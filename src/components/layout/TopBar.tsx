@@ -19,6 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { NotificationsDropdown } from "@/components/layout/NotificationsDropdown";
 import { useQueryClient } from "@tanstack/react-query";
+import { isSoundEnabled, setSoundEnabled } from "@/lib/notifications";
 
 function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
