@@ -72,13 +72,25 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
   const hideViewTabs = !!forcedView;
   const [search, setSearch] = useState("");
   const [filterClient, setFilterClient] = useState("__all__");
-  const [filterAssignee, setFilterAssignee] = useState(user?.id ?? "__all__");
+  // Kanban defaults to logged-in user; Agenda defaults to all
+  const initialFilter = (forcedView ?? "kanban") === "agenda" ? "__all__" : (user?.id ?? "__all__");
+  const [filterAssignee, setFilterAssignee] = useState(initialFilter);
 
   useEffect(() => {
-    if (user?.id && filterAssignee === "__all__") {
+    if (user?.id && filterAssignee === "__all__" && effectiveView === "kanban") {
       setFilterAssignee(user.id);
     }
   }, [user?.id]);
+
+  // When switching views, adjust filter default
+  const handleViewChange = (newView: typeof view) => {
+    setView(newView);
+    if (newView === "agenda") {
+      setFilterAssignee("__all__");
+    } else if (newView === "kanban" && user?.id) {
+      setFilterAssignee(user.id);
+    }
+  };
 
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
