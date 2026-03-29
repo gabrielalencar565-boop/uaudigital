@@ -3,7 +3,8 @@ import {
   Calendar, UserCircle, Flag, X, ChevronRight, ArrowLeft,
   Layers, Tag, MessageSquare, Plus, Check, CheckCircle2, RotateCcw, Paperclip, ListTodo, FileText, CalendarDays, Clapperboard, Palette
 } from "lucide-react";
-import { addDays, format } from "date-fns";
+import { addDays, format, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
