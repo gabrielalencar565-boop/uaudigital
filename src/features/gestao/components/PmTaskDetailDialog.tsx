@@ -1022,9 +1022,13 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           </div>
         )}
 
-        {/* Subtasks */}
+        {/* Subtasks — use planning layout for planejamento parent tasks */}
         <div className="border-t border-border/20 pt-4">
-          <PmSubtaskList parentTask={task} childTasks={childTasks} membersMap={membersMap} members={members} onSelectSubtask={onSelectSubtask} activeSubtaskId={activeSubtaskId} />
+          {task.stage_current === "planejamento" && !task.parent_task_id ? (
+            <PmPlanningSubtasks parentTask={task} childTasks={childTasks} membersMap={membersMap} members={members} onSelectSubtask={onSelectSubtask} activeSubtaskId={activeSubtaskId} />
+          ) : (
+            <PmSubtaskList parentTask={task} childTasks={childTasks} membersMap={membersMap} members={members} onSelectSubtask={onSelectSubtask} activeSubtaskId={activeSubtaskId} />
+          )}
         </div>
 
         {/* Attachments */}
