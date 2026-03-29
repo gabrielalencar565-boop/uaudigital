@@ -90,20 +90,20 @@ export function DayViewPanel() {
   const assigneesQ = useTaskAssigneesByMonth(monthKey);
   const { user: sessionUser } = useSession();
 
-  // ─── PM subtasks for podium totals ───
+  // ─── PM subtasks for podium totals (fetch by parent task in the month) ───
   const pmSubtasksQ = useQuery({
-    queryKey: ["pm_subtasks_for_podium", monthKey],
+    queryKey: ["pm_subtasks_for_podium", monthKey, pmTasksQ.data],
     queryFn: async () => {
-      const startDate = `${monthKey}-01`;
-      const endDate = `${monthKey}-31`;
+      const parentIds = (pmTasksQ.data ?? []).map(t => t.id);
+      if (!parentIds.length) return [];
       const { data, error } = await supabase
         .from("pm_subtasks")
         .select("id, task_id, assignee_id, status, due_date")
-        .gte("due_date", startDate)
-        .lte("due_date", endDate);
+        .in("task_id", parentIds);
       if (error) throw error;
       return data ?? [];
     },
+    enabled: (pmTasksQ.data ?? []).length > 0,
   });
 
   // ─── PM tasks (Gestão) for agenda sync ───
