@@ -94,6 +94,7 @@ export function AdminDeadlineReport({
 }) {
   const qc = useQueryClient();
   const [selectedUserId, setSelectedUserId] = useState<string>(team[0]?.user_id ?? "");
+  const [detailTask, setDetailTask] = useState<TaskForReport | null>(null);
 
   const tasksQ = useQuery({
     queryKey: ["deadline_report_tasks", year, month],
