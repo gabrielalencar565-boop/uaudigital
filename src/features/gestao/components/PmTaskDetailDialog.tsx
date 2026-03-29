@@ -505,9 +505,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         });
       }
       // Sync scoring for captação
-      if (completedStage !== "alteracoes" && completedStage !== "revisao") {
-        syncCompletedStage(completedStage);
-      }
+      syncCompletedStage(completedStage);
       toast.success("Captação concluída!");
       return;
     }
