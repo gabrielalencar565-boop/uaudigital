@@ -61,6 +61,7 @@ export function AgendaWeekTaskItem({
   density = "default",
   stagePillWidth = "full",
   isExtraDemand,
+  postType,
   canInteract,
   canDelete,
   onToggle,
@@ -81,6 +82,8 @@ export function AgendaWeekTaskItem({
   stagePillWidth?: "full" | "fit";
   /** Whether this is an extra demand task */
   isExtraDemand?: boolean;
+  /** Post type origin for revisão tasks */
+  postType?: string | null;
   canInteract: boolean;
   canDelete: boolean;
   onToggle: () => void;
@@ -89,6 +92,13 @@ export function AgendaWeekTaskItem({
 }) {
   const stageTone = STAGE_BADGE_CLASS[stage];
   const isCompact = density === "compact";
+
+  // For revisão tasks with a post_type origin, show gradient badge
+  const isRevisaoWithOrigin = stage === "revisao" && !!postType;
+  const revisaoShort = postType === "video" ? "REV/VDO" : "REV/DSG";
+  const revisaoGradient = postType === "video"
+    ? "bg-gradient-to-r from-pink-500 to-blue-500 text-white"
+    : "bg-gradient-to-r from-pink-500 to-teal-500 text-white";
 
   return (
     <div
