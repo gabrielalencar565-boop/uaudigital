@@ -490,15 +490,84 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       newDueDate = format(addDays(baseDate, dateConfig), "yyyy-MM-dd");
     }
 
-    // If planejamento has a post_type set, auto-select next stage
-    let resolvedNextStages = nextStages;
-    if (completedStage === "planejamento" && task.post_type) {
-      if (task.post_type === "design") {
-        resolvedNextStages = ["design"];
-      } else if (task.post_type === "video") {
-        resolvedNextStages = ["edicao_videos"];
+    // If planejamento → split into video + design tasks
+    if (completedStage === "planejamento" && !task.parent_task_id) {
+      const videoChildren = childTasks.filter(c => c.post_type === "video");
+      const designChildren = childTasks.filter(c => c.post_type === "design");
+      const hasVideo = videoChildren.length > 0;
+      const hasDesign = designChildren.length > 0;
+
+      if (hasVideo || hasDesign) {
+        // Snapshot current task as completed
+        const snapshotDueDate = task.due_date ?? format(new Date(), "yyyy-MM-dd");
+        updateTask.mutate({
+          id: task.id,
+          stage_current: completedStage as any,
+          status_global: "concluido" as any,
+          due_date: snapshotDueDate,
+        });
+
+        // Sync scoring
+        if (completedStage !== "alteracoes" && completedStage !== "revisao") {
+          syncCompletedStage(completedStage);
+        }
+
+        const clientName = clientsMap[task.client_id] || task.title.split(" - ")[0];
+        let monthLabel: string | null = null;
+        if (task.due_date) {
+          const raw = format(parseISO(task.due_date), "MMMM", { locale: ptBR });
+          monthLabel = raw.charAt(0).toUpperCase() + raw.slice(1);
+        }
+        const nextDueDate = newDueDate ?? format(addDays(new Date(snapshotDueDate + "T12:00:00"), 1), "yyyy-MM-dd");
+
+        const createSplitTask = async (stage: string, stageLabel_: string, children: PmTask[]) => {
+          const fixedAssignee = getFixedAssignee(stageAssignees, stage, task.client_id);
+          const fixedWatchers_ = getFixedWatchers(stageAssignees, stage, task.client_id);
+          const title = monthLabel
+            ? `${clientName} - ${stageLabel_} - ${monthLabel}`
+            : `${clientName} - ${stageLabel_}`;
+
+          const newTask = await createTask.mutateAsync({
+            client_id: task.client_id,
+            title,
+            description: task.description ?? undefined,
+            stage_current: stage,
+            due_date: nextDueDate,
+            assignee_id: fixedAssignee !== undefined ? (fixedAssignee ?? undefined) : (task.assignee_id ?? undefined),
+            watchers: fixedAssignee !== undefined ? fixedWatchers_ : (task.watchers ?? []),
+            priority: task.priority,
+            project_id: task.project_id ?? undefined,
+            tags: task.tags ?? [],
+            is_extra_demand: task.is_extra_demand,
+            status_global: "backlog",
+          });
+
+          // Transfer children to new task
+          for (const child of children) {
+            const childUpdates: any = {
+              id: child.id,
+              parent_task_id: newTask.id,
+              stage_current: stage as any,
+              status_global: "backlog" as any,
+            };
+            if (fixedAssignee !== undefined) {
+              childUpdates.assignee_id = fixedAssignee;
+              childUpdates.watchers = fixedWatchers_;
+            }
+            updateTask.mutate(childUpdates as any);
+          }
+        };
+
+        if (hasVideo) await createSplitTask("edicao_videos", "Vídeo", videoChildren);
+        if (hasDesign) await createSplitTask("design", "Design", designChildren);
+
+        toast.success("Planejamento concluído! Tarefas de Vídeo e Design criadas.");
+        return;
       }
     }
+
+    // Default flow for other stages
+    let resolvedNextStages = nextStages;
 
     // Multiple next stages → show stage choice first
     if (resolvedNextStages.length > 1) {
