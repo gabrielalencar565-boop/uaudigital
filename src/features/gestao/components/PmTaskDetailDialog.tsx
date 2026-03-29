@@ -897,35 +897,36 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         <div className="flex flex-wrap items-center gap-2 pt-2">
           {!isDone ? (
             <>
+              <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={handleConcluido}>
+                <CheckCircle2 className="h-4 w-4" />
+                {task.stage_current === "revisao" ? "Aprovar e seguir fluxo" : "Concluído"}
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Button>
+
+              {/* Stage choice popover (for multiple next stages) */}
               <Popover open={stageChoiceOpen} onOpenChange={setStageChoiceOpen}>
                 <PopoverTrigger asChild>
-              <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={handleConcluido}>
-                    <CheckCircle2 className="h-4 w-4" />
-                    {task.stage_current === "revisao" ? "Aprovar e seguir fluxo" : "Concluído"}
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </Button>
+                  <span />
                 </PopoverTrigger>
-                {stageChoiceOptions.length > 1 && (
-                  <PopoverContent className="w-52 p-1" align="start">
-                    <p className="text-xs text-muted-foreground px-3 py-2 font-medium">Avançar para qual etapa?</p>
-                    {stageChoiceOptions.map(sk => {
-                      const sc = getStageCircleColor(sk);
-                      return (
-                        <button key={sk} className="flex items-center gap-2 w-full px-3 py-2 rounded text-sm hover:bg-accent transition" onClick={() => handleChooseNextStage(sk)}>
-                          <span className={cn("h-4 w-4 rounded-full border-2 shrink-0", sc.border, sk === "entrega" && sc.bg)}>
-                            {sk === "entrega" && <Check className="h-2.5 w-2.5 text-white" />}
-                          </span>
-                          <span className="font-medium">{stageLabel(sk)}</span>
-                        </button>
-                      );
-                    })}
-                  </PopoverContent>
-                )}
+                <PopoverContent className="w-52 p-1 z-[130]" align="start">
+                  <p className="text-xs text-muted-foreground px-3 py-2 font-medium">Avançar para qual etapa?</p>
+                  {stageChoiceOptions.map(sk => {
+                    const sc = getStageCircleColor(sk);
+                    return (
+                      <button key={sk} className="flex items-center gap-2 w-full px-3 py-2 rounded text-sm hover:bg-accent transition" onClick={() => handleChooseNextStage(sk)}>
+                        <span className={cn("h-4 w-4 rounded-full border-2 shrink-0", sc.border, sk === "entrega" && sc.bg)}>
+                          {sk === "entrega" && <Check className="h-2.5 w-2.5 text-white" />}
+                        </span>
+                        <span className="font-medium">{stageLabel(sk)}</span>
+                      </button>
+                    );
+                  })}
+                </PopoverContent>
               </Popover>
 
               {/* Completion date dialog */}
               <Dialog open={completionDateOpen} onOpenChange={setCompletionDateOpen}>
-                <DialogContent className="max-w-xs">
+                <DialogContent className="max-w-xs z-[130]">
                   <div className="space-y-4">
                     <h3 className="text-sm font-semibold">Data de entrega da próxima etapa</h3>
                     <p className="text-xs text-muted-foreground">

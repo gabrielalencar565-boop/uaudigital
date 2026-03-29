@@ -47,7 +47,7 @@ export function LinkOrDateDialog({ open, onClose, existingTask, onLink, onSelect
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) { onClose(); setDateMode(false); } }}>
-      <DialogContent className="max-w-sm rounded-2xl">
+      <DialogContent className="max-w-sm rounded-2xl z-[130]">
         <DialogTitle className="text-base font-bold">Tarefa existente encontrada</DialogTitle>
         <p className="text-sm text-muted-foreground">
           Já existe uma tarefa do mesmo cliente nesta etapa na agenda
