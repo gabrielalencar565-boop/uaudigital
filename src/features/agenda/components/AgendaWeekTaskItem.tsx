@@ -135,7 +135,7 @@ export function AgendaWeekTaskItem({
             )}
             title={stageLabel}
           >
-            <span className="whitespace-nowrap">{isRevisaoWithOrigin ? revisaoShort : (STAGE_SHORT[stage] ?? stageLabel)}</span>
+            <span className="whitespace-nowrap">{hasGradientPill ? gradientShort : (STAGE_SHORT[stage] ?? stageLabel)}</span>
           </div>
         </div>
 
