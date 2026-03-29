@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { normalizeAvatarUrl } from "@/lib/avatar-url";
 import { format, getDay, subDays } from "date-fns";
-import { ListChecks, CheckCircle2, Clock, AlertTriangle, Flame } from "lucide-react";
+import { ListChecks, CheckCircle2, Clock, AlertTriangle, Flame, Activity, Trophy, ChevronDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
 
 import { Card, CardContent } from "@/components/ui/card";
