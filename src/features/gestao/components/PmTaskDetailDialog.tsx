@@ -368,6 +368,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         tags: task.tags ?? [],
         is_extra_demand: task.is_extra_demand,
         status_global: "backlog",
+        post_type: task.post_type ?? undefined,
       }).then((newTask) => {
         transferChildren(newTask.id, nextStage);
       });
@@ -389,7 +390,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     const monthStart = format(new Date(base.getFullYear(), base.getMonth(), 1), "yyyy-MM-dd");
     const monthEnd = format(new Date(base.getFullYear(), base.getMonth() + 1, 0), "yyyy-MM-dd");
 
-    const { data: existing } = await sb
+    let query = sb
       .from("pm_tasks")
       .select("id, due_date, title")
       .eq("client_id", task.client_id)
@@ -402,6 +403,14 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       .neq("id", task.id)
       .order("due_date", { ascending: true })
       .limit(1);
+
+    // When advancing to revisão, only link with same post_type origin
+    if (nextStage === "revisao" && task.post_type) {
+      query = query.eq("post_type", task.post_type);
+    }
+
+    const { data: existing } = await query;
+
 
     return existing && existing.length > 0 ? existing[0] : null;
   };
@@ -518,7 +527,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         }
         const nextDueDate = newDueDate ?? format(addDays(new Date(snapshotDueDate + "T12:00:00"), 1), "yyyy-MM-dd");
 
-        const createSplitTask = async (stage: string, stageLabel_: string, children: PmTask[]) => {
+        const createSplitTask = async (stage: string, stageLabel_: string, children: PmTask[], postType: string) => {
           const fixedAssignee = getFixedAssignee(stageAssignees, stage, task.client_id);
           const fixedWatchers_ = getFixedWatchers(stageAssignees, stage, task.client_id);
           const title = monthLabel
@@ -538,6 +547,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
             tags: task.tags ?? [],
             is_extra_demand: task.is_extra_demand,
             status_global: "backlog",
+            post_type: postType,
           });
 
           // Transfer children to new task
@@ -556,8 +566,8 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           }
         };
 
-        if (hasVideo) await createSplitTask("edicao_videos", "Vídeo", videoChildren);
-        if (hasDesign) await createSplitTask("design", "Design", designChildren);
+        if (hasVideo) await createSplitTask("edicao_videos", "Vídeo", videoChildren, "video");
+        if (hasDesign) await createSplitTask("design", "Design", designChildren, "design");
 
         toast.success("Planejamento concluído! Tarefas de Vídeo e Design criadas.");
         return;

@@ -83,8 +83,18 @@ export function PmTaskCard({ task, clientName, assignees = [], childTasks = [], 
           <p className="text-[13px] font-semibold leading-snug text-foreground/90">{task.title}</p>
         )}
 
-        {/* Post type badge */}
-        {task.post_type && (task.stage_current === "planejamento") && (
+        {/* Post type badge — show origin in revisão */}
+        {task.post_type && task.stage_current === "revisao" && (
+          <span className={cn(
+            "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-bold text-white",
+            task.post_type === "video"
+              ? "bg-gradient-to-r from-pink-500 to-blue-500"
+              : "bg-gradient-to-r from-pink-500 to-teal-500"
+          )}>
+            {task.post_type === "video" ? <><Clapperboard className="h-2.5 w-2.5" /> REV/Vídeo</> : <><Palette className="h-2.5 w-2.5" /> REV/DSG</>}
+          </span>
+        )}
+        {task.post_type && ["planejamento", "design", "edicao_videos", "alteracoes"].includes(task.stage_current) && (
           <span className={cn(
             "inline-flex items-center justify-center rounded-md h-5 w-5",
             task.post_type === "video"

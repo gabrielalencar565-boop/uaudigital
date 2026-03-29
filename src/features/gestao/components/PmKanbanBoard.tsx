@@ -163,7 +163,7 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, on
       const monthStart = format(new Date(base.getFullYear(), base.getMonth(), 1), "yyyy-MM-dd");
       const monthEnd = format(new Date(base.getFullYear(), base.getMonth() + 1, 0), "yyyy-MM-dd");
 
-      const { data: existing } = await sb
+      let query = sb
         .from("pm_tasks")
         .select("id, due_date, title")
         .eq("client_id", droppedTask.client_id)
@@ -176,6 +176,13 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, on
         .neq("id", droppedTask.id)
         .order("due_date", { ascending: true })
         .limit(1);
+
+      // When dragging to revisão, only match same post_type
+      if (newStage === "revisao" && droppedTask.post_type) {
+        query = query.eq("post_type", droppedTask.post_type);
+      }
+
+      const { data: existing } = await query;
 
       if (existing && existing.length > 0 && existing[0].due_date) {
         setPendingDragTask(droppedTask);
