@@ -196,22 +196,8 @@ export function DayViewPanel() {
     }
   });
 
-  // Previous month scores for ranking comparison
-  const prevMonthNum = selectedMonth === 1 ? 12 : selectedMonth - 1;
-  const prevYearNum = selectedMonth === 1 ? selectedYear - 1 : selectedYear;
-  const prevScoresQ = useQuery({
-    queryKey: ["performance_scores_prev", prevYearNum, prevMonthNum],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("performance_scores")
-        .select("*")
-        .eq("year", prevYearNum)
-        .eq("month", prevMonthNum)
-        .order("user_id");
-      if (error) throw error;
-      return (data ?? []) as ScoreRow[];
-    },
-  });
+  // Track previous ranking positions in real-time
+  const prevRankRef = useRef<Map<string, number>>(new Map());
 
   // Task completion stats per user (total assigned vs completed) — includes subtasks
   const taskStatsByUser = useMemo(() => {
