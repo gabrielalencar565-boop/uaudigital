@@ -202,27 +202,25 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
               )}
             </SelectContent>
           </Select>
-          {effectiveView !== "agenda" && (
-            <Select value={filterAssignee} onValueChange={setFilterAssignee}>
-              <SelectTrigger className="h-9 flex-1 min-w-[120px] sm:flex-none sm:w-52 rounded-xl text-sm bg-background/80 border-border/30">
-                <SelectValue placeholder="Todos os responsáveis" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all__">Todos os responsáveis</SelectItem>
-                {(membersQ.data ?? []).map((m) =>
-                <SelectItem key={m.user_id} value={m.user_id}>
-                    <span className="flex items-center gap-2">
-                      <Avatar className="h-5 w-5">
-                        <AvatarImage src={m.avatar_url ?? undefined} />
-                        <AvatarFallback className="text-[9px] bg-primary/10 text-primary">{initials(m.display_name)}</AvatarFallback>
-                      </Avatar>
-                      {m.display_name}
-                    </span>
-                  </SelectItem>
-                )}
-              </SelectContent>
-            </Select>
-          )}
+          <Select value={filterAssignee} onValueChange={setFilterAssignee}>
+            <SelectTrigger className="h-9 flex-1 min-w-[120px] sm:flex-none sm:w-52 rounded-xl text-sm bg-background/80 border-border/30">
+              <SelectValue placeholder="Todos os responsáveis" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todos os responsáveis</SelectItem>
+              {(membersQ.data ?? []).map((m) =>
+              <SelectItem key={m.user_id} value={m.user_id}>
+                  <span className="flex items-center gap-2">
+                    <Avatar className="h-5 w-5">
+                      <AvatarImage src={m.avatar_url ?? undefined} />
+                      <AvatarFallback className="text-[9px] bg-primary/10 text-primary">{initials(m.display_name)}</AvatarFallback>
+                    </Avatar>
+                    {m.display_name}
+                  </span>
+                </SelectItem>
+              )}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
