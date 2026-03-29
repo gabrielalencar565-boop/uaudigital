@@ -33,6 +33,7 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
   const mentionsQ = useQuery({
     queryKey: ["notifications_mentions", user?.id],
     enabled: !!user?.id,
+    staleTime: 0, // Always refetch when invalidated by realtime
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from("pm_comments")
@@ -47,6 +48,7 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
   const assignedQ = useQuery({
     queryKey: ["notifications_assigned", user?.id],
     enabled: !!user?.id,
+    staleTime: 0,
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from("pm_tasks")
@@ -71,6 +73,7 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
   const readsQ = useQuery({
     queryKey: ["notification_reads", user?.id],
     enabled: !!user?.id,
+    staleTime: 0,
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from("notification_reads")

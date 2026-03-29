@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
 import {
@@ -27,6 +28,7 @@ const MAX_PENDING = 30;
  */
 export function useNotificationSound() {
   const { user } = useSession();
+  const queryClient = useQueryClient();
   const userIdRef = useRef<string | null>(null);
   const pendingRef = useRef<PendingNotif[]>([]);
   const shownKeysRef = useRef<Set<string>>(new Set());
@@ -232,6 +234,13 @@ export function useNotificationSound() {
   useEffect(() => {
     if (!user?.id) return;
 
+    // Helper to force-refresh notification dropdown data immediately
+    const invalidateNotifications = () => {
+      queryClient.invalidateQueries({ queryKey: ["notifications_mentions"], refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: ["notifications_assigned"], refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: ["notification_reads"], refetchType: "all" });
+    };
+
     const channel = supabase
       .channel(`notification-system-${user.id}`)
       .on(
@@ -241,6 +250,8 @@ export function useNotificationSound() {
           const uid = userIdRef.current;
           if (!uid) return;
           const row = payload.new as any;
+          // Always invalidate so dropdown updates for all new comments
+          invalidateNotifications();
           if (row.author_id === uid) return;
           if (row.content && row.content.includes(`@${uid}`)) {
             enqueueOrShow({
@@ -263,6 +274,7 @@ export function useNotificationSound() {
           const uid = userIdRef.current;
           if (!uid) return;
           const row = payload.new as any;
+          invalidateNotifications();
           if (row.created_by === uid) return;
           if (row.assignee_id === uid) {
             enqueueOrShow({
@@ -283,6 +295,7 @@ export function useNotificationSound() {
           if (!uid) return;
           const row = payload.new as any;
           const old = payload.old as any;
+          invalidateNotifications();
           if (row.assignee_id === uid && old.assignee_id !== uid) {
             enqueueOrShow({
               key: `assigned-${row.id}-${row.updated_at ?? ""}`,
@@ -294,10 +307,12 @@ export function useNotificationSound() {
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log(`[Notification Realtime] Channel status: ${status}`);
+      });
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [enqueueOrShow, user?.id]);
+  }, [enqueueOrShow, queryClient, user?.id]);
 }
