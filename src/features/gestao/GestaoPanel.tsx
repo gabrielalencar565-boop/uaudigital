@@ -618,6 +618,10 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
     const hasGradient = isAlteracaoWithOrigin || isRevisaoWithOrigin;
     const gradientClass = hasGradient
       ? t.post_type === "video"
+        ? "bg-gradient-to-r from-[#E5C94E] to-blue-500"
+        : "bg-gradient-to-r from-[#E5C94E] to-teal-500"
+      : isRevisaoWithOrigin
+      ? t.post_type === "video"
         ? "bg-gradient-to-r from-pink-500 to-blue-500"
         : "bg-gradient-to-r from-pink-500 to-teal-500"
       : undefined;
