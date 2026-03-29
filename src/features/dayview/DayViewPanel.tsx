@@ -196,22 +196,8 @@ export function DayViewPanel() {
     }
   });
 
-  // Previous month scores for ranking comparison
-  const prevMonthNum = selectedMonth === 1 ? 12 : selectedMonth - 1;
-  const prevYearNum = selectedMonth === 1 ? selectedYear - 1 : selectedYear;
-  const prevScoresQ = useQuery({
-    queryKey: ["performance_scores_prev", prevYearNum, prevMonthNum],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("performance_scores")
-        .select("*")
-        .eq("year", prevYearNum)
-        .eq("month", prevMonthNum)
-        .order("user_id");
-      if (error) throw error;
-      return (data ?? []) as ScoreRow[];
-    },
-  });
+  // Track previous ranking positions in real-time
+  const prevRankRef = useRef<Map<string, number>>(new Map());
 
   // Task completion stats per user (total assigned vs completed) — includes subtasks
   const taskStatsByUser = useMemo(() => {
@@ -267,26 +253,36 @@ export function DayViewPanel() {
     return base;
   }, [scoresQ.data, teamQ.data, taskStatsByUser]);
 
-  // Previous month ranking positions map
-  const prevMonthRankMap = useMemo(() => {
-    const scores = prevScoresQ.data ?? [];
-    const byUser = new Map(scores.map((s) => [s.user_id, s]));
-    const members = teamQ.data ?? [];
-    const base = members.map((m) => {
-      const s = byUser.get(m.user_id);
-      const total =
-        (s?.aprendizado_continuo ?? 0) +
-        (s?.padrao_qualidade_uau ?? 0) +
-        (s?.metas_prazos ?? 0) +
-        (s?.ambiente_organizado ?? 0) +
-        (s?.comprometimento ?? 0);
-      return { user_id: m.user_id, total };
-    });
-    base.sort((a, b) => b.total - a.total);
+  // Update previous rank ref after monthlyRank changes
+  const currentRankMap = useMemo(() => {
     const map = new Map<string, number>();
-    base.forEach((r, i) => map.set(r.user_id, i));
+    monthlyRank.forEach((r, i) => map.set(r.user_id, i));
     return map;
-  }, [prevScoresQ.data, teamQ.data]);
+  }, [monthlyRank]);
+
+  // Compute variation from previously stored positions
+  const rankVariation = useMemo(() => {
+    const prev = prevRankRef.current;
+    const map = new Map<string, number>();
+    if (prev.size > 0) {
+      monthlyRank.forEach((r, idx) => {
+        const prevIdx = prev.get(r.user_id);
+        if (prevIdx !== undefined) {
+          map.set(r.user_id, prevIdx - idx); // positive = moved up
+        }
+      });
+    }
+    return map;
+  }, [monthlyRank]);
+
+  // Store current positions for next comparison
+  useEffect(() => {
+    if (monthlyRank.length > 0) {
+      const map = new Map<string, number>();
+      monthlyRank.forEach((r, i) => map.set(r.user_id, i));
+      prevRankRef.current = map;
+    }
+  }, [monthlyRank]);
 
 
   // Ranking com todos os membros (sem filtro)
@@ -805,10 +801,8 @@ export function DayViewPanel() {
           const member = teamByUserId.get(row.user_id);
           const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx + 1}º`;
           const pending = row.taskTotal - row.taskCompleted;
-          const prevPos = prevMonthRankMap.get(row.user_id);
-          const hasPrevData = prevScoresQ.data && prevScoresQ.data.length > 0;
-          const posChange = hasPrevData && prevPos !== undefined ? prevPos - idx : 0;
-          const hasChange = hasPrevData && prevPos !== undefined;
+          const posChange = rankVariation.get(row.user_id) ?? 0;
+          const hasChange = rankVariation.has(row.user_id);
           return (
             <div key={row.user_id} className={cn("rounded-lg sm:rounded-none border sm:border-0 border-border/40 p-2.5 sm:p-0", isFullscreen ? "py-3" : "sm:py-1")}>
                       {/* Desktop layout */}
@@ -852,8 +846,8 @@ export function DayViewPanel() {
                             </div>
                           </TooltipTrigger>
                           <TooltipContent side="top">
-                            {!hasChange ? "Sem dados do mês anterior" :
-                              posChange > 0 ? `Subiu ${posChange} posição(ões) em relação ao mês anterior` :
+                            {!hasChange ? "Sem variação registrada" :
+                              posChange > 0 ? `Subiu ${posChange} posição(ões) no ranking` :
                               posChange < 0 ? `Caiu ${Math.abs(posChange)} posição(ões) no ranking` :
                               "Manteve a mesma posição"}
                           </TooltipContent>
