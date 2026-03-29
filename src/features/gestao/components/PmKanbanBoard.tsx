@@ -98,7 +98,7 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, on
   };
 
   const filtered = useMemo(() => {
-    let list = tasks.filter((t) => t.status_global !== "concluido");
+    let list = tasks.filter((t) => t.status_global !== "concluido" && t.status_global !== "pausado");
     if (filters.clientId) list = list.filter((t) => t.client_id === filters.clientId);
     if (filters.assigneeId) {
       const fixedClients = filters.fixedAssigneeClientIds ?? new Set<string>();
