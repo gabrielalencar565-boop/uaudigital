@@ -457,7 +457,7 @@ function PmTaskDetailDialogWrapper({ taskId, onClose, isAdmin }: { taskId: strin
     queryKey: ["team_members"],
     queryFn: async () => {
       const { data } = await supabase.from("team_members").select("user_id, display_name, avatar_url").eq("is_active", true);
-      return data ?? [];
+      return (data ?? []).map(tm => ({ ...tm, avatar_url: normalizeAvatarUrl(tm.avatar_url) ?? null }));
     },
   });
   const membersMap = useMemo(() => {
