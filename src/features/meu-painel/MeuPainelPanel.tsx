@@ -464,6 +464,32 @@ export function MeuPainelPanel() {
   );
 }
 
+// ── Collapsible widget wrapper ──
+
+function CollapsibleWidget({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-2xl border border-border bg-card overflow-hidden transition-all duration-300">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between gap-2 px-4 py-3 hover:bg-muted/40 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <div className="h-7 w-7 rounded-lg bg-sidebar/20 flex items-center justify-center">{icon}</div>
+          <span className="text-sm font-semibold text-foreground">{title}</span>
+        </div>
+        <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", open && "rotate-180")} />
+      </button>
+      <div
+        className="transition-all duration-300 ease-in-out overflow-hidden"
+        style={{ display: "grid", gridTemplateRows: open ? "1fr" : "0fr" }}
+      >
+        <div className="min-h-0">{children}</div>
+      </div>
+    </div>
+  );
+}
+
 // ── Dialog wrapper ──
 
 function PmTaskDetailDialogWrapper({ taskId, onClose, isAdmin }: { taskId: string | null; onClose: () => void; isAdmin: boolean }) {
