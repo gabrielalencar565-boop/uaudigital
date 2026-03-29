@@ -507,10 +507,8 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           due_date: snapshotDueDate,
         });
 
-        // Sync scoring
-        if (completedStage !== "alteracoes" && completedStage !== "revisao") {
-          syncCompletedStage(completedStage);
-        }
+        // Sync scoring for planejamento
+        syncCompletedStage(completedStage);
 
         const clientName = clientsMap[task.client_id] || task.title.split(" - ")[0];
         let monthLabel: string | null = null;
