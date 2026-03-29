@@ -87,7 +87,7 @@ const TABLE_TO_QUERY_KEYS: Record<RealtimeTable, string[][]> = {
   cleaning_categories: [["cleaning_categories"]],
   cleaning_schedules: [["cleaning_schedules"]],
   cleaning_completions: [["cleaning_completions"]],
-  pm_tasks: [["pm_tasks"], ["pm_child_tasks"], ["pm_child_tasks_all"], ["notifications_assigned"]],
+  pm_tasks: [["pm_tasks"], ["pm_child_tasks"], ["pm_child_tasks_all"], ["notifications_assigned"], ["all_pending_pm_tasks_for_podium"], ["all_my_pending_tasks"], ["pm_tasks_for_dayview"]],
   pm_subtasks: [["pm_subtasks"], ["pm_subtasks_all"]],
   pm_comments: [["pm_comments"], ["notifications_mentions"]],
   pm_attachments: [["pm_attachments"]],

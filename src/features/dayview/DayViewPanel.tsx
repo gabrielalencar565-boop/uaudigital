@@ -205,7 +205,9 @@ export function DayViewPanel() {
   "magic2_cycles",
   "magic2_cycle_stages",
   "team_members",
-  "profiles"]
+  "profiles",
+  "pm_tasks",
+  "pm_subtasks"]
   );
 
   const todayDow = getDay(today); // 0=dom, 6=sab
