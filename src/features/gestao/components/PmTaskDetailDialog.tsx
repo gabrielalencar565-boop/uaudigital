@@ -828,61 +828,54 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
             </Popover>
           </PropertyRow>
 
-          {/* Planning type selector — only when stage is planejamento */}
+          {/* Planning type selector — only when stage is planejamento or captacao */}
           {(task.stage_current === "planejamento" || task.stage_current === "captacao") && (
-            <PropertyRow icon={task.post_type === "design" ? <Palette className="h-3.5 w-3.5" /> : <Video className="h-3.5 w-3.5" />} label="Tipo">
-              <div className="flex items-center gap-1.5 min-h-[28px]">
-                {(["video", "design"] as const).map(type => {
-                  const isActive = task.post_type === type;
-                  const label = type === "video" ? "Vídeo" : "Design";
-                  const Icon = type === "video" ? Video : Palette;
-                  return (
-                    <button
-                      key={type}
-                      className={cn(
-                        "flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all border",
-                        isActive
-                          ? type === "video"
-                            ? "bg-primary/15 text-primary border-primary/30"
-                            : "bg-accent/50 text-accent-foreground border-accent"
-                          : "bg-transparent text-muted-foreground border-border/40 hover:bg-muted/50"
-                      )}
-                      onClick={() => {
-                        const newType = isActive ? null : type;
-                        const updates: any = { id: task.id, post_type: newType };
+            <div className="flex items-center gap-2 px-1 min-h-[28px]">
+              {(["video", "design"] as const).map(type => {
+                const isActive = task.post_type === type;
+                const Icon = type === "video" ? Video : Palette;
+                return (
+                  <button
+                    key={type}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
+                      isActive
+                        ? type === "video"
+                          ? "bg-primary/15 text-primary ring-1 ring-primary/30"
+                          : "bg-[hsl(var(--brand))]/15 text-[hsl(var(--brand))] ring-1 ring-[hsl(var(--brand))]/30"
+                        : "bg-muted/60 text-muted-foreground hover:bg-muted"
+                    )}
+                    onClick={() => {
+                      const newType = isActive ? null : type;
+                      const updates: any = { id: task.id, post_type: newType };
 
-                        // Auto-rename title with type suffix + month
-                        if (newType && task.due_date) {
-                          const d = new Date(task.due_date + "T12:00:00");
-                          const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-                          const monthLabel = monthNames[d.getMonth()];
-                          const typeLabel = newType === "video" ? "Vídeo" : "Design";
-                          const clientName = clientsMap[task.client_id] ?? "";
+                      // Auto-rename title with type suffix (no month)
+                      if (newType) {
+                        const typeLabel = newType === "video" ? "Vídeo" : "Design";
 
-                          // Remove existing type/month suffix patterns
-                          let baseTitle = task.title
-                            .replace(/\s*-\s*(Vídeo|Design)\s*-\s*\w+$/i, "")
-                            .replace(/\s*\((Vídeo|Design)\)\s*-\s*\w+$/i, "")
-                            .trim();
+                        // Remove existing type suffix patterns
+                        let baseTitle = task.title
+                          .replace(/\s*-\s*(Vídeo|Design)(\s*-\s*\w+)?$/i, "")
+                          .replace(/\s*\((Vídeo|Design)\)(\s*-\s*\w+)?$/i, "")
+                          .trim();
 
-                          updates.title = `${baseTitle} - ${typeLabel} - ${monthLabel}`;
-                        } else if (!newType) {
-                          // Remove suffix when deselecting
-                          updates.title = task.title
-                            .replace(/\s*-\s*(Vídeo|Design)\s*-\s*\w+$/i, "")
-                            .trim();
-                        }
+                        updates.title = `${baseTitle} - ${typeLabel}`;
+                      } else if (!newType) {
+                        // Remove suffix when deselecting
+                        updates.title = task.title
+                          .replace(/\s*-\s*(Vídeo|Design)(\s*-\s*\w+)?$/i, "")
+                          .trim();
+                      }
 
-                        updateTask.mutate(updates);
-                      }}
-                    >
-                      <Icon className="h-3 w-3" />
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-            </PropertyRow>
+                      updateTask.mutate(updates);
+                    }}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    {type === "video" ? "Vídeo" : "Design"}
+                  </button>
+                );
+              })}
+            </div>
           )}
 
           <PropertyRow icon={<Tag className="h-3.5 w-3.5" />} label="Etiquetas">
