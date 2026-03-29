@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   Trophy, Target, Crosshair,
   Gem, ShieldCheck, FolderKanban, BookOpen,
@@ -37,6 +37,10 @@ interface Props {
   prevRankTotal: number | null;
   prevQualitative: QualitativeScores | null;
   prevTasks: TaskData[];
+  annualQualitative: QualitativeScores | null;
+  annualScore: number;
+  annualRank: number | null;
+  annualRankTotal: number | null;
 }
 
 /* ── Constants ── */
@@ -66,12 +70,11 @@ type Level = "alto" | "medio" | "baixo";
 function getLevel(score: number, maxScore: number): Level {
   if (maxScore === 4) {
     if (score >= 3) return "alto";
-    if (score === 2) return "medio";
+    if (score >= 2) return "medio";
     return "baixo";
   }
-  // maxScore === 3
   if (score >= 3) return "alto";
-  if (score === 2) return "medio";
+  if (score >= 2) return "medio";
   return "baixo";
 }
 
@@ -121,27 +124,33 @@ function getDiagnosis(rank: number | null, rankTotal: number | null): { label: s
   return { label: "Alerta", color: "text-red-500" };
 }
 
+type ViewMode = "mes" | "anual";
+
 /* ── Component ── */
 
 export function SmartFeedbackWidget({
   myScore, qualitative,
   rank, rankTotal,
-  prevRank, prevRankTotal, prevQualitative, prevTasks,
+  prevRank, prevRankTotal, prevQualitative,
+  annualQualitative, annualScore, annualRank, annualRankTotal,
 }: Props) {
+  const [viewMode, setViewMode] = useState<ViewMode>("mes");
   const now = new Date();
   const curMonth = MONTH_NAMES[now.getMonth()];
   const prevMonthIdx = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
   const prevMonth = MONTH_NAMES[prevMonthIdx];
 
-  // Use previous month data for analysis; fallback to current
-  const analysisQ = prevQualitative ?? qualitative;
-  const analysisRank = prevRank ?? rank;
-  const analysisRankTotal = prevRankTotal ?? rankTotal;
-  const analysisMonth = prevQualitative ? prevMonth : curMonth;
+  // Pick data based on view mode
+  const isAnnual = viewMode === "anual";
+
+  const analysisQ = isAnnual ? annualQualitative : (prevQualitative ?? qualitative);
+  const analysisRank = isAnnual ? annualRank : (prevRank ?? rank);
+  const analysisRankTotal = isAnnual ? annualRankTotal : (prevRankTotal ?? rankTotal);
+  const analysisScore = isAnnual ? annualScore : myScore;
+  const analysisLabel = isAnnual ? `${now.getFullYear()}` : (prevQualitative ? prevMonth : curMonth);
 
   const diagnosis = getDiagnosis(analysisRank, analysisRankTotal);
 
-  /* ── Scored criteria with levels ── */
   const scoredCriteria = useMemo(() => {
     if (!analysisQ) return [];
     return CRITERIA.map((c) => {
@@ -151,21 +160,17 @@ export function SmartFeedbackWidget({
     });
   }, [analysisQ]);
 
-  /* ── Best strength (1 only) — prioritize high-weight criteria ── */
   const bestStrength = useMemo(() => {
     const highLevel = scoredCriteria
       .filter((c) => c.level === "alto")
       .sort((a, b) => (a.weight === "alto" ? -1 : 1) - (b.weight === "alto" ? -1 : 1));
     if (highLevel.length > 0) return highLevel[0];
-    // Fallback: best medium
     const medLevel = scoredCriteria.filter((c) => c.level === "medio").sort((a, b) => b.score - a.score);
     return medLevel[0] ?? null;
   }, [scoredCriteria]);
 
-  /* ── Problems (max 2) — Qualidade always first if low ── */
   const problems = useMemo(() => {
     const low = scoredCriteria.filter((c) => c.level === "baixo" || c.level === "medio");
-    // Qualidade priority: if ≤ 2 always first
     low.sort((a, b) => {
       if (a.key === "padrao_qualidade_uau" && a.level !== "alto") return -1;
       if (b.key === "padrao_qualidade_uau" && b.level !== "alto") return 1;
@@ -173,22 +178,18 @@ export function SmartFeedbackWidget({
       if (b.key === "comprometimento" && b.level !== "alto") return 1;
       return a.score - b.score;
     });
-    // Only show actual problems (baixo first, then medio)
     const result = low.filter((c) => c.level === "baixo");
     if (result.length < 2) {
       const medProblems = low.filter((c) => c.level === "medio" && !result.includes(c));
       result.push(...medProblems);
     }
-    // Exclude the best strength
     return result.filter((c) => !bestStrength || c.key !== bestStrength.key).slice(0, 2);
   }, [scoredCriteria, bestStrength]);
 
-  /* ── Actions (based on problems) ── */
   const actions = useMemo(() => {
     return problems.map((p) => ACTION_MAP[p.key]).filter(Boolean).slice(0, 2);
   }, [problems]);
 
-  /* ── Focus of the month (worst criterion) ── */
   const focusGoal = useMemo(() => {
     if (scoredCriteria.length === 0) return "Manter o alto padrão de desempenho";
     const worst = [...scoredCriteria].sort((a, b) => a.score - b.score)[0];
@@ -210,9 +211,32 @@ export function SmartFeedbackWidget({
             </div>
             <div>
               <h3 className="text-base font-semibold text-foreground">Seu desempenho</h3>
-              <p className="text-[11px] text-muted-foreground">Diagnóstico de {analysisMonth}</p>
+              <p className="text-[11px] text-muted-foreground">
+                {isAnnual ? `Média anual ${now.getFullYear()}` : `Diagnóstico de ${analysisLabel}`}
+              </p>
             </div>
           </div>
+        </div>
+        {/* Toggle */}
+        <div className="flex rounded-lg overflow-hidden text-xs border border-border">
+          <button
+            onClick={() => setViewMode("mes")}
+            className={cn(
+              "px-3 py-1.5 font-medium transition-all duration-200",
+              viewMode === "mes" ? "bg-sidebar text-white" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Mês
+          </button>
+          <button
+            onClick={() => setViewMode("anual")}
+            className={cn(
+              "px-3 py-1.5 font-medium transition-all duration-200",
+              viewMode === "anual" ? "bg-sidebar text-white" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Anual
+          </button>
         </div>
       </div>
 
@@ -232,11 +256,11 @@ export function SmartFeedbackWidget({
         <span className={cn("text-xs font-semibold", diagnosis.color)}>
           {diagnosis.label}
         </span>
-        {myScore > 0 && (
+        {analysisScore > 0 && (
           <>
             <span className="text-muted-foreground/30">•</span>
             <span className="text-xs text-muted-foreground">
-              <span className="font-bold text-foreground">{myScore}</span> pts
+              <span className="font-bold text-foreground">{isAnnual ? analysisScore.toFixed(1) : analysisScore}</span> {isAnnual ? "pts/mês" : "pts"}
             </span>
           </>
         )}
@@ -263,7 +287,9 @@ export function SmartFeedbackWidget({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-0.5">
                     <span className="text-[11px] text-muted-foreground truncate">{c.label}</span>
-                    <span className="text-[11px] font-bold text-foreground tabular-nums">{c.score}/{c.maxScore}</span>
+                    <span className="text-[11px] font-bold text-foreground tabular-nums">
+                      {isAnnual ? c.score.toFixed(1) : c.score}/{c.maxScore}
+                    </span>
                   </div>
                   <div className="h-1.5 rounded-full bg-muted/50 overflow-hidden">
                     <div className={cn("h-full rounded-full transition-all duration-500", barColor)} style={{ width: `${pct}%` }} />
@@ -321,13 +347,15 @@ export function SmartFeedbackWidget({
       <div className="flex items-center gap-2.5 py-2 px-3 rounded-xl bg-sidebar/5 border border-sidebar/10">
         <Crosshair className="h-4 w-4 text-sidebar shrink-0" />
         <div className="min-w-0">
-          <span className="text-[9px] font-semibold text-sidebar/50 uppercase tracking-widest">Foco do mês</span>
+          <span className="text-[9px] font-semibold text-sidebar/50 uppercase tracking-widest">
+            {isAnnual ? "Foco do ano" : "Foco do mês"}
+          </span>
           <p className="text-[11px] font-semibold text-sidebar leading-tight">{focusGoal}</p>
         </div>
       </div>
 
       {/* ── Empty ── */}
-      {!hasData && myScore === 0 && (
+      {!hasData && analysisScore === 0 && (
         <p className="text-xs text-muted-foreground/50 text-center py-2">Sem dados de avaliação qualitativa.</p>
       )}
     </div>
