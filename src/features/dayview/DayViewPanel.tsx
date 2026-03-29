@@ -196,6 +196,23 @@ export function DayViewPanel() {
     }
   });
 
+  // Previous month scores for ranking comparison
+  const prevMonthNum = selectedMonth === 1 ? 12 : selectedMonth - 1;
+  const prevYearNum = selectedMonth === 1 ? selectedYear - 1 : selectedYear;
+  const prevScoresQ = useQuery({
+    queryKey: ["performance_scores_prev", prevYearNum, prevMonthNum],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("performance_scores")
+        .select("*")
+        .eq("year", prevYearNum)
+        .eq("month", prevMonthNum)
+        .order("user_id");
+      if (error) throw error;
+      return (data ?? []) as ScoreRow[];
+    },
+  });
+
   // Task completion stats per user (total assigned vs completed) — includes subtasks
   const taskStatsByUser = useMemo(() => {
     const tasks = tasksQ.data ?? [];
@@ -250,74 +267,33 @@ export function DayViewPanel() {
     return base;
   }, [scoresQ.data, teamQ.data, taskStatsByUser]);
 
-  // ─── Streak: dias consecutivos concluindo tarefas dentro do prazo ───
-  const streakByUser = useMemo(() => {
-    const tasks = tasksQ.data ?? [];
-    const assignees = assigneesQ.data ?? [];
+  // Previous month ranking positions map
+  const prevMonthRankMap = useMemo(() => {
+    const scores = prevScoresQ.data ?? [];
+    const byUser = new Map(scores.map((s) => [s.user_id, s]));
+    const members = teamQ.data ?? [];
+    const base = members.map((m) => {
+      const s = byUser.get(m.user_id);
+      const total =
+        (s?.aprendizado_continuo ?? 0) +
+        (s?.padrao_qualidade_uau ?? 0) +
+        (s?.metas_prazos ?? 0) +
+        (s?.ambiente_organizado ?? 0) +
+        (s?.comprometimento ?? 0);
+      return { user_id: m.user_id, total };
+    });
+    base.sort((a, b) => b.total - a.total);
     const map = new Map<string, number>();
-
-    // Agrupa tarefas concluídas por user+date
-    const userDays = new Map<string, Set<string>>();
-    // Agrupa tarefas atrasadas (concluídas após due_date) por user+date
-    const userLateDays = new Map<string, Set<string>>();
-
-    const addTaskForUser = (userId: string, t: typeof tasks[0]) => {
-      if (t.status !== "concluido") return;
-      const completedDate = t.completed_at ? format(new Date(t.completed_at), "yyyy-MM-dd") : t.due_date;
-      const isOnTime = completedDate <= t.due_date;
-
-      if (!userDays.has(userId)) userDays.set(userId, new Set());
-      userDays.get(userId)!.add(t.due_date);
-
-      if (!isOnTime) {
-        if (!userLateDays.has(userId)) userLateDays.set(userId, new Set());
-        userLateDays.get(userId)!.add(t.due_date);
-      }
-    };
-
-    for (const t of tasks) {
-      const taskAssignees = assignees.filter((a) => a.task_id === t.id);
-      if (taskAssignees.length > 0) {
-        for (const a of taskAssignees) addTaskForUser(a.user_id, t);
-      } else {
-        addTaskForUser(t.assigned_user_id, t);
-      }
-    }
-
-    // Para cada user, conta dias consecutivos até hoje sem atraso
-    for (const [userId, days] of userDays) {
-      const lateDays = userLateDays.get(userId) ?? new Set();
-      let streak = 0;
-      const d = new Date(todayKey + "T12:00:00");
-      for (let i = 0; i < 60; i++) {
-        const key = format(d, "yyyy-MM-dd");
-        if (days.has(key) && !lateDays.has(key)) {
-          streak++;
-        } else if (days.has(key) && lateDays.has(key)) {
-          break;
-        }
-        d.setDate(d.getDate() - 1);
-      }
-      map.set(userId, streak);
-    }
-
+    base.forEach((r, i) => map.set(r.user_id, i));
     return map;
-  }, [tasksQ.data, assigneesQ.data, todayKey]);
+  }, [prevScoresQ.data, teamQ.data]);
+
 
   // Ranking com todos os membros (sem filtro)
   const filteredRank = monthlyRank;
 
-  // Rastreia posição anterior para mostrar setas de subida/descida
-  const prevRankMap = useRef(new Map<string, number>());
-  useEffect(() => {
-    // Atualiza o mapa anterior após a renderização
-    const timer = setTimeout(() => {
-      const map = new Map<string, number>();
-      filteredRank.forEach((r, i) => map.set(r.user_id, i));
-      prevRankMap.current = map;
-    }, 2000); // Delay para permitir visualização das setas
-    return () => clearTimeout(timer);
-  }, [filteredRank]);
+
+
 
   const clientsById = useMemo(() => new Map((clientsQ.data ?? []).map((c) => [c.id, c] as const)), [clientsQ.data]);
   const teamByUserId = useMemo(() => new Map((teamQ.data ?? []).map((m) => [m.user_id, m] as const)), [teamQ.data]);
@@ -795,9 +771,6 @@ export function DayViewPanel() {
           })}
               </div>}
 
-
-
-
             {/* Mensagem quando não há tarefas */}
             {todayPendingTasks.length === 0 && todayCompletedTasks.length === 0 && overdueTasks.length === 0 && todayCleaningTasks.length === 0 && <p className="text-muted-foreground text-center py-4">
                 {isCurrentMonth ? "Nenhuma tarefa para hoje 🎉" : "Nenhuma tarefa neste mês"}
@@ -826,14 +799,16 @@ export function DayViewPanel() {
                 <span className="w-14 text-center shrink-0">Pend.</span>
                 <div className="flex-1 min-w-0 text-center">% Conclusão</div>
                 <span className="w-14 text-center shrink-0">Pts</span>
-                <span className="w-5 shrink-0" />
+                <span className="w-14 text-center shrink-0">Var.</span>
               </div>
               {filteredRank.map((row, idx) => {
           const member = teamByUserId.get(row.user_id);
           const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx + 1}º`;
           const pending = row.taskTotal - row.taskCompleted;
-          const prevPos = prevRankMap.current.get(row.user_id);
-          const posChange = prevPos !== undefined ? prevPos - idx : 0;
+          const prevPos = prevMonthRankMap.get(row.user_id);
+          const hasPrevData = prevScoresQ.data && prevScoresQ.data.length > 0;
+          const posChange = hasPrevData && prevPos !== undefined ? prevPos - idx : 0;
+          const hasChange = hasPrevData && prevPos !== undefined;
           return (
             <div key={row.user_id} className={cn("rounded-lg sm:rounded-none border sm:border-0 border-border/40 p-2.5 sm:p-0", isFullscreen ? "py-3" : "sm:py-1")}>
                       {/* Desktop layout */}
@@ -856,16 +831,33 @@ export function DayViewPanel() {
                           </div>
                         </div>
                         <span className="w-14 text-center shrink-0 text-sm font-bold">{row.total}</span>
-                        <div className="w-10 shrink-0 flex items-center justify-center gap-0.5">
-                          {posChange > 0 ? <ArrowUp className="h-3.5 w-3.5 text-success" /> :
-                  posChange < 0 ? <ArrowDown className="h-3.5 w-3.5 text-destructive" /> :
-                  (streakByUser.get(row.user_id) ?? 0) >= 1 ?
-                  <Tooltip>
-                    <TooltipTrigger asChild><span className="text-base leading-none cursor-default">⚡</span></TooltipTrigger>
-                    <TooltipContent side="top">🔥 {streakByUser.get(row.user_id)} dias consecutivos no prazo!</TooltipContent>
-                  </Tooltip> :
-                  <span className="text-muted-foreground text-[10px]">–</span>}
-                        </div>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="w-14 shrink-0 flex items-center justify-center gap-0.5 cursor-default">
+                              {!hasChange ? (
+                                <span className="text-muted-foreground text-[10px]">—</span>
+                              ) : posChange > 0 ? (
+                                <>
+                                  <ArrowUp className="h-3.5 w-3.5 text-success" />
+                                  <span className="text-[11px] font-semibold text-success">+{posChange}</span>
+                                </>
+                              ) : posChange < 0 ? (
+                                <>
+                                  <ArrowDown className="h-3.5 w-3.5 text-destructive" />
+                                  <span className="text-[11px] font-semibold text-destructive">{posChange}</span>
+                                </>
+                              ) : (
+                                <span className="text-muted-foreground text-[10px]">—</span>
+                              )}
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent side="top">
+                            {!hasChange ? "Sem dados do mês anterior" :
+                              posChange > 0 ? `Subiu ${posChange} posição(ões) em relação ao mês anterior` :
+                              posChange < 0 ? `Caiu ${Math.abs(posChange)} posição(ões) no ranking` :
+                              "Manteve a mesma posição"}
+                          </TooltipContent>
+                        </Tooltip>
                       </div>
                       {/* Mobile layout */}
                       <div className="flex sm:hidden items-center gap-2.5">
