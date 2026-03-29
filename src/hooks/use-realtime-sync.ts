@@ -110,6 +110,7 @@ const TABLE_TO_QUERY_KEYS: Record<RealtimeTable, string[][]> = {
   squads: [["squads"]],
   squad_members: [["squad_members"]],
   client_squads: [["client_squads"]],
+  notification_reads: [["notification_reads"]],
 };
 
 /**
