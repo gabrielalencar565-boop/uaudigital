@@ -206,7 +206,7 @@ export function AdminDeadlineReport({
 
       const userIds = getTaskUserIds(t);
       const override = overrideByTaskId.get(t.id);
-      const pts = override ? override.override_points : calcPoints(t, scoringConfigMap);
+      const pts = override ? override.override_points : calcPoints(t, scoringConfigMap, year, month);
       const onTime = isOnTime(t);
 
       for (const uid of userIds) {
