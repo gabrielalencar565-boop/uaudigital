@@ -1039,7 +1039,7 @@ export function AgendaPanel() {
                         const canInteract = canUserInteractWithTask(user?.id);
                         const members = getMembersForTask(t);
 
-                        return <AgendaWeekTaskItem key={t.id} stageLabel={stageLabel} stage={t.stage} done={t.status === "concluido"} assigneeName={assigneeName} assigneeAvatarUrl={assignee?.avatar_url ?? undefined} members={members} clientName={clientName} dueTime={formatDueTime(t.due_at)} density="default" isExtraDemand={t.is_extra_demand} canInteract={canInteract} canDelete={true} onToggle={() => {
+                        return <AgendaWeekTaskItem key={t.id} stageLabel={stageLabel} stage={t.stage} done={t.status === "concluido"} assigneeName={assigneeName} assigneeAvatarUrl={assignee?.avatar_url ?? undefined} members={members} clientName={clientName} dueTime={formatDueTime(t.due_at)} density="default" isExtraDemand={t.is_extra_demand} postType={getPostType(t)} canInteract={canInteract} canDelete={true} onToggle={() => {
                           const next = t.status === "concluido" ? "pendente" : "concluido";
                           toggleComplete(t.id, next);
                         }} onDelete={() => onDeleteTask(t.id)} onClick={() => canManageTasks && openEditTask(t)} />;
