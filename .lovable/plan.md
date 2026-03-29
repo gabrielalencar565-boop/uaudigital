@@ -1,31 +1,39 @@
 
 
-## Plan: Trash Panel Improvements + Agenda Filter Fix
+## Plan: Productivity + Performance on Same Row, Collapsible
 
-### Problem 1: Trash Panel — Show who deleted + Admin-only destructive actions
-The trash panel currently shows the assigned user but not who deleted the task. Also, "Esvaziar Lixeira" and "Excluir permanentemente" buttons are available to all users — they should be admin-only.
+### What changes
 
-### Problem 2: Agenda filter not working for Feb/March
-In `GestaoPanel.tsx`, legacy tasks from the `tasks` table are added to `tasksByDay` without going through the assignee/client/search filters. The `filteredTasks` memo only filters `pm_tasks`, but legacy tasks are appended raw. This causes all legacy tasks to appear regardless of filter selection.
+1. **`MeuPainelPanel.tsx`** — Wrap both widgets in a single row container. Each widget gets a collapsible wrapper with:
+   - A compact header bar showing the widget title + chevron icon
+   - `useState` defaulting to `collapsed = true` (minimized on load)
+   - Clicking the header or chevron toggles open/closed
+   - Smooth height transition via CSS (`max-height` or `grid-rows` animation)
 
----
+2. **Layout** — Keep the existing `grid grid-cols-1 lg:grid-cols-2 gap-4` so they sit side by side on desktop. Each cell contains a collapsible section.
 
-### Changes
+### Technical approach
 
-**File 1: `src/features/agenda/components/TaskTrashPanel.tsx`**
-- Accept `isAdmin` prop (boolean)
-- Display "Excluída por: [name]" using `deleted_by` field mapped through `teamByUserId`
-- Conditionally render "Esvaziar Lixeira" button only when `isAdmin === true`
-- Conditionally render per-task "Excluir permanentemente" button only when `isAdmin === true`
-- Keep "Restaurar" available to all users
+Create a small `CollapsibleWidget` wrapper component inline or as a shared component:
 
-**File 2: `src/features/gestao/GestaoPanel.tsx`** (AgendaCalendarView)
-- Apply the same client/assignee/search filters to legacy tasks before adding them to `tasksByDay`
-- In the legacy task loop (~line 549), filter by `filterClient`, `filterAssignee` (checking both `assigned_user_id` and extra assignees from `legacyAssigneesByTaskId`), and `search` before converting to PmTask shape
+```text
+┌─ Sua produtividade  ──────── ▾ ┐  ┌─ Seu desempenho  ──────── ▾ ┐
+│  (collapsed by default)        │  │  (collapsed by default)      │
+└────────────────────────────────┘  └──────────────────────────────┘
 
-**File 3: `src/features/gestao/GestaoPanel.tsx`** (TrashPanel usage)
-- Pass `isAdmin` prop to `<TaskTrashPanel>` where it's rendered
+Click ▾ →
 
-**File 4: `src/features/agenda/AgendaPanel.tsx`** (if TrashPanel is also used here)
-- Pass `isAdmin` prop to `<TaskTrashPanel>` where it's rendered
+┌─ Sua produtividade  ──────── ▴ ┐  ┌─ Seu desempenho  ──────── ▴ ┐
+│  [full widget content]         │  │  [full widget content]       │
+│  charts, toggles, etc.        │  │  cards, bars, etc.           │
+└────────────────────────────────┘  └──────────────────────────────┘
+```
+
+- Each widget keeps its own internal header/content, but the outer wrapper adds the collapse toggle
+- The chevron rotates on open (180deg transition)
+- Use `overflow-hidden` + `max-height` transition or Radix `Collapsible` (already in the project) for smooth animation
+
+### Files to edit
+
+- `src/features/meu-painel/MeuPainelPanel.tsx` — add collapse state and wrapper around each widget
 
