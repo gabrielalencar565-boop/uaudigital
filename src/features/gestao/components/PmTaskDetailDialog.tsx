@@ -829,7 +829,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           </PropertyRow>
 
           {/* Planning type selector — only in planejamento */}
-          {task.stage_current === "planejamento" && (
+          {task.stage_current === "planejamento" && !task.parent_task_id && (
             <div className="flex items-center gap-2 px-1 min-h-[28px]">
               {(["video", "design"] as const).map(type => {
                 const isActive = task.post_type === type;
