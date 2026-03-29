@@ -508,6 +508,82 @@ export function AdminDeadlineReport({
           </CardContent>
         </Card>
       </div>
+
+      {/* Task detail dialog */}
+      <Dialog open={!!detailTask} onOpenChange={(open) => !open && setDetailTask(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base">
+              {detailTask?.title ?? (detailTask?.client?.name ? `Cliente: ${detailTask.client.name}` : "Tarefa")}
+            </DialogTitle>
+          </DialogHeader>
+
+          {detailTask && (() => {
+            const stageDef = STAGES.find((s) => s.key === detailTask.stage);
+            const stageTone = STAGE_BADGE_CLASS[detailTask.stage];
+            const assignees = assigneesByTask.get(detailTask.id);
+            const assignedNames = (assignees && assignees.length > 0 ? assignees : [detailTask.assigned_user_id])
+              .map((uid) => teamById.get(uid)?.display_name ?? "—");
+            const override = overrideByTaskId.get(detailTask.id);
+            const auto = calcPoints(detailTask, scoringConfigMap);
+            const onTime = isOnTime(detailTask);
+
+            return (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-muted-foreground text-xs mb-0.5">Cliente</p>
+                    <p className="font-medium">{detailTask.client?.name ?? "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs mb-0.5">Etapa</p>
+                    <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold", stageTone.bg, stageTone.fg)}>
+                      {stageDef?.label ?? detailTask.stage}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs mb-0.5">Prazo</p>
+                    <p className="font-medium tabular-nums">{format(new Date(detailTask.due_date + "T12:00:00"), "dd/MM/yyyy")}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs mb-0.5">Concluída em</p>
+                    <p className="font-medium tabular-nums">
+                      {detailTask.completed_at ? format(new Date(detailTask.completed_at), "dd/MM/yyyy HH:mm") : "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs mb-0.5">Status</p>
+                    <Badge variant={onTime === true ? "secondary" : onTime === false ? "destructive" : "outline"}>
+                      {onTime === true ? "No prazo" : onTime === false ? "Atrasada" : "Pendente"}
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs mb-0.5">Pontuação</p>
+                    <p className="font-medium tabular-nums">
+                      {override ? `${override.override_points} (exceção)` : auto}
+                    </p>
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="text-sm">
+                  <p className="text-muted-foreground text-xs mb-1">Responsáveis</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {assignedNames.map((name, i) => (
+                      <Badge key={i} variant="outline" className="text-xs">{name}</Badge>
+                    ))}
+                  </div>
+                </div>
+
+                {detailTask.is_extra_demand && (
+                  <Badge variant="secondary" className="text-xs">Demanda extra • Qtd: {detailTask.quantity}</Badge>
+                )}
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
