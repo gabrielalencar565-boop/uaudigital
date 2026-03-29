@@ -47,7 +47,7 @@ type NavGroup = {
   key: string;
   label: string;
   icon: React.ComponentType<any>;
-  children: {key: MainTab;label: string;icon: React.ComponentType<any>;}[];
+  children: {key: MainTab;label: string;icon: React.ComponentType<any>;adminOnly?: boolean;}[];
   adminOnly?: boolean;
   landingTab?: MainTab;
 };
@@ -72,10 +72,7 @@ const NAV: NavEntry[] = [
   children: [
   { key: "agenda_gestao", label: "Agenda", icon: CalendarDays },
   { key: "cronograma", label: "Cronograma", icon: CalendarRange },
-  { key: "visao_geral_projetos", label: "Painel de Squads", icon: PieChart },
-  { key: "fluxos", label: "Fluxos", icon: Workflow }]
-
-
+  { key: "fluxos", label: "Fluxos", icon: Workflow, adminOnly: true }]
 },
 {
   key: "dashboard_group",
@@ -84,8 +81,8 @@ const NAV: NavEntry[] = [
   icon: Eye,
   children: [
   { key: "magic2", label: "Magic Number", icon: Target },
-  { key: "desempenho", label: "Desempenho", icon: Trophy }]
-
+  { key: "desempenho", label: "Desempenho", icon: Trophy },
+  { key: "visao_geral_projetos", label: "Painel de Squads", icon: PieChart }]
 },
 {
   key: "financeiro_group",
@@ -99,7 +96,6 @@ const NAV: NavEntry[] = [
   { key: "fin_despesas_detalhadas", label: "Despesas Detalhadas", icon: FileSpreadsheet },
   { key: "fin_lancamentos", label: "Lançamentos", icon: ArrowRightLeft },
   { key: "metas", label: "Metas", icon: TrendingUp }]
-
 },
 { key: "configuracoes", label: "Configurações", icon: Settings, adminOnly: true }];
 
@@ -259,7 +255,7 @@ export function UauSidebarShell({
                         {!collapsed &&
                         <CollapsibleContent>
                             <div className="ml-5 mt-1 space-y-0.5 border-l border-sidebar-foreground/15 pl-3">
-                              {entry.children.map((child) => {
+                              {entry.children.filter(child => !child.adminOnly || isAdmin).map((child) => {
                               const active = isActive(child.key);
                               return (
                                 <button

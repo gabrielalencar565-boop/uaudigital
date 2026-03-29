@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { Trash2, ExternalLink } from "lucide-react";
@@ -212,6 +212,56 @@ export function AdminDeadlineReport({
 
     return Array.from(byUser.values()).sort((a, b) => b.total - a.total);
   }, [team, tasksQ.data, overrideByTaskId, assigneesByTask, scoringConfigMap]);
+
+  // Auto-recompute: compare report totals with stored performance_scores.metas_prazos
+  const storedScoresQ = useQuery({
+    queryKey: ["performance_scores_metas", year, month],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("performance_scores")
+        .select("user_id, metas_prazos")
+        .eq("year", year)
+        .eq("month", month);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const recomputedRef = useRef(false);
+  useEffect(() => { recomputedRef.current = false; }, [year, month]);
+  useEffect(() => {
+    if (recomputedRef.current) return;
+    if (!storedScoresQ.data || !summary.length || tasksQ.isLoading || scoringConfigQ.isLoading) return;
+
+    const storedMap = new Map((storedScoresQ.data ?? []).map(s => [s.user_id, s.metas_prazos]));
+    const mismatches: { userId: string }[] = [];
+
+    for (const s of summary) {
+      const stored = storedMap.get(s.user_id) ?? 0;
+      if (stored !== s.total) {
+        mismatches.push({ userId: s.user_id });
+      }
+    }
+
+    if (mismatches.length === 0) return;
+    recomputedRef.current = true;
+
+    (async () => {
+      for (const { userId } of mismatches) {
+        try {
+          await supabase.rpc("recompute_metas_prazos", {
+            _user_id: userId,
+            _year: year,
+            _month: month,
+          });
+        } catch (e) {
+          console.error("Auto-recompute failed for", userId, e);
+        }
+      }
+      qc.invalidateQueries({ queryKey: ["performance_scores"] });
+      qc.invalidateQueries({ queryKey: ["performance_scores_metas", year, month] });
+    })();
+  }, [storedScoresQ.data, summary, tasksQ.isLoading, scoringConfigQ.isLoading]);
 
   const userTasks = useMemo(() => {
     return (tasksQ.data ?? []).filter((t) => {
