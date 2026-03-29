@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { format, isPast, isToday } from "date-fns";
-import { Calendar, UserCircle, Flag, Plus, MoreHorizontal, Archive, Trash2, Pencil, Link2, AlertTriangle } from "lucide-react";
+import { Calendar, UserCircle, Flag, Plus, MoreHorizontal, Archive, Trash2, Pencil, Link2, AlertTriangle, Video, Palette } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -81,6 +81,17 @@ export function PmTaskCard({ task, clientName, assignees = [], childTasks = [], 
             onClick={(e) => e.stopPropagation()} className="text-sm font-semibold h-6 border-0 bg-transparent p-0 focus-visible:ring-0" />
         ) : (
           <p className="text-[13px] font-semibold leading-snug text-foreground/90">{task.title}</p>
+        )}
+
+        {/* Post type badge */}
+        {task.post_type && (task.stage_current === "planejamento" || task.stage_current === "captacao") && (
+          <span className={cn(
+            "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-semibold",
+            task.post_type === "video" ? "bg-primary/10 text-primary" : "bg-accent/50 text-accent-foreground"
+          )}>
+            {task.post_type === "video" ? <Video className="h-2.5 w-2.5" /> : <Palette className="h-2.5 w-2.5" />}
+            {task.post_type === "video" ? "Vídeo" : "Design"}
+          </span>
         )}
 
         {/* Tags */}
