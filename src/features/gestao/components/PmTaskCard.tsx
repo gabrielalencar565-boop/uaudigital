@@ -61,7 +61,12 @@ export function PmTaskCard({ task, clientName, assignees = [], childTasks = [], 
   const extraAssignees = Math.max(assignees.length - visibleAssignees.length, 0);
 
   return (
-    <div className="calendar-card-hover group w-full rounded-xl border border-border/20 bg-card shadow-sm transition-all duration-300 ease-out overflow-hidden">
+    <div className={cn(
+      "calendar-card-hover group w-full rounded-xl border shadow-sm transition-all duration-300 ease-out overflow-hidden",
+      task.stage_current === "alteracoes" && task.post_type
+        ? "bg-[#E5C94E] border-[#E5C94E]/60"
+        : "border-border/20 bg-card"
+    )}>
       {task.cover_url && (
         <div className="w-full h-20 overflow-hidden">
           <img src={task.cover_url} alt="" className="w-full h-full object-cover" />
@@ -84,17 +89,20 @@ export function PmTaskCard({ task, clientName, assignees = [], childTasks = [], 
         )}
 
         {/* Post type badge — show origin in revisão */}
-        {task.post_type && task.stage_current === "revisao" && (
+        {task.post_type && (task.stage_current === "revisao" || task.stage_current === "alteracoes") && (
           <span className={cn(
             "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold text-white tracking-wide",
             task.post_type === "video"
               ? "bg-gradient-to-r from-pink-500 to-blue-500"
               : "bg-gradient-to-r from-pink-500 to-teal-500"
           )}>
-            {task.post_type === "video" ? <><Clapperboard className="h-3 w-3" /> REV/Vídeo</> : <><Palette className="h-3 w-3" /> REV/DSG</>}
+            {task.stage_current === "alteracoes"
+              ? (task.post_type === "video" ? <><Clapperboard className="h-3 w-3" /> ALT/VDO</> : <><Palette className="h-3 w-3" /> ALT/DSG</>)
+              : (task.post_type === "video" ? <><Clapperboard className="h-3 w-3" /> REV/Vídeo</> : <><Palette className="h-3 w-3" /> REV/DSG</>)
+            }
           </span>
         )}
-        {task.post_type && ["planejamento", "design", "edicao_videos", "alteracoes"].includes(task.stage_current) && (
+        {task.post_type && ["planejamento", "design", "edicao_videos"].includes(task.stage_current) && (
           <span className={cn(
             "inline-flex items-center justify-center rounded-md h-5 w-5",
             task.post_type === "video"

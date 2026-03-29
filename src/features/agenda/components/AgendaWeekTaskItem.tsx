@@ -93,17 +93,22 @@ export function AgendaWeekTaskItem({
   const stageTone = STAGE_BADGE_CLASS[stage];
   const isCompact = density === "compact";
 
-  // For revisão tasks with a post_type origin, show gradient badge
+  // For revisão or alteração tasks with a post_type origin, show gradient badge
   const isRevisaoWithOrigin = stage === "revisao" && !!postType;
-  const revisaoShort = postType === "video" ? "REV/VDO" : "REV/DSG";
-  const revisaoGradient = postType === "video"
+  const isAlteracaoWithOrigin = stage === "alteracoes" && !!postType;
+  const hasGradientPill = isRevisaoWithOrigin || isAlteracaoWithOrigin;
+  const gradientShort = isAlteracaoWithOrigin
+    ? (postType === "video" ? "ALT/VDO" : "ALT/DSG")
+    : (postType === "video" ? "REV/VDO" : "REV/DSG");
+  const gradientClass = postType === "video"
     ? "bg-gradient-to-r from-pink-500 to-blue-500 text-white"
     : "bg-gradient-to-r from-pink-500 to-teal-500 text-white";
 
   return (
     <div
       className={cn(
-        "rounded-lg border border-border/60 bg-card/20 shadow-sm",
+        "rounded-lg border shadow-sm",
+        isAlteracaoWithOrigin ? "bg-[#E5C94E] border-[#E5C94E]/60" : "bg-card/20 border-border/60",
         isCompact ? "p-2" : "p-2.5",
         !canInteract && "opacity-60",
         onClick && "cursor-pointer hover:border-primary/50 hover:bg-card/40 transition-colors",
@@ -126,11 +131,11 @@ export function AgendaWeekTaskItem({
               "inline-flex items-start rounded-full font-semibold",
               isCompact ? "px-2 py-1 text-[10px] leading-snug" : "px-2.5 py-1 text-xs leading-snug",
               stagePillWidth === "fit" ? "w-auto" : "w-full",
-              isRevisaoWithOrigin ? revisaoGradient : cn(stageTone.bg, stageTone.fg),
+              hasGradientPill ? gradientClass : cn(stageTone.bg, stageTone.fg),
             )}
             title={stageLabel}
           >
-            <span className="whitespace-nowrap">{isRevisaoWithOrigin ? revisaoShort : (STAGE_SHORT[stage] ?? stageLabel)}</span>
+            <span className="whitespace-nowrap">{hasGradientPill ? gradientShort : (STAGE_SHORT[stage] ?? stageLabel)}</span>
           </div>
         </div>
 
