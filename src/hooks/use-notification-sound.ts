@@ -17,6 +17,8 @@ type PendingNotif = {
 };
 
 const MAX_PENDING = 30;
+const MAX_PERSISTED_SHOWN = 300;
+const SHOWN_STORAGE_PREFIX = "uau:notif:shown";
 
 // ─── Hook ─────────────────────────────────────────────────────────────
 /**
@@ -32,6 +34,7 @@ export function useNotificationSound() {
   const userIdRef = useRef<string | null>(null);
   const pendingRef = useRef<PendingNotif[]>([]);
   const shownKeysRef = useRef<Set<string>>(new Set());
+  const persistedShownRef = useRef<Set<string>>(new Set());
   const deadlineIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ── helpers ──
@@ -42,17 +45,40 @@ export function useNotificationSound() {
     return document.visibilityState === "visible";
   }, []);
 
-  const showNotif = useCallback((item: PendingNotif) => {
-    if (shownKeysRef.current.has(item.key)) return;
-    shownKeysRef.current.add(item.key);
-    triggerNotification(item.type, item.title, {
-      description: item.description,
-    });
+  const hasShown = useCallback((key: string) => {
+    return shownKeysRef.current.has(key) || persistedShownRef.current.has(key);
   }, []);
+
+  const persistShownSet = useCallback(() => {
+    if (!user?.id) return;
+    const trimmed = Array.from(persistedShownRef.current).slice(-MAX_PERSISTED_SHOWN);
+    persistedShownRef.current = new Set(trimmed);
+    localStorage.setItem(`${SHOWN_STORAGE_PREFIX}:${user.id}`, JSON.stringify(trimmed));
+  }, [user?.id]);
+
+  const markShown = useCallback(
+    (key: string) => {
+      shownKeysRef.current.add(key);
+      persistedShownRef.current.add(key);
+      persistShownSet();
+    },
+    [persistShownSet]
+  );
+
+  const showNotif = useCallback(
+    (item: PendingNotif) => {
+      if (hasShown(item.key)) return;
+      markShown(item.key);
+      triggerNotification(item.type, item.title, {
+        description: item.description,
+      });
+    },
+    [hasShown, markShown]
+  );
 
   const enqueueOrShow = useCallback(
     (item: PendingNotif) => {
-      if (shownKeysRef.current.has(item.key)) return;
+      if (hasShown(item.key)) return;
       if (isTabActive()) {
         showNotif(item);
         return;
@@ -63,8 +89,30 @@ export function useNotificationSound() {
           pendingRef.current = pendingRef.current.slice(-MAX_PENDING);
       }
     },
-    [isTabActive, showNotif]
+    [hasShown, isTabActive, showNotif]
   );
+
+  useEffect(() => {
+    shownKeysRef.current.clear();
+    pendingRef.current = [];
+
+    if (!user?.id) {
+      persistedShownRef.current = new Set();
+      return;
+    }
+
+    try {
+      const raw = localStorage.getItem(`${SHOWN_STORAGE_PREFIX}:${user.id}`);
+      const parsed = raw ? JSON.parse(raw) : [];
+      if (Array.isArray(parsed)) {
+        persistedShownRef.current = new Set(parsed.filter((k) => typeof k === "string"));
+      } else {
+        persistedShownRef.current = new Set();
+      }
+    } catch {
+      persistedShownRef.current = new Set();
+    }
+  }, [user?.id]);
 
   const flushPending = useCallback(() => {
     if (!isTabActive() || pendingRef.current.length === 0) return;
