@@ -1064,19 +1064,21 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         </div>
         )}
 
-        {/* Description */}
-        <div className="border-t border-border/20 pt-4">
-          <div className="flex items-center gap-2 mb-2">
-            <FileText className="h-4 w-4 text-muted-foreground" />
-            <h3 className="text-sm font-bold">Descrição</h3>
+        {/* Description — hidden for planning parent tasks */}
+        {!(task.stage_current === "planejamento" && !task.parent_task_id) && (
+          <div className="border-t border-border/20 pt-4">
+            <div className="flex items-center gap-2 mb-2">
+              <FileText className="h-4 w-4 text-muted-foreground" />
+              <h3 className="text-sm font-bold">Descrição</h3>
+            </div>
+            <SmartCaptionEditor
+              value={task.description ?? ""}
+              onChange={(val) => updateTask.mutate({ id: task.id, description: val })}
+              placeholder="Adicione uma descrição..."
+              minHeight="80px"
+            />
           </div>
-          <SmartCaptionEditor
-            value={task.description ?? ""}
-            onChange={(val) => updateTask.mutate({ id: task.id, description: val })}
-            placeholder="Adicione uma descrição..."
-            minHeight="80px"
-          />
-        </div>
+        )}
 
         {/* Posting Fields (for subtasks in PDF stage only) */}
         {task.parent_task_id && task.stage_current === "pdf" && (
