@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import {
   Calendar, UserCircle, Flag, X, ChevronRight, ArrowLeft,
-  Layers, Tag, MessageSquare, Plus, Check, CheckCircle2, RotateCcw, Paperclip, ListTodo, FileText, CalendarDays, Clapperboard, Palette
+  Layers, Tag, MessageSquare, Plus, Check, CheckCircle2, RotateCcw, Paperclip, ListTodo, FileText, CalendarDays
 } from "lucide-react";
 import { addDays, format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
