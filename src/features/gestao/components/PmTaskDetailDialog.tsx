@@ -488,21 +488,31 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       newDueDate = format(addDays(baseDate, dateConfig), "yyyy-MM-dd");
     }
 
-    // Multiple next stages → show stage choice first (existing task check happens inside handleChooseNextStage → advanceStage)
-    if (nextStages.length > 1) {
+    // If planejamento has a post_type set, auto-select next stage
+    let resolvedNextStages = nextStages;
+    if (completedStage === "planejamento" && task.post_type) {
+      if (task.post_type === "design") {
+        resolvedNextStages = ["design"];
+      } else if (task.post_type === "video") {
+        resolvedNextStages = ["edicao_videos"];
+      }
+    }
+
+    // Multiple next stages → show stage choice first
+    if (resolvedNextStages.length > 1) {
       setPendingCompletedStage(completedStage);
       setPendingDueDate(newDueDate);
-      setStageChoiceOptions(nextStages);
+      setStageChoiceOptions(resolvedNextStages);
       setStageChoiceOpen(true);
       return;
     }
 
     // Single next stage → check for existing agenda task
-    if (nextStages.length === 1) {
-      const existing = await findExistingAgendaTaskForStage(nextStages[0], newDueDate ?? task.due_date ?? format(new Date(), "yyyy-MM-dd"));
+    if (resolvedNextStages.length === 1) {
+      const existing = await findExistingAgendaTaskForStage(resolvedNextStages[0], newDueDate ?? task.due_date ?? format(new Date(), "yyyy-MM-dd"));
       if (existing) {
         setLinkExistingTask(existing);
-        setPendingAdvance({ completedStage, nextStage: nextStages[0] });
+        setPendingAdvance({ completedStage, nextStage: resolvedNextStages[0] });
         setLinkDialogOpen(true);
         return;
       }
@@ -517,10 +527,10 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     }
 
     // No "pick" — advance directly
-    if (nextStages.length === 0) {
+    if (resolvedNextStages.length === 0) {
       advanceStage(completedStage, "entrega", newDueDate);
-    } else if (nextStages.length === 1) {
-      advanceStage(completedStage, nextStages[0], newDueDate);
+    } else if (resolvedNextStages.length === 1) {
+      advanceStage(completedStage, resolvedNextStages[0], newDueDate);
     }
   };
 
