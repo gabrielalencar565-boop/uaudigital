@@ -886,7 +886,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                   }) : (<span className="text-xs text-muted-foreground">Adicionar...</span>)}
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-64 p-0" align="start">
+              <PopoverContent className="w-64 p-0 z-[150]" align="start">
                 <div className="p-3 border-b border-border/30">
                   <Input
                     value={newTagName}
