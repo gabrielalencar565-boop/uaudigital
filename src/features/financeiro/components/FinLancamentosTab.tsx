@@ -211,7 +211,7 @@ export function FinLancamentosTab() {
       description: "Caixa Inicial",
       amount: prevCaixaFinalValue,
       date: firstDay,
-      type: "caixa",
+      type: "entrada",
       category: "caixa",
       status: "confirmado",
       source: "auto",
