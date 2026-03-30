@@ -72,7 +72,8 @@ export function useMagic2Year(year: number) {
             ...cycleStages.filter((s) => s.completed_at).map((s) => new Date(s.completed_at!).getTime()),
           );
           const completed = maxDate > 0 ? new Date(maxDate) : null;
-          const due = new Date(year, m - 1, 27, 23, 59, 59);
+          const completedDay = completed ? getBrazilDay(completed.toISOString()) : null;
+          const due = 27;
 
           if (completed && completed <= due) doneOnTime += 1;
           else doneLate += 1;
