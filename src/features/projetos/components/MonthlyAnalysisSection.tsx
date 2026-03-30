@@ -179,7 +179,7 @@ export function MonthlyAnalysisSection() {
       }
 
       const before20 = completedStages.filter((s: any) => {
-        const day = s.completed_at ? new Date(s.completed_at).getDate() : 28;
+        const day = s.completed_at ? getBrazilDay(s.completed_at) : 28;
         return day <= 20;
       }).length;
 
