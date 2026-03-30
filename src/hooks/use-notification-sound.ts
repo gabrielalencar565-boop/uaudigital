@@ -352,8 +352,11 @@ export function useNotificationSound() {
           // Trigger when assignee changed TO current user
           // old may be partial, so also trigger if assignee is uid and old.assignee_id is absent
           if (row.parent_task_id) return; // skip subtasks
-          const wasAssignedBefore = old?.assignee_id === uid;
-          if (row.assignee_id === uid && !wasAssignedBefore) {
+          // Only notify when assignee explicitly changed FROM someone else TO current user
+          // old.assignee_id may be absent in partial payloads — skip in that case
+          const oldAssignee = old?.assignee_id;
+          if (!oldAssignee || oldAssignee === uid) return;
+          if (row.assignee_id === uid) {
             enqueueOrShow({
               key: `assigned-${row.id}-${row.updated_at ?? ""}`,
               type: "task_assigned",
