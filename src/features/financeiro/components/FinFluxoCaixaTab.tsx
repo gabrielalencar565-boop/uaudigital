@@ -43,13 +43,14 @@ export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaP
 
   const clientsQ = useFinClients();
   const transactionsQ = useFinAllTransactions(year);
-  const balancesQ = useFinOpeningBalances(year);
   const revenuesQ = useFinAllRevenues(year);
 
   const clients = clientsQ.data?.filter((c) => c.is_active) ?? [];
-  const transactions = transactionsQ.data ?? [];
-  const balances = balancesQ.data ?? [];
+  const allTransactions = transactionsQ.data ?? [];
   const revenues = revenuesQ.data ?? [];
+
+  // Separate caixa (balance) transactions from normal ones
+  const transactions = allTransactions;
 
   const monthTxs = useMemo(() => {
     return transactions.filter((t) => {
@@ -58,6 +59,27 @@ export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaP
       return d.getMonth() + 1 === month;
     });
   }, [transactions, month]);
+
+  // Caixa inicial = caixa transaction in the current month (auto-generated from previous month's caixa final)
+  const caixaInicialTx = useMemo(() => {
+    return transactions.find((t) => {
+      if (t.type !== "caixa" && t.category !== "caixa") return false;
+      const d = new Date(t.date);
+      return d.getMonth() + 1 === month && t.description?.toLowerCase().includes("inicial");
+    });
+  }, [transactions, month]);
+
+  // Caixa final = caixa transaction at end of current month (manually entered)
+  const caixaFinalTx = useMemo(() => {
+    return transactions.find((t) => {
+      if (t.type !== "caixa" && t.category !== "caixa") return false;
+      const d = new Date(t.date);
+      return d.getMonth() + 1 === month && !t.description?.toLowerCase().includes("inicial");
+    });
+  }, [transactions, month]);
+
+  const caixaInicial = caixaInicialTx ? Number(caixaInicialTx.amount) : null;
+  const caixaAcumulado = caixaFinalTx ? Number(caixaFinalTx.amount) : null;
 
   // Clientes = unique descriptions from "entrada" transactions in this month
   const clientesRecorrentes = useMemo(() => {
@@ -83,18 +105,12 @@ export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaP
   const receitaTransacoes = monthTxs.filter((t) => t.type === "entrada").reduce((s, t) => s + Number(t.amount), 0);
   const totalDespesa = monthTxs.filter((t) => t.type === "saida").reduce((s, t) => s + Number(t.amount), 0);
 
-  // Caixa final do mês anterior entra como receita do mês vigente
-  const prevBalanceForRevenue = balances.find(b => b.month === month - 1);
-  const caixaAnterior = prevBalanceForRevenue ? Number(prevBalanceForRevenue.amount) : 0;
+  // Caixa inicial (carried from previous month) is added to revenue
+  const caixaAnterior = caixaInicial ?? 0;
   const totalReceita = receitaTransacoes + caixaAnterior;
 
   const lucro = totalReceita - totalDespesa;
   const margemLucro = totalReceita > 0 ? (lucro / totalReceita) * 100 : 0;
-
-  const caixaFinal = balances.find(b => b.month === month);
-  const caixaAcumulado = caixaFinal ? Number(caixaFinal.amount) : null;
-  const prevBalance = balances.find(b => b.month === month - 1);
-  const caixaInicial = prevBalance ? Number(prevBalance.amount) : null;
 
   // Previous month financial comparison (reuse prevMonthTxs from above)
   const prevReceitaTransacoes = prevMonthTxs.filter((t) => t.type === "entrada").reduce((s, t) => s + Number(t.amount), 0);
