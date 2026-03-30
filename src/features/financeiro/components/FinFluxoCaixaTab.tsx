@@ -140,12 +140,17 @@ export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaP
   // Revenue distribution donut - by description
   const revenueData = useMemo(() => {
     const map: Record<string, number> = {};
-    monthTxs.filter(t => t.type === "entrada").forEach((t) => {
+    // Include caixa inicial in revenue distribution (same as Lançamentos)
+    const allMonthTxs = transactions.filter(t => {
+      const d = new Date(t.date);
+      return d.getMonth() + 1 === month;
+    });
+    allMonthTxs.filter(t => t.type === "entrada" || t.description?.toLowerCase().includes("caixa inicial")).forEach((t) => {
       const label = t.description || "Outros";
       map[label] = (map[label] || 0) + Number(t.amount);
     });
     return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
-  }, [monthTxs]);
+  }, [transactions, month]);
   const totalRevDonut = revenueData.reduce((s, d) => s + d.value, 0);
   const REVENUE_DONUT_COLORS = ["#22c55e", "#4ade80", "#86efac", "#16a34a", "#15803d", "#166534", "#bbf7d0", "#dcfce7"];
 
