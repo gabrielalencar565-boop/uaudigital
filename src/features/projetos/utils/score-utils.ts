@@ -39,7 +39,7 @@ export function computeMonthScore(monthStages: any[], totalClients: number, mont
 
   const completedDates = monthStages
     .filter(s => s.completed && s.completed_at)
-    .map(s => new Date(s.completed_at!).getDate());
+    .map(s => getBrazilDay(s.completed_at!));
   const lastDay = completedDates.length > 0 ? Math.max(...completedDates) : daysInMonth;
 
   let prazo: number;
