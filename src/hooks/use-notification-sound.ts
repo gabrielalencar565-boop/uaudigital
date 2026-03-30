@@ -351,6 +351,7 @@ export function useNotificationSound() {
           invalidateNotifications();
           // Trigger when assignee changed TO current user
           // old may be partial, so also trigger if assignee is uid and old.assignee_id is absent
+          if (row.parent_task_id) return; // skip subtasks
           const wasAssignedBefore = old?.assignee_id === uid;
           if (row.assignee_id === uid && !wasAssignedBefore) {
             enqueueOrShow({
