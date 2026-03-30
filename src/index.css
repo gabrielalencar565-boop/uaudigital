@@ -249,27 +249,27 @@ All colors MUST be HSL.
 
   .uau-sidebar-scrollbar {
     scrollbar-width: thin;
-    scrollbar-color: hsl(var(--sidebar) / 0.95) hsl(var(--sidebar-accent) / 0.85);
+    scrollbar-color: hsl(263 70% 72%) hsl(263 70% 58%);
   }
 
   .uau-sidebar-scrollbar::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+    width: 8px;
+    height: 8px;
   }
 
   .uau-sidebar-scrollbar::-webkit-scrollbar-track {
-    background: hsl(var(--sidebar-accent) / 0.85);
+    background: hsl(263 70% 58%);
     border-radius: 9999px;
   }
 
   .uau-sidebar-scrollbar::-webkit-scrollbar-thumb {
-    background: hsl(var(--sidebar) / 0.95);
+    background: hsl(263 60% 78%);
     border-radius: 9999px;
-    border: 2px solid hsl(var(--sidebar-accent) / 0.85);
+    border: 2px solid hsl(263 70% 58%);
   }
 
   .uau-sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--sidebar) / 1);
+    background: hsl(263 55% 85%);
   }
 
   .uau-text-gradient-auth {
