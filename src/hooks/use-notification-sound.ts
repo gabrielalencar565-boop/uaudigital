@@ -150,9 +150,10 @@ export function useNotificationSound() {
         .limit(20),
       (supabase as any)
         .from("pm_tasks")
-        .select("id, title, created_by, assignee_id, updated_at")
+        .select("id, title, created_by, assignee_id, updated_at, parent_task_id")
         .eq("assignee_id", user.id)
         .neq("created_by", user.id)
+        .is("parent_task_id", null)
         .gte("updated_at", since)
         .order("updated_at", { ascending: true })
         .limit(20),
@@ -194,8 +195,9 @@ export function useNotificationSound() {
 
     const { data } = await (supabase as any)
       .from("pm_tasks")
-      .select("id, title, due_date, assignee_id, status_global")
+      .select("id, title, due_date, assignee_id, status_global, parent_task_id")
       .eq("assignee_id", user.id)
+      .is("parent_task_id", null)
       .not("status_global", "in", "(concluido,cancelado)")
       .not("due_date", "is", null)
       .lte("due_date", todayStr)
@@ -326,6 +328,7 @@ export function useNotificationSound() {
           const row = payload.new as any;
           invalidateNotifications();
           if (row.created_by === uid) return;
+          if (row.parent_task_id) return; // skip subtasks
           if (row.assignee_id === uid) {
             enqueueOrShow({
               key: `assigned-${row.id}-${row.created_at ?? ""}`,
@@ -348,6 +351,7 @@ export function useNotificationSound() {
           invalidateNotifications();
           // Trigger when assignee changed TO current user
           // old may be partial, so also trigger if assignee is uid and old.assignee_id is absent
+          if (row.parent_task_id) return; // skip subtasks
           const wasAssignedBefore = old?.assignee_id === uid;
           if (row.assignee_id === uid && !wasAssignedBefore) {
             enqueueOrShow({
