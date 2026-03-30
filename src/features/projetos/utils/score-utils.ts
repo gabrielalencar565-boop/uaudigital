@@ -1,6 +1,12 @@
 import { MAGIC2_STAGES } from "@/features/magic2/magic2-stages";
 import { getDaysInMonth } from "date-fns";
 
+/** Extract the day-of-month in Brazil timezone (UTC-3) from an ISO timestamp */
+export function getBrazilDay(isoStr: string): number {
+  const d = new Date(isoStr);
+  return new Date(d.getTime() - 3 * 3600 * 1000).getUTCDate();
+}
+
 export function getClassification(score: number) {
   if (score >= 90) return { label: "Excelente", tone: "success" as const };
   if (score >= 75) return { label: "Saudável", tone: "primary" as const };
