@@ -83,7 +83,7 @@ const AvatarImage = React.forwardRef<
     retriesRef.current = 0;
     const url = normalizeAvatarUrl(typeof src === "string" ? src : undefined);
     setResolvedSrc(url);
-    setStatus(url ? "loading" : "error");
+    setStatus(url ? (isAvatarCached(url) ? "loaded" : "loading") : "error");
   }, [src]);
 
   React.useEffect(() => {
