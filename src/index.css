@@ -246,7 +246,32 @@ All colors MUST be HSL.
     @apply bg-panel-sheen bg-[length:200%_200%] animate-shine;
   }
 
-  .uau-text-gradient-auth {
+
+  .uau-sidebar-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--sidebar) / 0.95) hsl(var(--sidebar-accent) / 0.85);
+  }
+
+  .uau-sidebar-scrollbar::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  .uau-sidebar-scrollbar::-webkit-scrollbar-track {
+    background: hsl(var(--sidebar-accent) / 0.85);
+    border-radius: 9999px;
+  }
+
+  .uau-sidebar-scrollbar::-webkit-scrollbar-thumb {
+    background: hsl(var(--sidebar) / 0.95);
+    border-radius: 9999px;
+    border: 2px solid hsl(var(--sidebar-accent) / 0.85);
+  }
+
+  .uau-sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--sidebar) / 1);
+  }
+
     background-image: var(--gradient-auth-title);
     filter:
       drop-shadow(0 0 28px hsl(var(--auth-gradient-from) / 0.45))
