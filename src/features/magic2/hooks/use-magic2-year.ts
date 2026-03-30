@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { MAGIC2_STAGES, type Magic2StageKey } from "@/features/magic2/magic2-stages";
+import { getBrazilDay } from "@/features/projetos/utils/score-utils";
 
 type Magic2YearCycleRow = {
   id: string;
