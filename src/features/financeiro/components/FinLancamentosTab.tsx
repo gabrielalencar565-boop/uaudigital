@@ -153,7 +153,7 @@ export function FinLancamentosTab() {
     return sortDir === "desc" ? <ArrowDown className="inline ml-1 h-3 w-3 text-primary" /> : <ArrowUp className="inline ml-1 h-3 w-3 text-primary" />;
   };
 
-  const totalEntradas = filtered.filter((t) => t.type === "entrada").reduce((s, t) => s + Number(t.amount), 0);
+  const totalEntradas = filtered.filter((t) => t.type === "entrada" || t.description?.toLowerCase().includes("caixa inicial")).reduce((s, t) => s + Number(t.amount), 0);
   const totalSaidas = filtered.filter((t) => t.type === "saida").reduce((s, t) => s + Number(t.amount), 0);
   const saldoMes = totalEntradas - totalSaidas;
 
