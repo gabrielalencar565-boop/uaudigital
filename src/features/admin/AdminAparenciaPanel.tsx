@@ -249,7 +249,7 @@ export function AdminAparenciaPanel() {
     }
   };
 
-  /* ── Logo da Sidebar ── */
+  /* ── Logo da Sidebar (tema claro) ── */
   const sidebarLogoUrl = appSettingsQ.data?.sidebar_logo_url ?? null;
   const [uploadingSidebarLogo, setUploadingSidebarLogo] = useState(false);
 
@@ -265,7 +265,7 @@ export function AdminAparenciaPanel() {
       if (up.error) throw up.error;
       const pub = supabase.storage.from("app-assets").getPublicUrl(path);
       await updateAppSettings.mutateAsync({ sidebar_logo_url: pub.data.publicUrl } as any);
-      toast.success("Logo da sidebar atualizada!");
+      toast.success("Logo (tema claro) atualizada!");
     } catch (e: any) {
       toast.error(e?.message ?? "Erro ao enviar logo");
     } finally {
@@ -276,7 +276,40 @@ export function AdminAparenciaPanel() {
   const handleRemoveSidebarLogo = async () => {
     try {
       await updateAppSettings.mutateAsync({ sidebar_logo_url: null } as any);
-      toast.success("Logo da sidebar removida");
+      toast.success("Logo (tema claro) removida");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao remover logo");
+    }
+  };
+
+  /* ── Logo da Sidebar (tema escuro) ── */
+  const sidebarLogoDarkUrl = appSettingsQ.data?.sidebar_logo_dark_url ?? null;
+  const [uploadingSidebarLogoDark, setUploadingSidebarLogoDark] = useState(false);
+
+  const handleSidebarLogoDarkUpload = async (file: File) => {
+    if (!user) return;
+    if (!file.type.startsWith("image/")) { toast.error("Envie uma imagem"); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error("Máximo 5MB"); return; }
+    setUploadingSidebarLogoDark(true);
+    try {
+      const ext = (file.name.split(".").pop() || "png").toLowerCase();
+      const path = `sidebar-logo-dark/${crypto.randomUUID()}.${ext}`;
+      const up = await supabase.storage.from("app-assets").upload(path, file, { upsert: true, contentType: file.type });
+      if (up.error) throw up.error;
+      const pub = supabase.storage.from("app-assets").getPublicUrl(path);
+      await updateAppSettings.mutateAsync({ sidebar_logo_dark_url: pub.data.publicUrl } as any);
+      toast.success("Logo (tema escuro) atualizada!");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao enviar logo");
+    } finally {
+      setUploadingSidebarLogoDark(false);
+    }
+  };
+
+  const handleRemoveSidebarLogoDark = async () => {
+    try {
+      await updateAppSettings.mutateAsync({ sidebar_logo_dark_url: null } as any);
+      toast.success("Logo (tema escuro) removida");
     } catch (e: any) {
       toast.error(e?.message ?? "Erro ao remover logo");
     }

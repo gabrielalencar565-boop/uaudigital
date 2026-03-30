@@ -195,7 +195,7 @@ export function useAppSettings() {
 export function useUpdateAppSettings() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (updates: { logo_url?: string | null; sidebar_logo_url?: string | null; logo_shape?: "circle" | "square"; workspace_name?: string; login_bg_images?: BgImageConfig[] }) => {
+    mutationFn: async (updates: { logo_url?: string | null; sidebar_logo_url?: string | null; sidebar_logo_dark_url?: string | null; logo_shape?: "circle" | "square"; workspace_name?: string; login_bg_images?: BgImageConfig[] }) => {
       const { data, error } = await supabase
         .from("app_settings")
         .update(updates as any)
