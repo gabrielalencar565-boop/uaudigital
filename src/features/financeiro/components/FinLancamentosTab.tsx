@@ -1,5 +1,5 @@
-import { useState, useRef, useMemo, useCallback } from "react";
-import { Plus, Upload, ArrowUpCircle, ArrowDownCircle, Eye, Pencil, Trash2, FileSpreadsheet, Check, X, DollarSign, TrendingUp, TrendingDown } from "lucide-react";
+import { useState, useRef, useMemo, useCallback, useEffect } from "react";
+import { Plus, Upload, ArrowUpCircle, ArrowDownCircle, Eye, Pencil, Trash2, FileSpreadsheet, Check, X, DollarSign, TrendingUp, TrendingDown, ArrowUp, ArrowDown, ChevronsUpDown, Undo2, Redo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
