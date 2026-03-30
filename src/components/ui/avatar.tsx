@@ -26,7 +26,7 @@ Avatar.displayName = AvatarPrimitive.Root.displayName;
 const AvatarImage = React.forwardRef<
   HTMLImageElement,
   React.ImgHTMLAttributes<HTMLImageElement> & { onLoadingStatusChange?: (status: string) => void }
->(({ className, src, onError, ...props }, ref) => {
+>(({ className, src, onError, onLoadingStatusChange, ...props }, ref) => {
   const [resolvedSrc, setResolvedSrc] = React.useState<string | undefined>(() =>
     normalizeAvatarUrl(typeof src === "string" ? src : undefined)
   );
@@ -41,6 +41,10 @@ const AvatarImage = React.forwardRef<
     setResolvedSrc(url);
     setStatus(url ? "loading" : "error");
   }, [src]);
+
+  React.useEffect(() => {
+    onLoadingStatusChange?.(status);
+  }, [status, onLoadingStatusChange]);
 
   const handleError: React.ReactEventHandler<HTMLImageElement> = (event) => {
     if (resolvedSrc && retriesRef.current < 2) {
@@ -64,10 +68,10 @@ const AvatarImage = React.forwardRef<
       src={resolvedSrc}
       onError={handleError}
       onLoad={() => setStatus("loaded")}
-      className={cn("aspect-square h-full w-full object-cover", className)}
+      className={cn("absolute inset-0 z-10 h-full w-full object-cover", className)}
       referrerPolicy="no-referrer"
       draggable={false}
-      style={status === "loaded" ? undefined : { position: "absolute", opacity: 0, pointerEvents: "none" }}
+      style={status === "loaded" ? undefined : { opacity: 0, pointerEvents: "none" }}
       {...props}
     />
   );
@@ -80,7 +84,7 @@ const AvatarFallback = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <AvatarPrimitive.Fallback
     ref={ref}
-    className={cn("flex h-full w-full items-center justify-center rounded-full bg-muted", className)}
+    className={cn("absolute inset-0 z-0 flex h-full w-full items-center justify-center rounded-full bg-muted", className)}
     {...props}
   />
 ));
