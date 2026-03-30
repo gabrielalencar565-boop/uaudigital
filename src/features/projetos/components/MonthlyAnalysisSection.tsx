@@ -311,7 +311,7 @@ export function MonthlyAnalysisSection() {
     // Prazo
     const completedDates = stages
       .filter(s => s.completed && s.completed_at)
-      .map(s => new Date(s.completed_at!).getDate());
+      .map(s => getBrazilDay(s.completed_at!));
     const lastDay = completedDates.length > 0 ? Math.max(...completedDates) : currentDay;
 
     let prazoScore: number;
