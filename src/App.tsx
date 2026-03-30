@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { AppErrorBoundary } from "@/components/error/AppErrorBoundary";
 import { useLocation } from "react-router-dom";
 import { createQueryClient } from "@/lib/query-client";
+import { AvatarBootstrap } from "@/components/avatar/AvatarBootstrap";
 
 function AppRoutes() {
   const location = useLocation();
