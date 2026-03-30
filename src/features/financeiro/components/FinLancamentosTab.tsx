@@ -104,8 +104,6 @@ export function FinLancamentosTab() {
   const upsertTx = useUpsertFinTransaction();
   const deleteTx = useDeleteFinTransaction();
   const bulkInsert = useBulkInsertTransactions();
-  const balancesQ = useFinOpeningBalances(year);
-  const upsertBalance = useUpsertOpeningBalance();
 
   const transactions = txQ.data ?? [];
   const balances = balancesQ.data ?? [];
