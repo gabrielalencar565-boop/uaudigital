@@ -67,9 +67,11 @@ const AvatarImage = React.forwardRef<
   const [resolvedSrc, setResolvedSrc] = React.useState<string | undefined>(() =>
     normalizeAvatarUrl(typeof src === "string" ? src : undefined)
   );
-  const [status, setStatus] = React.useState<AvatarStatus>(
-    resolvedSrc ? "loading" : "error"
-  );
+  const [status, setStatus] = React.useState<AvatarStatus>(() => {
+    const url = normalizeAvatarUrl(typeof src === "string" ? src : undefined);
+    if (!url) return "error";
+    return isAvatarCached(url) ? "loaded" : "loading";
+  });
   const retriesRef = React.useRef(0);
 
   // Sync status to parent context

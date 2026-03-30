@@ -143,10 +143,12 @@ export function useTeamMembers() {
         .eq("is_active", true)
         .order("display_name", { ascending: true });
       if (error) throw error;
-      return ((data ?? []) as TeamMemberRow[]).map((member) => ({
+      const rows = ((data ?? []) as TeamMemberRow[]).map((member) => ({
         ...member,
         avatar_url: normalizeAvatarUrl(member.avatar_url) ?? null,
       }));
+      preloadAvatars(rows.map((r) => r.avatar_url));
+      return rows;
     },
   });
 }
