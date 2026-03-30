@@ -363,7 +363,7 @@ export function MonthlyAnalysisSection() {
 
     const prevCompletedDates = prevStages
       .filter(s => s.completed && s.completed_at)
-      .map(s => new Date(s.completed_at!).getDate());
+      .map(s => getBrazilDay(s.completed_at!));
     const prevLastDay = prevCompletedDates.length > 0 ? Math.max(...prevCompletedDates) : 28;
 
     let prevPrazo: number;
