@@ -3,7 +3,7 @@ import * as AvatarPrimitive from "@radix-ui/react-avatar";
 
 import { cn } from "@/lib/utils";
 import { normalizeAvatarUrl, withAvatarCacheBuster } from "@/lib/avatar-url";
-import { isAvatarCached } from "@/lib/avatar-preloader";
+import { getAvatarCacheStatus, getCachedAvatarSrc, preloadAvatar, subscribeToAvatar } from "@/lib/avatar-preloader";
 
 type AvatarStatus = "idle" | "loading" | "loaded" | "error";
 
@@ -63,14 +63,17 @@ const AvatarImage = React.forwardRef<
   React.ImgHTMLAttributes<HTMLImageElement> & { onLoadingStatusChange?: (status: string) => void }
 >(({ className, src, onError, onLoadingStatusChange, ...props }, ref) => {
   const setParentStatus = React.useContext(AvatarSetStatusContext);
+  const normalizedSrc = React.useMemo(
+    () => normalizeAvatarUrl(typeof src === "string" ? src : undefined),
+    [src]
+  );
 
   const [resolvedSrc, setResolvedSrc] = React.useState<string | undefined>(() =>
-    normalizeAvatarUrl(typeof src === "string" ? src : undefined)
+    getCachedAvatarSrc(normalizedSrc) ?? normalizedSrc
   );
   const [status, setStatus] = React.useState<AvatarStatus>(() => {
-    const url = normalizeAvatarUrl(typeof src === "string" ? src : undefined);
-    if (!url) return "error";
-    return isAvatarCached(url) ? "loaded" : "loading";
+    if (!normalizedSrc) return "error";
+    return getAvatarCacheStatus(normalizedSrc) === "loaded" ? "loaded" : "loading";
   });
   const retriesRef = React.useRef(0);
 
@@ -81,10 +84,34 @@ const AvatarImage = React.forwardRef<
 
   React.useEffect(() => {
     retriesRef.current = 0;
-    const url = normalizeAvatarUrl(typeof src === "string" ? src : undefined);
-    setResolvedSrc(url);
-    setStatus(url ? (isAvatarCached(url) ? "loaded" : "loading") : "error");
-  }, [src]);
+    setResolvedSrc(getCachedAvatarSrc(normalizedSrc) ?? normalizedSrc);
+    setStatus(
+      !normalizedSrc
+        ? "error"
+        : getAvatarCacheStatus(normalizedSrc) === "loaded"
+          ? "loaded"
+          : "loading"
+    );
+  }, [normalizedSrc]);
+
+  React.useEffect(() => {
+    if (!normalizedSrc) return;
+
+    const syncFromCache = () => {
+      const cachedSrc = getCachedAvatarSrc(normalizedSrc);
+      const cacheStatus = getAvatarCacheStatus(normalizedSrc);
+      if (cachedSrc) setResolvedSrc(cachedSrc);
+      if (cacheStatus === "loaded") setStatus("loaded");
+      else if (cacheStatus === "error") setStatus("error");
+      else setStatus("loading");
+    };
+
+    syncFromCache();
+    const unsubscribe = subscribeToAvatar(normalizedSrc, syncFromCache);
+    void preloadAvatar(normalizedSrc);
+
+    return unsubscribe;
+  }, [normalizedSrc]);
 
   React.useEffect(() => {
     onLoadingStatusChange?.(status);

@@ -6,13 +6,16 @@ import { preloadAvatars } from "@/lib/avatar-preloader";
 export function AvatarBootstrap() {
   const teamQ = useTeamMembers();
   const profilesQ = useProfiles();
+  const isReady = teamQ.isSuccess || profilesQ.isSuccess;
 
   useEffect(() => {
-    preloadAvatars([
+    if (!isReady) return;
+
+    void preloadAvatars([
       ...(teamQ.data ?? []).map((member) => member.avatar_url),
       ...(profilesQ.data ?? []).map((profile) => profile.avatar_url),
     ]);
-  }, [teamQ.data, profilesQ.data]);
+  }, [isReady, teamQ.data, profilesQ.data]);
 
   return null;
 }
