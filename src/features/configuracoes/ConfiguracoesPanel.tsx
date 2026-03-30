@@ -39,6 +39,7 @@ function initials(name: string) {
 
 export function ConfiguracoesPanel() {
   const { user } = useSession();
+  const queryClient = useQueryClient();
   const { isAdmin } = useRole(user?.id);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
