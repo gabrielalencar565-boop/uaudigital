@@ -113,8 +113,6 @@ export function FinLancamentosTab() {
   const [csvRows, setCsvRows] = useState<CSVRow[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
   const [editingCell, setEditingCell] = useState<EditingCell>(null);
-  const [editingCaixa, setEditingCaixa] = useState(false);
-  const [caixaInput, setCaixaInput] = useState("");
 
   const emptyForm = { description: "", amount: "", date: format(new Date(), "yyyy-MM-dd"), category: "", notes: "" };
   const [form, setForm] = useState(emptyForm);
