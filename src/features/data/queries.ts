@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { endOfMonth, format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { MAGIC_STAGES, STAGES, type StageKey } from "@/lib/uau";
-import { normalizeAvatarUrl } from "@/lib/avatar-url";
+import { optimizeAvatarUrl } from "@/lib/avatar-url";
 import { preloadAvatars } from "@/lib/avatar-preloader";
 import { useSession } from "@/hooks/use-session";
 
@@ -120,9 +120,9 @@ export function useProfiles(options?: { enabled?: boolean }) {
       if (error) throw error;
       const rows = ((data ?? []) as ProfileRow[]).map((p) => ({
         ...p,
-        avatar_url: normalizeAvatarUrl(p.avatar_url) ?? null,
+        avatar_url: optimizeAvatarUrl(p.avatar_url) ?? null,
       }));
-      preloadAvatars(rows.map((r) => r.avatar_url));
+      void preloadAvatars(rows.map((r) => r.avatar_url));
       return rows;
     },
   });
@@ -145,9 +145,9 @@ export function useTeamMembers() {
       if (error) throw error;
       const rows = ((data ?? []) as TeamMemberRow[]).map((member) => ({
         ...member,
-        avatar_url: normalizeAvatarUrl(member.avatar_url) ?? null,
+        avatar_url: optimizeAvatarUrl(member.avatar_url) ?? null,
       }));
-      preloadAvatars(rows.map((r) => r.avatar_url));
+      void preloadAvatars(rows.map((r) => r.avatar_url));
       return rows;
     },
   });
