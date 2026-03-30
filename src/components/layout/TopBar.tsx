@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from "react";
-import { LogOut, Moon, Palette, Pencil, Sun, Volume2, VolumeX } from "lucide-react";
+import { Check, LogOut, Moon, Pencil, Sun, Volume2, VolumeX } from "lucide-react";
 import { useTheme } from "next-themes";
 import { WorkspaceDropdown } from "@/components/layout/WorkspaceDropdown";
 import { TaskSearchDropdown } from "@/components/layout/TaskSearchDropdown";
@@ -130,18 +130,21 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
               </DropdownMenuItem>
 
               <DropdownMenuItem
-                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                onClick={() => setTheme("light")}
                 className="gap-2.5 rounded-lg px-3 py-2.5 cursor-pointer"
               >
-                <Palette className="h-4 w-4 text-muted-foreground" />
-                Temas
-                <span className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
-                  {theme === "dark" ? (
-                    <><Moon className="h-3 w-3" /> Escuro</>
-                  ) : (
-                    <><Sun className="h-3 w-3" /> Claro</>
-                  )}
-                </span>
+                <Sun className="h-4 w-4 text-muted-foreground" />
+                Tema Claro
+                {theme === "light" && <Check className="ml-auto h-3.5 w-3.5 text-primary" />}
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onClick={() => setTheme("dark")}
+                className="gap-2.5 rounded-lg px-3 py-2.5 cursor-pointer"
+              >
+                <Moon className="h-4 w-4 text-muted-foreground" />
+                Tema Escuro
+                {theme === "dark" && <Check className="ml-auto h-3.5 w-3.5 text-primary" />}
               </DropdownMenuItem>
 
               <DropdownMenuItem
