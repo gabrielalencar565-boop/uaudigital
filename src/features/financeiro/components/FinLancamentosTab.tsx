@@ -119,8 +119,7 @@ export function FinLancamentosTab() {
 
   const filtered = useMemo(() => {
     let list = transactions.filter((t) => {
-      if (t.type === "caixa" || t.category === "caixa") return false;
-      if (typeFilter !== "all" && t.type !== typeFilter) return false;
+      if (typeFilter !== "all" && t.type !== typeFilter && !(t.category === "caixa")) return false;
       if (statusFilter !== "all" && t.status !== statusFilter) return false;
       return true;
     });
