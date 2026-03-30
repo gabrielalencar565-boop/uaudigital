@@ -1,5 +1,4 @@
 import { useMemo, useState, useCallback } from "react";
-import { normalizeAvatarUrl } from "@/lib/avatar-url";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +9,7 @@ import { useSession } from "@/hooks/use-session";
 import { useRole } from "@/hooks/use-role";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useTeamMembers } from "@/features/data/queries";
 import { Progress } from "@/components/ui/progress";
 import {
   Plus, Trash2, Settings2, Users, CheckCircle2, Clock, FileText,
@@ -113,13 +113,7 @@ export function VisaoGeralTab() {
   const [editLeader, setEditLeader] = useState<string>("");
   const [editIcon, setEditIcon] = useState("shield");
 
-  const teamQ = useQuery({
-    queryKey: ["team_members"],
-    queryFn: async () => {
-      const { data } = await supabase.from("team_members").select("user_id, display_name, avatar_url, role_title, birth_date").eq("is_active", true).order("display_name");
-      return (data ?? []).map(tm => ({ ...tm, avatar_url: normalizeAvatarUrl(tm.avatar_url) ?? null })) as Array<{ user_id: string; display_name: string; avatar_url: string | null; role_title: string; birth_date: string | null }>;
-    },
-  });
+  const teamQ = useTeamMembers();
 
   const now = new Date();
   const monthStart = format(startOfMonth(now), "yyyy-MM-dd");
