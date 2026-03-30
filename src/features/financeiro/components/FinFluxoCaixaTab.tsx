@@ -222,7 +222,7 @@ export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaP
       )}
 
       {/* KPIs Row */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.1s" }}>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.1s" }}>
         <FinMetricCard title="Receita" value={totalReceita} tone="success" variation={varReceita} icon={<TrendingUp className="h-4 w-4" />} />
         <FinMetricCard title="Despesa" value={totalDespesa} tone="danger" variation={varDespesa} icon={<TrendingDown className="h-4 w-4" />} />
         <FinMetricCard
@@ -233,19 +233,10 @@ export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaP
           variation={varLucro}
           icon={<DollarSign className="h-4 w-4" />}
         />
-        <FinMetricCard
-          title="Caixa Final"
-          value={Math.abs(caixaAcumulado ?? 0)}
-          prefix={caixaAcumulado != null ? (caixaAcumulado < 0 ? "-R$" : "R$") : ""}
-          tone={caixaAcumulado != null ? (caixaAcumulado >= 0 ? "success" : "danger") : "muted"}
-          icon={<Wallet className="h-4 w-4" />}
-        >
-          {caixaAcumulado == null && <p className="text-[10px] text-muted-foreground mt-1">Não definido</p>}
-        </FinMetricCard>
       </div>
 
       {/* Secondary KPIs */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.15s" }}>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.15s" }}>
         <Card className="flex flex-col items-center justify-center p-5 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
           <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-3">Margem de Lucro</span>
           <ProgressRing
@@ -258,15 +249,6 @@ export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaP
         </Card>
         <FinMetricCard title="Clientes" value={clientesRecorrentes} prefix="" decimals={0} variation={varClientesAbs !== 0 ? varClientesAbs : null} variationAbsolute icon={<Users className="h-4 w-4" />} />
         <FinMetricCard title="Ticket Médio" value={ticketMedio} variation={varTicketMedio} icon={<DollarSign className="h-4 w-4" />} />
-        <FinMetricCard
-          title="Caixa Inicial"
-          value={Math.abs(caixaInicial ?? 0)}
-          prefix={caixaInicial != null ? (caixaInicial < 0 ? "-R$" : "R$") : ""}
-          tone={caixaInicial != null ? "default" : "muted"}
-          icon={<Wallet className="h-4 w-4" />}
-        >
-          {caixaInicial == null && <p className="text-[10px] text-muted-foreground mt-1">Não definido</p>}
-        </FinMetricCard>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
