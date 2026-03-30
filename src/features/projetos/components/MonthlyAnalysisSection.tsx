@@ -864,13 +864,12 @@ export function MonthlyAnalysisSection() {
               {(() => {
                 const completedDatesAll = stages
                   .filter(s => s.completed && s.completed_at)
-                  .map(s => new Date(s.completed_at!));
+                  .map(s => s.completed_at!);
                 const allDone = doneStages === totalStages && totalStages > 0;
                 const magicDay = 27;
 
                 if (allDone && completedDatesAll.length > 0) {
-                  const lastDate = new Date(Math.max(...completedDatesAll.map(d => d.getTime())));
-                  const lastDay = lastDate.getDate();
+                  const lastDay = Math.max(...completedDatesAll.map(d => getBrazilDay(d)));
                   const diff = magicDay - lastDay;
                   const formattedDate = `${String(lastDay).padStart(2, "0")}/${String(month).padStart(2, "0")}`;
                   const magicDate = `${String(magicDay).padStart(2, "0")}/${String(month).padStart(2, "0")}`;
