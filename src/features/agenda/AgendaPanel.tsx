@@ -109,6 +109,7 @@ export function AgendaPanel() {
   const clientsQ = useClients();
   const teamQ = useTeamMembers();
   const profilesQ = useProfiles({ enabled: !!canManageTasks });
+  const avatarsPrimed = teamQ.isSuccess && (!canManageTasks || profilesQ.isSuccess);
 
   const weekStart = useMemo(() => startOfWeek(cursor, {
     weekStartsOn: 0
@@ -780,7 +781,7 @@ export function AgendaPanel() {
             {(moreDayKey ? tasksByDay.get(moreDayKey) ?? [] : []).length ? (moreDayKey ? tasksByDay.get(moreDayKey) ?? [] : []).map(t => {
               const stageLabel = STAGES.find(s => s.key === t.stage)?.label ?? "Etapa";
               const assignee = teamById.get(t.assigned_user_id);
-              const assigneeName = assignee?.display_name ?? "—";
+              const assigneeName = avatarsPrimed ? assignee?.display_name ?? "—" : "__avatar_loading__";
               const clientName = resolveClientName(t);
               const canInteract = canUserInteractWithTask(user?.id);
               const members = getMembersForTask(t);
@@ -964,7 +965,7 @@ export function AgendaPanel() {
                           {dayTasks.length ? dayTasks.map(t => {
                     const stageLabel = STAGES.find(s => s.key === t.stage)?.label ?? "Etapa";
                     const assignee = teamById.get(t.assigned_user_id);
-                    const assigneeName = assignee?.display_name ?? "—";
+                    const assigneeName = avatarsPrimed ? assignee?.display_name ?? "—" : "__avatar_loading__";
                     const clientName = resolveClientName(t);
                     const canInteract = canUserInteractWithTask(user?.id);
                     const members = getMembersForTask(t);
@@ -1262,7 +1263,7 @@ export function AgendaPanel() {
                 {dayTasks.length ? dayTasks.map(t => {
                   const stageLabel = STAGES.find(s => s.key === t.stage)?.label ?? "Etapa";
                   const assignee = teamById.get(t.assigned_user_id);
-                  const assigneeName = assignee?.display_name ?? "—";
+                  const assigneeName = avatarsPrimed ? assignee?.display_name ?? "—" : "__avatar_loading__";
                   const clientName = resolveClientName(t);
                   const canInteract = canUserInteractWithTask(user?.id);
                   const members = getMembersForTask(t);
