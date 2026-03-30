@@ -3,6 +3,7 @@ import * as AvatarPrimitive from "@radix-ui/react-avatar";
 
 import { cn } from "@/lib/utils";
 import { normalizeAvatarUrl, withAvatarCacheBuster } from "@/lib/avatar-url";
+import { isAvatarCached } from "@/lib/avatar-preloader";
 
 type AvatarStatus = "idle" | "loading" | "loaded" | "error";
 
