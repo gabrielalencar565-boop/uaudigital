@@ -74,8 +74,8 @@ const AvatarImage = React.forwardRef<
   });
   const retriesRef = React.useRef(0);
 
-  // Sync status to parent context
-  React.useEffect(() => {
+  // Sync before paint to prevent initials flicker on first frame.
+  React.useLayoutEffect(() => {
     setParentStatus?.(status);
   }, [status, setParentStatus]);
 

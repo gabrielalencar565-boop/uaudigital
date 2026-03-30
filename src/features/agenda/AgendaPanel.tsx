@@ -231,7 +231,10 @@ export function AgendaPanel() {
   const getMembersForTask = useCallback((task: TaskRow) => {
     const extra = assigneesByTaskId.get(task.id) ?? [];
     const primary = teamById.get(task.assigned_user_id);
-    if (!primary) return extra;
+    if (!primary) {
+      if (extra.length > 0) return extra;
+      return [{ user_id: task.assigned_user_id, display_name: "__avatar_loading__", avatar_url: null }];
+    }
     // Merge primary into list if not already there
     if (extra.some(m => m.user_id === primary.user_id)) return extra;
     return [{ user_id: primary.user_id, display_name: primary.display_name, avatar_url: primary.avatar_url }, ...extra];
