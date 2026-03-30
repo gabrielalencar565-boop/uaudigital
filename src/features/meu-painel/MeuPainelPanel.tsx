@@ -133,6 +133,10 @@ export function MeuPainelPanel() {
   const myProfileQ = useMyProfile();
 
   const teamMembersQ = useTeamMembers();
+  const myTeamMember = useMemo(
+    () => (teamMembersQ.data ?? []).find((member) => member.user_id === user?.id) ?? null,
+    [teamMembersQ.data, user?.id]
+  );
   const tasksQ = useTasks({ month: monthKey, assignedUserId: user?.id });
   const clientsQ = useClients();
   const setTaskStatus = useSetTaskStatus();
@@ -313,10 +317,10 @@ export function MeuPainelPanel() {
   const myProfile = myProfileQ.data;
 
   const isBirthday = useMemo(() => {
-    if (!myProfile?.birth_date) return false;
-    const bd = new Date(myProfile.birth_date + "T12:00:00");
+    if (!myTeamMember?.birth_date) return false;
+    const bd = new Date(myTeamMember.birth_date + "T12:00:00");
     return bd.getMonth() === today.getMonth() && bd.getDate() === today.getDate();
-  }, [myProfile?.birth_date, todayKey]);
+  }, [myTeamMember?.birth_date, todayKey]);
 
   useEffect(() => {
     if (isBirthday && !confettiFired) {
@@ -511,13 +515,7 @@ function PmTaskDetailDialogWrapper({ taskId, onClose, isAdmin }: { taskId: strin
     return m;
   }, [clientsQ.data]);
 
-  const membersQ = useQuery({
-    queryKey: ["team_members"],
-    queryFn: async () => {
-      const { data } = await supabase.from("team_members").select("user_id, display_name, avatar_url").eq("is_active", true);
-      return (data ?? []).map(tm => ({ ...tm, avatar_url: normalizeAvatarUrl(tm.avatar_url) ?? null }));
-    },
-  });
+  const membersQ = useTeamMembers();
   const membersMap = useMemo(() => {
     const m: Record<string, { name: string; avatar?: string }> = {};
     (membersQ.data ?? []).forEach((tm) => { m[tm.user_id] = { name: tm.display_name, avatar: tm.avatar_url ?? undefined }; });
