@@ -81,8 +81,6 @@ export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaP
   const caixaInicial = caixaInicialTx ? Number(caixaInicialTx.amount) : null;
   const caixaAcumulado = caixaFinalTx ? Number(caixaFinalTx.amount) : null;
 
-  const caixaInicial = caixaInicialTx ? Number(caixaInicialTx.amount) : null;
-  const caixaAcumulado = caixaFinalTx ? Number(caixaFinalTx.amount) : null;
 
   // Clientes = unique descriptions from "entrada" transactions in this month
   const clientesRecorrentes = useMemo(() => {
