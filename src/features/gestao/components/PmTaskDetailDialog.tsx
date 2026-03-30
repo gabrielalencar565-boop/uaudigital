@@ -602,7 +602,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     await processSplitQueue(remaining, snapshotDueDate, nextDueDate, clientName, monthLabel);
   };
 
-  const handleCompleteStage = async () => {
+  const handleConcluido = async () => {
     if (isDone) return;
     const completedStage = task.stage_current;
 
