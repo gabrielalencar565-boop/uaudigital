@@ -82,12 +82,22 @@ function InlineCategoryCell({ tx, isEditing, onStartEdit, onSave }: { tx: FinTra
   );
 }
 
+type SortField = "date" | "amount" | "category";
+type SortDir = "asc" | "desc";
+type UndoEntry = { tx: FinTransaction; field: string; oldValue: any; newValue: any };
+
 export function FinLancamentosTab() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  // Undo / Redo stacks
+  const [undoStack, setUndoStack] = useState<UndoEntry[]>([]);
+  const [redoStack, setRedoStack] = useState<UndoEntry[]>([]);
 
   const txQ = useFinTransactions(year, month);
   const allTxQ = useFinAllTransactions(year);
@@ -113,13 +123,38 @@ export function FinLancamentosTab() {
   const [form, setForm] = useState(emptyForm);
 
   const filtered = useMemo(() => {
-    return transactions.filter((t) => {
+    let list = transactions.filter((t) => {
       if (t.type === "caixa" || t.category === "caixa") return false;
       if (typeFilter !== "all" && t.type !== typeFilter) return false;
       if (statusFilter !== "all" && t.status !== statusFilter) return false;
       return true;
     });
-  }, [transactions, typeFilter, statusFilter]);
+    if (sortField) {
+      list = [...list].sort((a, b) => {
+        let cmp = 0;
+        if (sortField === "date") cmp = a.date.localeCompare(b.date);
+        else if (sortField === "amount") cmp = Number(a.amount) - Number(b.amount);
+        else if (sortField === "category") cmp = (a.category ?? "").localeCompare(b.category ?? "");
+        return sortDir === "asc" ? cmp : -cmp;
+      });
+    }
+    return list;
+  }, [transactions, typeFilter, statusFilter, sortField, sortDir]);
+
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) {
+      if (sortDir === "desc") setSortDir("asc");
+      else { setSortField(null); setSortDir("desc"); }
+    } else {
+      setSortField(field);
+      setSortDir("desc");
+    }
+  };
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return <ChevronsUpDown className="inline ml-1 h-3 w-3 text-muted-foreground/50" />;
+    return sortDir === "desc" ? <ArrowDown className="inline ml-1 h-3 w-3 text-primary" /> : <ArrowUp className="inline ml-1 h-3 w-3 text-primary" />;
+  };
 
   const totalEntradas = filtered.filter((t) => t.type === "entrada").reduce((s, t) => s + Number(t.amount), 0);
   const totalSaidas = filtered.filter((t) => t.type === "saida").reduce((s, t) => s + Number(t.amount), 0);
