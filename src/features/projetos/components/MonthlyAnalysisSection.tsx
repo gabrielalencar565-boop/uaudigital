@@ -105,7 +105,7 @@ export function MonthlyAnalysisSection() {
       const totalStagesMonth = totalClients * MAGIC2_STAGES.length;
       const completedStages = monthStages.filter((s: any) => s.completed).length;
       const beforeMagic = monthStages.filter((s: any) =>
-        s.completed && s.completed_at && new Date(s.completed_at).getDate() <= 27
+        s.completed && s.completed_at && getBrazilDay(s.completed_at) <= 27
       ).length;
       const pct = totalStagesMonth > 0 ? Math.round((beforeMagic / totalStagesMonth) * 100) : 0;
 
