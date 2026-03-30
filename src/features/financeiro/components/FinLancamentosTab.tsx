@@ -106,7 +106,6 @@ export function FinLancamentosTab() {
   const bulkInsert = useBulkInsertTransactions();
 
   const transactions = txQ.data ?? [];
-  const balances = balancesQ.data ?? [];
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTx, setEditingTx] = useState<FinTransaction | null>(null);
