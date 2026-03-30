@@ -3,6 +3,7 @@ import * as AvatarPrimitive from "@radix-ui/react-avatar";
 
 import { cn } from "@/lib/utils";
 import { normalizeAvatarUrl, withAvatarCacheBuster } from "@/lib/avatar-url";
+import { isAvatarCached } from "@/lib/avatar-preloader";
 
 type AvatarStatus = "idle" | "loading" | "loaded" | "error";
 
@@ -66,9 +67,11 @@ const AvatarImage = React.forwardRef<
   const [resolvedSrc, setResolvedSrc] = React.useState<string | undefined>(() =>
     normalizeAvatarUrl(typeof src === "string" ? src : undefined)
   );
-  const [status, setStatus] = React.useState<AvatarStatus>(
-    resolvedSrc ? "loading" : "error"
-  );
+  const [status, setStatus] = React.useState<AvatarStatus>(() => {
+    const url = normalizeAvatarUrl(typeof src === "string" ? src : undefined);
+    if (!url) return "error";
+    return isAvatarCached(url) ? "loaded" : "loading";
+  });
   const retriesRef = React.useRef(0);
 
   // Sync status to parent context
@@ -80,7 +83,7 @@ const AvatarImage = React.forwardRef<
     retriesRef.current = 0;
     const url = normalizeAvatarUrl(typeof src === "string" ? src : undefined);
     setResolvedSrc(url);
-    setStatus(url ? "loading" : "error");
+    setStatus(url ? (isAvatarCached(url) ? "loaded" : "loading") : "error");
   }, [src]);
 
   React.useEffect(() => {
