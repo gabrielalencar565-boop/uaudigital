@@ -166,11 +166,23 @@ export function FinLancamentosTab() {
   const varEntradas = prevEntradas > 0 ? ((totalEntradas - prevEntradas) / prevEntradas) * 100 : null;
   const varSaidas = prevSaidas > 0 ? ((totalSaidas - prevSaidas) / prevSaidas) * 100 : null;
 
-  // Caixa final from transactions with category "caixa"
+  // Caixa final from transactions with category "caixa" (not "inicial")
   const caixaFinalTx = useMemo(() => {
     return transactions.find((t) => (t.category === "caixa" || t.type === "caixa") && !t.description?.toLowerCase().includes("inicial"));
   }, [transactions]);
   const caixaFinal = caixaFinalTx ? Number(caixaFinalTx.amount) : null;
+
+  // Caixa inicial = previous month's caixa final (from allTxs)
+  const caixaInicial = useMemo(() => {
+    const pm = month - 1;
+    if (pm < 1) return null;
+    const prevCaixaFinal = allTxs.find((t) => {
+      if (t.category !== "caixa" && t.type !== "caixa") return false;
+      if (t.description?.toLowerCase().includes("inicial")) return false;
+      return new Date(t.date).getMonth() + 1 === pm;
+    });
+    return prevCaixaFinal ? Number(prevCaixaFinal.amount) : null;
+  }, [allTxs, month]);
 
   const openNew = () => { setEditingTx(null); setForm(emptyForm); setDialogOpen(true); };
   const openEdit = (tx: FinTransaction) => {
@@ -327,7 +339,16 @@ export function FinLancamentosTab() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.1s" }}>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.1s" }}>
+        <FinMetricCard
+          title="Caixa Inicial"
+          value={Math.abs(caixaInicial ?? 0)}
+          prefix={caixaInicial != null ? (caixaInicial < 0 ? "-R$" : "R$") : ""}
+          tone={caixaInicial != null ? "default" : "muted"}
+          icon={<DollarSign className="h-4 w-4" />}
+        >
+          {caixaInicial == null && <p className="text-[10px] text-muted-foreground mt-1">Sem caixa anterior</p>}
+        </FinMetricCard>
         <FinMetricCard title="Entradas" value={totalEntradas} tone="success" variation={varEntradas} icon={<ArrowUpCircle className="h-4 w-4" />} />
         <FinMetricCard title="Saídas" value={totalSaidas} tone="danger" variation={varSaidas} icon={<ArrowDownCircle className="h-4 w-4" />} />
         <FinMetricCard title="Saldo do Mês" value={Math.abs(saldoMes)} prefix={saldoMes < 0 ? "-R$" : "R$"} tone={saldoMes >= 0 ? "success" : "danger"} icon={<DollarSign className="h-4 w-4" />} />
