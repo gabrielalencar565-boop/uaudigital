@@ -61,9 +61,12 @@ function InlineTextCell({ tx, isEditing, onStartEdit, onSave }: { tx: FinTransac
 
 function InlineAmountCell({ tx, isEditing, onStartEdit, onSave }: { tx: FinTransaction; isEditing: boolean; onStartEdit: () => void; onSave: (val: number) => void }) {
   const [val, setVal] = useState(String(tx.amount));
+  const isCaixa = tx.category === "caixa" || tx.type === "caixa";
+  const colorClass = isCaixa ? "text-primary" : tx.type === "entrada" ? "text-success" : "text-destructive";
+  const prefix = isCaixa ? "" : tx.type === "entrada" ? "+ " : "− ";
   if (!isEditing) return (
-    <span className={`cursor-pointer hover:underline decoration-dotted underline-offset-4 font-semibold ${tx.type === "entrada" ? "text-success" : "text-destructive"}`} onClick={(e) => { e.stopPropagation(); onStartEdit(); }}>
-      {tx.type === "entrada" ? "+" : "−"} R$ {Number(tx.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+    <span className={`cursor-pointer hover:underline decoration-dotted underline-offset-4 font-semibold ${colorClass}`} onClick={(e) => { e.stopPropagation(); onStartEdit(); }}>
+      {prefix}R$ {Number(tx.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
     </span>
   );
   return <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}><Input type="number" step="0.01" value={val} onChange={e => setVal(e.target.value)} className="h-7 w-28 text-xs text-right" autoFocus onKeyDown={e => { if (e.key === "Enter") onSave(parseFloat(val) || tx.amount); if (e.key === "Escape") onSave(tx.amount); }} onBlur={() => onSave(parseFloat(val) || tx.amount)} /></div>;
