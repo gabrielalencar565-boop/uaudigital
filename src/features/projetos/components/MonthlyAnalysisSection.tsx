@@ -19,7 +19,7 @@ import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-import { getClassification, toneColor, barColor, MONTH_SHORT, computeAnnualScores } from "@/features/projetos/utils/score-utils";
+import { getClassification, toneColor, barColor, MONTH_SHORT, computeAnnualScores, getBrazilDay } from "@/features/projetos/utils/score-utils";
 
 
 const INDICATOR_TOOLTIPS: Record<string, string> = {
