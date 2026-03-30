@@ -672,6 +672,7 @@ export function DayViewPanel() {
               display_name: person.display_name,
               avatar_url: person.avatar_url
             }] : [];
+            const primaryDisplayMember = displayMembers[0];
             return <div key={t.id} className="flex items-center gap-3 rounded-lg bg-destructive px-3 py-2">
                       {displayMembers.length > 1 ? <Tooltip>
                           <TooltipTrigger asChild>
@@ -697,12 +698,12 @@ export function DayViewPanel() {
                             </div>
                           </TooltipContent>
                         </Tooltip> : <Avatar className="h-8 w-8 border-2 border-destructive-foreground/30">
-                          <AvatarImage src={person?.avatar_url ?? undefined} />
-                          <AvatarFallback className="bg-destructive-foreground/20 text-destructive-foreground">{initials(person?.display_name ?? "?")}</AvatarFallback>
+                          <AvatarImage src={primaryDisplayMember?.avatar_url ?? undefined} />
+                          <AvatarFallback className="bg-destructive-foreground/20 text-destructive-foreground">{initials(primaryDisplayMember?.display_name ?? person?.display_name ?? "?")}</AvatarFallback>
                         </Avatar>}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-destructive-foreground leading-5">
-                          <span className="block sm:inline truncate">{displayMembers.length > 1 ? displayMembers.map((m) => m.display_name).join(", ") : person?.display_name}</span>
+                          <span className="block sm:inline truncate">{displayMembers.length > 1 ? displayMembers.map((m) => m.display_name).join(", ") : primaryDisplayMember?.display_name ?? person?.display_name}</span>
                           <span className="hidden sm:inline">{" "}•{" "}</span>
                           <span className="block sm:inline text-xs sm:text-sm opacity-90 truncate">({resolveClientName(t)}) • {stageLabel}</span>
                         </p>
@@ -729,6 +730,7 @@ export function DayViewPanel() {
               display_name: person.display_name,
               avatar_url: person.avatar_url
             }] : [];
+            const primaryDisplayMember = displayMembers[0];
             return <div key={t.id} className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2">
                       {displayMembers.length > 1 ? <Tooltip>
                           <TooltipTrigger asChild>
@@ -754,12 +756,12 @@ export function DayViewPanel() {
                             </div>
                           </TooltipContent>
                         </Tooltip> : <Avatar className="h-8 w-8">
-                          <AvatarImage src={person?.avatar_url ?? undefined} />
-                          <AvatarFallback>{initials(person?.display_name ?? "?")}</AvatarFallback>
+                          <AvatarImage src={primaryDisplayMember?.avatar_url ?? undefined} />
+                          <AvatarFallback>{initials(primaryDisplayMember?.display_name ?? person?.display_name ?? "?")}</AvatarFallback>
                         </Avatar>}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold leading-5">
-                          <span className="block sm:inline truncate">{displayMembers.length > 1 ? displayMembers.map((m) => m.display_name).join(", ") : person?.display_name}</span>
+                          <span className="block sm:inline truncate">{displayMembers.length > 1 ? displayMembers.map((m) => m.display_name).join(", ") : primaryDisplayMember?.display_name ?? person?.display_name}</span>
                           <span className="hidden sm:inline">{" "}•{" "}</span>
                           <span className="block sm:inline text-xs sm:text-sm text-muted-foreground truncate">({resolveClientName(t)}) • {stageLabel}</span>
                         </p>
@@ -784,6 +786,7 @@ export function DayViewPanel() {
               display_name: person.display_name,
               avatar_url: person.avatar_url
             }] : [];
+            const primaryDisplayMember = displayMembers[0];
             return <div key={t.id} className="flex items-center gap-3 rounded-lg bg-success px-3 py-2">
                       {displayMembers.length > 1 ? <Tooltip>
                           <TooltipTrigger asChild>
@@ -809,12 +812,12 @@ export function DayViewPanel() {
                             </div>
                           </TooltipContent>
                         </Tooltip> : <Avatar className="h-8 w-8 border-2 border-success-foreground/30">
-                          <AvatarImage src={person?.avatar_url ?? undefined} />
-                          <AvatarFallback className="bg-success-foreground/20 text-success-foreground">{initials(person?.display_name ?? "?")}</AvatarFallback>
+                          <AvatarImage src={primaryDisplayMember?.avatar_url ?? undefined} />
+                          <AvatarFallback className="bg-success-foreground/20 text-success-foreground">{initials(primaryDisplayMember?.display_name ?? person?.display_name ?? "?")}</AvatarFallback>
                         </Avatar>}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-success-foreground leading-5">
-                          <span className="block sm:inline truncate">{displayMembers.length > 1 ? displayMembers.map((m) => m.display_name).join(", ") : person?.display_name}</span>
+                          <span className="block sm:inline truncate">{displayMembers.length > 1 ? displayMembers.map((m) => m.display_name).join(", ") : primaryDisplayMember?.display_name ?? person?.display_name}</span>
                           <span className="hidden sm:inline">{" "}•{" "}</span>
                           <span className="block sm:inline text-xs sm:text-sm opacity-90 truncate">({resolveClientName(t)}) • {stageLabel}</span>
                         </p>
