@@ -171,8 +171,8 @@ export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaP
   const barData = useMemo(() => {
     return Array.from({ length: 12 }, (_, i) => {
       const m = i + 1;
-      const mTxs = transactions.filter(t => t.type !== "caixa" && t.category !== "caixa" && new Date(t.date).getMonth() + 1 === m);
-      const rec = mTxs.filter(t => t.type === "entrada").reduce((s, t) => s + Number(t.amount), 0);
+      const mTxs = transactions.filter(t => new Date(t.date).getMonth() + 1 === m);
+      const rec = mTxs.filter(t => t.type === "entrada" || t.description?.toLowerCase().includes("caixa inicial")).reduce((s, t) => s + Number(t.amount), 0);
       const desp = mTxs.filter(t => t.type === "saida").reduce((s, t) => s + Number(t.amount), 0);
       return { month: MONTH_SHORT[i], receita: rec, despesa: desp };
     });
