@@ -328,6 +328,7 @@ export function useNotificationSound() {
           const row = payload.new as any;
           invalidateNotifications();
           if (row.created_by === uid) return;
+          if (row.parent_task_id) return; // skip subtasks
           if (row.assignee_id === uid) {
             enqueueOrShow({
               key: `assigned-${row.id}-${row.created_at ?? ""}`,
