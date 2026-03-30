@@ -53,9 +53,8 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from("pm_tasks")
-        .select("id, title, client_id, due_date, status_global, assignee_id, created_at, parent_task_id")
+        .select("id, title, client_id, due_date, status_global, assignee_id, created_at")
         .eq("assignee_id", user!.id)
-        .is("parent_task_id", null)
         .not("status_global", "in", "(concluido,cancelado)")
         .order("created_at", { ascending: false })
         .limit(30);
