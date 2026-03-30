@@ -461,22 +461,6 @@ export function DayViewPanel() {
         completed_at: first.completed_at,
         source: "agenda" as const,
       });
-
-      // Register all users as assignees for this merged task
-      const members: { user_id: string; display_name: string; avatar_url?: string | null }[] = [];
-      const seen = new Set<string>();
-      for (const t of group) {
-        if (!seen.has(t.assigned_user_id)) {
-          const m = teamByUserId.get(t.assigned_user_id);
-          if (m) {
-            members.push({ user_id: m.user_id, display_name: m.display_name, avatar_url: m.avatar_url });
-          }
-          seen.add(t.assigned_user_id);
-        }
-      }
-      if (members.length > 0) {
-        assigneesByTaskId.set(mergedId, members);
-      }
     }
 
     // pm_tasks that DON'T have a snapshot in the agenda tasks (avoid duplicates)
@@ -507,12 +491,42 @@ export function DayViewPanel() {
         subtaskCount: childCounts.get(t.id) ?? 0,
       }));
 
-    return [...agendaTasks, ...pmTasks];
+    return { tasks: [...agendaTasks, ...pmTasks], pmSnapshotGroups };
   }, [tasksQ.data, pmTasksQ.data, pmChildCountQ.data]);
+
+  // Build merged assignees for pm snapshot groups
+  const mergedSnapshotAssignees = useMemo(() => {
+    const map = new Map<string, { user_id: string; display_name: string; avatar_url?: string | null }[]>();
+    for (const [groupKey, group] of unifiedTasks.pmSnapshotGroups) {
+      const mergedId = `agenda_pm_${groupKey}`;
+      const members: { user_id: string; display_name: string; avatar_url?: string | null }[] = [];
+      const seen = new Set<string>();
+      for (const t of group) {
+        if (!seen.has(t.assigned_user_id)) {
+          const m = teamByUserId.get(t.assigned_user_id);
+          if (m) {
+            members.push({ user_id: m.user_id, display_name: m.display_name, avatar_url: m.avatar_url });
+          }
+          seen.add(t.assigned_user_id);
+        }
+      }
+      if (members.length > 0) map.set(mergedId, members);
+    }
+    return map;
+  }, [unifiedTasks.pmSnapshotGroups, teamByUserId]);
+
+  // Combined assignees map: base + merged snapshot assignees
+  const allAssigneesByTaskId = useMemo(() => {
+    const combined = new Map(assigneesByTaskId);
+    for (const [k, v] of mergedSnapshotAssignees) {
+      combined.set(k, v);
+    }
+    return combined;
+  }, [assigneesByTaskId, mergedSnapshotAssignees]);
 
   // Tarefas de hoje (exceto concluídas - elas vão separadas)
   const todayPendingTasks = useMemo(() => {
-    const tasks = unifiedTasks.filter((t) => {
+    const tasks = unifiedTasks.tasks.filter((t) => {
       if (!t.due_date) return false;
       if (!isCurrentMonth) return t.status !== "concluido";
       return t.due_date === todayKey && t.status !== "concluido";
@@ -529,7 +543,7 @@ export function DayViewPanel() {
 
   // Tarefas concluídas de hoje
   const todayCompletedTasks = useMemo(() => {
-    const tasks = unifiedTasks.filter((t) => {
+    const tasks = unifiedTasks.tasks.filter((t) => {
       if (!t.due_date) return false;
       if (!isCurrentMonth) return t.status === "concluido";
       return t.due_date === todayKey && t.status === "concluido";
@@ -541,10 +555,10 @@ export function DayViewPanel() {
     });
   }, [unifiedTasks, todayKey, teamByUserId, isCurrentMonth]);
   const overdueTasks = useMemo(() => {
-    return unifiedTasks.filter((t) => t.status !== "concluido" && t.due_date && t.due_date < todayKey).sort((a, b) => a.due_date.localeCompare(b.due_date));
-  }, [unifiedTasks, todayKey]);
-  const completedTasksCount = useMemo(() => unifiedTasks.filter((t) => t.status === "concluido").length, [unifiedTasks]);
-  const totalTasks = unifiedTasks.length + (pmChildCountQ.data ? Array.from(pmChildCountQ.data.values()).reduce((a, b) => a + b, 0) : 0);
+    return unifiedTasks.tasks.filter((t) => t.status !== "concluido" && t.due_date && t.due_date < todayKey).sort((a, b) => a.due_date.localeCompare(b.due_date));
+  }, [unifiedTasks.tasks, todayKey]);
+  const completedTasksCount = useMemo(() => unifiedTasks.tasks.filter((t) => t.status === "concluido").length, [unifiedTasks.tasks]);
+  const totalTasks = unifiedTasks.tasks.length + (pmChildCountQ.data ? Array.from(pmChildCountQ.data.values()).reduce((a, b) => a + b, 0) : 0);
 
   // Navegação rápida para hoje
   const goToToday = () => {
