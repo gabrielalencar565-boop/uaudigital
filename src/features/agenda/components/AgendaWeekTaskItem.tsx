@@ -49,6 +49,12 @@ interface TaskMember {
   avatar_url?: string | null;
 }
 
+const PENDING_MEMBER_NAME = "__avatar_loading__";
+
+function getDisplayName(name: string | undefined) {
+  return name && name !== PENDING_MEMBER_NAME ? name : "";
+}
+
 export function AgendaWeekTaskItem({
   stageLabel,
   stage,
@@ -186,9 +192,9 @@ export function AgendaWeekTaskItem({
             <TooltipTrigger asChild>
               <div className="flex flex-col -space-y-1.5 shrink-0">
                 {members.slice(0, 2).map((m) => (
-                  <Avatar key={m.user_id} className={cn(isCompact ? "h-5 w-5" : "h-6 w-6", "border-2 border-background")}>
+                     <Avatar key={m.user_id} className={cn(isCompact ? "h-5 w-5" : "h-6 w-6", "border-2 border-background")}>
                     <AvatarImage src={m.avatar_url ?? undefined} alt={m.display_name} />
-                    <AvatarFallback className="text-[10px]">{initials(m.display_name)}</AvatarFallback>
+                     <AvatarFallback className="text-[10px]">{getDisplayName(m.display_name) ? initials(m.display_name) : null}</AvatarFallback>
                   </Avatar>
                 ))}
                 {members.length > 2 && (
@@ -207,7 +213,7 @@ export function AgendaWeekTaskItem({
                   <div key={m.user_id} className="flex items-center gap-2">
                     <Avatar className="h-5 w-5">
                       <AvatarImage src={m.avatar_url ?? undefined} />
-                      <AvatarFallback className="text-[8px]">{initials(m.display_name)}</AvatarFallback>
+                       <AvatarFallback className="text-[8px]">{getDisplayName(m.display_name) ? initials(m.display_name) : null}</AvatarFallback>
                     </Avatar>
                     <span className="text-xs">{m.display_name}</span>
                   </div>
@@ -218,7 +224,7 @@ export function AgendaWeekTaskItem({
         ) : (
           <Avatar className={cn(isCompact ? "h-5 w-5" : "h-6 w-6")}>
             <AvatarImage src={assigneeAvatarUrl ?? undefined} alt="" />
-            <AvatarFallback className="text-[10px]">{initials(assigneeName || "?")}</AvatarFallback>
+            <AvatarFallback className="text-[10px]">{getDisplayName(assigneeName) ? initials(assigneeName) : null}</AvatarFallback>
           </Avatar>
         )}
         
@@ -233,8 +239,8 @@ export function AgendaWeekTaskItem({
               title={members && members.length === 1 ? members[0].display_name : assigneeName}
             >
               {members && members.length === 1
-                ? members[0].display_name.split(" ")[0]
-                : (assigneeName ? assigneeName.split(" ")[0] : "—")}
+                ? getDisplayName(members[0].display_name).split(" ")[0] || "—"
+                : (getDisplayName(assigneeName) ? getDisplayName(assigneeName).split(" ")[0] : "—")}
             </p>
           )}
           <p
