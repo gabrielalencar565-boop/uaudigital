@@ -335,22 +335,22 @@ export function AdminAparenciaPanel() {
         </CardContent>
       </Card>
 
-      {/* Logo da Sidebar / Barra Superior */}
+      {/* Logo da Barra Superior — Tema Claro */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Images className="h-5 w-5" />
-            Logo da Barra Superior
+            Logo da Barra Superior — Tema Claro
           </CardTitle>
           <CardDescription>
-            Aparece no topo da aplicação (sidebar). Pode ser diferente da logo do login.
+            Aparece no topo da aplicação quando o tema claro está ativo.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center gap-6">
-            <div className="flex h-24 w-48 items-center justify-center rounded-xl border-2 border-dashed border-border bg-muted/30">
+            <div className="flex h-24 w-48 items-center justify-center rounded-xl border-2 border-dashed border-border bg-white">
               {sidebarLogoUrl ? (
-                <img src={sidebarLogoUrl} alt="Logo sidebar" className="max-h-20 max-w-[180px] object-contain" />
+                <img src={sidebarLogoUrl} alt="Logo tema claro" className="max-h-20 max-w-[180px] object-contain" />
               ) : (
                 <span className="text-xs text-muted-foreground">Sem logo</span>
               )}
@@ -378,6 +378,57 @@ export function AdminAparenciaPanel() {
             </Button>
             {sidebarLogoUrl && (
               <Button variant="destructive" size="sm" className="gap-2" onClick={handleRemoveSidebarLogo}>
+                <Trash2 className="h-4 w-4" />
+                Remover
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Logo da Barra Superior — Tema Escuro */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Images className="h-5 w-5" />
+            Logo da Barra Superior — Tema Escuro
+          </CardTitle>
+          <CardDescription>
+            Aparece no topo da aplicação quando o tema escuro está ativo. Se não definida, usa a logo do tema claro.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-6">
+            <div className="flex h-24 w-48 items-center justify-center rounded-xl border-2 border-dashed border-border bg-[#0F1117]">
+              {sidebarLogoDarkUrl ? (
+                <img src={sidebarLogoDarkUrl} alt="Logo tema escuro" className="max-h-20 max-w-[180px] object-contain" />
+              ) : (
+                <span className="text-xs text-muted-foreground">Sem logo (usa a do tema claro)</span>
+              )}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="gap-2"
+              disabled={uploadingSidebarLogoDark}
+              onClick={() => {
+                const input = document.createElement("input");
+                input.type = "file";
+                input.accept = "image/*";
+                input.onchange = async () => {
+                  const f = input.files?.[0];
+                  if (f) await handleSidebarLogoDarkUpload(f);
+                };
+                input.click();
+              }}
+            >
+              <Plus className="h-4 w-4" />
+              {uploadingSidebarLogoDark ? "Enviando..." : sidebarLogoDarkUrl ? "Trocar logo" : "Enviar logo"}
+            </Button>
+            {sidebarLogoDarkUrl && (
+              <Button variant="destructive" size="sm" className="gap-2" onClick={handleRemoveSidebarLogoDark}>
                 <Trash2 className="h-4 w-4" />
                 Remover
               </Button>
