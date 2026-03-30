@@ -118,10 +118,12 @@ export function useProfiles(options?: { enabled?: boolean }) {
         .select("user_id, full_name, role_title, avatar_url")
         .order("full_name", { ascending: true });
       if (error) throw error;
-      return ((data ?? []) as ProfileRow[]).map((p) => ({
+      const rows = ((data ?? []) as ProfileRow[]).map((p) => ({
         ...p,
         avatar_url: normalizeAvatarUrl(p.avatar_url) ?? null,
       }));
+      preloadAvatars(rows.map((r) => r.avatar_url));
+      return rows;
     },
   });
 }
