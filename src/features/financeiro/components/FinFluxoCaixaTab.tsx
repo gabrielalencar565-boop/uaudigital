@@ -119,20 +119,16 @@ export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaP
   const lucro = totalReceita - totalDespesa;
   const margemLucro = totalReceita > 0 ? (lucro / totalReceita) * 100 : 0;
 
-  // Previous month financial comparison
-  const prevReceitaTransacoes = prevMonthTxs.filter((t) => t.type === "entrada").reduce((s, t) => s + Number(t.amount), 0);
-  // Find caixa inicial of previous month from transactions
-  const prevCaixaInicialTx = useMemo(() => {
+  // Previous month financial comparison (include caixa inicial same as Lançamentos)
+  const prevReceitaTransacoes = useMemo(() => {
     const pm = month - 1;
-    if (pm < 1) return null;
-    return transactions.find((t) => {
-      if (t.type !== "caixa" && t.category !== "caixa") return false;
+    if (pm < 1) return 0;
+    return transactions.filter(t => {
       const d = new Date(t.date);
-      return d.getMonth() + 1 === pm && t.description?.toLowerCase().includes("inicial");
-    }) ?? null;
+      return d.getMonth() + 1 === pm && (t.type === "entrada" || t.description?.toLowerCase().includes("caixa inicial"));
+    }).reduce((s, t) => s + Number(t.amount), 0);
   }, [transactions, month]);
-  const prevCaixaAnterior = prevCaixaInicialTx ? Number(prevCaixaInicialTx.amount) : 0;
-  const prevReceita = prevReceitaTransacoes + prevCaixaAnterior;
+  const prevReceita = prevReceitaTransacoes;
   const prevDespesa = prevMonthTxs.filter((t) => t.type === "saida").reduce((s, t) => s + Number(t.amount), 0);
   const prevLucro = prevReceita - prevDespesa;
   const varReceita = prevReceita > 0 ? ((totalReceita - prevReceita) / prevReceita) * 100 : null;
