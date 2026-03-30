@@ -163,6 +163,7 @@ export type AppSettingsRow = {
   id: number;
   logo_url: string | null;
   sidebar_logo_url: string | null;
+  sidebar_logo_dark_url: string | null;
   logo_shape: "circle" | "square";
   workspace_name: string;
   login_bg_images: BgImageConfig[];
