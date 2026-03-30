@@ -42,6 +42,7 @@ interface EditProfileDialogProps {
 
 export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDialogProps) {
   const { user } = useSession();
+  const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
