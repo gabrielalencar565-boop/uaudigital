@@ -60,23 +60,26 @@ export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaP
     });
   }, [transactions, month]);
 
-  // Caixa inicial = caixa transaction in the current month (auto-generated from previous month's caixa final)
+  // Caixa inicial = transaction with category "caixa" and description containing "inicial" in current month
   const caixaInicialTx = useMemo(() => {
     return transactions.find((t) => {
-      if (t.type !== "caixa" && t.category !== "caixa") return false;
+      if (t.category !== "caixa" && t.type !== "caixa") return false;
       const d = new Date(t.date);
       return d.getMonth() + 1 === month && t.description?.toLowerCase().includes("inicial");
     });
   }, [transactions, month]);
 
-  // Caixa final = caixa transaction at end of current month (manually entered)
+  // Caixa final = transaction with category "caixa" without "inicial" in current month
   const caixaFinalTx = useMemo(() => {
     return transactions.find((t) => {
-      if (t.type !== "caixa" && t.category !== "caixa") return false;
+      if (t.category !== "caixa" && t.type !== "caixa") return false;
       const d = new Date(t.date);
       return d.getMonth() + 1 === month && !t.description?.toLowerCase().includes("inicial");
     });
   }, [transactions, month]);
+
+  const caixaInicial = caixaInicialTx ? Number(caixaInicialTx.amount) : null;
+  const caixaAcumulado = caixaFinalTx ? Number(caixaFinalTx.amount) : null;
 
   const caixaInicial = caixaInicialTx ? Number(caixaInicialTx.amount) : null;
   const caixaAcumulado = caixaFinalTx ? Number(caixaFinalTx.amount) : null;
