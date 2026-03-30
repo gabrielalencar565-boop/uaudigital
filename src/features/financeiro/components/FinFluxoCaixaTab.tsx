@@ -112,9 +112,19 @@ export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaP
   const lucro = totalReceita - totalDespesa;
   const margemLucro = totalReceita > 0 ? (lucro / totalReceita) * 100 : 0;
 
-  // Previous month financial comparison (reuse prevMonthTxs from above)
+  // Previous month financial comparison
   const prevReceitaTransacoes = prevMonthTxs.filter((t) => t.type === "entrada").reduce((s, t) => s + Number(t.amount), 0);
-  const prevCaixaAnterior = month >= 3 ? Number(balances.find(b => b.month === month - 2)?.amount ?? 0) : 0;
+  // Find caixa inicial of previous month from transactions
+  const prevCaixaInicialTx = useMemo(() => {
+    const pm = month - 1;
+    if (pm < 1) return null;
+    return transactions.find((t) => {
+      if (t.type !== "caixa" && t.category !== "caixa") return false;
+      const d = new Date(t.date);
+      return d.getMonth() + 1 === pm && t.description?.toLowerCase().includes("inicial");
+    }) ?? null;
+  }, [transactions, month]);
+  const prevCaixaAnterior = prevCaixaInicialTx ? Number(prevCaixaInicialTx.amount) : 0;
   const prevReceita = prevReceitaTransacoes + prevCaixaAnterior;
   const prevDespesa = prevMonthTxs.filter((t) => t.type === "saida").reduce((s, t) => s + Number(t.amount), 0);
   const prevLucro = prevReceita - prevDespesa;
