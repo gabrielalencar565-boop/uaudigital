@@ -236,7 +236,7 @@ export function MonthlyAnalysisSection() {
       // 2. Prazo (weight: 0.3) — based on last completion day vs Magic Number
       const completedDays = completedStages
         .filter((s: any) => s.completed_at)
-        .map((s: any) => new Date(s.completed_at).getDate());
+        .map((s: any) => getBrazilDay(s.completed_at));
       const lastDay = completedDays.length > 0 ? Math.max(...completedDays) : 28;
       const allDone = completedStages.length === totalStagesMonth;
       let prazoScore: number;
