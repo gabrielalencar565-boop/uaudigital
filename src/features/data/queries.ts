@@ -3,6 +3,7 @@ import { endOfMonth, format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { MAGIC_STAGES, STAGES, type StageKey } from "@/lib/uau";
 import { normalizeAvatarUrl } from "@/lib/avatar-url";
+import { useSession } from "@/hooks/use-session";
 
 function dueDate27(year: number, month: number) {
   return `${year}-${String(month).padStart(2, "0")}-27`;
