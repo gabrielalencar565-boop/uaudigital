@@ -112,7 +112,7 @@ export function MonthlyAnalysisSection() {
       // Magic diff
       const completedDates = monthStages
         .filter((s: any) => s.completed && s.completed_at)
-        .map((s: any) => new Date(s.completed_at!).getDate());
+        .map((s: any) => getBrazilDay(s.completed_at!));
       const lastDay = completedDates.length > 0 ? Math.max(...completedDates) : null;
       const allDone = completedStages === totalStagesMonth && totalStagesMonth > 0;
       const magicDiff = allDone && lastDay !== null ? 27 - lastDay : null;
