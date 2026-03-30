@@ -68,10 +68,10 @@ const AvatarImage = React.forwardRef<
       src={resolvedSrc}
       onError={handleError}
       onLoad={() => setStatus("loaded")}
-      className={cn("relative z-10 aspect-square h-full w-full object-cover", className)}
+      className={cn("absolute inset-0 z-10 h-full w-full object-cover", className)}
       referrerPolicy="no-referrer"
       draggable={false}
-      style={status === "loaded" ? undefined : { position: "absolute", opacity: 0, pointerEvents: "none" }}
+      style={status === "loaded" ? undefined : { opacity: 0, pointerEvents: "none" }}
       {...props}
     />
   );
@@ -84,7 +84,7 @@ const AvatarFallback = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <AvatarPrimitive.Fallback
     ref={ref}
-    className={cn("relative z-0 flex h-full w-full items-center justify-center rounded-full bg-muted", className)}
+    className={cn("absolute inset-0 z-0 flex h-full w-full items-center justify-center rounded-full bg-muted", className)}
     {...props}
   />
 ));
