@@ -178,8 +178,7 @@ export function FinLancamentosTab() {
   // Caixa inicial = transaction with description "Caixa Inicial" in current month
   const caixaInicialTx = useMemo(() => {
     return transactions.find((t) =>
-      (t.category === "caixa" || t.type === "caixa") &&
-      t.description?.toLowerCase().includes("inicial")
+      t.description?.toLowerCase().includes("caixa inicial")
     );
   }, [transactions]);
   const caixaInicial = caixaInicialTx ? Number(caixaInicialTx.amount) : null;
@@ -212,7 +211,7 @@ export function FinLancamentosTab() {
       description: "Caixa Inicial",
       amount: prevCaixaFinalValue,
       date: firstDay,
-      type: "caixa",
+      type: "entrada",
       category: "caixa",
       status: "confirmado",
       source: "auto",
