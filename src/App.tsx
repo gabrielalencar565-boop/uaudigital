@@ -72,6 +72,7 @@ const App = () => {
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} storageKey="uau-theme">
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
+          <AvatarBootstrap />
           <Toaster />
           <Sonner />
           <BrowserRouter>
