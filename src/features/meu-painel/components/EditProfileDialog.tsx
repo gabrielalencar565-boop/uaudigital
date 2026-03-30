@@ -143,6 +143,10 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
 
       setAvatarUrl(nextAvatarUrl);
       setAvatarFile(null);
+      // Invalidar todos os caches que consomem dados de avatar
+      queryClient.invalidateQueries({ queryKey: ["my_profile"] });
+      queryClient.invalidateQueries({ queryKey: ["team_members"] });
+      queryClient.invalidateQueries({ queryKey: ["profiles"] });
       toast.success("Perfil atualizado!");
       onSaved?.();
       onOpenChange(false);
