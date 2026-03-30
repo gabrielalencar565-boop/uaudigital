@@ -167,14 +167,11 @@ export function FinLancamentosTab() {
   const varEntradas = prevEntradas > 0 ? ((totalEntradas - prevEntradas) / prevEntradas) * 100 : null;
   const varSaidas = prevSaidas > 0 ? ((totalSaidas - prevSaidas) / prevSaidas) * 100 : null;
 
-  const currentBalance = balances.find(b => b.month === month);
-  const caixaFinal = currentBalance ? Number(currentBalance.amount) : null;
-
-  const saveCaixaFinal = () => {
-    const val = parseFloat(caixaInput);
-    if (isNaN(val)) return;
-    upsertBalance.mutate({ year, month, amount: val, ...(currentBalance ? { id: currentBalance.id } : {}) }, { onSuccess: () => setEditingCaixa(false) });
-  };
+  // Caixa final from transactions with category "caixa"
+  const caixaFinalTx = useMemo(() => {
+    return transactions.find((t) => (t.category === "caixa" || t.type === "caixa") && !t.description?.toLowerCase().includes("inicial"));
+  }, [transactions]);
+  const caixaFinal = caixaFinalTx ? Number(caixaFinalTx.amount) : null;
 
   const openNew = () => { setEditingTx(null); setForm(emptyForm); setDialogOpen(true); };
   const openEdit = (tx: FinTransaction) => {
