@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/avatar/UserAvatar";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -351,10 +351,7 @@ export function SquadDashboardDialog({
                     {medal ?? `${idx + 1}º`}
                   </span>
 
-                  <Avatar className="h-9 w-9 shrink-0">
-                    <AvatarImage src={m.avatar ?? undefined} alt={m.name} />
-                    <AvatarFallback className="text-[10px] bg-muted">{initials(m.name)}</AvatarFallback>
-                  </Avatar>
+                  <UserAvatar avatarUrl={m.avatar} name={m.name} className="h-9 w-9 shrink-0" fallbackClassName="text-[10px] bg-muted" />
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">

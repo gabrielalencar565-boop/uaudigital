@@ -4,7 +4,7 @@ import { AnimatedNumber } from "@/components/ui/animated-number";
  
  import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
  import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
- import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+ import { UserAvatar } from "@/components/avatar/UserAvatar";
  import { Badge } from "@/components/ui/badge";
  import { Button } from "@/components/ui/button";
  import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -309,10 +309,7 @@ const TOTAL_POINTS = 27;
                       </div>
 
                       <div className="mt-4">
-                        <Avatar className={`${isFirst ? "h-24 w-24" : "h-20 w-20"} shadow-sm`}>
-                          <AvatarImage src={member?.avatar_url ?? undefined} />
-                          <AvatarFallback className="text-lg">{initials(member?.display_name ?? "?")}</AvatarFallback>
-                        </Avatar>
+                        <UserAvatar avatarUrl={member?.avatar_url} name={member?.display_name} className={`${isFirst ? "h-24 w-24" : "h-20 w-20"} shadow-sm`} fallbackClassName="text-lg" />
                       </div>
 
                       <div className="mt-4 space-y-2">
@@ -355,10 +352,7 @@ const TOTAL_POINTS = 27;
                          </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
-                              <Avatar className="h-8 w-8">
-                                <AvatarImage src={member?.avatar_url ?? undefined} />
-                                <AvatarFallback>{initials(member?.display_name ?? "?")}</AvatarFallback>
-                              </Avatar>
+                              <UserAvatar avatarUrl={member?.avatar_url} name={member?.display_name} className="h-8 w-8" />
                               <span className="font-medium">{member?.display_name ?? row.user_id}</span>
                               {row.video_destaque > 0 && (
                                 <span
@@ -443,10 +437,7 @@ const TOTAL_POINTS = 27;
                      <div key={row.user_id} className="flex flex-col gap-3 rounded-lg border border-border/60 bg-card/20 p-3 sm:flex-row sm:items-center sm:justify-between">
                        <div className="flex min-w-0 items-center gap-3">
                          {medal ? <span className="text-2xl">{medal}</span> : <span className="w-8 text-center text-muted-foreground">#{idx + 1}</span>}
-                         <Avatar className="h-10 w-10">
-                           <AvatarImage src={member?.avatar_url ?? undefined} />
-                           <AvatarFallback>{initials(member?.display_name ?? "?")}</AvatarFallback>
-                         </Avatar>
+                          <UserAvatar avatarUrl={member?.avatar_url} name={member?.display_name} className="h-10 w-10" />
                          <div className="min-w-0">
                            <p className="truncate font-medium">{member?.display_name ?? row.user_id}</p>
                            <p className="truncate text-xs text-muted-foreground">{member?.role_title}</p>

@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { normalizeAvatarUrl } from "@/lib/avatar-url";
 import { format, getDay, subDays } from "date-fns";
 import { ListChecks, CheckCircle2, Clock, AlertTriangle, Flame, Activity, Trophy, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
 
 import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/avatar/UserAvatar";
 
 import { useClients, useSetTaskStatus, useTasks, useTeamMembers } from "@/features/data/queries";
 import { STAGES } from "@/lib/uau";
@@ -37,6 +36,7 @@ import {
   useToggleCleaningCompletion,
 } from "@/features/cleaning/hooks/use-cleaning";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useMyProfile } from "@/hooks/use-my-profile";
 
 // ── Helpers ──────────────────────────────────────────────
 
@@ -120,8 +120,6 @@ export function MeuPainelPanel() {
   const { user } = useSession();
   const { isAdmin } = useRole(user?.id);
 
-  const [myProfile, setMyProfile] = useState<{ full_name: string; avatar_url: string | null; birth_date?: string | null } | null>(null);
-  const [profileVersion] = useState(0);
   const [selectedPmTaskId, setSelectedPmTaskId] = useState<string | null>(null);
   const [confettiFired, setConfettiFired] = useState(false);
   const today = useNow();
@@ -132,8 +130,13 @@ export function MeuPainelPanel() {
 
   const perf = useMyMonthlyPerformanceRank({ userId: user?.id, year: selected.year, month: selected.month });
   const perfYear = useMyAnnualPerformanceRank({ userId: user?.id, year: selected.year });
+  const myProfileQ = useMyProfile();
 
   const teamMembersQ = useTeamMembers();
+  const myTeamMember = useMemo(
+    () => (teamMembersQ.data ?? []).find((member) => member.user_id === user?.id) ?? null,
+    [teamMembersQ.data, user?.id]
+  );
   const tasksQ = useTasks({ month: monthKey, assignedUserId: user?.id });
   const clientsQ = useClients();
   const setTaskStatus = useSetTaskStatus();
@@ -311,27 +314,13 @@ export function MeuPainelPanel() {
     }, {} as Record<string, number>);
   }, [myTasks]);
 
-  // ── Profile loading ──
-  useEffect(() => {
-    if (!user) return;
-    let cancelled = false;
-    Promise.all([
-      supabase.from("profiles").select("full_name, avatar_url").eq("user_id", user.id).maybeSingle(),
-      supabase.from("team_members").select("birth_date").eq("user_id", user.id).maybeSingle(),
-    ]).then(([profileRes, tmRes]) => {
-      if (cancelled) return;
-      const data = profileRes.data;
-      if (!data?.full_name) { setMyProfile(null); return; }
-      setMyProfile({ full_name: data.full_name, avatar_url: normalizeAvatarUrl(data.avatar_url) ?? null, birth_date: (tmRes.data as any)?.birth_date ?? null });
-    });
-    return () => { cancelled = true; };
-  }, [user?.id, profileVersion]);
+  const myProfile = myProfileQ.data;
 
   const isBirthday = useMemo(() => {
-    if (!myProfile?.birth_date) return false;
-    const bd = new Date(myProfile.birth_date + "T12:00:00");
+    if (!myTeamMember?.birth_date) return false;
+    const bd = new Date(myTeamMember.birth_date + "T12:00:00");
     return bd.getMonth() === today.getMonth() && bd.getDate() === today.getDate();
-  }, [myProfile?.birth_date, todayKey]);
+  }, [myTeamMember?.birth_date, todayKey]);
 
   useEffect(() => {
     if (isBirthday && !confettiFired) {
@@ -409,10 +398,7 @@ export function MeuPainelPanel() {
             <div className="flex min-w-0 items-center gap-3.5">
               <div className="relative shrink-0">
                 <div className="absolute -inset-[3px] rounded-full" style={{ background: "linear-gradient(135deg, #A78BFA, #6366F1, #8B5CF6)", opacity: 0.9, animation: "spin 6s linear infinite" }} />
-                <Avatar className="relative h-12 w-12 ring-2 ring-white/20">
-                  <AvatarImage src={myProfile?.avatar_url ?? undefined} alt={myProfile?.full_name ?? ""} />
-                  <AvatarFallback className="bg-white/15 text-white font-bold text-sm">{initials(myProfile?.full_name ?? "?")}</AvatarFallback>
-                </Avatar>
+                <UserAvatar avatarUrl={myProfile?.avatar_url} name={myProfile?.full_name} className="relative h-12 w-12 ring-2 ring-white/20" fallbackClassName="bg-white/15 text-white font-bold text-sm" />
               </div>
               <div className="min-w-0">
                 <h2 className="truncate text-lg font-semibold tracking-tight text-white drop-shadow-sm">{headerGreeting}</h2>
@@ -529,13 +515,7 @@ function PmTaskDetailDialogWrapper({ taskId, onClose, isAdmin }: { taskId: strin
     return m;
   }, [clientsQ.data]);
 
-  const membersQ = useQuery({
-    queryKey: ["team_members"],
-    queryFn: async () => {
-      const { data } = await supabase.from("team_members").select("user_id, display_name, avatar_url").eq("is_active", true);
-      return (data ?? []).map(tm => ({ ...tm, avatar_url: normalizeAvatarUrl(tm.avatar_url) ?? null }));
-    },
-  });
+  const membersQ = useTeamMembers();
   const membersMap = useMemo(() => {
     const m: Record<string, { name: string; avatar?: string }> = {};
     (membersQ.data ?? []).forEach((tm) => { m[tm.user_id] = { name: tm.display_name, avatar: tm.avatar_url ?? undefined }; });

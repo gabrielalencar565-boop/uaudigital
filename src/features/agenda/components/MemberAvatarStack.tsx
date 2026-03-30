@@ -1,4 +1,4 @@
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/avatar/UserAvatar";
 import {
   Tooltip,
   TooltipContent,
@@ -50,15 +50,13 @@ export function MemberAvatarStack({
       <TooltipTrigger asChild>
         <div className={cn("flex -space-x-2", className)}>
           {visible.map((m) => (
-            <Avatar
+            <UserAvatar
               key={m.user_id}
+              avatarUrl={m.avatar_url}
+              name={m.display_name}
               className={cn(sizeClass, "border-2 border-background")}
-            >
-              <AvatarImage src={m.avatar_url ?? undefined} alt={m.display_name} />
-              <AvatarFallback className={textSize}>
-                {initials(m.display_name)}
-              </AvatarFallback>
-            </Avatar>
+              fallbackClassName={textSize}
+            />
           ))}
           {remaining > 0 && (
             <div
@@ -77,12 +75,7 @@ export function MemberAvatarStack({
         <div className="space-y-1">
           {members.map((m) => (
             <div key={m.user_id} className="flex items-center gap-2">
-              <Avatar className="h-5 w-5">
-                <AvatarImage src={m.avatar_url ?? undefined} />
-                <AvatarFallback className="text-[8px]">
-                  {initials(m.display_name)}
-                </AvatarFallback>
-              </Avatar>
+              <UserAvatar avatarUrl={m.avatar_url} name={m.display_name} className="h-5 w-5" fallbackClassName="text-[8px]" />
               <span className="text-xs">{m.display_name}</span>
             </div>
           ))}

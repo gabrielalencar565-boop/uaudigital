@@ -18,7 +18,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/avatar/UserAvatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -189,12 +189,7 @@ export function TaskTrashPanel({ onClose, isAdmin = false }: { onClose: () => vo
                       "hover:bg-accent/50 transition-colors"
                     )}
                   >
-                    <Avatar className="h-8 w-8 shrink-0">
-                      <AvatarImage src={member?.avatar_url ?? undefined} />
-                      <AvatarFallback className="text-xs">
-                        {initials(member?.display_name ?? "?")}
-                      </AvatarFallback>
-                    </Avatar>
+                    <UserAvatar avatarUrl={member?.avatar_url} name={member?.display_name} className="h-8 w-8 shrink-0" fallbackClassName="text-xs" />
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">

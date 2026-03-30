@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Video, Star, Trophy } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/avatar/UserAvatar";
 
 type ScoreRow = {
   user_id: string;
@@ -129,12 +129,7 @@ export function AnnualShowcasePanel({
             </div>
 
             {/* Avatar */}
-            <Avatar className={`${isTop3 ? "h-16 w-16" : "h-14 w-14"} shadow-sm`}>
-              <AvatarImage src={member?.avatar_url ?? undefined} />
-              <AvatarFallback className="text-sm font-semibold">
-                {initials(member?.display_name ?? "?")}
-              </AvatarFallback>
-            </Avatar>
+            <UserAvatar avatarUrl={member?.avatar_url} name={member?.display_name} className={`${isTop3 ? "h-16 w-16" : "h-14 w-14"} shadow-sm`} fallbackClassName="text-sm font-semibold" />
 
             {/* Name */}
             <p className="text-sm font-semibold leading-tight truncate w-full">

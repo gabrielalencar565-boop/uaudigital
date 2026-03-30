@@ -10,6 +10,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { DndContext, DragEndEvent, DragOverlay, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
 import { Badge } from "@/components/ui/badge";
+import { UserAvatar } from "@/components/avatar/UserAvatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -20,7 +21,6 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
@@ -1151,10 +1151,7 @@ export function AgendaPanel() {
                   {team.filter(m => m.is_active).map(m => (
                     <SelectItem key={m.user_id} value={m.user_id}>
                       <span className="flex items-center gap-2">
-                        <Avatar className="h-5 w-5">
-                          <AvatarImage src={m.avatar_url ?? undefined} />
-                          <AvatarFallback className="text-[9px] bg-primary/10 text-primary">{initials(m.display_name)}</AvatarFallback>
-                        </Avatar>
+                        <UserAvatar avatarUrl={m.avatar_url} name={m.display_name} className="h-5 w-5" fallbackClassName="text-[9px] bg-primary/10 text-primary" />
                         {m.display_name}
                       </span>
                     </SelectItem>
