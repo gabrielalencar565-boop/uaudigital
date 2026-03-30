@@ -111,12 +111,10 @@ export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaP
 
   const varClientesAbs = clientesRecorrentes - prevClientesRecorrentes;
 
-  const receitaTransacoes = monthTxs.filter((t) => t.type === "entrada").reduce((s, t) => s + Number(t.amount), 0);
+  const receitaTransacoes = allMonthTxsForRevenue.reduce((s, t) => s + Number(t.amount), 0);
   const totalDespesa = monthTxs.filter((t) => t.type === "saida").reduce((s, t) => s + Number(t.amount), 0);
 
-  // Caixa inicial (carried from previous month) is added to revenue
-  const caixaAnterior = caixaInicial ?? 0;
-  const totalReceita = receitaTransacoes + caixaAnterior;
+  const totalReceita = receitaTransacoes;
 
   const lucro = totalReceita - totalDespesa;
   const margemLucro = totalReceita > 0 ? (lucro / totalReceita) * 100 : 0;
