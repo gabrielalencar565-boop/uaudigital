@@ -150,9 +150,10 @@ export function useNotificationSound() {
         .limit(20),
       (supabase as any)
         .from("pm_tasks")
-        .select("id, title, created_by, assignee_id, updated_at")
+        .select("id, title, created_by, assignee_id, updated_at, parent_task_id")
         .eq("assignee_id", user.id)
         .neq("created_by", user.id)
+        .is("parent_task_id", null)
         .gte("updated_at", since)
         .order("updated_at", { ascending: true })
         .limit(20),
