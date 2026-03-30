@@ -172,17 +172,49 @@ export function FinLancamentosTab() {
   }, [transactions]);
   const caixaFinal = caixaFinalTx ? Number(caixaFinalTx.amount) : null;
 
-  // Caixa inicial = previous month's caixa final (from allTxs)
-  const caixaInicial = useMemo(() => {
+  // Caixa inicial = transaction with description "Caixa Inicial" in current month
+  const caixaInicialTx = useMemo(() => {
+    return transactions.find((t) =>
+      (t.category === "caixa" || t.type === "caixa") &&
+      t.description?.toLowerCase().includes("inicial")
+    );
+  }, [transactions]);
+  const caixaInicial = caixaInicialTx ? Number(caixaInicialTx.amount) : null;
+
+  // Previous month's caixa final value (to auto-seed caixa inicial)
+  const prevCaixaFinalValue = useMemo(() => {
     const pm = month - 1;
-    if (pm < 1) return null;
+    const py = pm < 1 ? year - 1 : year;
+    const prevM = pm < 1 ? 12 : pm;
     const prevCaixaFinal = allTxs.find((t) => {
       if (t.category !== "caixa" && t.type !== "caixa") return false;
       if (t.description?.toLowerCase().includes("inicial")) return false;
-      return new Date(t.date).getMonth() + 1 === pm;
+      const d = new Date(t.date);
+      return d.getMonth() + 1 === prevM && d.getFullYear() === py;
     });
     return prevCaixaFinal ? Number(prevCaixaFinal.amount) : null;
-  }, [allTxs, month]);
+  }, [allTxs, month, year]);
+
+  // Auto-seed: create "Caixa Inicial" on 1st day when prev month has caixa final but current month has no caixa inicial
+  const seededRef = useRef<string>("");
+  useEffect(() => {
+    const key = `${year}-${month}`;
+    if (seededRef.current === key) return;
+    if (txQ.isLoading || allTxQ.isLoading) return;
+    seededRef.current = key;
+    if (caixaInicialTx) return; // already exists
+    if (prevCaixaFinalValue == null) return; // no prev caixa final
+    const firstDay = `${year}-${String(month).padStart(2, "0")}-01`;
+    upsertTx.mutate({
+      description: "Caixa Inicial",
+      amount: prevCaixaFinalValue,
+      date: firstDay,
+      type: "caixa",
+      category: "caixa",
+      status: "confirmado",
+      source: "auto",
+    } as any);
+  }, [year, month, caixaInicialTx, prevCaixaFinalValue, txQ.isLoading, allTxQ.isLoading]);
 
   const openNew = () => { setEditingTx(null); setForm(emptyForm); setDialogOpen(true); };
   const openEdit = (tx: FinTransaction) => {
