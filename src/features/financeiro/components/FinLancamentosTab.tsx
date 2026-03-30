@@ -1,5 +1,5 @@
-import { useState, useRef, useMemo, useCallback } from "react";
-import { Plus, Upload, ArrowUpCircle, ArrowDownCircle, Eye, Pencil, Trash2, FileSpreadsheet, Check, X, DollarSign, TrendingUp, TrendingDown } from "lucide-react";
+import { useState, useRef, useMemo, useCallback, useEffect } from "react";
+import { Plus, Upload, ArrowUpCircle, ArrowDownCircle, Eye, Pencil, Trash2, FileSpreadsheet, Check, X, DollarSign, TrendingUp, TrendingDown, ArrowUp, ArrowDown, ChevronsUpDown, Undo2, Redo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -82,12 +82,22 @@ function InlineCategoryCell({ tx, isEditing, onStartEdit, onSave }: { tx: FinTra
   );
 }
 
+type SortField = "date" | "amount" | "category";
+type SortDir = "asc" | "desc";
+type UndoEntry = { tx: FinTransaction; field: string; oldValue: any; newValue: any };
+
 export function FinLancamentosTab() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  // Undo / Redo stacks
+  const [undoStack, setUndoStack] = useState<UndoEntry[]>([]);
+  const [redoStack, setRedoStack] = useState<UndoEntry[]>([]);
 
   const txQ = useFinTransactions(year, month);
   const allTxQ = useFinAllTransactions(year);
@@ -113,13 +123,38 @@ export function FinLancamentosTab() {
   const [form, setForm] = useState(emptyForm);
 
   const filtered = useMemo(() => {
-    return transactions.filter((t) => {
+    let list = transactions.filter((t) => {
       if (t.type === "caixa" || t.category === "caixa") return false;
       if (typeFilter !== "all" && t.type !== typeFilter) return false;
       if (statusFilter !== "all" && t.status !== statusFilter) return false;
       return true;
     });
-  }, [transactions, typeFilter, statusFilter]);
+    if (sortField) {
+      list = [...list].sort((a, b) => {
+        let cmp = 0;
+        if (sortField === "date") cmp = a.date.localeCompare(b.date);
+        else if (sortField === "amount") cmp = Number(a.amount) - Number(b.amount);
+        else if (sortField === "category") cmp = (a.category ?? "").localeCompare(b.category ?? "");
+        return sortDir === "asc" ? cmp : -cmp;
+      });
+    }
+    return list;
+  }, [transactions, typeFilter, statusFilter, sortField, sortDir]);
+
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) {
+      if (sortDir === "desc") setSortDir("asc");
+      else { setSortField(null); setSortDir("desc"); }
+    } else {
+      setSortField(field);
+      setSortDir("desc");
+    }
+  };
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return <ChevronsUpDown className="inline ml-1 h-3 w-3 text-muted-foreground/50" />;
+    return sortDir === "desc" ? <ArrowDown className="inline ml-1 h-3 w-3 text-primary" /> : <ArrowUp className="inline ml-1 h-3 w-3 text-primary" />;
+  };
 
   const totalEntradas = filtered.filter((t) => t.type === "entrada").reduce((s, t) => s + Number(t.amount), 0);
   const totalSaidas = filtered.filter((t) => t.type === "saida").reduce((s, t) => s + Number(t.amount), 0);
@@ -165,10 +200,46 @@ export function FinLancamentosTab() {
   const inlineSave = useCallback((tx: FinTransaction, field: string, value: any) => {
     setEditingCell(null);
     const updates: any = { id: tx.id, description: tx.description, amount: tx.amount, date: tx.date, type: tx.type, category: tx.category, status: tx.status, notes: tx.notes };
+    const oldValue = field === "category" ? tx.category : (tx as any)[field];
     if (field === "category") { updates.category = value; updates.type = getTypeFromCategory(value); } else { updates[field] = value; }
-    if (updates[field] === (tx as any)[field] && field !== "category") return;
+    if (value === oldValue && field !== "category") return;
+    setUndoStack(prev => [...prev, { tx, field, oldValue, newValue: value }]);
+    setRedoStack([]);
     upsertTx.mutate(updates);
   }, [upsertTx]);
+
+  const applyUndoRedo = useCallback((entry: UndoEntry, valueToApply: any) => {
+    const updates: any = { id: entry.tx.id, description: entry.tx.description, amount: entry.tx.amount, date: entry.tx.date, type: entry.tx.type, category: entry.tx.category, status: entry.tx.status, notes: entry.tx.notes };
+    if (entry.field === "category") { updates.category = valueToApply; updates.type = getTypeFromCategory(valueToApply); } else { updates[entry.field] = valueToApply; }
+    upsertTx.mutate(updates);
+  }, [upsertTx]);
+
+  const handleUndo = useCallback(() => {
+    if (undoStack.length === 0) return;
+    const entry = undoStack[undoStack.length - 1];
+    setUndoStack(prev => prev.slice(0, -1));
+    setRedoStack(prev => [...prev, entry]);
+    applyUndoRedo(entry, entry.oldValue);
+    toast.info("Ação desfeita");
+  }, [undoStack, applyUndoRedo]);
+
+  const handleRedo = useCallback(() => {
+    if (redoStack.length === 0) return;
+    const entry = redoStack[redoStack.length - 1];
+    setRedoStack(prev => prev.slice(0, -1));
+    setUndoStack(prev => [...prev, entry]);
+    applyUndoRedo(entry, entry.newValue);
+    toast.info("Ação refeita");
+  }, [redoStack, applyUndoRedo]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) { e.preventDefault(); handleUndo(); }
+      if ((e.ctrlKey || e.metaKey) && (e.key === "y" || (e.key === "z" && e.shiftKey))) { e.preventDefault(); handleRedo(); }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [handleUndo, handleRedo]);
 
   const parseXlsx = (data: ArrayBuffer): CSVRow[] => {
     const wb = XLSX.read(data, { type: "array" });
@@ -257,6 +328,8 @@ export function FinLancamentosTab() {
             </SelectContent>
           </Select>
           <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" onChange={handleFileImport} className="hidden" />
+          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={handleUndo} disabled={undoStack.length === 0} title="Desfazer (Ctrl+Z)"><Undo2 className="h-4 w-4" /></Button>
+          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={handleRedo} disabled={redoStack.length === 0} title="Refazer (Ctrl+Shift+Z)"><Redo2 className="h-4 w-4" /></Button>
           <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}><FileSpreadsheet className="mr-1 h-4 w-4" /> Importar</Button>
           <Button size="sm" onClick={openNew}><Plus className="mr-1 h-4 w-4" /> Novo</Button>
         </div>
@@ -295,10 +368,10 @@ export function FinLancamentosTab() {
               <thead>
                 <tr className="border-b bg-muted/30">
                   <th className="px-4 py-3 w-10" />
-                  <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Data</th>
+                  <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => toggleSort("date")}>Data<SortIcon field="date" /></th>
                   <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Descrição</th>
-                  <th className="px-4 py-3 text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Valor</th>
-                  <th className="px-4 py-3 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Categoria</th>
+                  <th className="px-4 py-3 text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => toggleSort("amount")}>Valor<SortIcon field="amount" /></th>
+                  <th className="px-4 py-3 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => toggleSort("category")}>Categoria<SortIcon field="category" /></th>
                   <th className="px-4 py-3 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Origem</th>
                   <th className="px-4 py-3 w-16" />
                 </tr>
