@@ -418,20 +418,80 @@ export function DayViewPanel() {
   };
 
   const unifiedTasks = useMemo(() => {
-    const agendaTasks: UnifiedTask[] = (tasksQ.data ?? []).map(t => ({
+    // Group pm scoring snapshots (pm:taskId:stage:userId) into a single entry
+    const rawAgenda = tasksQ.data ?? [];
+    const pmSnapshotGroups = new Map<string, typeof rawAgenda>();
+    const nonSnapshotTasks: typeof rawAgenda = [];
+
+    for (const t of rawAgenda) {
+      const desc = t.description ?? "";
+      // Match pm:<taskId>:<stage>:<userId> pattern (4-part)
+      const parts = desc.startsWith("pm:") ? desc.split(":") : null;
+      if (parts && parts.length >= 4) {
+        // Group key = pm:<taskId>:<stage>
+        const groupKey = `${parts[0]}:${parts[1]}:${parts[2]}`;
+        const group = pmSnapshotGroups.get(groupKey) ?? [];
+        group.push(t);
+        pmSnapshotGroups.set(groupKey, group);
+      } else {
+        nonSnapshotTasks.push(t);
+      }
+    }
+
+    // Build unified tasks from non-snapshot tasks
+    const agendaTasks: UnifiedTask[] = nonSnapshotTasks.map(t => ({
       ...t,
       source: "agenda" as const,
     }));
 
+    // Merge each pm snapshot group into a single unified task
+    for (const [groupKey, group] of pmSnapshotGroups) {
+      const first = group[0];
+      // Use group key as ID to avoid duplicates
+      const mergedId = `agenda_pm_${groupKey}`;
+      agendaTasks.push({
+        id: mergedId,
+        client_id: first.client_id,
+        assigned_user_id: first.assigned_user_id,
+        due_date: first.due_date,
+        status: first.status,
+        stage: first.stage,
+        title: first.title,
+        is_extra_demand: first.is_extra_demand,
+        completed_at: first.completed_at,
+        source: "agenda" as const,
+      });
+
+      // Register all users as assignees for this merged task
+      const members: { user_id: string; display_name: string; avatar_url?: string | null }[] = [];
+      const seen = new Set<string>();
+      for (const t of group) {
+        if (!seen.has(t.assigned_user_id)) {
+          const m = teamByUserId.get(t.assigned_user_id);
+          if (m) {
+            members.push({ user_id: m.user_id, display_name: m.display_name, avatar_url: m.avatar_url });
+          }
+          seen.add(t.assigned_user_id);
+        }
+      }
+      if (members.length > 0) {
+        assigneesByTaskId.set(mergedId, members);
+      }
+    }
+
     // pm_tasks that DON'T have a snapshot in the agenda tasks (avoid duplicates)
-    const agendaDescriptions = new Set(agendaTasks.map(t => t.title).filter(Boolean));
     const childCounts = pmChildCountQ.data ?? new Map<string, number>();
+    // Collect all pm task IDs that already have snapshots
+    const snapshotPmIds = new Set<string>();
+    for (const key of pmSnapshotGroups.keys()) {
+      const parts = key.split(":");
+      if (parts[1]) snapshotPmIds.add(parts[1]);
+    }
     
     const pmTasks: UnifiedTask[] = (pmTasksQ.data ?? [])
       .filter(t => {
         // Skip if there's already an agenda snapshot for this pm_task
-        const pmDesc = `pm:${t.id}:`;
-        return !(tasksQ.data ?? []).some(at => at.description?.startsWith(pmDesc));
+        return !snapshotPmIds.has(t.id);
       })
       .map(t => ({
         id: `pm_${t.id}`,
