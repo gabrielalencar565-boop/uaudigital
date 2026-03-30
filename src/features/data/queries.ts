@@ -3,6 +3,7 @@ import { endOfMonth, format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { MAGIC_STAGES, STAGES, type StageKey } from "@/lib/uau";
 import { normalizeAvatarUrl } from "@/lib/avatar-url";
+import { useSession } from "@/hooks/use-session";
 
 function dueDate27(year: number, month: number) {
   return `${year}-${String(month).padStart(2, "0")}-27`;
@@ -103,9 +104,11 @@ export function perfTotal(p: PerfRow) {
 }
 
 export function useProfiles(options?: { enabled?: boolean }) {
+  const { user, loading } = useSession();
+
   return useQuery({
-    enabled: options?.enabled ?? true,
-    queryKey: ["profiles"],
+    enabled: (options?.enabled ?? true) && !loading && !!user,
+    queryKey: ["profiles", user?.id ?? "anon"],
     queryFn: async (): Promise<ProfileRow[]> => {
       const { data, error } = await supabase
         .from("profiles")
@@ -118,8 +121,11 @@ export function useProfiles(options?: { enabled?: boolean }) {
 }
 
 export function useTeamMembers() {
+  const { user, loading } = useSession();
+
   return useQuery({
-    queryKey: ["team_members"],
+    enabled: !loading && !!user,
+    queryKey: ["team_members", user?.id ?? "anon"],
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     queryFn: async (): Promise<TeamMemberRow[]> => {
