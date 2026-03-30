@@ -237,6 +237,19 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   const [linkExistingTask, setLinkExistingTask] = useState<{ id: string; due_date: string; title: string } | null>(null);
   const [pendingAdvance, setPendingAdvance] = useState<{ completedStage: string; nextStage: string } | null>(null);
 
+  // Pending split state (for planejamento → design/video linking)
+  const [pendingSplit, setPendingSplit] = useState<{
+    stage: string;
+    stageLabel: string;
+    children: PmTask[];
+    postType: string;
+    snapshotDueDate: string;
+    nextDueDate: string;
+    clientName: string;
+    monthLabel: string | null;
+    remainingSplits: { stage: string; stageLabel: string; children: PmTask[]; postType: string }[];
+  } | null>(null);
+
   // Possible next stages from flow
   // Extra demands go straight to entrega after revisão
   const rawNextStages = getNextStages(flowConfig, task.stage_current);
@@ -486,7 +499,109 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     toast.success(`Revertido para ${stageLabel(prevStage)}`);
   };
 
-  const handleConcluido = async () => {
+  // ── Split task helper (creates or links to existing agenda task) ──
+  const executeSplitTask = async (
+    stage: string, stageLabel_: string, children: PmTask[], postType: string,
+    dueDate: string, clientName: string, monthLabel: string | null, linkedTaskId?: string
+  ) => {
+    const fixedAssignee = getFixedAssignee(stageAssignees, stage, task.client_id);
+    const fixedWatchers_ = getFixedWatchers(stageAssignees, stage, task.client_id);
+
+    if (linkedTaskId) {
+      // Link to existing task: update it and transfer children
+      const linkedUpdates: any = { id: linkedTaskId, status_global: "backlog" as any };
+      if (fixedAssignee !== undefined) {
+        linkedUpdates.assignee_id = fixedAssignee;
+        linkedUpdates.watchers = fixedWatchers_;
+      }
+      updateTask.mutate(linkedUpdates);
+      for (const child of children) {
+        const childUpdates: any = {
+          id: child.id,
+          parent_task_id: linkedTaskId,
+          stage_current: stage as any,
+          status_global: "backlog" as any,
+        };
+        if (fixedAssignee !== undefined) {
+          childUpdates.assignee_id = fixedAssignee;
+          childUpdates.watchers = fixedWatchers_;
+        }
+        updateTask.mutate(childUpdates as any);
+      }
+    } else {
+      // Create new task
+      const title = monthLabel
+        ? `${clientName} - ${stageLabel_} - ${monthLabel}`
+        : `${clientName} - ${stageLabel_}`;
+      const newTask = await createTask.mutateAsync({
+        client_id: task.client_id,
+        title,
+        description: task.description ?? undefined,
+        stage_current: stage,
+        due_date: dueDate,
+        assignee_id: fixedAssignee !== undefined ? (fixedAssignee ?? undefined) : (task.assignee_id ?? undefined),
+        watchers: fixedAssignee !== undefined ? fixedWatchers_ : (task.watchers ?? []),
+        priority: task.priority,
+        project_id: task.project_id ?? undefined,
+        tags: task.tags ?? [],
+        is_extra_demand: task.is_extra_demand,
+        status_global: "backlog",
+        post_type: postType,
+      });
+      for (const child of children) {
+        const childUpdates: any = {
+          id: child.id,
+          parent_task_id: newTask.id,
+          stage_current: stage as any,
+          status_global: "backlog" as any,
+        };
+        if (fixedAssignee !== undefined) {
+          childUpdates.assignee_id = fixedAssignee;
+          childUpdates.watchers = fixedWatchers_;
+        }
+        updateTask.mutate(childUpdates as any);
+      }
+    }
+  };
+
+  const processSplitQueue = async (
+    splits: { stage: string; stageLabel: string; children: PmTask[]; postType: string }[],
+    snapshotDueDate: string, nextDueDate: string, clientName: string, monthLabel: string | null
+  ) => {
+    if (splits.length === 0) {
+      toast.success("Planejamento concluído! Tarefas criadas.");
+      return;
+    }
+
+    const [current, ...remaining] = splits;
+
+    // Check for existing agenda task for this stage
+    const existing = await findExistingAgendaTaskForStage(current.stage, snapshotDueDate);
+    if (existing) {
+      // Store pending split info and show link dialog
+      setPendingSplit({
+        stage: current.stage,
+        stageLabel: current.stageLabel,
+        children: current.children,
+        postType: current.postType,
+        snapshotDueDate,
+        nextDueDate,
+        clientName,
+        monthLabel,
+        remainingSplits: remaining,
+      });
+      setLinkExistingTask(existing);
+      setLinkDialogOpen(true);
+      return;
+    }
+
+    // No existing task — create directly
+    await executeSplitTask(current.stage, current.stageLabel, current.children, current.postType, nextDueDate, clientName, monthLabel);
+
+    // Process remaining splits
+    await processSplitQueue(remaining, snapshotDueDate, nextDueDate, clientName, monthLabel);
+  };
+
     if (isDone) return;
     const completedStage = task.stage_current;
 
@@ -548,49 +663,13 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         }
         const nextDueDate = newDueDate ?? format(addDays(new Date(snapshotDueDate + "T12:00:00"), 1), "yyyy-MM-dd");
 
-        const createSplitTask = async (stage: string, stageLabel_: string, children: PmTask[], postType: string) => {
-          const fixedAssignee = getFixedAssignee(stageAssignees, stage, task.client_id);
-          const fixedWatchers_ = getFixedWatchers(stageAssignees, stage, task.client_id);
-          const title = monthLabel
-            ? `${clientName} - ${stageLabel_} - ${monthLabel}`
-            : `${clientName} - ${stageLabel_}`;
+        // Build split list
+        const splits: { stage: string; stageLabel: string; children: PmTask[]; postType: string }[] = [];
+        if (hasVideo) splits.push({ stage: "edicao_videos", stageLabel: "Vídeo", children: videoChildren, postType: "video" });
+        if (hasDesign) splits.push({ stage: "design", stageLabel: "Design", children: designChildren, postType: "design" });
 
-          const newTask = await createTask.mutateAsync({
-            client_id: task.client_id,
-            title,
-            description: task.description ?? undefined,
-            stage_current: stage,
-            due_date: nextDueDate,
-            assignee_id: fixedAssignee !== undefined ? (fixedAssignee ?? undefined) : (task.assignee_id ?? undefined),
-            watchers: fixedAssignee !== undefined ? fixedWatchers_ : (task.watchers ?? []),
-            priority: task.priority,
-            project_id: task.project_id ?? undefined,
-            tags: task.tags ?? [],
-            is_extra_demand: task.is_extra_demand,
-            status_global: "backlog",
-            post_type: postType,
-          });
-
-          // Transfer children to new task
-          for (const child of children) {
-            const childUpdates: any = {
-              id: child.id,
-              parent_task_id: newTask.id,
-              stage_current: stage as any,
-              status_global: "backlog" as any,
-            };
-            if (fixedAssignee !== undefined) {
-              childUpdates.assignee_id = fixedAssignee;
-              childUpdates.watchers = fixedWatchers_;
-            }
-            updateTask.mutate(childUpdates as any);
-          }
-        };
-
-        if (hasVideo) await createSplitTask("edicao_videos", "Vídeo", videoChildren, "video");
-        if (hasDesign) await createSplitTask("design", "Design", designChildren, "design");
-
-        toast.success("Planejamento concluído! Tarefas de Vídeo e Design criadas.");
+        // Process splits sequentially, checking for existing tasks
+        await processSplitQueue(splits, snapshotDueDate, nextDueDate, clientName, monthLabel);
         return;
       }
     }
@@ -1175,15 +1254,31 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
               {/* Link or Date dialog for existing agenda tasks */}
               <LinkOrDateDialog
                 open={linkDialogOpen}
-                onClose={() => { setLinkDialogOpen(false); setLinkExistingTask(null); setPendingAdvance(null); }}
+                onClose={() => { setLinkDialogOpen(false); setLinkExistingTask(null); setPendingAdvance(null); setPendingSplit(null); }}
                 existingTask={linkExistingTask}
-                onLink={(dueDate) => {
-                  if (pendingAdvance) doAdvance(pendingAdvance.completedStage, pendingAdvance.nextStage, dueDate, linkExistingTask?.id);
-                  setLinkDialogOpen(false); setLinkExistingTask(null); setPendingAdvance(null);
+                onLink={async (dueDate) => {
+                  if (pendingSplit) {
+                    // Handle split linking
+                    const s = pendingSplit;
+                    await executeSplitTask(s.stage, s.stageLabel, s.children, s.postType, dueDate, s.clientName, s.monthLabel, linkExistingTask?.id);
+                    setLinkDialogOpen(false); setLinkExistingTask(null); setPendingSplit(null);
+                    // Process remaining splits
+                    await processSplitQueue(s.remainingSplits, s.snapshotDueDate, s.nextDueDate, s.clientName, s.monthLabel);
+                  } else if (pendingAdvance) {
+                    doAdvance(pendingAdvance.completedStage, pendingAdvance.nextStage, dueDate, linkExistingTask?.id);
+                    setLinkDialogOpen(false); setLinkExistingTask(null); setPendingAdvance(null);
+                  }
                 }}
-                onSelectDate={(dueDate) => {
-                  if (pendingAdvance) doAdvance(pendingAdvance.completedStage, pendingAdvance.nextStage, dueDate);
-                  setLinkDialogOpen(false); setLinkExistingTask(null); setPendingAdvance(null);
+                onSelectDate={async (dueDate) => {
+                  if (pendingSplit) {
+                    const s = pendingSplit;
+                    await executeSplitTask(s.stage, s.stageLabel, s.children, s.postType, dueDate, s.clientName, s.monthLabel);
+                    setLinkDialogOpen(false); setLinkExistingTask(null); setPendingSplit(null);
+                    await processSplitQueue(s.remainingSplits, s.snapshotDueDate, s.nextDueDate, s.clientName, s.monthLabel);
+                  } else if (pendingAdvance) {
+                    doAdvance(pendingAdvance.completedStage, pendingAdvance.nextStage, dueDate);
+                    setLinkDialogOpen(false); setLinkExistingTask(null); setPendingAdvance(null);
+                  }
                 }}
               />
             </>
