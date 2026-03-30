@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { normalizeAvatarUrl } from "@/lib/avatar-url";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
