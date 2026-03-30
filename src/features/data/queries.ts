@@ -126,8 +126,11 @@ export function useProfiles(options?: { enabled?: boolean }) {
 }
 
 export function useTeamMembers() {
+  const { user, loading } = useSession();
+  const isReady = !loading && !!user;
   return useQuery({
-    queryKey: ["team_members"],
+    enabled: isReady,
+    queryKey: ["team_members", user?.id ?? "anon"],
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     queryFn: async (): Promise<TeamMemberRow[]> => {
