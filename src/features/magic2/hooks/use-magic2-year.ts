@@ -75,7 +75,7 @@ export function useMagic2Year(year: number) {
           const completedDay = completed ? getBrazilDay(completed.toISOString()) : null;
           const due = 27;
 
-          if (completed && completed <= due) doneOnTime += 1;
+          if (completedDay !== null && completedDay <= 27) doneOnTime += 1;
           else doneLate += 1;
         }
 
