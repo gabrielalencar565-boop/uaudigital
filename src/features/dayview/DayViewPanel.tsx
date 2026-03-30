@@ -351,6 +351,7 @@ export function DayViewPanel() {
       display_name: string;
       avatar_url?: string | null;
     }[]>();
+    // Legacy task_assignees
     for (const a of assigneesQ.data ?? []) {
       const member = teamByUserId.get(a.user_id);
       if (!member) continue;
@@ -362,8 +363,24 @@ export function DayViewPanel() {
       });
       map.set(a.task_id, prev);
     }
+    // PM tasks: assignee + watchers
+    for (const t of pmTasksQ.data ?? []) {
+      const key = `pm_${t.id}`;
+      const members: { user_id: string; display_name: string; avatar_url?: string | null }[] = [];
+      const seen = new Set<string>();
+      if (t.assignee_id) {
+        const m = teamByUserId.get(t.assignee_id);
+        if (m) { members.push({ user_id: m.user_id, display_name: m.display_name, avatar_url: m.avatar_url }); seen.add(m.user_id); }
+      }
+      for (const wId of t.watchers ?? []) {
+        if (seen.has(wId)) continue;
+        const m = teamByUserId.get(wId);
+        if (m) { members.push({ user_id: m.user_id, display_name: m.display_name, avatar_url: m.avatar_url }); seen.add(m.user_id); }
+      }
+      if (members.length > 0) map.set(key, members);
+    }
     return map;
-  }, [assigneesQ.data, teamByUserId]);
+  }, [assigneesQ.data, teamByUserId, pmTasksQ.data]);
 
   // Se estamos visualizando o mês atual, mostrar tarefas de hoje
   const isCurrentMonth = selectedYear === now.getFullYear() && selectedMonth === now.getMonth() + 1;
