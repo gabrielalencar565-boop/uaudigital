@@ -251,7 +251,7 @@ export function MonthlyAnalysisSection() {
       // 3. Consistência (weight: 0.3) — weekly distribution
       const weekBuckets = [0, 0, 0, 0]; // week1(1-7), week2(8-14), week3(15-21), week4(22+)
       for (const s of completedStages) {
-        const day = s.completed_at ? new Date(s.completed_at).getDate() : 28;
+        const day = s.completed_at ? getBrazilDay(s.completed_at) : 28;
         if (day <= 7) weekBuckets[0]++;
         else if (day <= 14) weekBuckets[1]++;
         else if (day <= 21) weekBuckets[2]++;

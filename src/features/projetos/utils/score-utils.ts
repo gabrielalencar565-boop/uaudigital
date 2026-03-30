@@ -58,7 +58,7 @@ export function computeMonthScore(monthStages: any[], totalClients: number, mont
   if (doneStages > 0) {
     const dayBuckets: Record<number, number> = {};
     monthStages.filter(s => s.completed && s.completed_at).forEach(s => {
-      const d = new Date(s.completed_at!).getDate();
+      const d = getBrazilDay(s.completed_at!);
       dayBuckets[d] = (dayBuckets[d] ?? 0) + 1;
     });
     const counts = Object.values(dayBuckets);
