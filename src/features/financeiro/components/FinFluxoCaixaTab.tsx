@@ -80,8 +80,14 @@ export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaP
 
   const varClientesAbs = clientesRecorrentes - prevClientesRecorrentes;
 
-  const totalReceita = monthTxs.filter((t) => t.type === "entrada").reduce((s, t) => s + Number(t.amount), 0);
+  const receitaTransacoes = monthTxs.filter((t) => t.type === "entrada").reduce((s, t) => s + Number(t.amount), 0);
   const totalDespesa = monthTxs.filter((t) => t.type === "saida").reduce((s, t) => s + Number(t.amount), 0);
+
+  // Caixa final do mês anterior entra como receita do mês vigente
+  const prevBalanceForRevenue = balances.find(b => b.month === month - 1);
+  const caixaAnterior = prevBalanceForRevenue ? Number(prevBalanceForRevenue.amount) : 0;
+  const totalReceita = receitaTransacoes + caixaAnterior;
+
   const lucro = totalReceita - totalDespesa;
   const margemLucro = totalReceita > 0 ? (lucro / totalReceita) * 100 : 0;
 
@@ -91,7 +97,9 @@ export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaP
   const caixaInicial = prevBalance ? Number(prevBalance.amount) : null;
 
   // Previous month financial comparison (reuse prevMonthTxs from above)
-  const prevReceita = prevMonthTxs.filter((t) => t.type === "entrada").reduce((s, t) => s + Number(t.amount), 0);
+  const prevReceitaTransacoes = prevMonthTxs.filter((t) => t.type === "entrada").reduce((s, t) => s + Number(t.amount), 0);
+  const prevCaixaAnterior = month >= 3 ? Number(balances.find(b => b.month === month - 2)?.amount ?? 0) : 0;
+  const prevReceita = prevReceitaTransacoes + prevCaixaAnterior;
   const prevDespesa = prevMonthTxs.filter((t) => t.type === "saida").reduce((s, t) => s + Number(t.amount), 0);
   const prevLucro = prevReceita - prevDespesa;
   const varReceita = prevReceita > 0 ? ((totalReceita - prevReceita) / prevReceita) * 100 : null;
