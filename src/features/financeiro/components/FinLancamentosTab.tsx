@@ -373,28 +373,10 @@ export function FinLancamentosTab() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.1s" }}>
-        <FinMetricCard
-          title="Caixa Inicial"
-          value={Math.abs(caixaInicial ?? 0)}
-          prefix={caixaInicial != null ? (caixaInicial < 0 ? "-R$" : "R$") : ""}
-          tone={caixaInicial != null ? "default" : "muted"}
-          icon={<DollarSign className="h-4 w-4" />}
-        >
-          {caixaInicial == null && <p className="text-[10px] text-muted-foreground mt-1">Sem caixa anterior</p>}
-        </FinMetricCard>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.1s" }}>
         <FinMetricCard title="Entradas" value={totalEntradas} tone="success" variation={varEntradas} icon={<ArrowUpCircle className="h-4 w-4" />} />
         <FinMetricCard title="Saídas" value={totalSaidas} tone="danger" variation={varSaidas} icon={<ArrowDownCircle className="h-4 w-4" />} />
         <FinMetricCard title="Saldo do Mês" value={Math.abs(saldoMes)} prefix={saldoMes < 0 ? "-R$" : "R$"} tone={saldoMes >= 0 ? "success" : "danger"} icon={<DollarSign className="h-4 w-4" />} />
-        <FinMetricCard
-          title="Caixa Final"
-          value={Math.abs(caixaFinal ?? 0)}
-          prefix={caixaFinal != null ? (caixaFinal < 0 ? "-R$" : "R$") : ""}
-          tone={caixaFinal != null ? (caixaFinal >= 0 ? "success" : "danger") : "muted"}
-          icon={<DollarSign className="h-4 w-4" />}
-        >
-          {caixaFinal == null && <p className="text-[10px] text-muted-foreground mt-1">Lance com categoria "Caixa"</p>}
-        </FinMetricCard>
       </div>
 
       {/* Table */}
