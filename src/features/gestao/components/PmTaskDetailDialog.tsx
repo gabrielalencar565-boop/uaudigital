@@ -237,6 +237,19 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   const [linkExistingTask, setLinkExistingTask] = useState<{ id: string; due_date: string; title: string } | null>(null);
   const [pendingAdvance, setPendingAdvance] = useState<{ completedStage: string; nextStage: string } | null>(null);
 
+  // Pending split state (for planejamento → design/video linking)
+  const [pendingSplit, setPendingSplit] = useState<{
+    stage: string;
+    stageLabel: string;
+    children: PmTask[];
+    postType: string;
+    snapshotDueDate: string;
+    nextDueDate: string;
+    clientName: string;
+    monthLabel: string | null;
+    remainingSplits: { stage: string; stageLabel: string; children: PmTask[]; postType: string }[];
+  } | null>(null);
+
   // Possible next stages from flow
   // Extra demands go straight to entrega after revisão
   const rawNextStages = getNextStages(flowConfig, task.stage_current);
