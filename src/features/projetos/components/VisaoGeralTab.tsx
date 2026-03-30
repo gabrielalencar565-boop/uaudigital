@@ -26,7 +26,7 @@ import {
   eachDayOfInterval, isToday, subMonths, addMonths, getDaysInMonth
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/avatar/UserAvatar";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
@@ -746,10 +746,7 @@ export function VisaoGeralTab() {
                   {/* Members avatars */}
                   <div className="flex -space-x-2">
                     {members.slice(0, 6).map((m: any) => (
-                      <Avatar key={m.user_id} className="h-8 w-8 border-2 border-white/30">
-                        <AvatarImage src={m.avatar_url ?? undefined} alt={m.display_name} />
-                        <AvatarFallback className="text-[10px] bg-white/20 text-white">{initials(m.display_name)}</AvatarFallback>
-                      </Avatar>
+                      <UserAvatar key={m.user_id} avatarUrl={m.avatar_url} name={m.display_name} className="h-8 w-8 border-2 border-white/30" fallbackClassName="text-[10px] bg-white/20 text-white" />
                     ))}
                     {members.length > 6 && (
                       <div className="h-8 w-8 flex items-center justify-center rounded-full border-2 border-white/30 bg-white/20 text-white text-[10px] font-medium">
@@ -1400,10 +1397,7 @@ export function VisaoGeralTab() {
                 {allTeam.map((m) => (
                   <label key={m.user_id} className="flex items-center gap-3 px-2 py-1.5 rounded-xl hover:bg-muted/50 cursor-pointer">
                     <Checkbox checked={selectedUsers.includes(m.user_id)} onCheckedChange={() => toggleUser(m.user_id)} />
-                    <Avatar className="h-6 w-6">
-                      <AvatarImage src={m.avatar_url ?? undefined} />
-                      <AvatarFallback className="text-[9px]">{initials(m.display_name)}</AvatarFallback>
-                    </Avatar>
+                    <UserAvatar avatarUrl={m.avatar_url} name={m.display_name} className="h-6 w-6" fallbackClassName="text-[9px]" />
                     <span className="text-sm">{m.display_name}</span>
                   </label>
                 ))}

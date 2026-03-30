@@ -1,15 +1,15 @@
 import { useMemo } from "react";
-import { normalizeAvatarUrl } from "@/lib/avatar-url";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { AtSign, MessageSquare } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/avatar/UserAvatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { useAvatarDirectory } from "@/hooks/use-avatar-directory";
 import { useSession } from "@/hooks/use-session";
 
 function initials(n: string) {
@@ -37,13 +37,7 @@ export function MentionsWidget({ onOpenTask }: MentionsWidgetProps) {
     },
   });
 
-  const membersQ = useQuery({
-    queryKey: ["team_members_mentions"],
-    queryFn: async () => {
-      const { data } = await supabase.from("team_members").select("user_id, display_name, avatar_url").eq("is_active", true);
-      return (data ?? []).map(tm => ({ ...tm, avatar_url: normalizeAvatarUrl(tm.avatar_url) ?? null }));
-    },
-  });
+  const avatarDirectory = useAvatarDirectory({ includeProfiles: false });
 
   const tasksQ = useQuery({
     queryKey: ["pm_tasks_mentions"],
@@ -58,11 +52,11 @@ export function MentionsWidget({ onOpenTask }: MentionsWidgetProps) {
 
   const membersMap = useMemo(() => {
     const m: Record<string, { name: string; avatar?: string }> = {};
-    (membersQ.data ?? []).forEach((tm: any) => {
-      m[tm.user_id] = { name: tm.display_name, avatar: tm.avatar_url ?? undefined };
+    avatarDirectory.users.forEach((tm) => {
+      m[tm.userId] = { name: tm.displayName, avatar: tm.avatarUrl ?? undefined };
     });
     return m;
-  }, [membersQ.data]);
+  }, [avatarDirectory.users]);
 
   const tasksMap = useMemo(() => {
     const m: Record<string, string> = {};
@@ -106,12 +100,7 @@ export function MentionsWidget({ onOpenTask }: MentionsWidgetProps) {
                     onClick={() => m.task_id && onOpenTask?.(m.task_id)}
                     className="flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-accent/30"
                   >
-                    <Avatar className="mt-0.5 h-7 w-7 shrink-0">
-                      <AvatarImage src={author?.avatar} />
-                      <AvatarFallback className="text-[9px]">
-                        {initials(author?.name ?? "?")}
-                      </AvatarFallback>
-                    </Avatar>
+                    <UserAvatar avatarUrl={author?.avatar} name={author?.name} className="mt-0.5 h-7 w-7 shrink-0" fallbackClassName="text-[9px]" />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-baseline gap-1.5">
                         <span className="text-[13px] font-medium text-foreground">

@@ -1,4 +1,4 @@
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/avatar/UserAvatar";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import type { TeamMemberRow } from "@/features/data/queries";
@@ -56,12 +56,7 @@ export function MemberMultiSelect({
                 disabled && "opacity-50 cursor-not-allowed"
               )}
             >
-              <Avatar className="h-6 w-6">
-                <AvatarImage src={m.avatar_url ?? undefined} />
-                <AvatarFallback className="text-[10px]">
-                  {initials(m.display_name)}
-                </AvatarFallback>
-              </Avatar>
+              <UserAvatar avatarUrl={m.avatar_url} name={m.display_name} className="h-6 w-6" fallbackClassName="text-[10px]" />
               <span className="text-sm">{m.display_name}</span>
             </button>
           );

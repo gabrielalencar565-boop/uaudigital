@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/avatar/UserAvatar";
 import { ProgressRing } from "@/components/metrics/ProgressRing";
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -227,10 +227,7 @@ export function AnnualDashboard({
                         const member = teamById.get(p.dataKey);
                         return (
                           <div key={p.dataKey} className="flex items-center gap-2 py-0.5">
-                            <Avatar className="h-5 w-5">
-                              <AvatarImage src={member?.avatar_url ?? undefined} />
-                              <AvatarFallback className="text-[8px]">{initials(member?.display_name ?? "?")}</AvatarFallback>
-                            </Avatar>
+                            <UserAvatar avatarUrl={member?.avatar_url} name={member?.display_name} className="h-5 w-5" fallbackClassName="text-[8px]" />
                             <span className="text-muted-foreground">{member?.display_name?.split(" ")[0] ?? "?"}</span>
                             <span className="ml-auto font-bold tabular-nums" style={{ color: p.stroke }}>{p.value} pts</span>
                           </div>
@@ -247,10 +244,7 @@ export function AnnualDashboard({
                       const member = teamById.get(entry.dataKey);
                       return (
                         <div key={entry.dataKey} className="flex items-center gap-1.5">
-                          <Avatar className="h-5 w-5 border" style={{ borderColor: entry.color }}>
-                            <AvatarImage src={member?.avatar_url ?? undefined} />
-                            <AvatarFallback className="text-[8px]">{initials(member?.display_name ?? "?")}</AvatarFallback>
-                          </Avatar>
+                          <UserAvatar avatarUrl={member?.avatar_url} name={member?.display_name} className="h-5 w-5 border" fallbackClassName="text-[8px]" />
                           <span className="text-xs text-muted-foreground">{member?.display_name?.split(" ")[0] ?? "?"}</span>
                         </div>
                       );
@@ -326,10 +320,7 @@ export function AnnualDashboard({
               const pct = (c.total / maxTotal) * 100;
               return (
                 <div key={c.category} className="flex items-center gap-3">
-                  <Avatar className="h-8 w-8 shrink-0 border-2 border-primary/40">
-                    <AvatarImage src={member?.avatar_url ?? undefined} />
-                    <AvatarFallback className="text-[10px] font-bold">{initials(member?.display_name ?? "?")}</AvatarFallback>
-                  </Avatar>
+                  <UserAvatar avatarUrl={member?.avatar_url} name={member?.display_name} className="h-8 w-8 shrink-0 border-2 border-primary/40" fallbackClassName="text-[10px] font-bold" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-0.5">
                       <span className="text-xs font-medium text-foreground truncate">{c.category}</span>
