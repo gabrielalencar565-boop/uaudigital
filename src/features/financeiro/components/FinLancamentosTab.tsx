@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { useFinTransactions, useUpsertFinTransaction, useDeleteFinTransaction, useBulkInsertTransactions, useFinAllTransactions, useFinOpeningBalances, useUpsertOpeningBalance, type FinTransaction } from "../hooks/use-financial-data";
+import { useFinTransactions, useUpsertFinTransaction, useDeleteFinTransaction, useBulkInsertTransactions, useFinAllTransactions, type FinTransaction } from "../hooks/use-financial-data";
 import { format } from "date-fns";
 import { FinMonthYearSelector } from "./FinMonthYearSelector";
 import { FinMetricCard } from "./FinMetricCard";
@@ -104,11 +104,8 @@ export function FinLancamentosTab() {
   const upsertTx = useUpsertFinTransaction();
   const deleteTx = useDeleteFinTransaction();
   const bulkInsert = useBulkInsertTransactions();
-  const balancesQ = useFinOpeningBalances(year);
-  const upsertBalance = useUpsertOpeningBalance();
 
   const transactions = txQ.data ?? [];
-  const balances = balancesQ.data ?? [];
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTx, setEditingTx] = useState<FinTransaction | null>(null);
@@ -116,16 +113,13 @@ export function FinLancamentosTab() {
   const [csvRows, setCsvRows] = useState<CSVRow[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
   const [editingCell, setEditingCell] = useState<EditingCell>(null);
-  const [editingCaixa, setEditingCaixa] = useState(false);
-  const [caixaInput, setCaixaInput] = useState("");
 
   const emptyForm = { description: "", amount: "", date: format(new Date(), "yyyy-MM-dd"), category: "", notes: "" };
   const [form, setForm] = useState(emptyForm);
 
   const filtered = useMemo(() => {
     let list = transactions.filter((t) => {
-      if (t.type === "caixa" || t.category === "caixa") return false;
-      if (typeFilter !== "all" && t.type !== typeFilter) return false;
+      if (typeFilter !== "all" && t.type !== typeFilter && !(t.category === "caixa")) return false;
       if (statusFilter !== "all" && t.status !== statusFilter) return false;
       return true;
     });
@@ -172,14 +166,11 @@ export function FinLancamentosTab() {
   const varEntradas = prevEntradas > 0 ? ((totalEntradas - prevEntradas) / prevEntradas) * 100 : null;
   const varSaidas = prevSaidas > 0 ? ((totalSaidas - prevSaidas) / prevSaidas) * 100 : null;
 
-  const currentBalance = balances.find(b => b.month === month);
-  const caixaFinal = currentBalance ? Number(currentBalance.amount) : null;
-
-  const saveCaixaFinal = () => {
-    const val = parseFloat(caixaInput);
-    if (isNaN(val)) return;
-    upsertBalance.mutate({ year, month, amount: val, ...(currentBalance ? { id: currentBalance.id } : {}) }, { onSuccess: () => setEditingCaixa(false) });
-  };
+  // Caixa final from transactions with category "caixa"
+  const caixaFinalTx = useMemo(() => {
+    return transactions.find((t) => (t.category === "caixa" || t.type === "caixa") && !t.description?.toLowerCase().includes("inicial"));
+  }, [transactions]);
+  const caixaFinal = caixaFinalTx ? Number(caixaFinalTx.amount) : null;
 
   const openNew = () => { setEditingTx(null); setForm(emptyForm); setDialogOpen(true); };
   const openEdit = (tx: FinTransaction) => {
@@ -346,17 +337,8 @@ export function FinLancamentosTab() {
           prefix={caixaFinal != null ? (caixaFinal < 0 ? "-R$" : "R$") : ""}
           tone={caixaFinal != null ? (caixaFinal >= 0 ? "success" : "danger") : "muted"}
           icon={<DollarSign className="h-4 w-4" />}
-          onClick={() => { setEditingCaixa(true); setCaixaInput(caixaFinal != null ? String(caixaFinal) : ""); }}
         >
-          {editingCaixa ? (
-            <div className="flex items-center gap-1 mt-2" onClick={e => e.stopPropagation()}>
-              <Input type="number" step="0.01" value={caixaInput} onChange={e => setCaixaInput(e.target.value)} className="h-7 w-32 text-sm" autoFocus onKeyDown={e => { if (e.key === "Enter") saveCaixaFinal(); if (e.key === "Escape") setEditingCaixa(false); }} />
-              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={saveCaixaFinal}><Check className="h-3 w-3" /></Button>
-              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingCaixa(false)}><X className="h-3 w-3" /></Button>
-            </div>
-          ) : caixaFinal == null ? (
-            <p className="text-[10px] text-muted-foreground mt-1">Clique para definir</p>
-          ) : null}
+          {caixaFinal == null && <p className="text-[10px] text-muted-foreground mt-1">Lance com categoria "Caixa"</p>}
         </FinMetricCard>
       </div>
 
@@ -380,8 +362,8 @@ export function FinLancamentosTab() {
                 {filtered.map((t) => (
                   <tr key={t.id} className="border-b last:border-0 hover:bg-accent/30 transition-colors group">
                     <td className="px-4 py-2.5">
-                      <div className={`h-6 w-6 rounded-full flex items-center justify-center ${t.type === "entrada" ? "bg-success/10" : "bg-destructive/10"}`}>
-                        {t.type === "entrada" ? <ArrowUpCircle className="h-3.5 w-3.5 text-success" /> : <ArrowDownCircle className="h-3.5 w-3.5 text-destructive" />}
+                      <div className={`h-6 w-6 rounded-full flex items-center justify-center ${t.category === "caixa" ? "bg-primary/10" : t.type === "entrada" ? "bg-success/10" : "bg-destructive/10"}`}>
+                        {t.category === "caixa" ? <DollarSign className="h-3.5 w-3.5 text-primary" /> : t.type === "entrada" ? <ArrowUpCircle className="h-3.5 w-3.5 text-success" /> : <ArrowDownCircle className="h-3.5 w-3.5 text-destructive" />}
                       </div>
                     </td>
                     <td className="px-4 py-2.5">
