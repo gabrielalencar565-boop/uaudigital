@@ -200,10 +200,46 @@ export function FinLancamentosTab() {
   const inlineSave = useCallback((tx: FinTransaction, field: string, value: any) => {
     setEditingCell(null);
     const updates: any = { id: tx.id, description: tx.description, amount: tx.amount, date: tx.date, type: tx.type, category: tx.category, status: tx.status, notes: tx.notes };
+    const oldValue = field === "category" ? tx.category : (tx as any)[field];
     if (field === "category") { updates.category = value; updates.type = getTypeFromCategory(value); } else { updates[field] = value; }
-    if (updates[field] === (tx as any)[field] && field !== "category") return;
+    if (value === oldValue && field !== "category") return;
+    setUndoStack(prev => [...prev, { tx, field, oldValue, newValue: value }]);
+    setRedoStack([]);
     upsertTx.mutate(updates);
   }, [upsertTx]);
+
+  const applyUndoRedo = useCallback((entry: UndoEntry, valueToApply: any) => {
+    const updates: any = { id: entry.tx.id, description: entry.tx.description, amount: entry.tx.amount, date: entry.tx.date, type: entry.tx.type, category: entry.tx.category, status: entry.tx.status, notes: entry.tx.notes };
+    if (entry.field === "category") { updates.category = valueToApply; updates.type = getTypeFromCategory(valueToApply); } else { updates[entry.field] = valueToApply; }
+    upsertTx.mutate(updates);
+  }, [upsertTx]);
+
+  const handleUndo = useCallback(() => {
+    if (undoStack.length === 0) return;
+    const entry = undoStack[undoStack.length - 1];
+    setUndoStack(prev => prev.slice(0, -1));
+    setRedoStack(prev => [...prev, entry]);
+    applyUndoRedo(entry, entry.oldValue);
+    toast.info("Ação desfeita");
+  }, [undoStack, applyUndoRedo]);
+
+  const handleRedo = useCallback(() => {
+    if (redoStack.length === 0) return;
+    const entry = redoStack[redoStack.length - 1];
+    setRedoStack(prev => prev.slice(0, -1));
+    setUndoStack(prev => [...prev, entry]);
+    applyUndoRedo(entry, entry.newValue);
+    toast.info("Ação refeita");
+  }, [redoStack, applyUndoRedo]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) { e.preventDefault(); handleUndo(); }
+      if ((e.ctrlKey || e.metaKey) && (e.key === "y" || (e.key === "z" && e.shiftKey))) { e.preventDefault(); handleRedo(); }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [handleUndo, handleRedo]);
 
   const parseXlsx = (data: ArrayBuffer): CSVRow[] => {
     const wb = XLSX.read(data, { type: "array" });
