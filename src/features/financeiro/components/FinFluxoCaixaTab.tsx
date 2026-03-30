@@ -87,6 +87,14 @@ export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaP
     return new Set(monthTxs.filter(t => t.type === "entrada").map(t => t.description)).size;
   }, [monthTxs]);
 
+  // Receita includes caixa inicial (same logic as Lançamentos)
+  const allMonthTxsForRevenue = useMemo(() => {
+    return transactions.filter(t => {
+      const d = new Date(t.date);
+      return d.getMonth() + 1 === month && (t.type === "entrada" || t.description?.toLowerCase().includes("caixa inicial"));
+    });
+  }, [transactions, month]);
+
   // Previous month for comparison
   const prevMonthTxs = useMemo(() => {
     const pm = month - 1;
