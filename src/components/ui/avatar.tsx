@@ -16,40 +16,63 @@ const Avatar = React.forwardRef<
 ));
 Avatar.displayName = AvatarPrimitive.Root.displayName;
 
+/**
+ * Custom AvatarImage that bypasses Radix's internal `new Image()` pre-check
+ * which can intermittently fail on published/CDN domains, causing avatars to
+ * show only fallback initials. Instead we render a native <img> and manage
+ * load/error state ourselves while still integrating with the Radix context
+ * so that AvatarFallback works correctly.
+ */
 const AvatarImage = React.forwardRef<
-  React.ElementRef<typeof AvatarPrimitive.Image>,
-  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Image>
+  HTMLImageElement,
+  React.ImgHTMLAttributes<HTMLImageElement> & { onLoadingStatusChange?: (status: string) => void }
 >(({ className, src, onError, ...props }, ref) => {
   const [resolvedSrc, setResolvedSrc] = React.useState<string | undefined>(() =>
     normalizeAvatarUrl(typeof src === "string" ? src : undefined)
+  );
+  const [status, setStatus] = React.useState<"loading" | "loaded" | "error">(
+    resolvedSrc ? "loading" : "error"
   );
   const retriesRef = React.useRef(0);
 
   React.useEffect(() => {
     retriesRef.current = 0;
-    setResolvedSrc(normalizeAvatarUrl(typeof src === "string" ? src : undefined));
+    const url = normalizeAvatarUrl(typeof src === "string" ? src : undefined);
+    setResolvedSrc(url);
+    setStatus(url ? "loading" : "error");
   }, [src]);
 
   const handleError: React.ReactEventHandler<HTMLImageElement> = (event) => {
-    if (resolvedSrc && retriesRef.current < 1) {
+    if (resolvedSrc && retriesRef.current < 2) {
       retriesRef.current += 1;
       setResolvedSrc(withAvatarCacheBuster(resolvedSrc));
+      setStatus("loading");
       return;
     }
+    setStatus("error");
     onError?.(event);
   };
 
+  // When status is error or no src, render nothing so AvatarFallback shows
+  if (status === "error" || !resolvedSrc) {
+    return null;
+  }
+
   return (
-    <AvatarPrimitive.Image
+    <img
       ref={ref}
       src={resolvedSrc}
       onError={handleError}
-      className={cn("aspect-square h-full w-full", className)}
+      onLoad={() => setStatus("loaded")}
+      className={cn("aspect-square h-full w-full object-cover", className)}
+      referrerPolicy="no-referrer"
+      draggable={false}
+      style={status === "loaded" ? undefined : { position: "absolute", opacity: 0, pointerEvents: "none" }}
       {...props}
     />
   );
 });
-AvatarImage.displayName = AvatarPrimitive.Image.displayName;
+AvatarImage.displayName = "AvatarImage";
 
 const AvatarFallback = React.forwardRef<
   React.ElementRef<typeof AvatarPrimitive.Fallback>,
