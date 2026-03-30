@@ -1,0 +1,1 @@
+ALTER TABLE public.app_settings ADD COLUMN IF NOT EXISTS sidebar_logo_dark_url text DEFAULT NULL;
