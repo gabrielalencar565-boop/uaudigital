@@ -76,6 +76,7 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
 
     queryClient.invalidateQueries({ queryKey: ["my_profile"] });
     queryClient.invalidateQueries({ queryKey: ["team_members"] });
+    queryClient.invalidateQueries({ queryKey: ["profiles"] });
     toast.success("Foto atualizada!");
 
     if (fileInputRef.current) fileInputRef.current.value = "";

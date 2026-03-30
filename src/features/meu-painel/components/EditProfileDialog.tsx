@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, Controller } from "react-hook-form";
@@ -41,6 +42,7 @@ interface EditProfileDialogProps {
 
 export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDialogProps) {
   const { user } = useSession();
+  const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -141,6 +143,10 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
 
       setAvatarUrl(nextAvatarUrl);
       setAvatarFile(null);
+      // Invalidar todos os caches que consomem dados de avatar
+      queryClient.invalidateQueries({ queryKey: ["my_profile"] });
+      queryClient.invalidateQueries({ queryKey: ["team_members"] });
+      queryClient.invalidateQueries({ queryKey: ["profiles"] });
       toast.success("Perfil atualizado!");
       onSaved?.();
       onOpenChange(false);

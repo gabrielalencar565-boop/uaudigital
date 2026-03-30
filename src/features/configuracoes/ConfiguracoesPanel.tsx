@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { normalizeAvatarUrl } from "@/lib/avatar-url";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -38,6 +39,7 @@ function initials(name: string) {
 
 export function ConfiguracoesPanel() {
   const { user } = useSession();
+  const queryClient = useQueryClient();
   const { isAdmin } = useRole(user?.id);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -170,6 +172,10 @@ export function ConfiguracoesPanel() {
 
       setAvatarUrl(nextAvatarUrl);
       setAvatarFile(null);
+      // Invalidar todos os caches que consomem dados de avatar
+      queryClient.invalidateQueries({ queryKey: ["my_profile"] });
+      queryClient.invalidateQueries({ queryKey: ["team_members"] });
+      queryClient.invalidateQueries({ queryKey: ["profiles"] });
       toast.success("Configurações salvas");
     } catch (e: any) {
       toast.error(e?.message ?? "Erro ao salvar");
