@@ -736,7 +736,7 @@ export function DayViewPanel() {
             {overdueTasks.length > 0 && <div className="space-y-2">
                 <p className="text-xs font-medium text-destructive uppercase tracking-wide">Atrasadas</p>
                 {overdueTasks.map((t) => {
-            const members = assigneesByTaskId.get(t.id) ?? [];
+            const members = allAssigneesByTaskId.get(t.id) ?? [];
             const person = teamByUserId.get(t.assigned_user_id);
             const client = clientsById.get(t.client_id);
             const stageLabel = STAGES.find((s) => s.key === t.stage)?.label ?? t.stage;
@@ -795,7 +795,7 @@ export function DayViewPanel() {
                   {isCurrentMonth ? "Hoje" : "Pendentes"}
                 </p>
                 {todayPendingTasks.map((t) => {
-            const members = assigneesByTaskId.get(t.id) ?? [];
+            const members = allAssigneesByTaskId.get(t.id) ?? [];
             const person = teamByUserId.get(t.assigned_user_id);
             const client = clientsById.get(t.client_id);
             const stageLabel = STAGES.find((s) => s.key === t.stage)?.label ?? t.stage;
@@ -851,7 +851,7 @@ export function DayViewPanel() {
             {todayCompletedTasks.length > 0 && <div className="space-y-2">
                 <p className="text-xs font-medium text-green-600 dark:text-green-400 uppercase tracking-wide">Concluídas</p>
                 {todayCompletedTasks.map((t) => {
-            const members = assigneesByTaskId.get(t.id) ?? [];
+            const members = allAssigneesByTaskId.get(t.id) ?? [];
             const person = teamByUserId.get(t.assigned_user_id);
             const client = clientsById.get(t.client_id);
             const stageLabel = STAGES.find((s) => s.key === t.stage)?.label ?? t.stage;
