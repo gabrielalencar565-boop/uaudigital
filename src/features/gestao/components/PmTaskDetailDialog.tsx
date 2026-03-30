@@ -499,7 +499,109 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     toast.success(`Revertido para ${stageLabel(prevStage)}`);
   };
 
-  const handleConcluido = async () => {
+  // ── Split task helper (creates or links to existing agenda task) ──
+  const executeSplitTask = async (
+    stage: string, stageLabel_: string, children: PmTask[], postType: string,
+    dueDate: string, clientName: string, monthLabel: string | null, linkedTaskId?: string
+  ) => {
+    const fixedAssignee = getFixedAssignee(stageAssignees, stage, task.client_id);
+    const fixedWatchers_ = getFixedWatchers(stageAssignees, stage, task.client_id);
+
+    if (linkedTaskId) {
+      // Link to existing task: update it and transfer children
+      const linkedUpdates: any = { id: linkedTaskId, status_global: "backlog" as any };
+      if (fixedAssignee !== undefined) {
+        linkedUpdates.assignee_id = fixedAssignee;
+        linkedUpdates.watchers = fixedWatchers_;
+      }
+      updateTask.mutate(linkedUpdates);
+      for (const child of children) {
+        const childUpdates: any = {
+          id: child.id,
+          parent_task_id: linkedTaskId,
+          stage_current: stage as any,
+          status_global: "backlog" as any,
+        };
+        if (fixedAssignee !== undefined) {
+          childUpdates.assignee_id = fixedAssignee;
+          childUpdates.watchers = fixedWatchers_;
+        }
+        updateTask.mutate(childUpdates as any);
+      }
+    } else {
+      // Create new task
+      const title = monthLabel
+        ? `${clientName} - ${stageLabel_} - ${monthLabel}`
+        : `${clientName} - ${stageLabel_}`;
+      const newTask = await createTask.mutateAsync({
+        client_id: task.client_id,
+        title,
+        description: task.description ?? undefined,
+        stage_current: stage,
+        due_date: dueDate,
+        assignee_id: fixedAssignee !== undefined ? (fixedAssignee ?? undefined) : (task.assignee_id ?? undefined),
+        watchers: fixedAssignee !== undefined ? fixedWatchers_ : (task.watchers ?? []),
+        priority: task.priority,
+        project_id: task.project_id ?? undefined,
+        tags: task.tags ?? [],
+        is_extra_demand: task.is_extra_demand,
+        status_global: "backlog",
+        post_type: postType,
+      });
+      for (const child of children) {
+        const childUpdates: any = {
+          id: child.id,
+          parent_task_id: newTask.id,
+          stage_current: stage as any,
+          status_global: "backlog" as any,
+        };
+        if (fixedAssignee !== undefined) {
+          childUpdates.assignee_id = fixedAssignee;
+          childUpdates.watchers = fixedWatchers_;
+        }
+        updateTask.mutate(childUpdates as any);
+      }
+    }
+  };
+
+  const processSplitQueue = async (
+    splits: { stage: string; stageLabel: string; children: PmTask[]; postType: string }[],
+    snapshotDueDate: string, nextDueDate: string, clientName: string, monthLabel: string | null
+  ) => {
+    if (splits.length === 0) {
+      toast.success("Planejamento concluído! Tarefas criadas.");
+      return;
+    }
+
+    const [current, ...remaining] = splits;
+
+    // Check for existing agenda task for this stage
+    const existing = await findExistingAgendaTaskForStage(current.stage, snapshotDueDate);
+    if (existing) {
+      // Store pending split info and show link dialog
+      setPendingSplit({
+        stage: current.stage,
+        stageLabel: current.stageLabel,
+        children: current.children,
+        postType: current.postType,
+        snapshotDueDate,
+        nextDueDate,
+        clientName,
+        monthLabel,
+        remainingSplits: remaining,
+      });
+      setLinkExistingTask(existing);
+      setLinkDialogOpen(true);
+      return;
+    }
+
+    // No existing task — create directly
+    await executeSplitTask(current.stage, current.stageLabel, current.children, current.postType, nextDueDate, clientName, monthLabel);
+
+    // Process remaining splits
+    await processSplitQueue(remaining, snapshotDueDate, nextDueDate, clientName, monthLabel);
+  };
+
     if (isDone) return;
     const completedStage = task.stage_current;
 
