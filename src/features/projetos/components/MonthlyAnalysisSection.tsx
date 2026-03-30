@@ -226,7 +226,7 @@ export function MonthlyAnalysisSection() {
       // 1. Proatividade (weight: 0.4)
       let weightedSum = 0;
       for (const s of completedStages) {
-        const day = s.completed_at ? new Date(s.completed_at).getDate() : 28;
+        const day = s.completed_at ? getBrazilDay(s.completed_at) : 28;
         if (day <= 10) weightedSum += 1.0;
         else if (day <= 20) weightedSum += 0.6;
         else if (day <= 27) weightedSum += 0.3;
