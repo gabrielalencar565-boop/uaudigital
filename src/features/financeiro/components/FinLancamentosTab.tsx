@@ -362,8 +362,8 @@ export function FinLancamentosTab() {
                 {filtered.map((t) => (
                   <tr key={t.id} className="border-b last:border-0 hover:bg-accent/30 transition-colors group">
                     <td className="px-4 py-2.5">
-                      <div className={`h-6 w-6 rounded-full flex items-center justify-center ${t.type === "entrada" ? "bg-success/10" : "bg-destructive/10"}`}>
-                        {t.type === "entrada" ? <ArrowUpCircle className="h-3.5 w-3.5 text-success" /> : <ArrowDownCircle className="h-3.5 w-3.5 text-destructive" />}
+                      <div className={`h-6 w-6 rounded-full flex items-center justify-center ${t.category === "caixa" ? "bg-primary/10" : t.type === "entrada" ? "bg-success/10" : "bg-destructive/10"}`}>
+                        {t.category === "caixa" ? <DollarSign className="h-3.5 w-3.5 text-primary" /> : t.type === "entrada" ? <ArrowUpCircle className="h-3.5 w-3.5 text-success" /> : <ArrowDownCircle className="h-3.5 w-3.5 text-destructive" />}
                       </div>
                     </td>
                     <td className="px-4 py-2.5">
