@@ -418,20 +418,64 @@ export function DayViewPanel() {
   };
 
   const unifiedTasks = useMemo(() => {
-    const agendaTasks: UnifiedTask[] = (tasksQ.data ?? []).map(t => ({
+    // Group pm scoring snapshots (pm:taskId:stage:userId) into a single entry
+    const rawAgenda = tasksQ.data ?? [];
+    const pmSnapshotGroups = new Map<string, typeof rawAgenda>();
+    const nonSnapshotTasks: typeof rawAgenda = [];
+
+    for (const t of rawAgenda) {
+      const desc = t.description ?? "";
+      // Match pm:<taskId>:<stage>:<userId> pattern (4-part)
+      const parts = desc.startsWith("pm:") ? desc.split(":") : null;
+      if (parts && parts.length >= 4) {
+        // Group key = pm:<taskId>:<stage>
+        const groupKey = `${parts[0]}:${parts[1]}:${parts[2]}`;
+        const group = pmSnapshotGroups.get(groupKey) ?? [];
+        group.push(t);
+        pmSnapshotGroups.set(groupKey, group);
+      } else {
+        nonSnapshotTasks.push(t);
+      }
+    }
+
+    // Build unified tasks from non-snapshot tasks
+    const agendaTasks: UnifiedTask[] = nonSnapshotTasks.map(t => ({
       ...t,
       source: "agenda" as const,
     }));
 
+    // Merge each pm snapshot group into a single unified task
+    for (const [groupKey, group] of pmSnapshotGroups) {
+      const first = group[0];
+      // Use group key as ID to avoid duplicates
+      const mergedId = `agenda_pm_${groupKey}`;
+      agendaTasks.push({
+        id: mergedId,
+        client_id: first.client_id,
+        assigned_user_id: first.assigned_user_id,
+        due_date: first.due_date,
+        status: first.status,
+        stage: first.stage,
+        title: first.title,
+        is_extra_demand: first.is_extra_demand,
+        completed_at: first.completed_at,
+        source: "agenda" as const,
+      });
+    }
+
     // pm_tasks that DON'T have a snapshot in the agenda tasks (avoid duplicates)
-    const agendaDescriptions = new Set(agendaTasks.map(t => t.title).filter(Boolean));
     const childCounts = pmChildCountQ.data ?? new Map<string, number>();
+    // Collect all pm task IDs that already have snapshots
+    const snapshotPmIds = new Set<string>();
+    for (const key of pmSnapshotGroups.keys()) {
+      const parts = key.split(":");
+      if (parts[1]) snapshotPmIds.add(parts[1]);
+    }
     
     const pmTasks: UnifiedTask[] = (pmTasksQ.data ?? [])
       .filter(t => {
         // Skip if there's already an agenda snapshot for this pm_task
-        const pmDesc = `pm:${t.id}:`;
-        return !(tasksQ.data ?? []).some(at => at.description?.startsWith(pmDesc));
+        return !snapshotPmIds.has(t.id);
       })
       .map(t => ({
         id: `pm_${t.id}`,
@@ -447,12 +491,42 @@ export function DayViewPanel() {
         subtaskCount: childCounts.get(t.id) ?? 0,
       }));
 
-    return [...agendaTasks, ...pmTasks];
+    return { tasks: [...agendaTasks, ...pmTasks], pmSnapshotGroups };
   }, [tasksQ.data, pmTasksQ.data, pmChildCountQ.data]);
+
+  // Build merged assignees for pm snapshot groups
+  const mergedSnapshotAssignees = useMemo(() => {
+    const map = new Map<string, { user_id: string; display_name: string; avatar_url?: string | null }[]>();
+    for (const [groupKey, group] of unifiedTasks.pmSnapshotGroups) {
+      const mergedId = `agenda_pm_${groupKey}`;
+      const members: { user_id: string; display_name: string; avatar_url?: string | null }[] = [];
+      const seen = new Set<string>();
+      for (const t of group) {
+        if (!seen.has(t.assigned_user_id)) {
+          const m = teamByUserId.get(t.assigned_user_id);
+          if (m) {
+            members.push({ user_id: m.user_id, display_name: m.display_name, avatar_url: m.avatar_url });
+          }
+          seen.add(t.assigned_user_id);
+        }
+      }
+      if (members.length > 0) map.set(mergedId, members);
+    }
+    return map;
+  }, [unifiedTasks.pmSnapshotGroups, teamByUserId]);
+
+  // Combined assignees map: base + merged snapshot assignees
+  const allAssigneesByTaskId = useMemo(() => {
+    const combined = new Map(assigneesByTaskId);
+    for (const [k, v] of mergedSnapshotAssignees) {
+      combined.set(k, v);
+    }
+    return combined;
+  }, [assigneesByTaskId, mergedSnapshotAssignees]);
 
   // Tarefas de hoje (exceto concluídas - elas vão separadas)
   const todayPendingTasks = useMemo(() => {
-    const tasks = unifiedTasks.filter((t) => {
+    const tasks = unifiedTasks.tasks.filter((t) => {
       if (!t.due_date) return false;
       if (!isCurrentMonth) return t.status !== "concluido";
       return t.due_date === todayKey && t.status !== "concluido";
@@ -469,7 +543,7 @@ export function DayViewPanel() {
 
   // Tarefas concluídas de hoje
   const todayCompletedTasks = useMemo(() => {
-    const tasks = unifiedTasks.filter((t) => {
+    const tasks = unifiedTasks.tasks.filter((t) => {
       if (!t.due_date) return false;
       if (!isCurrentMonth) return t.status === "concluido";
       return t.due_date === todayKey && t.status === "concluido";
@@ -481,10 +555,10 @@ export function DayViewPanel() {
     });
   }, [unifiedTasks, todayKey, teamByUserId, isCurrentMonth]);
   const overdueTasks = useMemo(() => {
-    return unifiedTasks.filter((t) => t.status !== "concluido" && t.due_date && t.due_date < todayKey).sort((a, b) => a.due_date.localeCompare(b.due_date));
-  }, [unifiedTasks, todayKey]);
-  const completedTasksCount = useMemo(() => unifiedTasks.filter((t) => t.status === "concluido").length, [unifiedTasks]);
-  const totalTasks = unifiedTasks.length + (pmChildCountQ.data ? Array.from(pmChildCountQ.data.values()).reduce((a, b) => a + b, 0) : 0);
+    return unifiedTasks.tasks.filter((t) => t.status !== "concluido" && t.due_date && t.due_date < todayKey).sort((a, b) => a.due_date.localeCompare(b.due_date));
+  }, [unifiedTasks.tasks, todayKey]);
+  const completedTasksCount = useMemo(() => unifiedTasks.tasks.filter((t) => t.status === "concluido").length, [unifiedTasks.tasks]);
+  const totalTasks = unifiedTasks.tasks.length + (pmChildCountQ.data ? Array.from(pmChildCountQ.data.values()).reduce((a, b) => a + b, 0) : 0);
 
   // Navegação rápida para hoje
   const goToToday = () => {
@@ -662,7 +736,7 @@ export function DayViewPanel() {
             {overdueTasks.length > 0 && <div className="space-y-2">
                 <p className="text-xs font-medium text-destructive uppercase tracking-wide">Atrasadas</p>
                 {overdueTasks.map((t) => {
-            const members = assigneesByTaskId.get(t.id) ?? [];
+            const members = allAssigneesByTaskId.get(t.id) ?? [];
             const person = teamByUserId.get(t.assigned_user_id);
             const client = clientsById.get(t.client_id);
             const stageLabel = STAGES.find((s) => s.key === t.stage)?.label ?? t.stage;
@@ -721,7 +795,7 @@ export function DayViewPanel() {
                   {isCurrentMonth ? "Hoje" : "Pendentes"}
                 </p>
                 {todayPendingTasks.map((t) => {
-            const members = assigneesByTaskId.get(t.id) ?? [];
+            const members = allAssigneesByTaskId.get(t.id) ?? [];
             const person = teamByUserId.get(t.assigned_user_id);
             const client = clientsById.get(t.client_id);
             const stageLabel = STAGES.find((s) => s.key === t.stage)?.label ?? t.stage;
@@ -777,7 +851,7 @@ export function DayViewPanel() {
             {todayCompletedTasks.length > 0 && <div className="space-y-2">
                 <p className="text-xs font-medium text-green-600 dark:text-green-400 uppercase tracking-wide">Concluídas</p>
                 {todayCompletedTasks.map((t) => {
-            const members = assigneesByTaskId.get(t.id) ?? [];
+            const members = allAssigneesByTaskId.get(t.id) ?? [];
             const person = teamByUserId.get(t.assigned_user_id);
             const client = clientsById.get(t.client_id);
             const stageLabel = STAGES.find((s) => s.key === t.stage)?.label ?? t.stage;
