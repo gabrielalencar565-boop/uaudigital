@@ -177,7 +177,7 @@ export function useAppSettings() {
     queryFn: async (): Promise<AppSettingsRow | null> => {
       const { data, error } = await supabase
         .from("app_settings")
-        .select("id, logo_url, sidebar_logo_url, logo_shape, workspace_name, login_bg_images, updated_at, updated_by")
+        .select("id, logo_url, sidebar_logo_url, sidebar_logo_dark_url, logo_shape, workspace_name, login_bg_images, updated_at, updated_by")
         .eq("id", 1)
         .maybeSingle();
       if (error) throw error;
@@ -185,6 +185,7 @@ export function useAppSettings() {
       return {
         ...data,
         sidebar_logo_url: d?.sidebar_logo_url ?? null,
+        sidebar_logo_dark_url: d?.sidebar_logo_dark_url ?? null,
         login_bg_images: normalizeBgImages(d?.login_bg_images),
       } as AppSettingsRow | null;
     },
