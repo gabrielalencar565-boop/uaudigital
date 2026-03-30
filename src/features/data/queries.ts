@@ -3,6 +3,7 @@ import { endOfMonth, format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { MAGIC_STAGES, STAGES, type StageKey } from "@/lib/uau";
 import { normalizeAvatarUrl } from "@/lib/avatar-url";
+import { preloadAvatars } from "@/lib/avatar-preloader";
 import { useSession } from "@/hooks/use-session";
 
 function dueDate27(year: number, month: number) {
