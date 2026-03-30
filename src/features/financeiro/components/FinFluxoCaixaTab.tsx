@@ -97,7 +97,9 @@ export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaP
   const caixaInicial = prevBalance ? Number(prevBalance.amount) : null;
 
   // Previous month financial comparison (reuse prevMonthTxs from above)
-  const prevReceita = prevMonthTxs.filter((t) => t.type === "entrada").reduce((s, t) => s + Number(t.amount), 0);
+  const prevReceitaTransacoes = prevMonthTxs.filter((t) => t.type === "entrada").reduce((s, t) => s + Number(t.amount), 0);
+  const prevCaixaAnterior = month >= 3 ? Number(balances.find(b => b.month === month - 2)?.amount ?? 0) : 0;
+  const prevReceita = prevReceitaTransacoes + prevCaixaAnterior;
   const prevDespesa = prevMonthTxs.filter((t) => t.type === "saida").reduce((s, t) => s + Number(t.amount), 0);
   const prevLucro = prevReceita - prevDespesa;
   const varReceita = prevReceita > 0 ? ((totalReceita - prevReceita) / prevReceita) * 100 : null;
