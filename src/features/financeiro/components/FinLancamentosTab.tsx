@@ -338,17 +338,8 @@ export function FinLancamentosTab() {
           prefix={caixaFinal != null ? (caixaFinal < 0 ? "-R$" : "R$") : ""}
           tone={caixaFinal != null ? (caixaFinal >= 0 ? "success" : "danger") : "muted"}
           icon={<DollarSign className="h-4 w-4" />}
-          onClick={() => { setEditingCaixa(true); setCaixaInput(caixaFinal != null ? String(caixaFinal) : ""); }}
         >
-          {editingCaixa ? (
-            <div className="flex items-center gap-1 mt-2" onClick={e => e.stopPropagation()}>
-              <Input type="number" step="0.01" value={caixaInput} onChange={e => setCaixaInput(e.target.value)} className="h-7 w-32 text-sm" autoFocus onKeyDown={e => { if (e.key === "Enter") saveCaixaFinal(); if (e.key === "Escape") setEditingCaixa(false); }} />
-              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={saveCaixaFinal}><Check className="h-3 w-3" /></Button>
-              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingCaixa(false)}><X className="h-3 w-3" /></Button>
-            </div>
-          ) : caixaFinal == null ? (
-            <p className="text-[10px] text-muted-foreground mt-1">Clique para definir</p>
-          ) : null}
+          {caixaFinal == null && <p className="text-[10px] text-muted-foreground mt-1">Lance com categoria "Caixa"</p>}
         </FinMetricCard>
       </div>
 
