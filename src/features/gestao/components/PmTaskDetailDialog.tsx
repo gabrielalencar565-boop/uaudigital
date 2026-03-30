@@ -561,49 +561,13 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         }
         const nextDueDate = newDueDate ?? format(addDays(new Date(snapshotDueDate + "T12:00:00"), 1), "yyyy-MM-dd");
 
-        const createSplitTask = async (stage: string, stageLabel_: string, children: PmTask[], postType: string) => {
-          const fixedAssignee = getFixedAssignee(stageAssignees, stage, task.client_id);
-          const fixedWatchers_ = getFixedWatchers(stageAssignees, stage, task.client_id);
-          const title = monthLabel
-            ? `${clientName} - ${stageLabel_} - ${monthLabel}`
-            : `${clientName} - ${stageLabel_}`;
+        // Build split list
+        const splits: { stage: string; stageLabel: string; children: PmTask[]; postType: string }[] = [];
+        if (hasVideo) splits.push({ stage: "edicao_videos", stageLabel: "Vídeo", children: videoChildren, postType: "video" });
+        if (hasDesign) splits.push({ stage: "design", stageLabel: "Design", children: designChildren, postType: "design" });
 
-          const newTask = await createTask.mutateAsync({
-            client_id: task.client_id,
-            title,
-            description: task.description ?? undefined,
-            stage_current: stage,
-            due_date: nextDueDate,
-            assignee_id: fixedAssignee !== undefined ? (fixedAssignee ?? undefined) : (task.assignee_id ?? undefined),
-            watchers: fixedAssignee !== undefined ? fixedWatchers_ : (task.watchers ?? []),
-            priority: task.priority,
-            project_id: task.project_id ?? undefined,
-            tags: task.tags ?? [],
-            is_extra_demand: task.is_extra_demand,
-            status_global: "backlog",
-            post_type: postType,
-          });
-
-          // Transfer children to new task
-          for (const child of children) {
-            const childUpdates: any = {
-              id: child.id,
-              parent_task_id: newTask.id,
-              stage_current: stage as any,
-              status_global: "backlog" as any,
-            };
-            if (fixedAssignee !== undefined) {
-              childUpdates.assignee_id = fixedAssignee;
-              childUpdates.watchers = fixedWatchers_;
-            }
-            updateTask.mutate(childUpdates as any);
-          }
-        };
-
-        if (hasVideo) await createSplitTask("edicao_videos", "Vídeo", videoChildren, "video");
-        if (hasDesign) await createSplitTask("design", "Design", designChildren, "design");
-
-        toast.success("Planejamento concluído! Tarefas de Vídeo e Design criadas.");
+        // Process splits sequentially, checking for existing tasks
+        await processSplitQueue(splits, snapshotDueDate, nextDueDate, clientName, monthLabel);
         return;
       }
     }
