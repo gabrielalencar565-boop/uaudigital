@@ -19,7 +19,7 @@ import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-import { getClassification, toneColor, barColor, MONTH_SHORT, computeAnnualScores } from "@/features/projetos/utils/score-utils";
+import { getClassification, toneColor, barColor, MONTH_SHORT, computeAnnualScores, getBrazilDay } from "@/features/projetos/utils/score-utils";
 
 
 const INDICATOR_TOOLTIPS: Record<string, string> = {
@@ -105,14 +105,14 @@ export function MonthlyAnalysisSection() {
       const totalStagesMonth = totalClients * MAGIC2_STAGES.length;
       const completedStages = monthStages.filter((s: any) => s.completed).length;
       const beforeMagic = monthStages.filter((s: any) =>
-        s.completed && s.completed_at && new Date(s.completed_at).getDate() <= 27
+        s.completed && s.completed_at && getBrazilDay(s.completed_at) <= 27
       ).length;
       const pct = totalStagesMonth > 0 ? Math.round((beforeMagic / totalStagesMonth) * 100) : 0;
 
       // Magic diff
       const completedDates = monthStages
         .filter((s: any) => s.completed && s.completed_at)
-        .map((s: any) => new Date(s.completed_at!).getDate());
+        .map((s: any) => getBrazilDay(s.completed_at!));
       const lastDay = completedDates.length > 0 ? Math.max(...completedDates) : null;
       const allDone = completedStages === totalStagesMonth && totalStagesMonth > 0;
       const magicDiff = allDone && lastDay !== null ? 27 - lastDay : null;
@@ -172,14 +172,14 @@ export function MonthlyAnalysisSection() {
       let weightedSum = 0;
 
       for (const s of completedStages) {
-        const day = s.completed_at ? new Date(s.completed_at).getDate() : 28;
+        const day = s.completed_at ? getBrazilDay(s.completed_at) : 28;
         if (day <= 10) weightedSum += 1.0;
         else if (day <= 20) weightedSum += 0.6;
         else if (day <= 27) weightedSum += 0.3;
       }
 
       const before20 = completedStages.filter((s: any) => {
-        const day = s.completed_at ? new Date(s.completed_at).getDate() : 28;
+        const day = s.completed_at ? getBrazilDay(s.completed_at) : 28;
         return day <= 20;
       }).length;
 
@@ -226,7 +226,7 @@ export function MonthlyAnalysisSection() {
       // 1. Proatividade (weight: 0.4)
       let weightedSum = 0;
       for (const s of completedStages) {
-        const day = s.completed_at ? new Date(s.completed_at).getDate() : 28;
+        const day = s.completed_at ? getBrazilDay(s.completed_at) : 28;
         if (day <= 10) weightedSum += 1.0;
         else if (day <= 20) weightedSum += 0.6;
         else if (day <= 27) weightedSum += 0.3;
@@ -236,7 +236,7 @@ export function MonthlyAnalysisSection() {
       // 2. Prazo (weight: 0.3) — based on last completion day vs Magic Number
       const completedDays = completedStages
         .filter((s: any) => s.completed_at)
-        .map((s: any) => new Date(s.completed_at).getDate());
+        .map((s: any) => getBrazilDay(s.completed_at));
       const lastDay = completedDays.length > 0 ? Math.max(...completedDays) : 28;
       const allDone = completedStages.length === totalStagesMonth;
       let prazoScore: number;
@@ -251,7 +251,7 @@ export function MonthlyAnalysisSection() {
       // 3. Consistência (weight: 0.3) — weekly distribution
       const weekBuckets = [0, 0, 0, 0]; // week1(1-7), week2(8-14), week3(15-21), week4(22+)
       for (const s of completedStages) {
-        const day = s.completed_at ? new Date(s.completed_at).getDate() : 28;
+        const day = s.completed_at ? getBrazilDay(s.completed_at) : 28;
         if (day <= 7) weekBuckets[0]++;
         else if (day <= 14) weekBuckets[1]++;
         else if (day <= 21) weekBuckets[2]++;
@@ -311,7 +311,7 @@ export function MonthlyAnalysisSection() {
     // Prazo
     const completedDates = stages
       .filter(s => s.completed && s.completed_at)
-      .map(s => new Date(s.completed_at!).getDate());
+      .map(s => getBrazilDay(s.completed_at!));
     const lastDay = completedDates.length > 0 ? Math.max(...completedDates) : currentDay;
 
     let prazoScore: number;
@@ -335,7 +335,7 @@ export function MonthlyAnalysisSection() {
     if (doneStages > 0) {
       const dayBuckets: Record<number, number> = {};
       stages.filter(s => s.completed && s.completed_at).forEach(s => {
-        const d = new Date(s.completed_at!).getDate();
+        const d = getBrazilDay(s.completed_at!);
         dayBuckets[d] = (dayBuckets[d] ?? 0) + 1;
       });
       const counts = Object.values(dayBuckets);
@@ -363,7 +363,7 @@ export function MonthlyAnalysisSection() {
 
     const prevCompletedDates = prevStages
       .filter(s => s.completed && s.completed_at)
-      .map(s => new Date(s.completed_at!).getDate());
+      .map(s => getBrazilDay(s.completed_at!));
     const prevLastDay = prevCompletedDates.length > 0 ? Math.max(...prevCompletedDates) : 28;
 
     let prevPrazo: number;
@@ -380,7 +380,7 @@ export function MonthlyAnalysisSection() {
     if (prevDone > 0) {
       const dayBuckets: Record<number, number> = {};
       prevStages.filter(s => s.completed && s.completed_at).forEach(s => {
-        const d = new Date(s.completed_at!).getDate();
+        const d = getBrazilDay(s.completed_at!);
         dayBuckets[d] = (dayBuckets[d] ?? 0) + 1;
       });
       const counts = Object.values(dayBuckets);
@@ -864,13 +864,12 @@ export function MonthlyAnalysisSection() {
               {(() => {
                 const completedDatesAll = stages
                   .filter(s => s.completed && s.completed_at)
-                  .map(s => new Date(s.completed_at!));
+                  .map(s => s.completed_at!);
                 const allDone = doneStages === totalStages && totalStages > 0;
                 const magicDay = 27;
 
                 if (allDone && completedDatesAll.length > 0) {
-                  const lastDate = new Date(Math.max(...completedDatesAll.map(d => d.getTime())));
-                  const lastDay = lastDate.getDate();
+                  const lastDay = Math.max(...completedDatesAll.map(d => getBrazilDay(d)));
                   const diff = magicDay - lastDay;
                   const formattedDate = `${String(lastDay).padStart(2, "0")}/${String(month).padStart(2, "0")}`;
                   const magicDate = `${String(magicDay).padStart(2, "0")}/${String(month).padStart(2, "0")}`;
