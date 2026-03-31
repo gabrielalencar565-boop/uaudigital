@@ -65,11 +65,11 @@ export default function HealthScorePublic() {
   const [submitting, setSubmitting] = useState(false);
 
   const [formValues, setFormValues] = useState<Record<ScoreKeys, number>>({
-    resultado_percebido: 50,
-    alinhamento_estrategico: 50,
-    comunicacao_atendimento: 50,
-    qualidade_entregas: 50,
-    satisfacao_geral: 50,
+    resultado_percebido: 5,
+    alinhamento_estrategico: 5,
+    comunicacao_atendimento: 5,
+    qualidade_entregas: 5,
+    satisfacao_geral: 5,
   });
   const [formComments, setFormComments] = useState<Record<CommentKeys, string>>({
     comentario_resultado: "",
