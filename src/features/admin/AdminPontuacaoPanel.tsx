@@ -195,6 +195,12 @@ export function AdminPontuacaoPanel() {
         </p>
       </div>
 
+      <Alert className="opacity-0 border-primary/30 bg-primary/5" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.05s" }}>
+        <AlertDescription className="text-sm text-muted-foreground">
+          Alterações nos critérios afetam apenas <strong>tarefas futuras</strong>. Tarefas já concluídas mantêm a pontuação original automaticamente.
+        </AlertDescription>
+      </Alert>
+
       <Card className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.15s" }}>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Critérios por etapa</CardTitle>
