@@ -108,7 +108,11 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, av
     if (filters.clientId) list = list.filter((t) => t.client_id === filters.clientId);
     if (filters.assigneeId) {
       const fixedClients = filters.fixedAssigneeClientIds ?? new Set<string>();
-      list = list.filter((t) => t.assignee_id === filters.assigneeId || fixedClients.has(t.client_id));
+      list = list.filter((t) =>
+        t.assignee_id === filters.assigneeId ||
+        (t.watchers ?? []).includes(filters.assigneeId!) ||
+        fixedClients.has(t.client_id)
+      );
     }
     if (filters.search) {
       const q = filters.search.toLowerCase();
