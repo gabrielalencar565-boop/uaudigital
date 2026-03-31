@@ -137,8 +137,8 @@ export function HealthScoreTab() {
   };
 
   const scoreColor = (v: number) => {
-    if (v >= 80) return "text-green-500";
-    if (v >= 50) return "text-yellow-500";
+    if (v >= 8) return "text-green-500";
+    if (v >= 5) return "text-yellow-500";
     return "text-red-500";
   };
 
