@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
+import { playTrashSound } from "@/lib/notifications";
 import { useSession } from "@/hooks/use-session";
 import { useRole } from "@/hooks/use-role";
 import { useQuery } from "@tanstack/react-query";
@@ -216,7 +217,6 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
           </Select>
         </div>
       </div>
-
 
 
 
@@ -479,6 +479,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
       } else {
         await deleteTask.mutateAsync(pendingDeleteId);
       }
+      playTrashSound();
       toast.success("Tarefa removida");
     } catch (err: any) {
       toast.error(err?.message ?? "Erro ao excluir");
