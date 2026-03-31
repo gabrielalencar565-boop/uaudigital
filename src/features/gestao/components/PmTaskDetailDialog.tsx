@@ -16,13 +16,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import {
   PM_ACTIVE_STAGES, stageLabel, getStageCircleColor,
-  TAG_COLORS, parseTag, tagColor, tagDisplay
+  parseTag, tagColor, tagDisplay
 } from "../pm-constants";
 import {
   useUpdatePmTask, useCreatePmTask, usePmTasks, usePmChildTasks,
   usePmComments, usePmAttachments, usePmSyncStageCompletion,
 } from "../hooks/use-pm-data";
-import { usePmTags, useCreatePmTag, useDeletePmTag } from "../hooks/use-pm-tags";
+import { usePmTags } from "../hooks/use-pm-tags";
 import { useDefaultFlowWithDates, getNextStages, getFixedAssignee, getFixedWatchers } from "./PmStageFlowConfig";
 import { PmSubtaskList } from "./PmSubtaskList";
 import { PmPlanningSubtasks } from "./PmPlanningSubtasks";
@@ -222,7 +222,6 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
   const [newTagName, setNewTagName] = useState("");
-  const [newTagColor, setNewTagColor] = useState("blue");
   const [stageChoiceOpen, setStageChoiceOpen] = useState(false);
   const [stageChoiceOptions, setStageChoiceOptions] = useState<string[]>([]);
 
@@ -968,23 +967,6 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     }
   };
 
-  const createGlobalTag = useCreatePmTag();
-  const deleteGlobalTag = useDeletePmTag();
-
-  const addTag = async () => {
-    if (!newTagName.trim()) return;
-    const tagValue = `${newTagName.trim()}:${newTagColor}`;
-    const existing = task.tags ?? [];
-    if (!existing.some(t => parseTag(t).name === newTagName.trim())) {
-      // Create global tag if it doesn't exist
-      const alreadyGlobal = globalTags.some(gt => gt.name.toLowerCase() === newTagName.trim().toLowerCase());
-      if (!alreadyGlobal) {
-        await createGlobalTag.mutateAsync({ name: newTagName.trim(), color_key: newTagColor });
-      }
-      updateTask.mutate({ id: task.id, tags: [...existing, tagValue] } as any);
-    }
-    setNewTagName("");
-  };
   const removeTag = (tag: string) => { updateTask.mutate({ id: task.id, tags: (task.tags ?? []).filter(t => t !== tag) } as any); };
   const toggleGlobalTag = (tag: string) => {
     const existing = task.tags ?? [];
@@ -993,10 +975,6 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     } else {
       updateTask.mutate({ id: task.id, tags: [...existing, tag] } as any);
     }
-  };
-  const handleDeleteGlobalTag = (globalTag: { id: string; name: string; color_key: string }) => {
-    const tagValue = `${globalTag.name}:${globalTag.color_key}`;
-    deleteGlobalTag.mutate({ tagId: globalTag.id, tagValue });
   };
 
   return (
@@ -1136,22 +1114,9 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                   <Input
                     value={newTagName}
                     onChange={(e) => setNewTagName(e.target.value)}
-                    placeholder="Pesquise ou adicione tags..."
+                    placeholder="Pesquisar etiquetas..."
                     className="h-8 text-xs"
-                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }}
                   />
-                  {newTagName.trim() && (
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {TAG_COLORS.map(c => (
-                        <button key={c.key} className={cn("h-5 w-5 rounded-full transition-all", c.dot, newTagColor === c.key ? "ring-2 ring-offset-2 ring-offset-background ring-white/50 scale-110" : "opacity-60 hover:opacity-100")} onClick={() => setNewTagColor(c.key)} />
-                      ))}
-                    </div>
-                  )}
-                  {newTagName.trim() && !globalTags.some(gt => gt.name.toLowerCase() === newTagName.trim().toLowerCase()) && (
-                    <Button size="sm" className="mt-2 h-7 text-xs w-full" onClick={addTag}>
-                      <Plus className="h-3 w-3 mr-1" /> Criar "{newTagName.trim()}"
-                    </Button>
-                  )}
                 </div>
                 {globalTags.length > 0 && (
                   <div className="p-2 space-y-0.5">
@@ -1169,16 +1134,14 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                             <span className="text-xs flex-1">{gt.name}</span>
                             {isActive && <Check className="h-3 w-3 text-primary shrink-0" />}
                           </button>
-                          <button
-                            className="h-4 w-4 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 hover:bg-destructive/20 transition-all shrink-0"
-                            onClick={(e) => { e.stopPropagation(); handleDeleteGlobalTag(gt); }}
-                            title="Apagar etiqueta de todas as tarefas"
-                          >
-                            <X className="h-3 w-3 text-destructive" />
-                          </button>
                         </div>
                       );
                     })}
+                  </div>
+                )}
+                {globalTags.length === 0 && (
+                  <div className="p-4 text-center text-xs text-muted-foreground">
+                    Nenhuma etiqueta criada. Crie em Configurações → Pontuação.
                   </div>
                 )}
               </PopoverContent>
