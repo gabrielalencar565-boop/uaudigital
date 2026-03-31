@@ -217,7 +217,6 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
           </Select>
         </div>
       </div>
-import { playTrashSound } from "@/lib/notifications";
 
 
 
