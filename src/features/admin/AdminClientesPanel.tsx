@@ -163,8 +163,65 @@ export function AdminClientesPanel() {
         await supabase.from("client_squads" as any).insert(rows as any);
       }
 
+      // ── Auto-generate stage assignees from squad members' roles ──
+      if (editSquadIds.length > 0) {
+        try {
+          // Fetch members of the selected squads
+          const { data: squadMembers } = await supabase
+            .from("squad_members")
+            .select("user_id")
+            .in("squad_id", editSquadIds);
+
+          if (squadMembers && squadMembers.length > 0) {
+            const memberUserIds = squadMembers.map((sm: any) => sm.user_id);
+
+            // Fetch their role_title from team_members
+            const { data: teamMembers } = await supabase
+              .from("team_members")
+              .select("user_id, role_title")
+              .in("user_id", memberUserIds)
+              .eq("is_active", true);
+
+            if (teamMembers && teamMembers.length > 0) {
+              const perStage = buildAssigneesForClient(
+                teamMembers.map((tm: any) => ({
+                  user_id: tm.user_id,
+                  role_title: tm.role_title,
+                }))
+              );
+
+              if (Object.keys(perStage).length > 0) {
+                // Get default flow
+                const { data: flows } = await (supabase as any)
+                  .from("pm_stage_flows")
+                  .select("id, stage_assignees, is_default")
+                  .order("is_default", { ascending: false })
+                  .limit(1);
+
+                const defaultFlow = flows?.[0];
+                if (defaultFlow) {
+                  const existingAssignees = (defaultFlow.stage_assignees ?? {}) as Record<string, Record<string, any>>;
+                  const merged = mergeClientAssignees(existingAssignees, editClient.id, perStage);
+
+                  await (supabase as any)
+                    .from("pm_stage_flows")
+                    .update({
+                      stage_assignees: merged,
+                      updated_at: new Date().toISOString(),
+                    })
+                    .eq("id", defaultFlow.id);
+                }
+              }
+            }
+          }
+        } catch (assigneeErr) {
+          console.warn("Auto-assign failed (non-blocking):", assigneeErr);
+        }
+      }
+
       clientsQ.refetch();
       qc.invalidateQueries({ queryKey: ["client_squads"] });
+      qc.invalidateQueries({ queryKey: ["pm_stage_flows"] });
       toast.success("Cliente atualizado!");
       setEditClient(null);
     } catch (e: any) {
