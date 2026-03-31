@@ -325,6 +325,39 @@ const TOTAL_POINTS = 27;
                );
              })}
            </div>
+
+           {/* Top 3 Progress */}
+           {monthlyRank.length > 0 && (
+             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+               {monthlyRank.slice(0, 3).map((row, idx) => {
+                 const member = teamById.get(row.user_id);
+                 const pct = Math.min(Math.round((row.total / TOTAL_POINTS) * 100), 100);
+                 const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : "🥉";
+                 const barColor = idx === 0 ? "bg-amber-400" : idx === 1 ? "bg-gray-400" : "bg-orange-400";
+                 return (
+                   <Card key={row.user_id} className="overflow-hidden">
+                     <CardContent className="flex items-center gap-3 p-4">
+                       <span className="text-xl leading-none">{medal}</span>
+                       <UserAvatar avatarUrl={member?.avatar_url} name={member?.display_name} className="h-9 w-9 shrink-0" />
+                       <div className="min-w-0 flex-1">
+                         <div className="flex items-baseline justify-between gap-2">
+                           <p className="truncate text-sm font-medium">{member?.display_name ?? "—"}</p>
+                           <span className="shrink-0 text-xs font-semibold tabular-nums text-muted-foreground">{row.total}/{TOTAL_POINTS}</span>
+                         </div>
+                         <div className="relative mt-1.5 h-2 w-full overflow-hidden rounded-full bg-secondary">
+                           <div
+                             className={`h-full rounded-full transition-all duration-700 ease-out ${barColor}`}
+                             style={{ width: `${pct}%` }}
+                           />
+                         </div>
+                         <p className="mt-1 text-right text-[11px] tabular-nums text-muted-foreground">{pct}%</p>
+                       </div>
+                     </CardContent>
+                   </Card>
+                 );
+               })}
+             </div>
+           )}
  
            {/* Tabela completa */}
            <Card>
