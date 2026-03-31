@@ -162,7 +162,7 @@ export function AdminPontuacaoPanel() {
   // Tag-based scoring entries
   const tagRows = [...rows]
     .filter((r) => r.stage.startsWith("tag_"))
-    .sort((a, b) => a.label.localeCompare(b.label));
+    .sort((a, b) => (a.label ?? "").localeCompare(b.label ?? ""));
 
   const handleCreateTag = () => {
     if (!newTagName.trim()) return;
