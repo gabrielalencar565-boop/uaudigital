@@ -222,7 +222,6 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
   const [newTagName, setNewTagName] = useState("");
-  const [newTagColor, setNewTagColor] = useState("blue");
   const [stageChoiceOpen, setStageChoiceOpen] = useState(false);
   const [stageChoiceOptions, setStageChoiceOptions] = useState<string[]>([]);
 
