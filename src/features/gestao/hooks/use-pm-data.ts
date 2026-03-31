@@ -295,9 +295,13 @@ export function useDeletePmTask() {
       // Wait for magic cleanup, then recompute scores in parallel
       await magicPromise;
       await Promise.all(
-        Array.from(affectedUsers).map(([userId, { year, month }]) =>
-          supabase.rpc("recompute_all_scores", { _user_id: userId, _year: year, _month: month } as any).catch((e: any) => console.error("Error recomputing scores:", userId, e))
-        )
+        Array.from(affectedUsers).map(async ([userId, { year, month }]) => {
+          try {
+            await supabase.rpc("recompute_all_scores", { _user_id: userId, _year: year, _month: month } as any);
+          } catch (e) {
+            console.error("Error recomputing scores:", userId, e);
+          }
+        })
       );
     },
     onMutate: async (id) => {
