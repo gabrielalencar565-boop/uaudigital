@@ -718,9 +718,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
               )}
             </div>
           ) : (
-            <Avatar className="h-7 w-7 shrink-0 ring-2 ring-background">
-              <AvatarFallback className="text-[8px] font-bold bg-primary/10 text-primary">?</AvatarFallback>
-            </Avatar>
+            <div className="h-7 w-7 shrink-0 rounded-full ring-2 ring-background bg-muted" />
           )}
           <div className="min-w-0">
             {assignees.length === 1 && mainAssignee ? (
@@ -1096,9 +1094,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
                       )}
                     </div>
                   ) : (
-                    <Avatar className="h-7 w-7 shrink-0 ring-2 ring-background">
-                      <AvatarFallback className="text-[8px] font-bold bg-primary/10 text-primary">?</AvatarFallback>
-                    </Avatar>
+                    <div className="h-7 w-7 shrink-0 rounded-full ring-2 ring-background bg-muted" />
                   )}
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">
