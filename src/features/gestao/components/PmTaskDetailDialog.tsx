@@ -16,13 +16,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import {
   PM_ACTIVE_STAGES, stageLabel, getStageCircleColor,
-  TAG_COLORS, parseTag, tagColor, tagDisplay
+  parseTag, tagColor, tagDisplay
 } from "../pm-constants";
 import {
   useUpdatePmTask, useCreatePmTask, usePmTasks, usePmChildTasks,
   usePmComments, usePmAttachments, usePmSyncStageCompletion,
 } from "../hooks/use-pm-data";
-import { usePmTags, useCreatePmTag, useDeletePmTag } from "../hooks/use-pm-tags";
+import { usePmTags } from "../hooks/use-pm-tags";
 import { useDefaultFlowWithDates, getNextStages, getFixedAssignee, getFixedWatchers } from "./PmStageFlowConfig";
 import { PmSubtaskList } from "./PmSubtaskList";
 import { PmPlanningSubtasks } from "./PmPlanningSubtasks";
