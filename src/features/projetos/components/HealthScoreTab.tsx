@@ -285,7 +285,7 @@ export function HealthScoreTab() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Nota:</span>
-                <span className={cn("text-lg font-bold", scoreColor(formValues[q.key]))}>{formValues[q.key]}/100</span>
+                <span className={cn("text-lg font-bold", scoreColor(formValues[q.key]))}>{formValues[q.key]}/10</span>
               </div>
               <Slider
                 value={[formValues[q.key]]}
