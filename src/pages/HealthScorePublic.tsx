@@ -65,11 +65,11 @@ export default function HealthScorePublic() {
   const [submitting, setSubmitting] = useState(false);
 
   const [formValues, setFormValues] = useState<Record<ScoreKeys, number>>({
-    resultado_percebido: 50,
-    alinhamento_estrategico: 50,
-    comunicacao_atendimento: 50,
-    qualidade_entregas: 50,
-    satisfacao_geral: 50,
+    resultado_percebido: 5,
+    alinhamento_estrategico: 5,
+    comunicacao_atendimento: 5,
+    qualidade_entregas: 5,
+    satisfacao_geral: 5,
   });
   const [formComments, setFormComments] = useState<Record<CommentKeys, string>>({
     comentario_resultado: "",
@@ -138,8 +138,8 @@ export default function HealthScorePublic() {
   );
 
   const scoreColor = (v: number) => {
-    if (v >= 80) return "text-green-500";
-    if (v >= 50) return "text-yellow-500";
+    if (v >= 8) return "text-green-500";
+    if (v >= 5) return "text-yellow-500";
     return "text-red-500";
   };
 
@@ -235,9 +235,9 @@ export default function HealthScorePublic() {
         {/* Overall score preview */}
         <Card>
           <CardContent className="flex items-center gap-6 py-6">
-            <ProgressRing value={average} size={80} stroke={6} />
+            <ProgressRing value={average * 10} size={80} stroke={6} />
             <div>
-              <p className={cn("text-3xl font-bold", scoreColor(average))}>{average}/100</p>
+              <p className={cn("text-3xl font-bold", scoreColor(average))}>{average}/10</p>
               <p className="text-sm text-muted-foreground">Média das 5 avaliações</p>
             </div>
           </CardContent>
@@ -255,20 +255,20 @@ export default function HealthScorePublic() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Nota:</span>
                   <span className={cn("text-lg font-bold", scoreColor(formValues[q.key]))}>
-                    {formValues[q.key]}/100
+                    {formValues[q.key]}/10
                   </span>
                 </div>
                 <Slider
                   value={[formValues[q.key]]}
                   onValueChange={([v]) => setFormValues((prev) => ({ ...prev, [q.key]: v }))}
-                  max={100}
+                  max={10}
                   step={1}
                   className="w-full"
                 />
                 <div className="flex justify-between text-[10px] text-muted-foreground">
                   <span>0</span>
-                  <span>50</span>
-                  <span>100</span>
+                  <span>5</span>
+                  <span>10</span>
                 </div>
               </div>
               <div>

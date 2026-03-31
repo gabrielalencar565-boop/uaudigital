@@ -137,8 +137,8 @@ export function HealthScoreTab() {
   };
 
   const scoreColor = (v: number) => {
-    if (v >= 80) return "text-green-500";
-    if (v >= 50) return "text-yellow-500";
+    if (v >= 8) return "text-green-500";
+    if (v >= 5) return "text-yellow-500";
     return "text-red-500";
   };
 
@@ -156,7 +156,7 @@ export function HealthScoreTab() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.1s" }}>
           {clients.map((client) => {
             const s = scoresMap[client.id];
-            const avg = s ? Math.round((s.resultado_percebido + s.alinhamento_estrategico + s.comunicacao_atendimento + s.qualidade_entregas + s.satisfacao_geral) / 5) : null;
+            const avg = s ? Math.round(((s.resultado_percebido + s.alinhamento_estrategico + s.comunicacao_atendimento + s.qualidade_entregas + s.satisfacao_geral) / 5) * 10) / 10 : null;
             return (
               <Card
                 key={client.id}
@@ -171,7 +171,7 @@ export function HealthScoreTab() {
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">{client.name}</p>
                       {avg !== null ? (
-                        <p className={cn("text-xs font-bold", scoreColor(avg))}>{avg}/100</p>
+                        <p className={cn("text-xs font-bold", scoreColor(avg))}>{avg}/10</p>
                       ) : (
                         <p className="text-xs text-muted-foreground">Não avaliado</p>
                       )}
@@ -266,9 +266,9 @@ export function HealthScoreTab() {
       {/* Overall score */}
       <Card>
         <CardContent className="flex items-center gap-6 py-6">
-          <ProgressRing value={average} size={80} stroke={6} />
+          <ProgressRing value={average * 10} size={80} stroke={6} />
           <div>
-            <p className={cn("text-3xl font-bold", scoreColor(average))}>{average}/100</p>
+            <p className={cn("text-3xl font-bold", scoreColor(average))}>{average}/10</p>
             <p className="text-sm text-muted-foreground">Média das 5 avaliações</p>
           </div>
         </CardContent>
@@ -285,17 +285,17 @@ export function HealthScoreTab() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Nota:</span>
-                <span className={cn("text-lg font-bold", scoreColor(formValues[q.key]))}>{formValues[q.key]}/100</span>
+                <span className={cn("text-lg font-bold", scoreColor(formValues[q.key]))}>{formValues[q.key]}/10</span>
               </div>
               <Slider
                 value={[formValues[q.key]]}
                 onValueChange={([v]) => setFormValues((prev) => ({ ...prev, [q.key]: v }))}
-                max={100}
+                max={10}
                 step={1}
                 className="w-full"
               />
               <div className="flex justify-between text-[10px] text-muted-foreground">
-                <span>0</span><span>50</span><span>100</span>
+                <span>0</span><span>5</span><span>10</span>
               </div>
             </div>
             <div>
