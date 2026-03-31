@@ -156,7 +156,7 @@ export function HealthScoreTab() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.1s" }}>
           {clients.map((client) => {
             const s = scoresMap[client.id];
-            const avg = s ? Math.round((s.resultado_percebido + s.alinhamento_estrategico + s.comunicacao_atendimento + s.qualidade_entregas + s.satisfacao_geral) / 5) : null;
+            const avg = s ? Math.round(((s.resultado_percebido + s.alinhamento_estrategico + s.comunicacao_atendimento + s.qualidade_entregas + s.satisfacao_geral) / 5) * 10) / 10 : null;
             return (
               <Card
                 key={client.id}
