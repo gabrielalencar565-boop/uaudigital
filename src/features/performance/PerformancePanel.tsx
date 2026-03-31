@@ -358,6 +358,16 @@ const TOTAL_POINTS = 27;
                  );
                })}
              </div>
+            )}
+
+           {/* Top 3 Daily Progress Chart */}
+           {monthlyRank.length >= 3 && (
+             <Top3DailyProgressChart
+               top3={monthlyRank.slice(0, 3)}
+               teamById={teamById}
+               year={year}
+               month={month}
+             />
            )}
  
            {/* Tabela completa */}
