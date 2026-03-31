@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { normalizeAvatarUrl } from "@/lib/avatar-url";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Plus, Search, LayoutGrid, CalendarDays, FolderOpen, Settings2, CheckCircle2, FileSpreadsheet, Trash2, FileText, Users, ChevronLeft, ChevronRight, CalendarRange, Cake, Star, Calendar, TriangleAlert } from "lucide-react";
 import { addDays, addMonths, subMonths, endOfMonth, format, startOfMonth, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/avatar/UserAvatar";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -18,7 +17,7 @@ import { useRole } from "@/hooks/use-role";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { usePmTasks, usePmAllChildTasks, useUpdatePmTask, useDeletePmTask } from "./hooks/use-pm-data";
-import { useDeleteTask, useTasks } from "@/features/data/queries";
+import { useDeleteTask, useTasks, useTeamMembers } from "@/features/data/queries";
 import { useTaskAssigneesByMonth } from "@/features/data/task-assignees-queries";
 import { PmKanbanBoard } from "./components/PmKanbanBoard";
 import { PmClientView } from "./components/PmClientView";
@@ -37,9 +36,7 @@ import { useAgendaSpecialDates } from "@/features/agenda/hooks/use-agenda-dates"
 import { getIconById } from "@/features/agenda/components/IconPicker";
 import { AgendaReportsPanel } from "@/features/agenda/components/AgendaReportsPanel";
 import { TaskTrashPanel } from "@/features/agenda/components/TaskTrashPanel";
-function initials(n: string) {
-  return n.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("");
-}
+import { useAvatarDirectory } from "@/hooks/use-avatar-directory";
 
 const STAGE_ABBR: Record<string, string> = {
   captacao: "CAP", planejamento: "PLAN", design: "DSG", edicao_videos: "VDO",
@@ -159,13 +156,9 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
   }, [clientsQ.data]);
 
   // Team members
-  const membersQ = useQuery({
-    queryKey: ["team_members"],
-    queryFn: async () => {
-      const { data } = await supabase.from("team_members").select("user_id, display_name, avatar_url, birth_date").eq("is_active", true);
-      return (data ?? []).map(tm => ({ ...tm, avatar_url: normalizeAvatarUrl(tm.avatar_url) ?? null }));
-    }
-  });
+  const membersQ = useTeamMembers();
+  const avatarDirectory = useAvatarDirectory({ includeProfiles: false });
+  const avatarsPrimed = avatarDirectory.isReady;
   const membersMap = useMemo(() => {
     const m: Record<string, {name: string;avatar?: string;}> = {};
     (membersQ.data ?? []).forEach((tm) => {m[tm.user_id] = { name: tm.display_name, avatar: tm.avatar_url ?? undefined };});
@@ -214,10 +207,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
               {(membersQ.data ?? []).map((m) =>
               <SelectItem key={m.user_id} value={m.user_id}>
                   <span className="flex items-center gap-2">
-                    <Avatar className="h-5 w-5">
-                      <AvatarImage src={m.avatar_url ?? undefined} />
-                      <AvatarFallback className="text-[9px] bg-primary/10 text-primary">{initials(m.display_name)}</AvatarFallback>
-                    </Avatar>
+                    <UserAvatar avatarUrl={m.avatar_url ?? undefined} name={m.display_name} loading={!avatarsPrimed && !!m.avatar_url} className="h-5 w-5" fallbackClassName="text-[9px] bg-primary/10 text-primary" />
                     {m.display_name}
                   </span>
                 </SelectItem>
@@ -312,6 +302,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
           childTasksMap={childTasksMap}
           clientsMap={clientsMap}
           membersMap={membersMap}
+          avatarsPrimed={avatarsPrimed}
           onTaskClick={(t) => setSelectedTaskId(t.id)}
           onCreateClick={openCreate}
           filters={filters}
@@ -334,6 +325,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
           fixedAssigneeClientIds={fixedAssigneeClientIds}
           clients={(clientsQ.data ?? []).map((c) => ({ id: c.id, name: c.name }))}
           members={membersList}
+          avatarsPrimed={avatarsPrimed}
           isAdmin={isAdmin} />
 
         }
@@ -407,7 +399,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
 }
 
 // ─── Agenda Calendar View (matches main Agenda module) ───
-function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId, onTaskClick, filterClient, filterAssignee, search, cursor, setCursor, fixedAssigneeClientIds, clients, members, isAdmin }: {
+function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId, onTaskClick, filterClient, filterAssignee, search, cursor, setCursor, fixedAssigneeClientIds, clients, members, avatarsPrimed, isAdmin }: {
   tasks: PmTask[];
   clientsMap: Record<string, string>;
   membersMap: Record<string, { name: string; avatar?: string }>;
@@ -421,7 +413,8 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
   setCursor: React.Dispatch<React.SetStateAction<Date>>;
   fixedAssigneeClientIds: Set<string>;
   clients: { id: string; name: string }[];
-  members: { id: string; name: string }[];
+  members: { id: string; name: string; avatar?: string }[];
+  avatarsPrimed: boolean;
   isAdmin: boolean;
 }) {
   const isMobile = useIsMobile();
@@ -709,10 +702,14 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
           {visibleAssignees.length > 0 ? (
             <div className="flex flex-col -space-y-1.5 shrink-0">
               {visibleAssignees.map((member) => (
-                <Avatar key={member.id} className="h-7 w-7 ring-2 ring-background">
-                  <AvatarImage src={member.avatar} />
-                  <AvatarFallback className="text-[8px] font-bold bg-primary/10 text-primary">{initials(member.name)}</AvatarFallback>
-                </Avatar>
+                <UserAvatar
+                  key={member.id}
+                  avatarUrl={member.avatar}
+                  name={member.name}
+                  loading={!avatarsPrimed && !!member.avatar}
+                  className="h-7 w-7 ring-2 ring-background"
+                  fallbackClassName="text-[8px] font-bold bg-primary/10 text-primary"
+                />
               ))}
               {extraAssignees > 0 && (
                 <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-muted px-1 text-[9px] font-semibold text-muted-foreground ring-2 ring-background">
@@ -721,9 +718,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
               )}
             </div>
           ) : (
-            <Avatar className="h-7 w-7 shrink-0 ring-2 ring-background">
-              <AvatarFallback className="text-[8px] font-bold bg-primary/10 text-primary">?</AvatarFallback>
-            </Avatar>
+            <div className="h-7 w-7 shrink-0 rounded-full ring-2 ring-background bg-muted" />
           )}
           <div className="min-w-0">
             {assignees.length === 1 && mainAssignee ? (
@@ -1083,10 +1078,14 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
                   {visibleAssignees.length > 0 ? (
                     <div className="flex flex-col -space-y-1.5 shrink-0">
                       {visibleAssignees.map((member) => (
-                        <Avatar key={member.id} className="h-7 w-7 shrink-0 ring-2 ring-background">
-                          <AvatarImage src={member.avatar} />
-                          <AvatarFallback className="text-[8px] font-bold bg-primary/10 text-primary">{initials(member.name)}</AvatarFallback>
-                        </Avatar>
+                        <UserAvatar
+                          key={member.id}
+                          avatarUrl={member.avatar}
+                          name={member.name}
+                          loading={!avatarsPrimed && !!member.avatar}
+                          className="h-7 w-7 shrink-0 ring-2 ring-background"
+                          fallbackClassName="text-[8px] font-bold bg-primary/10 text-primary"
+                        />
                       ))}
                       {extraAssignees > 0 && (
                         <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-muted px-1 text-[9px] font-semibold text-muted-foreground ring-2 ring-background">
@@ -1095,9 +1094,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
                       )}
                     </div>
                   ) : (
-                    <Avatar className="h-7 w-7 shrink-0 ring-2 ring-background">
-                      <AvatarFallback className="text-[8px] font-bold bg-primary/10 text-primary">?</AvatarFallback>
-                    </Avatar>
+                    <div className="h-7 w-7 shrink-0 rounded-full ring-2 ring-background bg-muted" />
                   )}
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">

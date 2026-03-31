@@ -42,6 +42,7 @@ import { useMagic2InactiveAgendaClients } from "@/features/magic2/hooks/use-magi
 import { useRole } from "@/hooks/use-role";
 import { useSession } from "@/hooks/use-session";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useAvatarDirectory } from "@/hooks/use-avatar-directory";
 function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]!.toUpperCase()).join("");
 }
@@ -109,7 +110,8 @@ export function AgendaPanel() {
   const clientsQ = useClients();
   const teamQ = useTeamMembers();
   const profilesQ = useProfiles({ enabled: !!canManageTasks });
-  const avatarsPrimed = teamQ.isSuccess && (!canManageTasks || profilesQ.isSuccess);
+  const avatarDirectory = useAvatarDirectory({ includeProfiles: !!canManageTasks });
+  const avatarsPrimed = avatarDirectory.isReady;
 
   const weekStart = useMemo(() => startOfWeek(cursor, {
     weekStartsOn: 0

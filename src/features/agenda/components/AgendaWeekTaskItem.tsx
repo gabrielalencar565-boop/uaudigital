@@ -98,6 +98,7 @@ export function AgendaWeekTaskItem({
 }) {
   const stageTone = STAGE_BADGE_CLASS[stage];
   const isCompact = density === "compact";
+  const isAssigneeLoading = assigneeName === PENDING_MEMBER_NAME;
 
   // For revisão or alteração tasks with a post_type origin, show gradient badge
   const isRevisaoWithOrigin = stage === "revisao" && !!postType;
@@ -192,7 +193,7 @@ export function AgendaWeekTaskItem({
             <TooltipTrigger asChild>
               <div className="flex flex-col -space-y-1.5 shrink-0">
                 {members.slice(0, 2).map((m) => (
-                   <UserAvatar key={m.user_id} avatarUrl={m.avatar_url} name={getDisplayName(m.display_name)} className={cn(isCompact ? "h-5 w-5" : "h-6 w-6", "border-2 border-background")} fallbackClassName="text-[10px]" />
+                   <UserAvatar key={m.user_id} avatarUrl={m.avatar_url} name={getDisplayName(m.display_name)} loading={m.display_name === PENDING_MEMBER_NAME} className={cn(isCompact ? "h-5 w-5" : "h-6 w-6", "border-2 border-background")} fallbackClassName="text-[10px]" />
                 ))}
                 {members.length > 2 && (
                   <div className={cn(
@@ -208,7 +209,7 @@ export function AgendaWeekTaskItem({
               <div className="space-y-1">
                 {members.map((m) => (
                   <div key={m.user_id} className="flex items-center gap-2">
-                    <UserAvatar avatarUrl={m.avatar_url} name={getDisplayName(m.display_name)} className="h-5 w-5" fallbackClassName="text-[8px]" />
+                    <UserAvatar avatarUrl={m.avatar_url} name={getDisplayName(m.display_name)} loading={m.display_name === PENDING_MEMBER_NAME} className="h-5 w-5" fallbackClassName="text-[8px]" />
                     <span className="text-xs">{m.display_name}</span>
                   </div>
                 ))}
@@ -216,7 +217,7 @@ export function AgendaWeekTaskItem({
             </TooltipContent>
           </Tooltip>
         ) : (
-          <UserAvatar avatarUrl={assigneeAvatarUrl} name={getDisplayName(assigneeName)} className={cn(isCompact ? "h-5 w-5" : "h-6 w-6")} fallbackClassName="text-[10px]" />
+          <UserAvatar avatarUrl={assigneeAvatarUrl} name={getDisplayName(assigneeName)} loading={isAssigneeLoading} className={cn(isCompact ? "h-5 w-5" : "h-6 w-6")} fallbackClassName="text-[10px]" />
         )}
         
         <div className="min-w-0 flex-1">

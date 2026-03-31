@@ -63,13 +63,14 @@ interface Props {
   childTasksMap: Record<string, PmTask[]>;
   clientsMap: Record<string, string>;
   membersMap: Record<string, { name: string; avatar?: string }>;
+  avatarsPrimed: boolean;
   onTaskClick: (task: PmTask) => void;
   onCreateClick: (status?: string) => void;
   filters: { clientId?: string; assigneeId?: string; search?: string; fixedAssigneeClientIds?: Set<string> };
   isAdmin?: boolean;
 }
 
-export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, onTaskClick, onCreateClick, filters, isAdmin }: Props) {
+export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, avatarsPrimed, onTaskClick, onCreateClick, filters, isAdmin }: Props) {
   const updateTask = useUpdatePmTask();
   const [activeTask, setActiveTask] = useState<PmTask | null>(null);
   const { stageAssignees } = useDefaultFlowWithDates();
@@ -295,6 +296,7 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, on
                         task={task}
                         clientName={clientsMap[task.client_id] ?? "—"}
                         assignees={cardAssignees}
+                        avatarsPrimed={avatarsPrimed}
                         childTasks={childTasksMap[task.id] ?? []}
                         onClick={() => onTaskClick(task)}
                         isAdmin={isAdmin}
@@ -324,6 +326,7 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, on
               task={activeTask}
               clientName={clientsMap[activeTask.client_id] ?? "—"}
               assignees={getTaskAssignees(activeTask)}
+              avatarsPrimed={avatarsPrimed}
               childTasks={childTasksMap[activeTask.id] ?? []}
               onClick={() => {}}
               isAdmin={isAdmin}
