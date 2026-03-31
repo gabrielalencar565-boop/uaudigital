@@ -45,7 +45,7 @@ export function PmTaskCard({ task, clientName, assignees = [], childTasks = [], 
     setDeleteConfirmOpen(true);
   };
   const confirmDelete = async () => {
-    try { await deleteTask.mutateAsync(task.id); playTrashSound(); toast.success("Tarefa excluída"); } catch (err: any) { toast.error(err?.message ?? "Erro ao excluir"); }
+    try { await deleteTask.mutateAsync(task.id); toast.success("Tarefa excluída"); } catch (err: any) { toast.error(err?.message ?? "Erro ao excluir"); }
     setDeleteConfirmOpen(false);
   };
 
