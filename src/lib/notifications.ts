@@ -120,5 +120,6 @@ export function triggerNotification(
     duration,
     position: "top-right",
     className: cfg.className,
+    dismissible: true,
   });
 }

@@ -192,14 +192,18 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
     }
   };
 
-  const handleMarkAllRead = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleMarkAllRead = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
     const unreadKeys = notifications.filter(n => !readKeys.has(n.key)).map(n => n.key);
     if (unreadKeys.length > 0) markAllAsRead.mutate(unreadKeys);
   };
 
+  const handleOpenChange = (open: boolean) => {
+    if (open) handleMarkAllRead();
+  };
+
   return (
-    <Popover>
+    <Popover onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <button className="relative flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-accent/50 focus:outline-none">
           <Bell className="h-4 w-4 text-muted-foreground" />

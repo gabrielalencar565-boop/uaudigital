@@ -236,6 +236,8 @@ export function useNotificationSound() {
   }, [user?.id]);
 
   // ── Visibility & lifecycle ──
+  const initialLoadRef = useRef(true);
+
   useEffect(() => {
     if (!user?.id) return;
 
@@ -246,6 +248,12 @@ export function useNotificationSound() {
 
     const handleVisible = () => {
       if (!isTabActive()) return;
+      // Skip first visibility trigger (initial page load) to avoid repeated toasts
+      if (initialLoadRef.current) {
+        initialLoadRef.current = false;
+        setLastSeen();
+        return;
+      }
       void fetchMissedWhileAway().finally(() => {
         void checkDeadlines().finally(() => {
           flushPending();
@@ -263,8 +271,7 @@ export function useNotificationSound() {
     document.addEventListener("visibilitychange", handleHidden);
     window.addEventListener("beforeunload", setLastSeen);
 
-    // Initial deadline check
-    void checkDeadlines();
+    // Do NOT run checkDeadlines on mount — only via periodic interval or realtime
 
     // Periodic deadline check every 5 minutes
     deadlineIntervalRef.current = setInterval(() => {
