@@ -261,14 +261,14 @@ export default function HealthScorePublic() {
                 <Slider
                   value={[formValues[q.key]]}
                   onValueChange={([v]) => setFormValues((prev) => ({ ...prev, [q.key]: v }))}
-                  max={100}
+                  max={10}
                   step={1}
                   className="w-full"
                 />
                 <div className="flex justify-between text-[10px] text-muted-foreground">
                   <span>0</span>
-                  <span>50</span>
-                  <span>100</span>
+                  <span>5</span>
+                  <span>10</span>
                 </div>
               </div>
               <div>
