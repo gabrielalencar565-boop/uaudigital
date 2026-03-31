@@ -60,8 +60,8 @@ export function AnnualShowcasePanel({
     for (const s of scores) {
       const prev = map.get(s.user_id) ?? { total: 0, videoCount: 0, squadCount: 0 };
       prev.total += totalPoints(s);
-      prev.videoCount += (s.video_destaque ?? 0);
-      prev.squadCount += (s.squad_destaque ?? 0);
+      if ((s.video_destaque ?? 0) > 0) prev.videoCount += 1;
+      if ((s.squad_destaque ?? 0) > 0) prev.squadCount += 1;
       map.set(s.user_id, prev);
     }
 
