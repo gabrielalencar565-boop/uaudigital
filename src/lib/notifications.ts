@@ -94,6 +94,51 @@ export function playNotificationSound() {
   }
 }
 
+// ─── Trash sound (macOS-style crumple) ────────────────────────────────
+/**
+ * Synthesises a short "paper crumple" sound reminiscent of the macOS trash.
+ * Uses Web Audio API — no external file needed.
+ */
+export function playTrashSound() {
+  if (!isSoundEnabled()) return;
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const duration = 0.45;
+    const sampleRate = ctx.sampleRate;
+    const length = Math.floor(sampleRate * duration);
+    const buffer = ctx.createBuffer(1, length, sampleRate);
+    const data = buffer.getChannelData(0);
+
+    // White-noise burst shaped by a fast-decay envelope
+    for (let i = 0; i < length; i++) {
+      const t = i / sampleRate;
+      const envelope = Math.exp(-t * 12) * 0.6;
+      // Add a second softer "bounce" for the macOS feel
+      const bounce = Math.exp(-(t - 0.12) * 18) * 0.25 * (t > 0.1 ? 1 : 0);
+      data[i] = (Math.random() * 2 - 1) * (envelope + bounce);
+    }
+
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+
+    // Band-pass filter to sound less harsh
+    const filter = ctx.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.frequency.value = 1800;
+    filter.Q.value = 0.7;
+
+    const gain = ctx.createGain();
+    gain.gain.value = 0.5;
+
+    src.connect(filter).connect(gain).connect(ctx.destination);
+    src.start();
+    src.onended = () => ctx.close();
+  } catch {
+    // Audio not available
+  }
+}
+
+
 // ─── Toast trigger ────────────────────────────────────────────────────
 /**
  * Main entry point — triggers a visual toast notification + sound.
