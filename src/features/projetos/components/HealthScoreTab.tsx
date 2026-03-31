@@ -171,7 +171,7 @@ export function HealthScoreTab() {
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">{client.name}</p>
                       {avg !== null ? (
-                        <p className={cn("text-xs font-bold", scoreColor(avg))}>{avg}/100</p>
+                        <p className={cn("text-xs font-bold", scoreColor(avg))}>{avg}/10</p>
                       ) : (
                         <p className="text-xs text-muted-foreground">Não avaliado</p>
                       )}
