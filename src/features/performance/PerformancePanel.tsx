@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AnimatedNumber } from "@/components/ui/animated-number";
  import { Trophy, Edit, RefreshCw, Video, Star } from "lucide-react";
+ import { Progress } from "@/components/ui/progress";
  
  import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
  import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
