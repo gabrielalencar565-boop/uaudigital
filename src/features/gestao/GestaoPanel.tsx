@@ -479,7 +479,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
       } else {
         await deleteTask.mutateAsync(pendingDeleteId);
       }
-      playTrashSound();
+      
       toast.success("Tarefa removida");
     } catch (err: any) {
       toast.error(err?.message ?? "Erro ao excluir");
