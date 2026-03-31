@@ -25,6 +25,7 @@ import { AnimatedNumber } from "@/components/ui/animated-number";
 import { AdminDeadlineReport } from "@/features/performance/components/AdminDeadlineReport";
 import { AnnualShowcasePanel } from "@/features/performance/components/AnnualShowcasePanel";
 import { AnnualDashboard } from "@/features/performance/components/AnnualDashboard";
+import { Top3DailyProgressChart } from "@/features/performance/components/Top3DailyProgressChart";
 import { useNow } from "@/hooks/use-now";
  
  function initials(name: string) {
@@ -357,6 +358,16 @@ const TOTAL_POINTS = 27;
                  );
                })}
              </div>
+            )}
+
+           {/* Top 3 Daily Progress Chart */}
+           {monthlyRank.length >= 3 && (
+             <Top3DailyProgressChart
+               top3={monthlyRank.slice(0, 3)}
+               teamById={teamById}
+               year={year}
+               month={month}
+             />
            )}
  
            {/* Tabela completa */}
