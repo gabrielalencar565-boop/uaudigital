@@ -248,10 +248,13 @@ export function useNotificationSound() {
 
     const handleVisible = () => {
       if (!isTabActive()) return;
-      // Skip first visibility trigger (initial page load) to avoid repeated toasts
       if (initialLoadRef.current) {
         initialLoadRef.current = false;
-        setLastSeen();
+        // On initial load: fetch missed mentions/assignments but skip deadline toasts
+        void fetchMissedWhileAway().finally(() => {
+          flushPending();
+          setLastSeen();
+        });
         return;
       }
       void fetchMissedWhileAway().finally(() => {
@@ -271,7 +274,11 @@ export function useNotificationSound() {
     document.addEventListener("visibilitychange", handleHidden);
     window.addEventListener("beforeunload", setLastSeen);
 
-    // Do NOT run checkDeadlines on mount — only via periodic interval or realtime
+    // Run fetchMissedWhileAway immediately on mount for instant catch-up
+    void fetchMissedWhileAway().finally(() => {
+      flushPending();
+      setLastSeen();
+    });
 
     // Periodic deadline check every 5 minutes
     deadlineIntervalRef.current = setInterval(() => {
