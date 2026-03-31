@@ -1,7 +1,7 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { useProfiles, useTeamMembers } from "@/features/data/queries";
-import { preloadAvatars } from "@/lib/avatar-preloader";
+import { areAvatarsSettled, preloadAvatars } from "@/lib/avatar-preloader";
 import { mergeAvatarUsers } from "@/lib/avatar-users";
 
 export function useAvatarDirectory(options?: { includeProfiles?: boolean }) {
@@ -13,6 +13,8 @@ export function useAvatarDirectory(options?: { includeProfiles?: boolean }) {
     () => mergeAvatarUsers(teamQ.data ?? [], profilesQ.data ?? []),
     [profilesQ.data, teamQ.data]
   );
+  const avatarUrls = useMemo(() => users.map((user) => user.avatarUrl), [users]);
+  const [isPrimed, setIsPrimed] = useState(true);
 
   const usersById = useMemo(
     () => new Map(users.map((user) => [user.userId, user] as const)),
@@ -20,14 +22,33 @@ export function useAvatarDirectory(options?: { includeProfiles?: boolean }) {
   );
 
   useEffect(() => {
-    if (!users.length) return;
-    void preloadAvatars(users.map((user) => user.avatarUrl));
-  }, [users]);
+    if (!users.length) {
+      setIsPrimed(true);
+      return;
+    }
+
+    if (areAvatarsSettled(avatarUrls)) {
+      setIsPrimed(true);
+      return;
+    }
+
+    let cancelled = false;
+    setIsPrimed(false);
+
+    void preloadAvatars(avatarUrls).then(() => {
+      if (!cancelled) setIsPrimed(true);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [avatarUrls, users.length]);
 
   return {
     users,
     usersById,
+    isPrimed,
     isLoading: teamQ.isLoading || (includeProfiles && profilesQ.isLoading),
-    isReady: teamQ.isSuccess && (!includeProfiles || profilesQ.isSuccess),
+    isReady: teamQ.isSuccess && (!includeProfiles || profilesQ.isSuccess) && isPrimed,
   };
 }

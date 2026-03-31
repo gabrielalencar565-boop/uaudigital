@@ -95,6 +95,13 @@ export function getAvatarCacheStatus(url: string | undefined | null): AvatarCach
   return "idle";
 }
 
+export function areAvatarsSettled(urls: (string | null | undefined)[]): boolean {
+  const unique = [...new Set(urls.filter((url): url is string => !!url))];
+  if (!unique.length) return true;
+
+  return unique.every((url) => loaded.has(url) || failed.has(url));
+}
+
 export function subscribeToAvatar(url: string | undefined | null, listener: () => void) {
   if (!url) return () => {};
 

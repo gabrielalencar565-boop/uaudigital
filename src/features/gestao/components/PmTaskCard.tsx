@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { format, isPast, isToday } from "date-fns";
 import { Calendar, UserCircle, Flag, Plus, MoreHorizontal, Archive, Trash2, Pencil, Link2, AlertTriangle, Clapperboard, Palette } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/avatar/UserAvatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -12,10 +12,6 @@ import { useUpdatePmTask, useDeletePmTask, useCreatePmTask } from "../hooks/use-
 import type { PmTask } from "../pm-types";
 import { toast } from "sonner";
 
-function initials(name: string) {
-  return name.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("");
-}
-
 interface Props {
   task: PmTask;
   clientName: string;
@@ -23,9 +19,10 @@ interface Props {
   childTasks?: PmTask[];
   onClick: () => void;
   isAdmin?: boolean;
+  avatarsPrimed?: boolean;
 }
 
-export function PmTaskCard({ task, clientName, assignees = [], childTasks = [], onClick, isAdmin }: Props) {
+export function PmTaskCard({ task, clientName, assignees = [], childTasks = [], onClick, isAdmin, avatarsPrimed = true }: Props) {
   const prio = priorityMeta(task.priority);
   const total = childTasks.length;
   const updateTask = useUpdatePmTask();
@@ -134,10 +131,14 @@ export function PmTaskCard({ task, clientName, assignees = [], childTasks = [], 
           {visibleAssignees.length > 0 ? (
             <div className="flex items-center">
               {visibleAssignees.map((assignee, index) => (
-                <Avatar key={assignee.id} className={cn("h-6 w-6 ring-2 ring-background", index > 0 && "-ml-2")}> 
-                  <AvatarImage src={assignee.avatar} />
-                  <AvatarFallback className="text-[8px] bg-primary/10 text-primary font-bold">{initials(assignee.name)}</AvatarFallback>
-                </Avatar>
+                <UserAvatar
+                  key={assignee.id}
+                  avatarUrl={assignee.avatar}
+                  name={assignee.name}
+                  loading={!avatarsPrimed && !!assignee.avatar}
+                  className={cn("h-6 w-6 ring-2 ring-background", index > 0 && "-ml-2")}
+                  fallbackClassName="text-[8px] bg-primary/10 text-primary font-bold"
+                />
               ))}
               {extraAssignees > 0 && (
                 <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1 text-[9px] font-semibold text-muted-foreground">
