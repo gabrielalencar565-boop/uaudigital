@@ -235,9 +235,9 @@ export default function HealthScorePublic() {
         {/* Overall score preview */}
         <Card>
           <CardContent className="flex items-center gap-6 py-6">
-            <ProgressRing value={average} size={80} stroke={6} />
+            <ProgressRing value={average * 10} size={80} stroke={6} />
             <div>
-              <p className={cn("text-3xl font-bold", scoreColor(average))}>{average}/100</p>
+              <p className={cn("text-3xl font-bold", scoreColor(average))}>{average}/10</p>
               <p className="text-sm text-muted-foreground">Média das 5 avaliações</p>
             </div>
           </CardContent>
