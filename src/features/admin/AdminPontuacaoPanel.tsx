@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { TAG_COLORS, tagColor } from "@/features/gestao/pm-constants";
@@ -54,6 +55,11 @@ export function AdminPontuacaoPanel() {
       const entries = Object.entries(edits);
       if (entries.length === 0) return;
 
+      // 1. Snapshot: congela pontuação de tarefas já concluídas
+      const { data: snapshotCount, error: snapErr } = await sb.rpc("snapshot_unscored_tasks");
+      if (snapErr) throw snapErr;
+
+      // 2. Atualiza os critérios
       for (const [id, changes] of entries) {
         const { error } = await supabase
           .from("scoring_config")
@@ -61,11 +67,17 @@ export function AdminPontuacaoPanel() {
           .eq("id", id);
         if (error) throw error;
       }
+
+      return snapshotCount as number;
     },
-    onSuccess: async () => {
+    onSuccess: async (count) => {
       setEdits({});
       await qc.invalidateQueries({ queryKey: ["scoring_config"] });
-      toast.success("Pontuação atualizada!");
+      if (count && count > 0) {
+        toast.success(`Pontuação atualizada! ${count} tarefa(s) anterior(es) protegida(s).`);
+      } else {
+        toast.success("Pontuação atualizada!");
+      }
     },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao salvar"),
   });
@@ -182,6 +194,12 @@ export function AdminPontuacaoPanel() {
           Configure os pontos de cada etapa para o cálculo de Metas/Prazos no desempenho.
         </p>
       </div>
+
+      <Alert className="opacity-0 border-primary/30 bg-primary/5" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.05s" }}>
+        <AlertDescription className="text-sm text-muted-foreground">
+          Alterações nos critérios afetam apenas <strong>tarefas futuras</strong>. Tarefas já concluídas mantêm a pontuação original automaticamente.
+        </AlertDescription>
+      </Alert>
 
       <Card className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.15s" }}>
         <CardHeader className="pb-3">

@@ -2021,6 +2021,7 @@ export type Database = {
         Args: { _month: number; _user_id: string; _year: number }
         Returns: undefined
       }
+      snapshot_unscored_tasks: { Args: never; Returns: number }
       toggle_stage_tasks_checklist: {
         Args: {
           _client_id: string
