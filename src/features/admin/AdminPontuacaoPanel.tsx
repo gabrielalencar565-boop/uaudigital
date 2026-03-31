@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Save } from "lucide-react";
+import { Save, Plus, Trash2 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +10,11 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import { TAG_COLORS, tagColor } from "@/features/gestao/pm-constants";
+import { usePmTags, useDeletePmTag } from "@/features/gestao/hooks/use-pm-tags";
+
+const sb = supabase as any;
 
 type ScoringRow = {
   id: string;
@@ -26,6 +31,8 @@ type EditState = Record<string, Partial<ScoringRow>>;
 export function AdminPontuacaoPanel() {
   const qc = useQueryClient();
   const [edits, setEdits] = useState<EditState>({});
+  const [newTagName, setNewTagName] = useState("");
+  const [newTagColor, setNewTagColor] = useState("blue");
 
   const configQ = useQuery({
     queryKey: ["scoring_config"],
@@ -38,6 +45,9 @@ export function AdminPontuacaoPanel() {
       return (data ?? []) as ScoringRow[];
     },
   });
+
+  const { data: globalTags = [] } = usePmTags();
+  const deleteGlobalTag = useDeletePmTag();
 
   const saveMut = useMutation({
     mutationFn: async () => {
@@ -58,6 +68,75 @@ export function AdminPontuacaoPanel() {
       toast.success("Pontuação atualizada!");
     },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao salvar"),
+  });
+
+  const createTagMut = useMutation({
+    mutationFn: async ({ name, color_key }: { name: string; color_key: string }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Não autenticado");
+
+      // 1. Create pm_tags entry
+      const { error: tagErr } = await sb
+        .from("pm_tags")
+        .insert({ name, color_key, created_by: user.id });
+      if (tagErr) throw tagErr;
+
+      // 2. Create scoring_config entry
+      const stageKey = `tag_${name.toLowerCase().replace(/\s+/g, "_")}`;
+      const { error: scoreErr } = await sb
+        .from("scoring_config")
+        .insert({
+          stage: stageKey,
+          label: name,
+          base_points: 1,
+          late_penalty: -1,
+          uses_quantity: false,
+          extra_demand_multiplier: 1.5,
+          updated_by: user.id,
+        });
+      if (scoreErr) throw scoreErr;
+    },
+    onSuccess: () => {
+      setNewTagName("");
+      setNewTagColor("blue");
+      qc.invalidateQueries({ queryKey: ["pm_tags"] });
+      qc.invalidateQueries({ queryKey: ["scoring_config"] });
+      toast.success("Etiqueta criada!");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao criar etiqueta"),
+  });
+
+  const deleteTagWithScoring = useMutation({
+    mutationFn: async (gt: { id: string; name: string; color_key: string }) => {
+      const tagValue = `${gt.name}:${gt.color_key}`;
+
+      // 1. Delete pm_tags entry (also cleans pm_tasks via useDeletePmTag logic)
+      const { error: tagErr } = await sb.from("pm_tags").delete().eq("id", gt.id);
+      if (tagErr) throw tagErr;
+
+      // Remove from all pm_tasks
+      const { data: tasksWithTag } = await sb
+        .from("pm_tasks")
+        .select("id, tags")
+        .contains("tags", [tagValue]);
+      if (tasksWithTag && tasksWithTag.length > 0) {
+        for (const t of tasksWithTag) {
+          const newTags = (t.tags ?? []).filter((tag: string) => tag !== tagValue);
+          await sb.from("pm_tasks").update({ tags: newTags }).eq("id", t.id);
+        }
+      }
+
+      // 2. Delete scoring_config entry
+      const stageKey = `tag_${gt.name.toLowerCase().replace(/\s+/g, "_")}`;
+      await sb.from("scoring_config").delete().eq("stage", stageKey);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["pm_tags"] });
+      qc.invalidateQueries({ queryKey: ["scoring_config"] });
+      qc.invalidateQueries({ queryKey: ["pm_tasks"] });
+      toast.success("Etiqueta removida!");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao remover etiqueta"),
   });
 
   const rows = configQ.data ?? [];
@@ -81,10 +160,19 @@ export function AdminPontuacaoPanel() {
     .sort((a, b) => magicStages.indexOf(a.stage) - magicStages.indexOf(b.stage));
 
   // Tag-based scoring entries
-  const tagStages = ["tag_post", "tag_carrossel", "tag_capa", "tag_video_curto", "tag_video"];
   const tagRows = [...rows]
-    .filter((r) => tagStages.includes(r.stage))
-    .sort((a, b) => tagStages.indexOf(a.stage) - tagStages.indexOf(b.stage));
+    .filter((r) => r.stage.startsWith("tag_"))
+    .sort((a, b) => a.label.localeCompare(b.label));
+
+  const handleCreateTag = () => {
+    if (!newTagName.trim()) return;
+    const exists = globalTags.some(gt => gt.name.toLowerCase() === newTagName.trim().toLowerCase());
+    if (exists) {
+      toast.error("Etiqueta já existe!");
+      return;
+    }
+    createTagMut.mutate({ name: newTagName.trim(), color_key: newTagColor });
+  };
 
   return (
     <div className="space-y-6">
@@ -184,12 +272,79 @@ export function AdminPontuacaoPanel() {
 
       <Card className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.3s" }}>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Pontuação por Etiqueta</CardTitle>
+          <CardTitle className="text-base">Etiquetas e Pontuação</CardTitle>
           <CardDescription>
-            Configure os pontos de cada tipo de conteúdo (etiqueta) atribuído às subtarefas.
+            Crie e gerencie etiquetas globais. Cada etiqueta terá sua pontuação configurável abaixo.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {/* Create new tag */}
+          <div className="flex items-end gap-3 p-3 rounded-lg border border-dashed border-border/60 bg-muted/20">
+            <div className="flex-1 space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Nova etiqueta</label>
+              <Input
+                value={newTagName}
+                onChange={(e) => setNewTagName(e.target.value)}
+                placeholder="Nome da etiqueta..."
+                className="h-8 text-sm"
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleCreateTag(); } }}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Cor</label>
+              <div className="flex gap-1.5">
+                {TAG_COLORS.map(c => (
+                  <button
+                    key={c.key}
+                    className={cn(
+                      "h-6 w-6 rounded-full transition-all",
+                      c.dot,
+                      newTagColor === c.key
+                        ? "ring-2 ring-offset-2 ring-offset-background ring-white/50 scale-110"
+                        : "opacity-60 hover:opacity-100"
+                    )}
+                    onClick={() => setNewTagColor(c.key)}
+                  />
+                ))}
+              </div>
+            </div>
+            <Button
+              size="sm"
+              className="h-8 gap-1.5"
+              disabled={!newTagName.trim() || createTagMut.isPending}
+              onClick={handleCreateTag}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Criar
+            </Button>
+          </div>
+
+          {/* Existing tags list */}
+          {globalTags.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-muted-foreground">Etiquetas existentes</p>
+              <div className="flex flex-wrap gap-2">
+                {globalTags.map(gt => {
+                  const rawTag = `${gt.name}:${gt.color_key}`;
+                  const tc = tagColor(rawTag);
+                  return (
+                    <div key={gt.id} className={cn("flex items-center gap-1.5 rounded-full pl-2.5 pr-1 py-1", tc.bg)}>
+                      <span className={cn("text-xs font-medium", tc.text)}>{gt.name}</span>
+                      <button
+                        className="h-4 w-4 flex items-center justify-center rounded-full hover:bg-destructive/30 transition-all"
+                        onClick={() => deleteTagWithScoring.mutate({ id: gt.id, name: gt.name, color_key: gt.color_key })}
+                        title="Remover etiqueta"
+                      >
+                        <Trash2 className="h-2.5 w-2.5 text-destructive" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Tag scoring table */}
           {!configQ.isLoading && tagRows.length > 0 && (
             <>
               <div className="rounded-lg border border-border/60 overflow-x-auto">
@@ -241,7 +396,7 @@ export function AdminPontuacaoPanel() {
                 </Table>
               </div>
 
-              <div className="mt-4 flex justify-end">
+              <div className="flex justify-end">
                 <Button
                   variant="brand"
                   disabled={!hasEdits || saveMut.isPending}

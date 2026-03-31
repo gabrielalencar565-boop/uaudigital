@@ -1136,22 +1136,9 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                   <Input
                     value={newTagName}
                     onChange={(e) => setNewTagName(e.target.value)}
-                    placeholder="Pesquise ou adicione tags..."
+                    placeholder="Pesquisar etiquetas..."
                     className="h-8 text-xs"
-                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }}
                   />
-                  {newTagName.trim() && (
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {TAG_COLORS.map(c => (
-                        <button key={c.key} className={cn("h-5 w-5 rounded-full transition-all", c.dot, newTagColor === c.key ? "ring-2 ring-offset-2 ring-offset-background ring-white/50 scale-110" : "opacity-60 hover:opacity-100")} onClick={() => setNewTagColor(c.key)} />
-                      ))}
-                    </div>
-                  )}
-                  {newTagName.trim() && !globalTags.some(gt => gt.name.toLowerCase() === newTagName.trim().toLowerCase()) && (
-                    <Button size="sm" className="mt-2 h-7 text-xs w-full" onClick={addTag}>
-                      <Plus className="h-3 w-3 mr-1" /> Criar "{newTagName.trim()}"
-                    </Button>
-                  )}
                 </div>
                 {globalTags.length > 0 && (
                   <div className="p-2 space-y-0.5">
@@ -1169,16 +1156,14 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                             <span className="text-xs flex-1">{gt.name}</span>
                             {isActive && <Check className="h-3 w-3 text-primary shrink-0" />}
                           </button>
-                          <button
-                            className="h-4 w-4 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 hover:bg-destructive/20 transition-all shrink-0"
-                            onClick={(e) => { e.stopPropagation(); handleDeleteGlobalTag(gt); }}
-                            title="Apagar etiqueta de todas as tarefas"
-                          >
-                            <X className="h-3 w-3 text-destructive" />
-                          </button>
                         </div>
                       );
                     })}
+                  </div>
+                )}
+                {globalTags.length === 0 && (
+                  <div className="p-4 text-center text-xs text-muted-foreground">
+                    Nenhuma etiqueta criada. Crie em Configurações → Pontuação.
                   </div>
                 )}
               </PopoverContent>
