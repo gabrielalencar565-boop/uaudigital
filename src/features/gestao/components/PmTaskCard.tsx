@@ -11,6 +11,7 @@ import { priorityMeta, tagColor, tagDisplay } from "../pm-constants";
 import { useUpdatePmTask, useDeletePmTask, useCreatePmTask } from "../hooks/use-pm-data";
 import type { PmTask } from "../pm-types";
 import { toast } from "sonner";
+import { playTrashSound } from "@/lib/notifications";
 
 interface Props {
   task: PmTask;
