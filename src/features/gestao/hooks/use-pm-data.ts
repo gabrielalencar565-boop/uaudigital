@@ -211,165 +211,110 @@ export function useDeletePmTask() {
     mutationFn: async (id: string) => {
       const { data: { user } } = await supabase.auth.getUser();
 
-      // Get task info before deleting
-      const { data: taskInfo } = await sb
-        .from("pm_tasks")
-        .select("title, client_id, due_date, stage_current")
-        .eq("id", id)
-        .single();
+      // Run initial reads in parallel
+      const [taskInfoRes, affectedRes, childrenRes] = await Promise.all([
+        sb.from("pm_tasks").select("title, client_id, due_date, stage_current").eq("id", id).single(),
+        sb.from("tasks").select("assigned_user_id, due_date, description").like("description", `pm:${id}:%`).is("deleted_at", null),
+        sb.from("pm_tasks").select("id").eq("parent_task_id", id),
+      ]);
 
-      // Collect ALL affected user IDs from performance snapshots BEFORE soft-deleting
-      const { data: affectedRows } = await sb
-        .from("tasks")
-        .select("assigned_user_id, due_date")
-        .like("description", `pm:${id}:%`)
-        .is("deleted_at", null);
+      const taskInfo = taskInfoRes.data;
+      const affectedRows = affectedRes.data ?? [];
+      const children = childrenRes.data ?? [];
 
       const affectedUsers = new Map<string, { year: number; month: number }>();
-      (affectedRows ?? []).forEach((r: any) => {
+      affectedRows.forEach((r: any) => {
         if (r.assigned_user_id && r.due_date) {
           const d = new Date(r.due_date);
           affectedUsers.set(r.assigned_user_id, { year: d.getFullYear(), month: d.getMonth() + 1 });
         }
       });
 
-      // Soft-delete all performance snapshot tasks linked to this pm_task
-      const { error: snapErr } = await sb
-        .from("tasks")
-        .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id ?? null })
-        .like("description", `pm:${id}:%`)
-        .is("deleted_at", null);
-      if (snapErr) console.error("Error cleaning snapshots:", snapErr);
+      // Soft-delete parent snapshots + child snapshots in parallel
+      const softDeleteOps: Promise<any>[] = [
+        sb.from("tasks").update({ deleted_at: new Date().toISOString(), deleted_by: user?.id ?? null }).like("description", `pm:${id}:%`).is("deleted_at", null),
+      ];
 
-      // Also delete child pm_tasks first (cascade won't soft-delete snapshots)
-      const { data: children } = await sb
-        .from("pm_tasks")
-        .select("id")
-        .eq("parent_task_id", id);
-      if (children?.length) {
-        for (const child of children) {
-          const { data: childAffected } = await sb
-            .from("tasks")
-            .select("assigned_user_id, due_date")
-            .like("description", `pm:${child.id}:%`)
-            .is("deleted_at", null);
+      if (children.length) {
+        // Collect child affected users and soft-delete child snapshots in parallel
+        const childOps = children.map(async (child: any) => {
+          const { data: childAffected } = await sb.from("tasks").select("assigned_user_id, due_date").like("description", `pm:${child.id}:%`).is("deleted_at", null);
           (childAffected ?? []).forEach((r: any) => {
             if (r.assigned_user_id && r.due_date) {
               const d = new Date(r.due_date);
               affectedUsers.set(r.assigned_user_id, { year: d.getFullYear(), month: d.getMonth() + 1 });
             }
           });
-
-          await sb
-            .from("tasks")
-            .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id ?? null })
-            .like("description", `pm:${child.id}:%`)
-            .is("deleted_at", null);
-        }
+          return sb.from("tasks").update({ deleted_at: new Date().toISOString(), deleted_by: user?.id ?? null }).like("description", `pm:${child.id}:%`).is("deleted_at", null);
+        });
+        softDeleteOps.push(...childOps);
       }
 
-      // ═══ UNMARK MAGIC NUMBER ═══
-      // Reverse what pm_sync_stage_completion did for magic2
-      if (taskInfo?.client_id && taskInfo?.due_date) {
+      await Promise.all(softDeleteOps);
+
+      // Unmark Magic Number (fire-and-forget style, don't block deletion)
+      const magicPromise = (async () => {
+        if (!taskInfo?.client_id || !taskInfo?.due_date) return;
         try {
           const dueDate = new Date(taskInfo.due_date);
           const year = dueDate.getFullYear();
           const month = dueDate.getMonth() + 1;
 
-          // Find magic2 client link
-          const { data: link } = await sb
-            .from("magic2_client_links")
-            .select("magic2_client_id")
-            .eq("agenda_client_id", taskInfo.client_id)
-            .limit(1)
-            .maybeSingle();
+          const { data: link } = await sb.from("magic2_client_links").select("magic2_client_id").eq("agenda_client_id", taskInfo.client_id).limit(1).maybeSingle();
+          if (!link?.magic2_client_id) return;
 
-          if (link?.magic2_client_id) {
-            const { data: cycle } = await sb
-              .from("magic2_cycles")
-              .select("id")
-              .eq("client_id", link.magic2_client_id)
-              .eq("year", year)
-              .eq("month", month)
-              .limit(1)
-              .maybeSingle();
+          const { data: cycle } = await sb.from("magic2_cycles").select("id").eq("client_id", link.magic2_client_id).eq("year", year).eq("month", month).limit(1).maybeSingle();
+          if (!cycle?.id) return;
 
-            if (cycle?.id) {
-              // Check if there are OTHER completed tasks for same client/stage/month
-              // (excluding the one we're deleting and its children)
-              const idsToExclude = [id, ...(children?.map(c => c.id) ?? [])];
-              
-              // Get all stages that were completed by this task
-              const completedStages = new Set<string>();
-              (affectedRows ?? []).forEach((r: any) => {
-                // description format: pm:{taskId}:{stage}:{userId}
-                const desc = r.description as string;
-                if (desc) {
-                  const parts = desc.split(":");
-                  if (parts.length >= 3) completedStages.add(parts[2]);
-                }
-              });
-
-              // Actually get from tasks table descriptions
-              const { data: allSnapshots } = await sb
-                .from("tasks")
-                .select("description")
-                .like("description", `pm:${id}:%`)
-                .is("deleted_at", null);
-              // Already soft-deleted above, check from affectedRows
-              (affectedRows ?? []).forEach((r: any) => {});
-
-              // For each stage this task completed, check if other pm_tasks also completed it
-              for (const stage of completedStages) {
-                // Check if any other active pm:*:{stage} tasks exist for this client/month
-                const { data: otherTasks } = await sb
-                  .from("tasks")
-                  .select("id")
-                  .like("description", `pm:%:${stage}:%`)
-                  .is("deleted_at", null)
-                  .eq("client_id", taskInfo.client_id)
-                  .eq("status", "concluido")
-                  .limit(1);
-
-                const hasOther = (otherTasks ?? []).length > 0;
-                if (!hasOther) {
-                  // Unmark the magic2 stage
-                  await sb
-                    .from("magic2_cycle_stages")
-                    .update({
-                      completed: false,
-                      completed_at: null,
-                      completed_by: null,
-                      updated_at: new Date().toISOString(),
-                    })
-                    .eq("cycle_id", cycle.id)
-                    .eq("stage", stage);
-                }
-              }
+          const completedStages = new Set<string>();
+          affectedRows.forEach((r: any) => {
+            const desc = r.description as string;
+            if (desc) {
+              const parts = desc.split(":");
+              if (parts.length >= 3) completedStages.add(parts[2]);
             }
-          }
+          });
+
+          await Promise.all(
+            Array.from(completedStages).map(async (stage) => {
+              const { data: otherTasks } = await sb.from("tasks").select("id").like("description", `pm:%:${stage}:%`).is("deleted_at", null).eq("client_id", taskInfo.client_id).eq("status", "concluido").limit(1);
+              if (!(otherTasks ?? []).length) {
+                await sb.from("magic2_cycle_stages").update({ completed: false, completed_at: null, completed_by: null, updated_at: new Date().toISOString() }).eq("cycle_id", cycle.id).eq("stage", stage);
+              }
+            })
+          );
         } catch (e) {
           console.error("Error unchecking magic number:", e);
         }
-      }
+      })();
 
+      // Delete the pm_task itself
       const { error } = await sb.from("pm_tasks").delete().eq("id", id);
       if (error) throw error;
 
-      // Recompute scores for ALL affected users
-      for (const [userId, { year, month }] of affectedUsers) {
-        try {
-          await supabase.rpc("recompute_all_scores", {
-            _user_id: userId,
-            _year: year,
-            _month: month,
-          } as any);
-        } catch (e) {
-          console.error("Error recomputing scores for user:", userId, e);
-        }
-      }
+      // Wait for magic cleanup, then recompute scores in parallel
+      await magicPromise;
+      await Promise.all(
+        Array.from(affectedUsers).map(([userId, { year, month }]) =>
+          supabase.rpc("recompute_all_scores", { _user_id: userId, _year: year, _month: month } as any).catch((e: any) => console.error("Error recomputing scores:", userId, e))
+        )
+      );
     },
-    onSuccess: () => {
+    onMutate: async (id) => {
+      // Optimistic removal from cache
+      await qc.cancelQueries({ queryKey: ["pm_tasks"] });
+      await qc.cancelQueries({ queryKey: ["pm_child_tasks_all"] });
+      const prevTasks = qc.getQueryData<PmTask[]>(["pm_tasks"]);
+      const prevChildren = qc.getQueryData<PmTask[]>(["pm_child_tasks_all"]);
+      if (prevTasks) qc.setQueryData(["pm_tasks"], prevTasks.filter(t => t.id !== id));
+      if (prevChildren) qc.setQueryData(["pm_child_tasks_all"], prevChildren.filter(t => t.parent_task_id !== id));
+      return { prevTasks, prevChildren };
+    },
+    onError: (_err, _id, ctx: any) => {
+      if (ctx?.prevTasks) qc.setQueryData(["pm_tasks"], ctx.prevTasks);
+      if (ctx?.prevChildren) qc.setQueryData(["pm_child_tasks_all"], ctx.prevChildren);
+    },
+    onSettled: () => {
       qc.invalidateQueries({ queryKey: ["pm_tasks"] });
       qc.invalidateQueries({ queryKey: ["pm_child_tasks"] });
       qc.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
