@@ -55,6 +55,11 @@ export function AdminPontuacaoPanel() {
       const entries = Object.entries(edits);
       if (entries.length === 0) return;
 
+      // 1. Snapshot: congela pontuação de tarefas já concluídas
+      const { data: snapshotCount, error: snapErr } = await sb.rpc("snapshot_unscored_tasks");
+      if (snapErr) throw snapErr;
+
+      // 2. Atualiza os critérios
       for (const [id, changes] of entries) {
         const { error } = await supabase
           .from("scoring_config")
@@ -62,11 +67,17 @@ export function AdminPontuacaoPanel() {
           .eq("id", id);
         if (error) throw error;
       }
+
+      return snapshotCount as number;
     },
-    onSuccess: async () => {
+    onSuccess: async (count) => {
       setEdits({});
       await qc.invalidateQueries({ queryKey: ["scoring_config"] });
-      toast.success("Pontuação atualizada!");
+      if (count && count > 0) {
+        toast.success(`Pontuação atualizada! ${count} tarefa(s) anterior(es) protegida(s).`);
+      } else {
+        toast.success("Pontuação atualizada!");
+      }
     },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao salvar"),
   });
