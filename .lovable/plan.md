@@ -1,36 +1,76 @@
 
 
-## Problem Analysis
+## Proteger pontuação de tarefas anteriores ao alterar critérios
 
-Three issues reported:
+### Problema atual
 
-1. **Toast notifications (overdue/due-soon) appear on every site visit** — The `checkDeadlines` function runs on mount and generates keys like `overdue-${taskId}-${todayStr}`. While localStorage dedup exists, these are *deadline* notifications that re-trigger because the check runs on every mount AND on every visibility change. The `fetchMissedWhileAway` also re-fetches assignments/mentions since `last-seen`, potentially re-triggering them.
+Quando os critérios de pontuação são alterados em `scoring_config`, a função `recompute_all_scores` recalcula tarefas concluídas que **não possuem snapshot** (`point_value IS NULL`) usando os **novos valores**, alterando retroativamente a pontuação dos colaboradores.
 
-2. **No X button to dismiss toasts** — The `triggerNotification` function in `notifications.ts` uses `sonner` toast without a close/dismiss button.
+### Solução
 
-3. **Opening the bell should auto-mark all as read** — Currently the dropdown only marks as read on individual click or explicit "Mark all" button. User wants opening the popover itself to auto-mark everything read.
+Ao salvar alterações nos critérios, **antes** de atualizar a `scoring_config`, executar uma função que grava o `point_value` (snapshot) em todas as tarefas concluídas que ainda não possuem snapshot. Assim, quando o recompute rodar com os novos valores, essas tarefas antigas preservam a pontuação original.
 
 ---
 
-## Plan
+### Etapa 1 — Criar função de snapshot no banco
 
-### 1. Fix toast appearing every visit
+**Migração SQL**: Criar `snapshot_unscored_tasks()` que, para cada tarefa concluída com `point_value IS NULL`, calcula e grava o valor usando a configuração **atual** (antes da mudança).
 
-**File: `src/hooks/use-notification-sound.ts`**
+```sql
+CREATE OR REPLACE FUNCTION public.snapshot_unscored_tasks()
+RETURNS integer  -- retorna quantas tarefas foram atualizadas
+LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public'
+AS $$
+DECLARE
+  v_count integer;
+BEGIN
+  UPDATE public.tasks t
+  SET point_value = (
+    COALESCE(sc.base_points, 1)
+    * CASE WHEN COALESCE(sc.uses_quantity, false) THEN COALESCE(t.quantity, 1) ELSE 1 END
+    * CASE WHEN t.is_extra_demand AND COALESCE(sc.uses_quantity, false) 
+           THEN COALESCE(sc.extra_demand_multiplier, 1.5) ELSE 1 END
+  )
+  FROM public.scoring_config sc
+  WHERE sc.stage = t.stage::text
+    AND t.status = 'concluido'
+    AND t.deleted_at IS NULL
+    AND t.point_value IS NULL
+    AND t.completed_at IS NOT NULL;
 
-- Remove the initial `checkDeadlines()` call on mount (line 267). Deadline notifications should only fire via realtime or periodic interval, not on page load.
-- Remove `fetchMissedWhileAway()` from the `handleVisible` callback on initial load — only run it on subsequent visibility returns. Use a ref (`initialLoadRef`) to skip the first trigger.
-- Keep the periodic 5-minute interval for deadline checks (this is fine since localStorage dedup prevents re-showing within the same day).
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  RETURN v_count;
+END;
+$$;
+```
 
-### 2. Add X close button to toasts
+### Etapa 2 — Alterar fluxo de salvamento no painel
 
-**File: `src/lib/notifications.ts`**
+**Arquivo: `src/features/admin/AdminPontuacaoPanel.tsx`**
 
-- Add `dismissible: true` to the `toast()` call options. Sonner supports this natively — it renders an X button on the toast.
+- Adicionar um banner informativo permanente explicando que alterações afetam apenas novas tarefas
+- No `saveMut`, **antes** de atualizar as linhas da `scoring_config`, chamar `supabase.rpc('snapshot_unscored_tasks')` para congelar as pontuações existentes
+- Exibir um toast com quantas tarefas foram protegidas (ex: "42 tarefas anteriores protegidas")
 
-### 3. Auto-mark all as read when opening the bell
+```text
+Fluxo de salvamento:
+1. Chamar snapshot_unscored_tasks() → congela tarefas antigas
+2. Atualizar scoring_config com os novos valores
+3. Toast de sucesso com contagem
+```
 
-**File: `src/components/layout/NotificationsDropdown.tsx`**
+### Etapa 3 — Banner informativo na UI
 
-- Add an `onOpenChange` handler to the `<Popover>` component. When the popover opens (`open === true`), automatically call `markAllAsRead` for all unread notification keys.
+Adicionar um `Alert` abaixo do título do painel:
+
+> "Alterações nos critérios afetam apenas tarefas futuras. Tarefas já concluídas mantêm a pontuação original automaticamente."
+
+---
+
+### Arquivos alterados
+
+| Arquivo | Tipo |
+|---|---|
+| Nova migração SQL | Criar função `snapshot_unscored_tasks` |
+| `src/features/admin/AdminPontuacaoPanel.tsx` | Chamar RPC antes de salvar + banner informativo |
 
