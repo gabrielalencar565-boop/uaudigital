@@ -118,15 +118,13 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
     setSaving(true);
     try {
       let nextAvatarUrl = avatarUrl;
-      if (avatarFile) {
-        if (!avatarFile.type.startsWith("image/")) throw new Error("Envie uma imagem (PNG/JPG/WebP)");
-        if (avatarFile.size > 5 * 1024 * 1024) throw new Error("Imagem muito grande (máx 5MB)");
+      if (avatarBlob) {
+        if (avatarBlob.size > 5 * 1024 * 1024) throw new Error("Imagem muito grande (máx 5MB)");
 
-        const ext = (avatarFile.name.split(".").pop() || "png").toLowerCase();
-        const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
-        const up = await supabase.storage.from("avatars").upload(path, avatarFile, {
+        const path = `${user.id}/${crypto.randomUUID()}.webp`;
+        const up = await supabase.storage.from("avatars").upload(path, avatarBlob, {
           upsert: true,
-          contentType: avatarFile.type,
+          contentType: "image/webp",
         });
         if (up.error) throw up.error;
         const pub = supabase.storage.from("avatars").getPublicUrl(path);
