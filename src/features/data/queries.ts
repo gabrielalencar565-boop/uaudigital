@@ -331,7 +331,10 @@ export function useTasks(params?: {
           // Fallback seguro: se o formato vier inesperado, não aplica filtro de mês (melhor do que crash)
         }
       }
-      const { data, error } = await q.order("due_date", { ascending: true });
+      const { data, error } = await q
+        .order("due_date", { ascending: true })
+        .order("status", { ascending: true })
+        .order("due_at", { ascending: true, nullsFirst: false });
       if (error) throw error;
       return (data ?? []) as unknown as TaskRow[];
     },
