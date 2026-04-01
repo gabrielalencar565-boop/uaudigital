@@ -522,7 +522,14 @@ export function AdminDeadlineReport({
                           <button
                             type="button"
                             className="min-w-0 text-left group cursor-pointer"
-                            onClick={() => setDetailTask(t)}
+                            onClick={() => {
+                              const pmId = extractPmTaskId(t.description);
+                              if (pmId) {
+                                const pmTask = (pmTasksQ.data ?? []).find(p => p.id === pmId);
+                                if (pmTask) { setPmTaskToOpen(pmTask); return; }
+                              }
+                              setDetailTask(t);
+                            }}
                           >
                             <p className="truncate font-medium group-hover:text-primary group-hover:underline flex items-center gap-1">
                               {t.title ?? (t.client?.name ? `Cliente: ${t.client.name}` : "Tarefa")}
