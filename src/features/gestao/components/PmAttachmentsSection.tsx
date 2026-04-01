@@ -1,7 +1,8 @@
 import { useRef, useState, useCallback } from "react";
 import { format } from "date-fns";
-import { Upload, FileText, Download, MoreHorizontal, Link2, ImagePlus, GripVertical, Trash2, Loader2 } from "lucide-react";
+import { Upload, FileText, Download, MoreHorizontal, Link2, ImagePlus, GripVertical, Trash2, Loader2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
@@ -49,6 +50,8 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
   const [dragging, setDragging] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = useState("");
 
   const doUpload = useCallback(async (file: File) => {
     if (file.size > 1024 * 1024 * 1024) { toast.error("Arquivo muito grande (máx 1GB)"); return; }
@@ -178,6 +181,41 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
     toast.success("URL copiada!");
   };
 
+  const handleRenameStart = (att: PmAttachment) => {
+    setRenamingId(att.id);
+    setRenameDraft(att.file_name);
+  };
+
+  const handleRenameCommit = async (attId: string) => {
+    const trimmed = renameDraft.trim();
+    if (!trimmed) { setRenamingId(null); return; }
+    try {
+      await sb.from("pm_attachments").update({ file_name: trimmed }).eq("id", attId);
+      queryClient.invalidateQueries({ queryKey: ["pm_attachments"] });
+      toast.success("Nome atualizado!");
+    } catch (err: any) {
+      toast.error(err?.message ?? "Erro ao renomear");
+    }
+    setRenamingId(null);
+  };
+
+  const handleDownload = async (url: string, fileName: string) => {
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch {
+      toast.error("Erro ao baixar arquivo");
+    }
+  };
+
   return (
     <div
       className="space-y-3"
@@ -268,7 +306,7 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
               )}
 
               {/* 3-dot menu */}
-              <div className="absolute top-1 right-1">
+              <div className="absolute top-1 right-1 z-20">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button size="icon" variant="secondary" className="h-5 w-5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm">
@@ -287,12 +325,13 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
                       </DropdownMenuItem>
                     )}
                     {att.public_url && (
-                      <DropdownMenuItem className="text-xs gap-2" asChild>
-                        <a href={att.public_url} download={att.file_name} target="_blank" rel="noopener noreferrer">
-                          <Download className="h-3.5 w-3.5" /> Baixar
-                        </a>
+                      <DropdownMenuItem className="text-xs gap-2" onClick={() => handleDownload(att.public_url!, att.file_name)}>
+                        <Download className="h-3.5 w-3.5" /> Baixar
                       </DropdownMenuItem>
                     )}
+                    <DropdownMenuItem className="text-xs gap-2" onClick={() => handleRenameStart(att)}>
+                      <Pencil className="h-3.5 w-3.5" /> Renomear
+                    </DropdownMenuItem>
                     <DropdownMenuItem
                       className="text-xs gap-2 text-destructive focus:text-destructive"
                       onClick={() => handleDeleteAttachment(att)}
@@ -305,10 +344,24 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
 
               {/* Info bar */}
               <div className="px-1.5 py-1 space-y-0.5">
-                <p className="truncate text-[9px] font-medium min-w-0">
-                  {att.file_name}
-                  {isCover && <span className="ml-0.5 text-[7px] text-primary font-bold uppercase">Capa</span>}
-                </p>
+                {renamingId === att.id ? (
+                  <Input
+                    autoFocus
+                    value={renameDraft}
+                    onChange={(e) => setRenameDraft(e.target.value)}
+                    onBlur={() => handleRenameCommit(att.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleRenameCommit(att.id);
+                      if (e.key === "Escape") setRenamingId(null);
+                    }}
+                    className="h-5 text-[9px] px-1 py-0 rounded"
+                  />
+                ) : (
+                  <p className="truncate text-[9px] font-medium min-w-0">
+                    {att.file_name}
+                    {isCover && <span className="ml-0.5 text-[7px] text-primary font-bold uppercase">Capa</span>}
+                  </p>
+                )}
                 <div className="flex items-center gap-1 text-[8px] text-muted-foreground">
                   <span>{format(new Date(att.created_at), "MMM dd 'às' h:mm a")}</span>
                   {uploader && (
