@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { differenceInDays } from "date-fns";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Trash2, RotateCcw, AlertTriangle, Loader2, Clock } from "lucide-react";
+import { Trash2, RotateCcw, AlertTriangle, Loader2, Clock, Kanban } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,18 +24,31 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 import { useDeletedTasks, useRestoreTask, usePermanentlyDeleteTask, useEmptyTrash, useClients, useTeamMembers } from "@/features/data/queries";
+import { useDeletedPmTasks, useRestorePmTask, usePermanentlyDeletePmTask } from "@/features/gestao/hooks/use-pm-data";
 import { STAGES } from "@/lib/uau";
 
-function initials(name: string) {
-  return name.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]!.toUpperCase()).join("");
-}
+type TrashItem = {
+  id: string;
+  type: "legacy" | "pm";
+  title: string;
+  clientName: string;
+  assigneeName: string;
+  assigneeAvatar?: string | null;
+  stageLabel: string;
+  dueDate: string | null;
+  deletedAt: Date | null;
+  deletedByName: string | null;
+};
 
 export function TaskTrashPanel({ onClose, isAdmin = false }: { onClose: () => void; isAdmin?: boolean }) {
   const deletedTasksQ = useDeletedTasks();
+  const deletedPmTasksQ = useDeletedPmTasks();
   const clientsQ = useClients();
   const teamQ = useTeamMembers();
   const restoreTask = useRestoreTask();
+  const restorePmTask = useRestorePmTask();
   const permanentlyDeleteTask = usePermanentlyDeleteTask();
+  const permanentlyDeletePmTask = usePermanentlyDeletePmTask();
   const emptyTrash = useEmptyTrash();
   
   const [restoringId, setRestoringId] = useState<string | null>(null);
@@ -45,7 +58,52 @@ export function TaskTrashPanel({ onClose, isAdmin = false }: { onClose: () => vo
   const clientsById = new Map((clientsQ.data ?? []).map(c => [c.id, c]));
   const teamByUserId = new Map((teamQ.data ?? []).map(m => [m.user_id, m]));
 
-  // Auto-delete tasks older than 30 days
+  // Build unified trash list
+  const legacyItems: TrashItem[] = (deletedTasksQ.data ?? [])
+    .filter(t => !t.description?.startsWith("pm:"))
+    .map(t => {
+      const client = clientsById.get(t.client_id);
+      const member = teamByUserId.get(t.assigned_user_id);
+      const deletedByMember = t.deleted_by ? teamByUserId.get(t.deleted_by) : null;
+      return {
+        id: t.id,
+        type: "legacy" as const,
+        title: t.title ?? member?.display_name ?? "—",
+        clientName: client?.name ?? "Cliente removido",
+        assigneeName: member?.display_name ?? "—",
+        assigneeAvatar: member?.avatar_url,
+        stageLabel: STAGES.find(s => s.key === t.stage)?.label ?? t.stage,
+        dueDate: t.due_date,
+        deletedAt: t.deleted_at ? new Date(t.deleted_at) : null,
+        deletedByName: deletedByMember?.display_name ?? null,
+      };
+    });
+
+  const pmItems: TrashItem[] = (deletedPmTasksQ.data ?? []).map(t => {
+    const client = clientsById.get(t.client_id);
+    const member = t.assignee_id ? teamByUserId.get(t.assignee_id) : null;
+    const deletedByMember = (t as any).deleted_by ? teamByUserId.get((t as any).deleted_by) : null;
+    const stageLabel = STAGES.find(s => s.key === t.stage_current)?.label ?? t.stage_current;
+    return {
+      id: t.id,
+      type: "pm" as const,
+      title: t.title,
+      clientName: client?.name ?? "Cliente removido",
+      assigneeName: member?.display_name ?? "—",
+      assigneeAvatar: member?.avatar_url,
+      stageLabel,
+      dueDate: t.due_date,
+      deletedAt: (t as any).deleted_at ? new Date((t as any).deleted_at) : null,
+      deletedByName: deletedByMember?.display_name ?? null,
+    };
+  });
+
+  const allItems = [...legacyItems, ...pmItems].sort((a, b) => {
+    if (!a.deletedAt || !b.deletedAt) return 0;
+    return b.deletedAt.getTime() - a.deletedAt.getTime();
+  });
+
+  // Auto-delete legacy tasks older than 30 days
   useEffect(() => {
     const deletedTasks = deletedTasksQ.data ?? [];
     const now = new Date();
@@ -67,10 +125,37 @@ export function TaskTrashPanel({ onClose, isAdmin = false }: { onClose: () => vo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deletedTasksQ.data]);
 
-  const handleRestore = async (taskId: string) => {
-    setRestoringId(taskId);
+  // Auto-delete PM tasks older than 30 days
+  useEffect(() => {
+    const deletedPm = deletedPmTasksQ.data ?? [];
+    const now = new Date();
+    const expired = deletedPm.filter(t => {
+      const da = (t as any).deleted_at;
+      if (!da) return false;
+      return differenceInDays(now, new Date(da)) >= 30;
+    });
+    if (expired.length === 0) return;
+    
+    (async () => {
+      for (const t of expired) {
+        try {
+          await permanentlyDeletePmTask.mutateAsync(t.id);
+        } catch (e) {
+          console.error("Auto-delete expired PM task failed:", e);
+        }
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deletedPmTasksQ.data]);
+
+  const handleRestore = async (item: TrashItem) => {
+    setRestoringId(item.id);
     try {
-      await restoreTask.mutateAsync({ taskId });
+      if (item.type === "pm") {
+        await restorePmTask.mutateAsync(item.id);
+      } else {
+        await restoreTask.mutateAsync({ taskId: item.id });
+      }
       toast.success("Tarefa restaurada com sucesso!");
     } catch (e: any) {
       toast.error(e?.message ?? "Erro ao restaurar tarefa");
@@ -79,10 +164,14 @@ export function TaskTrashPanel({ onClose, isAdmin = false }: { onClose: () => vo
     }
   };
 
-  const handlePermanentDelete = async (taskId: string) => {
-    setDeletingId(taskId);
+  const handlePermanentDelete = async (item: TrashItem) => {
+    setDeletingId(item.id);
     try {
-      await permanentlyDeleteTask.mutateAsync({ taskId });
+      if (item.type === "pm") {
+        await permanentlyDeletePmTask.mutateAsync(item.id);
+      } else {
+        await permanentlyDeleteTask.mutateAsync({ taskId: item.id });
+      }
       toast.success("Tarefa excluída permanentemente");
     } catch (e: any) {
       toast.error(e?.message ?? "Erro ao excluir tarefa");
@@ -95,6 +184,10 @@ export function TaskTrashPanel({ onClose, isAdmin = false }: { onClose: () => vo
     setEmptyingTrash(true);
     try {
       await emptyTrash.mutateAsync();
+      const pmTasks = deletedPmTasksQ.data ?? [];
+      for (const t of pmTasks) {
+        await permanentlyDeletePmTask.mutateAsync(t.id);
+      }
       toast.success("Lixeira esvaziada!");
     } catch (e: any) {
       toast.error(e?.message ?? "Erro ao esvaziar lixeira");
@@ -103,7 +196,7 @@ export function TaskTrashPanel({ onClose, isAdmin = false }: { onClose: () => vo
     }
   };
 
-  const deletedTasks = deletedTasksQ.data ?? [];
+  const isLoading = deletedTasksQ.isLoading || deletedPmTasksQ.isLoading;
 
   return (
     <Card className="h-full flex flex-col">
@@ -115,11 +208,11 @@ export function TaskTrashPanel({ onClose, isAdmin = false }: { onClose: () => vo
               Lixeira de Tarefas
             </CardTitle>
             <CardDescription>
-              {deletedTasks.length} tarefa{deletedTasks.length !== 1 ? "s" : ""} na lixeira
+              {allItems.length} tarefa{allItems.length !== 1 ? "s" : ""} na lixeira
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
-            {deletedTasks.length > 0 && isAdmin && (
+            {allItems.length > 0 && isAdmin && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive" size="sm" disabled={emptyingTrash}>
@@ -138,7 +231,7 @@ export function TaskTrashPanel({ onClose, isAdmin = false }: { onClose: () => vo
                       Esvaziar lixeira?
                     </AlertDialogTitle>
                     <AlertDialogDescription>
-                      Esta ação excluirá permanentemente <strong>{deletedTasks.length} tarefa{deletedTasks.length !== 1 ? "s" : ""}</strong>.
+                      Esta ação excluirá permanentemente <strong>{allItems.length} tarefa{allItems.length !== 1 ? "s" : ""}</strong>.
                       Esta ação não pode ser desfeita.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
@@ -162,11 +255,11 @@ export function TaskTrashPanel({ onClose, isAdmin = false }: { onClose: () => vo
       </CardHeader>
 
       <CardContent className="flex-1 overflow-hidden">
-        {deletedTasksQ.isLoading ? (
+        {isLoading ? (
           <div className="flex items-center justify-center h-32">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
-        ) : deletedTasks.length === 0 ? (
+        ) : allItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-32 text-center">
             <Trash2 className="h-12 w-12 text-muted-foreground/30 mb-3" />
             <p className="text-muted-foreground">A lixeira está vazia</p>
@@ -174,34 +267,36 @@ export function TaskTrashPanel({ onClose, isAdmin = false }: { onClose: () => vo
         ) : (
           <ScrollArea className="h-[400px] pr-4">
             <div className="space-y-3">
-              {deletedTasks.map(task => {
-                const client = clientsById.get(task.client_id);
-                const member = teamByUserId.get(task.assigned_user_id);
-                const deletedByMember = task.deleted_by ? teamByUserId.get(task.deleted_by) : null;
-                const stageLabel = STAGES.find(s => s.key === task.stage)?.label ?? task.stage;
-                const deletedAt = task.deleted_at ? new Date(task.deleted_at) : null;
+              {allItems.map(item => {
+                const deletedAt = item.deletedAt;
 
                 return (
                   <div
-                    key={task.id}
+                    key={`${item.type}-${item.id}`}
                     className={cn(
                       "flex items-center gap-3 rounded-lg border border-border bg-card p-3",
                       "hover:bg-accent/50 transition-colors"
                     )}
                   >
-                    <UserAvatar avatarUrl={member?.avatar_url} name={member?.display_name} className="h-8 w-8 shrink-0" fallbackClassName="text-xs" />
+                    <UserAvatar avatarUrl={item.assigneeAvatar} name={item.assigneeName} className="h-8 w-8 shrink-0" fallbackClassName="text-xs" />
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-sm font-medium truncate">
-                          {member?.display_name ?? "—"}
+                          {item.title}
                         </p>
                         <Badge variant="secondary" className="text-xs">
-                          {stageLabel}
+                          {item.stageLabel}
                         </Badge>
+                        {item.type === "pm" && (
+                          <Badge variant="outline" className="text-xs gap-1">
+                            <Kanban className="h-3 w-3" />
+                            Gestão
+                          </Badge>
+                        )}
                       </div>
                       <p className="text-xs text-muted-foreground truncate">
-                        {client?.name ?? "Cliente removido"} • {format(new Date(`${task.due_date}T00:00:00`), "dd/MM/yyyy")}
+                        {item.clientName} • {item.dueDate ? format(new Date(`${item.dueDate}T00:00:00`), "dd/MM/yyyy") : "Sem prazo"}
                       </p>
                       {deletedAt && (() => {
                         const daysLeft = 30 - differenceInDays(new Date(), deletedAt);
@@ -216,9 +311,9 @@ export function TaskTrashPanel({ onClose, isAdmin = false }: { onClose: () => vo
                                 {daysLeft > 0 ? `${daysLeft}d restantes` : "Expirando..."}
                               </Badge>
                             </div>
-                            {deletedByMember && (
+                            {item.deletedByName && (
                               <p className="text-xs text-muted-foreground/70">
-                                Excluída por: <span className="font-medium text-muted-foreground">{deletedByMember.display_name}</span>
+                                Excluída por: <span className="font-medium text-muted-foreground">{item.deletedByName}</span>
                               </p>
                             )}
                           </div>
@@ -230,11 +325,11 @@ export function TaskTrashPanel({ onClose, isAdmin = false }: { onClose: () => vo
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleRestore(task.id)}
-                        disabled={restoringId === task.id}
+                        onClick={() => handleRestore(item)}
+                        disabled={restoringId === item.id}
                         title="Restaurar tarefa"
                       >
-                        {restoringId === task.id ? (
+                        {restoringId === item.id ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
                           <RotateCcw className="h-4 w-4" />
@@ -248,10 +343,10 @@ export function TaskTrashPanel({ onClose, isAdmin = false }: { onClose: () => vo
                               variant="ghost"
                               size="sm"
                               className="text-destructive hover:text-destructive"
-                              disabled={deletingId === task.id}
+                              disabled={deletingId === item.id}
                               title="Excluir permanentemente"
                             >
-                              {deletingId === task.id ? (
+                              {deletingId === item.id ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                               ) : (
                                 <Trash2 className="h-4 w-4" />
@@ -268,7 +363,7 @@ export function TaskTrashPanel({ onClose, isAdmin = false }: { onClose: () => vo
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancelar</AlertDialogCancel>
                               <AlertDialogAction
-                                onClick={() => handlePermanentDelete(task.id)}
+                                onClick={() => handlePermanentDelete(item)}
                                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                               >
                                 Excluir
