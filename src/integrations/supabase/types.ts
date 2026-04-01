@@ -1164,6 +1164,11 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          image_description: string | null
+          image_url: string | null
+          link_image: string | null
+          link_title: string | null
+          link_url: string | null
           subtask_id: string | null
           task_id: string | null
         }
@@ -1172,6 +1177,11 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
+          image_description?: string | null
+          image_url?: string | null
+          link_image?: string | null
+          link_title?: string | null
+          link_url?: string | null
           subtask_id?: string | null
           task_id?: string | null
         }
@@ -1180,6 +1190,11 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          image_description?: string | null
+          image_url?: string | null
+          link_image?: string | null
+          link_title?: string | null
+          link_url?: string | null
           subtask_id?: string | null
           task_id?: string | null
         }
