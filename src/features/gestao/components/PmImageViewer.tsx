@@ -14,6 +14,24 @@ interface Props {
 export function PmImageViewer({ images, initialIndex, open, onClose }: Props) {
   const [index, setIndex] = useState(initialIndex);
   const current = images[index];
+
+  const handleDownload = async (url: string, fileName: string) => {
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch {
+      toast.error("Erro ao baixar arquivo");
+    }
+  };
+
   if (!current) return null;
 
   const hasPrev = index > 0;
