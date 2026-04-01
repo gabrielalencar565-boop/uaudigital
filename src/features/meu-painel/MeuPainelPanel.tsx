@@ -187,7 +187,7 @@ export function MeuPainelPanel() {
     queryFn: async () => {
       const [tasksRes, pmRes] = await Promise.all([
         supabase.from("tasks").select("id", { count: "exact", head: true }).eq("assigned_user_id", user!.id).neq("status", "concluido").is("deleted_at", null),
-        supabase.from("pm_tasks").select("id", { count: "exact", head: true }).eq("assignee_id", user!.id).is("parent_task_id", null).neq("status_global", "concluido").neq("status_global", "cancelado"),
+        supabase.from("pm_tasks").select("id", { count: "exact", head: true }).eq("assignee_id", user!.id).is("parent_task_id", null).is("deleted_at", null).neq("status_global", "concluido").neq("status_global", "cancelado"),
       ]);
       return (tasksRes.count ?? 0) + (pmRes.count ?? 0);
     },
