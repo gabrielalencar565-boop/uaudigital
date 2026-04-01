@@ -29,7 +29,12 @@ export function CountdownTo27Badge({ due, now }: { due: Date; now?: Date }) {
           : `Venceu há ${Math.abs(daysLeft)} ${pluralDia(Math.abs(daysLeft))}`;
 
   return (
-    <Badge variant={variant} size="lg" className="w-fit">
+    <Badge variant={variant} size="lg" className={cn(
+      "w-fit text-white",
+      variant === "success" && "bg-success",
+      variant === "warning" && "bg-warning",
+      variant === "destructive" && "bg-destructive",
+    )}>
       {text}
     </Badge>
   );
