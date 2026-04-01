@@ -306,7 +306,7 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
               )}
 
               {/* 3-dot menu */}
-              <div className="absolute top-1 right-1">
+              <div className="absolute top-1 right-1 z-20">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button size="icon" variant="secondary" className="h-5 w-5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm">
