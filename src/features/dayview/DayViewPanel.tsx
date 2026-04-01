@@ -95,7 +95,9 @@ export function DayViewPanel() {
     queryKey: ["pm_tasks_for_dayview", monthKey],
     queryFn: async () => {
       const startDate = `${monthKey}-01`;
-      const endDate = `${monthKey}-31`;
+      // Compute last day of month correctly to avoid invalid dates (e.g. Apr 31)
+      const lastDay = new Date(selectedYear, selectedMonth, 0).getDate();
+      const endDate = `${monthKey}-${String(lastDay).padStart(2, "0")}`;
       const { data, error } = await supabase
         .from("pm_tasks")
         .select("id, title, client_id, assignee_id, watchers, due_date, stage_current, status_global, is_extra_demand, parent_task_id")
