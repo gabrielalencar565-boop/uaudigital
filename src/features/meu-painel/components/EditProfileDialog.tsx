@@ -88,18 +88,28 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, user?.id]);
 
-  // Avatar preview
-  useEffect(() => {
-    if (!avatarFile) {
-      if (avatarPreview) URL.revokeObjectURL(avatarPreview);
-      setAvatarPreview(null);
-      return;
-    }
-    const url = URL.createObjectURL(avatarFile);
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) return;
+    const url = URL.createObjectURL(file);
+    setCropSrc(url);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }, []);
+
+  const handleCropConfirm = useCallback((blob: Blob) => {
+    if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+    if (cropSrc) URL.revokeObjectURL(cropSrc);
+    const url = URL.createObjectURL(blob);
     setAvatarPreview(url);
-    return () => URL.revokeObjectURL(url);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [avatarFile]);
+    setAvatarBlob(blob);
+    setCropSrc(null);
+  }, [avatarPreview, cropSrc]);
+
+  const handleCropCancel = useCallback(() => {
+    if (cropSrc) URL.revokeObjectURL(cropSrc);
+    setCropSrc(null);
+  }, [cropSrc]);
 
   const displayName = useMemo(() => form.watch("full_name") || "?", [form]);
 
