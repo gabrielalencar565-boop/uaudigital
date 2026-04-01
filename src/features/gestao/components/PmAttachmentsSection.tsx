@@ -313,7 +313,7 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
                       <MoreHorizontal className="h-3 w-3" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-44">
+                  <DropdownMenuContent align="end" className="w-44 z-[9999]" side="bottom" sideOffset={4}>
                     {isImg && att.public_url && onSetCover && !isCover && (
                       <DropdownMenuItem className="text-xs gap-2" onClick={() => onSetCover(att.public_url!)}>
                         <ImagePlus className="h-3.5 w-3.5" /> Definir como capa
