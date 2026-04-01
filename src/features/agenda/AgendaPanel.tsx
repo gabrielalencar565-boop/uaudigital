@@ -342,14 +342,21 @@ export function AgendaPanel() {
       const prev = map.get(key) ?? [];
       map.set(key, [...prev, t]);
     }
-    // Sort each day: incomplete tasks first, then completed
+
+    // Ordem fixa em todo lugar: não concluídas primeiro, concluídas por último.
     for (const [key, dayTasks] of map) {
-      map.set(key, dayTasks.sort((a, b) => {
-        const aDone = a.status === "concluido" ? 1 : 0;
-        const bDone = b.status === "concluido" ? 1 : 0;
-        return aDone - bDone;
-      }));
+      const ordered = dayTasks.slice().sort((a, b) => {
+        const aDone = a.status === "concluido";
+        const bDone = b.status === "concluido";
+        if (aDone !== bDone) return aDone ? 1 : -1;
+
+        const aTime = a.due_at ?? "99:99";
+        const bTime = b.due_at ?? "99:99";
+        return aTime.localeCompare(bTime);
+      });
+      map.set(key, ordered);
     }
+
     return map;
   }, [tasks]);
   const todayKey = format(new Date(), "yyyy-MM-dd");
