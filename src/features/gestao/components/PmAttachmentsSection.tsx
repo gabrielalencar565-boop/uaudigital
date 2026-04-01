@@ -281,7 +281,7 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
               onDrop={(e) => handleAttDrop(e, att.id)}
               onDragEnd={handleAttDragEnd}
               className={cn(
-                "relative group rounded-md border overflow-hidden bg-card/30 transition-all",
+                "relative group rounded-md border bg-card/30 transition-all",
                 isCover ? "border-primary/50 ring-1 ring-primary/30" : "border-border/40",
                 isDragged && "opacity-40 scale-95"
               )}
@@ -294,13 +294,13 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
               {/* Thumbnail / Icon area */}
               {isImg && att.public_url ? (
                 <div
-                  className="w-full aspect-[4/3] cursor-pointer overflow-hidden bg-muted"
+                  className="w-full aspect-[4/3] cursor-pointer overflow-hidden rounded-t-md bg-muted"
                   onClick={() => openViewer(att)}
                 >
                   <img src={att.public_url} alt={att.file_name} className="w-full h-full object-cover transition group-hover:scale-105" />
                 </div>
               ) : (
-                <div className="w-full aspect-[4/3] flex items-center justify-center bg-muted/50">
+                <div className="w-full aspect-[4/3] flex items-center justify-center overflow-hidden rounded-t-md bg-muted/50">
                   <FileText className="h-6 w-6 text-muted-foreground/40" />
                 </div>
               )}
