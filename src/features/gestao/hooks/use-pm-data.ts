@@ -16,6 +16,7 @@ export function usePmTasks() {
         .from("pm_tasks")
         .select("*")
         .is("parent_task_id", null)
+        .is("deleted_at", null)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -33,6 +34,7 @@ export function usePmChildTasks(parentId: string | null) {
         .from("pm_tasks")
         .select("*")
         .eq("parent_task_id", parentId)
+        .is("deleted_at", null)
         .order("created_at", { ascending: true });
       if (error) throw error;
       return data ?? [];
@@ -49,6 +51,7 @@ export function usePmAllChildTasks() {
         .from("pm_tasks")
         .select("*")
         .not("parent_task_id", "is", null)
+        .is("deleted_at", null)
         .order("created_at", { ascending: true });
       if (error) throw error;
       return data ?? [];
@@ -250,11 +253,19 @@ export function useDeletePmTask() {
       const affectedRows = affectedRes.data ?? [];
       const children = childrenRes.data ?? [];
 
-      // DELETE the pm_task FIRST so realtime refetches won't bring it back
-      const { error } = await sb.from("pm_tasks").delete().eq("id", id);
+      // SOFT-DELETE the pm_task (and its children)
+      const now = new Date().toISOString();
+      const softDeleteUpdates = { deleted_at: now, deleted_by: user?.id ?? null };
+      
+      const { error } = await sb.from("pm_tasks").update(softDeleteUpdates).eq("id", id);
       if (error) throw error;
+      
+      // Soft-delete children too
+      if (children.length) {
+        await sb.from("pm_tasks").update(softDeleteUpdates).eq("parent_task_id", id);
+      }
 
-      // Everything below is cleanup — runs after the task is already gone from DB
+      // Everything below is cleanup — soft-delete scoring snapshots
       const affectedUsers = new Map<string, { year: number; month: number }>();
       affectedRows.forEach((r: any) => {
         if (r.assigned_user_id && r.due_date) {
@@ -265,7 +276,7 @@ export function useDeletePmTask() {
 
       // Soft-delete parent snapshots + child snapshots in parallel
       const softDeleteOps: Promise<any>[] = [
-        sb.from("tasks").update({ deleted_at: new Date().toISOString(), deleted_by: user?.id ?? null }).like("description", `pm:${id}:%`).is("deleted_at", null),
+        sb.from("tasks").update({ deleted_at: now, deleted_by: user?.id ?? null }).like("description", `pm:${id}:%`).is("deleted_at", null),
       ];
 
       if (children.length) {
@@ -277,7 +288,7 @@ export function useDeletePmTask() {
               affectedUsers.set(r.assigned_user_id, { year: d.getFullYear(), month: d.getMonth() + 1 });
             }
           });
-          return sb.from("tasks").update({ deleted_at: new Date().toISOString(), deleted_by: user?.id ?? null }).like("description", `pm:${child.id}:%`).is("deleted_at", null);
+          return sb.from("tasks").update({ deleted_at: now, deleted_by: user?.id ?? null }).like("description", `pm:${child.id}:%`).is("deleted_at", null);
         });
         softDeleteOps.push(...childOps);
       }
@@ -351,6 +362,86 @@ export function useDeletePmTask() {
       qc.invalidateQueries({ queryKey: ["magic2"] });
       qc.invalidateQueries({ queryKey: ["tasks"] });
       qc.invalidateQueries({ queryKey: ["performance_scores"] });
+      qc.invalidateQueries({ queryKey: ["deleted_pm_tasks"] });
+    },
+  });
+}
+
+/** Fetch soft-deleted PM tasks for trash panel */
+export function useDeletedPmTasks() {
+  return useQuery<PmTask[]>({
+    queryKey: ["deleted_pm_tasks"],
+    queryFn: async () => {
+      const { data, error } = await sb
+        .from("pm_tasks")
+        .select("*")
+        .not("deleted_at", "is", null)
+        .is("parent_task_id", null)
+        .order("deleted_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
+/** Restore a soft-deleted PM task */
+export function useRestorePmTask() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      // Restore the PM task and its children
+      const { error } = await sb.from("pm_tasks").update({ deleted_at: null, deleted_by: null }).eq("id", id);
+      if (error) throw error;
+      await sb.from("pm_tasks").update({ deleted_at: null, deleted_by: null }).eq("parent_task_id", id);
+
+      // Restore scoring snapshots
+      const now = new Date().toISOString();
+      await sb.from("tasks").update({ deleted_at: null, deleted_by: null }).like("description", `pm:${id}:%`);
+      
+      // Also restore children snapshots
+      const { data: children } = await sb.from("pm_tasks").select("id").eq("parent_task_id", id);
+      if (children?.length) {
+        await Promise.all(
+          children.map((c: any) => sb.from("tasks").update({ deleted_at: null, deleted_by: null }).like("description", `pm:${c.id}:%`))
+        );
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["pm_tasks"] });
+      qc.invalidateQueries({ queryKey: ["pm_child_tasks"] });
+      qc.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
+      qc.invalidateQueries({ queryKey: ["deleted_pm_tasks"] });
+      qc.invalidateQueries({ queryKey: ["tasks"] });
+      qc.invalidateQueries({ queryKey: ["deleted_tasks"] });
+      qc.invalidateQueries({ queryKey: ["magic2"] });
+    },
+  });
+}
+
+/** Permanently delete a soft-deleted PM task */
+export function usePermanentlyDeletePmTask() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      // Get children first
+      const { data: children } = await sb.from("pm_tasks").select("id").eq("parent_task_id", id);
+      const allIds = [id, ...(children ?? []).map((c: any) => c.id)];
+
+      // Delete scoring snapshots
+      await Promise.all(allIds.map(taskId =>
+        sb.from("tasks").delete().like("description", `pm:${taskId}:%`)
+      ));
+
+      // Delete PM task and children (hard delete)
+      if (children?.length) {
+        await sb.from("pm_tasks").delete().eq("parent_task_id", id);
+      }
+      const { error } = await sb.from("pm_tasks").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["deleted_pm_tasks"] });
+      qc.invalidateQueries({ queryKey: ["pm_tasks"] });
     },
   });
 }
