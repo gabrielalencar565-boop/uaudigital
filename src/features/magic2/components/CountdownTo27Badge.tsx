@@ -1,6 +1,7 @@
 import { differenceInCalendarDays } from "date-fns";
 
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 function pluralDia(n: number) {
   return n === 1 ? "dia" : "dias";
