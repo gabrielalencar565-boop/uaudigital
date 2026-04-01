@@ -153,7 +153,7 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
       if (tm.error) throw tm.error;
 
       setAvatarUrl(nextAvatarUrl);
-      setAvatarFile(null);
+      setAvatarBlob(null);
       // Invalidar todos os caches que consomem dados de avatar
       queryClient.invalidateQueries({ queryKey: ["my_profile"] });
       queryClient.invalidateQueries({ queryKey: ["team_members"] });
