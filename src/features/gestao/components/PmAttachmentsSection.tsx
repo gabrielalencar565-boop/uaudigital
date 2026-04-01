@@ -281,7 +281,7 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
               onDrop={(e) => handleAttDrop(e, att.id)}
               onDragEnd={handleAttDragEnd}
               className={cn(
-                "relative group rounded-md border overflow-hidden bg-card/30 transition-all",
+                "relative group rounded-md border bg-card/30 transition-all",
                 isCover ? "border-primary/50 ring-1 ring-primary/30" : "border-border/40",
                 isDragged && "opacity-40 scale-95"
               )}
