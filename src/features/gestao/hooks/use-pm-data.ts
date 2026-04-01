@@ -51,6 +51,7 @@ export function usePmAllChildTasks() {
         .from("pm_tasks")
         .select("*")
         .not("parent_task_id", "is", null)
+        .is("deleted_at", null)
         .order("created_at", { ascending: true });
       if (error) throw error;
       return data ?? [];
