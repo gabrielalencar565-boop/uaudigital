@@ -205,7 +205,7 @@ export function useNotificationSound() {
     if (!data) return;
 
     // Use Brazil date for accurate comparison
-    const brazilNow = new Date(now.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+    const brazilNow = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
     const brazilTodayStr = `${brazilNow.getFullYear()}-${String(brazilNow.getMonth() + 1).padStart(2, "0")}-${String(brazilNow.getDate()).padStart(2, "0")}`;
 
     for (const t of data as any[]) {
