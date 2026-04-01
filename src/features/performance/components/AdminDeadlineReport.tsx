@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Trash2, ExternalLink } from "lucide-react";
+import { Trash2, ExternalLink, ArrowUpRight } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import type { TaskAssigneeRow } from "@/features/data/task-assignees-queries";
@@ -18,6 +18,9 @@ import { STAGE_BADGE_CLASS } from "@/features/agenda/components/AgendaWeekTaskIt
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
+import { usePmTasks, usePmChildTasks } from "@/features/gestao/hooks/use-pm-data";
+import { PmTaskDetailDialog } from "@/features/gestao/components/PmTaskDetailDialog";
+import type { PmTask } from "@/features/gestao/pm-types";
 
 type TaskForReport = {
   id: string;
@@ -31,6 +34,7 @@ type TaskForReport = {
   is_extra_demand: boolean;
   quantity: number;
   point_value: number | null;
+  description: string | null;
   client?: { name: string } | null;
 };
 
@@ -47,6 +51,14 @@ type ScoringConfigRow = {
   uses_quantity: boolean;
   extra_demand_multiplier: number;
 };
+
+/** Extract pm_task_id from task description like pm:<uuid>:<stage>:<user> */
+function extractPmTaskId(description: string | null): string | null {
+  if (!description || !description.startsWith("pm:")) return null;
+  const parts = description.split(":");
+  if (parts.length >= 3) return parts[1];
+  return null;
+}
 
 function yyyymm(year: number, month: number) {
   return `${year}-${String(month).padStart(2, "0")}`;
@@ -103,6 +115,10 @@ export function AdminDeadlineReport({
   const qc = useQueryClient();
   const [selectedUserId, setSelectedUserId] = useState<string>(team[0]?.user_id ?? "");
   const [detailTask, setDetailTask] = useState<TaskForReport | null>(null);
+  const [pmTaskToOpen, setPmTaskToOpen] = useState<PmTask | null>(null);
+
+  const pmTasksQ = usePmTasks();
+  const pmChildTasksQ = usePmChildTasks(pmTaskToOpen?.id ?? null);
 
   const tasksQ = useQuery({
     queryKey: ["deadline_report_tasks", year, month],
@@ -112,7 +128,7 @@ export function AdminDeadlineReport({
       const end = `${yyyymm(year, month)}-${String(lastDay).padStart(2, "0")}`;
       const { data, error } = await supabase
         .from("tasks")
-        .select("id,title,due_date,status,completed_at,assigned_user_id,client_id,stage,is_extra_demand,quantity,point_value,client:clients(name)")
+        .select("id,title,due_date,status,completed_at,assigned_user_id,client_id,stage,is_extra_demand,quantity,point_value,description,client:clients(name)")
         .is("deleted_at", null)
         .gte("due_date", start)
         .lte("due_date", end)
@@ -278,6 +294,16 @@ export function AdminDeadlineReport({
       return userIds.includes(selectedUserId);
     });
   }, [tasksQ.data, selectedUserId, assigneesByTask]);
+
+  const handleOpenPmTask = (task: TaskForReport) => {
+    const pmId = extractPmTaskId(task.description);
+    if (!pmId) return;
+    const pmTask = (pmTasksQ.data ?? []).find(t => t.id === pmId);
+    if (pmTask) {
+      setPmTaskToOpen(pmTask);
+      setDetailTask(null);
+    }
+  };
 
   const setOverrideMut = useMutation({
     mutationFn: async (input: { taskId: string; value: "auto" | "1" | "0" | "-1" }) => {
@@ -637,11 +663,35 @@ export function AdminDeadlineReport({
                 {detailTask.is_extra_demand && (
                   <Badge variant="secondary" className="text-xs">Demanda extra • Qtd: {detailTask.quantity}</Badge>
                 )}
+
+                {extractPmTaskId(detailTask.description) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full gap-2"
+                    onClick={() => handleOpenPmTask(detailTask)}
+                  >
+                    <ArrowUpRight className="h-4 w-4" />
+                    Abrir tarefa na Gestão
+                  </Button>
+                )}
               </div>
             );
           })()}
         </DialogContent>
       </Dialog>
+
+      {pmTaskToOpen && (
+        <Dialog open onOpenChange={(open) => { if (!open) setPmTaskToOpen(null); }}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-0">
+            <PmTaskDetailDialog
+              task={pmTaskToOpen}
+              childTasks={pmChildTasksQ.data ?? []}
+              onClose={() => setPmTaskToOpen(null)}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
