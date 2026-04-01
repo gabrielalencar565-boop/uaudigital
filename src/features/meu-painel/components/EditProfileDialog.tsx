@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, Controller } from "react-hook-form";
-import { Save, UserRound } from "lucide-react";
+import { Camera, Save, UserRound } from "lucide-react";
+import { AvatarCropDialog } from "./AvatarCropDialog";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -44,9 +45,11 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
   const { user } = useSession();
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarBlob, setAvatarBlob] = useState<Blob | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<ProfileValues>({
     resolver: zodResolver(profileSchema),
@@ -85,18 +88,28 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, user?.id]);
 
-  // Avatar preview
-  useEffect(() => {
-    if (!avatarFile) {
-      if (avatarPreview) URL.revokeObjectURL(avatarPreview);
-      setAvatarPreview(null);
-      return;
-    }
-    const url = URL.createObjectURL(avatarFile);
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) return;
+    const url = URL.createObjectURL(file);
+    setCropSrc(url);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }, []);
+
+  const handleCropConfirm = useCallback((blob: Blob) => {
+    if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+    if (cropSrc) URL.revokeObjectURL(cropSrc);
+    const url = URL.createObjectURL(blob);
     setAvatarPreview(url);
-    return () => URL.revokeObjectURL(url);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [avatarFile]);
+    setAvatarBlob(blob);
+    setCropSrc(null);
+  }, [avatarPreview, cropSrc]);
+
+  const handleCropCancel = useCallback(() => {
+    if (cropSrc) URL.revokeObjectURL(cropSrc);
+    setCropSrc(null);
+  }, [cropSrc]);
 
   const displayName = useMemo(() => form.watch("full_name") || "?", [form]);
 
@@ -105,15 +118,13 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
     setSaving(true);
     try {
       let nextAvatarUrl = avatarUrl;
-      if (avatarFile) {
-        if (!avatarFile.type.startsWith("image/")) throw new Error("Envie uma imagem (PNG/JPG/WebP)");
-        if (avatarFile.size > 5 * 1024 * 1024) throw new Error("Imagem muito grande (máx 5MB)");
+      if (avatarBlob) {
+        if (avatarBlob.size > 5 * 1024 * 1024) throw new Error("Imagem muito grande (máx 5MB)");
 
-        const ext = (avatarFile.name.split(".").pop() || "png").toLowerCase();
-        const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
-        const up = await supabase.storage.from("avatars").upload(path, avatarFile, {
+        const path = `${user.id}/${crypto.randomUUID()}.webp`;
+        const up = await supabase.storage.from("avatars").upload(path, avatarBlob, {
           upsert: true,
-          contentType: avatarFile.type,
+          contentType: "image/webp",
         });
         if (up.error) throw up.error;
         const pub = supabase.storage.from("avatars").getPublicUrl(path);
@@ -142,7 +153,7 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
       if (tm.error) throw tm.error;
 
       setAvatarUrl(nextAvatarUrl);
-      setAvatarFile(null);
+      setAvatarBlob(null);
       // Invalidar todos os caches que consomem dados de avatar
       queryClient.invalidateQueries({ queryKey: ["my_profile"] });
       queryClient.invalidateQueries({ queryKey: ["team_members"] });
@@ -168,17 +179,34 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
         <form onSubmit={form.handleSubmit(onSave)} className="space-y-4">
           <div className="space-y-2">
             <Label>Foto</Label>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-              <Avatar className="h-16 w-16">
-                <AvatarImage src={avatarPreview ?? avatarUrl ?? undefined} alt="Foto do perfil" />
-                <AvatarFallback>{initials(displayName)}</AvatarFallback>
-              </Avatar>
-              <div className="flex-1 space-y-2">
-                <Input type="file" accept="image/*" onChange={(e) => setAvatarFile(e.target.files?.[0] ?? null)} />
+            <div className="flex items-center gap-4">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="relative group rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <Avatar className="h-16 w-16">
+                  <AvatarImage src={avatarPreview ?? avatarUrl ?? undefined} alt="Foto do perfil" />
+                  <AvatarFallback>{initials(displayName)}</AvatarFallback>
+                </Avatar>
+                <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Camera className="h-5 w-5 text-white" />
+                </div>
+              </button>
+              <div className="flex-1">
+                <p className="text-sm text-muted-foreground">Clique na foto para alterar</p>
                 <p className="text-xs text-muted-foreground">PNG/JPG/WebP • até 5MB</p>
               </div>
+              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
             </div>
           </div>
+
+          <AvatarCropDialog
+            open={!!cropSrc}
+            imageSrc={cropSrc ?? ""}
+            onConfirm={handleCropConfirm}
+            onCancel={handleCropCancel}
+          />
 
           <div className="space-y-2">
             <Label htmlFor="edit_full_name">Nome</Label>
