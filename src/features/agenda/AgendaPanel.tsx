@@ -342,6 +342,14 @@ export function AgendaPanel() {
       const prev = map.get(key) ?? [];
       map.set(key, [...prev, t]);
     }
+    // Sort each day: incomplete tasks first, then completed
+    for (const [key, dayTasks] of map) {
+      map.set(key, dayTasks.sort((a, b) => {
+        const aDone = a.status === "concluido" ? 1 : 0;
+        const bDone = b.status === "concluido" ? 1 : 0;
+        return aDone - bDone;
+      }));
+    }
     return map;
   }, [tasks]);
   const todayKey = format(new Date(), "yyyy-MM-dd");
