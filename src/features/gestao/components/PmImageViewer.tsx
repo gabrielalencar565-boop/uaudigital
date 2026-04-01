@@ -44,11 +44,9 @@ export function PmImageViewer({ images, initialIndex, open, onClose }: Props) {
         <div className="flex items-center justify-between px-4 py-3 shrink-0">
           <span className="text-sm text-white/80 font-medium truncate">{current.name}</span>
           <div className="flex items-center gap-2">
-            <a href={current.url} download={current.name} target="_blank" rel="noopener noreferrer">
-              <Button size="icon" variant="ghost" className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10">
-                <Download className="h-4 w-4" />
-              </Button>
-            </a>
+            <Button size="icon" variant="ghost" className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10" onClick={() => handleDownload(current.url, current.name)}>
+              <Download className="h-4 w-4" />
+            </Button>
             <Button size="icon" variant="ghost" className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10" onClick={onClose}>
               <X className="h-4 w-4" />
             </Button>
