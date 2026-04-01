@@ -190,7 +190,8 @@ export function useNotificationSound() {
   // ── Periodic deadline check ──
   const checkDeadlines = useCallback(async () => {
     if (!user?.id) return;
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const _brNow = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+    const todayStr = `${_brNow.getFullYear()}-${String(_brNow.getMonth() + 1).padStart(2, "0")}-${String(_brNow.getDate()).padStart(2, "0")}`;
 
     const { data } = await (supabase as any)
       .from("pm_tasks")
@@ -204,11 +205,12 @@ export function useNotificationSound() {
 
     if (!data) return;
 
-    const now = new Date();
+    // Use Brazil date for accurate comparison
+    const brazilNow = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+    const brazilTodayStr = `${brazilNow.getFullYear()}-${String(brazilNow.getMonth() + 1).padStart(2, "0")}-${String(brazilNow.getDate()).padStart(2, "0")}`;
+
     for (const t of data as any[]) {
-      const dueDate = new Date(t.due_date + "T23:59:59");
-      const diffMs = dueDate.getTime() - now.getTime();
-      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+      const diffDays = Math.floor((new Date(t.due_date + "T00:00:00").getTime() - new Date(brazilTodayStr + "T00:00:00").getTime()) / (1000 * 60 * 60 * 24));
 
       if (diffDays < 0) {
         enqueueOrShow({
