@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { X, ChevronLeft, ChevronRight, Download, Share2, Trash2 } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface Props {
   images: { url: string; name: string }[];
@@ -14,6 +14,24 @@ interface Props {
 export function PmImageViewer({ images, initialIndex, open, onClose }: Props) {
   const [index, setIndex] = useState(initialIndex);
   const current = images[index];
+
+  const handleDownload = async (url: string, fileName: string) => {
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch {
+      toast.error("Erro ao baixar arquivo");
+    }
+  };
+
   if (!current) return null;
 
   const hasPrev = index > 0;
@@ -26,11 +44,9 @@ export function PmImageViewer({ images, initialIndex, open, onClose }: Props) {
         <div className="flex items-center justify-between px-4 py-3 shrink-0">
           <span className="text-sm text-white/80 font-medium truncate">{current.name}</span>
           <div className="flex items-center gap-2">
-            <a href={current.url} download={current.name} target="_blank" rel="noopener noreferrer">
-              <Button size="icon" variant="ghost" className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10">
-                <Download className="h-4 w-4" />
-              </Button>
-            </a>
+            <Button size="icon" variant="ghost" className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10" onClick={() => handleDownload(current.url, current.name)}>
+              <Download className="h-4 w-4" />
+            </Button>
             <Button size="icon" variant="ghost" className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10" onClick={onClose}>
               <X className="h-4 w-4" />
             </Button>
