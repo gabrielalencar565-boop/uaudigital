@@ -257,12 +257,12 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, av
                 key={col.key}
                 type="button"
                 onClick={() => toggleCollapse(col.key)}
-                className="flex min-w-[44px] w-[44px] h-[320px] shrink-0 flex-col items-center justify-between rounded-2xl bg-muted/40 backdrop-blur-sm border border-[#6932c8] py-3 cursor-pointer transition-all duration-300 hover:bg-muted/60 hover:border-primary/60 opacity-0"
+                className="flex min-w-[44px] w-[44px] h-[180px] shrink-0 flex-col items-center justify-between rounded-2xl bg-muted/40 backdrop-blur-sm border border-[#6932c8] py-3 cursor-pointer transition-all duration-300 hover:bg-muted/60 hover:border-primary/60 opacity-0"
                 style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: `${idx * 0.07}s` }}
               >
                 <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/60" />
                 <span className={cn("h-2.5 w-2.5 rounded-full shrink-0", circleColor.bg)} />
-                <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/50 [writing-mode:vertical-lr] rotate-180 max-h-[80px] overflow-hidden text-ellipsis">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/50 [writing-mode:vertical-lr] rotate-180 whitespace-nowrap">
                   {col.label}
                 </span>
                 <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-foreground/8 text-[10px] font-semibold text-foreground/50 px-1">
