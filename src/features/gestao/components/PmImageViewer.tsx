@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { X, ChevronLeft, ChevronRight, Download, Share2, Trash2 } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface Props {
   images: { url: string; name: string }[];
