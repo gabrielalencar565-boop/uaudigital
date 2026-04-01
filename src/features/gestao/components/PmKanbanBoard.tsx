@@ -262,7 +262,7 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, av
               >
                 <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/60" />
                 <span className={cn("h-2.5 w-2.5 rounded-full shrink-0", circleColor.bg)} />
-                <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/50 [writing-mode:vertical-lr] rotate-180">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/50 [writing-mode:vertical-lr] rotate-180 max-h-[80px] overflow-hidden text-ellipsis">
                   {col.label}
                 </span>
                 <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-foreground/8 text-[10px] font-semibold text-foreground/50 px-1">
