@@ -967,13 +967,27 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     }
   };
 
-  const removeTag = (tag: string) => { updateTask.mutate({ id: task.id, tags: (task.tags ?? []).filter(t => t !== tag) } as any); };
+  const recalcTagPoints = async (taskId: string) => {
+    try {
+      await supabase.rpc("pm_recalc_tag_points", { _pm_task_id: taskId } as any);
+    } catch (e) {
+      console.error("Error recalculating tag points:", e);
+    }
+  };
+
+  const removeTag = (tag: string) => {
+    updateTask.mutate({ id: task.id, tags: (task.tags ?? []).filter(t => t !== tag) } as any, {
+      onSuccess: () => { recalcTagPoints(task.id); },
+    });
+  };
   const toggleGlobalTag = (tag: string) => {
     const existing = task.tags ?? [];
     if (existing.includes(tag)) {
       removeTag(tag);
     } else {
-      updateTask.mutate({ id: task.id, tags: [...existing, tag] } as any);
+      updateTask.mutate({ id: task.id, tags: [...existing, tag] } as any, {
+        onSuccess: () => { recalcTagPoints(task.id); },
+      });
     }
   };
 

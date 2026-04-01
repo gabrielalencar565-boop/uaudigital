@@ -2010,6 +2010,10 @@ export type Database = {
         Returns: string
       }
       magic2_seed_year: { Args: { _year: number }; Returns: undefined }
+      pm_recalc_tag_points: {
+        Args: { _pm_task_id: string }
+        Returns: undefined
+      }
       pm_sync_stage_completion:
         | {
             Args: {
