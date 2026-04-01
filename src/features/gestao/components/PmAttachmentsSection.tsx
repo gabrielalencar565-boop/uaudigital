@@ -50,6 +50,8 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
   const [dragging, setDragging] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = useState("");
 
   const doUpload = useCallback(async (file: File) => {
     if (file.size > 1024 * 1024 * 1024) { toast.error("Arquivo muito grande (máx 1GB)"); return; }
