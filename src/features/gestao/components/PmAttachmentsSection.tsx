@@ -361,6 +361,9 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
                     {att.file_name}
                     {isCover && <span className="ml-0.5 text-[7px] text-primary font-bold uppercase">Capa</span>}
                   </p>
+                  {att.file_size && (
+                    <p className="text-[8px] text-muted-foreground">{formatFileSize(att.file_size)}</p>
+                  )}
                 )}
                 <div className="flex items-center gap-1 text-[8px] text-muted-foreground">
                   <span>{format(new Date(att.created_at), "MMM dd 'às' h:mm a")}</span>

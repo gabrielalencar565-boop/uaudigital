@@ -47,6 +47,11 @@ export interface PmComment {
   subtask_id: string | null;
   author_id: string;
   content: string;
+  image_url: string | null;
+  image_description: string | null;
+  link_url: string | null;
+  link_title: string | null;
+  link_image: string | null;
   created_at: string;
 }
 
