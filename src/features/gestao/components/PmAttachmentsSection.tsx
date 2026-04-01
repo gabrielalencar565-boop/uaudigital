@@ -181,6 +181,41 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
     toast.success("URL copiada!");
   };
 
+  const handleRenameStart = (att: PmAttachment) => {
+    setRenamingId(att.id);
+    setRenameDraft(att.file_name);
+  };
+
+  const handleRenameCommit = async (attId: string) => {
+    const trimmed = renameDraft.trim();
+    if (!trimmed) { setRenamingId(null); return; }
+    try {
+      await sb.from("pm_attachments").update({ file_name: trimmed }).eq("id", attId);
+      queryClient.invalidateQueries({ queryKey: ["pm_attachments"] });
+      toast.success("Nome atualizado!");
+    } catch (err: any) {
+      toast.error(err?.message ?? "Erro ao renomear");
+    }
+    setRenamingId(null);
+  };
+
+  const handleDownload = async (url: string, fileName: string) => {
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch {
+      toast.error("Erro ao baixar arquivo");
+    }
+  };
+
   return (
     <div
       className="space-y-3"
