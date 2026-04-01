@@ -719,7 +719,7 @@ export function AdminDeadlineReport({
           clientsMap={clientsMap}
           membersMap={membersMap}
           members={membersList}
-          isAdmin={role === "admin"}
+          isAdmin={role.isAdmin}
         />
       )}
     </div>
