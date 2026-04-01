@@ -257,7 +257,7 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, av
                 key={col.key}
                 type="button"
                 onClick={() => toggleCollapse(col.key)}
-                className="flex min-w-[44px] w-[44px] self-stretch flex-col items-center rounded-2xl bg-muted/40 backdrop-blur-sm border border-[#6932c8] py-3 gap-3 cursor-pointer transition-all duration-300 hover:bg-muted/60 hover:border-primary/60 opacity-0 shrink-0"
+                className="flex min-w-[44px] w-[44px] flex-col items-center rounded-2xl bg-muted/40 backdrop-blur-sm border border-[#6932c8] py-3 gap-3 cursor-pointer transition-all duration-300 hover:bg-muted/60 hover:border-primary/60 opacity-0 shrink-0 h-fit"
                 style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: `${idx * 0.07}s` }}
               >
                 <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/60" />
