@@ -45,9 +45,11 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
   const { user } = useSession();
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarBlob, setAvatarBlob] = useState<Blob | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<ProfileValues>({
     resolver: zodResolver(profileSchema),
