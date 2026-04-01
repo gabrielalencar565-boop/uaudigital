@@ -18,8 +18,11 @@ import { STAGE_BADGE_CLASS } from "@/features/agenda/components/AgendaWeekTaskIt
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { usePmTasks, usePmChildTasks } from "@/features/gestao/hooks/use-pm-data";
-import { PmTaskDetailDialog } from "@/features/gestao/components/PmTaskDetailDialog";
+import { usePmTasks } from "@/features/gestao/hooks/use-pm-data";
+import { PmTaskDetailDialog } from "@/features/gestao/components/PmTaskDetailDialog";  
+import { useTeamMembers } from "@/features/data/queries";
+import { useQuery as useQ } from "@tanstack/react-query";
+import { useRole } from "@/hooks/use-role";
 import type { PmTask } from "@/features/gestao/pm-types";
 
 type TaskForReport = {
@@ -117,8 +120,35 @@ export function AdminDeadlineReport({
   const [detailTask, setDetailTask] = useState<TaskForReport | null>(null);
   const [pmTaskToOpen, setPmTaskToOpen] = useState<PmTask | null>(null);
 
-  const pmTasksQ = usePmTasks();
-  const pmChildTasksQ = usePmChildTasks(pmTaskToOpen?.id ?? null);
+  const pmTasksQ = usePmTasks(); 
+  const teamMembersQ = useTeamMembers();
+  const role = useRole();
+
+  const clientsQ = useQ({
+    queryKey: ["clients_map_perf"],
+    queryFn: async () => {
+      const { data } = await supabase.from("clients").select("id, name");
+      return data ?? [];
+    },
+  });
+
+  const clientsMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const c of clientsQ.data ?? []) map[c.id] = c.name;
+    return map;
+  }, [clientsQ.data]);
+
+  const membersMap = useMemo(() => {
+    const map: Record<string, { name: string; avatar?: string }> = {};
+    for (const m of teamMembersQ.data ?? []) {
+      map[m.user_id] = { name: m.display_name, avatar: m.avatar_url ?? undefined };
+    }
+    return map;
+  }, [teamMembersQ.data]);
+
+  const membersList = useMemo(() => {
+    return (teamMembersQ.data ?? []).map(m => ({ id: m.user_id, name: m.display_name }));
+  }, [teamMembersQ.data]);
 
   const tasksQ = useQuery({
     queryKey: ["deadline_report_tasks", year, month],
@@ -682,15 +712,15 @@ export function AdminDeadlineReport({
       </Dialog>
 
       {pmTaskToOpen && (
-        <Dialog open onOpenChange={(open) => { if (!open) setPmTaskToOpen(null); }}>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-0">
-            <PmTaskDetailDialog
-              task={pmTaskToOpen}
-              childTasks={pmChildTasksQ.data ?? []}
-              onClose={() => setPmTaskToOpen(null)}
-            />
-          </DialogContent>
-        </Dialog>
+        <PmTaskDetailDialog
+          task={pmTaskToOpen}
+          open={true}
+          onClose={() => setPmTaskToOpen(null)}
+          clientsMap={clientsMap}
+          membersMap={membersMap}
+          members={membersList}
+          isAdmin={role === "admin"}
+        />
       )}
     </div>
   );
