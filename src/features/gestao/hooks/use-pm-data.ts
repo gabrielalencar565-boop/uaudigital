@@ -222,6 +222,11 @@ export function useDeletePmTask() {
       const affectedRows = affectedRes.data ?? [];
       const children = childrenRes.data ?? [];
 
+      // DELETE the pm_task FIRST so realtime refetches won't bring it back
+      const { error } = await sb.from("pm_tasks").delete().eq("id", id);
+      if (error) throw error;
+
+      // Everything below is cleanup — runs after the task is already gone from DB
       const affectedUsers = new Map<string, { year: number; month: number }>();
       affectedRows.forEach((r: any) => {
         if (r.assigned_user_id && r.due_date) {
@@ -236,7 +241,6 @@ export function useDeletePmTask() {
       ];
 
       if (children.length) {
-        // Collect child affected users and soft-delete child snapshots in parallel
         const childOps = children.map(async (child: any) => {
           const { data: childAffected } = await sb.from("tasks").select("assigned_user_id, due_date").like("description", `pm:${child.id}:%`).is("deleted_at", null);
           (childAffected ?? []).forEach((r: any) => {
@@ -252,48 +256,42 @@ export function useDeletePmTask() {
 
       await Promise.all(softDeleteOps);
 
-      // Unmark Magic Number (fire-and-forget style, don't block deletion)
-      const magicPromise = (async () => {
-        if (!taskInfo?.client_id || !taskInfo?.due_date) return;
+      // Unmark Magic Number (fire-and-forget style)
+      if (taskInfo?.client_id && taskInfo?.due_date) {
         try {
           const dueDate = new Date(taskInfo.due_date);
           const year = dueDate.getFullYear();
           const month = dueDate.getMonth() + 1;
 
           const { data: link } = await sb.from("magic2_client_links").select("magic2_client_id").eq("agenda_client_id", taskInfo.client_id).limit(1).maybeSingle();
-          if (!link?.magic2_client_id) return;
+          if (link?.magic2_client_id) {
+            const { data: cycle } = await sb.from("magic2_cycles").select("id").eq("client_id", link.magic2_client_id).eq("year", year).eq("month", month).limit(1).maybeSingle();
+            if (cycle?.id) {
+              const completedStages = new Set<string>();
+              affectedRows.forEach((r: any) => {
+                const desc = r.description as string;
+                if (desc) {
+                  const parts = desc.split(":");
+                  if (parts.length >= 3) completedStages.add(parts[2]);
+                }
+              });
 
-          const { data: cycle } = await sb.from("magic2_cycles").select("id").eq("client_id", link.magic2_client_id).eq("year", year).eq("month", month).limit(1).maybeSingle();
-          if (!cycle?.id) return;
-
-          const completedStages = new Set<string>();
-          affectedRows.forEach((r: any) => {
-            const desc = r.description as string;
-            if (desc) {
-              const parts = desc.split(":");
-              if (parts.length >= 3) completedStages.add(parts[2]);
+              await Promise.all(
+                Array.from(completedStages).map(async (stage) => {
+                  const { data: otherTasks } = await sb.from("tasks").select("id").like("description", `pm:%:${stage}:%`).is("deleted_at", null).eq("client_id", taskInfo.client_id).eq("status", "concluido").limit(1);
+                  if (!(otherTasks ?? []).length) {
+                    await sb.from("magic2_cycle_stages").update({ completed: false, completed_at: null, completed_by: null, updated_at: new Date().toISOString() }).eq("cycle_id", cycle.id).eq("stage", stage);
+                  }
+                })
+              );
             }
-          });
-
-          await Promise.all(
-            Array.from(completedStages).map(async (stage) => {
-              const { data: otherTasks } = await sb.from("tasks").select("id").like("description", `pm:%:${stage}:%`).is("deleted_at", null).eq("client_id", taskInfo.client_id).eq("status", "concluido").limit(1);
-              if (!(otherTasks ?? []).length) {
-                await sb.from("magic2_cycle_stages").update({ completed: false, completed_at: null, completed_by: null, updated_at: new Date().toISOString() }).eq("cycle_id", cycle.id).eq("stage", stage);
-              }
-            })
-          );
+          }
         } catch (e) {
           console.error("Error unchecking magic number:", e);
         }
-      })();
+      }
 
-      // Delete the pm_task itself
-      const { error } = await sb.from("pm_tasks").delete().eq("id", id);
-      if (error) throw error;
-
-      // Wait for magic cleanup, then recompute scores in parallel
-      await magicPromise;
+      // Recompute scores
       await Promise.all(
         Array.from(affectedUsers).map(async ([userId, { year, month }]) => {
           try {
