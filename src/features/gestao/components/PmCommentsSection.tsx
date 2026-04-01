@@ -1,14 +1,16 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useMemo, useCallback } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Send, ChevronDown, ChevronUp } from "lucide-react";
+import { Send, ChevronDown, ChevronUp, ImagePlus, X, ExternalLink } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { useAddPmComment, usePmActivityLog } from "../hooks/use-pm-data";
+import { Input } from "@/components/ui/input";
+import { useAddPmComment, useUploadPmAttachment, usePmActivityLog } from "../hooks/use-pm-data";
 import { stageLabel } from "../pm-constants";
 import type { PmComment } from "../pm-types";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 function initials(n: string) { return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join(""); }
 
@@ -44,6 +46,12 @@ function formatActionText(action: string, metadata: any, membersMap: Record<stri
   }
 }
 
+/** Extract first URL from text */
+function extractUrl(text: string): string | null {
+  const match = text.match(/https?:\/\/[^\s]+/i);
+  return match ? match[0] : null;
+}
+
 interface Props {
   taskId: string;
   comments: PmComment[];
@@ -56,11 +64,17 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
   const [showMentions, setShowMentions] = useState(false);
   const [mentionSearch, setMentionSearch] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const addComment = useAddPmComment();
+  const uploadAttachment = useUploadPmAttachment();
   const activityLogQ = usePmActivityLog(taskId);
   const activityLog = activityLogQ.data ?? [];
 
-  // Merge comments and activity log into unified timeline
+  // Image attachment state
+  const [pendingImage, setPendingImage] = useState<{ file: File; preview: string } | null>(null);
+  const [imageDescription, setImageDescription] = useState("");
+
+  // Merge comments and activity log into unified timeline, deduplicating
   const timeline = useMemo(() => {
     const items: Array<{ type: "comment" | "activity"; data: any; timestamp: string }> = [];
 
@@ -68,9 +82,15 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
       items.push({ type: "comment", data: c, timestamp: c.created_at });
     });
 
-    // Filter activity log to not duplicate comment entries
+    // Filter activity log: skip comment_added (shown as comments) and deduplicate by action+metadata
+    const seen = new Set<string>();
     activityLog.forEach(a => {
-      if (a.action === "comment_added") return; // Already shown as comment
+      if (a.action === "comment_added") return;
+      // Create dedup key from action + metadata JSON + created_by + rounded timestamp (within 2s)
+      const ts = Math.floor(new Date(a.created_at).getTime() / 2000);
+      const key = `${a.action}:${a.created_by}:${JSON.stringify(a.metadata)}:${ts}`;
+      if (seen.has(key)) return;
+      seen.add(key);
       items.push({ type: "activity", data: a, timestamp: a.created_at });
     });
 
@@ -78,15 +98,59 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
     return items;
   }, [comments, activityLog]);
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Apenas imagens são permitidas");
+      return;
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error("Imagem muito grande (máx 50MB)");
+      return;
+    }
+    const preview = URL.createObjectURL(file);
+    setPendingImage({ file, preview });
+    setImageDescription("");
+    if (imageInputRef.current) imageInputRef.current.value = "";
+  };
+
+  const clearPendingImage = () => {
+    if (pendingImage) URL.revokeObjectURL(pendingImage.preview);
+    setPendingImage(null);
+    setImageDescription("");
+  };
+
   const handleSend = async () => {
-    if (!content.trim()) return;
+    if (!content.trim() && !pendingImage) return;
+
+    let imageUrl: string | null = null;
+
+    // Upload image if present
+    if (pendingImage) {
+      try {
+        const att = await uploadAttachment.mutateAsync({ task_id: taskId, file: pendingImage.file });
+        imageUrl = att.public_url;
+      } catch {
+        toast.error("Erro ao enviar imagem");
+        return;
+      }
+    }
+
+    // Extract link from content
+    const linkUrl = extractUrl(content.trim());
+
     const storageContent = contentToStorage(content.trim());
     await addComment.mutateAsync({
       task_id: taskId,
-      content: storageContent,
+      content: storageContent || (pendingImage ? (imageDescription || "Imagem anexada") : ""),
+      image_url: imageUrl ?? undefined,
+      image_description: imageDescription || undefined,
+      link_url: linkUrl ?? undefined,
     });
     setContent("");
     setMentionMap({});
+    clearPendingImage();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -94,18 +158,13 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
       e.preventDefault();
       handleSend();
     }
-    if (e.key === "@" || (content.endsWith("@") && e.key !== "Backspace")) {
-      // Will be handled by onChange
-    }
   };
 
   const handleContentChange = (val: string) => {
     setContent(val);
-    // Check for @ mentions
     const lastAtIdx = val.lastIndexOf("@");
     if (lastAtIdx >= 0) {
       const textAfterAt = val.slice(lastAtIdx + 1);
-      // If there's no space after @, show mention picker
       if (!textAfterAt.includes(" ") && textAfterAt.length < 30) {
         setMentionSearch(textAfterAt.toLowerCase());
         setShowMentions(true);
@@ -115,7 +174,6 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
     setShowMentions(false);
   };
 
-  // Map to track display names for hidden UUIDs
   const [mentionMap, setMentionMap] = useState<Record<string, string>>({});
 
   const insertMention = (memberId: string, name: string) => {
@@ -130,7 +188,6 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
     textareaRef.current?.focus();
   };
 
-  /** Convert display @Name back to @UUID for storage */
   const contentToStorage = (text: string): string => {
     let result = text;
     for (const [name, id] of Object.entries(mentionMap)) {
@@ -139,7 +196,6 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
     return result;
   };
 
-  /** Replace @userId with @Name for display */
   const formatMentions = (text: string) => {
     return text.replace(/@([a-f0-9-]{36})/gi, (_, id) => {
       const m = membersMap[id];
@@ -153,10 +209,37 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
 
   const [expanded, setExpanded] = useState(false);
 
+  /** Render a link preview card */
+  const renderLinkPreview = (url: string, title?: string | null, image?: string | null) => {
+    const displayUrl = url.replace(/^https?:\/\//, "").split("/")[0];
+    return (
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-2 block rounded-lg border border-border/50 bg-card/60 overflow-hidden hover:bg-accent/30 transition group"
+      >
+        {image && (
+          <div className="w-full max-h-48 overflow-hidden">
+            <img src={image} alt="" className="w-full h-full object-cover" />
+          </div>
+        )}
+        <div className="px-3 py-2">
+          {title && <p className="text-xs font-medium truncate">{title}</p>}
+          <div className="flex items-center gap-1 text-[10px] text-muted-foreground mt-0.5">
+            <ExternalLink className="h-3 w-3" />
+            <span className="truncate">{displayUrl}</span>
+          </div>
+        </div>
+      </a>
+    );
+  };
+
   const renderTimelineItem = (item: { type: "comment" | "activity"; data: any; timestamp: string }) => {
     if (item.type === "comment") {
       const c = item.data as PmComment;
       const member = membersMap[c.author_id];
+      const hasLink = c.link_url;
       return (
         <div key={`c-${c.id}`} className="flex gap-2.5">
           <Avatar className="h-6 w-6 shrink-0 mt-0.5">
@@ -170,7 +253,23 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
                 {format(new Date(c.created_at), "MMM d 'às' HH:mm", { locale: ptBR })}
               </span>
             </div>
-            <p className="mt-1 whitespace-pre-wrap text-[13px] text-foreground/90 leading-relaxed">{formatMentions(c.content)}</p>
+            {c.content && (
+              <p className="mt-1 whitespace-pre-wrap text-[13px] text-foreground/90 leading-relaxed">{formatMentions(c.content)}</p>
+            )}
+            {c.image_url && (
+              <div className="mt-2">
+                <img
+                  src={c.image_url}
+                  alt={c.image_description || "Imagem"}
+                  className="rounded-lg max-w-[280px] max-h-[200px] object-cover border border-border/30 cursor-pointer hover:opacity-90 transition"
+                  onClick={() => window.open(c.image_url!, "_blank")}
+                />
+                {c.image_description && (
+                  <p className="text-[11px] text-muted-foreground mt-1 italic">{c.image_description}</p>
+                )}
+              </div>
+            )}
+            {hasLink && renderLinkPreview(c.link_url!, c.link_title, c.link_image)}
           </div>
         </div>
       );
@@ -227,11 +326,34 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
       </div>
 
       <div className="border-t border-border/30 pt-3 relative">
+        {/* Pending image preview */}
+        {pendingImage && (
+          <div className="mb-2 relative inline-block">
+            <img
+              src={pendingImage.preview}
+              alt="Preview"
+              className="rounded-lg max-h-32 max-w-[200px] object-cover border border-border/40"
+            />
+            <button
+              onClick={clearPendingImage}
+              className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center"
+            >
+              <X className="h-3 w-3" />
+            </button>
+            <Input
+              value={imageDescription}
+              onChange={(e) => setImageDescription(e.target.value)}
+              placeholder="Descrição da imagem (opcional)"
+              className="mt-1.5 h-7 text-xs"
+            />
+          </div>
+        )}
+
         <Textarea
           ref={textareaRef}
           value={content}
           onChange={(e) => handleContentChange(e.target.value)}
-          placeholder=""
+          placeholder="Escreva um comentário..."
           className="min-h-[60px] text-sm resize-none"
           onKeyDown={handleKeyDown}
         />
@@ -256,11 +378,23 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
             })}
           </div>
         )}
-        <div className="flex justify-end mt-2">
+        <div className="flex items-center justify-between mt-2">
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7 text-muted-foreground hover:text-primary"
+              onClick={() => imageInputRef.current?.click()}
+            >
+              <ImagePlus className="h-4 w-4" />
+            </Button>
+            <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
+          </div>
           <Button
             size="sm"
             onClick={handleSend}
-            disabled={!content.trim() || addComment.isPending}
+            disabled={(!content.trim() && !pendingImage) || addComment.isPending || uploadAttachment.isPending}
             className="gap-1.5"
           >
             <Send className="h-3 w-3" /> Enviar
