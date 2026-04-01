@@ -164,10 +164,33 @@ export function useCreatePmTask() {
 
 export function useUpdatePmTask() {
   const qc = useQueryClient();
+
+  const invalidatePerformanceQueries = () => {
+    qc.invalidateQueries({ queryKey: ["tasks"] });
+    qc.invalidateQueries({ queryKey: ["deadline_report_tasks"] });
+    qc.invalidateQueries({ queryKey: ["performance_scores"] });
+    qc.invalidateQueries({ queryKey: ["performance_scores_metas"] });
+    qc.invalidateQueries({ queryKey: ["performance_scores_annual"] });
+    qc.invalidateQueries({ queryKey: ["performance_scores_annual_widget"] });
+    qc.invalidateQueries({ queryKey: ["performance_scores_team_avg"] });
+    qc.invalidateQueries({ queryKey: ["my_monthly_rank"] });
+    qc.invalidateQueries({ queryKey: ["my_annual_rank"] });
+  };
+
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<PmTask> & { id: string }) => {
       const { data, error } = await sb.from("pm_tasks").update(updates).eq("id", id).select().single();
       if (error) throw error;
+
+      const shouldRecalcTagPoints = Object.prototype.hasOwnProperty.call(updates, "tags") && !data.parent_task_id;
+      if (shouldRecalcTagPoints) {
+        try {
+          const { error: recalcError } = await supabase.rpc("pm_recalc_tag_points", { _pm_task_id: id } as any);
+          if (recalcError) throw recalcError;
+        } catch (recalcError) {
+          console.error("Error recalculating tag points:", recalcError);
+        }
+      }
 
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
@@ -195,6 +218,11 @@ export function useUpdatePmTask() {
       qc.setQueriesData<PmTask[]>({ queryKey: ["pm_tasks"] }, updateInList);
       qc.setQueriesData<PmTask[]>({ queryKey: ["pm_child_tasks"] }, updateInList);
       qc.setQueriesData<PmTask[]>({ queryKey: ["pm_child_tasks_all"] }, updateInList);
+    },
+    onSuccess: (_data, variables) => {
+      if (Object.prototype.hasOwnProperty.call(variables, "tags")) {
+        invalidatePerformanceQueries();
+      }
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ["pm_tasks"] });
