@@ -325,12 +325,13 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
                       </DropdownMenuItem>
                     )}
                     {att.public_url && (
-                      <DropdownMenuItem className="text-xs gap-2" asChild>
-                        <a href={att.public_url} download={att.file_name} target="_blank" rel="noopener noreferrer">
-                          <Download className="h-3.5 w-3.5" /> Baixar
-                        </a>
+                      <DropdownMenuItem className="text-xs gap-2" onClick={() => handleDownload(att.public_url!, att.file_name)}>
+                        <Download className="h-3.5 w-3.5" /> Baixar
                       </DropdownMenuItem>
                     )}
+                    <DropdownMenuItem className="text-xs gap-2" onClick={() => handleRenameStart(att)}>
+                      <Pencil className="h-3.5 w-3.5" /> Renomear
+                    </DropdownMenuItem>
                     <DropdownMenuItem
                       className="text-xs gap-2 text-destructive focus:text-destructive"
                       onClick={() => handleDeleteAttachment(att)}
