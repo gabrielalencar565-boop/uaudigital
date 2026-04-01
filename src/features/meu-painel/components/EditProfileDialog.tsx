@@ -179,17 +179,34 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
         <form onSubmit={form.handleSubmit(onSave)} className="space-y-4">
           <div className="space-y-2">
             <Label>Foto</Label>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-              <Avatar className="h-16 w-16">
-                <AvatarImage src={avatarPreview ?? avatarUrl ?? undefined} alt="Foto do perfil" />
-                <AvatarFallback>{initials(displayName)}</AvatarFallback>
-              </Avatar>
-              <div className="flex-1 space-y-2">
-                <Input type="file" accept="image/*" onChange={(e) => setAvatarFile(e.target.files?.[0] ?? null)} />
+            <div className="flex items-center gap-4">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="relative group rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <Avatar className="h-16 w-16">
+                  <AvatarImage src={avatarPreview ?? avatarUrl ?? undefined} alt="Foto do perfil" />
+                  <AvatarFallback>{initials(displayName)}</AvatarFallback>
+                </Avatar>
+                <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Camera className="h-5 w-5 text-white" />
+                </div>
+              </button>
+              <div className="flex-1">
+                <p className="text-sm text-muted-foreground">Clique na foto para alterar</p>
                 <p className="text-xs text-muted-foreground">PNG/JPG/WebP • até 5MB</p>
               </div>
+              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
             </div>
           </div>
+
+          <AvatarCropDialog
+            open={!!cropSrc}
+            imageSrc={cropSrc ?? ""}
+            onConfirm={handleCropConfirm}
+            onCancel={handleCropCancel}
+          />
 
           <div className="space-y-2">
             <Label htmlFor="edit_full_name">Nome</Label>
