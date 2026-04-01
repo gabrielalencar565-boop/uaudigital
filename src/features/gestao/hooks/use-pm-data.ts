@@ -332,13 +332,26 @@ export function useDeletePmTask() {
 export function useAddPmComment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: { task_id: string; content: string }) => {
+    mutationFn: async (payload: {
+      task_id: string;
+      content: string;
+      image_url?: string;
+      image_description?: string;
+      link_url?: string;
+      link_title?: string;
+      link_image?: string;
+    }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Não autenticado");
       const { data, error } = await sb.from("pm_comments").insert({
         task_id: payload.task_id,
         content: payload.content,
         author_id: user.id,
+        image_url: payload.image_url ?? null,
+        image_description: payload.image_description ?? null,
+        link_url: payload.link_url ?? null,
+        link_title: payload.link_title ?? null,
+        link_image: payload.link_image ?? null,
       }).select().single();
       if (error) throw error;
 
