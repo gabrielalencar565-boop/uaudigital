@@ -294,7 +294,7 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
               {/* Thumbnail / Icon area */}
               {isImg && att.public_url ? (
                 <div
-                  className="w-full aspect-[4/3] cursor-pointer overflow-hidden bg-muted"
+                  className="w-full aspect-[4/3] cursor-pointer overflow-hidden rounded-t-md bg-muted"
                   onClick={() => openViewer(att)}
                 >
                   <img src={att.public_url} alt={att.file_name} className="w-full h-full object-cover transition group-hover:scale-105" />
