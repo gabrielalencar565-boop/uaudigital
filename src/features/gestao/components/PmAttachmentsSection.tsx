@@ -300,7 +300,7 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
                   <img src={att.public_url} alt={att.file_name} className="w-full h-full object-cover transition group-hover:scale-105" />
                 </div>
               ) : (
-                <div className="w-full aspect-[4/3] flex items-center justify-center bg-muted/50">
+                <div className="w-full aspect-[4/3] flex items-center justify-center overflow-hidden rounded-t-md bg-muted/50">
                   <FileText className="h-6 w-6 text-muted-foreground/40" />
                 </div>
               )}
