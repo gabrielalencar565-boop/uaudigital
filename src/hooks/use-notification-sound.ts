@@ -190,7 +190,8 @@ export function useNotificationSound() {
   // ── Periodic deadline check ──
   const checkDeadlines = useCallback(async () => {
     if (!user?.id) return;
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const _brNow = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+    const todayStr = `${_brNow.getFullYear()}-${String(_brNow.getMonth() + 1).padStart(2, "0")}-${String(_brNow.getDate()).padStart(2, "0")}`;
 
     const { data } = await (supabase as any)
       .from("pm_tasks")
