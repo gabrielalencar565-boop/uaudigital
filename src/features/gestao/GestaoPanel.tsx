@@ -591,6 +591,18 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
       const prev = map.get(key) ?? [];
       map.set(key, [...prev, asPm]);
     }
+
+    // Ordem fixa em todas as listas da Agenda: não concluídas primeiro, concluídas por último
+    for (const [dayKey, dayTasks] of map) {
+      const ordered = dayTasks.slice().sort((a, b) => {
+        const aDone = a.status_global === "concluido";
+        const bDone = b.status_global === "concluido";
+        if (aDone !== bDone) return aDone ? 1 : -1;
+        return 0;
+      });
+      map.set(dayKey, ordered);
+    }
+
     return map;
   }, [filteredTasks, legacyTasksQ.data, legacyAssigneesByTaskId, filterClient, filterAssignee, search, clientsMap]);
 
