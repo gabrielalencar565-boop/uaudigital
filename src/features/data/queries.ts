@@ -500,17 +500,42 @@ export function useDeleteTask() {
   return useMutation({
     mutationFn: async (input: { taskId: string; userId: string }) => {
       // Soft delete: apenas marca deleted_at
-      const { error } = await supabase
+      const { error, count } = await supabase
         .from("tasks")
         .update({ 
           deleted_at: new Date().toISOString(),
           deleted_by: input.userId
         })
-        .eq("id", input.taskId);
+        .eq("id", input.taskId)
+        .is("deleted_at", null);
       if (error) throw error;
-      // O trigger task_soft_delete_uncheck_magic cuidará de desmarcar as etapas do Magic Number
+      return input;
     },
-    onSuccess: async () => {
+    onMutate: async (input) => {
+      // Cancela refetches pendentes para evitar sobrescrever a remoção otimista
+      await qc.cancelQueries({ queryKey: ["tasks"] });
+
+      // Remove a tarefa de TODAS as queries de tasks no cache
+      const queriesData = qc.getQueriesData<TaskRow[]>({ queryKey: ["tasks"] });
+      const snapshots: { queryKey: any; data: TaskRow[] }[] = [];
+
+      queriesData.forEach(([queryKey, data]) => {
+        if (!data) return;
+        snapshots.push({ queryKey, data });
+        qc.setQueryData(queryKey, data.filter(t => t.id !== input.taskId));
+      });
+
+      return { snapshots };
+    },
+    onError: (_err, _input, ctx: any) => {
+      // Restaura o cache em caso de erro
+      if (ctx?.snapshots) {
+        ctx.snapshots.forEach(({ queryKey, data }: any) => {
+          qc.setQueryData(queryKey, data);
+        });
+      }
+    },
+    onSettled: async () => {
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["tasks"] }),
         qc.invalidateQueries({ queryKey: ["deleted_tasks"] }),
