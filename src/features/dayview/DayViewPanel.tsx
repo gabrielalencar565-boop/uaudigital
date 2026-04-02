@@ -488,7 +488,7 @@ export function DayViewPanel() {
         stage: t.stage_current,
         title: t.title,
         is_extra_demand: t.is_extra_demand,
-        completed_at: null,
+        completed_at: t.status_global === "concluido" ? (t.updated_at ?? null) : null,
         source: "pm" as const,
         subtaskCount: childCounts.get(t.id) ?? 0,
       }));
