@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, Controller } from "react-hook-form";
+import { Camera } from "lucide-react";
 
 import { UauSidebarShell, type MainTab } from "@/components/layout/UauSidebarShell";
 import { PerformancePanel } from "@/features/performance/PerformancePanel";
@@ -29,6 +30,7 @@ import { useRole } from "@/hooks/use-role";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ROLE_OPTIONS } from "@/lib/role-options";
+import { AvatarCropDialog } from "@/features/meu-painel/components/AvatarCropDialog";
 
 function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join("");
@@ -54,8 +56,10 @@ const Index = () => {
   const { isAdmin } = useRole(user?.id);
 
   const [hasProfile, setHasProfile] = useState<boolean | null>(null);
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarBlob, setAvatarBlob] = useState<Blob | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<ProfileValues>({
     resolver: zodResolver(profileSchema),
@@ -86,12 +90,10 @@ const Index = () => {
   const saveProfile = async (v: ProfileValues) => {
     if (!user) return;
     let avatar_url: string | null = null;
-    if (avatarFile) {
-      if (!avatarFile.type.startsWith("image/")) { toast.error("Envie uma imagem (PNG/JPG/WebP)"); return; }
-      if (avatarFile.size > 5 * 1024 * 1024) { toast.error("Imagem muito grande (máx 5MB)"); return; }
-      const ext = (avatarFile.name.split(".").pop() || "png").toLowerCase();
-      const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
-      const up = await supabase.storage.from("avatars").upload(path, avatarFile, { upsert: true, contentType: avatarFile.type });
+    if (avatarBlob) {
+      if (avatarBlob.size > 5 * 1024 * 1024) { toast.error("Imagem muito grande (máx 5MB)"); return; }
+      const path = `${user.id}/${crypto.randomUUID()}.webp`;
+      const up = await supabase.storage.from("avatars").upload(path, avatarBlob, { upsert: true, contentType: "image/webp" });
       if (up.error) { toast.error(up.error.message); return; }
       const pub = supabase.storage.from("avatars").getPublicUrl(path);
       avatar_url = pub.data.publicUrl ?? null;
@@ -116,16 +118,49 @@ const Index = () => {
   };
 
   useEffect(() => {
-    if (!avatarFile) {
+    return () => {
       if (avatarPreview) URL.revokeObjectURL(avatarPreview);
-      setAvatarPreview(null);
+    };
+  }, [avatarPreview]);
+
+  useEffect(() => {
+    return () => {
+      if (cropSrc) URL.revokeObjectURL(cropSrc);
+    };
+  }, [cropSrc]);
+
+  const handleFileSelect = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Envie uma imagem (PNG/JPG/WebP)");
       return;
     }
-    const url = URL.createObjectURL(avatarFile);
-    setAvatarPreview(url);
-    return () => URL.revokeObjectURL(url);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [avatarFile]);
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Imagem muito grande (máx 5MB)");
+      return;
+    }
+
+    const url = URL.createObjectURL(file);
+    if (cropSrc) URL.revokeObjectURL(cropSrc);
+    setCropSrc(url);
+
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }, [cropSrc]);
+
+  const handleCropConfirm = useCallback((blob: Blob) => {
+    if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+    if (cropSrc) URL.revokeObjectURL(cropSrc);
+
+    setAvatarPreview(URL.createObjectURL(blob));
+    setAvatarBlob(blob);
+    setCropSrc(null);
+  }, [avatarPreview, cropSrc]);
+
+  const handleCropCancel = useCallback(() => {
+    if (cropSrc) URL.revokeObjectURL(cropSrc);
+    setCropSrc(null);
+  }, [cropSrc]);
 
   const gestaoView = GESTAO_VIEW_MAP[tab];
   const isGestaoTab = !!gestaoView;
@@ -143,13 +178,31 @@ const Index = () => {
               <div className="space-y-2">
                 <Label>Foto</Label>
                 <div className="flex items-center gap-4">
-                  <Avatar className="h-14 w-14">
-                    <AvatarImage src={avatarPreview ?? undefined} alt="Foto do perfil" />
-                    <AvatarFallback>{initials(form.watch("full_name") || "?")}</AvatarFallback>
-                  </Avatar>
-                  <Input type="file" accept="image/*" onChange={(e) => setAvatarFile(e.target.files?.[0] ?? null)} />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="group relative rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <Avatar className="h-14 w-14">
+                      <AvatarImage src={avatarPreview ?? undefined} alt="Foto do perfil" />
+                      <AvatarFallback>{initials(form.watch("full_name") || "?")}</AvatarFallback>
+                    </Avatar>
+                    <div className="absolute inset-0 flex items-center justify-center rounded-full bg-foreground/65 text-background opacity-0 transition-opacity group-hover:opacity-100">
+                      <Camera className="h-4 w-4" />
+                    </div>
+                  </button>
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">Clique na foto para escolher e ajustar</p>
+                    <p className="text-xs text-muted-foreground">PNG/JPG/WebP • até 5MB</p>
+                  </div>
+                  <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
                 </div>
-                <p className="text-xs text-muted-foreground">PNG/JPG/WebP • até 5MB</p>
+                <AvatarCropDialog
+                  open={!!cropSrc}
+                  imageSrc={cropSrc ?? ""}
+                  onConfirm={handleCropConfirm}
+                  onCancel={handleCropCancel}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="full_name">Nome</Label>
