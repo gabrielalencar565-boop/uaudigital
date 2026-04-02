@@ -3,10 +3,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, Controller } from "react-hook-form";
-import { Camera, Save, UserRound } from "lucide-react";
+import { Camera, Crop, ImagePlus, Save, UserRound } from "lucide-react";
 import { AvatarCropDialog } from "./AvatarCropDialog";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -45,6 +46,7 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
   const { user } = useSession();
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
+  const [popoverOpen, setPopoverOpen] = useState(false);
   const [avatarBlob, setAvatarBlob] = useState<Blob | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -180,21 +182,42 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
           <div className="space-y-2">
             <Label>Foto</Label>
             <div className="flex items-center gap-4">
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="relative group rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <Avatar className="h-16 w-16">
-                  <AvatarImage src={avatarPreview ?? avatarUrl ?? undefined} alt="Foto do perfil" />
-                  <AvatarFallback>{initials(displayName)}</AvatarFallback>
-                </Avatar>
-                <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Camera className="h-5 w-5 text-white" />
-                </div>
-              </button>
+              <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="relative group rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <Avatar className="h-16 w-16">
+                      <AvatarImage src={avatarPreview ?? avatarUrl ?? undefined} alt="Foto do perfil" />
+                      <AvatarFallback>{initials(displayName)}</AvatarFallback>
+                    </Avatar>
+                    <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Camera className="h-5 w-5 text-white" />
+                    </div>
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-44 p-1" align="start">
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-accent transition-colors"
+                    onClick={() => { setPopoverOpen(false); fileInputRef.current?.click(); }}
+                  >
+                    <ImagePlus className="h-4 w-4" /> Alterar foto
+                  </button>
+                  {(avatarPreview || avatarUrl) && (
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-accent transition-colors"
+                      onClick={() => { setPopoverOpen(false); setCropSrc(avatarPreview ?? avatarUrl!); }}
+                    >
+                      <Crop className="h-4 w-4" /> Ajustar foto
+                    </button>
+                  )}
+                </PopoverContent>
+              </Popover>
               <div className="flex-1">
-                <p className="text-sm text-muted-foreground">Clique na foto para alterar</p>
+                <p className="text-sm text-muted-foreground">Clique na foto para opções</p>
                 <p className="text-xs text-muted-foreground">PNG/JPG/WebP • até 5MB</p>
               </div>
               <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
