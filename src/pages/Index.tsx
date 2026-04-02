@@ -59,6 +59,7 @@ const Index = () => {
   const [avatarBlob, setAvatarBlob] = useState<Blob | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [popoverOpen, setPopoverOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<ProfileValues>({
