@@ -246,42 +246,54 @@ export function DayViewPanel() {
   // Track previous ranking positions in real-time
   const prevRankRef = useRef<Map<string, number>>(new Map());
 
-  // Task completion stats per user (total assigned vs completed) — includes pm_tasks + subtasks + legacy
+  // Task completion stats per user (total assigned vs completed) — counts unique main tasks + subtasks
   const taskStatsByUser = useMemo(() => {
     const tasks = tasksQ.data ?? [];
-    const assignees = assigneesQ.data ?? [];
     const subtasks = pmSubtasksQ.data ?? [];
     const pmTasks = pmTasksQ.data ?? [];
-    const stats = new Map<string, {total: number;completed: number;}>();
+    const stats = new Map<string, { total: number; completed: number }>();
+    const assigneesByTaskId = new Map<string, string[]>();
 
-    const addItem = (userId: string, isCompleted: boolean) => {
+    for (const a of assigneesQ.data ?? []) {
+      const current = assigneesByTaskId.get(a.task_id) ?? [];
+      current.push(a.user_id);
+      assigneesByTaskId.set(a.task_id, current);
+    }
+
+    const addItem = (userId: string | null | undefined, isCompleted: boolean) => {
+      if (!userId) return;
       const prev = stats.get(userId) ?? { total: 0, completed: 0 };
       prev.total += 1;
       if (isCompleted) prev.completed += 1;
       stats.set(userId, prev);
     };
 
-    // Legacy agenda tasks
+    const isPmSnapshotTask = (description: string | null | undefined) => {
+      if (!description?.startsWith("pm:")) return false;
+      return description.split(":").length >= 4;
+    };
+
+    // Legacy agenda tasks only (exclude PM snapshots to avoid double counting)
     for (const t of tasks) {
-      const taskAssignees = assignees.filter((a) => a.task_id === t.id);
+      if (isPmSnapshotTask(t.description)) continue;
+
+      const taskAssignees = assigneesByTaskId.get(t.id) ?? [];
       if (taskAssignees.length > 0) {
-        for (const a of taskAssignees) {
-          addItem(a.user_id, t.status === "concluido");
+        for (const userId of taskAssignees) {
+          addItem(userId, t.status === "concluido");
         }
       } else {
         addItem(t.assigned_user_id, t.status === "concluido");
       }
     }
 
-    // PM tasks (gestão) — count for assignee
+    // PM main tasks (count once here; snapshots were skipped above)
     for (const t of pmTasks) {
-      if (!t.assignee_id) continue;
       addItem(t.assignee_id, t.status_global === "concluido");
     }
 
     // PM subtasks
     for (const st of subtasks) {
-      if (!st.assignee_id) continue;
       addItem(st.assignee_id, st.status === "concluido");
     }
 
