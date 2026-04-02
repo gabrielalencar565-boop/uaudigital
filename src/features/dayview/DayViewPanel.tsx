@@ -58,6 +58,7 @@ export function DayViewPanel() {
   const queryClient = useQueryClient();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [selectedPmTaskId, setSelectedPmTaskId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const toggleFullscreen = useCallback(() => {
