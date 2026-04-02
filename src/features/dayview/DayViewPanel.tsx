@@ -1022,5 +1022,46 @@ export function DayViewPanel() {
             </CardContent>
           </Card>)
     }
+     {selectedPmTaskId && <PmTaskDetailDialogDayView taskId={selectedPmTaskId} onClose={() => setSelectedPmTaskId(null)} />}
     </div>;
+}
+
+function PmTaskDetailDialogDayView({ taskId, onClose }: { taskId: string; onClose: () => void }) {
+  const pmTasksQ = usePmTasks();
+  const allTasks = pmTasksQ.data ?? [];
+  const task = useMemo(() => allTasks.find((t) => t.id === taskId) ?? null, [taskId, allTasks]);
+  const teamQ = useTeamMembers();
+  const clientsQ = useQuery({
+    queryKey: ["clients_all"],
+    queryFn: async () => {
+      const { data } = await supabase.from("clients").select("id, name").eq("is_active", true).order("name");
+      return data ?? [];
+    },
+  });
+  const clientsMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    (clientsQ.data ?? []).forEach((c) => { m[c.id] = c.name; });
+    return m;
+  }, [clientsQ.data]);
+  const membersMap = useMemo(() => {
+    const m: Record<string, { name: string; avatar?: string }> = {};
+    (teamQ.data ?? []).forEach((tm) => { m[tm.user_id] = { name: tm.display_name, avatar: tm.avatar_url ?? undefined }; });
+    return m;
+  }, [teamQ.data]);
+  const membersList = useMemo(() => (teamQ.data ?? []).map((m) => ({ id: m.user_id, name: m.display_name })), [teamQ.data]);
+
+  const { data: roleData } = useQuery({
+    queryKey: ["my_role_dayview"],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+      const { data } = await supabase.from("user_roles").select("role").eq("user_id", user.id).maybeSingle();
+      return data;
+    },
+  });
+  const isAdmin = roleData?.role === "admin";
+
+  return (
+    <PmTaskDetailDialog task={task} open={!!task} onClose={onClose} clientsMap={clientsMap} membersMap={membersMap} members={membersList} isAdmin={isAdmin} />
+  );
 }
