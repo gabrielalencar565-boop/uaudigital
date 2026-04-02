@@ -46,6 +46,7 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
   const { user } = useSession();
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
+  const [popoverOpen, setPopoverOpen] = useState(false);
   const [avatarBlob, setAvatarBlob] = useState<Blob | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
