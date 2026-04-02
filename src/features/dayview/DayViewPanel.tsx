@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { PmTaskDetailDialog } from "@/features/gestao/components/PmTaskDetailDialog";
+import { usePmTasks } from "@/features/gestao/hooks/use-pm-data";
 import { differenceInCalendarDays, format, getDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -56,6 +58,7 @@ export function DayViewPanel() {
   const queryClient = useQueryClient();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [selectedPmTaskId, setSelectedPmTaskId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const toggleFullscreen = useCallback(() => {
@@ -526,6 +529,19 @@ export function DayViewPanel() {
     return combined;
   }, [assigneesByTaskId, mergedSnapshotAssignees]);
 
+  /** Extract real pm_task UUID from unified task id */
+  const extractPmTaskId = useCallback((unifiedId: string): string | null => {
+    if (unifiedId.startsWith("pm_")) return unifiedId.slice(3);
+    const agendaMatch = unifiedId.match(/^agenda_pm_pm:([^:]+):/);
+    if (agendaMatch) return agendaMatch[1];
+    return null;
+  }, []);
+
+  const handleTaskClick = useCallback((t: { id: string; source: string }) => {
+    const pmId = extractPmTaskId(t.id);
+    if (pmId) setSelectedPmTaskId(pmId);
+  }, [extractPmTaskId]);
+
   // Tarefas de hoje (exceto concluídas - elas vão separadas)
   const todayPendingTasks = useMemo(() => {
     const tasks = unifiedTasks.tasks.filter((t) => {
@@ -756,7 +772,7 @@ export function DayViewPanel() {
               avatar_url: person.avatar_url
             }] : [];
             const primaryDisplayMember = displayMembers[0];
-            return <div key={t.id} className="flex items-center gap-3 rounded-lg bg-destructive px-3 py-2">
+            return <div key={t.id} onClick={() => handleTaskClick(t)} className="flex items-center gap-3 rounded-lg bg-destructive px-3 py-2 cursor-pointer hover:opacity-90 transition-opacity">
                       {displayMembers.length > 1 ? <Tooltip>
                           <TooltipTrigger asChild>
                             <div className="flex -space-x-2 shrink-0">
@@ -814,7 +830,7 @@ export function DayViewPanel() {
               avatar_url: person.avatar_url
             }] : [];
             const primaryDisplayMember = displayMembers[0];
-            return <div key={t.id} className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2">
+            return <div key={t.id} onClick={() => handleTaskClick(t)} className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 cursor-pointer hover:bg-accent/50 transition-colors">
                       {displayMembers.length > 1 ? <Tooltip>
                           <TooltipTrigger asChild>
                             <div className="flex -space-x-2 shrink-0">
@@ -870,7 +886,7 @@ export function DayViewPanel() {
               avatar_url: person.avatar_url
             }] : [];
             const primaryDisplayMember = displayMembers[0];
-            return <div key={t.id} className="flex items-center gap-3 rounded-lg bg-success px-3 py-2">
+            return <div key={t.id} onClick={() => handleTaskClick(t)} className="flex items-center gap-3 rounded-lg bg-success px-3 py-2 cursor-pointer hover:opacity-90 transition-opacity">
                       {displayMembers.length > 1 ? <Tooltip>
                           <TooltipTrigger asChild>
                             <div className="flex -space-x-2 shrink-0">
@@ -1006,5 +1022,46 @@ export function DayViewPanel() {
             </CardContent>
           </Card>)
     }
+     {selectedPmTaskId && <PmTaskDetailDialogDayView taskId={selectedPmTaskId} onClose={() => setSelectedPmTaskId(null)} />}
     </div>;
+}
+
+function PmTaskDetailDialogDayView({ taskId, onClose }: { taskId: string; onClose: () => void }) {
+  const pmTasksQ = usePmTasks();
+  const allTasks = pmTasksQ.data ?? [];
+  const task = useMemo(() => allTasks.find((t) => t.id === taskId) ?? null, [taskId, allTasks]);
+  const teamQ = useTeamMembers();
+  const clientsQ = useQuery({
+    queryKey: ["clients_all"],
+    queryFn: async () => {
+      const { data } = await supabase.from("clients").select("id, name").eq("is_active", true).order("name");
+      return data ?? [];
+    },
+  });
+  const clientsMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    (clientsQ.data ?? []).forEach((c) => { m[c.id] = c.name; });
+    return m;
+  }, [clientsQ.data]);
+  const membersMap = useMemo(() => {
+    const m: Record<string, { name: string; avatar?: string }> = {};
+    (teamQ.data ?? []).forEach((tm) => { m[tm.user_id] = { name: tm.display_name, avatar: tm.avatar_url ?? undefined }; });
+    return m;
+  }, [teamQ.data]);
+  const membersList = useMemo(() => (teamQ.data ?? []).map((m) => ({ id: m.user_id, name: m.display_name })), [teamQ.data]);
+
+  const { data: roleData } = useQuery({
+    queryKey: ["my_role_dayview"],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+      const { data } = await supabase.from("user_roles").select("role").eq("user_id", user.id).maybeSingle();
+      return data;
+    },
+  });
+  const isAdmin = roleData?.role === "admin";
+
+  return (
+    <PmTaskDetailDialog task={task} open={!!task} onClose={onClose} clientsMap={clientsMap} membersMap={membersMap} members={membersList} isAdmin={isAdmin} />
+  );
 }
