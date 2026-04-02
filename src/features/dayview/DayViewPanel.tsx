@@ -246,11 +246,12 @@ export function DayViewPanel() {
   // Track previous ranking positions in real-time
   const prevRankRef = useRef<Map<string, number>>(new Map());
 
-  // Task completion stats per user (total assigned vs completed) — includes subtasks
+  // Task completion stats per user (total assigned vs completed) — includes pm_tasks + subtasks + legacy
   const taskStatsByUser = useMemo(() => {
     const tasks = tasksQ.data ?? [];
     const assignees = assigneesQ.data ?? [];
     const subtasks = pmSubtasksQ.data ?? [];
+    const pmTasks = pmTasksQ.data ?? [];
     const stats = new Map<string, {total: number;completed: number;}>();
 
     const addItem = (userId: string, isCompleted: boolean) => {
@@ -260,6 +261,7 @@ export function DayViewPanel() {
       stats.set(userId, prev);
     };
 
+    // Legacy agenda tasks
     for (const t of tasks) {
       const taskAssignees = assignees.filter((a) => a.task_id === t.id);
       if (taskAssignees.length > 0) {
@@ -271,14 +273,20 @@ export function DayViewPanel() {
       }
     }
 
-    // Add pm_subtasks
+    // PM tasks (gestão) — count for assignee
+    for (const t of pmTasks) {
+      if (!t.assignee_id) continue;
+      addItem(t.assignee_id, t.status_global === "concluido");
+    }
+
+    // PM subtasks
     for (const st of subtasks) {
       if (!st.assignee_id) continue;
       addItem(st.assignee_id, st.status === "concluido");
     }
 
     return stats;
-  }, [tasksQ.data, assigneesQ.data, pmSubtasksQ.data]);
+  }, [tasksQ.data, assigneesQ.data, pmSubtasksQ.data, pmTasksQ.data]);
 
   const monthlyRank = useMemo(() => {
     const scores = scoresQ.data ?? [];
