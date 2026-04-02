@@ -529,6 +529,19 @@ export function DayViewPanel() {
     return combined;
   }, [assigneesByTaskId, mergedSnapshotAssignees]);
 
+  /** Extract real pm_task UUID from unified task id */
+  const extractPmTaskId = useCallback((unifiedId: string): string | null => {
+    if (unifiedId.startsWith("pm_")) return unifiedId.slice(3);
+    const agendaMatch = unifiedId.match(/^agenda_pm_pm:([^:]+):/);
+    if (agendaMatch) return agendaMatch[1];
+    return null;
+  }, []);
+
+  const handleTaskClick = useCallback((t: { id: string; source: string }) => {
+    const pmId = extractPmTaskId(t.id);
+    if (pmId) setSelectedPmTaskId(pmId);
+  }, [extractPmTaskId]);
+
   // Tarefas de hoje (exceto concluídas - elas vão separadas)
   const todayPendingTasks = useMemo(() => {
     const tasks = unifiedTasks.tasks.filter((t) => {
