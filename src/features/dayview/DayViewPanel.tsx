@@ -530,8 +530,9 @@ export function DayViewPanel() {
   const todayPendingTasks = useMemo(() => {
     const tasks = unifiedTasks.tasks.filter((t) => {
       if (!t.due_date) return false;
-      if (!isCurrentMonth) return t.status !== "concluido";
-      return t.due_date === todayKey && t.status !== "concluido";
+      if (t.status === "concluido") return false;
+      if (!isCurrentMonth) return true;
+      return t.due_date === todayKey;
     });
     return tasks.sort((a, b) => {
       const w = (s: string) => s === "em_andamento" ? 0 : 1;
