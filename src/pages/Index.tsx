@@ -179,21 +179,55 @@ const Index = () => {
               <div className="space-y-2">
                 <Label>Foto</Label>
                 <div className="flex items-center gap-4">
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="group relative rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    <Avatar className="h-14 w-14">
-                      <AvatarImage src={avatarPreview ?? undefined} alt="Foto do perfil" />
-                      <AvatarFallback>{initials(form.watch("full_name") || "?")}</AvatarFallback>
-                    </Avatar>
-                    <div className="absolute inset-0 flex items-center justify-center rounded-full bg-foreground/65 text-background opacity-0 transition-opacity group-hover:opacity-100">
-                      <Camera className="h-4 w-4" />
-                    </div>
-                  </button>
+                  {avatarPreview ? (
+                    <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          className="group relative rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          <Avatar className="h-14 w-14">
+                            <AvatarImage src={avatarPreview} alt="Foto do perfil" />
+                            <AvatarFallback>{initials(form.watch("full_name") || "?")}</AvatarFallback>
+                          </Avatar>
+                          <div className="absolute inset-0 flex items-center justify-center rounded-full bg-foreground/65 text-background opacity-0 transition-opacity group-hover:opacity-100">
+                            <Camera className="h-4 w-4" />
+                          </div>
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-44 p-1" align="start">
+                        <button
+                          type="button"
+                          className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-accent transition-colors"
+                          onClick={() => { setPopoverOpen(false); fileInputRef.current?.click(); }}
+                        >
+                          <ImagePlus className="h-4 w-4" /> Alterar foto
+                        </button>
+                        <button
+                          type="button"
+                          className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-accent transition-colors"
+                          onClick={() => { setPopoverOpen(false); setCropSrc(avatarPreview); }}
+                        >
+                          <Crop className="h-4 w-4" /> Ajustar foto
+                        </button>
+                      </PopoverContent>
+                    </Popover>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="group relative rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <Avatar className="h-14 w-14">
+                        <AvatarFallback>{initials(form.watch("full_name") || "?")}</AvatarFallback>
+                      </Avatar>
+                      <div className="absolute inset-0 flex items-center justify-center rounded-full bg-foreground/65 text-background opacity-0 transition-opacity group-hover:opacity-100">
+                        <Camera className="h-4 w-4" />
+                      </div>
+                    </button>
+                  )}
                   <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">Clique na foto para escolher e ajustar</p>
+                    <p className="text-sm text-muted-foreground">{avatarPreview ? "Clique na foto para opções" : "Clique na foto para escolher"}</p>
                     <p className="text-xs text-muted-foreground">PNG/JPG/WebP • até 5MB</p>
                   </div>
                   <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
