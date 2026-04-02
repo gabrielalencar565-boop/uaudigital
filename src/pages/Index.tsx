@@ -2,7 +2,7 @@ import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } f
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, Controller } from "react-hook-form";
-import { Camera } from "lucide-react";
+import { Camera, Crop, ImagePlus } from "lucide-react";
 
 import { UauSidebarShell, type MainTab } from "@/components/layout/UauSidebarShell";
 import { PerformancePanel } from "@/features/performance/PerformancePanel";
