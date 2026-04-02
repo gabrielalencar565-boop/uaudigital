@@ -7,6 +7,7 @@ import { Camera, Crop, ImagePlus, Save, UserRound } from "lucide-react";
 import { AvatarCropDialog } from "./AvatarCropDialog";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
