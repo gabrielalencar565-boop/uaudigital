@@ -100,7 +100,7 @@ export function DayViewPanel() {
       const endDate = `${monthKey}-${String(lastDay).padStart(2, "0")}`;
       const { data, error } = await supabase
         .from("pm_tasks")
-        .select("id, title, client_id, assignee_id, watchers, due_date, stage_current, status_global, is_extra_demand, parent_task_id")
+        .select("id, title, client_id, assignee_id, watchers, due_date, stage_current, status_global, is_extra_demand, parent_task_id, updated_at")
         .is("parent_task_id", null)
         .gte("due_date", startDate)
         .lte("due_date", endDate);
@@ -488,7 +488,7 @@ export function DayViewPanel() {
         stage: t.stage_current,
         title: t.title,
         is_extra_demand: t.is_extra_demand,
-        completed_at: null,
+        completed_at: t.status_global === "concluido" ? (t.updated_at ?? null) : null,
         source: "pm" as const,
         subtaskCount: childCounts.get(t.id) ?? 0,
       }));
@@ -530,8 +530,9 @@ export function DayViewPanel() {
   const todayPendingTasks = useMemo(() => {
     const tasks = unifiedTasks.tasks.filter((t) => {
       if (!t.due_date) return false;
-      if (!isCurrentMonth) return t.status !== "concluido";
-      return t.due_date === todayKey && t.status !== "concluido";
+      if (t.status === "concluido") return false;
+      if (!isCurrentMonth) return true;
+      return t.due_date === todayKey;
     });
     return tasks.sort((a, b) => {
       const w = (s: string) => s === "em_andamento" ? 0 : 1;
@@ -546,9 +547,15 @@ export function DayViewPanel() {
   // Tarefas concluídas de hoje
   const todayCompletedTasks = useMemo(() => {
     const tasks = unifiedTasks.tasks.filter((t) => {
-      if (!t.due_date) return false;
-      if (!isCurrentMonth) return t.status === "concluido";
-      return t.due_date === todayKey && t.status === "concluido";
+      if (t.status !== "concluido") return false;
+      if (!isCurrentMonth) return true;
+      // For today view, only show tasks actually completed today (by completed_at date)
+      if (t.completed_at) {
+        const completedDate = t.completed_at.slice(0, 10);
+        return completedDate === todayKey;
+      }
+      // Fallback: if no completed_at, use due_date
+      return t.due_date === todayKey;
     });
     return tasks.sort((a, b) => {
       const na = teamByUserId.get(a.assigned_user_id)?.display_name ?? "";
