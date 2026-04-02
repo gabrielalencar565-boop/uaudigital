@@ -31,6 +31,7 @@ import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ROLE_OPTIONS } from "@/lib/role-options";
 import { AvatarCropDialog } from "@/features/meu-painel/components/AvatarCropDialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join("");
