@@ -830,7 +830,7 @@ export function DayViewPanel() {
               avatar_url: person.avatar_url
             }] : [];
             const primaryDisplayMember = displayMembers[0];
-            return <div key={t.id} className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2">
+            return <div key={t.id} onClick={() => handleTaskClick(t)} className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 cursor-pointer hover:bg-accent/50 transition-colors">
                       {displayMembers.length > 1 ? <Tooltip>
                           <TooltipTrigger asChild>
                             <div className="flex -space-x-2 shrink-0">
