@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { PmTaskDetailDialog } from "@/features/gestao/components/PmTaskDetailDialog";
+import { usePmTasks } from "@/features/gestao/hooks/use-pm-data";
 import { differenceInCalendarDays, format, getDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
