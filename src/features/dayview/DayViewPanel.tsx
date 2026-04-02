@@ -549,10 +549,10 @@ export function DayViewPanel() {
     const tasks = unifiedTasks.tasks.filter((t) => {
       if (t.status !== "concluido") return false;
       if (!isCurrentMonth) return true;
-      // For today view, only show tasks actually completed today (by completed_at date)
+      // For today view, only show tasks actually completed today (by completed_at date in Brazil TZ)
       if (t.completed_at) {
-        const completedDate = t.completed_at.slice(0, 10);
-        return completedDate === todayKey;
+        const completedBR = new Date(t.completed_at).toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+        return completedBR === todayKey;
       }
       // Fallback: if no completed_at, use due_date
       return t.due_date === todayKey;
