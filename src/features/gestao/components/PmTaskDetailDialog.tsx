@@ -1175,15 +1175,16 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                 {isDone ? (
                   <Button size="sm" variant="outline" className="gap-1.5" onClick={() => {
                     updateTask.mutate({ id: task.id, status_global: "backlog" });
-                    toast({ title: "Subtarefa desmarcada" });
+                    toast.success("Subtarefa desmarcada");
                   }}>
                     <RotateCcw className="h-3.5 w-3.5" /> Desmarcar concluído
                   </Button>
                 ) : (
-                  <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={() => {
+                  <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={async () => {
                     updateTask.mutate({ id: task.id, status_global: "concluido" });
-                    syncStage.mutate({ pmTaskId: task.id, completedStage: task.stage_current, userId: user?.id ?? "", scoringUserIds: [task.assignee_id, ...(task.watchers ?? [])].filter(Boolean) as string[] });
-                    toast({ title: "Subtarefa concluída ✓" });
+                    const { data: { user: u } } = await supabase.auth.getUser();
+                    if (u) syncStage.mutate({ pmTaskId: task.id, completedStage: task.stage_current, userId: u.id, scoringUserIds: [task.assignee_id, ...(task.watchers ?? [])].filter(Boolean) as string[] });
+                    toast.success("Subtarefa concluída ✓");
                   }}>
                     <CheckCircle2 className="h-4 w-4" /> Concluído
                   </Button>
@@ -1196,29 +1197,30 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                 </Badge>
                 <Button size="sm" variant="outline" className="gap-1.5" onClick={() => {
                   updateTask.mutate({ id: task.id, status_global: "backlog" });
-                  toast({ title: "Subtarefa desmarcada" });
+                  toast.success("Subtarefa desmarcada");
                 }}>
                   <RotateCcw className="h-3.5 w-3.5" /> Desmarcar concluído
                 </Button>
-                <Button size="sm" variant="outline" className="gap-1.5 text-red-500 border-red-500/30 hover:bg-red-500/10" onClick={() => {
+                <Button size="sm" variant="outline" className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => {
                   updateTask.mutate({ id: task.id, stage_current: "alteracoes", status_global: "backlog" });
-                  toast({ title: "Enviado para Alteração" });
+                  toast.success("Enviado para Alteração");
                 }}>
                   <RotateCcw className="h-3.5 w-3.5" /> Enviar para Alteração
                 </Button>
               </>
             ) : (
               <>
-                <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={() => {
+                <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={async () => {
                   updateTask.mutate({ id: task.id, status_global: "concluido" });
-                  syncStage.mutate({ pmTaskId: task.id, completedStage: task.stage_current, userId: user?.id ?? "", scoringUserIds: [task.assignee_id, ...(task.watchers ?? [])].filter(Boolean) as string[] });
-                  toast({ title: "Subtarefa concluída ✓" });
+                  const { data: { user: u } } = await supabase.auth.getUser();
+                  if (u) syncStage.mutate({ pmTaskId: task.id, completedStage: task.stage_current, userId: u.id, scoringUserIds: [task.assignee_id, ...(task.watchers ?? [])].filter(Boolean) as string[] });
+                  toast.success("Subtarefa concluída ✓");
                 }}>
                   <CheckCircle2 className="h-4 w-4" /> Concluído
                 </Button>
-                <Button size="sm" variant="outline" className="gap-1.5 text-red-500 border-red-500/30 hover:bg-red-500/10" onClick={() => {
+                <Button size="sm" variant="outline" className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => {
                   updateTask.mutate({ id: task.id, stage_current: "alteracoes", status_global: "backlog" });
-                  toast({ title: "Enviado para Alteração" });
+                  toast.success("Enviado para Alteração");
                 }}>
                   <RotateCcw className="h-3.5 w-3.5" /> Enviar para Alteração
                 </Button>
