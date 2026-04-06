@@ -27,7 +27,7 @@ interface Props {
 export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onSelectSubtask, activeSubtaskId }: Props) {
   const updateTask = useUpdatePmTask();
   const createTask = useCreatePmTask();
-  const syncStage = usePmSyncStageCompletion();
+  
   const { stageAssignees } = useDefaultFlowWithDates();
   const [newTitle, setNewTitle] = useState("");
 
