@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
-import { Clapperboard, Palette, ChevronDown, Plus, Check, ChevronRight } from "lucide-react";
+import { Clapperboard, Palette, ChevronDown, Plus, Check, ChevronRight, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -11,6 +12,8 @@ import { useUpdatePmTask, useCreatePmTask } from "../hooks/use-pm-data";
 import { PmAssigneeSelector } from "./PmAssigneeSelector";
 import { getFixedAssignee, getFixedWatchers, useDefaultFlowWithDates } from "./PmStageFlowConfig";
 import type { PmTask } from "../pm-types";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 function initials(n: string) {
   return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
@@ -101,6 +104,7 @@ function PlanningSection({
   const [isOpen, setIsOpen] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
   const [newTitle, setNewTitle] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const addInputRef = useRef<HTMLInputElement>(null);
 
   const total = tasks.length;
@@ -110,6 +114,13 @@ function PlanningSection({
       addInputRef.current.focus();
     }
   }, [isAdding]);
+
+  const handleSoftDelete = async (subId: string, title: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    updateTask.mutate({ id: subId, deleted_at: new Date().toISOString(), deleted_by: user?.id ?? null } as any);
+    toast("Subtarefa movida para lixeira");
+    setDeletingId(null);
+  };
 
   const handleStartAdd = () => {
     setNewTitle("");
@@ -270,9 +281,35 @@ function PlanningSection({
                   )}
                 </div>
 
-                <div className="w-6 flex justify-center">
-                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 group-hover:text-primary transition" />
+                {/* Trash + chevron */}
+                <div className="w-14 flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    className="h-6 w-6 flex items-center justify-center rounded-md text-destructive/70 hover:bg-destructive/10 hover:text-destructive transition-all"
+                    onClick={(e) => { e.stopPropagation(); setDeletingId(sub.id); }}
+                    title="Mover para lixeira"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 group-hover:text-primary transition" onClick={() => onSelectSubtask?.(sub)} />
                 </div>
+
+                {/* Delete confirmation */}
+                <AlertDialog open={deletingId === sub.id} onOpenChange={(open) => !open && setDeletingId(null)}>
+                  <AlertDialogContent className="z-[200]">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Excluir subtarefa?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        A subtarefa <strong>"{sub.title}"</strong> será movida para a lixeira. Os pontos de performance não serão contabilizados.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => handleSoftDelete(sub.id, sub.title)}>
+                        Excluir
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             );
           })}
