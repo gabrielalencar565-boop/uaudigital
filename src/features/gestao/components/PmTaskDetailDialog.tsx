@@ -187,6 +187,30 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
         </div>
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Excluir tarefa?</AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div>
+              <p>Tem certeza que deseja excluir esta tarefa?</p>
+              <p className="mt-2 text-destructive font-medium">⚠️ Os pontos de performance não serão contabilizados e a etapa será desmarcada no Magic Number.</p>
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            deleteTask.mutate({ id: currentTask.id, deleted_at: new Date().toISOString(), deleted_by: user?.id ?? null } as any);
+            toast.success("Tarefa movida para a lixeira");
+            handleClose();
+          }}>Excluir</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
 
