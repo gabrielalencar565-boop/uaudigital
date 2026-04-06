@@ -1,31 +1,29 @@
 
 
-## Fix Subtask Action Buttons
+## Fix Subtask Completion Priority Over Alteração State
 
-**Problem**: When viewing a subtask in the detail dialog, the action buttons show "Concluído >" (which advances to next stage) and "Reverter" — these are parent-task behaviors. Subtasks should only toggle done/undone and optionally send to Alteração, without stage advancement.
+**Problem**: When a subtask in "Alteração" is marked as concluído, it still shows the "Em Alteração" badge instead of showing as completed. The completion state should take priority over the stage state.
 
-**Reference**: The screenshot shows the subtask detail with "Concluído >" and "Reverter" buttons that shouldn't be there.
+**Root cause**: In the conditional rendering (line 1170), `stage_current === "alteracoes"` is checked **before** `isDone`. So even when the subtask is done, if its stage is "alteracoes", it renders the "Em Alteração" UI instead of the "Concluído" UI.
 
 ---
 
-### Changes in `src/features/gestao/components/PmTaskDetailDialog.tsx`
+### Change in `src/features/gestao/components/PmTaskDetailDialog.tsx`
 
-**1. Detect subtask context**: Use `task.parent_task_id` to determine if the current task is a subtask.
+**Reorder the conditional** (lines 1170-1228): Check `isDone` **first**, then check `alteracoes` stage.
 
-**2. Replace action buttons for subtasks** (lines ~1166-1283): When `task.parent_task_id` is set, render a different button set:
-- **If not done**: Show "Concluído" button (no chevron, no stage advance) that toggles `status_global` to `concluido` and triggers scoring. Also show "Enviar para Alteração" button.
-- **If done**: Show "Desmarcar concluído" button to set `status_global` back to `backlog`. Also show "Enviar para Alteração" button.
-- **If in alteracoes**: Show "Em Alteração" badge + "Marcar como concluído" button (toggles done) — no "Reverter".
-- **Remove "Reverter" entirely** for subtasks.
+Current order:
+1. `alteracoes` → show "Em Alteração" badge (even if done)
+2. `isDone` → show "Concluído" badge + "Desmarcar"
+3. else → show "Concluído" button + "Enviar para Alteração"
 
-**3. Subtask toggle logic**: Add a `handleSubtaskToggleDone` function that:
-- Toggles `status_global` between `concluido` and `backlog`
-- Keeps `stage_current` unchanged
-- Triggers scoring via `syncStage` when marking as done
-- Shows appropriate toast
+New order:
+1. `isDone` → show "Concluído" badge + "Desmarcar concluído" + "Enviar para Alteração" (always, regardless of stage)
+2. `alteracoes` → show "Em Alteração" badge + "Concluído" button
+3. else → show "Concluído" button + "Enviar para Alteração"
 
-**4. Subtask send to Alteração**: Add `handleSubtaskAlteracao` that sets `stage_current` to `alteracoes` and `status_global` to `backlog`, applying fixed assignees from flow config.
+This ensures that once marked as done, the subtask always displays as completed with the option to unmark, regardless of which stage it was in.
 
 ### Summary
-One file edited. The core change is wrapping the existing action buttons section (lines 1166-1283) in a conditional: if `task.parent_task_id` exists, render the simplified subtask buttons; otherwise, render the existing parent-task workflow buttons unchanged.
+One file, one conditional reorder. Move the `isDone` check to be the first branch so completion always takes visual priority.
 
