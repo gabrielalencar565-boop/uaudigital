@@ -66,38 +66,19 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
   ];
 
   const changeStage = (subId: string, newStage: string) => {
-    // For "alteracoes", only change the individual subtask (not all siblings)
-    if (newStage === "alteracoes") {
-      const fixedAssignee = getFixedAssignee(stageAssignees, newStage, parentTask.client_id);
-      const fixedWatchers = getFixedWatchers(stageAssignees, newStage, parentTask.client_id);
-      const updates: any = { id: subId, stage_current: newStage as any };
-      if (fixedAssignee !== undefined) {
-        updates.assignee_id = fixedAssignee;
-        updates.watchers = fixedWatchers;
-      }
-      updateTask.mutate(updates);
-      return;
+    // Subtask stage changes are always individual — they never advance the parent or siblings.
+    // Only the parent task advance (in PmTaskDetailDialog) triggers the full workflow.
+    const updates: any = { id: subId, stage_current: newStage as any };
+    if (newStage === "entrega") {
+      updates.status_global = "concluido";
     }
-
-    // For other stages, sync ALL subtasks + parent
     const fixedAssignee = getFixedAssignee(stageAssignees, newStage, parentTask.client_id);
     const fixedWatchers = getFixedWatchers(stageAssignees, newStage, parentTask.client_id);
-    
-    const parentUpdates: any = { id: parentTask.id, stage_current: newStage as any };
     if (fixedAssignee !== undefined) {
-      parentUpdates.assignee_id = fixedAssignee;
-      parentUpdates.watchers = fixedWatchers;
+      updates.assignee_id = fixedAssignee;
+      updates.watchers = fixedWatchers;
     }
-    updateTask.mutate(parentUpdates);
-
-    childTasks.forEach(child => {
-      const childUpdates: any = { id: child.id, stage_current: newStage as any };
-      if (fixedAssignee !== undefined) {
-        childUpdates.assignee_id = fixedAssignee;
-        childUpdates.watchers = fixedWatchers;
-      }
-      updateTask.mutate(childUpdates);
-    });
+    updateTask.mutate(updates);
   };
 
   return (
