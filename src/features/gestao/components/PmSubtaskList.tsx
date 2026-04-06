@@ -68,20 +68,45 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
     ...(sub.watchers ?? []).filter(w => w !== sub.assignee_id),
   ];
 
-  const changeStage = (subId: string, newStage: string) => {
-    // Subtask stage changes are always individual — they never advance the parent or siblings.
-    // Only the parent task advance (in PmTaskDetailDialog) triggers the full workflow.
-    const updates: any = { id: subId, stage_current: newStage as any };
-    if (newStage === "entrega") {
-      updates.status_global = "concluido";
+  const toggleDone = async (sub: PmTask) => {
+    const isDone = sub.status_global === "concluido";
+    if (isDone) {
+      // Unmark: set back to backlog
+      updateTask.mutate({ id: sub.id, status_global: "backlog" as any });
+      toast("Subtarefa desmarcada");
+    } else {
+      // Mark as done (keep same stage, just change status)
+      updateTask.mutate({ id: sub.id, status_global: "concluido" as any });
+      // Trigger scoring
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const scoringUserIds = [
+            sub.assignee_id,
+            ...(sub.watchers ?? []),
+          ].filter(Boolean) as string[];
+          syncStage.mutate({
+            pmTaskId: sub.id,
+            completedStage: sub.stage_current,
+            userId: user.id,
+            scoringUserIds: scoringUserIds.length > 0 ? scoringUserIds : undefined,
+          });
+        }
+      } catch (_) { /* ignore */ }
+      toast.success("Subtarefa concluída!");
     }
-    const fixedAssignee = getFixedAssignee(stageAssignees, newStage, parentTask.client_id);
-    const fixedWatchers = getFixedWatchers(stageAssignees, newStage, parentTask.client_id);
+  };
+
+  const sendToAlteracoes = (sub: PmTask) => {
+    const fixedAssignee = getFixedAssignee(stageAssignees, "alteracoes", parentTask.client_id);
+    const fixedWatchers = getFixedWatchers(stageAssignees, "alteracoes", parentTask.client_id);
+    const updates: any = { id: sub.id, stage_current: "alteracoes" as any, status_global: "backlog" as any };
     if (fixedAssignee !== undefined) {
       updates.assignee_id = fixedAssignee;
       updates.watchers = fixedWatchers;
     }
     updateTask.mutate(updates);
+    toast("Subtarefa enviada para Alteração");
   };
 
   return (
