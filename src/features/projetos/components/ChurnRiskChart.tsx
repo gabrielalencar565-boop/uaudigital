@@ -302,6 +302,54 @@ export function ChurnRiskChart() {
       {/* ── Detail view (selected client) ── */}
       {selected && <ClientDetailCard c={selected} />}
 
+      {/* ── Top 3 Risk Widgets ── */}
+      {(() => {
+        const top3 = [...allClients].sort((a, b) => a.avg - b.avg).slice(0, 3);
+        const medals = ["🥇", "🥈", "🥉"];
+        const ringColors = [
+          "ring-rose-500/40 shadow-rose-500/10",
+          "ring-amber-500/40 shadow-amber-500/10",
+          "ring-yellow-500/30 shadow-yellow-500/10",
+        ];
+        if (top3.length === 0) return null;
+        return (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {top3.map((c, i) => {
+              const { Icon } = c.cls;
+              return (
+                <Card key={c.clientId} className={cn("ring-2 shadow-lg", ringColors[i] ?? "ring-border")}>
+                  <CardContent className="py-4 px-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xl">{medals[i]}</span>
+                      <span className={cn("text-2xl font-extrabold tabular-nums", c.cls.color)}>{c.avg}</span>
+                    </div>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className={cn("h-7 w-7 rounded-md flex items-center justify-center border shrink-0", c.cls.bg)}>
+                        <Icon className={cn("h-3.5 w-3.5", c.cls.color)} />
+                      </div>
+                      <p className="text-sm font-bold truncate">{c.name}</p>
+                    </div>
+                    <p className={cn("text-[11px] font-semibold", c.cls.color)}>{c.cls.label}</p>
+                    {/* mini dimension bars */}
+                    <div className="space-y-1 pt-1">
+                      {c.dims.map((d) => (
+                        <div key={d.name} className="flex items-center gap-2">
+                          <span className="text-[10px] text-muted-foreground w-20 truncate">{d.name}</span>
+                          <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                            <div className="h-full rounded-full transition-all" style={{ width: `${d.value * 10}%`, background: d.color }} />
+                          </div>
+                          <span className="text-[10px] font-semibold tabular-nums w-5 text-right">{d.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        );
+      })()}
+
       {/* ── Ranking chart ── */}
       <Card>
         <CardContent className="py-5 px-5 space-y-4">
