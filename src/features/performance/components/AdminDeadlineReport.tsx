@@ -78,7 +78,7 @@ function isOnTime(task: TaskForReport) {
   return completedSP <= task.due_date;
 }
 
-function calcPoints(task: TaskForReport, configMap: Map<string, ScoringConfigRow>, year: number, month: number): number {
+function calcPoints(task: TaskForReport, configMap: Map<string, ScoringConfigRow>, year: number, month: number, pmTagsMap?: Map<string, string[]>): number {
   const onTime = isOnTime(task);
   if (onTime === null) return 0;
 
@@ -90,7 +90,23 @@ function calcPoints(task: TaskForReport, configMap: Map<string, ScoringConfigRow
   }
 
   const cfg = configMap.get(task.stage);
-  if (!onTime) return cfg?.late_penalty ?? -1;
+  if (!onTime) {
+    let penalty = cfg?.late_penalty ?? -1;
+    // Also sum tag late penalties
+    const pmId = extractPmTaskId(task.description);
+    if (pmId && pmTagsMap) {
+      const tags = pmTagsMap.get(pmId);
+      if (tags) {
+        for (const tag of tags) {
+          const tagName = tag.split(":")[0];
+          const tagKey = "tag_" + tagName.toLowerCase().replace(/\s+/g, "_");
+          const tagCfg = configMap.get(tagKey);
+          if (tagCfg) penalty += tagCfg.late_penalty;
+        }
+      }
+    }
+    return penalty;
+  }
 
   // On-time scoring — use snapshot if available
   if (task.point_value != null) return task.point_value;
