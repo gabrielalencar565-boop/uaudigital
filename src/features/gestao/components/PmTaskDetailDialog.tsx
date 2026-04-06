@@ -294,17 +294,12 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       const { supabase } = await import("@/integrations/supabase/client");
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      // Pass explicit user IDs: assignee + watchers (BEFORE stage change updates them)
+      // Pass explicit user IDs: only assignee + watchers of the PARENT task
+      // Child task assignees are NOT included — they belong to the next stage
       const scoringUserIds = [
         task.assignee_id,
         ...(task.watchers ?? []),
       ].filter(Boolean) as string[];
-      // Also include child task assignees
-      for (const child of childTasks) {
-        if (child.assignee_id && !scoringUserIds.includes(child.assignee_id)) {
-          scoringUserIds.push(child.assignee_id);
-        }
-      }
       syncStage.mutate({
         pmTaskId: task.id,
         completedStage,
