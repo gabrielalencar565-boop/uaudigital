@@ -130,13 +130,7 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
             </span>
           ))}
           <div className="flex-1" />
-          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-muted-foreground hover:text-destructive" title="Mover para lixeira" onClick={async () => {
-            if (!confirm("Mover esta tarefa para a lixeira?")) return;
-            const { data: { user } } = await supabase.auth.getUser();
-            deleteTask.mutate({ id: currentTask.id, deleted_at: new Date().toISOString(), deleted_by: user?.id ?? null } as any);
-            toast.success("Tarefa movida para a lixeira");
-            handleClose();
-          }}><Trash2 className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-muted-foreground hover:text-destructive" title="Mover para lixeira" onClick={() => setShowDeleteConfirm(true)}><Trash2 className="h-4 w-4" /></Button>
           <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg" onClick={handleClose}><X className="h-4 w-4" /></Button>
         </div>
 
