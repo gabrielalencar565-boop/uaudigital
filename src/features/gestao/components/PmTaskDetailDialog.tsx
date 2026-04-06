@@ -1231,6 +1231,32 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
               minHeight="80px"
             />
           </div>
+            )}
+          </div>
+        ) : (
+          /* ── Parent task buttons: full workflow ── */
+          <>
+        {task.stage_current === "alteracoes" && (
+          <div className="flex flex-wrap items-center gap-2 pt-2">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-destructive/10 border border-destructive/30 text-destructive text-xs font-semibold">
+              <RotateCcw className="h-3.5 w-3.5" /> Em Alteração
+            </div>
+          </div>
+        )}
+        {isDone ? (
+          <div className="flex flex-wrap items-center gap-2 pt-2">
+            <Badge className="bg-emerald-500/20 text-emerald-400 border-0 gap-1">
+              <Check className="h-3 w-3" /> Concluído
+            </Badge>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2 pt-2">
+            <Button size="sm" className="gap-1.5" onClick={() => handleAdvance()}>
+              <ChevronRight className="h-4 w-4" /> {`Concluído — ${stageLabel(nextStage(task.stage_current, task) ?? "")}`}
+            </Button>
+          </div>
+        )}
+          </>
         )}
 
         {/* Posting Fields (for subtasks in PDF stage only) */}
