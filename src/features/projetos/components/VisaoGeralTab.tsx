@@ -34,6 +34,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Cell, AreaChart, Area } from "recharts";
 import { HealthScoreTab } from "./HealthScoreTab";
 import { MonthlyAnalysisSection } from "./MonthlyAnalysisSection";
+import { ChurnRiskModule } from "./ChurnRiskModule";
 
 import { useAgendaSpecialDates, type SpecialDate } from "@/features/agenda/hooks/use-agenda-dates";
 import { getIconById } from "@/features/agenda/components/IconPicker";
@@ -1121,9 +1122,13 @@ export function VisaoGeralTab() {
         </Card>
       </FadeUp>
 
+      {/* Risco de Churn */}
+      <FadeUp delay={0.7}>
+        <ChurnRiskModule />
+      </FadeUp>
 
       {/* Calendar full-width */}
-      <FadeUp delay={0.7}>
+      <FadeUp delay={0.75}>
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
           {/* Calendar — left 3 cols */}
           <Card className="lg:col-span-3">
