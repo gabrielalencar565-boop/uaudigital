@@ -246,6 +246,33 @@ export function AdminDeadlineReport({
     [scoringConfigQ.data],
   );
 
+  // Fetch pm_tasks tags to compute tag-based late penalties
+  const pmTagsQ = useQuery({
+    enabled: (tasksQ.data?.length ?? 0) > 0,
+    queryKey: ["pm_tasks_tags_for_report", year, month],
+    queryFn: async () => {
+      // Extract all pm_task_ids from task descriptions
+      const pmIds = (tasksQ.data ?? [])
+        .map((t) => extractPmTaskId(t.description))
+        .filter(Boolean) as string[];
+      if (pmIds.length === 0) return [] as { id: string; tags: string[] | null }[];
+      const { data, error } = await supabase
+        .from("pm_tasks")
+        .select("id, tags")
+        .in("id", pmIds);
+      if (error) throw error;
+      return (data ?? []) as { id: string; tags: string[] | null }[];
+    },
+  });
+
+  const pmTagsMap = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const pt of pmTagsQ.data ?? []) {
+      if (pt.tags && pt.tags.length > 0) map.set(pt.id, pt.tags);
+    }
+    return map;
+  }, [pmTagsQ.data]);
+
   const overrideByTaskId = useMemo(
     () => new Map((overridesQ.data ?? []).map((o) => [o.task_id, o])),
     [overridesQ.data],
