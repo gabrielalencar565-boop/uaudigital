@@ -425,8 +425,9 @@ export function ChurnRiskModule() {
 
                     {/* Category bars */}
                     {clientDimensions.map((d) => {
-                      const isWorst = worstCategory?.key === d.key && d.value < 8;
-                      const isBest = bestCategory?.key === d.key;
+                      const hasDiff = bestCategory?.key !== worstCategory?.key;
+                      const isWorst = hasDiff && worstCategory?.key === d.key && d.value < 8;
+                      const isBest = hasDiff && bestCategory?.key === d.key;
                       return (
                         <div key={d.key} className={cn("space-y-1 rounded-lg px-2 py-1.5 -mx-2 transition-colors", isWorst && "bg-destructive/5")}>
                           <div className="flex items-center justify-between">
