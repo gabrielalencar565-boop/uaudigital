@@ -1,16 +1,17 @@
 import { useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { useHealthScores, type HealthScore } from "../hooks/use-health-scores";
+import { type HealthScore } from "../hooks/use-health-scores";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
   PieChart, Pie, Cell, ResponsiveContainer,
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
 } from "recharts";
-import { AlertTriangle, TrendingUp, TrendingDown, Minus, Users, HeartPulse, Activity } from "lucide-react";
+import { AlertTriangle, TrendingUp, TrendingDown, Minus, HeartPulse, Users, ChevronDown, Sparkles, ThumbsUp, ThumbsDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { subMonths, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 const WEIGHTS: Record<string, number> = {
   resultado_percebido: 3,
@@ -21,6 +22,16 @@ const WEIGHTS: Record<string, number> = {
 };
 const TOTAL_WEIGHT = 12;
 
+const CATEGORY_LABELS: Record<string, string> = {
+  resultado_percebido: "Resultado percebido",
+  alinhamento_estrategico: "Alinhamento estratégico",
+  comunicacao_atendimento: "Comunicação e atendimento",
+  qualidade_entregas: "Qualidade das entregas",
+  satisfacao_geral: "Satisfação geral",
+};
+
+const CATEGORY_KEYS = Object.keys(CATEGORY_LABELS);
+
 function weightedAvg(s: HealthScore) {
   const w = Object.entries(WEIGHTS).reduce(
     (acc, [key, weight]) => acc + ((s as any)[key] as number) * weight,
@@ -29,24 +40,31 @@ function weightedAvg(s: HealthScore) {
   return +(w / TOTAL_WEIGHT).toFixed(1);
 }
 
-function classify(score: number) {
-  if (score >= 8) return { label: "Saudável", color: "hsl(var(--chart-2))", ring: "ring-emerald-500/30", bg: "bg-emerald-500" };
-  if (score >= 6) return { label: "Atenção", color: "hsl(var(--chart-4))", ring: "ring-amber-500/30", bg: "bg-amber-500" };
-  return { label: "Em risco", color: "hsl(var(--destructive))", ring: "ring-destructive/30", bg: "bg-destructive" };
+function barColor(score: number) {
+  if (score >= 8) return "hsl(142, 71%, 45%)";
+  if (score >= 6) return "hsl(45, 93%, 47%)";
+  return "hsl(0, 84%, 60%)";
+}
+
+function barBg(score: number) {
+  if (score >= 8) return "bg-emerald-500/15";
+  if (score >= 6) return "bg-amber-500/15";
+  return "bg-destructive/15";
 }
 
 const DONUT_COLORS = [
-  "hsl(142, 71%, 45%)", // green
-  "hsl(45, 93%, 47%)",  // yellow
-  "hsl(0, 84%, 60%)",   // red
+  "hsl(142, 71%, 45%)",
+  "hsl(45, 93%, 47%)",
+  "hsl(0, 84%, 60%)",
 ];
 
 export function ChurnRiskModule() {
   const now = new Date();
   const currentMonth = now.getMonth() + 1;
   const currentYear = now.getFullYear();
+  const [viewMode, setViewMode] = useState<string>("overview");
+  const [selectedClientId, setSelectedClientId] = useState<string>("");
 
-  // Fetch last 6 months of health scores
   const months = useMemo(() => {
     const arr: { month: number; year: number; label: string }[] = [];
     for (let i = 5; i >= 0; i--) {
@@ -91,7 +109,6 @@ export function ChurnRiskModule() {
   const allScores = allScoresQ.data ?? {};
   const clients = clientsQ.data ?? [];
 
-  // Current month scores with weighted averages
   const currentScores = useMemo(() => {
     const key = `${currentYear}-${currentMonth}`;
     return (allScores[key] ?? []).map((s) => ({
@@ -101,7 +118,6 @@ export function ChurnRiskModule() {
     }));
   }, [allScores, currentMonth, currentYear, clients]);
 
-  // Distribution for donut
   const distribution = useMemo(() => {
     const healthy = currentScores.filter((s) => s.avg >= 8).length;
     const attention = currentScores.filter((s) => s.avg >= 6 && s.avg < 8).length;
@@ -113,7 +129,6 @@ export function ChurnRiskModule() {
     ];
   }, [currentScores]);
 
-  // Evolution line chart data
   const evolutionData = useMemo(() => {
     return months.map((m) => {
       const key = `${m.year}-${m.month}`;
@@ -124,14 +139,12 @@ export function ChurnRiskModule() {
     });
   }, [months, allScores]);
 
-  // Summary metrics
   const totalClients = currentScores.length;
   const riskCount = currentScores.filter((s) => s.avg < 6).length;
   const avgScore = totalClients > 0
     ? +(currentScores.reduce((a, s) => a + s.avg, 0) / totalClients).toFixed(1)
     : 0;
 
-  // Trend: compare last two months with data
   const trend = useMemo(() => {
     const withData = evolutionData.filter((d) => d.avg !== null);
     if (withData.length < 2) return "stable";
@@ -149,6 +162,36 @@ export function ChurnRiskModule() {
     stable: { label: "Estável", icon: Minus, color: "text-muted-foreground" },
   };
   const TrendIcon = trendConfig[trend].icon;
+
+  // Client detail data
+  const selectedScore = useMemo(() => {
+    if (!selectedClientId) return null;
+    return currentScores.find((s) => s.client_id === selectedClientId) ?? null;
+  }, [selectedClientId, currentScores]);
+
+  const clientDimensions = useMemo(() => {
+    if (!selectedScore) return [];
+    return CATEGORY_KEYS.map((key) => ({
+      key,
+      label: CATEGORY_LABELS[key],
+      value: (selectedScore as any)[key] as number,
+    }));
+  }, [selectedScore]);
+
+  const bestCategory = useMemo(() => {
+    if (clientDimensions.length === 0) return null;
+    return [...clientDimensions].sort((a, b) => b.value - a.value)[0];
+  }, [clientDimensions]);
+
+  const worstCategory = useMemo(() => {
+    if (clientDimensions.length === 0) return null;
+    return [...clientDimensions].sort((a, b) => a.value - b.value)[0];
+  }, [clientDimensions]);
+
+  // Sorted clients for dropdown (worst first)
+  const sortedClients = useMemo(() => {
+    return [...currentScores].sort((a, b) => a.avg - b.avg);
+  }, [currentScores]);
 
   const isLoading = allScoresQ.isLoading || clientsQ.isLoading;
 
@@ -230,7 +273,7 @@ export function ChurnRiskModule() {
         </Card>
       </div>
 
-      {/* Charts */}
+      {/* Charts area */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Donut Chart */}
         <Card className="border-border/60">
@@ -258,14 +301,12 @@ export function ChurnRiskModule() {
                     </Pie>
                   </PieChart>
                 </ResponsiveContainer>
-                {/* Center label */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                   <span className="text-2xl font-bold">{totalClients}</span>
                   <span className="text-[10px] text-muted-foreground">clientes</span>
                 </div>
               </div>
 
-              {/* Legend */}
               <div className="flex flex-col gap-3">
                 {distribution.map((d) => (
                   <div key={d.name} className="flex items-center gap-2.5">
@@ -283,48 +324,137 @@ export function ChurnRiskModule() {
           </CardContent>
         </Card>
 
-        {/* Line Chart — Evolution */}
+        {/* Right panel — toggle between overview and per-client */}
         <Card className="border-border/60">
           <CardContent className="py-5 px-5">
-            <h4 className="text-sm font-semibold mb-4">Evolução do Health Score</h4>
-            <div className="h-[160px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={evolutionData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
-                  <XAxis
-                    dataKey="label"
-                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    domain={[0, 10]}
-                    ticks={[0, 2, 4, 6, 8, 10]}
-                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <RechartsTooltip
-                    contentStyle={{
-                      background: "hsl(var(--popover))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: 8,
-                      fontSize: 12,
-                    }}
-                    formatter={(value: number) => [`${value}`, "Score médio"]}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="avg"
-                    stroke="hsl(var(--primary))"
-                    strokeWidth={2.5}
-                    dot={{ r: 4, fill: "hsl(var(--primary))", stroke: "hsl(var(--background))", strokeWidth: 2 }}
-                    activeDot={{ r: 6 }}
-                    connectNulls
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+            {/* Toggle */}
+            <div className="flex items-center justify-between mb-4 gap-3">
+              <h4 className="text-sm font-semibold">Análise por Categoria</h4>
+              <ToggleGroup
+                type="single"
+                value={viewMode}
+                onValueChange={(v) => { if (v) setViewMode(v); }}
+                size="sm"
+                className="bg-muted/50 rounded-lg p-0.5"
+              >
+                <ToggleGroupItem value="overview" className="text-xs px-3 h-7 rounded-md data-[state=on]:bg-background data-[state=on]:shadow-sm">
+                  Visão geral
+                </ToggleGroupItem>
+                <ToggleGroupItem value="client" className="text-xs px-3 h-7 rounded-md data-[state=on]:bg-background data-[state=on]:shadow-sm">
+                  Por cliente
+                </ToggleGroupItem>
+              </ToggleGroup>
             </div>
+
+            {viewMode === "overview" ? (
+              /* Overview: average bars for all clients */
+              <div className="space-y-3">
+                {CATEGORY_KEYS.map((key) => {
+                  const avg = totalClients > 0
+                    ? +(currentScores.reduce((a, s) => a + ((s as any)[key] as number), 0) / totalClients).toFixed(1)
+                    : 0;
+                  return (
+                    <div key={key} className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">{CATEGORY_LABELS[key]}</span>
+                        <span className="text-xs font-semibold tabular-nums" style={{ color: barColor(avg) }}>{avg}</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-muted/60 overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-700 ease-out"
+                          style={{ width: `${avg * 10}%`, backgroundColor: barColor(avg) }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              /* Per-client view */
+              <div className="space-y-4">
+                {/* Client selector */}
+                <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue placeholder="Selecione um cliente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sortedClients.map((s) => {
+                      const cls = s.avg >= 8 ? "🟢" : s.avg >= 6 ? "🟡" : "🔴";
+                      return (
+                        <SelectItem key={s.client_id} value={s.client_id}>
+                          <span className="flex items-center gap-2">
+                            <span>{cls}</span>
+                            <span>{s.clientName}</span>
+                            <span className="text-muted-foreground ml-auto text-xs">({s.avg})</span>
+                          </span>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+
+                {selectedScore ? (
+                  <div className="space-y-3">
+                    {/* Score badge */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl font-bold tabular-nums" style={{ color: barColor(selectedScore.avg) }}>
+                        {selectedScore.avg}
+                      </span>
+                      <span className="text-xs text-muted-foreground">/ 10</span>
+                    </div>
+
+                    {/* Category bars */}
+                    {clientDimensions.map((d) => {
+                      const isWorst = worstCategory?.key === d.key && d.value < 8;
+                      const isBest = bestCategory?.key === d.key;
+                      return (
+                        <div key={d.key} className={cn("space-y-1 rounded-lg px-2 py-1.5 -mx-2 transition-colors", isWorst && "bg-destructive/5")}>
+                          <div className="flex items-center justify-between">
+                            <span className={cn("text-xs", isWorst ? "text-destructive font-medium" : "text-muted-foreground")}>
+                              {d.label}
+                              {isBest && <span className="ml-1.5 text-emerald-500">★</span>}
+                              {isWorst && <span className="ml-1.5">⚠</span>}
+                            </span>
+                            <span className="text-xs font-semibold tabular-nums" style={{ color: barColor(d.value) }}>{d.value}</span>
+                          </div>
+                          <div className="h-2 rounded-full bg-muted/60 overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all duration-700 ease-out"
+                              style={{ width: `${d.value * 10}%`, backgroundColor: barColor(d.value) }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {/* Diagnostic */}
+                    {bestCategory && worstCategory && (
+                      <div className="mt-3 space-y-2 border-t border-border/40 pt-3">
+                        <div className="flex items-start gap-2">
+                          <ThumbsUp className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
+                          <p className="text-xs text-muted-foreground leading-relaxed">
+                            <span className="font-medium text-emerald-500">{bestCategory.label}</span> é o ponto forte deste cliente
+                          </p>
+                        </div>
+                        {worstCategory.value < 8 && (
+                          <div className="flex items-start gap-2">
+                            <ThumbsDown className="h-3.5 w-3.5 text-destructive mt-0.5 shrink-0" />
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                              <span className="font-medium text-destructive">{worstCategory.label}</span> precisa de atenção
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <Users className="h-8 w-8 text-muted-foreground/40 mb-2" />
+                    <p className="text-xs text-muted-foreground">Selecione um cliente para ver o diagnóstico detalhado</p>
+                  </div>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
