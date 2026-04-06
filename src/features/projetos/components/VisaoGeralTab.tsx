@@ -803,8 +803,8 @@ export function VisaoGeralTab() {
 
               {/* ─── ABA: PIPELINE ─── */}
               {squadDashTab === "pipeline" && (
-                <div className="space-y-4">
-                  <div className="h-[320px] w-full">
+                <div className="space-y-4 flex-1 flex flex-col">
+                  <div className="h-[300px] w-full flex-1 min-h-[260px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart
                         data={STAGE_ORDER.map(stageKey => {
