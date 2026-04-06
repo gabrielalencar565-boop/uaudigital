@@ -128,6 +128,15 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
             </span>
           ))}
           <div className="flex-1" />
+          <Tooltip><TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-muted-foreground hover:text-destructive" onClick={async () => {
+              if (!confirm("Mover esta tarefa para a lixeira?")) return;
+              const { data: { user } } = await supabase.auth.getUser();
+              updateTask.mutate({ id: currentTask.id, deleted_at: new Date().toISOString(), deleted_by: user?.id ?? null } as any);
+              toast.success("Tarefa movida para a lixeira");
+              handleClose();
+            }}><Trash2 className="h-4 w-4" /></Button>
+          </TooltipTrigger><TooltipContent>Mover para lixeira</TooltipContent></Tooltip>
           <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg" onClick={handleClose}><X className="h-4 w-4" /></Button>
         </div>
 
