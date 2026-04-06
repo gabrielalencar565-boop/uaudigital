@@ -223,9 +223,33 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
                 )}
               </div>
 
-              {/* Open indicator */}
-              <div className="w-6 flex justify-center">
-                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 group-hover:text-primary transition" />
+              {/* Trash + Open indicator */}
+              <div className="w-12 flex items-center justify-end gap-0.5" onClick={(e) => e.stopPropagation()}>
+                <AlertDialog open={deletingId === sub.id} onOpenChange={(open) => !open && setDeletingId(null)}>
+                  <AlertDialogTrigger asChild>
+                    <button
+                      className="h-6 w-6 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 hover:bg-destructive/10 transition-all"
+                      onClick={(e) => { e.stopPropagation(); setDeletingId(sub.id); }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                    </button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="z-[200]">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Excluir subtarefa?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        A subtarefa <strong>"{sub.title}"</strong> será movida para a lixeira. Os pontos de performance não serão contabilizados.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => handleSoftDelete(sub.id)}>
+                        Excluir
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 group-hover:text-primary transition" onClick={() => onSelectSubtask?.(sub)} />
               </div>
             </div>
           );
