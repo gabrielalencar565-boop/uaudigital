@@ -1077,7 +1077,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
           <div className="max-h-[60vh] space-y-2.5 overflow-y-auto">
             {(moreDayKey ? tasksByDay.get(moreDayKey) ?? [] : []).map((t) => {
               const isLegacy = t.id.startsWith("legacy_");
-              const isDone = t.status_global === "concluido";
+              const isDone = t.parent_task_id ? t.status_global === "concluido" : (t.status_global === "concluido" || t.stage_current === "entrega");
               const assignees = getTaskAssignees(t);
               const visibleAssignees = assignees.slice(0, 2);
               const extraAssignees = Math.max(assignees.length - 2, 0);
