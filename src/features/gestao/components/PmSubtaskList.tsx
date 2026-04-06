@@ -75,24 +75,8 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
       updateTask.mutate({ id: sub.id, status_global: "backlog" as any });
       toast("Subtarefa desmarcada");
     } else {
-      // Mark as done (keep same stage, just change status)
+      // Mark as done (keep same stage, just change status — no scoring for subtasks)
       updateTask.mutate({ id: sub.id, status_global: "concluido" as any });
-      // Trigger scoring
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const scoringUserIds = [
-            sub.assignee_id,
-            ...(sub.watchers ?? []),
-          ].filter(Boolean) as string[];
-          syncStage.mutate({
-            pmTaskId: sub.id,
-            completedStage: sub.stage_current,
-            userId: user.id,
-            scoringUserIds: scoringUserIds.length > 0 ? scoringUserIds : undefined,
-          });
-        }
-      } catch (_) { /* ignore */ }
       toast.success("Subtarefa concluída!");
     }
   };
