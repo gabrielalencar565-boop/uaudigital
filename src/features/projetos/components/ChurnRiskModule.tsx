@@ -476,6 +476,7 @@ export function ChurnRiskModule() {
           </CardContent>
         </Card>
       </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
