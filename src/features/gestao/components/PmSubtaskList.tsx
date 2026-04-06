@@ -29,9 +29,16 @@ interface Props {
 export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onSelectSubtask, activeSubtaskId }: Props) {
   const updateTask = useUpdatePmTask();
   const createTask = useCreatePmTask();
-  
   const { stageAssignees } = useDefaultFlowWithDates();
   const [newTitle, setNewTitle] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const handleSoftDelete = async (subId: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    updateTask.mutate({ id: subId, deleted_at: new Date().toISOString(), deleted_by: user?.id ?? null } as any);
+    toast("Subtarefa movida para lixeira");
+    setDeletingId(null);
+  };
 
   const done = childTasks.filter(s => s.status_global === "concluido").length;
   const total = childTasks.length;
