@@ -1,31 +1,31 @@
 
 
-## Plano: Menu de opções ao clicar na foto do perfil
+## Fix Subtask Action Buttons
 
-Ao clicar na foto no diálogo "Editar perfil", em vez de abrir direto o seletor de arquivo, exibir um pequeno menu com 2 opções:
+**Problem**: When viewing a subtask in the detail dialog, the action buttons show "Concluído >" (which advances to next stage) and "Reverter" — these are parent-task behaviors. Subtasks should only toggle done/undone and optionally send to Alteração, without stage advancement.
 
-1. **Alterar** — abre o seletor de arquivo para escolher uma nova foto
-2. **Ajustar** — abre o `AvatarCropDialog` com a foto atual para reposicionar/zoom (só aparece se já tiver foto)
+**Reference**: The screenshot shows the subtask detail with "Concluído >" and "Reverter" buttons that shouldn't be there.
 
-### Implementação
+---
 
-**Arquivo: `src/features/meu-painel/components/EditProfileDialog.tsx`**
+### Changes in `src/features/gestao/components/PmTaskDetailDialog.tsx`
 
-- Substituir o `onClick` direto no botão do avatar por um `Popover` (já existe no projeto como `@/components/ui/popover`)
-- Dentro do `PopoverContent`, renderizar 2 botões:
-  - **Alterar foto** (ícone `ImagePlus`) → dispara `fileInputRef.current?.click()` e fecha o popover
-  - **Ajustar foto** (ícone `Crop`) → abre o `AvatarCropDialog` usando a URL atual (`avatarPreview ?? avatarUrl`) e fecha o popover. Esse botão fica desabilitado/oculto se não houver foto
-- O `AvatarCropDialog` precisa aceitar tanto um blob URL quanto uma URL remota (já funciona pois usa `crossOrigin="anonymous"`)
+**1. Detect subtask context**: Use `task.parent_task_id` to determine if the current task is a subtask.
 
-**Arquivo: `src/pages/Index.tsx`** (tela de onboarding)
+**2. Replace action buttons for subtasks** (lines ~1166-1283): When `task.parent_task_id` is set, render a different button set:
+- **If not done**: Show "Concluído" button (no chevron, no stage advance) that toggles `status_global` to `concluido` and triggers scoring. Also show "Enviar para Alteração" button.
+- **If done**: Show "Desmarcar concluído" button to set `status_global` back to `backlog`. Also show "Enviar para Alteração" button.
+- **If in alteracoes**: Show "Em Alteração" badge + "Marcar como concluído" button (toggles done) — no "Reverter".
+- **Remove "Reverter" entirely** for subtasks.
 
-- Aplicar a mesma lógica: após selecionar a primeira foto, o clique no avatar mostra as 2 opções (Alterar / Ajustar)
-- Antes de ter foto, clique abre direto o file picker
+**3. Subtask toggle logic**: Add a `handleSubtaskToggleDone` function that:
+- Toggles `status_global` between `concluido` and `backlog`
+- Keeps `stage_current` unchanged
+- Triggers scoring via `syncStage` when marking as done
+- Shows appropriate toast
 
-### Detalhes técnicos
+**4. Subtask send to Alteração**: Add `handleSubtaskAlteracao` that sets `stage_current` to `alteracoes` and `status_global` to `backlog`, applying fixed assignees from flow config.
 
-- Usar `Popover` + `PopoverTrigger` + `PopoverContent` do shadcn
-- Estado `popoverOpen` controlado para fechar ao selecionar opção
-- Importar ícones `ImagePlus` e `Crop` do lucide-react
-- Para "Ajustar", passar a URL atual como `imageSrc` para o `AvatarCropDialog` — funciona tanto com blob URLs locais quanto URLs do storage
+### Summary
+One file edited. The core change is wrapping the existing action buttons section (lines 1166-1283) in a conditional: if `task.parent_task_id` exists, render the simplified subtask buttons; otherwise, render the existing parent-task workflow buttons unchanged.
 
