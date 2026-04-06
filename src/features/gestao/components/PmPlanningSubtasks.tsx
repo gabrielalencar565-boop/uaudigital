@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
-import { Clapperboard, Palette, ChevronDown, Plus, Check, ChevronRight } from "lucide-react";
+import { Clapperboard, Palette, ChevronDown, Plus, Check, ChevronRight, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
