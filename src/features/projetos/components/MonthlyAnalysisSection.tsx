@@ -434,15 +434,21 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="space-y-4">
+      <div className={cn("flex flex-col", className)}>
           {/* ── Progresso da Operação ── */}
-          <Card>
-            <CardContent className="py-5 px-5 space-y-4">
+          <Card className="flex flex-col flex-1">
+            <CardContent className="py-6 px-6 space-y-5 flex-1 flex flex-col">
               <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="text-base font-bold text-foreground">
-                    Progresso da Operação {chartMode === "mensal" ? "no Mês" : "Anual"}
-                  </p>
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-sidebar/10 flex items-center justify-center">
+                    <TrendingUp className="h-5 w-5 text-sidebar" />
+                  </div>
+                  <div>
+                    <p className="text-base font-bold leading-none">
+                      Progresso da Operação {chartMode === "mensal" ? "no Mês" : "Anual"}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">Evolução das etapas ao longo do período</p>
+                  </div>
                 </div>
                 <div className="flex rounded-lg border border-border overflow-hidden shrink-0">
                   <button
