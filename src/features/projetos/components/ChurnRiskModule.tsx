@@ -274,45 +274,51 @@ export function ChurnRiskModule() {
         {/* Donut Chart */}
         <Card className="border-border/60">
           <CardContent className="py-5 px-5 h-full flex flex-col">
-            <h4 className="text-sm font-semibold mb-4">Distribuição de Risco</h4>
-            <div className="flex items-center gap-6 flex-1">
-              <div className="relative w-[200px] h-[200px] shrink-0">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={distribution.filter((d) => d.value > 0)}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={90}
-                      paddingAngle={3}
-                      dataKey="value"
-                      strokeWidth={0}
-                      animationBegin={0}
-                      animationDuration={800}
-                    >
-                      {distribution.filter((d) => d.value > 0).map((entry, i) => (
-                        <Cell key={i} fill={entry.color} />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <span className="text-3xl font-bold">{totalClients}</span>
-                  <span className="text-[11px] text-muted-foreground">clientes</span>
+            <h4 className="text-sm font-semibold mb-3">Distribuição de Risco</h4>
+
+            {/* Grid: chart 70% | legend 30% */}
+            <div className="flex-1 grid grid-cols-1 sm:grid-cols-[7fr_3fr] gap-4 items-center">
+              {/* Donut — large & centered */}
+              <div className="relative w-full flex items-center justify-center">
+                <div className="relative w-[220px] h-[220px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={distribution.filter((d) => d.value > 0)}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={65}
+                        outerRadius={100}
+                        paddingAngle={3}
+                        dataKey="value"
+                        strokeWidth={0}
+                        animationBegin={0}
+                        animationDuration={800}
+                      >
+                        {distribution.filter((d) => d.value > 0).map((entry, i) => (
+                          <Cell key={i} fill={entry.color} />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <span className="text-4xl font-bold">{totalClients}</span>
+                    <span className="text-xs text-muted-foreground">clientes</span>
+                  </div>
                 </div>
               </div>
 
+              {/* Legend — right aligned, vertically centered */}
               <TooltipProvider delayDuration={200}>
-                <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-4">
                   {distribution.map((d) => (
                     <Tooltip key={d.name}>
                       <TooltipTrigger asChild>
-                        <div className="flex items-center gap-2.5 cursor-default">
-                          <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: d.color }} />
-                          <div>
+                        <div className="flex items-center gap-3 cursor-default">
+                          <div className="h-3.5 w-3.5 rounded-full shrink-0" style={{ backgroundColor: d.color }} />
+                          <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium leading-none">{d.name}</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">
+                            <p className="text-xs text-muted-foreground mt-1">
                               {d.value} {d.value === 1 ? "cliente" : "clientes"}
                             </p>
                           </div>
@@ -336,6 +342,16 @@ export function ChurnRiskModule() {
                 </div>
               </TooltipProvider>
             </div>
+
+            {/* Risk alert */}
+            {riskCount > 0 && (
+              <div className="mt-3 flex items-center gap-2 rounded-lg bg-destructive/5 border border-destructive/10 px-3 py-2">
+                <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />
+                <p className="text-xs text-destructive font-medium">
+                  {riskCount} {riskCount === 1 ? "cliente em risco" : "clientes em risco"} — atenção imediata
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
