@@ -596,46 +596,6 @@ export function VisaoGeralTab() {
     setSelectedUsers((prev) => prev.includes(uid) ? prev.filter((u) => u !== uid) : [...prev, uid]);
   };
 
-  // Calendar
-  const calendarStart = startOfMonth(calMonth);
-  const calendarEnd = endOfMonth(calMonth);
-  const calendarDays = eachDayOfInterval({
-    start: startOfWeek(calendarStart, { weekStartsOn: 0 }),
-    end: endOfWeek(calendarEnd, { weekStartsOn: 0 }),
-  });
-
-  // Special dates (holidays, birthdays, internal dates) via unified hook
-  const specialDatesMap = useAgendaSpecialDates(
-    calMonth.getFullYear(),
-    calMonth.getMonth() + 1,
-    allTeam.map(m => ({ user_id: m.user_id, display_name: m.display_name, birth_date: m.birth_date }))
-  );
-
-  // Build flat list for "Próximas datas" sidebar
-  const filteredDates = useMemo(() => {
-    const entries: Array<{ date: string; name: string; type: string; icon?: string; color?: string }> = [];
-    specialDatesMap.forEach((dates, key) => {
-      for (const sd of dates) {
-        entries.push({
-          date: key,
-          name: sd.type === "birthday" ? `🎂 ${sd.personName}` : sd.label,
-          type: sd.type === "birthday" ? "Aniversário" : sd.type === "holiday" ? "Feriado Nacional" : "Data Interna",
-          icon: sd.icon,
-          color: sd.color,
-        });
-      }
-    });
-    return entries
-      .filter(e => {
-        if (new Date(e.date + "T12:00:00") < now) return false;
-        if (holidayFilter === "all") return true;
-        if (holidayFilter === "feriados") return e.type === "Feriado Nacional";
-        if (holidayFilter === "internas") return e.type === "Data Interna";
-        if (holidayFilter === "aniversarios") return e.type === "Aniversário";
-        return true;
-      })
-      .sort((a, b) => a.date.localeCompare(b.date));
-  }, [specialDatesMap, holidayFilter, now]);
 
   if (showHealthScore) {
     return (
