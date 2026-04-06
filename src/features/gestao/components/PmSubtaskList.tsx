@@ -7,10 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { PM_ACTIVE_STAGES, getStageCircleColor, stageLabel, tagColor, tagDisplay } from "../pm-constants";
-import { useUpdatePmTask, useCreatePmTask, usePmSyncStageCompletion } from "../hooks/use-pm-data";
+import { useUpdatePmTask, useCreatePmTask } from "../hooks/use-pm-data";
 import { PmAssigneeSelector } from "./PmAssigneeSelector";
 import { getFixedAssignee, getFixedWatchers, useDefaultFlowWithDates } from "./PmStageFlowConfig";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { PmTask } from "../pm-types";
 
@@ -28,7 +27,7 @@ interface Props {
 export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onSelectSubtask, activeSubtaskId }: Props) {
   const updateTask = useUpdatePmTask();
   const createTask = useCreatePmTask();
-  const syncStage = usePmSyncStageCompletion();
+  
   const { stageAssignees } = useDefaultFlowWithDates();
   const [newTitle, setNewTitle] = useState("");
 
@@ -75,24 +74,8 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
       updateTask.mutate({ id: sub.id, status_global: "backlog" as any });
       toast("Subtarefa desmarcada");
     } else {
-      // Mark as done (keep same stage, just change status)
+      // Mark as done (keep same stage, just change status — no scoring for subtasks)
       updateTask.mutate({ id: sub.id, status_global: "concluido" as any });
-      // Trigger scoring
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const scoringUserIds = [
-            sub.assignee_id,
-            ...(sub.watchers ?? []),
-          ].filter(Boolean) as string[];
-          syncStage.mutate({
-            pmTaskId: sub.id,
-            completedStage: sub.stage_current,
-            userId: user.id,
-            scoringUserIds: scoringUserIds.length > 0 ? scoringUserIds : undefined,
-          });
-        }
-      } catch (_) { /* ignore */ }
       toast.success("Subtarefa concluída!");
     }
   };
