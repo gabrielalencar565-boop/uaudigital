@@ -35,7 +35,7 @@ const SCORE_RANGES = [
   { min: 0, max: 59, label: "Crítico", tone: "danger" as const, desc: "Performance abaixo do aceitável, ação urgente necessária." },
 ];
 
-export function MonthlyAnalysisSection() {
+export function MonthlyAnalysisSection({ className }: { className?: string }) {
   const now = new Date();
   const currentDay = now.getDate();
   const year = now.getFullYear();
