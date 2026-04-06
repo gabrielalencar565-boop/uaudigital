@@ -427,15 +427,17 @@ export function ChurnRiskModule() {
                       );
                     })}
 
-                    {/* Diagnostic */}
-                    {bestCategory && worstCategory && (
+                    {/* Diagnostic — only show when best and worst are different */}
+                    {bestCategory && worstCategory && bestCategory.key !== worstCategory.key && (
                       <div className="mt-3 space-y-2 border-t border-border/40 pt-3">
-                        <div className="flex items-start gap-2">
-                          <ThumbsUp className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
-                          <p className="text-xs text-muted-foreground leading-relaxed">
-                            <span className="font-medium text-emerald-500">{bestCategory.label}</span> é o ponto forte deste cliente
-                          </p>
-                        </div>
+                        {bestCategory.value >= 6 && (
+                          <div className="flex items-start gap-2">
+                            <ThumbsUp className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                              <span className="font-medium text-emerald-500">{bestCategory.label}</span> é o ponto forte deste cliente
+                            </p>
+                          </div>
+                        )}
                         {worstCategory.value < 8 && (
                           <div className="flex items-start gap-2">
                             <ThumbsDown className="h-3.5 w-3.5 text-destructive mt-0.5 shrink-0" />
