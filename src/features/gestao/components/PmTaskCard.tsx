@@ -152,6 +152,16 @@ export function PmTaskCard({ task, clientName, assignees = [], childTasks = [], 
             </div>
           )}
 
+          {/* Trash button next to avatar */}
+          <button
+            type="button"
+            className="h-6 w-6 flex items-center justify-center rounded-md text-destructive/70 hover:bg-destructive/10 hover:text-destructive transition-all"
+            onClick={(e) => { e.stopPropagation(); setDeleteConfirmOpen(true); }}
+            title="Mover para lixeira"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+
           {/* Due date badge */}
           {task.due_date && (
             <span className={cn(
