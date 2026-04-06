@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import {
-  Calendar, UserCircle, Flag, X, ChevronRight, ArrowLeft,
+  Calendar, UserCircle, Flag, X, ChevronRight, ArrowLeft, Trash2,
   Layers, Tag, MessageSquare, Plus, Check, CheckCircle2, RotateCcw, Paperclip, ListTodo, FileText, CalendarDays
 } from "lucide-react";
 import { addDays, format, parseISO } from "date-fns";
@@ -54,6 +54,7 @@ interface Props {
 export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap, members, isAdmin }: Props) {
   const [taskStack, setTaskStack] = useState<string[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const deleteTask = useUpdatePmTask();
 
   const tasksQ = usePmTasks();
   const resolvedRootTask = useMemo(() => {
@@ -128,6 +129,13 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
             </span>
           ))}
           <div className="flex-1" />
+          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-muted-foreground hover:text-destructive" title="Mover para lixeira" onClick={async () => {
+            if (!confirm("Mover esta tarefa para a lixeira?")) return;
+            const { data: { user } } = await supabase.auth.getUser();
+            deleteTask.mutate({ id: currentTask.id, deleted_at: new Date().toISOString(), deleted_by: user?.id ?? null } as any);
+            toast.success("Tarefa movida para a lixeira");
+            handleClose();
+          }}><Trash2 className="h-4 w-4" /></Button>
           <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg" onClick={handleClose}><X className="h-4 w-4" /></Button>
         </div>
 
