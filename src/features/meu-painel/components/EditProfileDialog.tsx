@@ -128,7 +128,7 @@ function BirthDateSelects({ control }: { control: Control<ProfileValues> }) {
   );
 }
 
-
+interface EditProfileDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSaved?: () => void;
