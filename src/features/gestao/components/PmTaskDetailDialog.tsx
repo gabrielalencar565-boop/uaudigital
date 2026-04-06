@@ -1217,21 +1217,6 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                 </Button>
               </>
             )}
-        {/* Description — hidden for planning parent tasks */}
-        {!(task.stage_current === "planejamento" && !task.parent_task_id) && (
-          <div className="border-t border-border/20 pt-4">
-            <div className="flex items-center gap-2 mb-2">
-              <FileText className="h-4 w-4 text-muted-foreground" />
-              <h3 className="text-sm font-bold">Descrição</h3>
-            </div>
-            <SmartCaptionEditor
-              value={task.description ?? ""}
-              onChange={(val) => updateTask.mutate({ id: task.id, description: val })}
-              placeholder="Adicione uma descrição..."
-              minHeight="80px"
-            />
-          </div>
-            )}
           </div>
         ) : (
           /* ── Parent task buttons: full workflow ── */
@@ -1241,24 +1226,120 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-destructive/10 border border-destructive/30 text-destructive text-xs font-semibold">
               <RotateCcw className="h-3.5 w-3.5" /> Em Alteração
             </div>
-          </div>
-        )}
-        {isDone ? (
-          <div className="flex flex-wrap items-center gap-2 pt-2">
-            <Badge className="bg-emerald-500/20 text-emerald-400 border-0 gap-1">
-              <Check className="h-3 w-3" /> Concluído
-            </Badge>
-          </div>
-        ) : (
-          <div className="flex flex-wrap items-center gap-2 pt-2">
-            <Button size="sm" className="gap-1.5" onClick={() => handleAdvance()}>
-              <ChevronRight className="h-4 w-4" /> {`Concluído — ${stageLabel(nextStage(task.stage_current, task) ?? "")}`}
+            <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={handleReturnFromAlteracao}>
+              <CheckCircle2 className="h-4 w-4" /> Ajuste Concluído
+            </Button>
+            {/* Revert button */}
+            <Button size="sm" variant="outline" className="gap-1.5 text-muted-foreground border-border/40 hover:bg-muted/60" onClick={handleRevert}>
+              <RotateCcw className="h-3.5 w-3.5" /> Reverter
             </Button>
           </div>
         )}
+
+        {task.stage_current !== "alteracoes" && (
+        <div className="flex flex-wrap items-center gap-2 pt-2">
+          {!isDone ? (
+            <>
+              <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={handleConcluido}>
+                <CheckCircle2 className="h-4 w-4" />
+                {task.stage_current === "revisao" ? "Aprovar e seguir fluxo" : "Concluído"}
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Button>
+
+              {/* Stage choice popover (for multiple next stages) */}
+              <Popover open={stageChoiceOpen} onOpenChange={setStageChoiceOpen}>
+                <PopoverTrigger asChild>
+                  <span />
+                </PopoverTrigger>
+                <PopoverContent className="w-52 p-1 z-[130]" align="start">
+                  <p className="text-xs text-muted-foreground px-3 py-2 font-medium">Avançar para qual etapa?</p>
+                  {stageChoiceOptions.map(sk => {
+                    const sc = getStageCircleColor(sk);
+                    return (
+                      <button key={sk} className="flex items-center gap-2 w-full px-3 py-2 rounded text-sm hover:bg-accent transition" onClick={() => handleChooseNextStage(sk)}>
+                        <span className={cn("h-4 w-4 rounded-full border-2 shrink-0", sc.border, sk === "entrega" && sc.bg)}>
+                          {sk === "entrega" && <Check className="h-2.5 w-2.5 text-white" />}
+                        </span>
+                        <span className="font-medium">{stageLabel(sk)}</span>
+                      </button>
+                    );
+                  })}
+                </PopoverContent>
+              </Popover>
+
+              {/* Completion date dialog */}
+              <Dialog open={completionDateOpen} onOpenChange={setCompletionDateOpen}>
+                <DialogContent className="max-w-xs z-[130]">
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold">Data de entrega da próxima etapa</h3>
+                    <p className="text-xs text-muted-foreground">
+                      Defina a data de entrega para a próxima etapa.
+                    </p>
+                    <DatePicker value={completionDate} onChange={(v) => setCompletionDate(v)} className="w-full h-9" />
+                    <div className="flex justify-end gap-2">
+                      <Button size="sm" variant="ghost" onClick={() => setCompletionDateOpen(false)}>Cancelar</Button>
+                      <Button size="sm" onClick={handleConfirmCompletionDate} className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white">
+                        <Check className="h-3.5 w-3.5" /> Confirmar
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+
+              {/* Link or Date dialog for existing agenda tasks */}
+              <LinkOrDateDialog
+                open={linkDialogOpen}
+                onClose={() => { setLinkDialogOpen(false); setLinkExistingTask(null); setPendingAdvance(null); setPendingSplit(null); }}
+                existingTask={linkExistingTask}
+                onLink={async (dueDate) => {
+                  if (pendingSplit) {
+                    // Handle split linking
+                    const s = pendingSplit;
+                    await executeSplitTask(s.stage, s.stageLabel, s.children, s.postType, dueDate, s.clientName, s.monthLabel, linkExistingTask?.id);
+                    setLinkDialogOpen(false); setLinkExistingTask(null); setPendingSplit(null);
+                    // Process remaining splits
+                    await processSplitQueue(s.remainingSplits, s.snapshotDueDate, s.nextDueDate, s.clientName, s.monthLabel);
+                  } else if (pendingAdvance) {
+                    doAdvance(pendingAdvance.completedStage, pendingAdvance.nextStage, dueDate, linkExistingTask?.id);
+                    setLinkDialogOpen(false); setLinkExistingTask(null); setPendingAdvance(null);
+                  }
+                }}
+                onSelectDate={async (dueDate) => {
+                  if (pendingSplit) {
+                    const s = pendingSplit;
+                    await executeSplitTask(s.stage, s.stageLabel, s.children, s.postType, dueDate, s.clientName, s.monthLabel);
+                    setLinkDialogOpen(false); setLinkExistingTask(null); setPendingSplit(null);
+                    await processSplitQueue(s.remainingSplits, s.snapshotDueDate, s.nextDueDate, s.clientName, s.monthLabel);
+                  } else if (pendingAdvance) {
+                    doAdvance(pendingAdvance.completedStage, pendingAdvance.nextStage, dueDate);
+                    setLinkDialogOpen(false); setLinkExistingTask(null); setPendingAdvance(null);
+                  }
+                }}
+              />
+            </>
+          ) : (
+            <Badge className="bg-emerald-500/20 text-emerald-400 border-0 gap-1">
+              <Check className="h-3 w-3" /> Entregue
+            </Badge>
+          )}
+
+          {/* Enviar para Alteração — only from Revisão */}
+          {task.stage_current === "revisao" && (
+            <Button size="sm" variant="outline" className="gap-1.5 text-red-500 border-red-500/30 hover:bg-red-500/10" onClick={handleAlteracao}>
+              <RotateCcw className="h-3.5 w-3.5" /> Enviar para Alteração
+            </Button>
+          )}
+
+          {/* Revert button — go back to previous stage */}
+          {!isDone && task.stage_current !== "captacao" && (
+            <Button size="sm" variant="outline" className="gap-1.5 text-muted-foreground border-border/40 hover:bg-muted/60" onClick={handleRevert}>
+              <RotateCcw className="h-3.5 w-3.5" /> Reverter
+            </Button>
+          )}
+        </div>
+        )}
           </>
         )}
-
         {/* Posting Fields (for subtasks in PDF stage only) */}
         {task.parent_task_id && task.stage_current === "pdf" && (
           <div className="border-t border-border/20 pt-4">
