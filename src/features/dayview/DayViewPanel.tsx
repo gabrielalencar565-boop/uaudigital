@@ -105,6 +105,7 @@ export function DayViewPanel() {
         .from("pm_tasks")
         .select("id, title, client_id, assignee_id, watchers, due_date, stage_current, status_global, is_extra_demand, parent_task_id, updated_at")
         .is("parent_task_id", null)
+        .is("deleted_at", null)
         .gte("due_date", startDate)
         .lte("due_date", endDate);
       if (error) throw error;
@@ -171,6 +172,7 @@ export function DayViewPanel() {
         .from("pm_tasks")
         .select("id, assignee_id, status_global")
         .is("parent_task_id", null)
+        .is("deleted_at", null)
         .neq("status_global", "concluido")
         .neq("status_global", "cancelado");
       if (error) throw error;
