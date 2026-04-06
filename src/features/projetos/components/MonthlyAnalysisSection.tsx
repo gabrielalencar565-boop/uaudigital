@@ -8,7 +8,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip as RechartsTooltip,
   BarChart, Bar, LineChart, Line, Cell,
 } from "recharts";
-import { TrendingUp, Clock, Zap, BarChart3, Info, CalendarCheck, ArrowUp, ArrowDown, Trophy, AlertTriangle, TrendingDown, Target, Star } from "lucide-react";
+import { TrendingUp, Clock, Zap, BarChart3, Info, CalendarCheck, ArrowUp, ArrowDown, Trophy, AlertTriangle, TrendingDown, Target, Star, Lightbulb } from "lucide-react";
 import {
   format, getDaysInMonth,
 } from "date-fns";
@@ -35,7 +35,7 @@ const SCORE_RANGES = [
   { min: 0, max: 59, label: "Crítico", tone: "danger" as const, desc: "Performance abaixo do aceitável, ação urgente necessária." },
 ];
 
-export function MonthlyAnalysisSection() {
+export function MonthlyAnalysisSection({ className }: { className?: string }) {
   const now = new Date();
   const currentDay = now.getDate();
   const year = now.getFullYear();
@@ -434,15 +434,21 @@ export function MonthlyAnalysisSection() {
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="space-y-4">
+      <div className={cn("flex flex-col", className)}>
           {/* ── Progresso da Operação ── */}
-          <Card>
-            <CardContent className="py-5 px-5 space-y-4">
+          <Card className="flex flex-col flex-1">
+            <CardContent className="py-6 px-6 space-y-5 flex-1 flex flex-col">
               <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="text-base font-bold text-foreground">
-                    Progresso da Operação {chartMode === "mensal" ? "no Mês" : "Anual"}
-                  </p>
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-sidebar/10 flex items-center justify-center">
+                    <TrendingUp className="h-5 w-5 text-sidebar" />
+                  </div>
+                  <div>
+                    <p className="text-base font-bold leading-none">
+                      Progresso da Operação {chartMode === "mensal" ? "no Mês" : "Anual"}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">Evolução das etapas ao longo do período</p>
+                  </div>
                 </div>
                 <div className="flex rounded-lg border border-border overflow-hidden shrink-0">
                   <button
@@ -472,7 +478,7 @@ export function MonthlyAnalysisSection() {
 
               {chartMode === "mensal" ? (
                 <>
-                  <div className="h-[220px] w-full">
+                  <div className="h-[260px] w-full flex-1">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={progressData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
                         <defs>
@@ -568,9 +574,36 @@ export function MonthlyAnalysisSection() {
                         </div>
                       );
                     })()}
-                  </div>
-                </>
-              ) : (
+                   </div>
+
+                   {/* Insight line */}
+                   {(() => {
+                     const currentPct = totalStages > 0 ? Math.round((doneStages / totalStages) * 100) : 0;
+                     const prevDoneStages = prevStages.filter(s => s.completed).length;
+                     const prevSameDayDone = prevStages.filter(s => {
+                       if (!s.completed || !s.completed_at) return false;
+                       return new Date(s.completed_at).getDate() <= currentDay;
+                     }).length;
+                     const prevSameDayPct = prevTotalStages > 0 ? Math.round((prevSameDayDone / prevTotalStages) * 100) : 0;
+                     const delta = currentPct - prevSameDayPct;
+
+                     if (delta !== 0 && prevSameDayPct > 0) {
+                       return (
+                         <div className="flex items-center gap-2 text-xs bg-accent/30 rounded-lg px-3 py-2 mt-auto">
+                           <Lightbulb className="h-3.5 w-3.5 text-sidebar shrink-0" />
+                           <span className="text-muted-foreground">
+                             {delta > 0
+                               ? <>Operação está <strong className="text-success">{delta}pp à frente</strong> do mesmo dia no mês anterior</>
+                               : <>Operação está <strong className="text-destructive">{Math.abs(delta)}pp atrás</strong> do mesmo dia no mês anterior</>
+                             }
+                           </span>
+                         </div>
+                       );
+                     }
+                     return null;
+                   })()}
+                 </>
+               ) : (
                 <>
                   {/* ── Proactivity Index Chart ── */}
                   <div className="space-y-3">

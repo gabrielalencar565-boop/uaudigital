@@ -766,11 +766,11 @@ export function VisaoGeralTab() {
 
       {/* ═══ DESEMPENHO POR SQUAD + PROGRESSO DA OPERAÇÃO ═══ */}
       <FadeUp delay={0.5}>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {/* Desempenho por Squad */}
           {heatmapData.length > 0 && (
-          <Card>
-            <CardContent className="py-6 px-6 space-y-5">
+          <Card className="flex flex-col min-h-[580px]">
+            <CardContent className="py-6 px-6 space-y-5 flex-1 flex flex-col">
               {/* Header + Tabs */}
               <div className="flex flex-col gap-3">
                 <div className="flex items-center gap-3">
@@ -803,8 +803,8 @@ export function VisaoGeralTab() {
 
               {/* ─── ABA: PIPELINE ─── */}
               {squadDashTab === "pipeline" && (
-                <div className="space-y-4">
-                  <div className="h-[320px] w-full">
+                <div className="space-y-4 flex-1 flex flex-col">
+                  <div className="h-[300px] w-full flex-1 min-h-[260px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart
                         data={STAGE_ORDER.map(stageKey => {
@@ -1062,7 +1062,7 @@ export function VisaoGeralTab() {
           )}
 
           {/* Progresso da Operação */}
-          <MonthlyAnalysisSection />
+          <MonthlyAnalysisSection className="min-h-[580px]" />
         </div>
       </FadeUp>
 
