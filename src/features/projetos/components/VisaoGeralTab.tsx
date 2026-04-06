@@ -36,8 +36,6 @@ import { HealthScoreTab } from "./HealthScoreTab";
 import { MonthlyAnalysisSection } from "./MonthlyAnalysisSection";
 import { ChurnRiskModule } from "./ChurnRiskModule";
 
-import { useAgendaSpecialDates, type SpecialDate } from "@/features/agenda/hooks/use-agenda-dates";
-import { getIconById } from "@/features/agenda/components/IconPicker";
 
 function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join("");

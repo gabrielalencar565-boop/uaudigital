@@ -217,22 +217,22 @@ export function ChurnRiskModule() {
   }
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="h-9 w-9 rounded-xl bg-destructive/10 flex items-center justify-center">
-          <AlertTriangle className="h-4.5 w-4.5 text-destructive" />
+    <Card className="border-border/60">
+      <CardContent className="py-6 px-6 space-y-5">
+        {/* Header */}
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-xl bg-destructive/10 flex items-center justify-center">
+            <AlertTriangle className="h-4.5 w-4.5 text-destructive" />
+          </div>
+          <div>
+            <h3 className="text-base font-semibold">Risco de Churn</h3>
+            <p className="text-xs text-muted-foreground">Visão da saúde da carteira de clientes</p>
+          </div>
         </div>
-        <div>
-          <h3 className="text-base font-semibold">Risco de Churn</h3>
-          <p className="text-xs text-muted-foreground">Visão da saúde da carteira de clientes</p>
-        </div>
-      </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <Card className="border-border/60">
-          <CardContent className="py-4 px-4 flex items-center gap-3">
+        {/* Summary row */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="flex items-center gap-3 rounded-xl border border-border/40 bg-muted/20 py-3 px-4">
             <div className="h-9 w-9 rounded-lg bg-destructive/10 flex items-center justify-center shrink-0">
               <AlertTriangle className="h-4 w-4 text-destructive" />
             </div>
@@ -242,11 +242,9 @@ export function ChurnRiskModule() {
                 {riskCount === 1 ? "cliente em risco" : "clientes em risco"}
               </p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
 
-        <Card className="border-border/60">
-          <CardContent className="py-4 px-4 flex items-center gap-3">
+          <div className="flex items-center gap-3 rounded-xl border border-border/40 bg-muted/20 py-3 px-4">
             <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
               <HeartPulse className="h-4 w-4 text-primary" />
             </div>
@@ -254,11 +252,9 @@ export function ChurnRiskModule() {
               <p className="text-2xl font-bold tabular-nums">{avgScore}</p>
               <p className="text-[11px] text-muted-foreground leading-tight">Health Score médio</p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
 
-        <Card className="border-border/60">
-          <CardContent className="py-4 px-4 flex items-center gap-3">
+          <div className="flex items-center gap-3 rounded-xl border border-border/40 bg-muted/20 py-3 px-4">
             <div className={cn("h-9 w-9 rounded-lg flex items-center justify-center shrink-0",
               trend === "up" ? "bg-emerald-500/10" : trend === "down" ? "bg-destructive/10" : "bg-muted"
             )}>
@@ -270,12 +266,11 @@ export function ChurnRiskModule() {
               </p>
               <p className="text-[11px] text-muted-foreground leading-tight">Tendência mensal</p>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </div>
 
-      {/* Charts area */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Charts area */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Donut Chart */}
         <Card className="border-border/60">
           <CardContent className="py-5 px-5 h-full flex flex-col">
@@ -481,6 +476,7 @@ export function ChurnRiskModule() {
           </CardContent>
         </Card>
       </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
