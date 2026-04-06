@@ -99,8 +99,6 @@ export function VisaoGeralTab() {
   const [newIcon, setNewIcon] = useState("shield");
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [showHealthScore, setShowHealthScore] = useState(false);
-  const [calMonth, setCalMonth] = useState(new Date());
-  const [holidayFilter, setHolidayFilter] = useState<"all" | "feriados" | "internas" | "aniversarios">("all");
   const [expandedSquadId, setExpandedSquadId] = useState<string | null>(null);
   const [squadDashTab, setSquadDashTab] = useState<"pipeline" | "ranking" | "progresso">("pipeline");
 
