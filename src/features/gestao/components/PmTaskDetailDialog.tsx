@@ -110,6 +110,7 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
       <DialogContent hideClose className="z-[120] max-w-[90vw] w-[90vw] max-h-[90vh] h-[90vh] max-sm:max-w-full max-sm:w-full max-sm:max-h-full max-sm:h-full max-sm:rounded-none p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border-border/30 shadow-2xl">
 
