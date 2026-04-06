@@ -34,6 +34,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Cell, AreaChart, Area } from "recharts";
 import { HealthScoreTab } from "./HealthScoreTab";
 import { MonthlyAnalysisSection } from "./MonthlyAnalysisSection";
+import { ChurnRiskChart } from "./ChurnRiskChart";
 import { useAgendaSpecialDates, type SpecialDate } from "@/features/agenda/hooks/use-agenda-dates";
 import { getIconById } from "@/features/agenda/components/IconPicker";
 
