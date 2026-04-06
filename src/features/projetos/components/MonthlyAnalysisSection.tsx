@@ -478,7 +478,7 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
 
               {chartMode === "mensal" ? (
                 <>
-                  <div className="h-[220px] w-full">
+                  <div className="h-[260px] w-full flex-1">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={progressData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
                         <defs>
