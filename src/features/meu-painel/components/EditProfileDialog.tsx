@@ -37,7 +37,98 @@ function initials(name: string) {
     .join("");
 }
 
-interface EditProfileDialogProps {
+const MONTH_NAMES = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+
+function BirthDateSelects({ control }: { control: Control<ProfileValues> }) {
+  const currentYear = new Date().getFullYear();
+  const years = useMemo(() => Array.from({ length: 80 }, (_, i) => String(currentYear - i)), [currentYear]);
+  const months = useMemo(() => Array.from({ length: 12 }, (_, i) => String(i + 1)), []);
+
+  // Keep partial selections in local state so user can fill one at a time
+  const [localDay, setLocalDay] = useState("");
+  const [localMonth, setLocalMonth] = useState("");
+  const [localYear, setLocalYear] = useState("");
+  const [initialized, setInitialized] = useState(false);
+
+  return (
+    <Controller
+      control={control}
+      name="birth_date"
+      render={({ field }) => {
+        // Sync from form value on first render
+        if (!initialized && field.value) {
+          const parts = field.value.split("-");
+          if (parts.length === 3) {
+            setLocalYear(parts[0]);
+            setLocalMonth(String(Number(parts[1])));
+            setLocalDay(String(Number(parts[2])));
+          }
+          setInitialized(true);
+        } else if (!initialized) {
+          setInitialized(true);
+        }
+
+        const syncToForm = (d: string, m: string, y: string) => {
+          if (d && m && y) {
+            field.onChange(`${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`);
+          }
+        };
+
+        const daysInMonth = localMonth && localYear
+          ? new Date(Number(localYear), Number(localMonth), 0).getDate()
+          : 31;
+        const days = Array.from({ length: daysInMonth }, (_, i) => String(i + 1));
+
+        // Clamp day if month changed
+        const clampedDay = localDay && Number(localDay) > daysInMonth ? String(daysInMonth) : localDay;
+        if (clampedDay !== localDay && localDay) {
+          setLocalDay(clampedDay);
+          syncToForm(clampedDay, localMonth, localYear);
+        }
+
+        return (
+          <div className="space-y-2">
+            <Label>Data de nascimento</Label>
+            <div className="flex gap-2">
+              <Select value={clampedDay} onValueChange={(v) => { setLocalDay(v); syncToForm(v, localMonth, localYear); }}>
+                <SelectTrigger className="w-[80px]">
+                  <SelectValue placeholder="Dia" />
+                </SelectTrigger>
+                <SelectContent className="max-h-56">
+                  {days.map((day) => (
+                    <SelectItem key={day} value={day}>{day}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={localMonth} onValueChange={(v) => { setLocalMonth(v); syncToForm(localDay, v, localYear); }}>
+                <SelectTrigger className="flex-1">
+                  <SelectValue placeholder="Mês" />
+                </SelectTrigger>
+                <SelectContent className="max-h-56">
+                  {months.map((mo, i) => (
+                    <SelectItem key={mo} value={mo}>{MONTH_NAMES[i]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={localYear} onValueChange={(v) => { setLocalYear(v); syncToForm(localDay, localMonth, v); }}>
+                <SelectTrigger className="w-[90px]">
+                  <SelectValue placeholder="Ano" />
+                </SelectTrigger>
+                <SelectContent className="max-h-56">
+                  {years.map((yr) => (
+                    <SelectItem key={yr} value={yr}>{yr}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        );
+      }}
+    />
+  );
+}
+
+
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSaved?: () => void;
