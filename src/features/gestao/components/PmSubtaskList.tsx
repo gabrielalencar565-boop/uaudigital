@@ -149,7 +149,7 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
               className={cn(
                 "group flex items-center gap-2 px-2 py-2 transition border-b border-border/10 cursor-pointer",
                 isActive ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-card/40",
-                isDone && !isAlt && "opacity-60"
+                isDone && "opacity-60"
               )}
               onClick={() => onSelectSubtask?.(sub)}
             >
