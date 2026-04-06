@@ -1121,6 +1121,11 @@ export function VisaoGeralTab() {
         </Card>
       </FadeUp>
 
+      {/* Churn Risk */}
+      <FadeUp delay={0.68}>
+        <ChurnRiskChart />
+      </FadeUp>
+
       {/* Calendar full-width */}
       <FadeUp delay={0.7}>
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
