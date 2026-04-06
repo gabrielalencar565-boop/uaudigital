@@ -435,18 +435,7 @@ export function MonthlyAnalysisSection() {
   return (
     <TooltipProvider delayDuration={200}>
       <div className="space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-sidebar/10 flex items-center justify-center">
-            <TrendingUp className="h-5 w-5 text-sidebar" />
-          </div>
-          <div>
-            <p className="text-lg font-bold text-foreground">Análise Mensal da Operação</p>
-            <p className="text-xs text-muted-foreground">Performance e progresso do mês atual</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* ── Chart 1: Progresso da Operação ── */}
+          {/* ── Progresso da Operação ── */}
           <Card>
             <CardContent className="py-5 px-5 space-y-4">
               <div className="flex items-start justify-between gap-2">
