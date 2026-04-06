@@ -190,7 +190,7 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
     </Dialog>
 
     <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-      <AlertDialogContent>
+      <AlertDialogContent className="z-[200]">
         <AlertDialogHeader>
           <AlertDialogTitle>Excluir tarefa?</AlertDialogTitle>
           <AlertDialogDescription asChild>
