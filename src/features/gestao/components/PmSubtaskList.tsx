@@ -161,7 +161,7 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
                       className={cn(
                         "h-5 w-5 rounded-full border-2 flex items-center justify-center transition-all hover:scale-110",
                         isDone ? "bg-emerald-500 border-emerald-500" : circleColor.border,
-                        isAlt && "border-amber-500 bg-amber-500/20"
+                        isAlt && !isDone && "border-amber-500 bg-amber-500/20"
                       )}
                       onClick={(e) => {
                         e.preventDefault();
