@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, ChevronRight, Check, RotateCcw } from "lucide-react";
+import { Plus, ChevronRight, Check, RotateCcw, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
