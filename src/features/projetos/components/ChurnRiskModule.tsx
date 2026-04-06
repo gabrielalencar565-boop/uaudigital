@@ -343,15 +343,7 @@ export function ChurnRiskModule() {
               </TooltipProvider>
             </div>
 
-            {/* Risk alert */}
-            {riskCount > 0 && (
-              <div className="mt-3 flex items-center gap-2 rounded-lg bg-destructive/5 border border-destructive/10 px-3 py-2">
-                <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />
-                <p className="text-xs text-destructive font-medium">
-                  {riskCount} {riskCount === 1 ? "cliente em risco" : "clientes em risco"} — atenção imediata
-                </p>
-              </div>
-            )}
+
           </CardContent>
         </Card>
 
