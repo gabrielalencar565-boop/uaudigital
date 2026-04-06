@@ -122,7 +122,7 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
           <div className="w-8 text-center">Etapa</div>
           <div className="flex-1">Nome</div>
           <div className="w-20 text-center">Responsável</div>
-          <div className="w-6" />
+          <div className="w-12" />
         </div>
       )}
 
