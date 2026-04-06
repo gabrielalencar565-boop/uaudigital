@@ -646,7 +646,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
 
   const renderTaskCard = (t: PmTask) => {
     const isLegacy = t.id.startsWith("legacy_");
-    const isDone = t.status_global === "concluido";
+    const isDone = t.parent_task_id ? t.status_global === "concluido" : (t.status_global === "concluido" || t.stage_current === "entrega");
     const isAlteracaoWithOrigin = t.stage_current === "alteracoes" && !!t.post_type;
     const isRevisaoWithOrigin = t.stage_current === "revisao" && !!t.post_type;
     const hasGradient = isAlteracaoWithOrigin || isRevisaoWithOrigin;
