@@ -104,6 +104,7 @@ function PlanningSection({
   const [isOpen, setIsOpen] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
   const [newTitle, setNewTitle] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const addInputRef = useRef<HTMLInputElement>(null);
 
   const total = tasks.length;
