@@ -54,6 +54,7 @@ interface Props {
 export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap, members, isAdmin }: Props) {
   const [taskStack, setTaskStack] = useState<string[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const deleteTask = useUpdatePmTask();
 
   const tasksQ = usePmTasks();
   const resolvedRootTask = useMemo(() => {
