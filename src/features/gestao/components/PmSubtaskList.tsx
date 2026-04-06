@@ -223,15 +223,17 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
                 )}
               </div>
 
-              {/* Trash + Open indicator */}
-              <div className="w-12 flex items-center justify-end gap-0.5" onClick={(e) => e.stopPropagation()}>
+              {/* Actions on the right of avatar */}
+              <div className="w-14 flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
                 <AlertDialog open={deletingId === sub.id} onOpenChange={(open) => !open && setDeletingId(null)}>
                   <AlertDialogTrigger asChild>
                     <button
-                      className="h-6 w-6 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 hover:bg-destructive/10 transition-all"
+                      className="h-6 w-6 flex items-center justify-center rounded-md text-destructive/80 hover:bg-destructive/10 hover:text-destructive transition-all"
                       onClick={(e) => { e.stopPropagation(); setDeletingId(sub.id); }}
+                      aria-label={`Excluir subtarefa ${sub.title}`}
+                      title="Mover para lixeira"
                     >
-                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                      <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </AlertDialogTrigger>
                   <AlertDialogContent className="z-[200]">
