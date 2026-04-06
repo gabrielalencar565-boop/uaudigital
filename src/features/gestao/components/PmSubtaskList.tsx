@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, ChevronRight, Check } from "lucide-react";
+import { Plus, ChevronRight, Check, RotateCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -7,9 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { PM_ACTIVE_STAGES, getStageCircleColor, stageLabel, tagColor, tagDisplay } from "../pm-constants";
-import { useUpdatePmTask, useCreatePmTask } from "../hooks/use-pm-data";
+import { useUpdatePmTask, useCreatePmTask, usePmSyncStageCompletion } from "../hooks/use-pm-data";
 import { PmAssigneeSelector } from "./PmAssigneeSelector";
 import { getFixedAssignee, getFixedWatchers, useDefaultFlowWithDates } from "./PmStageFlowConfig";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import type { PmTask } from "../pm-types";
 
 function initials(n: string) { return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join(""); }
@@ -26,10 +28,11 @@ interface Props {
 export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onSelectSubtask, activeSubtaskId }: Props) {
   const updateTask = useUpdatePmTask();
   const createTask = useCreatePmTask();
+  const syncStage = usePmSyncStageCompletion();
   const { stageAssignees } = useDefaultFlowWithDates();
   const [newTitle, setNewTitle] = useState("");
 
-  const done = childTasks.filter(s => s.stage_current === "entrega").length;
+  const done = childTasks.filter(s => s.status_global === "concluido").length;
   const total = childTasks.length;
   const progress = total > 0 ? Math.round((done / total) * 100) : 0;
 
@@ -65,20 +68,45 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
     ...(sub.watchers ?? []).filter(w => w !== sub.assignee_id),
   ];
 
-  const changeStage = (subId: string, newStage: string) => {
-    // Subtask stage changes are always individual — they never advance the parent or siblings.
-    // Only the parent task advance (in PmTaskDetailDialog) triggers the full workflow.
-    const updates: any = { id: subId, stage_current: newStage as any };
-    if (newStage === "entrega") {
-      updates.status_global = "concluido";
+  const toggleDone = async (sub: PmTask) => {
+    const isDone = sub.status_global === "concluido";
+    if (isDone) {
+      // Unmark: set back to backlog
+      updateTask.mutate({ id: sub.id, status_global: "backlog" as any });
+      toast("Subtarefa desmarcada");
+    } else {
+      // Mark as done (keep same stage, just change status)
+      updateTask.mutate({ id: sub.id, status_global: "concluido" as any });
+      // Trigger scoring
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const scoringUserIds = [
+            sub.assignee_id,
+            ...(sub.watchers ?? []),
+          ].filter(Boolean) as string[];
+          syncStage.mutate({
+            pmTaskId: sub.id,
+            completedStage: sub.stage_current,
+            userId: user.id,
+            scoringUserIds: scoringUserIds.length > 0 ? scoringUserIds : undefined,
+          });
+        }
+      } catch (_) { /* ignore */ }
+      toast.success("Subtarefa concluída!");
     }
-    const fixedAssignee = getFixedAssignee(stageAssignees, newStage, parentTask.client_id);
-    const fixedWatchers = getFixedWatchers(stageAssignees, newStage, parentTask.client_id);
+  };
+
+  const sendToAlteracoes = (sub: PmTask) => {
+    const fixedAssignee = getFixedAssignee(stageAssignees, "alteracoes", parentTask.client_id);
+    const fixedWatchers = getFixedWatchers(stageAssignees, "alteracoes", parentTask.client_id);
+    const updates: any = { id: sub.id, stage_current: "alteracoes" as any, status_global: "backlog" as any };
     if (fixedAssignee !== undefined) {
       updates.assignee_id = fixedAssignee;
       updates.watchers = fixedWatchers;
     }
     updateTask.mutate(updates);
+    toast("Subtarefa enviada para Alteração");
   };
 
   return (
@@ -109,7 +137,8 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
       {/* Rows */}
       <div className="space-y-0">
         {childTasks.map((sub) => {
-          const isDone = sub.stage_current === "entrega";
+          const isDone = sub.status_global === "concluido";
+          const isAlt = sub.stage_current === "alteracoes";
           const isActive = activeSubtaskId === sub.id;
           const subAssignees = allAssigneeIds(sub);
           const circleColor = getStageCircleColor(sub.stage_current);
@@ -120,41 +149,48 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
               className={cn(
                 "group flex items-center gap-2 px-2 py-2 transition border-b border-border/10 cursor-pointer",
                 isActive ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-card/40",
-                isDone && "opacity-60"
+                isDone && !isAlt && "opacity-60"
               )}
               onClick={() => onSelectSubtask?.(sub)}
             >
-              {/* Stage circle */}
+              {/* Done toggle + Alteração */}
               <div className="w-8 flex justify-center" onClick={(e) => e.stopPropagation()}>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <button className={cn(
-                      "h-5 w-5 rounded-full border-2 flex items-center justify-center transition-all hover:scale-110",
-                      circleColor.border,
-                      isDone && `${circleColor.bg} border-emerald-500`
-                    )}>
+                    <button
+                      className={cn(
+                        "h-5 w-5 rounded-full border-2 flex items-center justify-center transition-all hover:scale-110",
+                        isDone ? "bg-emerald-500 border-emerald-500" : circleColor.border,
+                        isAlt && "border-amber-500 bg-amber-500/20"
+                      )}
+                      onClick={(e) => {
+                        // Single click = toggle done (only if not in alterações)
+                        if (!isAlt) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          toggleDone(sub);
+                        }
+                      }}
+                    >
                       {isDone && <Check className="h-3 w-3 text-white" />}
+                      {isAlt && !isDone && <RotateCcw className="h-3 w-3 text-amber-500" />}
                     </button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-48 p-1" align="start">
-                    {PM_ACTIVE_STAGES.map(s => {
-                      const sColor = getStageCircleColor(s.key);
-                      const isEntrega = s.key === "entrega";
-                      const isSelected = sub.stage_current === s.key;
-                      return (
-                        <button
-                          key={s.key}
-                          className={cn("flex items-center gap-2 w-full px-2 py-1.5 rounded text-xs hover:bg-accent transition", isSelected && "bg-accent")}
-                          onClick={() => changeStage(sub.id, s.key)}
-                        >
-                          <span className={cn("h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0", sColor.border, isEntrega && `${sColor.bg}`)}>
-                            {isEntrega && <Check className="h-2.5 w-2.5 text-white" />}
-                          </span>
-                          {s.label}
-                          {isSelected && <Check className="h-3 w-3 ml-auto text-primary" />}
-                        </button>
-                      );
-                    })}
+                  <PopoverContent className="w-44 p-1" align="start">
+                    <button
+                      className="flex items-center gap-2 w-full px-2 py-1.5 rounded text-xs hover:bg-accent transition"
+                      onClick={() => toggleDone(sub)}
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                      {isDone ? "Desmarcar concluído" : "Marcar como concluído"}
+                    </button>
+                    <button
+                      className={cn("flex items-center gap-2 w-full px-2 py-1.5 rounded text-xs hover:bg-accent transition", isAlt && "bg-accent")}
+                      onClick={() => sendToAlteracoes(sub)}
+                    >
+                      <RotateCcw className="h-3.5 w-3.5 text-amber-500" />
+                      Enviar para Alteração
+                    </button>
                   </PopoverContent>
                 </Popover>
               </div>
