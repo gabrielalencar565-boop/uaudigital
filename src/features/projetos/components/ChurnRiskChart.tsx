@@ -7,7 +7,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer,
   Tooltip, Cell, ReferenceLine, LabelList,
 } from "recharts";
-import { ShieldAlert, ShieldCheck, AlertTriangle, Filter } from "lucide-react";
+import { ShieldAlert, ShieldCheck, AlertTriangle, Filter, Trophy, Medal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
