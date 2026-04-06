@@ -507,11 +507,11 @@ export function DayViewPanel() {
         client_id: t.client_id,
         assigned_user_id: t.assignee_id ?? "",
         due_date: t.due_date ?? "",
-        status: t.status_global === "concluido" ? "concluido" : "pendente",
+        status: (t.status_global === "concluido" || t.stage_current === "entrega" || t.stage_current === "agendamento") ? "concluido" : "pendente",
         stage: t.stage_current,
         title: t.title,
         is_extra_demand: t.is_extra_demand,
-        completed_at: t.status_global === "concluido" ? (t.updated_at ?? null) : null,
+        completed_at: (t.status_global === "concluido" || t.stage_current === "entrega" || t.stage_current === "agendamento") ? (t.updated_at ?? null) : null,
         source: "pm" as const,
         subtaskCount: childCounts.get(t.id) ?? 0,
       }));
