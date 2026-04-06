@@ -356,7 +356,14 @@ export function ChurnRiskModule() {
               <ToggleGroup
                 type="single"
                 value={viewMode}
-                onValueChange={(v) => { if (v) setViewMode(v); }}
+                onValueChange={(v) => {
+                  if (v) {
+                    setViewMode(v);
+                    if (v === "client" && !selectedClientId && sortedClients.length > 0) {
+                      setSelectedClientId(sortedClients[0].client_id);
+                    }
+                  }
+                }}
                 size="sm"
                 className="bg-muted/50 rounded-lg p-0.5"
               >
