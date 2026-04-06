@@ -78,7 +78,7 @@ function isOnTime(task: TaskForReport) {
   return completedSP <= task.due_date;
 }
 
-function calcPoints(task: TaskForReport, configMap: Map<string, ScoringConfigRow>, year: number, month: number): number {
+function calcPoints(task: TaskForReport, configMap: Map<string, ScoringConfigRow>, year: number, month: number, pmTagsMap?: Map<string, string[]>): number {
   const onTime = isOnTime(task);
   if (onTime === null) return 0;
 
@@ -90,7 +90,23 @@ function calcPoints(task: TaskForReport, configMap: Map<string, ScoringConfigRow
   }
 
   const cfg = configMap.get(task.stage);
-  if (!onTime) return cfg?.late_penalty ?? -1;
+  if (!onTime) {
+    let penalty = cfg?.late_penalty ?? -1;
+    // Also sum tag late penalties
+    const pmId = extractPmTaskId(task.description);
+    if (pmId && pmTagsMap) {
+      const tags = pmTagsMap.get(pmId);
+      if (tags) {
+        for (const tag of tags) {
+          const tagName = tag.split(":")[0];
+          const tagKey = "tag_" + tagName.toLowerCase().replace(/\s+/g, "_");
+          const tagCfg = configMap.get(tagKey);
+          if (tagCfg) penalty += tagCfg.late_penalty;
+        }
+      }
+    }
+    return penalty;
+  }
 
   // On-time scoring — use snapshot if available
   if (task.point_value != null) return task.point_value;
@@ -230,6 +246,33 @@ export function AdminDeadlineReport({
     [scoringConfigQ.data],
   );
 
+  // Fetch pm_tasks tags to compute tag-based late penalties
+  const pmTagsQ = useQuery({
+    enabled: (tasksQ.data?.length ?? 0) > 0,
+    queryKey: ["pm_tasks_tags_for_report", year, month],
+    queryFn: async () => {
+      // Extract all pm_task_ids from task descriptions
+      const pmIds = (tasksQ.data ?? [])
+        .map((t) => extractPmTaskId(t.description))
+        .filter(Boolean) as string[];
+      if (pmIds.length === 0) return [] as { id: string; tags: string[] | null }[];
+      const { data, error } = await supabase
+        .from("pm_tasks")
+        .select("id, tags")
+        .in("id", pmIds);
+      if (error) throw error;
+      return (data ?? []) as { id: string; tags: string[] | null }[];
+    },
+  });
+
+  const pmTagsMap = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const pt of pmTagsQ.data ?? []) {
+      if (pt.tags && pt.tags.length > 0) map.set(pt.id, pt.tags);
+    }
+    return map;
+  }, [pmTagsQ.data]);
+
   const overrideByTaskId = useMemo(
     () => new Map((overridesQ.data ?? []).map((o) => [o.task_id, o])),
     [overridesQ.data],
@@ -252,7 +295,7 @@ export function AdminDeadlineReport({
 
       const userIds = getTaskUserIds(t);
       const override = overrideByTaskId.get(t.id);
-      const pts = override ? override.override_points : calcPoints(t, scoringConfigMap, year, month);
+      const pts = override ? override.override_points : calcPoints(t, scoringConfigMap, year, month, pmTagsMap);
       const onTime = isOnTime(t);
 
       for (const uid of userIds) {
@@ -265,7 +308,7 @@ export function AdminDeadlineReport({
     }
 
     return Array.from(byUser.values()).sort((a, b) => b.total - a.total);
-  }, [team, tasksQ.data, overrideByTaskId, assigneesByTask, scoringConfigMap]);
+  }, [team, tasksQ.data, overrideByTaskId, assigneesByTask, scoringConfigMap, pmTagsMap]);
 
   // Auto-recompute: compare report totals with stored performance_scores.metas_prazos
   const storedScoresQ = useQuery({
@@ -512,7 +555,7 @@ export function AdminDeadlineReport({
                 </TableHeader>
                 <TableBody>
                   {userTasks.map((t) => {
-                    const auto = calcPoints(t, scoringConfigMap, year, month);
+                    const auto = calcPoints(t, scoringConfigMap, year, month, pmTagsMap);
                     const override = overrideByTaskId.get(t.id);
                     const current = override ? String(override.override_points) : "auto";
 
@@ -646,7 +689,7 @@ export function AdminDeadlineReport({
             const assignedNames = (assignees && assignees.length > 0 ? assignees : [detailTask.assigned_user_id])
               .map((uid) => teamById.get(uid)?.display_name ?? "—");
             const override = overrideByTaskId.get(detailTask.id);
-            const auto = calcPoints(detailTask, scoringConfigMap, year, month);
+            const auto = calcPoints(detailTask, scoringConfigMap, year, month, pmTagsMap);
             const onTime = isOnTime(detailTask);
 
             return (

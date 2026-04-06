@@ -52,7 +52,8 @@ export function AdminPontuacaoPanel() {
 
   const saveMut = useMutation({
     mutationFn: async () => {
-      const entries = Object.entries(edits);
+      // Filter out any entries with invalid/undefined IDs
+      const entries = Object.entries(edits).filter(([id]) => id && id !== "undefined" && id.length > 8);
       if (entries.length === 0) return;
 
       // 1. Snapshot: congela pontuação de tarefas já concluídas
