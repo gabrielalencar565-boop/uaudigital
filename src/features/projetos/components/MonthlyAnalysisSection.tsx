@@ -574,9 +574,36 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
                         </div>
                       );
                     })()}
-                  </div>
-                </>
-              ) : (
+                   </div>
+
+                   {/* Insight line */}
+                   {(() => {
+                     const currentPct = totalStages > 0 ? Math.round((doneStages / totalStages) * 100) : 0;
+                     const prevDoneStages = prevStages.filter(s => s.completed).length;
+                     const prevSameDayDone = prevStages.filter(s => {
+                       if (!s.completed || !s.completed_at) return false;
+                       return new Date(s.completed_at).getDate() <= currentDay;
+                     }).length;
+                     const prevSameDayPct = prevTotalStages > 0 ? Math.round((prevSameDayDone / prevTotalStages) * 100) : 0;
+                     const delta = currentPct - prevSameDayPct;
+
+                     if (delta !== 0 && prevSameDayPct > 0) {
+                       return (
+                         <div className="flex items-center gap-2 text-xs bg-accent/30 rounded-lg px-3 py-2 mt-auto">
+                           <Lightbulb className="h-3.5 w-3.5 text-sidebar shrink-0" />
+                           <span className="text-muted-foreground">
+                             {delta > 0
+                               ? <>Operação está <strong className="text-success">{delta}pp à frente</strong> do mesmo dia no mês anterior</>
+                               : <>Operação está <strong className="text-destructive">{Math.abs(delta)}pp atrás</strong> do mesmo dia no mês anterior</>
+                             }
+                           </span>
+                         </div>
+                       );
+                     }
+                     return null;
+                   })()}
+                 </>
+               ) : (
                 <>
                   {/* ── Proactivity Index Chart ── */}
                   <div className="space-y-3">
