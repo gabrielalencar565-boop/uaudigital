@@ -120,13 +120,13 @@ export function ChurnRiskModule() {
   }, [allScores, currentMonth, currentYear, clients]);
 
   const distribution = useMemo(() => {
-    const healthy = currentScores.filter((s) => s.avg >= 8).length;
-    const attention = currentScores.filter((s) => s.avg >= 6 && s.avg < 8).length;
-    const risk = currentScores.filter((s) => s.avg < 6).length;
+    const healthyClients = currentScores.filter((s) => s.avg >= 8);
+    const attentionClients = currentScores.filter((s) => s.avg >= 6 && s.avg < 8);
+    const riskClients = currentScores.filter((s) => s.avg < 6);
     return [
-      { name: "Saudável", value: healthy, color: DONUT_COLORS[0] },
-      { name: "Atenção", value: attention, color: DONUT_COLORS[1] },
-      { name: "Em risco", value: risk, color: DONUT_COLORS[2] },
+      { name: "Saudável", value: healthyClients.length, color: DONUT_COLORS[0], clients: healthyClients },
+      { name: "Atenção", value: attentionClients.length, color: DONUT_COLORS[1], clients: attentionClients },
+      { name: "Em risco", value: riskClients.length, color: DONUT_COLORS[2], clients: riskClients },
     ];
   }, [currentScores]);
 
