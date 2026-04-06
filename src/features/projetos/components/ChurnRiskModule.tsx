@@ -12,6 +12,7 @@ import { subMonths, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const WEIGHTS: Record<string, number> = {
   resultado_percebido: 3,
@@ -119,13 +120,13 @@ export function ChurnRiskModule() {
   }, [allScores, currentMonth, currentYear, clients]);
 
   const distribution = useMemo(() => {
-    const healthy = currentScores.filter((s) => s.avg >= 8).length;
-    const attention = currentScores.filter((s) => s.avg >= 6 && s.avg < 8).length;
-    const risk = currentScores.filter((s) => s.avg < 6).length;
+    const healthyClients = currentScores.filter((s) => s.avg >= 8);
+    const attentionClients = currentScores.filter((s) => s.avg >= 6 && s.avg < 8);
+    const riskClients = currentScores.filter((s) => s.avg < 6);
     return [
-      { name: "Saudável", value: healthy, color: DONUT_COLORS[0] },
-      { name: "Atenção", value: attention, color: DONUT_COLORS[1] },
-      { name: "Em risco", value: risk, color: DONUT_COLORS[2] },
+      { name: "Saudável", value: healthyClients.length, color: DONUT_COLORS[0], clients: healthyClients },
+      { name: "Atenção", value: attentionClients.length, color: DONUT_COLORS[1], clients: attentionClients },
+      { name: "Em risco", value: riskClients.length, color: DONUT_COLORS[2], clients: riskClients },
     ];
   }, [currentScores]);
 
@@ -274,21 +275,21 @@ export function ChurnRiskModule() {
       </div>
 
       {/* Charts area */}
-      <div className={cn("grid grid-cols-1 gap-4", viewMode === "overview" ? "lg:grid-cols-2" : "lg:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)]")}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Donut Chart */}
         <Card className="border-border/60">
-          <CardContent className="py-5 px-5">
+          <CardContent className="py-5 px-5 h-full flex flex-col">
             <h4 className="text-sm font-semibold mb-4">Distribuição de Risco</h4>
-            <div className="flex items-center gap-6">
-              <div className="relative w-[160px] h-[160px] shrink-0">
+            <div className="flex items-center gap-6 flex-1">
+              <div className="relative w-[200px] h-[200px] shrink-0">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={distribution.filter((d) => d.value > 0)}
                       cx="50%"
                       cy="50%"
-                      innerRadius={50}
-                      outerRadius={72}
+                      innerRadius={60}
+                      outerRadius={90}
                       paddingAngle={3}
                       dataKey="value"
                       strokeWidth={0}
@@ -302,24 +303,43 @@ export function ChurnRiskModule() {
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <span className="text-2xl font-bold">{totalClients}</span>
-                  <span className="text-[10px] text-muted-foreground">clientes</span>
+                  <span className="text-3xl font-bold">{totalClients}</span>
+                  <span className="text-[11px] text-muted-foreground">clientes</span>
                 </div>
               </div>
 
-              <div className="flex flex-col gap-3">
-                {distribution.map((d) => (
-                  <div key={d.name} className="flex items-center gap-2.5">
-                    <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: d.color }} />
-                    <div>
-                      <p className="text-sm font-medium leading-none">{d.name}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {d.value} {d.value === 1 ? "cliente" : "clientes"}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <TooltipProvider delayDuration={200}>
+                <div className="flex flex-col gap-3">
+                  {distribution.map((d) => (
+                    <Tooltip key={d.name}>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center gap-2.5 cursor-default">
+                          <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: d.color }} />
+                          <div>
+                            <p className="text-sm font-medium leading-none">{d.name}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {d.value} {d.value === 1 ? "cliente" : "clientes"}
+                            </p>
+                          </div>
+                        </div>
+                      </TooltipTrigger>
+                      {d.clients.length > 0 && (
+                        <TooltipContent side="right" className="max-w-[220px]">
+                          <p className="font-medium text-xs mb-1">{d.name}</p>
+                          <ul className="space-y-0.5">
+                            {d.clients.map((c) => (
+                              <li key={c.client_id} className="text-xs flex justify-between gap-3">
+                                <span className="truncate">{c.clientName}</span>
+                                <span className="tabular-nums font-medium shrink-0">{c.avg}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  ))}
+                </div>
+              </TooltipProvider>
             </div>
           </CardContent>
         </Card>
