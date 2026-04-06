@@ -255,7 +255,9 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   const nextStages = (task.is_extra_demand && task.stage_current === "revisao")
     ? ["entrega"]
     : rawNextStages;
-  const isDone = task.stage_current === "entrega";
+  const isDone = task.parent_task_id
+    ? task.status_global === "concluido"
+    : task.stage_current === "entrega";
 
   const syncCompletedStage = async (completedStage: string) => {
     if (task.parent_task_id) return;
