@@ -689,7 +689,7 @@ export function AdminDeadlineReport({
             const assignedNames = (assignees && assignees.length > 0 ? assignees : [detailTask.assigned_user_id])
               .map((uid) => teamById.get(uid)?.display_name ?? "—");
             const override = overrideByTaskId.get(detailTask.id);
-            const auto = calcPoints(detailTask, scoringConfigMap, year, month);
+            const auto = calcPoints(detailTask, scoringConfigMap, year, month, pmTagsMap);
             const onTime = isOnTime(detailTask);
 
             return (
