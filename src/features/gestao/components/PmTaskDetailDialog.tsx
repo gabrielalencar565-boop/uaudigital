@@ -1167,30 +1167,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         {task.parent_task_id ? (
           /* ── Subtask-specific buttons: toggle done, send to Alteração ── */
           <div className="flex flex-wrap items-center gap-2 pt-2">
-            {task.stage_current === "alteracoes" ? (
-              <>
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-destructive/10 border border-destructive/30 text-destructive text-xs font-semibold">
-                  <RotateCcw className="h-3.5 w-3.5" /> Em Alteração
-                </div>
-                {isDone ? (
-                  <Button size="sm" variant="outline" className="gap-1.5" onClick={() => {
-                    updateTask.mutate({ id: task.id, status_global: "backlog" });
-                    toast.success("Subtarefa desmarcada");
-                  }}>
-                    <RotateCcw className="h-3.5 w-3.5" /> Desmarcar concluído
-                  </Button>
-                ) : (
-                  <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={async () => {
-                    updateTask.mutate({ id: task.id, status_global: "concluido" });
-                    const { data: { user: u } } = await supabase.auth.getUser();
-                    if (u) syncStage.mutate({ pmTaskId: task.id, completedStage: task.stage_current, userId: u.id, scoringUserIds: [task.assignee_id, ...(task.watchers ?? [])].filter(Boolean) as string[] });
-                    toast.success("Subtarefa concluída ✓");
-                  }}>
-                    <CheckCircle2 className="h-4 w-4" /> Concluído
-                  </Button>
-                )}
-              </>
-            ) : isDone ? (
+            {isDone ? (
               <>
                 <Badge className="bg-emerald-500/20 text-emerald-400 border-0 gap-1">
                   <Check className="h-3 w-3" /> Concluído
@@ -1206,6 +1183,20 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                   toast.success("Enviado para Alteração");
                 }}>
                   <RotateCcw className="h-3.5 w-3.5" /> Enviar para Alteração
+                </Button>
+              </>
+            ) : task.stage_current === "alteracoes" ? (
+              <>
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-destructive/10 border border-destructive/30 text-destructive text-xs font-semibold">
+                  <RotateCcw className="h-3.5 w-3.5" /> Em Alteração
+                </div>
+                <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={async () => {
+                  updateTask.mutate({ id: task.id, status_global: "concluido" });
+                  const { data: { user: u } } = await supabase.auth.getUser();
+                  if (u) syncStage.mutate({ pmTaskId: task.id, completedStage: task.stage_current, userId: u.id, scoringUserIds: [task.assignee_id, ...(task.watchers ?? [])].filter(Boolean) as string[] });
+                  toast.success("Subtarefa concluída ✓");
+                }}>
+                  <CheckCircle2 className="h-4 w-4" /> Concluído
                 </Button>
               </>
             ) : (
@@ -1237,6 +1228,10 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
             </div>
             <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={handleReturnFromAlteracao}>
               <CheckCircle2 className="h-4 w-4" /> Ajuste Concluído
+            </Button>
+            {/* Revert button */}
+            <Button size="sm" variant="outline" className="gap-1.5 text-muted-foreground border-border/40 hover:bg-muted/60" onClick={handleRevert}>
+              <RotateCcw className="h-3.5 w-3.5" /> Reverter
             </Button>
           </div>
         )}
@@ -1334,27 +1329,17 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
               <RotateCcw className="h-3.5 w-3.5" /> Enviar para Alteração
             </Button>
           )}
+
+          {/* Revert button — go back to previous stage */}
+          {!isDone && task.stage_current !== "captacao" && (
+            <Button size="sm" variant="outline" className="gap-1.5 text-muted-foreground border-border/40 hover:bg-muted/60" onClick={handleRevert}>
+              <RotateCcw className="h-3.5 w-3.5" /> Reverter
+            </Button>
+          )}
         </div>
         )}
           </>
         )}
-
-        {/* Description — hidden for planning parent tasks */}
-        {!(task.stage_current === "planejamento" && !task.parent_task_id) && (
-          <div className="border-t border-border/20 pt-4">
-            <div className="flex items-center gap-2 mb-2">
-              <FileText className="h-4 w-4 text-muted-foreground" />
-              <h3 className="text-sm font-bold">Descrição</h3>
-            </div>
-            <SmartCaptionEditor
-              value={task.description ?? ""}
-              onChange={(val) => updateTask.mutate({ id: task.id, description: val })}
-              placeholder="Adicione uma descrição..."
-              minHeight="80px"
-            />
-          </div>
-        )}
-
         {/* Posting Fields (for subtasks in PDF stage only) */}
         {task.parent_task_id && task.stage_current === "pdf" && (
           <div className="border-t border-border/20 pt-4">
