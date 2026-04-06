@@ -172,6 +172,7 @@ export function DayViewPanel() {
         .from("pm_tasks")
         .select("id, assignee_id, status_global")
         .is("parent_task_id", null)
+        .is("deleted_at", null)
         .neq("status_global", "concluido")
         .neq("status_global", "cancelado");
       if (error) throw error;
