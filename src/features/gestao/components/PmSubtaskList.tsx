@@ -32,7 +32,7 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
   const { stageAssignees } = useDefaultFlowWithDates();
   const [newTitle, setNewTitle] = useState("");
 
-  const done = childTasks.filter(s => s.stage_current === "entrega").length;
+  const done = childTasks.filter(s => s.status_global === "concluido").length;
   const total = childTasks.length;
   const progress = total > 0 ? Math.round((done / total) * 100) : 0;
 
