@@ -341,8 +341,8 @@ export function ChurnRiskModule() {
 
         {/* Right panel — toggle between overview and per-client */}
         <Card className="border-border/60">
-          <CardContent className="py-5 px-5">
-            {/* Toggle */}
+          <CardContent className="py-5 px-5 flex flex-col">
+            {/* Title + Toggle — fixed */}
             <div className="flex items-center justify-between mb-4 gap-3">
               <h4 className="text-sm font-semibold">Análise por Categoria</h4>
               <ToggleGroup
@@ -361,114 +361,95 @@ export function ChurnRiskModule() {
               </ToggleGroup>
             </div>
 
-            {viewMode === "overview" ? (
-              /* Overview: average bars for all clients */
-              <div className="space-y-3">
-                {CATEGORY_KEYS.map((key) => {
-                  const avg = totalClients > 0
+            {/* Fixed-height header row — same in both tabs */}
+            <div className="flex items-center justify-between h-10 mb-3 rounded-lg border border-border/30 bg-muted/20 px-3">
+              {viewMode === "overview" ? (
+                <>
+                  <span className="text-xs text-muted-foreground">Média geral da carteira</span>
+                  <span className="text-sm font-bold tabular-nums" style={{ color: barColor(avgScore) }}>{avgScore}<span className="text-xs font-normal text-muted-foreground ml-1">/ 10</span></span>
+                </>
+              ) : (
+                <>
+                  <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+                    <SelectTrigger className="h-8 text-xs border-0 bg-transparent shadow-none p-0 w-auto min-w-[140px] max-w-[200px]">
+                      <SelectValue placeholder="Selecione um cliente" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {sortedClients.map((s) => {
+                        const cls = s.avg >= 8 ? "🟢" : s.avg >= 6 ? "🟡" : "🔴";
+                        return (
+                          <SelectItem key={s.client_id} value={s.client_id}>
+                            <span className="flex items-center gap-2">
+                              <span>{cls}</span>
+                              <span>{s.clientName}</span>
+                              <span className="text-muted-foreground ml-auto text-xs">({s.avg})</span>
+                            </span>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                  {selectedScore ? (
+                    <span className="text-sm font-bold tabular-nums" style={{ color: barColor(selectedScore.avg) }}>{selectedScore.avg}<span className="text-xs font-normal text-muted-foreground ml-1">/ 10</span></span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">—</span>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Category bars — always same position */}
+            <div className="space-y-3 flex-1">
+              {CATEGORY_KEYS.map((key) => {
+                const isClientMode = viewMode === "client" && selectedScore;
+                const value = isClientMode
+                  ? ((selectedScore as any)[key] as number)
+                  : totalClients > 0
                     ? +(currentScores.reduce((a, s) => a + ((s as any)[key] as number), 0) / totalClients).toFixed(1)
                     : 0;
-                  return (
-                    <div key={key} className="space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">{CATEGORY_LABELS[key]}</span>
-                        <span className="text-xs font-semibold tabular-nums" style={{ color: barColor(avg) }}>{avg}</span>
-                      </div>
-                      <div className="h-2 rounded-full bg-muted/60 overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all duration-700 ease-out"
-                          style={{ width: `${avg * 10}%`, backgroundColor: barColor(avg) }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              /* Per-client view */
-              <div className="space-y-4">
-                {/* Client selector */}
-                <Select value={selectedClientId} onValueChange={setSelectedClientId}>
-                  <SelectTrigger className="h-9 text-sm">
-                    <SelectValue placeholder="Selecione um cliente" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {sortedClients.map((s) => {
-                      const cls = s.avg >= 8 ? "🟢" : s.avg >= 6 ? "🟡" : "🔴";
-                      return (
-                        <SelectItem key={s.client_id} value={s.client_id}>
-                          <span className="flex items-center gap-2">
-                            <span>{cls}</span>
-                            <span>{s.clientName}</span>
-                            <span className="text-muted-foreground ml-auto text-xs">({s.avg})</span>
-                          </span>
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
 
-                {selectedScore ? (
-                  <div className="space-y-3">
-                    {/* Score badge */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-2xl font-bold tabular-nums" style={{ color: barColor(selectedScore.avg) }}>
-                        {selectedScore.avg}
+                const hasDiff = bestCategory?.key !== worstCategory?.key;
+                const isWorst = isClientMode && hasDiff && worstCategory?.key === key && value < 8;
+                const isBest = isClientMode && hasDiff && bestCategory?.key === key;
+
+                return (
+                  <div key={key} className={cn("space-y-1 rounded-lg px-2 py-1.5 -mx-2 transition-colors", isWorst && "bg-destructive/5")}>
+                    <div className="flex items-center justify-between">
+                      <span className={cn("text-xs", isWorst ? "text-destructive font-medium" : "text-muted-foreground")}>
+                        {CATEGORY_LABELS[key]}
+                        {isBest && <span className="ml-1.5 text-emerald-500">★</span>}
+                        {isWorst && <span className="ml-1.5">⚠</span>}
                       </span>
-                      <span className="text-xs text-muted-foreground">/ 10</span>
+                      <span className="text-xs font-semibold tabular-nums" style={{ color: barColor(value) }}>{value}</span>
                     </div>
-
-                    {/* Category bars */}
-                    {clientDimensions.map((d) => {
-                      const hasDiff = bestCategory?.key !== worstCategory?.key;
-                      const isWorst = hasDiff && worstCategory?.key === d.key && d.value < 8;
-                      const isBest = hasDiff && bestCategory?.key === d.key;
-                      return (
-                        <div key={d.key} className={cn("space-y-1 rounded-lg px-2 py-1.5 -mx-2 transition-colors", isWorst && "bg-destructive/5")}>
-                          <div className="flex items-center justify-between">
-                            <span className={cn("text-xs", isWorst ? "text-destructive font-medium" : "text-muted-foreground")}>
-                              {d.label}
-                              {isBest && <span className="ml-1.5 text-emerald-500">★</span>}
-                              {isWorst && <span className="ml-1.5">⚠</span>}
-                            </span>
-                            <span className="text-xs font-semibold tabular-nums" style={{ color: barColor(d.value) }}>{d.value}</span>
-                          </div>
-                          <div className="h-2 rounded-full bg-muted/60 overflow-hidden">
-                            <div
-                              className="h-full rounded-full transition-all duration-700 ease-out"
-                              style={{ width: `${d.value * 10}%`, backgroundColor: barColor(d.value) }}
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
-
-                    {/* Diagnostic — only show when best and worst are different */}
-                    {bestCategory && worstCategory && bestCategory.key !== worstCategory.key && (
-                      <div className="mt-3 space-y-2 border-t border-border/40 pt-3">
-                        {bestCategory.value >= 6 && (
-                          <div className="flex items-start gap-2">
-                            <ThumbsUp className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
-                            <p className="text-xs text-muted-foreground leading-relaxed">
-                              <span className="font-medium text-emerald-500">{bestCategory.label}</span> é o ponto forte deste cliente
-                            </p>
-                          </div>
-                        )}
-                        {worstCategory.value < 8 && (
-                          <div className="flex items-start gap-2">
-                            <ThumbsDown className="h-3.5 w-3.5 text-destructive mt-0.5 shrink-0" />
-                            <p className="text-xs text-muted-foreground leading-relaxed">
-                              <span className="font-medium text-destructive">{worstCategory.label}</span> precisa de atenção
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                    <div className="h-2 rounded-full bg-muted/60 overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-700 ease-out"
+                        style={{ width: `${value * 10}%`, backgroundColor: barColor(value) }}
+                      />
+                    </div>
                   </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-8 text-center">
-                    <Users className="h-8 w-8 text-muted-foreground/40 mb-2" />
-                    <p className="text-xs text-muted-foreground">Selecione um cliente para ver o diagnóstico detalhado</p>
+                );
+              })}
+            </div>
+
+            {/* Diagnostic — only in client mode when categories differ */}
+            {viewMode === "client" && selectedScore && bestCategory && worstCategory && bestCategory.key !== worstCategory.key && (
+              <div className="mt-3 space-y-2 border-t border-border/40 pt-3">
+                {bestCategory.value >= 6 && (
+                  <div className="flex items-start gap-2">
+                    <ThumbsUp className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      <span className="font-medium text-emerald-500">{bestCategory.label}</span> é o ponto forte deste cliente
+                    </p>
+                  </div>
+                )}
+                {worstCategory.value < 8 && (
+                  <div className="flex items-start gap-2">
+                    <ThumbsDown className="h-3.5 w-3.5 text-destructive mt-0.5 shrink-0" />
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      <span className="font-medium text-destructive">{worstCategory.label}</span> precisa de atenção
+                    </p>
                   </div>
                 )}
               </div>
