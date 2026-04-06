@@ -274,7 +274,7 @@ export function ChurnRiskModule() {
       </div>
 
       {/* Charts area */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className={cn("grid grid-cols-1 gap-4", viewMode === "overview" ? "lg:grid-cols-2" : "lg:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)]")}>
         {/* Donut Chart */}
         <Card className="border-border/60">
           <CardContent className="py-5 px-5">
