@@ -265,9 +265,68 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="edit_birth_date">Data de nascimento</Label>
-            <DatePicker value={form.watch("birth_date") ?? ""} onChange={(v) => form.setValue("birth_date", v)} className="w-full" />
-            
+            <Label>Data de nascimento</Label>
+            <Controller
+              control={form.control}
+              name="birth_date"
+              render={({ field }) => {
+                const parts = (field.value ?? "").split("-");
+                const y = parts[0] ?? "";
+                const m = parts[1] ?? "";
+                const d = parts[2] ?? "";
+
+                const update = (ny: string, nm: string, nd: string) => {
+                  if (ny && nm && nd) {
+                    field.onChange(`${ny}-${nm.padStart(2, "0")}-${nd.padStart(2, "0")}`);
+                  } else {
+                    field.onChange("");
+                  }
+                };
+
+                const currentYear = new Date().getFullYear();
+                const years = Array.from({ length: 80 }, (_, i) => String(currentYear - i));
+                const months = Array.from({ length: 12 }, (_, i) => String(i + 1));
+                const daysInMonth = m && y ? new Date(Number(y), Number(m), 0).getDate() : 31;
+                const days = Array.from({ length: daysInMonth }, (_, i) => String(i + 1));
+
+                const monthNames = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+
+                return (
+                  <div className="flex gap-2">
+                    <Select value={d} onValueChange={(v) => update(y, m, v)}>
+                      <SelectTrigger className="w-[80px]">
+                        <SelectValue placeholder="Dia" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-56">
+                        {days.map((day) => (
+                          <SelectItem key={day} value={day}>{day}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select value={m ? String(Number(m)) : ""} onValueChange={(v) => update(y, v, d)}>
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Mês" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-56">
+                        {months.map((mo, i) => (
+                          <SelectItem key={mo} value={mo}>{monthNames[i]}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select value={y} onValueChange={(v) => update(v, m, d)}>
+                      <SelectTrigger className="w-[90px]">
+                        <SelectValue placeholder="Ano" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-56">
+                        {years.map((yr) => (
+                          <SelectItem key={yr} value={yr}>{yr}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                );
+              }}
+            />
           </div>
 
           <DialogFooter>
