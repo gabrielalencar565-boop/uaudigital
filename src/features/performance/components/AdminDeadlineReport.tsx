@@ -308,7 +308,7 @@ export function AdminDeadlineReport({
     }
 
     return Array.from(byUser.values()).sort((a, b) => b.total - a.total);
-  }, [team, tasksQ.data, overrideByTaskId, assigneesByTask, scoringConfigMap]);
+  }, [team, tasksQ.data, overrideByTaskId, assigneesByTask, scoringConfigMap, pmTagsMap]);
 
   // Auto-recompute: compare report totals with stored performance_scores.metas_prazos
   const storedScoresQ = useQuery({
