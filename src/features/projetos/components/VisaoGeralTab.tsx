@@ -764,20 +764,22 @@ export function VisaoGeralTab() {
       </FadeUp>
 
 
-      {/* ═══ DESEMPENHO POR SQUAD — WIDGET COM ABAS ═══ */}
-      {heatmapData.length > 0 && (
-        <FadeUp delay={0.5}>
+      {/* ═══ DESEMPENHO POR SQUAD + PROGRESSO DA OPERAÇÃO ═══ */}
+      <FadeUp delay={0.5}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Desempenho por Squad */}
+          {heatmapData.length > 0 && (
           <Card>
             <CardContent className="py-6 px-6 space-y-5">
               {/* Header + Tabs */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="h-12 w-12 rounded-2xl bg-sidebar/10 flex items-center justify-center">
-                    <BarChart2 className="h-6 w-6 text-sidebar" />
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-sidebar/10 flex items-center justify-center">
+                    <BarChart2 className="h-5 w-5 text-sidebar" />
                   </div>
                   <div>
-                    <p className="text-xl font-bold leading-none">Desempenho por Squad</p>
-                    <p className="mt-1.5 text-sm text-muted-foreground">{format(now, "MMMM yyyy", { locale: ptBR })}</p>
+                    <p className="text-base font-bold leading-none">Desempenho por Squad</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{format(now, "MMMM yyyy", { locale: ptBR })}</p>
                   </div>
                 </div>
                 <Tabs value={squadDashTab} onValueChange={(v) => setSquadDashTab(v as any)} className="w-auto">
@@ -1057,12 +1059,11 @@ export function VisaoGeralTab() {
               )}
             </CardContent>
           </Card>
-        </FadeUp>
-      )}
+          )}
 
-      {/* Análise Mensal da Operação */}
-      <FadeUp delay={0.6}>
-        <MonthlyAnalysisSection />
+          {/* Progresso da Operação */}
+          <MonthlyAnalysisSection />
+        </div>
       </FadeUp>
 
       {/* Health Score access */}
