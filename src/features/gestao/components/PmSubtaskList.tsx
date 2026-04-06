@@ -164,12 +164,9 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
                         isAlt && "border-amber-500 bg-amber-500/20"
                       )}
                       onClick={(e) => {
-                        // Single click = toggle done (only if not in alterações)
-                        if (!isAlt) {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          toggleDone(sub);
-                        }
+                        e.preventDefault();
+                        e.stopPropagation();
+                        toggleDone(sub);
                       }}
                     >
                       {isDone && <Check className="h-3 w-3 text-white" />}
