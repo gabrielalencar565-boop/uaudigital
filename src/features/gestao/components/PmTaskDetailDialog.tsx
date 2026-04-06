@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import {
-  Calendar, UserCircle, Flag, X, ChevronRight, ArrowLeft,
+  Calendar, UserCircle, Flag, X, ChevronRight, ArrowLeft, Trash2,
   Layers, Tag, MessageSquare, Plus, Check, CheckCircle2, RotateCcw, Paperclip, ListTodo, FileText, CalendarDays
 } from "lucide-react";
 import { addDays, format, parseISO } from "date-fns";
