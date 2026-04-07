@@ -95,10 +95,10 @@ function LinkPreviewCard({ preview, url }: { preview: LinkPreviewData; url: stri
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className="mt-2 block rounded-xl border border-border/50 bg-card/80 overflow-hidden hover:shadow-md hover:border-border/80 transition-all group"
+      className="mt-2 block rounded-xl border border-border/50 bg-card/80 overflow-hidden hover:shadow-md hover:border-border/80 transition-all group max-w-full"
     >
       {preview.image && (
-        <div className="relative w-full max-h-52 overflow-hidden bg-muted/30">
+        <div className="relative w-full h-[280px] overflow-hidden bg-muted/30">
           <img
             src={preview.image}
             alt={preview.title ?? ""}
@@ -417,7 +417,7 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
 
   return (
     <div className="flex flex-col gap-3 h-full">
-      <div className="flex-1 space-y-3 min-h-0 overflow-y-auto">
+      <div className="flex-1 space-y-3 min-h-0 overflow-y-auto overflow-x-hidden">
         {timeline.length === 0 && (
           <p className="text-xs text-muted-foreground text-center py-4">Nenhuma atividade ainda.</p>
         )}
