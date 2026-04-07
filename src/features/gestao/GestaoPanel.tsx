@@ -445,8 +445,15 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
   const [reportOpen, setReportOpen] = useState(false);
   const [trashOpen, setTrashOpen] = useState(false);
   const [draggedTask, setDraggedTask] = useState<PmTask | null>(null);
+  const [highlightOverdue, setHighlightOverdue] = useState(false);
 
   const todayKey = format(new Date(), "yyyy-MM-dd");
+
+  const isOverdue = (t: PmTask) =>
+    (t.due_date ?? "") < todayKey && t.status_global !== "concluido" && t.stage_current !== "entrega";
+
+  const dayHasOverdue = (dayKey: string) =>
+    dayKey < todayKey && (tasksByDay.get(dayKey) ?? []).some((t) => t.status_global !== "concluido" && t.stage_current !== "entrega");
 
   const prevMonth = subMonths(startOfMonth(cursor), 1);
   const nextMonth = addMonths(startOfMonth(cursor), 1);
