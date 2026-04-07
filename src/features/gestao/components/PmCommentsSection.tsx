@@ -83,7 +83,7 @@ function formatActionText(action: string, metadata: any, membersMap: Record<stri
 }
 
 /* ── Link Preview Card Component ── */
-function LinkPreviewCard({ preview, url }: { preview: LinkPreviewData; url: string }) {
+function LinkPreviewCard({ preview, url, onOpenPreview }: { preview: LinkPreviewData; url: string; onOpenPreview?: (img: string) => void }) {
   const hostname = (() => { try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return url; } })();
   const isYouTube = preview.platform === "youtube";
   const isInstagram = preview.platform === "instagram";
@@ -91,14 +91,28 @@ function LinkPreviewCard({ preview, url }: { preview: LinkPreviewData; url: stri
   const PlatformIcon = isInstagram ? Instagram : isYouTube ? Youtube : Globe;
   const platformLabel = preview.site_name || (isInstagram ? "Instagram" : isYouTube ? "YouTube" : hostname);
 
+  const handleCopy = (e: React.MouseEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    navigator.clipboard.writeText(url);
+    (await import("sonner")).toast.success("Link copiado!");
+  };
+
+  const handleOpen = (e: React.MouseEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    window.open(url, "_blank");
+  };
+
+  const handlePreview = (e: React.MouseEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    if (preview.image && onOpenPreview) onOpenPreview(preview.image);
+  };
+
   return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="mt-2 block rounded-2xl border border-border/40 bg-card overflow-hidden hover:shadow-lg hover:border-border/60 transition-all group max-w-full"
+    <div
+      className="mt-2 rounded-2xl border border-border/40 bg-card overflow-hidden hover:shadow-lg hover:border-border/60 transition-all cursor-pointer max-w-full"
+      onClick={() => window.open(url, "_blank")}
     >
-      {/* Header – Instagram/platform style */}
+      {/* Header */}
       <div className="flex items-center justify-between px-3 py-2.5">
         <div className="flex items-center gap-2 min-w-0">
           <div className="h-8 w-8 rounded-full bg-muted/50 border border-border/30 flex items-center justify-center shrink-0 overflow-hidden">
@@ -120,26 +134,52 @@ function LinkPreviewCard({ preview, url }: { preview: LinkPreviewData; url: stri
         </span>
       </div>
 
-      {/* Image – full width, no crop */}
+      {/* Image with hover actions */}
       {preview.image && (
-        <div className="relative w-full bg-muted/20">
+        <div className="relative w-full bg-muted/20 group/img">
           <img
             src={preview.image}
             alt={preview.title ?? ""}
-            className="w-full h-auto max-h-[500px] object-cover"
+            className="w-full h-auto max-h-[500px] object-cover block"
             loading="lazy"
           />
           {isYouTube && (
-            <div className="absolute inset-0 flex items-center justify-center">
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="h-14 w-14 rounded-full bg-destructive/90 flex items-center justify-center shadow-lg">
                 <Play className="h-6 w-6 text-destructive-foreground ml-0.5" fill="currentColor" />
               </div>
             </div>
           )}
+          {/* Hover overlay with actions */}
+          <div className="absolute inset-0 bg-background/50 opacity-0 group-hover/img:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-2">
+            <button
+              onClick={handleCopy}
+              className="h-9 w-9 rounded-full bg-card/90 border border-border/50 flex items-center justify-center hover:bg-card transition shadow-md"
+              title="Copiar link"
+            >
+              <Copy className="h-4 w-4 text-foreground/80" />
+            </button>
+            <button
+              onClick={handleOpen}
+              className="h-9 w-9 rounded-full bg-card/90 border border-border/50 flex items-center justify-center hover:bg-card transition shadow-md"
+              title="Abrir link"
+            >
+              <ExternalLink className="h-4 w-4 text-foreground/80" />
+            </button>
+            {onOpenPreview && (
+              <button
+                onClick={handlePreview}
+                className="h-9 w-9 rounded-full bg-card/90 border border-border/50 flex items-center justify-center hover:bg-card transition shadow-md"
+                title="Pré-visualizar"
+              >
+                <Eye className="h-4 w-4 text-foreground/80" />
+              </button>
+            )}
+          </div>
         </div>
       )}
 
-      {/* Footer – description */}
+      {/* Footer */}
       {preview.description && (
         <div className="px-3 py-2.5">
           <p className="text-[12px] text-muted-foreground leading-relaxed line-clamp-2">
@@ -147,7 +187,7 @@ function LinkPreviewCard({ preview, url }: { preview: LinkPreviewData; url: stri
           </p>
         </div>
       )}
-    </a>
+    </div>
   );
 }
 
