@@ -516,7 +516,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
       list = list.filter((t) => t.stage_current === filterStage);
     }
     return list;
-  }, [tasks, filterClient, filterAssignee, search, clientsMap, fixedAssigneeClientIds]);
+  }, [tasks, filterClient, filterAssignee, search, clientsMap, fixedAssigneeClientIds, filterStage]);
 
   const days = useMemo(() => {
     const start = startOfWeek(startOfMonth(cursor), { weekStartsOn: 0 });
