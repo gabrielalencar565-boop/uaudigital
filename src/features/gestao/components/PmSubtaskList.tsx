@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, ChevronRight, Check, RotateCcw, Trash2 } from "lucide-react";
+import { Plus, ChevronRight, Check, RotateCcw, Trash2, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useQuery } from "@tanstack/react-query";
 import { PM_ACTIVE_STAGES, getStageCircleColor, stageLabel, tagColor, tagDisplay } from "../pm-constants";
 import { useUpdatePmTask, useCreatePmTask } from "../hooks/use-pm-data";
 import { PmAssigneeSelector } from "./PmAssigneeSelector";
@@ -32,10 +34,44 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
   const { stageAssignees } = useDefaultFlowWithDates();
   const [newTitle, setNewTitle] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showTrash, setShowTrash] = useState(false);
+  const [restoringId, setRestoringId] = useState<string | null>(null);
+
+  const sb2 = supabase as any;
+  const deletedSubsQ = useQuery<PmTask[]>({
+    queryKey: ["pm_deleted_subtasks", parentTask.id],
+    enabled: showTrash,
+    queryFn: async () => {
+      const { data, error } = await sb2
+        .from("pm_tasks")
+        .select("*")
+        .eq("parent_task_id", parentTask.id)
+        .not("deleted_at", "is", null)
+        .order("deleted_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const handleRestore = async (subId: string) => {
+    setRestoringId(subId);
+    try {
+      updateTask.mutate({ id: subId, deleted_at: null, deleted_by: null } as any, {
+        onSuccess: () => {
+          deletedSubsQ.refetch();
+          toast.success("Subtarefa restaurada!");
+        },
+      });
+    } finally {
+      setRestoringId(null);
+    }
+  };
 
   const handleSoftDelete = async (subId: string) => {
     const { data: { user } } = await supabase.auth.getUser();
-    updateTask.mutate({ id: subId, deleted_at: new Date().toISOString(), deleted_by: user?.id ?? null } as any);
+    updateTask.mutate({ id: subId, deleted_at: new Date().toISOString(), deleted_by: user?.id ?? null } as any, {
+      onSuccess: () => deletedSubsQ.refetch(),
+    });
     toast("Subtarefa movida para lixeira");
     setDeletingId(null);
   };
@@ -114,7 +150,60 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
             </div>
           </div>
         )}
+        <button
+          onClick={() => setShowTrash(!showTrash)}
+          className={cn(
+            "h-6 w-6 flex items-center justify-center rounded-md transition-all",
+            showTrash
+              ? "bg-destructive/10 text-destructive"
+              : "text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted"
+          )}
+          title="Lixeira de subtarefas"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
       </div>
+
+      {/* Trash panel */}
+      {showTrash && (
+        <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 space-y-2">
+          <div className="flex items-center gap-2">
+            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+            <span className="text-xs font-semibold text-destructive">Subtarefas excluídas</span>
+          </div>
+          {deletedSubsQ.isLoading ? (
+            <div className="flex justify-center py-4">
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            </div>
+          ) : (deletedSubsQ.data ?? []).length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-3">Nenhuma subtarefa na lixeira</p>
+          ) : (
+            <ScrollArea className={cn((deletedSubsQ.data ?? []).length > 4 && "h-[180px]")}>
+              <div className="space-y-1">
+                {(deletedSubsQ.data ?? []).map(sub => (
+                  <div key={sub.id} className="flex items-center gap-2 rounded-md border border-border/30 bg-card/50 px-2 py-1.5">
+                    <span className="flex-1 truncate text-xs text-muted-foreground line-through">{sub.title}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-xs gap-1"
+                      disabled={restoringId === sub.id}
+                      onClick={() => handleRestore(sub.id)}
+                    >
+                      {restoringId === sub.id ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <RotateCcw className="h-3 w-3" />
+                      )}
+                      Restaurar
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          )}
+        </div>
+      )}
 
       {/* Table header */}
       {total > 0 && (
