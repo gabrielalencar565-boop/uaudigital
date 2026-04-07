@@ -96,12 +96,20 @@ export function TaskActivityReport({ onClose, filterAction: externalFilter }: { 
     enabled: taskIds.length > 0,
     queryKey: ["task_activity_tasks", taskIds],
     queryFn: async (): Promise<TaskInfo[]> => {
-      const { data, error } = await supabase
-        .from("tasks")
-        .select("id, client_id, stage, assigned_user_id, title")
-        .in("id", taskIds);
-      if (error) throw error;
-      return (data ?? []) as TaskInfo[];
+      // Query both tasks and pm_tasks tables
+      const [agendaRes, pmRes] = await Promise.all([
+        supabase.from("tasks").select("id, client_id, stage, assigned_user_id, title").in("id", taskIds),
+        sb.from("pm_tasks").select("id, client_id, stage_current, assignee_id, title").in("id", taskIds),
+      ]);
+      const agendaTasks = (agendaRes.data ?? []) as TaskInfo[];
+      const pmTasks = ((pmRes.data ?? []) as any[]).map((t: any) => ({
+        id: t.id,
+        client_id: t.client_id,
+        stage: t.stage_current,
+        assigned_user_id: t.assignee_id,
+        title: t.title,
+      }));
+      return [...agendaTasks, ...pmTasks];
     },
   });
 
