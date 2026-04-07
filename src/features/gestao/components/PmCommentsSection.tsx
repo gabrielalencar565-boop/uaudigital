@@ -124,11 +124,11 @@ function LinkPreviewCard({ preview, url, onOpenPreview }: { preview: LinkPreview
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className="group mt-2 block rounded-2xl border border-border/40 bg-card overflow-hidden hover:shadow-lg hover:border-border/60 transition-all cursor-pointer max-w-full no-underline"
+      className="group mt-2 block rounded-2xl border border-border/40 bg-card overflow-hidden hover:shadow-lg hover:border-border/60 transition-all cursor-pointer max-w-full no-underline text-left"
       onClick={(e) => { e.preventDefault(); openLink(); }}
     >
       {/* Header with actions top-right on hover */}
-      <div className="flex items-center justify-between px-3 py-2.5">
+      <div className="flex items-center justify-between px-3 py-2.5 text-left">
         <div className="flex items-center gap-2 min-w-0">
           <div className="h-8 w-8 rounded-full bg-muted/50 border border-border/30 flex items-center justify-center shrink-0 overflow-hidden">
             {preview.image ? (
