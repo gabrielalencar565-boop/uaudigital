@@ -445,8 +445,15 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
   const [reportOpen, setReportOpen] = useState(false);
   const [trashOpen, setTrashOpen] = useState(false);
   const [draggedTask, setDraggedTask] = useState<PmTask | null>(null);
+  const [highlightOverdue, setHighlightOverdue] = useState(false);
 
   const todayKey = format(new Date(), "yyyy-MM-dd");
+
+  const isOverdue = (t: PmTask) =>
+    (t.due_date ?? "") < todayKey && t.status_global !== "concluido" && t.stage_current !== "entrega";
+
+  const dayHasOverdue = (dayKey: string) =>
+    dayKey < todayKey && (tasksByDay.get(dayKey) ?? []).some((t) => t.status_global !== "concluido" && t.stage_current !== "entrega");
 
   const prevMonth = subMonths(startOfMonth(cursor), 1);
   const nextMonth = addMonths(startOfMonth(cursor), 1);
@@ -702,9 +709,10 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
         onDragEnd={isLegacy ? undefined : () => setDraggedTask(null)}
         className={cn("w-full rounded-xl border backdrop-blur-sm p-2 text-left transition-all hover:shadow-sm hover:-translate-y-0.5 group/card shadow-[0_1px_3px_0_hsl(var(--foreground)/0.06)]",
           isAlteracaoWithOrigin ? "border-[#f5b800]/40" : "bg-card/60 hover:bg-card border-border/30",
-          isLegacy ? "cursor-default border-border/40 border-dashed" : "cursor-grab active:cursor-grabbing"
+          isLegacy ? "cursor-default border-border/40 border-dashed" : "cursor-grab active:cursor-grabbing",
+          highlightOverdue && isOverdue(t) && "bg-destructive/10 border-destructive/40 ring-1 ring-destructive/30"
         )}
-        style={isAlteracaoWithOrigin ? { background: 'linear-gradient(135deg, #FED404 0%, #FF9A02 100%)' } : undefined}
+        style={isAlteracaoWithOrigin && !(highlightOverdue && isOverdue(t)) ? { background: 'linear-gradient(135deg, #FED404 0%, #FF9A02 100%)' } : undefined}
         onClick={isLegacy ? undefined : () => onTaskClick(t)}>
         <div className="flex items-center justify-between gap-1">
           <div className={cn("inline-flex h-5 items-center rounded-md px-2 text-[9px] font-bold text-white tracking-wide", stageBg)}>
@@ -833,10 +841,16 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
               .filter(([k]) => k < todayKey)
               .reduce((sum, [, ts]) => sum + ts.filter(t => t.status_global !== "concluido").length, 0);
             return overdueCount > 0 ? (
-              <Badge variant="destructive" className="gap-1 rounded-xl px-2.5 py-1 text-xs font-semibold">
-                <TriangleAlert className="h-3.5 w-3.5" />
-                {overdueCount} atrasada{overdueCount !== 1 ? "s" : ""}
-              </Badge>
+              <button
+                type="button"
+                onClick={() => setHighlightOverdue((v) => !v)}
+                className="focus:outline-none"
+              >
+                <Badge variant="destructive" className={cn("gap-1 rounded-xl px-2.5 py-1 text-xs font-semibold cursor-pointer transition-all", highlightOverdue && "ring-2 ring-destructive/60 ring-offset-2 ring-offset-background shadow-md")}>
+                  <TriangleAlert className="h-3.5 w-3.5" />
+                  {overdueCount} atrasada{overdueCount !== 1 ? "s" : ""}
+                </Badge>
+              </button>
             ) : null;
           })()}
           {isAdmin && (
@@ -883,7 +897,8 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
                   key={key}
                   className={cn(
                     "rounded-xl border p-3 transition",
-                    isToday ? "border-primary/40 bg-primary/5" : "border-border/30 bg-card/20"
+                    isToday ? "border-primary/40 bg-primary/5" : "border-border/30 bg-card/20",
+                    !isToday && dayHasOverdue(key) && "border-destructive/50 border-2"
                   )}>
                   <div className="flex items-center gap-2 mb-2">
                     <div className={cn(
@@ -935,7 +950,8 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
                     key={key}
                     className={cn(
                       "w-[280px] flex-shrink-0 rounded-xl border bg-card/10 p-4 transition",
-                      isToday ? "border-primary ring-2 ring-primary/40" : "border-border/60"
+                      isToday ? "border-primary ring-2 ring-primary/40" : "border-border/60",
+                      !isToday && dayHasOverdue(key) && "border-destructive/50 border-2"
                     )}>
                     <div className="flex items-start justify-between gap-2 mb-4">
                       <div className="min-w-0">
@@ -988,10 +1004,11 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
             return (
               <div
                 key={key}
-                className={cn(
-                  "rounded-xl border p-3 space-y-2",
-                  isToday ? "border-primary/40 bg-primary/5" : "border-border/30 bg-card/20"
-                )}>
+                  className={cn(
+                    "rounded-xl border p-3 space-y-2",
+                    isToday ? "border-primary/40 bg-primary/5" : "border-border/30 bg-card/20",
+                    !isToday && dayHasOverdue(key) && "border-destructive/50 border-2"
+                  )}>
                 <div className="flex items-center gap-2">
                   <div className={cn(
                     "grid h-7 w-7 place-items-center rounded-lg text-xs font-bold",
@@ -1049,7 +1066,8 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
                   }}
                   className={cn("group/cell relative min-h-28 rounded-2xl border border-[#d9d9d9] bg-card/30 backdrop-blur-sm p-2.5 transition-all calendar-card-hover",
                     inMonth ? "opacity-100" : "opacity-30 border-transparent",
-                    isToday && "border-primary/50 ring-2 ring-primary/15 bg-primary/5"
+                    isToday && "border-primary/50 ring-2 ring-primary/15 bg-primary/5",
+                    !isToday && inMonth && dayHasOverdue(key) && "border-destructive/50 border-2"
                   )}>
                   <div className="flex items-center justify-between mb-2">
                     <div className={cn(
