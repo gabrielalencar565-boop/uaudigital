@@ -97,9 +97,19 @@ function LinkPreviewCard({ preview, url, onOpenPreview }: { preview: LinkPreview
     toast.success("Link copiado!");
   };
 
+  const openLink = () => {
+    const a = document.createElement("a");
+    a.href = url;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
   const handleOpen = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
-    window.open(url, "_blank", "noopener,noreferrer");
+    openLink();
   };
 
   const handlePreview = (e: React.MouseEvent) => {
