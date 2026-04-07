@@ -915,6 +915,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
               return (
                 <div
                   key={key}
+                  data-day-key={key}
                   className={cn(
                     "rounded-xl border p-3 transition",
                     isToday ? "border-primary/40 bg-primary/5" : "border-border/30 bg-card/20",
