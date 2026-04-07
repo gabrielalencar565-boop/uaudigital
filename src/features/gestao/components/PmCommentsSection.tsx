@@ -99,7 +99,7 @@ function LinkPreviewCard({ preview, url, onOpenPreview }: { preview: LinkPreview
 
   const handleOpen = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
-    window.open(url, "_blank");
+    window.open(url, "_blank", "noopener,noreferrer");
   };
 
   const handlePreview = (e: React.MouseEvent) => {
