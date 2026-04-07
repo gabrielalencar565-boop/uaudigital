@@ -769,7 +769,7 @@ export function VisaoGeralTab() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
           {/* Desempenho por Squad */}
           {heatmapData.length > 0 && (
-          <Card className="flex flex-col min-h-[580px]">
+          <Card className="flex flex-col min-h-[320px] h-[420px] resize-y overflow-auto">
             <CardContent className="py-6 px-6 space-y-5 flex-1 flex flex-col">
               {/* Header + Tabs */}
               <div className="flex flex-col gap-3">
