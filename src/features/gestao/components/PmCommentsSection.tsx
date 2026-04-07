@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Send, ChevronDown, ChevronUp, ImagePlus, X, ExternalLink, Play, Instagram, Youtube, Globe, Copy, Eye } from "lucide-react";
+import { Send, ChevronDown, ChevronUp, ImagePlus, X, ExternalLink, Play, Instagram, Youtube, Globe, Link2, Maximize2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -109,10 +109,10 @@ function LinkPreviewCard({ preview, url, onOpenPreview }: { preview: LinkPreview
 
   return (
     <div
-      className="mt-2 rounded-2xl border border-border/40 bg-card overflow-hidden hover:shadow-lg hover:border-border/60 transition-all cursor-pointer max-w-full"
+      className="group mt-2 rounded-2xl border border-border/40 bg-card overflow-hidden hover:shadow-lg hover:border-border/60 transition-all cursor-pointer max-w-full"
       onClick={() => window.open(url, "_blank")}
     >
-      {/* Header */}
+      {/* Header with actions top-right on hover */}
       <div className="flex items-center justify-between px-3 py-2.5">
         <div className="flex items-center gap-2 min-w-0">
           <div className="h-8 w-8 rounded-full bg-muted/50 border border-border/30 flex items-center justify-center shrink-0 overflow-hidden">
@@ -129,14 +129,38 @@ function LinkPreviewCard({ preview, url, onOpenPreview }: { preview: LinkPreview
             <span className="text-[10px] text-muted-foreground">{platformLabel}</span>
           </div>
         </div>
-        <span className="shrink-0 text-[11px] font-medium px-3 py-1 rounded-md bg-primary text-primary-foreground">
-          {isInstagram ? "Ver perfil" : "Abrir"}
-        </span>
+
+        {/* Action buttons — visible on card hover */}
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          <button
+            onClick={handleCopy}
+            className="h-7 w-7 rounded-md flex items-center justify-center hover:bg-muted/80 transition"
+            title="Copiar link"
+          >
+            <Link2 className="h-3.5 w-3.5 text-muted-foreground" />
+          </button>
+          <button
+            onClick={handleOpen}
+            className="h-7 w-7 rounded-md flex items-center justify-center hover:bg-muted/80 transition"
+            title="Abrir link"
+          >
+            <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
+          </button>
+          {onOpenPreview && preview.image && (
+            <button
+              onClick={handlePreview}
+              className="h-7 w-7 rounded-md flex items-center justify-center hover:bg-muted/80 transition"
+              title="Expandir"
+            >
+              <Maximize2 className="h-3.5 w-3.5 text-muted-foreground" />
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Image with hover actions */}
+      {/* Image — no overlay */}
       {preview.image && (
-        <div className="relative w-full bg-muted/20 group/img">
+        <div className="relative w-full bg-muted/20">
           <img
             src={preview.image}
             alt={preview.title ?? ""}
@@ -150,32 +174,6 @@ function LinkPreviewCard({ preview, url, onOpenPreview }: { preview: LinkPreview
               </div>
             </div>
           )}
-          {/* Hover overlay with actions */}
-          <div className="absolute inset-0 bg-background/50 opacity-0 group-hover/img:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-2">
-            <button
-              onClick={handleCopy}
-              className="h-9 w-9 rounded-full bg-card/90 border border-border/50 flex items-center justify-center hover:bg-card transition shadow-md"
-              title="Copiar link"
-            >
-              <Copy className="h-4 w-4 text-foreground/80" />
-            </button>
-            <button
-              onClick={handleOpen}
-              className="h-9 w-9 rounded-full bg-card/90 border border-border/50 flex items-center justify-center hover:bg-card transition shadow-md"
-              title="Abrir link"
-            >
-              <ExternalLink className="h-4 w-4 text-foreground/80" />
-            </button>
-            {onOpenPreview && (
-              <button
-                onClick={handlePreview}
-                className="h-9 w-9 rounded-full bg-card/90 border border-border/50 flex items-center justify-center hover:bg-card transition shadow-md"
-                title="Pré-visualizar"
-              >
-                <Eye className="h-4 w-4 text-foreground/80" />
-              </button>
-            )}
-          </div>
         </div>
       )}
 
