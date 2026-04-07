@@ -506,7 +506,7 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
         {typingLoading && <LinkPreviewSkeleton />}
         {typingPreview && !typingLoading && extractUrl(content) && (
           <div className="mb-2">
-            <LinkPreviewCard preview={typingPreview} url={extractUrl(content)!} onOpenPreview={(img) => setPreviewModal(img)} />
+            <LinkPreviewCard preview={typingPreview} url={extractUrl(content)!} onOpenPreview={(data) => setPreviewModal(data)} />
           </div>
         )}
 
