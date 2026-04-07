@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { PM_STAGES } from "./pm-constants";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Plus, Search, LayoutGrid, CalendarDays, FolderOpen, Settings2, CheckCircle2, FileSpreadsheet, Trash2, FileText, Users, ChevronLeft, ChevronRight, CalendarRange, Cake, Star, Calendar, TriangleAlert } from "lucide-react";
 import { addDays, addMonths, subMonths, endOfMonth, format, startOfMonth, startOfWeek } from "date-fns";
@@ -74,6 +75,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
   // Kanban defaults to logged-in user; Agenda defaults to all
   const initialFilter = (forcedView ?? "kanban") === "agenda" ? "__all__" : (user?.id ?? "__all__");
   const [filterAssignee, setFilterAssignee] = useState(initialFilter);
+  const [filterStage, setFilterStage] = useState("__all__");
 
   useEffect(() => {
     if (effectiveView === "kanban" && user?.id) {
@@ -171,7 +173,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
     [membersQ.data]
   );
 
-  const filters = { clientId: filterClient === "__all__" ? undefined : filterClient, assigneeId: filterAssignee === "__all__" ? undefined : filterAssignee, search: search || undefined, fixedAssigneeClientIds };
+  const filters = { clientId: filterClient === "__all__" ? undefined : filterClient, assigneeId: filterAssignee === "__all__" ? undefined : filterAssignee, search: search || undefined, fixedAssigneeClientIds, stage: filterStage === "__all__" ? undefined : filterStage };
 
   const openCreate = (status?: string) => {
     setCreateDefaultStatus(status);
@@ -212,6 +214,17 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
                     {m.display_name}
                   </span>
                 </SelectItem>
+              )}
+            </SelectContent>
+          </Select>
+          <Select value={filterStage} onValueChange={setFilterStage}>
+            <SelectTrigger className="h-9 flex-1 min-w-[120px] sm:flex-none sm:w-44 rounded-xl text-sm bg-background/80 border-border/30">
+              <SelectValue placeholder="Todas as etapas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todas as etapas</SelectItem>
+              {PM_STAGES.filter(s => !["roteiro", "edicao"].includes(s.key)).map((s) =>
+                <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>
               )}
             </SelectContent>
           </Select>
@@ -326,7 +339,8 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
           clients={(clientsQ.data ?? []).map((c) => ({ id: c.id, name: c.name }))}
           members={membersList}
           avatarsPrimed={avatarsPrimed}
-          isAdmin={isAdmin} />
+          isAdmin={isAdmin}
+          filterStage={filterStage} />
 
         }
         {effectiveView === "clientes" &&
@@ -399,7 +413,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
 }
 
 // ─── Agenda Calendar View (matches main Agenda module) ───
-function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId, onTaskClick, filterClient, filterAssignee, search, cursor, setCursor, fixedAssigneeClientIds, clients, members, avatarsPrimed, isAdmin }: {
+function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId, onTaskClick, filterClient, filterAssignee, search, cursor, setCursor, fixedAssigneeClientIds, clients, members, avatarsPrimed, isAdmin, filterStage }: {
   tasks: PmTask[];
   clientsMap: Record<string, string>;
   membersMap: Record<string, { name: string; avatar?: string }>;
@@ -416,6 +430,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
   members: { id: string; name: string; avatar?: string }[];
   avatarsPrimed: boolean;
   isAdmin: boolean;
+  filterStage: string;
 }) {
   const isMobile = useIsMobile();
   const deleteTask = useDeletePmTask();
@@ -496,6 +511,9 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
     if (search) {
       const q = search.toLowerCase();
       list = list.filter((t) => t.title.toLowerCase().includes(q) || (clientsMap[t.client_id] ?? "").toLowerCase().includes(q));
+    }
+    if (filterStage && filterStage !== "__all__") {
+      list = list.filter((t) => t.stage_current === filterStage);
     }
     return list;
   }, [tasks, filterClient, filterAssignee, search, clientsMap, fixedAssigneeClientIds]);

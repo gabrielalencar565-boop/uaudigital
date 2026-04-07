@@ -66,7 +66,7 @@ interface Props {
   avatarsPrimed: boolean;
   onTaskClick: (task: PmTask) => void;
   onCreateClick: (status?: string) => void;
-  filters: { clientId?: string; assigneeId?: string; search?: string; fixedAssigneeClientIds?: Set<string> };
+  filters: { clientId?: string; assigneeId?: string; search?: string; fixedAssigneeClientIds?: Set<string>; stage?: string };
   isAdmin?: boolean;
 }
 
@@ -117,6 +117,9 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, av
     if (filters.search) {
       const q = filters.search.toLowerCase();
       list = list.filter((t) => t.title.toLowerCase().includes(q) || (t.description ?? "").toLowerCase().includes(q));
+    }
+    if (filters.stage) {
+      list = list.filter((t) => t.stage_current === filters.stage);
     }
     return list;
   }, [tasks, filters]);
