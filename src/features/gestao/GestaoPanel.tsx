@@ -710,7 +710,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
         className={cn("w-full rounded-xl border backdrop-blur-sm p-2 text-left transition-all hover:shadow-sm hover:-translate-y-0.5 group/card shadow-[0_1px_3px_0_hsl(var(--foreground)/0.06)]",
           isAlteracaoWithOrigin ? "border-[#f5b800]/40" : "bg-card/60 hover:bg-card border-border/30",
           isLegacy ? "cursor-default border-border/40 border-dashed" : "cursor-grab active:cursor-grabbing",
-          highlightOverdue && isOverdue(t) && "bg-destructive/10 border-destructive/40 ring-1 ring-destructive/30"
+          highlightOverdue && isOverdue(t) && "!bg-red-600 !border-red-600 ring-1 ring-red-500 text-white"
         )}
         style={isAlteracaoWithOrigin && !(highlightOverdue && isOverdue(t)) ? { background: 'linear-gradient(135deg, #FED404 0%, #FF9A02 100%)' } : undefined}
         onClick={isLegacy ? undefined : () => onTaskClick(t)}>
