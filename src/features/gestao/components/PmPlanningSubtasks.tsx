@@ -173,7 +173,7 @@ export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members
 function PlanningSection({
   type, icon, label, headerBg, headerText, borderColor,
   parentTask, tasks, doneCount,
-  membersMap, members, onSelectSubtask, activeSubtaskId,
+  membersMap, members, onSelectSubtask, activeSubtaskId, onDeleted,
 }: {
   type: "video" | "design";
   icon: React.ReactNode;
