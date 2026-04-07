@@ -217,6 +217,17 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
               )}
             </SelectContent>
           </Select>
+          <Select value={filterStage} onValueChange={setFilterStage}>
+            <SelectTrigger className="h-9 flex-1 min-w-[120px] sm:flex-none sm:w-44 rounded-xl text-sm bg-background/80 border-border/30">
+              <SelectValue placeholder="Todas as etapas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todas as etapas</SelectItem>
+              {PM_STAGES.filter(s => !["roteiro", "edicao"].includes(s.key)).map((s) =>
+                <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>
+              )}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
