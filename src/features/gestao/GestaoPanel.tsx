@@ -173,7 +173,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
     [membersQ.data]
   );
 
-  const filters = { clientId: filterClient === "__all__" ? undefined : filterClient, assigneeId: filterAssignee === "__all__" ? undefined : filterAssignee, search: search || undefined, fixedAssigneeClientIds };
+  const filters = { clientId: filterClient === "__all__" ? undefined : filterClient, assigneeId: filterAssignee === "__all__" ? undefined : filterAssignee, search: search || undefined, fixedAssigneeClientIds, stage: filterStage === "__all__" ? undefined : filterStage };
 
   const openCreate = (status?: string) => {
     setCreateDefaultStatus(status);
