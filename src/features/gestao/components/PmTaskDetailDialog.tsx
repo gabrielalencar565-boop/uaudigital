@@ -1213,7 +1213,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                 <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={async () => {
                   updateTask.mutate({ id: task.id, status_global: "concluido" });
                   const { data: { user: u } } = await supabase.auth.getUser();
-                  if (u) syncStage.mutate({ pmTaskId: task.id, completedStage: task.stage_current, userId: u.id, scoringUserIds: [task.assignee_id, ...(task.watchers ?? [])].filter(Boolean) as string[] });
+                   if (u) syncStage.mutate({ pmTaskId: task.id, completedStage: task.stage_current, userId: u.id });
                   toast.success("Subtarefa concluída ✓");
                 }}>
                   <CheckCircle2 className="h-4 w-4" /> Concluído
