@@ -339,7 +339,8 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
           clients={(clientsQ.data ?? []).map((c) => ({ id: c.id, name: c.name }))}
           members={membersList}
           avatarsPrimed={avatarsPrimed}
-          isAdmin={isAdmin} />
+          isAdmin={isAdmin}
+          filterStage={filterStage} />
 
         }
         {effectiveView === "clientes" &&
