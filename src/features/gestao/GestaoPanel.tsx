@@ -950,7 +950,8 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
                     key={key}
                     className={cn(
                       "w-[280px] flex-shrink-0 rounded-xl border bg-card/10 p-4 transition",
-                      isToday ? "border-primary ring-2 ring-primary/40" : "border-border/60"
+                      isToday ? "border-primary ring-2 ring-primary/40" : "border-border/60",
+                      !isToday && dayHasOverdue(key) && "border-destructive/50 border-2"
                     )}>
                     <div className="flex items-start justify-between gap-2 mb-4">
                       <div className="min-w-0">
