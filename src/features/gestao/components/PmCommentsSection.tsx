@@ -31,12 +31,6 @@ const previewCache = new Map<string, LinkPreviewData | null>();
 async function fetchLinkPreview(url: string): Promise<LinkPreviewData | null> {
   if (previewCache.has(url)) return previewCache.get(url) ?? null;
   try {
-    const res = await supabase.functions.invoke("link-preview", {
-      body: null,
-      headers: { "Content-Type": "application/json" },
-      method: "GET",
-    });
-    // supabase.functions.invoke doesn't support query params well, use fetch directly
     const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
     const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
     const fnUrl = `https://${projectId}.supabase.co/functions/v1/link-preview?url=${encodeURIComponent(url)}`;
