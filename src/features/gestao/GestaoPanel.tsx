@@ -839,7 +839,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
           {(() => {
             const overdueCount = Array.from(tasksByDay.entries())
               .filter(([k]) => k < todayKey)
-              .reduce((sum, [, ts]) => sum + ts.filter(t => t.status_global !== "concluido").length, 0);
+              .reduce((sum, [, ts]) => sum + ts.filter(t => isOverdue(t)).length, 0);
             return overdueCount > 0 ? (
               <button
                 type="button"
