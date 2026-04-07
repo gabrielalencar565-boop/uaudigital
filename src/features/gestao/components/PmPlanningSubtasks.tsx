@@ -122,7 +122,7 @@ function PlanningSection({
   members?: { id: string; name: string }[];
   onSelectSubtask?: (task: PmTask) => void;
   activeSubtaskId?: string | null;
-  onDeleted?: () => void;
+  
 }) {
   const updateTask = useUpdatePmTask();
   const createTask = useCreatePmTask();
