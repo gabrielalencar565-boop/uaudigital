@@ -67,13 +67,23 @@ function extractMeta(html: string, url: string) {
   else if (hostname.includes("twitter.com") || hostname.includes("x.com")) platform = "twitter";
   else if (hostname.includes("linkedin.com")) platform = "linkedin";
   else if (hostname.includes("tiktok.com")) platform = "tiktok";
+  // Decode HTML entities
+  const decode = (s: string | null) => {
+    if (!s) return null;
+    return s
+      .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/&#39;/g, "'")
+      .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n)))
+      .replace(/&#x([a-fA-F0-9]+);/g, (_, h) => String.fromCharCode(parseInt(h, 16)))
+      .trim();
+  };
 
   return {
-    title: title?.trim() || null,
-    description: description?.trim() || null,
-    image: image || null,
+    title: decode(title),
+    description: decode(description),
+    image: image?.replace(/&amp;/g, "&") || null,
     url: ogUrl,
-    site_name: siteName,
+    site_name: decode(siteName),
     platform,
   };
 }
