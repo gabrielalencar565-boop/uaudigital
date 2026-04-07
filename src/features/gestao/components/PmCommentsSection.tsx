@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Send, ChevronDown, ChevronUp, ImagePlus, X, ExternalLink, Play, Instagram, Youtube, Globe } from "lucide-react";
+import { Send, ChevronDown, ChevronUp, ImagePlus, X, ExternalLink, Play, Instagram, Youtube, Globe, Copy, Eye } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -83,7 +83,7 @@ function formatActionText(action: string, metadata: any, membersMap: Record<stri
 }
 
 /* ── Link Preview Card Component ── */
-function LinkPreviewCard({ preview, url }: { preview: LinkPreviewData; url: string }) {
+function LinkPreviewCard({ preview, url, onOpenPreview }: { preview: LinkPreviewData; url: string; onOpenPreview?: (img: string) => void }) {
   const hostname = (() => { try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return url; } })();
   const isYouTube = preview.platform === "youtube";
   const isInstagram = preview.platform === "instagram";
@@ -91,14 +91,28 @@ function LinkPreviewCard({ preview, url }: { preview: LinkPreviewData; url: stri
   const PlatformIcon = isInstagram ? Instagram : isYouTube ? Youtube : Globe;
   const platformLabel = preview.site_name || (isInstagram ? "Instagram" : isYouTube ? "YouTube" : hostname);
 
+  const handleCopy = (e: React.MouseEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    navigator.clipboard.writeText(url);
+    toast.success("Link copiado!");
+  };
+
+  const handleOpen = (e: React.MouseEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    window.open(url, "_blank");
+  };
+
+  const handlePreview = (e: React.MouseEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    if (preview.image && onOpenPreview) onOpenPreview(preview.image);
+  };
+
   return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="mt-2 block rounded-2xl border border-border/40 bg-card overflow-hidden hover:shadow-lg hover:border-border/60 transition-all group max-w-full"
+    <div
+      className="mt-2 rounded-2xl border border-border/40 bg-card overflow-hidden hover:shadow-lg hover:border-border/60 transition-all cursor-pointer max-w-full"
+      onClick={() => window.open(url, "_blank")}
     >
-      {/* Header – Instagram/platform style */}
+      {/* Header */}
       <div className="flex items-center justify-between px-3 py-2.5">
         <div className="flex items-center gap-2 min-w-0">
           <div className="h-8 w-8 rounded-full bg-muted/50 border border-border/30 flex items-center justify-center shrink-0 overflow-hidden">
@@ -120,26 +134,52 @@ function LinkPreviewCard({ preview, url }: { preview: LinkPreviewData; url: stri
         </span>
       </div>
 
-      {/* Image – full width, no crop */}
+      {/* Image with hover actions */}
       {preview.image && (
-        <div className="relative w-full bg-muted/20">
+        <div className="relative w-full bg-muted/20 group/img">
           <img
             src={preview.image}
             alt={preview.title ?? ""}
-            className="w-full h-auto max-h-[500px] object-cover"
+            className="w-full h-auto max-h-[500px] object-cover block"
             loading="lazy"
           />
           {isYouTube && (
-            <div className="absolute inset-0 flex items-center justify-center">
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="h-14 w-14 rounded-full bg-destructive/90 flex items-center justify-center shadow-lg">
                 <Play className="h-6 w-6 text-destructive-foreground ml-0.5" fill="currentColor" />
               </div>
             </div>
           )}
+          {/* Hover overlay with actions */}
+          <div className="absolute inset-0 bg-background/50 opacity-0 group-hover/img:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-2">
+            <button
+              onClick={handleCopy}
+              className="h-9 w-9 rounded-full bg-card/90 border border-border/50 flex items-center justify-center hover:bg-card transition shadow-md"
+              title="Copiar link"
+            >
+              <Copy className="h-4 w-4 text-foreground/80" />
+            </button>
+            <button
+              onClick={handleOpen}
+              className="h-9 w-9 rounded-full bg-card/90 border border-border/50 flex items-center justify-center hover:bg-card transition shadow-md"
+              title="Abrir link"
+            >
+              <ExternalLink className="h-4 w-4 text-foreground/80" />
+            </button>
+            {onOpenPreview && (
+              <button
+                onClick={handlePreview}
+                className="h-9 w-9 rounded-full bg-card/90 border border-border/50 flex items-center justify-center hover:bg-card transition shadow-md"
+                title="Pré-visualizar"
+              >
+                <Eye className="h-4 w-4 text-foreground/80" />
+              </button>
+            )}
+          </div>
         </div>
       )}
 
-      {/* Footer – description */}
+      {/* Footer */}
       {preview.description && (
         <div className="px-3 py-2.5">
           <p className="text-[12px] text-muted-foreground leading-relaxed line-clamp-2">
@@ -147,7 +187,7 @@ function LinkPreviewCard({ preview, url }: { preview: LinkPreviewData; url: stri
           </p>
         </div>
       )}
-    </a>
+    </div>
   );
 }
 
@@ -210,13 +250,20 @@ function useSavedPreview(comment: PmComment) {
   return { preview, loading };
 }
 
+/* ── Strip URLs from text when preview is active ── */
+function stripUrls(text: string): string {
+  return text.replace(/https?:\/\/[^\s]+/gi, "").trim();
+}
+
 /* ── Comment Bubble ── */
-function CommentBubble({ c, membersMap, formatMentions }: { c: PmComment; membersMap: Record<string, { name: string; avatar?: string }>; formatMentions: (t: string) => string }) {
+function CommentBubble({ c, membersMap, formatMentions, onOpenPreview }: { c: PmComment; membersMap: Record<string, { name: string; avatar?: string }>; formatMentions: (t: string) => string; onOpenPreview: (img: string) => void }) {
   const member = membersMap[c.author_id];
   const { preview, loading } = useSavedPreview(c);
+  const hasPreview = !!preview && !!c.link_url;
+  const displayContent = c.content ? (hasPreview ? stripUrls(formatMentions(c.content)) : formatMentions(c.content)) : "";
 
   return (
-    <div className="flex gap-2.5">
+    <div className="flex gap-2.5 items-start">
       <Avatar className="h-6 w-6 shrink-0 mt-0.5">
         <AvatarImage src={member?.avatar} />
         <AvatarFallback className="text-[8px] bg-primary/10 text-primary">{initials(member?.name ?? "?")}</AvatarFallback>
@@ -228,8 +275,8 @@ function CommentBubble({ c, membersMap, formatMentions }: { c: PmComment; member
             {format(new Date(c.created_at), "MMM d 'às' HH:mm", { locale: ptBR })}
           </span>
         </div>
-        {c.content && (
-          <p className="mt-1 whitespace-pre-wrap text-[13px] text-foreground/90 leading-relaxed">{formatMentions(c.content)}</p>
+        {displayContent && (
+          <p className="mt-1 whitespace-pre-wrap text-[13px] text-foreground/90 leading-relaxed">{displayContent}</p>
         )}
         {c.image_url && (
           <div className="mt-2">
@@ -245,7 +292,7 @@ function CommentBubble({ c, membersMap, formatMentions }: { c: PmComment; member
           </div>
         )}
         {loading && <LinkPreviewSkeleton />}
-        {preview && c.link_url && <LinkPreviewCard preview={preview} url={c.link_url} />}
+        {hasPreview && <LinkPreviewCard preview={preview!} url={c.link_url!} onOpenPreview={onOpenPreview} />}
       </div>
     </div>
   );
@@ -274,6 +321,7 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
   const [imageDescription, setImageDescription] = useState("");
   const [mentionMap, setMentionMap] = useState<Record<string, string>>({});
   const [expanded, setExpanded] = useState(false);
+  const [previewModal, setPreviewModal] = useState<string | null>(null);
 
   // Live link preview while typing
   const { preview: typingPreview, loading: typingLoading } = useTypingPreview(content);
@@ -400,7 +448,7 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
   const renderTimelineItem = (item: { type: "comment" | "activity"; data: any; timestamp: string }) => {
     if (item.type === "comment") {
       const c = item.data as PmComment;
-      return <CommentBubble key={`c-${c.id}`} c={c} membersMap={membersMap} formatMentions={formatMentions} />;
+      return <CommentBubble key={`c-${c.id}`} c={c} membersMap={membersMap} formatMentions={formatMentions} onOpenPreview={(img) => setPreviewModal(img)} />;
     } else {
       const a = item.data;
       const member = membersMap[a.created_by];
@@ -465,7 +513,7 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
         {typingLoading && <LinkPreviewSkeleton />}
         {typingPreview && !typingLoading && extractUrl(content) && (
           <div className="mb-2">
-            <LinkPreviewCard preview={typingPreview} url={extractUrl(content)!} />
+            <LinkPreviewCard preview={typingPreview} url={extractUrl(content)!} onOpenPreview={(img) => setPreviewModal(img)} />
           </div>
         )}
 
@@ -509,6 +557,24 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
           </Button>
         </div>
       </div>
+
+      {/* Image Preview Modal */}
+      {previewModal && (
+        <div
+          className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setPreviewModal(null)}
+        >
+          <div className="relative max-w-3xl max-h-[85vh] w-full" onClick={(e) => e.stopPropagation()}>
+            <img src={previewModal} alt="Preview" className="w-full h-auto max-h-[85vh] object-contain rounded-xl" />
+            <button
+              onClick={() => setPreviewModal(null)}
+              className="absolute top-2 right-2 h-8 w-8 rounded-full bg-card/90 border border-border/50 flex items-center justify-center hover:bg-card transition shadow-md"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
