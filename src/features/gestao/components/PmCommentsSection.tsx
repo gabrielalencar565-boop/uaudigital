@@ -99,7 +99,7 @@ function LinkPreviewCard({ preview, url, onOpenPreview }: { preview: LinkPreview
 
   const handleOpen = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
-    window.open(url, "_blank");
+    window.open(url, "_blank", "noopener,noreferrer");
   };
 
   const handlePreview = (e: React.MouseEvent) => {
@@ -110,7 +110,7 @@ function LinkPreviewCard({ preview, url, onOpenPreview }: { preview: LinkPreview
   return (
     <div
       className="group mt-2 rounded-2xl border border-border/40 bg-card overflow-hidden hover:shadow-lg hover:border-border/60 transition-all cursor-pointer max-w-full"
-      onClick={() => window.open(url, "_blank")}
+      onClick={() => window.open(url, "_blank", "noopener,noreferrer")}
     >
       {/* Header with actions top-right on hover */}
       <div className="flex items-center justify-between px-3 py-2.5">
