@@ -417,7 +417,7 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
 
   return (
     <div className="flex flex-col gap-3 h-full">
-      <div className="flex-1 space-y-3 min-h-0 overflow-y-auto">
+      <div className="flex-1 space-y-3 min-h-0 overflow-y-auto overflow-x-hidden">
         {timeline.length === 0 && (
           <p className="text-xs text-muted-foreground text-center py-4">Nenhuma atividade ainda.</p>
         )}
