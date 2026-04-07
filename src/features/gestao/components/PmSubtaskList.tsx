@@ -34,6 +34,38 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
   const { stageAssignees } = useDefaultFlowWithDates();
   const [newTitle, setNewTitle] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showTrash, setShowTrash] = useState(false);
+  const [restoringId, setRestoringId] = useState<string | null>(null);
+
+  const sb2 = supabase as any;
+  const deletedSubsQ = useQuery<PmTask[]>({
+    queryKey: ["pm_deleted_subtasks", parentTask.id],
+    enabled: showTrash,
+    queryFn: async () => {
+      const { data, error } = await sb2
+        .from("pm_tasks")
+        .select("*")
+        .eq("parent_task_id", parentTask.id)
+        .not("deleted_at", "is", null)
+        .order("deleted_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const handleRestore = async (subId: string) => {
+    setRestoringId(subId);
+    try {
+      updateTask.mutate({ id: subId, deleted_at: null, deleted_by: null } as any, {
+        onSuccess: () => {
+          deletedSubsQ.refetch();
+          toast.success("Subtarefa restaurada!");
+        },
+      });
+    } finally {
+      setRestoringId(null);
+    }
+  };
 
   const handleSoftDelete = async (subId: string) => {
     const { data: { user } } = await supabase.auth.getUser();
