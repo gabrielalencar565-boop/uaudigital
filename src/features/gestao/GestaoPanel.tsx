@@ -512,6 +512,9 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
       const q = search.toLowerCase();
       list = list.filter((t) => t.title.toLowerCase().includes(q) || (clientsMap[t.client_id] ?? "").toLowerCase().includes(q));
     }
+    if (filterStage && filterStage !== "__all__") {
+      list = list.filter((t) => t.stage_current === filterStage);
+    }
     return list;
   }, [tasks, filterClient, filterAssignee, search, clientsMap, fixedAssigneeClientIds]);
 
