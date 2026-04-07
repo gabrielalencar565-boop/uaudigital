@@ -766,7 +766,7 @@ export function VisaoGeralTab() {
 
       {/* ═══ DESEMPENHO POR SQUAD + PROGRESSO DA OPERAÇÃO ═══ */}
       <FadeUp delay={0.5}>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
           {/* Desempenho por Squad */}
           {heatmapData.length > 0 && (
           <Card className="flex flex-col min-h-[580px]">
