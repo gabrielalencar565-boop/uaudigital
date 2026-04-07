@@ -1071,6 +1071,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
               return (
                 <div
                   key={key}
+                  data-day-key={key}
                   onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add("ring-2", "ring-primary/40"); }}
                   onDragLeave={(e) => { e.currentTarget.classList.remove("ring-2", "ring-primary/40"); }}
                   onDrop={async (e) => {
