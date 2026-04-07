@@ -557,6 +557,24 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
           </Button>
         </div>
       </div>
+
+      {/* Image Preview Modal */}
+      {previewModal && (
+        <div
+          className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setPreviewModal(null)}
+        >
+          <div className="relative max-w-3xl max-h-[85vh] w-full" onClick={(e) => e.stopPropagation()}>
+            <img src={previewModal} alt="Preview" className="w-full h-auto max-h-[85vh] object-contain rounded-xl" />
+            <button
+              onClick={() => setPreviewModal(null)}
+              className="absolute top-2 right-2 h-8 w-8 rounded-full bg-card/90 border border-border/50 flex items-center justify-center hover:bg-card transition shadow-md"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
