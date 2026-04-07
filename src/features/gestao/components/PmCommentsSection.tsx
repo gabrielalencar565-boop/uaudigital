@@ -124,47 +124,45 @@ function LinkPreviewCard({ preview, url, onOpenPreview }: { preview: LinkPreview
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className="group mt-2 block rounded-2xl border border-border/40 bg-card overflow-hidden hover:shadow-lg hover:border-border/60 transition-all cursor-pointer max-w-full no-underline text-left"
+      className="group mt-2 block rounded-xl border border-border/50 bg-card overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer max-w-sm no-underline text-left"
       onClick={(e) => { e.preventDefault(); openLink(); }}
     >
-      {/* Header with actions top-right on hover */}
-      <div className="flex items-center justify-between px-3 py-2.5 text-left">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="h-8 w-8 rounded-full bg-muted/50 border border-border/30 flex items-center justify-center shrink-0 overflow-hidden">
-            {preview.image ? (
-              <img src={preview.image} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <PlatformIcon className="h-4 w-4 text-muted-foreground" />
-            )}
-          </div>
-          <div className="min-w-0">
-            <p className="text-xs font-semibold truncate text-foreground/90">
-              {preview.title ? preview.title.split(" ").slice(0, 4).join(" ") : hostname}
-            </p>
-            <span className="text-[10px] text-muted-foreground">{platformLabel}</span>
-          </div>
+      {/* ── Header ── */}
+      <div className="flex items-center gap-2.5 px-3 py-2.5">
+        <div className="h-9 w-9 rounded-full bg-muted border border-border/40 flex items-center justify-center shrink-0 overflow-hidden">
+          <PlatformIcon className="h-4 w-4 text-muted-foreground" />
         </div>
-
-        {/* Action buttons — visible on card hover */}
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-          <button onClick={handleCopy} className="h-7 w-7 rounded-md flex items-center justify-center hover:bg-muted/80 transition" title="Copiar link">
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] font-semibold truncate text-foreground leading-tight">
+            {preview.title ? preview.title.split(" ").slice(0, 5).join(" ") : hostname}
+          </p>
+          <span className="text-[11px] text-muted-foreground leading-tight">{platformLabel}</span>
+        </div>
+        {/* Actions on hover */}
+        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 shrink-0">
+          <button onClick={handleCopy} className="h-7 w-7 rounded-md flex items-center justify-center hover:bg-muted transition" title="Copiar link">
             <Link2 className="h-3.5 w-3.5 text-muted-foreground" />
           </button>
-          <button onClick={(e) => openLink(e)} className="h-7 w-7 rounded-md flex items-center justify-center hover:bg-muted/80 transition" title="Abrir link">
+          <button onClick={(e) => openLink(e)} className="h-7 w-7 rounded-md flex items-center justify-center hover:bg-muted transition" title="Abrir link">
             <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
           </button>
           {onOpenPreview && preview.image && (
-            <button onClick={handlePreview} className="h-7 w-7 rounded-md flex items-center justify-center hover:bg-muted/80 transition" title="Ver prévia">
+            <button onClick={handlePreview} className="h-7 w-7 rounded-md flex items-center justify-center hover:bg-muted transition" title="Ver prévia">
               <Maximize2 className="h-3.5 w-3.5 text-muted-foreground" />
             </button>
           )}
         </div>
       </div>
 
-      {/* Image */}
+      {/* ── Image (fixed aspect ratio) ── */}
       {preview.image && (
-        <div className="relative w-full bg-muted/20">
-          <img src={preview.image} alt={preview.title ?? ""} className="w-full h-auto max-h-[500px] object-cover block" loading="lazy" />
+        <div className="relative w-full aspect-video bg-muted/30 overflow-hidden">
+          <img
+            src={preview.image}
+            alt={preview.title ?? ""}
+            className="absolute inset-0 w-full h-full object-cover"
+            loading="lazy"
+          />
           {isYouTube && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="h-14 w-14 rounded-full bg-destructive/90 flex items-center justify-center shadow-lg">
@@ -175,9 +173,9 @@ function LinkPreviewCard({ preview, url, onOpenPreview }: { preview: LinkPreview
         </div>
       )}
 
-      {/* Footer */}
+      {/* ── Footer ── */}
       {preview.description && (
-        <div className="px-3 py-2.5">
+        <div className="px-3 py-2.5 border-t border-border/30">
           <p className="text-[12px] text-muted-foreground leading-relaxed line-clamp-2">{preview.description}</p>
         </div>
       )}
