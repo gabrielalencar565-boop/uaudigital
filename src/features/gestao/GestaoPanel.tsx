@@ -75,6 +75,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
   // Kanban defaults to logged-in user; Agenda defaults to all
   const initialFilter = (forcedView ?? "kanban") === "agenda" ? "__all__" : (user?.id ?? "__all__");
   const [filterAssignee, setFilterAssignee] = useState(initialFilter);
+  const [filterStage, setFilterStage] = useState("__all__");
 
   useEffect(() => {
     if (effectiveView === "kanban" && user?.id) {
