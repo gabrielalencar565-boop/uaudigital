@@ -516,7 +516,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
       list = list.filter((t) => t.stage_current === filterStage);
     }
     return list;
-  }, [tasks, filterClient, filterAssignee, search, clientsMap, fixedAssigneeClientIds]);
+  }, [tasks, filterClient, filterAssignee, search, clientsMap, fixedAssigneeClientIds, filterStage]);
 
   const days = useMemo(() => {
     const start = startOfWeek(startOfMonth(cursor), { weekStartsOn: 0 });
@@ -572,6 +572,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
 
       if (filterClient !== "__all__" && lt.client_id !== filterClient) continue;
       if (filterAssignee !== "__all__" && !allAssignees.includes(filterAssignee)) continue;
+      if (filterStage !== "__all__" && lt.stage !== filterStage) continue;
       if (search) {
         const s = search.toLowerCase();
         const clientName = clientsMap[lt.client_id] ?? "";
@@ -622,7 +623,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
     }
 
     return map;
-  }, [filteredTasks, legacyTasksQ.data, legacyAssigneesByTaskId, filterClient, filterAssignee, search, clientsMap]);
+  }, [filteredTasks, legacyTasksQ.data, legacyAssigneesByTaskId, filterClient, filterAssignee, filterStage, search, clientsMap]);
 
   const daySpecialDates = (dayKey: string) => specialDatesMap.get(dayKey) ?? [];
 
