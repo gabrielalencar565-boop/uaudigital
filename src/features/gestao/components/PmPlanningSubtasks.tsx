@@ -16,7 +16,7 @@ import { getFixedAssignee, getFixedWatchers, useDefaultFlowWithDates } from "./P
 import type { PmTask } from "../pm-types";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useQuery } from "@tanstack/react-query";
+import { SubtaskTrashDialog } from "./SubtaskTrashDialog";
 
 function initials(n: string) {
   return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
