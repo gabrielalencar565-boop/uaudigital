@@ -294,17 +294,11 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       const { supabase } = await import("@/integrations/supabase/client");
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      // Pass explicit user IDs: only assignee + watchers of the PARENT task
-      // Child task assignees are NOT included — they belong to the next stage
-      const scoringUserIds = [
-        task.assignee_id,
-        ...(task.watchers ?? []),
-      ].filter(Boolean) as string[];
+      // DB function now automatically distributes points per subtask assignee
       syncStage.mutate({
         pmTaskId: task.id,
         completedStage,
         userId: user.id,
-        scoringUserIds: scoringUserIds.length > 0 ? scoringUserIds : undefined,
       });
     } catch (_) { /* ignore */ }
   };
@@ -1219,7 +1213,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                 <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={async () => {
                   updateTask.mutate({ id: task.id, status_global: "concluido" });
                   const { data: { user: u } } = await supabase.auth.getUser();
-                  if (u) syncStage.mutate({ pmTaskId: task.id, completedStage: task.stage_current, userId: u.id, scoringUserIds: [task.assignee_id, ...(task.watchers ?? [])].filter(Boolean) as string[] });
+                   if (u) syncStage.mutate({ pmTaskId: task.id, completedStage: task.stage_current, userId: u.id });
                   toast.success("Subtarefa concluída ✓");
                 }}>
                   <CheckCircle2 className="h-4 w-4" /> Concluído
@@ -1230,7 +1224,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                 <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={async () => {
                   updateTask.mutate({ id: task.id, status_global: "concluido" });
                   const { data: { user: u } } = await supabase.auth.getUser();
-                  if (u) syncStage.mutate({ pmTaskId: task.id, completedStage: task.stage_current, userId: u.id, scoringUserIds: [task.assignee_id, ...(task.watchers ?? [])].filter(Boolean) as string[] });
+                  if (u) syncStage.mutate({ pmTaskId: task.id, completedStage: task.stage_current, userId: u.id });
                   toast.success("Subtarefa concluída ✓");
                 }}>
                   <CheckCircle2 className="h-4 w-4" /> Concluído
