@@ -133,46 +133,12 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
         </button>
       </div>
 
-      {/* Trash panel */}
-      {showTrash && (
-        <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 space-y-2">
-          <div className="flex items-center gap-2">
-            <Trash2 className="h-3.5 w-3.5 text-destructive" />
-            <span className="text-xs font-semibold text-destructive">Subtarefas excluídas</span>
-          </div>
-          {deletedSubsQ.isLoading ? (
-            <div className="flex justify-center py-4">
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-            </div>
-          ) : (deletedSubsQ.data ?? []).length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-3">Nenhuma subtarefa na lixeira</p>
-          ) : (
-            <ScrollArea className={cn((deletedSubsQ.data ?? []).length > 4 && "h-[180px]")}>
-              <div className="space-y-1">
-                {(deletedSubsQ.data ?? []).map(sub => (
-                  <div key={sub.id} className="flex items-center gap-2 rounded-md border border-border/30 bg-card/50 px-2 py-1.5">
-                    <span className="flex-1 truncate text-xs text-muted-foreground line-through">{sub.title}</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 px-2 text-xs gap-1"
-                      disabled={restoringId === sub.id}
-                      onClick={() => handleRestore(sub.id)}
-                    >
-                      {restoringId === sub.id ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <RotateCcw className="h-3 w-3" />
-                      )}
-                      Restaurar
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </ScrollArea>
-          )}
-        </div>
-      )}
+      <SubtaskTrashDialog
+        parentTaskId={parentTask.id}
+        open={showTrash}
+        onOpenChange={setShowTrash}
+        membersMap={membersMap}
+      />
 
       {/* Table header */}
       {total > 0 && (
