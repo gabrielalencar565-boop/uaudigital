@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, ChevronRight, Check, RotateCcw, Trash2 } from "lucide-react";
+import { Plus, ChevronRight, Check, RotateCcw, Trash2, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useQuery } from "@tanstack/react-query";
 import { PM_ACTIVE_STAGES, getStageCircleColor, stageLabel, tagColor, tagDisplay } from "../pm-constants";
 import { useUpdatePmTask, useCreatePmTask } from "../hooks/use-pm-data";
 import { PmAssigneeSelector } from "./PmAssigneeSelector";
