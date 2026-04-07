@@ -572,6 +572,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
 
       if (filterClient !== "__all__" && lt.client_id !== filterClient) continue;
       if (filterAssignee !== "__all__" && !allAssignees.includes(filterAssignee)) continue;
+      if (filterStage !== "__all__" && lt.stage !== filterStage) continue;
       if (search) {
         const s = search.toLowerCase();
         const clientName = clientsMap[lt.client_id] ?? "";
