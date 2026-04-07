@@ -32,42 +32,13 @@ interface Props {
 }
 
 export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members, onSelectSubtask, activeSubtaskId }: Props) {
-  const updateTask = useUpdatePmTask();
   const [showTrash, setShowTrash] = useState(false);
-  const [restoringId, setRestoringId] = useState<string | null>(null);
 
   const videoTasks = childTasks.filter(c => c.post_type === "video");
   const designTasks = childTasks.filter(c => c.post_type === "design");
 
   const videoDone = videoTasks.filter(t => t.stage_current === "entrega").length;
   const designDone = designTasks.filter(t => t.stage_current === "entrega").length;
-
-  const sb2 = supabase as any;
-  const deletedSubsQ = useQuery<PmTask[]>({
-    queryKey: ["pm_deleted_planning_subtasks", parentTask.id],
-    enabled: showTrash,
-    queryFn: async () => {
-      const { data, error } = await sb2
-        .from("pm_tasks")
-        .select("*")
-        .eq("parent_task_id", parentTask.id)
-        .not("deleted_at", "is", null)
-        .order("deleted_at", { ascending: false });
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
-  const handleRestore = (subId: string) => {
-    setRestoringId(subId);
-    updateTask.mutate({ id: subId, deleted_at: null, deleted_by: null } as any, {
-      onSuccess: () => {
-        deletedSubsQ.refetch();
-        toast.success("Subtarefa restaurada!");
-        setRestoringId(null);
-      },
-      onError: () => setRestoringId(null),
-    });
   };
 
   return (
