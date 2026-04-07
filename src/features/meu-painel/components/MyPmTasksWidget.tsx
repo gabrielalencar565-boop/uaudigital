@@ -25,11 +25,11 @@ function dueDateLabel(dueDate: string | null, todayKey: string) {
   const due = new Date(dueDate + "T00:00:00");
   const diff = differenceInCalendarDays(due, today);
 
-  if (diff < -1) return { text: `${format(due, "M/d/yy")}`, color: "text-destructive" };
+  if (diff < -1) return { text: format(due, "dd/MM/yyyy"), color: "text-destructive" };
   if (diff === -1) return { text: "Ontem", color: "text-destructive" };
   if (diff === 0) return { text: "Hoje", color: "text-warning" };
   if (diff === 1) return { text: "Amanhã", color: "text-foreground" };
-  return { text: format(due, "M/d/yy"), color: "text-muted-foreground" };
+  return { text: format(due, "dd/MM/yyyy"), color: "text-muted-foreground" };
 }
 
 interface Props {
