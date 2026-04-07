@@ -89,52 +89,64 @@ function LinkPreviewCard({ preview, url }: { preview: LinkPreviewData; url: stri
   const isInstagram = preview.platform === "instagram";
 
   const PlatformIcon = isInstagram ? Instagram : isYouTube ? Youtube : Globe;
+  const platformLabel = preview.site_name || (isInstagram ? "Instagram" : isYouTube ? "YouTube" : hostname);
 
   return (
     <a
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className="mt-2 block rounded-xl border border-border/50 bg-card/80 overflow-hidden hover:shadow-md hover:border-border/80 transition-all group max-w-full"
+      className="mt-2 block rounded-2xl border border-border/40 bg-card overflow-hidden hover:shadow-lg hover:border-border/60 transition-all group max-w-full"
     >
+      {/* Header – Instagram/platform style */}
+      <div className="flex items-center justify-between px-3 py-2.5">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="h-8 w-8 rounded-full bg-muted/50 border border-border/30 flex items-center justify-center shrink-0 overflow-hidden">
+            {preview.image ? (
+              <img src={preview.image} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <PlatformIcon className="h-4 w-4 text-muted-foreground" />
+            )}
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-semibold truncate text-foreground/90">
+              {preview.title ? preview.title.split(" ").slice(0, 4).join(" ") : hostname}
+            </p>
+            <span className="text-[10px] text-muted-foreground">{platformLabel}</span>
+          </div>
+        </div>
+        <span className="shrink-0 text-[11px] font-medium px-3 py-1 rounded-md bg-primary text-primary-foreground">
+          {isInstagram ? "Ver perfil" : "Abrir"}
+        </span>
+      </div>
+
+      {/* Image – full width, no crop */}
       {preview.image && (
-        <div className="relative w-full h-[280px] overflow-hidden bg-muted/30">
+        <div className="relative w-full bg-muted/20">
           <img
             src={preview.image}
             alt={preview.title ?? ""}
-            className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
+            className="w-full h-auto max-h-[500px] object-cover"
             loading="lazy"
           />
           {isYouTube && (
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="h-12 w-12 rounded-full bg-destructive/90 flex items-center justify-center shadow-lg">
-                <Play className="h-5 w-5 text-white ml-0.5" fill="white" />
+              <div className="h-14 w-14 rounded-full bg-destructive/90 flex items-center justify-center shadow-lg">
+                <Play className="h-6 w-6 text-destructive-foreground ml-0.5" fill="currentColor" />
               </div>
             </div>
           )}
         </div>
       )}
-      <div className="px-3 py-2.5 space-y-1">
-        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-          <PlatformIcon className="h-3 w-3 shrink-0" />
-          <span className="truncate">{preview.site_name || hostname}</span>
-        </div>
-        {preview.title && (
-          <p className="text-xs font-semibold leading-snug line-clamp-2 text-foreground/90 group-hover:text-primary transition-colors">
-            {preview.title}
-          </p>
-        )}
-        {preview.description && (
-          <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-2">
+
+      {/* Footer – description */}
+      {preview.description && (
+        <div className="px-3 py-2.5">
+          <p className="text-[12px] text-muted-foreground leading-relaxed line-clamp-2">
             {preview.description}
           </p>
-        )}
-        {isInstagram && (
-          <span className="inline-flex items-center gap-1 text-[10px] text-pink-500 font-medium mt-1">
-            <Instagram className="h-3 w-3" /> Ver no Instagram
-          </span>
-        )}
-      </div>
+        </div>
+      )}
     </a>
   );
 }
