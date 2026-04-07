@@ -94,7 +94,7 @@ function LinkPreviewCard({ preview, url, onOpenPreview }: { preview: LinkPreview
   const handleCopy = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
     navigator.clipboard.writeText(url);
-    (await import("sonner")).toast.success("Link copiado!");
+    toast.success("Link copiado!");
   };
 
   const handleOpen = (e: React.MouseEvent) => {
