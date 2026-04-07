@@ -83,7 +83,15 @@ function formatActionText(action: string, metadata: any, membersMap: Record<stri
 }
 
 /* ── Link Preview Card Component ── */
-function LinkPreviewCard({ preview, url, onOpenPreview }: { preview: LinkPreviewData; url: string; onOpenPreview?: (img: string) => void }) {
+interface PreviewModalData {
+  image: string;
+  title: string | null;
+  description: string | null;
+  url: string;
+  platform: string | null;
+}
+
+function LinkPreviewCard({ preview, url, onOpenPreview }: { preview: LinkPreviewData; url: string; onOpenPreview?: (data: PreviewModalData) => void }) {
   const hostname = (() => { try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return url; } })();
   const isYouTube = preview.platform === "youtube";
   const isInstagram = preview.platform === "instagram";
@@ -91,36 +99,33 @@ function LinkPreviewCard({ preview, url, onOpenPreview }: { preview: LinkPreview
   const PlatformIcon = isInstagram ? Instagram : isYouTube ? Youtube : Globe;
   const platformLabel = preview.site_name || (isInstagram ? "Instagram" : isYouTube ? "YouTube" : hostname);
 
+  const openLink = (e?: React.MouseEvent) => {
+    e?.preventDefault(); e?.stopPropagation();
+    const a = document.createElement("a");
+    a.href = url; a.target = "_blank"; a.rel = "noopener noreferrer";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  };
+
   const handleCopy = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
     navigator.clipboard.writeText(url);
     toast.success("Link copiado!");
   };
 
-  const openLink = () => {
-    const a = document.createElement("a");
-    a.href = url;
-    a.target = "_blank";
-    a.rel = "noopener noreferrer";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  };
-
-  const handleOpen = (e: React.MouseEvent) => {
-    e.preventDefault(); e.stopPropagation();
-    openLink();
-  };
-
   const handlePreview = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
-    if (preview.image && onOpenPreview) onOpenPreview(preview.image);
+    if (preview.image && onOpenPreview) {
+      onOpenPreview({ image: preview.image, title: preview.title, description: preview.description, url, platform: preview.platform });
+    }
   };
 
   return (
-    <div
-      className="group mt-2 rounded-2xl border border-border/40 bg-card overflow-hidden hover:shadow-lg hover:border-border/60 transition-all cursor-pointer max-w-full"
-      onClick={() => openLink()}
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group mt-2 block rounded-2xl border border-border/40 bg-card overflow-hidden hover:shadow-lg hover:border-border/60 transition-all cursor-pointer max-w-full no-underline"
+      onClick={(e) => { e.preventDefault(); openLink(); }}
     >
       {/* Header with actions top-right on hover */}
       <div className="flex items-center justify-between px-3 py-2.5">
@@ -142,41 +147,24 @@ function LinkPreviewCard({ preview, url, onOpenPreview }: { preview: LinkPreview
 
         {/* Action buttons — visible on card hover */}
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-          <button
-            onClick={handleCopy}
-            className="h-7 w-7 rounded-md flex items-center justify-center hover:bg-muted/80 transition"
-            title="Copiar link"
-          >
+          <button onClick={handleCopy} className="h-7 w-7 rounded-md flex items-center justify-center hover:bg-muted/80 transition" title="Copiar link">
             <Link2 className="h-3.5 w-3.5 text-muted-foreground" />
           </button>
-          <button
-            onClick={handleOpen}
-            className="h-7 w-7 rounded-md flex items-center justify-center hover:bg-muted/80 transition"
-            title="Abrir link"
-          >
+          <button onClick={(e) => openLink(e)} className="h-7 w-7 rounded-md flex items-center justify-center hover:bg-muted/80 transition" title="Abrir link">
             <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
           </button>
           {onOpenPreview && preview.image && (
-            <button
-              onClick={handlePreview}
-              className="h-7 w-7 rounded-md flex items-center justify-center hover:bg-muted/80 transition"
-              title="Expandir"
-            >
+            <button onClick={handlePreview} className="h-7 w-7 rounded-md flex items-center justify-center hover:bg-muted/80 transition" title="Ver prévia">
               <Maximize2 className="h-3.5 w-3.5 text-muted-foreground" />
             </button>
           )}
         </div>
       </div>
 
-      {/* Image — no overlay */}
+      {/* Image */}
       {preview.image && (
         <div className="relative w-full bg-muted/20">
-          <img
-            src={preview.image}
-            alt={preview.title ?? ""}
-            className="w-full h-auto max-h-[500px] object-cover block"
-            loading="lazy"
-          />
+          <img src={preview.image} alt={preview.title ?? ""} className="w-full h-auto max-h-[500px] object-cover block" loading="lazy" />
           {isYouTube && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="h-14 w-14 rounded-full bg-destructive/90 flex items-center justify-center shadow-lg">
@@ -190,15 +178,12 @@ function LinkPreviewCard({ preview, url, onOpenPreview }: { preview: LinkPreview
       {/* Footer */}
       {preview.description && (
         <div className="px-3 py-2.5">
-          <p className="text-[12px] text-muted-foreground leading-relaxed line-clamp-2">
-            {preview.description}
-          </p>
+          <p className="text-[12px] text-muted-foreground leading-relaxed line-clamp-2">{preview.description}</p>
         </div>
       )}
-    </div>
+    </a>
   );
 }
-
 /* ── Link Preview Skeleton ── */
 function LinkPreviewSkeleton() {
   return (
