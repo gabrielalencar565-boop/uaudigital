@@ -281,8 +281,6 @@ function CommentBubble({ c, membersMap, formatMentions, onOpenPreview }: { c: Pm
             )}
           </div>
         )}
-        {loading && <LinkPreviewSkeleton />}
-        {hasPreview && <LinkPreviewCard preview={preview!} url={c.link_url!} onOpenPreview={onOpenPreview} />}
       </div>
     </div>
   );
