@@ -1,5 +1,5 @@
 import { useMemo, useState, useCallback } from "react";
-import { format, subDays, startOfWeek, endOfWeek, isWithinInterval, subWeeks, eachDayOfInterval } from "date-fns";
+import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWithinInterval, eachDayOfInterval, addWeeks, max, min } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { TrendingUp, TrendingDown, Activity } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Area, AreaChart, Cell } from "recharts";
