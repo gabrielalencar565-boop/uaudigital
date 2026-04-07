@@ -266,13 +266,7 @@ function CommentBubble({ c, membersMap, formatMentions, onOpenPreview }: { c: Pm
           </span>
         </div>
         {displayContent && (
-          <p className="mt-1 whitespace-pre-wrap text-[13px] text-foreground/90 leading-relaxed">
-            {displayContent.split(/(https?:\/\/[^\s]+)/gi).map((part, i) =>
-              /^https?:\/\//i.test(part) ? (
-                <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80 transition break-all" onClick={(e) => e.stopPropagation()}>{part}</a>
-              ) : part
-            )}
-          </p>
+          <p className="mt-1 whitespace-pre-wrap text-[13px] text-foreground/90 leading-relaxed">{displayContent}</p>
         )}
         {c.image_url && (
           <div className="mt-2">
