@@ -66,7 +66,7 @@ interface Props {
   avatarsPrimed: boolean;
   onTaskClick: (task: PmTask) => void;
   onCreateClick: (status?: string) => void;
-  filters: { clientId?: string; assigneeId?: string; search?: string; fixedAssigneeClientIds?: Set<string> };
+  filters: { clientId?: string; assigneeId?: string; search?: string; fixedAssigneeClientIds?: Set<string>; stage?: string };
   isAdmin?: boolean;
 }
 
