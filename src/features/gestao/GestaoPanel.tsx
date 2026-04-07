@@ -843,7 +843,27 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
             return overdueCount > 0 ? (
               <button
                 type="button"
-                onClick={() => setHighlightOverdue((v) => !v)}
+                onClick={() => {
+                  setHighlightOverdue((v) => {
+                    const next = !v;
+                    if (next) {
+                      // Scroll to the first overdue day
+                      const overdueDays = Array.from(tasksByDay.entries())
+                        .filter(([k]) => k < todayKey)
+                        .filter(([, ts]) => ts.some(t => isOverdue(t)))
+                        .map(([k]) => k)
+                        .sort();
+                      const firstKey = overdueDays[0];
+                      if (firstKey) {
+                        requestAnimationFrame(() => {
+                          const el = document.querySelector(`[data-day-key="${firstKey}"]`);
+                          el?.scrollIntoView({ behavior: "smooth", block: "center" });
+                        });
+                      }
+                    }
+                    return next;
+                  });
+                }}
                 className="focus:outline-none"
               >
                 <Badge variant="destructive" className={cn("gap-1 rounded-xl px-2.5 py-1 text-xs font-semibold cursor-pointer transition-all", highlightOverdue && "ring-2 ring-destructive/60 ring-offset-2 ring-offset-background shadow-md")}>
@@ -895,6 +915,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
               return (
                 <div
                   key={key}
+                  data-day-key={key}
                   className={cn(
                     "rounded-xl border p-3 transition",
                     isToday ? "border-primary/40 bg-primary/5" : "border-border/30 bg-card/20",
@@ -948,6 +969,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
                 return (
                   <div
                     key={key}
+                    data-day-key={key}
                     className={cn(
                       "w-[280px] flex-shrink-0 rounded-xl border bg-card/10 p-4 transition",
                       isToday ? "border-primary ring-2 ring-primary/40" : "border-border/60",
@@ -1004,6 +1026,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
             return (
               <div
                 key={key}
+                data-day-key={key}
                   className={cn(
                     "rounded-xl border p-3 space-y-2",
                     isToday ? "border-primary/40 bg-primary/5" : "border-border/30 bg-card/20",
@@ -1049,6 +1072,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
               return (
                 <div
                   key={key}
+                  data-day-key={key}
                   onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add("ring-2", "ring-primary/40"); }}
                   onDragLeave={(e) => { e.currentTarget.classList.remove("ring-2", "ring-primary/40"); }}
                   onDrop={async (e) => {
