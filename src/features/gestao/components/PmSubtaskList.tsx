@@ -153,7 +153,7 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
         <button
           onClick={() => setShowTrash(!showTrash)}
           className={cn(
-            "h-6 w-6 flex items-center justify-center rounded-md transition-all",
+            "h-auto px-2 py-0.5 flex items-center gap-1 rounded-md text-xs transition-all",
             showTrash
               ? "bg-destructive/10 text-destructive"
               : "text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted"
@@ -161,6 +161,7 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
           title="Lixeira de subtarefas"
         >
           <Trash2 className="h-3.5 w-3.5" />
+          Lixeira
         </button>
       </div>
 
