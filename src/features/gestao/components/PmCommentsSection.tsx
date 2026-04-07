@@ -250,13 +250,20 @@ function useSavedPreview(comment: PmComment) {
   return { preview, loading };
 }
 
+/* ── Strip URLs from text when preview is active ── */
+function stripUrls(text: string): string {
+  return text.replace(/https?:\/\/[^\s]+/gi, "").trim();
+}
+
 /* ── Comment Bubble ── */
-function CommentBubble({ c, membersMap, formatMentions }: { c: PmComment; membersMap: Record<string, { name: string; avatar?: string }>; formatMentions: (t: string) => string }) {
+function CommentBubble({ c, membersMap, formatMentions, onOpenPreview }: { c: PmComment; membersMap: Record<string, { name: string; avatar?: string }>; formatMentions: (t: string) => string; onOpenPreview: (img: string) => void }) {
   const member = membersMap[c.author_id];
   const { preview, loading } = useSavedPreview(c);
+  const hasPreview = !!preview && !!c.link_url;
+  const displayContent = c.content ? (hasPreview ? stripUrls(formatMentions(c.content)) : formatMentions(c.content)) : "";
 
   return (
-    <div className="flex gap-2.5">
+    <div className="flex gap-2.5 items-start">
       <Avatar className="h-6 w-6 shrink-0 mt-0.5">
         <AvatarImage src={member?.avatar} />
         <AvatarFallback className="text-[8px] bg-primary/10 text-primary">{initials(member?.name ?? "?")}</AvatarFallback>
@@ -268,8 +275,8 @@ function CommentBubble({ c, membersMap, formatMentions }: { c: PmComment; member
             {format(new Date(c.created_at), "MMM d 'às' HH:mm", { locale: ptBR })}
           </span>
         </div>
-        {c.content && (
-          <p className="mt-1 whitespace-pre-wrap text-[13px] text-foreground/90 leading-relaxed">{formatMentions(c.content)}</p>
+        {displayContent && (
+          <p className="mt-1 whitespace-pre-wrap text-[13px] text-foreground/90 leading-relaxed">{displayContent}</p>
         )}
         {c.image_url && (
           <div className="mt-2">
@@ -285,7 +292,7 @@ function CommentBubble({ c, membersMap, formatMentions }: { c: PmComment; member
           </div>
         )}
         {loading && <LinkPreviewSkeleton />}
-        {preview && c.link_url && <LinkPreviewCard preview={preview} url={c.link_url} />}
+        {hasPreview && <LinkPreviewCard preview={preview!} url={c.link_url!} onOpenPreview={onOpenPreview} />}
       </div>
     </div>
   );
