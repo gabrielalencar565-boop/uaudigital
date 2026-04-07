@@ -186,23 +186,23 @@ export function ProductivityWidget({ tasks, allMonthTasks, todayKey }: Props) {
 
   // ── Comparison ──
   const comparison = useMemo(() => {
-    const thisWeekStart = startOfWeek(today, { weekStartsOn: 1 });
-    const lastWeekStart = startOfWeek(subWeeks(today, 1), { weekStartsOn: 1 });
-    const lastWeekEnd = endOfWeek(subWeeks(today, 1), { weekStartsOn: 1 });
-    const thisWeekCompleted = allMonthTasks.filter((t) => {
-      if (t.status !== "concluido" || !t.completed_at) return false;
-      return new Date(t.completed_at) >= thisWeekStart;
-    });
-    const lastWeekCompleted = allMonthTasks.filter((t) => {
-      if (t.status !== "concluido" || !t.completed_at) return false;
-      return isWithinInterval(new Date(t.completed_at), { start: lastWeekStart, end: lastWeekEnd });
-    });
-    const thisVal = getMetricValue(thisWeekCompleted, mode, configMap);
-    const lastVal = getMetricValue(lastWeekCompleted, mode, configMap);
+    // Find current week index and previous week index from weekRanges
+    const currentIdx = weekRanges.findIndex((w) => w.isCurrent);
+    const prevIdx = currentIdx > 0 ? currentIdx - 1 : -1;
+
+    const filterCompleted = (start: Date, end: Date) =>
+      allMonthTasks.filter((t) => {
+        if (t.status !== "concluido" || !t.completed_at) return false;
+        return isWithinInterval(new Date(t.completed_at), { start, end });
+      });
+
+    const thisVal = currentIdx >= 0 ? getMetricValue(filterCompleted(weekRanges[currentIdx].start, weekRanges[currentIdx].end), mode, configMap) : 0;
+    const lastVal = prevIdx >= 0 ? getMetricValue(filterCompleted(weekRanges[prevIdx].start, weekRanges[prevIdx].end), mode, configMap) : 0;
+
     if (lastVal === 0) return { pct: thisVal > 0 ? 100 : 0, up: true };
     const pct = Math.round(((thisVal - lastVal) / lastVal) * 100);
     return { pct: Math.abs(pct), up: pct >= 0 };
-  }, [allMonthTasks, todayKey, mode, configMap]);
+  }, [allMonthTasks, todayKey, mode, configMap, weekRanges]);
 
   const handleBarClick = useCallback((_: any, index: number) => {
     setSelectedWeekIndex((prev) => (prev === index ? null : index));
