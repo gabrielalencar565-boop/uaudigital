@@ -448,7 +448,7 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
   const renderTimelineItem = (item: { type: "comment" | "activity"; data: any; timestamp: string }) => {
     if (item.type === "comment") {
       const c = item.data as PmComment;
-      return <CommentBubble key={`c-${c.id}`} c={c} membersMap={membersMap} formatMentions={formatMentions} />;
+      return <CommentBubble key={`c-${c.id}`} c={c} membersMap={membersMap} formatMentions={formatMentions} onOpenPreview={(img) => setPreviewModal(img)} />;
     } else {
       const a = item.data;
       const member = membersMap[a.created_by];
