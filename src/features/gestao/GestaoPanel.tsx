@@ -623,7 +623,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
     }
 
     return map;
-  }, [filteredTasks, legacyTasksQ.data, legacyAssigneesByTaskId, filterClient, filterAssignee, search, clientsMap]);
+  }, [filteredTasks, legacyTasksQ.data, legacyAssigneesByTaskId, filterClient, filterAssignee, filterStage, search, clientsMap]);
 
   const daySpecialDates = (dayKey: string) => specialDatesMap.get(dayKey) ?? [];
 
