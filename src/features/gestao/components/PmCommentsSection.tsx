@@ -97,9 +97,19 @@ function LinkPreviewCard({ preview, url, onOpenPreview }: { preview: LinkPreview
     toast.success("Link copiado!");
   };
 
+  const openLink = () => {
+    const a = document.createElement("a");
+    a.href = url;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
   const handleOpen = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
-    window.open(url, "_blank", "noopener,noreferrer");
+    openLink();
   };
 
   const handlePreview = (e: React.MouseEvent) => {
@@ -110,7 +120,7 @@ function LinkPreviewCard({ preview, url, onOpenPreview }: { preview: LinkPreview
   return (
     <div
       className="group mt-2 rounded-2xl border border-border/40 bg-card overflow-hidden hover:shadow-lg hover:border-border/60 transition-all cursor-pointer max-w-full"
-      onClick={() => window.open(url, "_blank", "noopener,noreferrer")}
+      onClick={() => openLink()}
     >
       {/* Header with actions top-right on hover */}
       <div className="flex items-center justify-between px-3 py-2.5">
