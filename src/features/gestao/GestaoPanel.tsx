@@ -1063,7 +1063,8 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
                   }}
                   className={cn("group/cell relative min-h-28 rounded-2xl border border-[#d9d9d9] bg-card/30 backdrop-blur-sm p-2.5 transition-all calendar-card-hover",
                     inMonth ? "opacity-100" : "opacity-30 border-transparent",
-                    isToday && "border-primary/50 ring-2 ring-primary/15 bg-primary/5"
+                    isToday && "border-primary/50 ring-2 ring-primary/15 bg-primary/5",
+                    !isToday && inMonth && dayHasOverdue(key) && "border-destructive/50 border-2"
                   )}>
                   <div className="flex items-center justify-between mb-2">
                     <div className={cn(
