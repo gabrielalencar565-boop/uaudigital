@@ -321,6 +321,7 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
   const [imageDescription, setImageDescription] = useState("");
   const [mentionMap, setMentionMap] = useState<Record<string, string>>({});
   const [expanded, setExpanded] = useState(false);
+  const [previewModal, setPreviewModal] = useState<string | null>(null);
 
   // Live link preview while typing
   const { preview: typingPreview, loading: typingLoading } = useTypingPreview(content);
