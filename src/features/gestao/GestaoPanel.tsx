@@ -1004,10 +1004,11 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
             return (
               <div
                 key={key}
-                className={cn(
-                  "rounded-xl border p-3 space-y-2",
-                  isToday ? "border-primary/40 bg-primary/5" : "border-border/30 bg-card/20"
-                )}>
+                  className={cn(
+                    "rounded-xl border p-3 space-y-2",
+                    isToday ? "border-primary/40 bg-primary/5" : "border-border/30 bg-card/20",
+                    !isToday && dayHasOverdue(key) && "border-destructive/50 border-2"
+                  )}>
                 <div className="flex items-center gap-2">
                   <div className={cn(
                     "grid h-7 w-7 place-items-center rounded-lg text-xs font-bold",
