@@ -1,5 +1,5 @@
 import { useMemo, useState, useCallback } from "react";
-import { format, subDays, startOfWeek, endOfWeek, isWithinInterval, subWeeks, eachDayOfInterval } from "date-fns";
+import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWithinInterval, eachDayOfInterval, addWeeks, max, min } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { TrendingUp, TrendingDown, Activity } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Area, AreaChart, Cell } from "recharts";
@@ -103,13 +103,23 @@ export function ProductivityWidget({ tasks, allMonthTasks, todayKey }: Props) {
     return m;
   }, [scoringQ.data]);
 
-  // ── Week ranges (last 4 weeks) ──
+  // ── Week ranges (weeks of the current month) ──
   const weekRanges = useMemo(() => {
+    const monthStart = startOfMonth(today);
+    const monthEnd = endOfMonth(today);
     const ranges: { start: Date; end: Date; label: string; isCurrent: boolean }[] = [];
-    for (let i = 3; i >= 0; i--) {
-      const ws = startOfWeek(subWeeks(today, i), { weekStartsOn: 1 });
-      const we = endOfWeek(subWeeks(today, i), { weekStartsOn: 1 });
-      ranges.push({ start: ws, end: we, label: i === 0 ? "Atual" : `Sem ${4 - i}`, isCurrent: i === 0 });
+
+    let weekStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+    let weekNum = 1;
+    while (weekStart <= monthEnd) {
+      const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
+      // Clamp to month boundaries
+      const clampedStart = max([weekStart, monthStart]);
+      const clampedEnd = min([weekEnd, monthEnd]);
+      const isCurrent = isWithinInterval(today, { start: clampedStart, end: clampedEnd });
+      ranges.push({ start: clampedStart, end: clampedEnd, label: isCurrent ? "Atual" : `Sem ${weekNum}`, isCurrent });
+      weekStart = addWeeks(weekStart, 1);
+      weekNum++;
     }
     return ranges;
   }, [todayKey]);
@@ -176,23 +186,23 @@ export function ProductivityWidget({ tasks, allMonthTasks, todayKey }: Props) {
 
   // ── Comparison ──
   const comparison = useMemo(() => {
-    const thisWeekStart = startOfWeek(today, { weekStartsOn: 1 });
-    const lastWeekStart = startOfWeek(subWeeks(today, 1), { weekStartsOn: 1 });
-    const lastWeekEnd = endOfWeek(subWeeks(today, 1), { weekStartsOn: 1 });
-    const thisWeekCompleted = allMonthTasks.filter((t) => {
-      if (t.status !== "concluido" || !t.completed_at) return false;
-      return new Date(t.completed_at) >= thisWeekStart;
-    });
-    const lastWeekCompleted = allMonthTasks.filter((t) => {
-      if (t.status !== "concluido" || !t.completed_at) return false;
-      return isWithinInterval(new Date(t.completed_at), { start: lastWeekStart, end: lastWeekEnd });
-    });
-    const thisVal = getMetricValue(thisWeekCompleted, mode, configMap);
-    const lastVal = getMetricValue(lastWeekCompleted, mode, configMap);
+    // Find current week index and previous week index from weekRanges
+    const currentIdx = weekRanges.findIndex((w) => w.isCurrent);
+    const prevIdx = currentIdx > 0 ? currentIdx - 1 : -1;
+
+    const filterCompleted = (start: Date, end: Date) =>
+      allMonthTasks.filter((t) => {
+        if (t.status !== "concluido" || !t.completed_at) return false;
+        return isWithinInterval(new Date(t.completed_at), { start, end });
+      });
+
+    const thisVal = currentIdx >= 0 ? getMetricValue(filterCompleted(weekRanges[currentIdx].start, weekRanges[currentIdx].end), mode, configMap) : 0;
+    const lastVal = prevIdx >= 0 ? getMetricValue(filterCompleted(weekRanges[prevIdx].start, weekRanges[prevIdx].end), mode, configMap) : 0;
+
     if (lastVal === 0) return { pct: thisVal > 0 ? 100 : 0, up: true };
     const pct = Math.round(((thisVal - lastVal) / lastVal) * 100);
     return { pct: Math.abs(pct), up: pct >= 0 };
-  }, [allMonthTasks, todayKey, mode, configMap]);
+  }, [allMonthTasks, todayKey, mode, configMap, weekRanges]);
 
   const handleBarClick = useCallback((_: any, index: number) => {
     setSelectedWeekIndex((prev) => (prev === index ? null : index));
