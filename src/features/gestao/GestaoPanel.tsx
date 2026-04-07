@@ -840,10 +840,16 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
               .filter(([k]) => k < todayKey)
               .reduce((sum, [, ts]) => sum + ts.filter(t => t.status_global !== "concluido").length, 0);
             return overdueCount > 0 ? (
-              <Badge variant="destructive" className="gap-1 rounded-xl px-2.5 py-1 text-xs font-semibold">
-                <TriangleAlert className="h-3.5 w-3.5" />
-                {overdueCount} atrasada{overdueCount !== 1 ? "s" : ""}
-              </Badge>
+              <button
+                type="button"
+                onClick={() => setHighlightOverdue((v) => !v)}
+                className="focus:outline-none"
+              >
+                <Badge variant="destructive" className={cn("gap-1 rounded-xl px-2.5 py-1 text-xs font-semibold cursor-pointer transition-all", highlightOverdue && "ring-2 ring-destructive/60 ring-offset-2 ring-offset-background shadow-md")}>
+                  <TriangleAlert className="h-3.5 w-3.5" />
+                  {overdueCount} atrasada{overdueCount !== 1 ? "s" : ""}
+                </Badge>
+              </button>
             ) : null;
           })()}
           {isAdmin && (
