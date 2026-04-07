@@ -103,13 +103,23 @@ export function ProductivityWidget({ tasks, allMonthTasks, todayKey }: Props) {
     return m;
   }, [scoringQ.data]);
 
-  // ── Week ranges (last 4 weeks) ──
+  // ── Week ranges (weeks of the current month) ──
   const weekRanges = useMemo(() => {
+    const monthStart = startOfMonth(today);
+    const monthEnd = endOfMonth(today);
     const ranges: { start: Date; end: Date; label: string; isCurrent: boolean }[] = [];
-    for (let i = 3; i >= 0; i--) {
-      const ws = startOfWeek(subWeeks(today, i), { weekStartsOn: 1 });
-      const we = endOfWeek(subWeeks(today, i), { weekStartsOn: 1 });
-      ranges.push({ start: ws, end: we, label: i === 0 ? "Atual" : `Sem ${4 - i}`, isCurrent: i === 0 });
+
+    let weekStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+    let weekNum = 1;
+    while (weekStart <= monthEnd) {
+      const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
+      // Clamp to month boundaries
+      const clampedStart = max([weekStart, monthStart]);
+      const clampedEnd = min([weekEnd, monthEnd]);
+      const isCurrent = isWithinInterval(today, { start: clampedStart, end: clampedEnd });
+      ranges.push({ start: clampedStart, end: clampedEnd, label: isCurrent ? "Atual" : `Sem ${weekNum}`, isCurrent });
+      weekStart = addWeeks(weekStart, 1);
+      weekNum++;
     }
     return ranges;
   }, [todayKey]);
