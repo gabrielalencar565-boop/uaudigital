@@ -250,8 +250,7 @@ function stripUrls(text: string): string {
 function CommentBubble({ c, membersMap, formatMentions, onOpenPreview }: { c: PmComment; membersMap: Record<string, { name: string; avatar?: string }>; formatMentions: (t: string) => string; onOpenPreview: (data: PreviewModalData) => void }) {
   const member = membersMap[c.author_id];
   const { preview, loading } = useSavedPreview(c);
-  const hasPreview = !!preview && !!c.link_url;
-  const displayContent = c.content ? (hasPreview ? stripUrls(formatMentions(c.content)) : formatMentions(c.content)) : "";
+  const displayContent = c.content ? formatMentions(c.content) : "";
 
   return (
     <div className="flex gap-2.5 items-start">
