@@ -1062,7 +1062,7 @@ export function VisaoGeralTab() {
           )}
 
           {/* Progresso da Operação */}
-          <MonthlyAnalysisSection className="min-h-[580px]" />
+          <MonthlyAnalysisSection className="min-h-[320px] h-[420px] resize-y overflow-auto" />
         </div>
       </FadeUp>
 
