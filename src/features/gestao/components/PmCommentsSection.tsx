@@ -249,7 +249,7 @@ function stripUrls(text: string): string {
 }
 
 /* ── Comment Bubble ── */
-function CommentBubble({ c, membersMap, formatMentions, onOpenPreview }: { c: PmComment; membersMap: Record<string, { name: string; avatar?: string }>; formatMentions: (t: string) => string; onOpenPreview: (img: string) => void }) {
+function CommentBubble({ c, membersMap, formatMentions, onOpenPreview }: { c: PmComment; membersMap: Record<string, { name: string; avatar?: string }>; formatMentions: (t: string) => string; onOpenPreview: (data: PreviewModalData) => void }) {
   const member = membersMap[c.author_id];
   const { preview, loading } = useSavedPreview(c);
   const hasPreview = !!preview && !!c.link_url;
