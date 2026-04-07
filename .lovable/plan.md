@@ -1,24 +1,32 @@
 
 
-## Destaque visual para tarefas atrasadas na Agenda
+## Corrigir contagem e intensificar destaque vermelho das tarefas atrasadas
 
-### O que será feito
+### Problemas identificados
 
-1. **Traçado vermelho nos dias com tarefas atrasadas** — Na grade mensal e semanal (desktop e mobile), os dias anteriores a hoje que possuam tarefas não concluídas recebem uma borda vermelha (`border-destructive/50`).
+1. **Contagem errada**: O badge "X atrasadas" conta tarefas onde `status_global !== "concluido"`, mas NÃO exclui tarefas no estágio `entrega`. Já a função `isOverdue` exclui `entrega`. Isso faz o badge mostrar 2 quando só 1 deveria contar.
 
-2. **Badge "X atrasadas" clicável como toggle** — Ao clicar no badge vermelho "X atrasadas" no cabeçalho, ativa-se um modo `highlightOverdue`. Clicar novamente desativa.
-
-3. **Destaque nos cards de tarefas atrasadas** — Quando `highlightOverdue` estiver ativo, os cards cujo `due_date < hoje` e `status_global !== "concluido"` ganham um fundo/borda vermelha sutil (`bg-destructive/10 border-destructive/40`) para se destacarem visualmente.
+2. **Destaque fraco**: O vermelho atual usa opacidade baixa (`bg-destructive/10`). O usuário quer 100% de fundo vermelho.
 
 ### Alterações
 
 **Arquivo:** `src/features/gestao/GestaoPanel.tsx`
 
-- Novo estado: `const [highlightOverdue, setHighlightOverdue] = useState(false);`
-- Badge "atrasadas" vira `<button>` com `onClick` que alterna `highlightOverdue`. Quando ativo, recebe estilo ring/outline extra.
-- Lógica auxiliar: função `isOverdue(task, dayKey)` → `dayKey < todayKey && status_global !== "concluido" && stage_current !== "entrega"`.
-- **Grade mensal (desktop):** no `className` da célula do dia, adicionar borda vermelha se o dia tiver tarefas atrasadas: `hasOverdue && "border-destructive/50"`.
-- **Grade semanal (desktop):** mesma lógica de borda.
-- **Lista mensal (mobile):** mesma lógica de borda.
-- **Cards (`renderTaskCard`):** receber parâmetro `dayKey` e, se `highlightOverdue && isOverdue(t, dayKey)`, aplicar `bg-destructive/10 border-destructive/40 ring-1 ring-destructive/30`.
+1. **Corrigir contagem do badge** (linha ~842): usar a mesma lógica de `isOverdue` no filtro do `reduce`:
+   ```ts
+   .reduce((sum, [, ts]) => sum + ts.filter(t => isOverdue(t)).length, 0);
+   ```
+
+2. **Intensificar destaque do badge toggle** (linha ~849): quando `highlightOverdue` ativo, usar fundo vermelho sólido no badge:
+   ```
+   highlightOverdue && "ring-2 ring-destructive/60 ring-offset-2 bg-red-700 shadow-md"
+   ```
+
+3. **Intensificar destaque dos cards** (linha ~713): trocar de `bg-destructive/10` para fundo vermelho 100%:
+   ```
+   highlightOverdue && isOverdue(t) && "bg-red-600 border-red-600 ring-1 ring-red-500 text-white"
+   ```
+   E no `style` inline (linha ~715), garantir que o fundo vermelho sólido prevalece sobre o gradiente de alteração.
+
+4. **Borda dos dias com atrasadas**: manter `border-destructive/50` nos dias (já funciona).
 
