@@ -444,3 +444,19 @@ All colors MUST be HSL.
   0%   { transform: translateY(-50%); }
   100% { transform: translateY(0); }
 }
+
+/* Resize grip indicator for vertically resizable cards */
+.resize-y::-webkit-resizer {
+  background: linear-gradient(
+    135deg,
+    transparent 40%,
+    hsl(var(--border)) 40%,
+    hsl(var(--border)) 45%,
+    transparent 45%,
+    transparent 55%,
+    hsl(var(--border)) 55%,
+    hsl(var(--border)) 60%,
+    transparent 60%
+  );
+  cursor: ns-resize;
+}
