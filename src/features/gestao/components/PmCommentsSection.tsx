@@ -551,20 +551,36 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
         </div>
       </div>
 
-      {/* Image Preview Modal */}
+      {/* Preview Modal */}
       {previewModal && (
         <div
           className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4"
           onClick={() => setPreviewModal(null)}
         >
-          <div className="relative max-w-3xl max-h-[85vh] w-full" onClick={(e) => e.stopPropagation()}>
-            <img src={previewModal} alt="Preview" className="w-full h-auto max-h-[85vh] object-contain rounded-xl" />
+          <div className="relative max-w-lg w-full bg-card rounded-2xl border border-border/40 overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <button
               onClick={() => setPreviewModal(null)}
-              className="absolute top-2 right-2 h-8 w-8 rounded-full bg-card/90 border border-border/50 flex items-center justify-center hover:bg-card transition shadow-md"
+              className="absolute top-3 right-3 z-10 h-8 w-8 rounded-full bg-card/90 border border-border/50 flex items-center justify-center hover:bg-muted transition shadow-md"
             >
               <X className="h-4 w-4" />
             </button>
+            <img src={previewModal.image} alt={previewModal.title ?? "Preview"} className="w-full h-auto max-h-[60vh] object-contain bg-muted/20" />
+            <div className="p-4 space-y-2">
+              {previewModal.title && <h3 className="text-sm font-semibold text-foreground">{previewModal.title}</h3>}
+              {previewModal.description && <p className="text-xs text-muted-foreground leading-relaxed">{previewModal.description}</p>}
+              <Button
+                size="sm"
+                className="gap-1.5 mt-2"
+                onClick={() => {
+                  const a = document.createElement("a");
+                  a.href = previewModal.url; a.target = "_blank"; a.rel = "noopener noreferrer";
+                  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                }}
+              >
+                <ExternalLink className="h-3 w-3" />
+                {previewModal.platform === "instagram" ? "Abrir no Instagram" : previewModal.platform === "youtube" ? "Abrir no YouTube" : "Abrir link"}
+              </Button>
+            </div>
           </div>
         </div>
       )}
