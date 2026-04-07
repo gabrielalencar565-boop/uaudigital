@@ -39,7 +39,6 @@ export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members
 
   const videoDone = videoTasks.filter(t => t.stage_current === "entrega").length;
   const designDone = designTasks.filter(t => t.stage_current === "entrega").length;
-  };
 
   return (
     <div className="space-y-3">
