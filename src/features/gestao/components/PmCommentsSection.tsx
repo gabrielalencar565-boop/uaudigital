@@ -1,11 +1,12 @@
-import { useState, useRef, useMemo, useCallback } from "react";
+import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Send, ChevronDown, ChevronUp, ImagePlus, X, ExternalLink } from "lucide-react";
+import { Send, ChevronDown, ChevronUp, ImagePlus, X, ExternalLink, Play, Instagram, Youtube, Globe } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAddPmComment, useUploadPmAttachment, usePmActivityLog } from "../hooks/use-pm-data";
 import { stageLabel } from "../pm-constants";
 import type { PmComment } from "../pm-types";
@@ -14,12 +15,50 @@ import { supabase } from "@/integrations/supabase/client";
 
 function initials(n: string) { return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join(""); }
 
+/* ── Link preview types ── */
+interface LinkPreviewData {
+  title: string | null;
+  description: string | null;
+  image: string | null;
+  url: string;
+  site_name: string | null;
+  platform: string | null;
+}
+
+/* ── Link preview cache (client-side) ── */
+const previewCache = new Map<string, LinkPreviewData | null>();
+
+async function fetchLinkPreview(url: string): Promise<LinkPreviewData | null> {
+  if (previewCache.has(url)) return previewCache.get(url) ?? null;
+  try {
+    const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+    const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    const fnUrl = `https://${projectId}.supabase.co/functions/v1/link-preview?url=${encodeURIComponent(url)}`;
+    const response = await fetch(fnUrl, {
+      headers: { "Authorization": `Bearer ${anonKey}`, "apikey": anonKey },
+    });
+    if (!response.ok) { previewCache.set(url, null); return null; }
+    const data = await response.json() as LinkPreviewData;
+    if (!data.title && !data.image) { previewCache.set(url, null); return null; }
+    previewCache.set(url, data);
+    return data;
+  } catch {
+    previewCache.set(url, null);
+    return null;
+  }
+}
+
+/* ── Extract first URL ── */
+function extractUrl(text: string): string | null {
+  const match = text.match(/https?:\/\/[^\s]+/i);
+  return match ? match[0] : null;
+}
+
+/* ── Format action text ── */
 function formatActionText(action: string, metadata: any, membersMap: Record<string, { name: string; avatar?: string }>): string {
   switch (action) {
     case "created":
-      if (metadata?.parent_task_id) {
-        return `criou a subtarefa: ${metadata.title ?? ""}`;
-      }
+      if (metadata?.parent_task_id) return `criou a subtarefa: ${metadata.title ?? ""}`;
       return "criou esta tarefa";
     case "updated": {
       const parts: string[] = [];
@@ -37,21 +76,170 @@ function formatActionText(action: string, metadata: any, membersMap: Record<stri
       if (metadata?.cover_url !== undefined) parts.push(metadata.cover_url ? "capa definida" : "capa removida");
       return parts.length > 0 ? parts.join(", ") : "atualizou a tarefa";
     }
-    case "comment_added":
-      return `comentou`;
-    case "file_added":
-      return `adicionou anexo: ${metadata?.file_name ?? "arquivo"}`;
-    default:
-      return action;
+    case "comment_added": return `comentou`;
+    case "file_added": return `adicionou anexo: ${metadata?.file_name ?? "arquivo"}`;
+    default: return action;
   }
 }
 
-/** Extract first URL from text */
-function extractUrl(text: string): string | null {
-  const match = text.match(/https?:\/\/[^\s]+/i);
-  return match ? match[0] : null;
+/* ── Link Preview Card Component ── */
+function LinkPreviewCard({ preview, url }: { preview: LinkPreviewData; url: string }) {
+  const hostname = (() => { try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return url; } })();
+  const isYouTube = preview.platform === "youtube";
+  const isInstagram = preview.platform === "instagram";
+
+  const PlatformIcon = isInstagram ? Instagram : isYouTube ? Youtube : Globe;
+
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="mt-2 block rounded-xl border border-border/50 bg-card/80 overflow-hidden hover:shadow-md hover:border-border/80 transition-all group"
+    >
+      {preview.image && (
+        <div className="relative w-full max-h-52 overflow-hidden bg-muted/30">
+          <img
+            src={preview.image}
+            alt={preview.title ?? ""}
+            className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
+            loading="lazy"
+          />
+          {isYouTube && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="h-12 w-12 rounded-full bg-destructive/90 flex items-center justify-center shadow-lg">
+                <Play className="h-5 w-5 text-white ml-0.5" fill="white" />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      <div className="px-3 py-2.5 space-y-1">
+        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+          <PlatformIcon className="h-3 w-3 shrink-0" />
+          <span className="truncate">{preview.site_name || hostname}</span>
+        </div>
+        {preview.title && (
+          <p className="text-xs font-semibold leading-snug line-clamp-2 text-foreground/90 group-hover:text-primary transition-colors">
+            {preview.title}
+          </p>
+        )}
+        {preview.description && (
+          <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-2">
+            {preview.description}
+          </p>
+        )}
+        {isInstagram && (
+          <span className="inline-flex items-center gap-1 text-[10px] text-pink-500 font-medium mt-1">
+            <Instagram className="h-3 w-3" /> Ver no Instagram
+          </span>
+        )}
+      </div>
+    </a>
+  );
 }
 
+/* ── Link Preview Skeleton ── */
+function LinkPreviewSkeleton() {
+  return (
+    <div className="mt-2 rounded-xl border border-border/30 bg-card/60 overflow-hidden">
+      <Skeleton className="w-full h-32" />
+      <div className="px-3 py-2.5 space-y-2">
+        <Skeleton className="h-3 w-24" />
+        <Skeleton className="h-4 w-3/4" />
+        <Skeleton className="h-3 w-full" />
+      </div>
+    </div>
+  );
+}
+
+/* ── Inline Preview Hook (while typing) ── */
+function useTypingPreview(text: string) {
+  const [preview, setPreview] = useState<LinkPreviewData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const lastUrlRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const url = extractUrl(text);
+    if (!url || url === lastUrlRef.current) {
+      if (!url) { setPreview(null); setLoading(false); lastUrlRef.current = null; }
+      return;
+    }
+    lastUrlRef.current = url;
+    setLoading(true);
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      fetchLinkPreview(url).then(data => {
+        if (!cancelled) { setPreview(data); setLoading(false); }
+      });
+    }, 600); // debounce
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [text]);
+
+  return { preview, loading, detectedUrl: lastUrlRef.current };
+}
+
+/* ── Saved Comment Preview Hook ── */
+function useSavedPreview(comment: PmComment) {
+  const [preview, setPreview] = useState<LinkPreviewData | null>(
+    comment.link_title || comment.link_image
+      ? { title: comment.link_title ?? null, description: null, image: comment.link_image ?? null, url: comment.link_url ?? "", site_name: null, platform: null }
+      : null
+  );
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (preview || !comment.link_url) return;
+    // Fetch preview if we have a URL but no saved metadata
+    setLoading(true);
+    fetchLinkPreview(comment.link_url).then(data => { setPreview(data); setLoading(false); });
+  }, [comment.link_url]);
+
+  return { preview, loading };
+}
+
+/* ── Comment Bubble ── */
+function CommentBubble({ c, membersMap, formatMentions }: { c: PmComment; membersMap: Record<string, { name: string; avatar?: string }>; formatMentions: (t: string) => string }) {
+  const member = membersMap[c.author_id];
+  const { preview, loading } = useSavedPreview(c);
+
+  return (
+    <div className="flex gap-2.5">
+      <Avatar className="h-6 w-6 shrink-0 mt-0.5">
+        <AvatarImage src={member?.avatar} />
+        <AvatarFallback className="text-[8px] bg-primary/10 text-primary">{initials(member?.name ?? "?")}</AvatarFallback>
+      </Avatar>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline gap-2">
+          <span className="text-xs font-semibold">{member?.name ?? "Usuário"}</span>
+          <span className="text-[10px] text-muted-foreground">
+            {format(new Date(c.created_at), "MMM d 'às' HH:mm", { locale: ptBR })}
+          </span>
+        </div>
+        {c.content && (
+          <p className="mt-1 whitespace-pre-wrap text-[13px] text-foreground/90 leading-relaxed">{formatMentions(c.content)}</p>
+        )}
+        {c.image_url && (
+          <div className="mt-2">
+            <img
+              src={c.image_url}
+              alt={c.image_description || "Imagem"}
+              className="rounded-lg max-w-[280px] max-h-[200px] object-cover border border-border/30 cursor-pointer hover:opacity-90 transition"
+              onClick={() => window.open(c.image_url!, "_blank")}
+            />
+            {c.image_description && (
+              <p className="text-[11px] text-muted-foreground mt-1 italic">{c.image_description}</p>
+            )}
+          </div>
+        )}
+        {loading && <LinkPreviewSkeleton />}
+        {preview && c.link_url && <LinkPreviewCard preview={preview} url={c.link_url} />}
+      </div>
+    </div>
+  );
+}
+
+/* ── Main Component ── */
 interface Props {
   taskId: string;
   comments: PmComment[];
@@ -70,30 +258,26 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
   const activityLogQ = usePmActivityLog(taskId);
   const activityLog = activityLogQ.data ?? [];
 
-  // Image attachment state
   const [pendingImage, setPendingImage] = useState<{ file: File; preview: string } | null>(null);
   const [imageDescription, setImageDescription] = useState("");
+  const [mentionMap, setMentionMap] = useState<Record<string, string>>({});
+  const [expanded, setExpanded] = useState(false);
 
-  // Merge comments and activity log into unified timeline, deduplicating
+  // Live link preview while typing
+  const { preview: typingPreview, loading: typingLoading } = useTypingPreview(content);
+
   const timeline = useMemo(() => {
     const items: Array<{ type: "comment" | "activity"; data: any; timestamp: string }> = [];
-
-    comments.forEach(c => {
-      items.push({ type: "comment", data: c, timestamp: c.created_at });
-    });
-
-    // Filter activity log: skip comment_added (shown as comments) and deduplicate by action+metadata
+    comments.forEach(c => items.push({ type: "comment", data: c, timestamp: c.created_at }));
     const seen = new Set<string>();
     activityLog.forEach(a => {
       if (a.action === "comment_added") return;
-      // Create dedup key from action + metadata JSON + created_by + rounded timestamp (within 2s)
       const ts = Math.floor(new Date(a.created_at).getTime() / 2000);
       const key = `${a.action}:${a.created_by}:${JSON.stringify(a.metadata)}:${ts}`;
       if (seen.has(key)) return;
       seen.add(key);
       items.push({ type: "activity", data: a, timestamp: a.created_at });
     });
-
     items.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
     return items;
   }, [comments, activityLog]);
@@ -101,14 +285,8 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      toast.error("Apenas imagens são permitidas");
-      return;
-    }
-    if (file.size > 50 * 1024 * 1024) {
-      toast.error("Imagem muito grande (máx 50MB)");
-      return;
-    }
+    if (!file.type.startsWith("image/")) { toast.error("Apenas imagens são permitidas"); return; }
+    if (file.size > 50 * 1024 * 1024) { toast.error("Imagem muito grande (máx 50MB)"); return; }
     const preview = URL.createObjectURL(file);
     setPendingImage({ file, preview });
     setImageDescription("");
@@ -125,20 +303,26 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
     if (!content.trim() && !pendingImage) return;
 
     let imageUrl: string | null = null;
-
-    // Upload image if present
     if (pendingImage) {
       try {
         const att = await uploadAttachment.mutateAsync({ task_id: taskId, file: pendingImage.file });
         imageUrl = att.public_url;
-      } catch {
-        toast.error("Erro ao enviar imagem");
-        return;
-      }
+      } catch { toast.error("Erro ao enviar imagem"); return; }
     }
 
-    // Extract link from content
     const linkUrl = extractUrl(content.trim());
+
+    // Fetch link preview data for storage
+    let linkTitle: string | undefined;
+    let linkImage: string | undefined;
+    if (linkUrl && typingPreview) {
+      linkTitle = typingPreview.title ?? undefined;
+      linkImage = typingPreview.image ?? undefined;
+    } else if (linkUrl) {
+      // Try to fetch if not yet loaded
+      const data = await fetchLinkPreview(linkUrl);
+      if (data) { linkTitle = data.title ?? undefined; linkImage = data.image ?? undefined; }
+    }
 
     const storageContent = contentToStorage(content.trim());
     await addComment.mutateAsync({
@@ -147,6 +331,8 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
       image_url: imageUrl ?? undefined,
       image_description: imageDescription || undefined,
       link_url: linkUrl ?? undefined,
+      link_title: linkTitle,
+      link_image: linkImage,
     });
     setContent("");
     setMentionMap({});
@@ -154,10 +340,7 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
 
   const handleContentChange = (val: string) => {
@@ -174,14 +357,11 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
     setShowMentions(false);
   };
 
-  const [mentionMap, setMentionMap] = useState<Record<string, string>>({});
-
   const insertMention = (memberId: string, name: string) => {
     const lastAtIdx = content.lastIndexOf("@");
     if (lastAtIdx >= 0) {
       const before = content.slice(0, lastAtIdx);
-      const displayTag = `@${name}`;
-      setContent(`${before}${displayTag} `);
+      setContent(`${before}@${name} `);
       setMentionMap(prev => ({ ...prev, [name]: memberId }));
     }
     setShowMentions(false);
@@ -196,83 +376,19 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
     return result;
   };
 
-  const formatMentions = (text: string) => {
+  const formatMentions = useCallback((text: string) => {
     return text.replace(/@([a-f0-9-]{36})/gi, (_, id) => {
       const m = membersMap[id];
       return m ? `@${m.name}` : "@alguém";
     });
-  };
+  }, [membersMap]);
 
-  const filteredMembers = members.filter(m =>
-    m.name.toLowerCase().includes(mentionSearch)
-  );
-
-  const [expanded, setExpanded] = useState(false);
-
-  /** Render a link preview card */
-  const renderLinkPreview = (url: string, title?: string | null, image?: string | null) => {
-    const displayUrl = url.replace(/^https?:\/\//, "").split("/")[0];
-    return (
-      <a
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="mt-2 block rounded-lg border border-border/50 bg-card/60 overflow-hidden hover:bg-accent/30 transition group"
-      >
-        {image && (
-          <div className="w-full max-h-48 overflow-hidden">
-            <img src={image} alt="" className="w-full h-full object-cover" />
-          </div>
-        )}
-        <div className="px-3 py-2">
-          {title && <p className="text-xs font-medium truncate">{title}</p>}
-          <div className="flex items-center gap-1 text-[10px] text-muted-foreground mt-0.5">
-            <ExternalLink className="h-3 w-3" />
-            <span className="truncate">{displayUrl}</span>
-          </div>
-        </div>
-      </a>
-    );
-  };
+  const filteredMembers = members.filter(m => m.name.toLowerCase().includes(mentionSearch));
 
   const renderTimelineItem = (item: { type: "comment" | "activity"; data: any; timestamp: string }) => {
     if (item.type === "comment") {
       const c = item.data as PmComment;
-      const member = membersMap[c.author_id];
-      const hasLink = c.link_url;
-      return (
-        <div key={`c-${c.id}`} className="flex gap-2.5">
-          <Avatar className="h-6 w-6 shrink-0 mt-0.5">
-            <AvatarImage src={member?.avatar} />
-            <AvatarFallback className="text-[8px] bg-primary/10 text-primary">{initials(member?.name ?? "?")}</AvatarFallback>
-          </Avatar>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-baseline gap-2">
-              <span className="text-xs font-semibold">{member?.name ?? "Usuário"}</span>
-              <span className="text-[10px] text-muted-foreground">
-                {format(new Date(c.created_at), "MMM d 'às' HH:mm", { locale: ptBR })}
-              </span>
-            </div>
-            {c.content && (
-              <p className="mt-1 whitespace-pre-wrap text-[13px] text-foreground/90 leading-relaxed">{formatMentions(c.content)}</p>
-            )}
-            {c.image_url && (
-              <div className="mt-2">
-                <img
-                  src={c.image_url}
-                  alt={c.image_description || "Imagem"}
-                  className="rounded-lg max-w-[280px] max-h-[200px] object-cover border border-border/30 cursor-pointer hover:opacity-90 transition"
-                  onClick={() => window.open(c.image_url!, "_blank")}
-                />
-                {c.image_description && (
-                  <p className="text-[11px] text-muted-foreground mt-1 italic">{c.image_description}</p>
-                )}
-              </div>
-            )}
-            {hasLink && renderLinkPreview(c.link_url!, c.link_title, c.link_image)}
-          </div>
-        </div>
-      );
+      return <CommentBubble key={`c-${c.id}`} c={c} membersMap={membersMap} formatMentions={formatMentions} />;
     } else {
       const a = item.data;
       const member = membersMap[a.created_by];
@@ -305,9 +421,7 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
         {timeline.length === 0 && (
           <p className="text-xs text-muted-foreground text-center py-4">Nenhuma atividade ainda.</p>
         )}
-
         {firstItem && renderTimelineItem(firstItem)}
-
         {hiddenCount > 0 && (
           <>
             <button
@@ -321,31 +435,25 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
             {expanded && middleItems.map(item => renderTimelineItem(item))}
           </>
         )}
-
         {lastItem && renderTimelineItem(lastItem)}
       </div>
 
       <div className="border-t border-border/30 pt-3 relative">
-        {/* Pending image preview */}
         {pendingImage && (
           <div className="mb-2 relative inline-block">
-            <img
-              src={pendingImage.preview}
-              alt="Preview"
-              className="rounded-lg max-h-32 max-w-[200px] object-cover border border-border/40"
-            />
-            <button
-              onClick={clearPendingImage}
-              className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center"
-            >
+            <img src={pendingImage.preview} alt="Preview" className="rounded-lg max-h-32 max-w-[200px] object-cover border border-border/40" />
+            <button onClick={clearPendingImage} className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center">
               <X className="h-3 w-3" />
             </button>
-            <Input
-              value={imageDescription}
-              onChange={(e) => setImageDescription(e.target.value)}
-              placeholder="Descrição da imagem (opcional)"
-              className="mt-1.5 h-7 text-xs"
-            />
+            <Input value={imageDescription} onChange={(e) => setImageDescription(e.target.value)} placeholder="Descrição da imagem (opcional)" className="mt-1.5 h-7 text-xs" />
+          </div>
+        )}
+
+        {/* Live link preview while typing */}
+        {typingLoading && <LinkPreviewSkeleton />}
+        {typingPreview && !typingLoading && extractUrl(content) && (
+          <div className="mb-2">
+            <LinkPreviewCard preview={typingPreview} url={extractUrl(content)!} />
           </div>
         )}
 
@@ -357,7 +465,6 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
           className="min-h-[60px] text-sm resize-none"
           onKeyDown={handleKeyDown}
         />
-        {/* @ mention dropdown */}
         {showMentions && filteredMembers.length > 0 && (
           <div className="absolute bottom-full mb-1 left-0 w-full bg-popover border border-border rounded-md shadow-lg z-50 max-h-40 overflow-y-auto">
             {filteredMembers.map(m => {
@@ -380,23 +487,12 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
         )}
         <div className="flex items-center justify-between mt-2">
           <div className="flex items-center gap-1">
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              className="h-7 w-7 text-muted-foreground hover:text-primary"
-              onClick={() => imageInputRef.current?.click()}
-            >
+            <Button type="button" size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-primary" onClick={() => imageInputRef.current?.click()}>
               <ImagePlus className="h-4 w-4" />
             </Button>
             <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
           </div>
-          <Button
-            size="sm"
-            onClick={handleSend}
-            disabled={(!content.trim() && !pendingImage) || addComment.isPending || uploadAttachment.isPending}
-            className="gap-1.5"
-          >
+          <Button size="sm" onClick={handleSend} disabled={(!content.trim() && !pendingImage) || addComment.isPending || uploadAttachment.isPending} className="gap-1.5">
             <Send className="h-3 w-3" /> Enviar
           </Button>
         </div>
