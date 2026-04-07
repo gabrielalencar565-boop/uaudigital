@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect } from "react";
-import { Clapperboard, Palette, ChevronDown, Plus, Check, ChevronRight, Trash2 } from "lucide-react";
+import { Clapperboard, Palette, ChevronDown, Plus, Check, ChevronRight, Trash2, RotateCcw, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { PM_ACTIVE_STAGES, getStageCircleColor, tagColor, tagDisplay } from "../pm-constants";
 import { useUpdatePmTask, useCreatePmTask } from "../hooks/use-pm-data";
@@ -14,6 +16,7 @@ import { getFixedAssignee, getFixedWatchers, useDefaultFlowWithDates } from "./P
 import type { PmTask } from "../pm-types";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
 
 function initials(n: string) {
   return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
@@ -29,11 +32,43 @@ interface Props {
 }
 
 export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members, onSelectSubtask, activeSubtaskId }: Props) {
+  const updateTask = useUpdatePmTask();
+  const [showTrash, setShowTrash] = useState(false);
+  const [restoringId, setRestoringId] = useState<string | null>(null);
+
   const videoTasks = childTasks.filter(c => c.post_type === "video");
   const designTasks = childTasks.filter(c => c.post_type === "design");
 
   const videoDone = videoTasks.filter(t => t.stage_current === "entrega").length;
   const designDone = designTasks.filter(t => t.stage_current === "entrega").length;
+
+  const sb2 = supabase as any;
+  const deletedSubsQ = useQuery<PmTask[]>({
+    queryKey: ["pm_deleted_planning_subtasks", parentTask.id],
+    enabled: showTrash,
+    queryFn: async () => {
+      const { data, error } = await sb2
+        .from("pm_tasks")
+        .select("*")
+        .eq("parent_task_id", parentTask.id)
+        .not("deleted_at", "is", null)
+        .order("deleted_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const handleRestore = (subId: string) => {
+    setRestoringId(subId);
+    updateTask.mutate({ id: subId, deleted_at: null, deleted_by: null } as any, {
+      onSuccess: () => {
+        deletedSubsQ.refetch();
+        toast.success("Subtarefa restaurada!");
+        setRestoringId(null);
+      },
+      onError: () => setRestoringId(null),
+    });
+  };
 
   return (
     <div className="space-y-3">
@@ -42,7 +77,61 @@ export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members
         <span className="text-xs text-muted-foreground">
           {videoDone + designDone} de {childTasks.length} subtarefas
         </span>
+        <button
+          onClick={() => setShowTrash(!showTrash)}
+          className={cn(
+            "h-auto px-2 py-0.5 flex items-center gap-1 rounded-md text-xs transition-all",
+            showTrash
+              ? "bg-destructive/10 text-destructive"
+              : "text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted"
+          )}
+          title="Lixeira de subtarefas"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+          Lixeira
+        </button>
       </div>
+
+      {/* Trash panel */}
+      {showTrash && (
+        <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 space-y-2">
+          <div className="flex items-center gap-2">
+            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+            <span className="text-xs font-semibold text-destructive">Subtarefas excluídas</span>
+          </div>
+          {deletedSubsQ.isLoading ? (
+            <div className="flex justify-center py-4">
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            </div>
+          ) : (deletedSubsQ.data ?? []).length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-3">Nenhuma subtarefa na lixeira</p>
+          ) : (
+            <ScrollArea className={cn((deletedSubsQ.data ?? []).length > 4 && "h-[180px]")}>
+              <div className="space-y-1">
+                {(deletedSubsQ.data ?? []).map(sub => (
+                  <div key={sub.id} className="flex items-center gap-2 rounded-md border border-border/30 bg-card/50 px-2 py-1.5">
+                    <span className="flex-1 truncate text-xs text-muted-foreground line-through">{sub.title}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-xs gap-1"
+                      disabled={restoringId === sub.id}
+                      onClick={() => handleRestore(sub.id)}
+                    >
+                      {restoringId === sub.id ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <RotateCcw className="h-3 w-3" />
+                      )}
+                      Restaurar
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          )}
+        </div>
+      )}
 
       <PlanningSection
         type="video"
@@ -58,6 +147,7 @@ export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members
         members={members}
         onSelectSubtask={onSelectSubtask}
         activeSubtaskId={activeSubtaskId}
+        onDeleted={() => deletedSubsQ.refetch()}
       />
 
       <PlanningSection
@@ -74,6 +164,7 @@ export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members
         members={members}
         onSelectSubtask={onSelectSubtask}
         activeSubtaskId={activeSubtaskId}
+        onDeleted={() => deletedSubsQ.refetch()}
       />
     </div>
   );
@@ -82,7 +173,7 @@ export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members
 function PlanningSection({
   type, icon, label, headerBg, headerText, borderColor,
   parentTask, tasks, doneCount,
-  membersMap, members, onSelectSubtask, activeSubtaskId,
+  membersMap, members, onSelectSubtask, activeSubtaskId, onDeleted,
 }: {
   type: "video" | "design";
   icon: React.ReactNode;
@@ -97,6 +188,7 @@ function PlanningSection({
   members?: { id: string; name: string }[];
   onSelectSubtask?: (task: PmTask) => void;
   activeSubtaskId?: string | null;
+  onDeleted?: () => void;
 }) {
   const updateTask = useUpdatePmTask();
   const createTask = useCreatePmTask();
@@ -117,7 +209,9 @@ function PlanningSection({
 
   const handleSoftDelete = async (subId: string, title: string) => {
     const { data: { user } } = await supabase.auth.getUser();
-    updateTask.mutate({ id: subId, deleted_at: new Date().toISOString(), deleted_by: user?.id ?? null } as any);
+    updateTask.mutate({ id: subId, deleted_at: new Date().toISOString(), deleted_by: user?.id ?? null } as any, {
+      onSuccess: () => onDeleted?.(),
+    });
     toast("Subtarefa movida para lixeira");
     setDeletingId(null);
   };
