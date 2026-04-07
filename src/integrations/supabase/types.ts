@@ -2034,7 +2034,7 @@ export type Database = {
               _completed_stage: string
               _pm_task_id: string
               _scoring_user_ids?: string[]
-              _user_id: string
+              _user_id?: string
             }
             Returns: undefined
           }
