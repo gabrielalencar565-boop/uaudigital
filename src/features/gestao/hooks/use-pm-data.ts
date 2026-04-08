@@ -196,6 +196,69 @@ export function useUpdatePmTask() {
         }
       }
 
+      // ── Forward-sync: propagate certain fields to downstream tasks ──
+      const SYNCED_FIELDS = ["description", "tags", "project_id", "is_extra_demand", "caption", "cover_url", "post_type", "priority"] as const;
+      const hasSyncedField = SYNCED_FIELDS.some(f => Object.prototype.hasOwnProperty.call(updates, f));
+
+      if (hasSyncedField && !data.parent_task_id) {
+        // Build the subset of fields that were actually updated
+        const syncPayload: Record<string, any> = {};
+        for (const f of SYNCED_FIELDS) {
+          if (Object.prototype.hasOwnProperty.call(updates, f)) {
+            syncPayload[f] = (updates as any)[f];
+          }
+        }
+
+        // Find all downstream root tasks that share the same origin
+        const originId = data.origin_task_id ?? data.id;
+        const { data: downstream } = await sb
+          .from("pm_tasks")
+          .select("id, created_at")
+          .or(`origin_task_id.eq.${originId},id.eq.${originId}`)
+          .is("parent_task_id", null)
+          .is("deleted_at", null)
+          .gt("created_at", data.created_at)
+          .neq("id", id);
+
+        if (downstream?.length) {
+          // Update all downstream root tasks
+          const downstreamIds = downstream.map((d: any) => d.id);
+          await sb
+            .from("pm_tasks")
+            .update(syncPayload)
+            .in("id", downstreamIds);
+
+          // Also sync to children of downstream tasks
+          for (const did of downstreamIds) {
+            const childSyncPayload: Record<string, any> = {};
+            // For children, only sync tags, is_extra_demand, post_type
+            for (const f of ["tags", "is_extra_demand", "post_type"] as const) {
+              if (Object.prototype.hasOwnProperty.call(updates, f)) {
+                childSyncPayload[f] = (updates as any)[f];
+              }
+            }
+            if (Object.keys(childSyncPayload).length > 0) {
+              await sb
+                .from("pm_tasks")
+                .update(childSyncPayload)
+                .eq("parent_task_id", did)
+                .is("deleted_at", null);
+            }
+          }
+
+          // Recalc tag points for downstream tasks if tags changed
+          if (Object.prototype.hasOwnProperty.call(updates, "tags")) {
+            for (const did of downstreamIds) {
+              try {
+                await supabase.rpc("pm_recalc_tag_points", { _pm_task_id: did } as any);
+              } catch (e) {
+                console.error("Error recalculating downstream tag points:", e);
+              }
+            }
+          }
+        }
+      }
+
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         // Log to parent task if this is a child
