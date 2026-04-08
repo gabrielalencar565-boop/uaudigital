@@ -674,22 +674,26 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
     const isLegacy = t.id.startsWith("legacy_");
     const isDone = t.parent_task_id ? t.status_global === "concluido" : (t.status_global === "concluido" || t.stage_current === "entrega");
     const isAlteracaoWithOrigin = t.stage_current === "alteracoes" && !!t.post_type;
-    const isRevisaoWithOrigin = t.stage_current === "revisao" && !!t.post_type;
-    const hasGradient = isAlteracaoWithOrigin || isRevisaoWithOrigin;
+    const isRevisao = t.stage_current === "revisao";
+    const isRevisaoVideo = isRevisao && t.post_type === "video";
+    const isRevisaoDesign = isRevisao && !isRevisaoVideo;
+    const hasGradient = isAlteracaoWithOrigin || isRevisao;
     const gradientClass = isAlteracaoWithOrigin
       ? (t.post_type === "video"
         ? "bg-gradient-to-r from-stage-alteracoes to-stage-edicao_videos"
         : "bg-gradient-to-r from-stage-alteracoes to-stage-design")
-      : isRevisaoWithOrigin
-      ? (t.post_type === "video"
-        ? "bg-gradient-to-r from-pink-400 to-stage-edicao_videos"
-        : "bg-gradient-to-r from-pink-400 to-stage-design")
+      : isRevisaoVideo
+      ? "bg-gradient-to-r from-pink-400 to-stage-edicao_videos"
+      : isRevisaoDesign
+      ? "bg-gradient-to-r from-pink-400 to-stage-design"
       : undefined;
     const gradientAbbr = isAlteracaoWithOrigin
       ? (t.post_type === "video" ? "ALT/VDO" : "ALT/DSG")
-      : isRevisaoWithOrigin
-        ? (t.post_type === "video" ? "REV/VDO" : "REV/DSG")
-        : undefined;
+      : isRevisaoVideo
+        ? "REV/VDO"
+        : isRevisaoDesign
+          ? "REV/DSG"
+          : undefined;
     const stageBg = gradientClass ?? (STAGE_BADGE_BG[t.stage_current] ?? "bg-muted");
     const abbr = gradientAbbr ?? (STAGE_ABBR[t.stage_current] ?? t.stage_current.toUpperCase().slice(0, 4));
     const assignees = getTaskAssignees(t);
