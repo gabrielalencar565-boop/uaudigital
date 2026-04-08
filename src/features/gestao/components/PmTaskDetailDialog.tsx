@@ -585,18 +585,17 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         status_global: "backlog",
         post_type: postType,
       });
+      // Clone children to new task (originals stay frozen on snapshot)
       for (const child of children) {
-        const childUpdates: any = {
-          id: child.id,
-          parent_task_id: newTask.id,
-          stage_current: stage as any,
-          status_global: "backlog" as any,
-        };
-        if (fixedAssignee !== undefined) {
-          childUpdates.assignee_id = fixedAssignee;
-          childUpdates.watchers = fixedWatchers_;
-        }
-        updateTask.mutate(childUpdates as any);
+        await createTask.mutateAsync({
+          client_id: child.client_id, title: child.title,
+          description: child.description ?? undefined, stage_current: stage,
+          assignee_id: fixedAssignee !== undefined ? (fixedAssignee ?? undefined) : (child.assignee_id ?? undefined),
+          watchers: fixedAssignee !== undefined ? fixedWatchers_ : (child.watchers ?? []),
+          parent_task_id: newTask.id, tags: child.tags ?? [],
+          is_extra_demand: child.is_extra_demand, status_global: "backlog",
+          post_type: child.post_type ?? undefined,
+        });
       }
     }
   };
