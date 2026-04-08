@@ -366,7 +366,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         linkedUpdates.watchers = fixedWatchers;
       }
       updateTask.mutate(linkedUpdates);
-      transferChildren(linkedTaskId, nextStage);
+      cloneChildrenToNewTask(linkedTaskId, nextStage);
     } else if (nextStage === "entrega") {
       // Final stage: mark as delivered
       updateTask.mutate({
