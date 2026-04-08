@@ -692,6 +692,11 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         // Sync scoring for planejamento
         syncCompletedStage(completedStage);
 
+        // Mark ALL children as concluido (frozen on snapshot)
+        for (const child of childTasks) {
+          updateTask.mutate({ id: child.id, status_global: "concluido" as any });
+        }
+
         const clientName = clientsMap[task.client_id] || task.title.split(" - ")[0];
         let monthLabel: string | null = null;
         if (task.due_date) {
