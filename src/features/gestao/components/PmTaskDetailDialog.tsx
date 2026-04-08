@@ -1352,6 +1352,34 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                 </DialogContent>
               </Dialog>
 
+              {/* Assignee warning dialog */}
+              <AlertDialog open={assigneeWarningOpen} onOpenChange={setAssigneeWarningOpen}>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center gap-2 text-amber-500">
+                      ⚠️ Responsáveis das subtarefas
+                    </AlertDialogTitle>
+                    <AlertDialogDescription className="space-y-2">
+                      {assigneeWarningDetails.missing > 0 && (
+                        <p><strong>{assigneeWarningDetails.missing}</strong> subtarefa(s) sem responsável definido.</p>
+                      )}
+                      {childTasks.length > 1 && new Set(childTasks.map(c => c.assignee_id).filter(Boolean)).size <= 1 && (
+                        <p>Todas as subtarefas estão com o mesmo responsável. A pontuação será atribuída a uma única pessoa.</p>
+                      )}
+                      <p className="text-muted-foreground text-sm mt-2">Deseja revisar os responsáveis antes de avançar, ou continuar mesmo assim?</p>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel onClick={() => { setAssigneeWarningOpen(false); setPendingAdvanceAfterWarning(null); }}>
+                      Revisar responsáveis
+                    </AlertDialogCancel>
+                    <AlertDialogAction onClick={proceedAfterAssigneeWarning} className="bg-amber-500 hover:bg-amber-600">
+                      Continuar mesmo assim
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+
               {/* Link or Date dialog for existing agenda tasks */}
               <LinkOrDateDialog
                 open={linkDialogOpen}
