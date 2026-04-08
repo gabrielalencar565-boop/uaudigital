@@ -1069,7 +1069,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         )}
 
         {/* Properties grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2">
+        <div className={cn("grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2", isCompletedSnapshot && !correctionMode && "pointer-events-none opacity-60")}>
           {/* Assignee */}
           <PropertyRow icon={<UserCircle className="h-3.5 w-3.5" />} label="Responsável">
             <PmAssigneeSelector
