@@ -265,6 +265,11 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   const [linkExistingTask, setLinkExistingTask] = useState<{ id: string; due_date: string; title: string } | null>(null);
   const [pendingAdvance, setPendingAdvance] = useState<{ completedStage: string; nextStage: string } | null>(null);
 
+  // Assignee warning state
+  const [assigneeWarningOpen, setAssigneeWarningOpen] = useState(false);
+  const [assigneeWarningDetails, setAssigneeWarningDetails] = useState<{ missing: number; sameAsParent: number }>({ missing: 0, sameAsParent: 0 });
+  const [pendingAdvanceAfterWarning, setPendingAdvanceAfterWarning] = useState<{ completedStage: string; nextStage: string; newDueDate?: string } | null>(null);
+
   // Pending split state (for planejamento → design/video linking)
   const [pendingSplit, setPendingSplit] = useState<{
     stage: string;
