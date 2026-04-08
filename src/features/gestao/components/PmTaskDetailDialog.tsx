@@ -553,18 +553,17 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         linkedUpdates.watchers = fixedWatchers_;
       }
       updateTask.mutate(linkedUpdates);
+      // Clone children to linked task (originals stay frozen on snapshot)
       for (const child of children) {
-        const childUpdates: any = {
-          id: child.id,
-          parent_task_id: linkedTaskId,
-          stage_current: stage as any,
-          status_global: "backlog" as any,
-        };
-        if (fixedAssignee !== undefined) {
-          childUpdates.assignee_id = fixedAssignee;
-          childUpdates.watchers = fixedWatchers_;
-        }
-        updateTask.mutate(childUpdates as any);
+        await createTask.mutateAsync({
+          client_id: child.client_id, title: child.title,
+          description: child.description ?? undefined, stage_current: stage,
+          assignee_id: fixedAssignee !== undefined ? (fixedAssignee ?? undefined) : (child.assignee_id ?? undefined),
+          watchers: fixedAssignee !== undefined ? fixedWatchers_ : (child.watchers ?? []),
+          parent_task_id: linkedTaskId, tags: child.tags ?? [],
+          is_extra_demand: child.is_extra_demand, status_global: "backlog",
+          post_type: child.post_type ?? undefined,
+        });
       }
     } else {
       // Create new task
