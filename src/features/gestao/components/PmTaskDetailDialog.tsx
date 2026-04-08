@@ -907,12 +907,22 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
   const handleReturnFromAlteracao = async () => {
     const sb = supabase as any;
+    const originId = task.origin_task_id ?? task.id;
 
-    // Find the paused revisão task for the same client to reactivate
+    // Detect original stage: check the tags for "Vídeo" or look at the lineage
+    // A task with tag "Vídeo" or "Video" is a video task
+    const taskTags = task.tags ?? [];
+    const isVideoTask = taskTags.some(t => {
+      const parsed = parseTag(t);
+      return parsed.name.toLowerCase() === "vídeo" || parsed.name.toLowerCase() === "video";
+    });
+    const originalStage = isVideoTask ? "edicao_videos" : "design";
+
+    // Find the paused revisão task in the same lineage to reactivate
     const { data: pausedRevisao } = await sb
       .from("pm_tasks")
       .select("id, assignee_id, watchers")
-      .eq("client_id", task.client_id)
+      .or(`id.eq.${originId},origin_task_id.eq.${originId}`)
       .eq("stage_current", "revisao")
       .eq("status_global", "pausado")
       .is("parent_task_id", null)
@@ -922,9 +932,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     if (pausedRevisao && pausedRevisao.length > 0) {
       const revisaoTask = pausedRevisao[0];
 
-      // Mark the current alteração task back as concluído at its original stage (design/edicao_videos)
-      // Determine original stage from post_type
-      const originalStage = task.post_type === "video" ? "edicao_videos" : "design";
+      // Mark the current alteração task back as concluído at its original stage
       updateTask.mutate({
         id: task.id,
         stage_current: originalStage as any,
