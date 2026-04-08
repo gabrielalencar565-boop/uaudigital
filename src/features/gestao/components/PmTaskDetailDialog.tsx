@@ -1038,13 +1038,31 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       {task.cover_url && (
         <div className="relative w-full h-40 overflow-hidden bg-muted">
           <img src={task.cover_url} alt="Capa" className="w-full h-full object-cover" />
-          <Button size="sm" variant="secondary" className="absolute top-2 right-2 h-6 text-[10px] opacity-0 hover:opacity-100 focus:opacity-100 transition-opacity" onClick={handleRemoveCover}>Remover capa</Button>
+          {!isCompletedSnapshot && <Button size="sm" variant="secondary" className="absolute top-2 right-2 h-6 text-[10px] opacity-0 hover:opacity-100 focus:opacity-100 transition-opacity" onClick={handleRemoveCover}>Remover capa</Button>}
         </div>
       )}
 
       <div className="px-4 sm:px-6 py-4 sm:py-5 pb-[calc(env(safe-area-inset-bottom,0px)+6rem)] sm:pb-5 space-y-5 sm:space-y-6">
+        {/* Completed snapshot badge */}
+        {isCompletedSnapshot && (
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex-1">
+              <Lock className="h-4 w-4 text-emerald-400" />
+              <span className="text-sm font-medium text-emerald-400">Etapa concluída — {stageLabel(task.stage_current)}</span>
+            </div>
+            {canCorrect && (
+              <Button size="sm" variant={correctionMode ? "default" : "outline"} className="gap-1.5 h-8 text-xs" onClick={() => setCorrectionMode(!correctionMode)}>
+                <Pencil className="h-3.5 w-3.5" />
+                {correctionMode ? "Sair do modo correção" : "Corrigir responsável / pontuação"}
+              </Button>
+            )}
+          </div>
+        )}
+
         {/* Title */}
-        {editingTitle ? (
+        {isCompletedSnapshot ? (
+          <h1 className="text-xl sm:text-2xl font-bold text-muted-foreground">{task.title}</h1>
+        ) : editingTitle ? (
           <Input autoFocus value={titleDraft} onChange={(e) => setTitleDraft(e.target.value)} onBlur={saveTitle} onKeyDown={(e) => e.key === "Enter" && saveTitle()} className="text-xl sm:text-2xl font-bold border-0 bg-transparent p-0 h-auto focus-visible:ring-0 focus-visible:ring-offset-0" />
         ) : (
           <h1 className="cursor-pointer text-xl sm:text-2xl font-bold hover:text-primary transition-colors" onClick={() => { setTitleDraft(task.title); setEditingTitle(true); }}>{task.title}</h1>
