@@ -1,8 +1,10 @@
 import { useState, useMemo, useCallback } from "react";
 import {
   Calendar, UserCircle, Flag, X, ChevronRight, ArrowLeft, Trash2,
-  Layers, Tag, MessageSquare, Plus, Check, CheckCircle2, RotateCcw, Paperclip, ListTodo, FileText, CalendarDays
+  Layers, Tag, MessageSquare, Plus, Check, CheckCircle2, RotateCcw, Paperclip, ListTodo, FileText, CalendarDays, Pencil, Lock
 } from "lucide-react";
+import { useSession } from "@/hooks/use-session";
+import { useRole } from "@/hooks/use-role";
 import { addDays, format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -278,6 +280,13 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     remainingSplits: { stage: string; stageLabel: string; children: PmTask[]; postType: string }[];
   } | null>(null);
 
+  // Correction mode for completed snapshots
+  const { user: sessionUser } = useSession();
+  const { isAdmin: isRoleAdmin, isPlanner } = useRole(sessionUser?.id);
+  const canCorrect = isRoleAdmin || isPlanner;
+  const isCompletedSnapshot = task.status_global === "concluido" && task.stage_current !== "entrega" && !task.parent_task_id;
+  const [correctionMode, setCorrectionMode] = useState(false);
+
   // Possible next stages from flow
   // Extra demands go straight to entrega after revisão
   const rawNextStages = getNextStages(flowConfig, task.stage_current);
@@ -304,28 +313,38 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   };
 
   const doAdvance = (completedStage: string, nextStage: string, newDueDate?: string, linkedTaskId?: string) => {
-    const transferChildren = async (targetTaskId: string, targetStage: string) => {
+    const cloneChildrenToNewTask = async (targetTaskId: string, targetStage: string) => {
       const fixedAssignee = getFixedAssignee(stageAssignees, targetStage, task.client_id);
       const fixedWatchers = getFixedWatchers(stageAssignees, targetStage, task.client_id);
+      // 1. Mark original children as concluido (frozen on the snapshot)
       for (const child of childTasks) {
-        const childUpdates: any = {
-          id: child.id,
-          parent_task_id: targetTaskId,
-          stage_current: targetStage as any,
-          status_global: "backlog" as any,
-        };
-        if (fixedAssignee !== undefined) {
-          childUpdates.assignee_id = fixedAssignee;
-          childUpdates.watchers = fixedWatchers;
-        }
-        updateTask.mutate(childUpdates as any);
+        updateTask.mutate({ id: child.id, status_global: "concluido" as any });
       }
-      // Transfer attachments from old task to the new task
+      // 2. Clone children to the new task
+      for (const child of childTasks) {
+        await createTask.mutateAsync({
+          client_id: child.client_id,
+          title: child.title,
+          description: child.description ?? undefined,
+          stage_current: targetStage,
+          assignee_id: fixedAssignee !== undefined ? (fixedAssignee ?? undefined) : (child.assignee_id ?? undefined),
+          watchers: fixedAssignee !== undefined ? fixedWatchers : (child.watchers ?? []),
+          parent_task_id: targetTaskId,
+          tags: child.tags ?? [],
+          is_extra_demand: child.is_extra_demand,
+          status_global: "backlog",
+          post_type: child.post_type ?? undefined,
+        });
+      }
+      // 3. Copy attachments (keep originals on snapshot)
       const sb = supabase as any;
-      await sb
-        .from("pm_attachments")
-        .update({ task_id: targetTaskId })
-        .eq("task_id", task.id);
+      const { data: existingAtts } = await sb.from("pm_attachments").select("*").eq("task_id", task.id);
+      if (existingAtts?.length) {
+        for (const att of existingAtts) {
+          const { id: _id, created_at: _ca, ...rest } = att;
+          await sb.from("pm_attachments").insert({ ...rest, task_id: targetTaskId });
+        }
+      }
     };
 
     if (linkedTaskId) {
@@ -347,7 +366,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         linkedUpdates.watchers = fixedWatchers;
       }
       updateTask.mutate(linkedUpdates);
-      transferChildren(linkedTaskId, nextStage);
+      cloneChildrenToNewTask(linkedTaskId, nextStage);
     } else if (nextStage === "entrega") {
       // Final stage: mark as delivered
       updateTask.mutate({
@@ -402,7 +421,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         status_global: "backlog",
         post_type: task.post_type ?? undefined,
       }).then((newTask) => {
-        transferChildren(newTask.id, nextStage);
+        cloneChildrenToNewTask(newTask.id, nextStage);
       });
     }
 
@@ -534,18 +553,17 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         linkedUpdates.watchers = fixedWatchers_;
       }
       updateTask.mutate(linkedUpdates);
+      // Clone children to linked task (originals stay frozen on snapshot)
       for (const child of children) {
-        const childUpdates: any = {
-          id: child.id,
-          parent_task_id: linkedTaskId,
-          stage_current: stage as any,
-          status_global: "backlog" as any,
-        };
-        if (fixedAssignee !== undefined) {
-          childUpdates.assignee_id = fixedAssignee;
-          childUpdates.watchers = fixedWatchers_;
-        }
-        updateTask.mutate(childUpdates as any);
+        await createTask.mutateAsync({
+          client_id: child.client_id, title: child.title,
+          description: child.description ?? undefined, stage_current: stage,
+          assignee_id: fixedAssignee !== undefined ? (fixedAssignee ?? undefined) : (child.assignee_id ?? undefined),
+          watchers: fixedAssignee !== undefined ? fixedWatchers_ : (child.watchers ?? []),
+          parent_task_id: linkedTaskId, tags: child.tags ?? [],
+          is_extra_demand: child.is_extra_demand, status_global: "backlog",
+          post_type: child.post_type ?? undefined,
+        });
       }
     } else {
       // Create new task
@@ -567,18 +585,17 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         status_global: "backlog",
         post_type: postType,
       });
+      // Clone children to new task (originals stay frozen on snapshot)
       for (const child of children) {
-        const childUpdates: any = {
-          id: child.id,
-          parent_task_id: newTask.id,
-          stage_current: stage as any,
-          status_global: "backlog" as any,
-        };
-        if (fixedAssignee !== undefined) {
-          childUpdates.assignee_id = fixedAssignee;
-          childUpdates.watchers = fixedWatchers_;
-        }
-        updateTask.mutate(childUpdates as any);
+        await createTask.mutateAsync({
+          client_id: child.client_id, title: child.title,
+          description: child.description ?? undefined, stage_current: stage,
+          assignee_id: fixedAssignee !== undefined ? (fixedAssignee ?? undefined) : (child.assignee_id ?? undefined),
+          watchers: fixedAssignee !== undefined ? fixedWatchers_ : (child.watchers ?? []),
+          parent_task_id: newTask.id, tags: child.tags ?? [],
+          is_extra_demand: child.is_extra_demand, status_global: "backlog",
+          post_type: child.post_type ?? undefined,
+        });
       }
     }
   };
@@ -674,6 +691,11 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
         // Sync scoring for planejamento
         syncCompletedStage(completedStage);
+
+        // Mark ALL children as concluido (frozen on snapshot)
+        for (const child of childTasks) {
+          updateTask.mutate({ id: child.id, status_global: "concluido" as any });
+        }
 
         const clientName = clientsMap[task.client_id] || task.title.split(" - ")[0];
         let monthLabel: string | null = null;
@@ -1016,20 +1038,38 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       {task.cover_url && (
         <div className="relative w-full h-40 overflow-hidden bg-muted">
           <img src={task.cover_url} alt="Capa" className="w-full h-full object-cover" />
-          <Button size="sm" variant="secondary" className="absolute top-2 right-2 h-6 text-[10px] opacity-0 hover:opacity-100 focus:opacity-100 transition-opacity" onClick={handleRemoveCover}>Remover capa</Button>
+          {!isCompletedSnapshot && <Button size="sm" variant="secondary" className="absolute top-2 right-2 h-6 text-[10px] opacity-0 hover:opacity-100 focus:opacity-100 transition-opacity" onClick={handleRemoveCover}>Remover capa</Button>}
         </div>
       )}
 
       <div className="px-4 sm:px-6 py-4 sm:py-5 pb-[calc(env(safe-area-inset-bottom,0px)+6rem)] sm:pb-5 space-y-5 sm:space-y-6">
+        {/* Completed snapshot badge */}
+        {isCompletedSnapshot && (
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex-1">
+              <Lock className="h-4 w-4 text-emerald-400" />
+              <span className="text-sm font-medium text-emerald-400">Etapa concluída — {stageLabel(task.stage_current)}</span>
+            </div>
+            {canCorrect && (
+              <Button size="sm" variant={correctionMode ? "default" : "outline"} className="gap-1.5 h-8 text-xs" onClick={() => setCorrectionMode(!correctionMode)}>
+                <Pencil className="h-3.5 w-3.5" />
+                {correctionMode ? "Sair do modo correção" : "Corrigir responsável / pontuação"}
+              </Button>
+            )}
+          </div>
+        )}
+
         {/* Title */}
-        {editingTitle ? (
+        {isCompletedSnapshot ? (
+          <h1 className="text-xl sm:text-2xl font-bold text-muted-foreground">{task.title}</h1>
+        ) : editingTitle ? (
           <Input autoFocus value={titleDraft} onChange={(e) => setTitleDraft(e.target.value)} onBlur={saveTitle} onKeyDown={(e) => e.key === "Enter" && saveTitle()} className="text-xl sm:text-2xl font-bold border-0 bg-transparent p-0 h-auto focus-visible:ring-0 focus-visible:ring-offset-0" />
         ) : (
           <h1 className="cursor-pointer text-xl sm:text-2xl font-bold hover:text-primary transition-colors" onClick={() => { setTitleDraft(task.title); setEditingTitle(true); }}>{task.title}</h1>
         )}
 
         {/* Properties grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2">
+        <div className={cn("grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2", isCompletedSnapshot && !correctionMode && "pointer-events-none opacity-60")}>
           {/* Assignee */}
           <PropertyRow icon={<UserCircle className="h-3.5 w-3.5" />} label="Responsável">
             <PmAssigneeSelector
@@ -1361,7 +1401,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           </>
         )}
         {/* Description / Caption editor */}
-        <div className="border-t border-border/20 pt-4">
+        <div className={cn("border-t border-border/20 pt-4", isCompletedSnapshot && !correctionMode && "pointer-events-none opacity-60")}>
           <div className="flex items-center gap-2 mb-2">
             <FileText className="h-4 w-4 text-muted-foreground" />
             <h3 className="text-sm font-bold">Descrição</h3>
@@ -1386,13 +1426,13 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           {task.stage_current === "planejamento" && !task.parent_task_id ? (
             <PmPlanningSubtasks parentTask={task} childTasks={childTasks} membersMap={membersMap} members={members} onSelectSubtask={onSelectSubtask} activeSubtaskId={activeSubtaskId} />
           ) : (
-            <PmSubtaskList parentTask={task} childTasks={childTasks} membersMap={membersMap} members={members} onSelectSubtask={onSelectSubtask} activeSubtaskId={activeSubtaskId} />
+            <PmSubtaskList parentTask={task} childTasks={childTasks} membersMap={membersMap} members={members} onSelectSubtask={onSelectSubtask} activeSubtaskId={activeSubtaskId} readOnly={isCompletedSnapshot && !correctionMode} correctionMode={correctionMode && isCompletedSnapshot} />
           )}
         </div>
 
         {/* Attachments — hidden for planning parent tasks */}
         {!(task.stage_current === "planejamento" && !task.parent_task_id) && (
-          <div className="border-t border-border/20 pt-4">
+          <div className={cn("border-t border-border/20 pt-4", isCompletedSnapshot && !correctionMode && "pointer-events-none opacity-60")}>
             <PmAttachmentsSection taskId={task.id} attachments={attachments} membersMap={membersMap} onSetCover={handleSetCover} currentCoverUrl={task.cover_url} />
           </div>
         )}

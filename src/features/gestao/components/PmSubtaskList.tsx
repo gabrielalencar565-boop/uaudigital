@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, ChevronRight, Check, RotateCcw, Trash2 } from "lucide-react";
+import { Plus, ChevronRight, Check, RotateCcw, Trash2, Pencil } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -25,9 +25,11 @@ interface Props {
   members?: { id: string; name: string }[];
   onSelectSubtask?: (task: PmTask) => void;
   activeSubtaskId?: string | null;
+  readOnly?: boolean;
+  correctionMode?: boolean;
 }
 
-export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onSelectSubtask, activeSubtaskId }: Props) {
+export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onSelectSubtask, activeSubtaskId, readOnly, correctionMode }: Props) {
   const updateTask = useUpdatePmTask();
   const createTask = useCreatePmTask();
   const { stageAssignees } = useDefaultFlowWithDates();
@@ -47,7 +49,7 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
   const progress = total > 0 ? Math.round((done / total) * 100) : 0;
 
   const handleAdd = async () => {
-    if (!newTitle.trim()) return;
+    if (!newTitle.trim() || readOnly) return;
     await createTask.mutateAsync({
       client_id: parentTask.client_id,
       title: newTitle.trim(),
@@ -59,8 +61,10 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
     setNewTitle("");
   };
 
-  const toggleAssignee = (subId: string, sub: PmTask, memberId: string) => {
+  const toggleAssignee = async (subId: string, sub: PmTask, memberId: string) => {
     const currentWatchers = sub.watchers ?? [];
+    const oldAssignee = sub.assignee_id;
+
     if (sub.assignee_id === memberId) {
       const remaining = currentWatchers.filter(w => w !== memberId);
       updateTask.mutate({ id: subId, assignee_id: remaining[0] ?? null, watchers: remaining.slice(1) } as any);
@@ -71,6 +75,39 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
     } else {
       updateTask.mutate({ id: subId, watchers: [...currentWatchers, memberId] } as any);
     }
+
+    // Log and resync if in correction mode
+    if (correctionMode) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        // Log the change
+        const sb = supabase as any;
+        await sb.from("pm_activity_log").insert({
+          entity_type: "task",
+          entity_id: parentTask.id,
+          action: "correction_assignee",
+          metadata: {
+            subtask_id: subId,
+            subtask_title: sub.title,
+            old_assignee: oldAssignee,
+            new_assignee: memberId,
+            changed_by: user.id,
+          },
+          created_by: user.id,
+        });
+
+        // Resync scoring
+        try {
+          await supabase.rpc("pm_resync_correction" as any, {
+            _pm_task_id: parentTask.id,
+            _completed_stage: parentTask.stage_current,
+          });
+          toast.success("Pontuação recalculada");
+        } catch (e) {
+          console.error("Error resyncing:", e);
+        }
+      }
+    }
   };
 
   const allAssigneeIds = (sub: PmTask) => [
@@ -79,19 +116,19 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
   ];
 
   const toggleDone = async (sub: PmTask) => {
+    if (readOnly) return;
     const isDone = sub.status_global === "concluido";
     if (isDone) {
-      // Unmark: set back to backlog
       updateTask.mutate({ id: sub.id, status_global: "backlog" as any });
       toast("Subtarefa desmarcada");
     } else {
-      // Mark as done (keep same stage, just change status — no scoring for subtasks)
       updateTask.mutate({ id: sub.id, status_global: "concluido" as any });
       toast.success("Subtarefa concluída!");
     }
   };
 
   const sendToAlteracoes = (sub: PmTask) => {
+    if (readOnly) return;
     const fixedAssignee = getFixedAssignee(stageAssignees, "alteracoes", parentTask.client_id);
     const fixedWatchers = getFixedWatchers(stageAssignees, "alteracoes", parentTask.client_id);
     const updates: any = { id: sub.id, stage_current: "alteracoes" as any, status_global: "backlog" as any };
@@ -116,27 +153,36 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
             </div>
           </div>
         )}
-        <button
-          onClick={() => setShowTrash(!showTrash)}
-          className={cn(
-            "h-auto px-2 py-0.5 flex items-center gap-1 rounded-md text-xs transition-all",
-            showTrash
-              ? "bg-destructive/10 text-destructive"
-              : "text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted"
-          )}
-          title="Lixeira de subtarefas"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-          Lixeira
-        </button>
+        {correctionMode && (
+          <Badge className="bg-amber-500/10 text-amber-500 border-amber-500/20 gap-1 text-[10px]">
+            <Pencil className="h-3 w-3" /> Modo correção
+          </Badge>
+        )}
+        {!readOnly && (
+          <button
+            onClick={() => setShowTrash(!showTrash)}
+            className={cn(
+              "h-auto px-2 py-0.5 flex items-center gap-1 rounded-md text-xs transition-all",
+              showTrash
+                ? "bg-destructive/10 text-destructive"
+                : "text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted"
+            )}
+            title="Lixeira de subtarefas"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Lixeira
+          </button>
+        )}
       </div>
 
-      <SubtaskTrashDialog
-        parentTaskId={parentTask.id}
-        open={showTrash}
-        onOpenChange={setShowTrash}
-        membersMap={membersMap}
-      />
+      {!readOnly && (
+        <SubtaskTrashDialog
+          parentTaskId={parentTask.id}
+          open={showTrash}
+          onOpenChange={setShowTrash}
+          membersMap={membersMap}
+        />
+      )}
 
       {/* Table header */}
       {total > 0 && (
@@ -144,7 +190,7 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
           <div className="w-8 text-center">Etapa</div>
           <div className="flex-1">Nome</div>
           <div className="w-20 text-center">Responsável</div>
-          <div className="w-12" />
+          {!readOnly && <div className="w-12" />}
         </div>
       )}
 
@@ -163,47 +209,63 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
               className={cn(
                 "group flex items-center gap-2 px-2 py-2 transition border-b border-border/10 cursor-pointer",
                 isActive ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-card/40",
-                isDone && "opacity-60"
+                isDone && !correctionMode && "opacity-60"
               )}
               onClick={() => onSelectSubtask?.(sub)}
             >
               {/* Done toggle + Alteração */}
               <div className="w-8 flex justify-center" onClick={(e) => e.stopPropagation()}>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <button
-                      className={cn(
-                        "h-5 w-5 rounded-full border-2 flex items-center justify-center transition-all hover:scale-110",
-                        isDone ? "bg-emerald-500 border-emerald-500" : circleColor.border,
-                        isAlt && !isDone && "border-amber-500 bg-amber-500/20"
-                      )}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        toggleDone(sub);
-                      }}
-                    >
-                      {isDone && <Check className="h-3 w-3 text-white" />}
-                      {isAlt && !isDone && <RotateCcw className="h-3 w-3 text-amber-500" />}
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-44 p-1" align="start">
-                    <button
-                      className="flex items-center gap-2 w-full px-2 py-1.5 rounded text-xs hover:bg-accent transition"
-                      onClick={() => toggleDone(sub)}
-                    >
-                      <Check className="h-3.5 w-3.5" />
-                      {isDone ? "Desmarcar concluído" : "Marcar como concluído"}
-                    </button>
-                    <button
-                      className={cn("flex items-center gap-2 w-full px-2 py-1.5 rounded text-xs hover:bg-accent transition", isAlt && "bg-accent")}
-                      onClick={() => sendToAlteracoes(sub)}
-                    >
-                      <RotateCcw className="h-3.5 w-3.5 text-amber-500" />
-                      Enviar para Alteração
-                    </button>
-                  </PopoverContent>
-                </Popover>
+                {readOnly && !correctionMode ? (
+                  <span
+                    className={cn(
+                      "h-5 w-5 rounded-full border-2 flex items-center justify-center",
+                      isDone ? "bg-emerald-500 border-emerald-500" : circleColor.border,
+                      isAlt && !isDone && "border-amber-500 bg-amber-500/20"
+                    )}
+                  >
+                    {isDone && <Check className="h-3 w-3 text-white" />}
+                    {isAlt && !isDone && <RotateCcw className="h-3 w-3 text-amber-500" />}
+                  </span>
+                ) : (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        className={cn(
+                          "h-5 w-5 rounded-full border-2 flex items-center justify-center transition-all hover:scale-110",
+                          isDone ? "bg-emerald-500 border-emerald-500" : circleColor.border,
+                          isAlt && !isDone && "border-amber-500 bg-amber-500/20"
+                        )}
+                        onClick={(e) => {
+                          if (readOnly) return;
+                          e.preventDefault();
+                          e.stopPropagation();
+                          toggleDone(sub);
+                        }}
+                      >
+                        {isDone && <Check className="h-3 w-3 text-white" />}
+                        {isAlt && !isDone && <RotateCcw className="h-3 w-3 text-amber-500" />}
+                      </button>
+                    </PopoverTrigger>
+                    {!readOnly && (
+                      <PopoverContent className="w-44 p-1" align="start">
+                        <button
+                          className="flex items-center gap-2 w-full px-2 py-1.5 rounded text-xs hover:bg-accent transition"
+                          onClick={() => toggleDone(sub)}
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                          {isDone ? "Desmarcar concluído" : "Marcar como concluído"}
+                        </button>
+                        <button
+                          className={cn("flex items-center gap-2 w-full px-2 py-1.5 rounded text-xs hover:bg-accent transition", isAlt && "bg-accent")}
+                          onClick={() => sendToAlteracoes(sub)}
+                        >
+                          <RotateCcw className="h-3.5 w-3.5 text-amber-500" />
+                          Enviar para Alteração
+                        </button>
+                      </PopoverContent>
+                    )}
+                  </Popover>
+                )}
               </div>
 
               {/* Tags + Title */}
@@ -216,16 +278,16 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
                 <span className={cn("truncate text-sm hover:text-primary transition-colors", isDone && "line-through text-muted-foreground")}>{sub.title}</span>
               </div>
 
-              {/* Assignee */}
+              {/* Assignee - always visible, clickable in correction mode or normal mode */}
               <div className="w-20 flex justify-center" onClick={(e) => e.stopPropagation()}>
-                {members && members.length > 0 ? (
+                {members && members.length > 0 && (!readOnly || correctionMode) ? (
                   <PmAssigneeSelector
                     selectedIds={subAssignees}
                     membersMap={membersMap}
                     members={members}
                     onToggle={(mId) => toggleAssignee(sub.id, sub, mId)}
                   >
-                    <button className="flex items-center -space-x-1">
+                    <button className={cn("flex items-center -space-x-1", correctionMode && "ring-2 ring-amber-500/30 rounded-full p-0.5")}>
                       {subAssignees.length > 0 ? subAssignees.slice(0, 2).map(id => {
                         const m = membersMap[id];
                         if (!m) return null;
@@ -241,61 +303,85 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
                     </button>
                   </PmAssigneeSelector>
                 ) : (
-                  <div className="h-5 w-5 rounded-full border border-dashed border-muted-foreground/30" />
+                  <div className="flex items-center -space-x-1">
+                    {subAssignees.length > 0 ? subAssignees.slice(0, 2).map(id => {
+                      const m = membersMap[id];
+                      if (!m) return null;
+                      return (
+                        <Avatar key={id} className="h-5 w-5 border border-background">
+                          <AvatarImage src={m.avatar} />
+                          <AvatarFallback className="text-[7px] bg-primary/10 text-primary">{initials(m.name)}</AvatarFallback>
+                        </Avatar>
+                      );
+                    }) : (
+                      <div className="h-5 w-5 rounded-full border border-dashed border-muted-foreground/30" />
+                    )}
+                  </div>
                 )}
               </div>
 
-              {/* Actions on the right of avatar */}
-              <div className="w-14 flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
-                <AlertDialog open={deletingId === sub.id} onOpenChange={(open) => !open && setDeletingId(null)}>
-                  <AlertDialogTrigger asChild>
-                    <button
-                      className="h-6 w-6 flex items-center justify-center rounded-md text-destructive/80 hover:bg-destructive/10 hover:text-destructive transition-all"
-                      onClick={(e) => { e.stopPropagation(); setDeletingId(sub.id); }}
-                      aria-label={`Excluir subtarefa ${sub.title}`}
-                      title="Mover para lixeira"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent className="z-[200]">
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Excluir subtarefa?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        A subtarefa <strong>"{sub.title}"</strong> será movida para a lixeira. Os pontos de performance não serão contabilizados.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                      <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => handleSoftDelete(sub.id)}>
-                        Excluir
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 group-hover:text-primary transition" onClick={() => onSelectSubtask?.(sub)} />
-              </div>
+              {/* Actions - hidden in readOnly */}
+              {!readOnly && (
+                <div className="w-14 flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+                  <AlertDialog open={deletingId === sub.id} onOpenChange={(open) => !open && setDeletingId(null)}>
+                    <AlertDialogTrigger asChild>
+                      <button
+                        className="h-6 w-6 flex items-center justify-center rounded-md text-destructive/80 hover:bg-destructive/10 hover:text-destructive transition-all"
+                        onClick={(e) => { e.stopPropagation(); setDeletingId(sub.id); }}
+                        aria-label={`Excluir subtarefa ${sub.title}`}
+                        title="Mover para lixeira"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent className="z-[200]">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Excluir subtarefa?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          A subtarefa <strong>"{sub.title}"</strong> será movida para a lixeira. Os pontos de performance não serão contabilizados.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => handleSoftDelete(sub.id)}>
+                          Excluir
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 group-hover:text-primary transition" onClick={() => onSelectSubtask?.(sub)} />
+                </div>
+              )}
+
+              {/* Correction mode: show chevron for navigation */}
+              {readOnly && (
+                <div className="w-6 flex items-center justify-end">
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 group-hover:text-primary transition" onClick={() => onSelectSubtask?.(sub)} />
+                </div>
+              )}
             </div>
           );
         })}
       </div>
 
-      {/* Add subtask */}
-      <div className="flex items-center gap-2 px-2 py-1.5">
-        <Plus className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-        <Input
-          value={newTitle}
-          onChange={(e) => setNewTitle(e.target.value)}
-          placeholder="Adicionar subtarefa..."
-          className="h-7 text-sm border-0 bg-transparent shadow-none focus-visible:ring-0 p-0 placeholder:text-muted-foreground/50"
-          onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-        />
-        {newTitle.trim() && (
-          <Button size="sm" variant="ghost" onClick={handleAdd} className="h-6 text-xs px-2">
-            Adicionar
-          </Button>
-        )}
-      </div>
+      {/* Add subtask - hidden in readOnly */}
+      {!readOnly && (
+        <div className="flex items-center gap-2 px-2 py-1.5">
+          <Plus className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          <Input
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            placeholder="Adicionar subtarefa..."
+            className="h-7 text-sm border-0 bg-transparent shadow-none focus-visible:ring-0 p-0 placeholder:text-muted-foreground/50"
+            onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+          />
+          {newTitle.trim() && (
+            <Button size="sm" variant="ghost" onClick={handleAdd} className="h-6 text-xs px-2">
+              Adicionar
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
