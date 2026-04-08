@@ -206,7 +206,7 @@ export function AdminPontuacaoPanel() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Critérios por etapa</CardTitle>
           <CardDescription>
-            Altere os valores e clique em Salvar. Etapas com "Usa quantidade" multiplicam os pontos base pela quantidade de demandas na tarefa.
+            Altere os valores e clique em Salvar. As etapas <strong>Design</strong> e <strong>Vídeo</strong> não aparecem aqui — a pontuação dessas etapas é definida exclusivamente pelas <strong>etiquetas</strong> abaixo.
           </CardDescription>
         </CardHeader>
         <CardContent>
