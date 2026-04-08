@@ -127,6 +127,7 @@ export function useCreatePmTask() {
       project_id?: string;
       tags?: string[];
       parent_task_id?: string | null;
+      origin_task_id?: string | null;
       useTemplate?: boolean;
       is_extra_demand?: boolean;
       is_draft?: boolean;

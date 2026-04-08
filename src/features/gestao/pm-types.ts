@@ -16,6 +16,7 @@ export interface PmTask {
   created_at: string;
   updated_at: string;
   parent_task_id: string | null;
+  origin_task_id: string | null;
   cover_url: string | null;
   is_extra_demand: boolean;
   is_draft?: boolean;
