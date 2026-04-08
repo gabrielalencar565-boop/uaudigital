@@ -166,8 +166,8 @@ export function AdminPontuacaoPanel() {
     }));
   }
 
-  // Order stages nicely
-  const magicStages = ["planejamento", "captacao", "edicao_videos", "design", "pdf", "alteracoes", "agendamento"];
+  // Order stages nicely — design and edicao_videos are excluded (scoring defined by tags only)
+  const magicStages = ["planejamento", "captacao", "pdf", "alteracoes", "agendamento"];
   const sorted = [...rows]
     .filter((r) => magicStages.includes(r.stage))
     .sort((a, b) => magicStages.indexOf(a.stage) - magicStages.indexOf(b.stage));
