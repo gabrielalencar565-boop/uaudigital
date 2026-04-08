@@ -1,8 +1,10 @@
 import { useState, useMemo, useCallback } from "react";
 import {
   Calendar, UserCircle, Flag, X, ChevronRight, ArrowLeft, Trash2,
-  Layers, Tag, MessageSquare, Plus, Check, CheckCircle2, RotateCcw, Paperclip, ListTodo, FileText, CalendarDays
+  Layers, Tag, MessageSquare, Plus, Check, CheckCircle2, RotateCcw, Paperclip, ListTodo, FileText, CalendarDays, Pencil, Lock
 } from "lucide-react";
+import { useSession } from "@/hooks/use-session";
+import { useRole } from "@/hooks/use-role";
 import { addDays, format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
