@@ -1,46 +1,53 @@
 
+## Plano de Refatoração - Fluxo de Tarefas e Subtarefas
 
-## Plan: Redesign Link Preview Card — ClickUp-style Widget
+### Fase 1: Migration (Banco de Dados)
+- Criar função `pm_resync_correction(_pm_task_id, _completed_stage)` que:
+  - Remove registros de pontuação antigos para a tarefa+etapa
+  - Re-sincroniza com a distribuição atual de responsáveis
+  - Recalcula pontos de etiquetas
+  - Recomputa scores para usuários afetados (antigos e novos)
 
-Based on the uploaded reference image, the preview card needs to be restructured so:
-1. The entire preview (header + image + footer) lives inside a single contained widget/card
-2. The action buttons (copy link, open externally, expand) appear in the **top-right corner** of the preview card area — not as a hover overlay on the image center
+### Fase 2: Persistência de Subtarefas (PmTaskDetailDialog.tsx)
+- **`transferChildren` → `cloneChildrenToNewTask`**: Em vez de MOVER subtarefas para a nova tarefa, CLONAR:
+  1. Marcar subtarefas originais como `concluido` (ficam no snapshot)
+  2. Criar cópias das subtarefas na nova tarefa (com novos responsáveis)
+  3. Copiar (não mover) anexos para a nova tarefa
+- Aplicar mesma lógica no `executeSplitTask` (planejamento → design/vídeo)
+- Simplificar `handleAlteracao` e `handleReturnFromAlteracao` (não precisa mais mover filhos)
 
-### Changes — Single file: `PmCommentsSection.tsx`
+### Fase 3: Modo Visualização Bloqueada (PmTaskDetailDialog.tsx)
+- Detectar `isCompletedSnapshot` = `status_global === "concluido" && stage !== "entrega" && !parent_task_id`
+- Quando snapshot concluído:
+  - Título não editável
+  - Propriedades bloqueadas (cliente, data, etapa, demanda extra)
+  - Descrição somente leitura
+  - Não permitir adicionar/remover subtarefas
+  - Não permitir marcar/desmarcar conclusão
 
-**1. Move action buttons from image-center overlay to card top-right corner**
-- Remove the full-image hover overlay with centered buttons
-- Place the 3 action buttons (copy, open link, expand) as small icons in the **top-right of the card header**, visible on card hover (`group-hover`)
-- Buttons: link/chain icon, external-link icon, expand icon — matching the reference
+### Fase 4: Edição Controlada (Admin + Planejador)
+- Botão "Corrigir responsável / pontuação" visível para admin/planejador
+- Quando ativado, permite editar:
+  - Responsável da subtarefa
+  - Etiquetas da subtarefa
+- Ao salvar, chama `pm_resync_correction` para recalcular pontuação
 
-**2. Restructure the card layout**
-- Keep the card as a single bordered widget with: header → image → description
-- Header: avatar/icon + profile name + platform label (left), action buttons (right, visible on hover)
-- Remove the "Ver perfil" / "Abrir" button from the header — replace with the hover action icons
-- Image: `w-full h-auto max-h-[500px] object-cover`, no overlay on hover
-- Footer/description: keep as-is (optional, `line-clamp-2`)
+### Fase 5: PmSubtaskList.tsx
+- Adicionar props `readOnly` e `correctionMode`
+- `readOnly`: esconde botões de adicionar/excluir, desabilita toggle de conclusão
+- `correctionMode`: permite editar responsável e etiquetas mesmo em readOnly
 
-**3. Card-level hover group**
-- The outer card div gets `group` class
-- Action buttons use `opacity-0 group-hover:opacity-100` to appear only on hover, positioned absolute top-right of the card
+### Fase 6: UI
+- Badge "Etapa concluída" no topo da tarefa snapshot
+- Subtarefas com aparência levemente desativada (opacity)
+- Campos editáveis destacados (responsável/etiqueta) no modo correção
 
-### Visual reference (from uploaded image)
-```text
-┌──────────────────────────────────────┐
-│ [avatar] profileName  ...   🔗 ↗ ⤢  │  ← actions top-right, on hover
-│                                      │
-│           ┌──────────────┐           │
-│           │              │           │
-│           │   IMAGE      │           │
-│           │   (full)     │           │
-│           │              │           │
-│           └──────────────┘           │
-│  description text...                 │
-└──────────────────────────────────────┘
-```
+### Fase 7: Histórico
+- Registrar no `pm_activity_log` alterações de responsável e etiqueta com before/after
+- Incluir: subtarefa, responsável anterior, novo responsável, etiqueta anterior, nova etiqueta, quem alterou, data/hora
 
-### Technical details
-- Icons to use: `Link2` (copy), `ExternalLink` (open), `Maximize2` (preview/expand)
-- Keep YouTube play button overlay on image (non-interactive decoration)
-- Card remains fully clickable to open the URL
-
+### Arquivos afetados:
+1. `supabase/migrations/` - Nova função `pm_resync_correction`
+2. `src/features/gestao/components/PmTaskDetailDialog.tsx` - Clonagem, modo bloqueado, botão correção
+3. `src/features/gestao/components/PmSubtaskList.tsx` - Props readOnly/correctionMode
+4. `src/features/gestao/hooks/use-pm-data.ts` - Hook para chamar pm_resync_correction

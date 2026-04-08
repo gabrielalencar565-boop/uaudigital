@@ -2020,6 +2020,10 @@ export type Database = {
         Args: { _pm_task_id: string }
         Returns: undefined
       }
+      pm_resync_correction: {
+        Args: { _completed_stage: string; _pm_task_id: string }
+        Returns: undefined
+      }
       pm_sync_stage_completion:
         | {
             Args: {
