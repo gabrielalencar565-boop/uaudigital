@@ -1401,7 +1401,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           </>
         )}
         {/* Description / Caption editor */}
-        <div className="border-t border-border/20 pt-4">
+        <div className={cn("border-t border-border/20 pt-4", isCompletedSnapshot && !correctionMode && "pointer-events-none opacity-60")}>
           <div className="flex items-center gap-2 mb-2">
             <FileText className="h-4 w-4 text-muted-foreground" />
             <h3 className="text-sm font-bold">Descrição</h3>
@@ -1426,13 +1426,13 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           {task.stage_current === "planejamento" && !task.parent_task_id ? (
             <PmPlanningSubtasks parentTask={task} childTasks={childTasks} membersMap={membersMap} members={members} onSelectSubtask={onSelectSubtask} activeSubtaskId={activeSubtaskId} />
           ) : (
-            <PmSubtaskList parentTask={task} childTasks={childTasks} membersMap={membersMap} members={members} onSelectSubtask={onSelectSubtask} activeSubtaskId={activeSubtaskId} />
+            <PmSubtaskList parentTask={task} childTasks={childTasks} membersMap={membersMap} members={members} onSelectSubtask={onSelectSubtask} activeSubtaskId={activeSubtaskId} readOnly={isCompletedSnapshot && !correctionMode} correctionMode={correctionMode && isCompletedSnapshot} />
           )}
         </div>
 
         {/* Attachments — hidden for planning parent tasks */}
         {!(task.stage_current === "planejamento" && !task.parent_task_id) && (
-          <div className="border-t border-border/20 pt-4">
+          <div className={cn("border-t border-border/20 pt-4", isCompletedSnapshot && !correctionMode && "pointer-events-none opacity-60")}>
             <PmAttachmentsSection taskId={task.id} attachments={attachments} membersMap={membersMap} onSetCover={handleSetCover} currentCoverUrl={task.cover_url} />
           </div>
         )}
