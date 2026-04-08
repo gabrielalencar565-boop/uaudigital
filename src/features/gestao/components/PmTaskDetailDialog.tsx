@@ -813,31 +813,25 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
     if (previousSnapshot) {
       // Reactivate the previous snapshot: set stage to alteracoes, status back to em_andamento
-      // The task keeps its completed_at but becomes active again for alteração work
       const prevUpdates: any = {
         id: previousSnapshot.id,
         stage_current: "alteracoes" as any,
         status_global: "em_andamento" as any,
       };
-      // Keep the original assignee from the snapshot (the person who did the work)
       updateTask.mutate(prevUpdates);
 
-      // Reactivate children of the previous snapshot too
+      // Delete old frozen children of the snapshot (they are stale copies)
       const { data: prevChildren } = await sb
         .from("pm_tasks")
         .select("id")
         .eq("parent_task_id", previousSnapshot.id);
-      if (prevChildren) {
+      if (prevChildren?.length) {
         for (const pc of prevChildren) {
-          updateTask.mutate({
-            id: pc.id,
-            stage_current: "alteracoes" as any,
-            status_global: "em_andamento" as any,
-          } as any);
+          await sb.from("pm_tasks").update({ deleted_at: new Date().toISOString(), deleted_by: user.id }).eq("id", pc.id);
         }
       }
 
-      // Transfer current task's children to the reactivated task
+      // Transfer current task's children to the reactivated snapshot
       for (const child of childTasks) {
         updateTask.mutate({
           id: child.id,
