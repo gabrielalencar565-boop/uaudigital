@@ -421,7 +421,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         status_global: "backlog",
         post_type: task.post_type ?? undefined,
       }).then((newTask) => {
-        transferChildren(newTask.id, nextStage);
+        cloneChildrenToNewTask(newTask.id, nextStage);
       });
     }
 
