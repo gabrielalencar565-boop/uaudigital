@@ -313,28 +313,38 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   };
 
   const doAdvance = (completedStage: string, nextStage: string, newDueDate?: string, linkedTaskId?: string) => {
-    const transferChildren = async (targetTaskId: string, targetStage: string) => {
+    const cloneChildrenToNewTask = async (targetTaskId: string, targetStage: string) => {
       const fixedAssignee = getFixedAssignee(stageAssignees, targetStage, task.client_id);
       const fixedWatchers = getFixedWatchers(stageAssignees, targetStage, task.client_id);
+      // 1. Mark original children as concluido (frozen on the snapshot)
       for (const child of childTasks) {
-        const childUpdates: any = {
-          id: child.id,
-          parent_task_id: targetTaskId,
-          stage_current: targetStage as any,
-          status_global: "backlog" as any,
-        };
-        if (fixedAssignee !== undefined) {
-          childUpdates.assignee_id = fixedAssignee;
-          childUpdates.watchers = fixedWatchers;
-        }
-        updateTask.mutate(childUpdates as any);
+        updateTask.mutate({ id: child.id, status_global: "concluido" as any });
       }
-      // Transfer attachments from old task to the new task
+      // 2. Clone children to the new task
+      for (const child of childTasks) {
+        await createTask.mutateAsync({
+          client_id: child.client_id,
+          title: child.title,
+          description: child.description ?? undefined,
+          stage_current: targetStage,
+          assignee_id: fixedAssignee !== undefined ? (fixedAssignee ?? undefined) : (child.assignee_id ?? undefined),
+          watchers: fixedAssignee !== undefined ? fixedWatchers : (child.watchers ?? []),
+          parent_task_id: targetTaskId,
+          tags: child.tags ?? [],
+          is_extra_demand: child.is_extra_demand,
+          status_global: "backlog",
+          post_type: child.post_type ?? undefined,
+        });
+      }
+      // 3. Copy attachments (keep originals on snapshot)
       const sb = supabase as any;
-      await sb
-        .from("pm_attachments")
-        .update({ task_id: targetTaskId })
-        .eq("task_id", task.id);
+      const { data: existingAtts } = await sb.from("pm_attachments").select("*").eq("task_id", task.id);
+      if (existingAtts?.length) {
+        for (const att of existingAtts) {
+          const { id: _id, created_at: _ca, ...rest } = att;
+          await sb.from("pm_attachments").insert({ ...rest, task_id: targetTaskId });
+        }
+      }
     };
 
     if (linkedTaskId) {
