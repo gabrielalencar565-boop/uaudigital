@@ -607,6 +607,7 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
         created_at: "",
         updated_at: "",
         parent_task_id: null,
+        origin_task_id: null,
         cover_url: null,
         is_extra_demand: lt.is_extra_demand ?? false,
         post_type: null,

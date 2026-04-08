@@ -406,6 +406,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         newTitle = task.title.replace(` - ${currentStageLabel}`, ` - ${nextStageLabel}`);
       }
 
+      const originId = task.origin_task_id ?? task.id;
       createTask.mutateAsync({
         client_id: task.client_id,
         title: newTitle,
@@ -420,6 +421,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         is_extra_demand: task.is_extra_demand,
         status_global: "backlog",
         post_type: task.post_type ?? undefined,
+        origin_task_id: originId,
       }).then((newTask) => {
         cloneChildrenToNewTask(newTask.id, nextStage);
       });
@@ -570,6 +572,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       const title = monthLabel
         ? `${clientName} - ${stageLabel_} - ${monthLabel}`
         : `${clientName} - ${stageLabel_}`;
+      const originId = task.origin_task_id ?? task.id;
       const newTask = await createTask.mutateAsync({
         client_id: task.client_id,
         title,
@@ -584,6 +587,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         is_extra_demand: task.is_extra_demand,
         status_global: "backlog",
         post_type: postType,
+        origin_task_id: originId,
       });
       // Clone children to new task (originals stay frozen on snapshot)
       for (const child of children) {

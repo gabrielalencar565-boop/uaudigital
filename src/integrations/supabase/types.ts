@@ -1525,6 +1525,7 @@ export type Database = {
           id: string
           is_draft: boolean
           is_extra_demand: boolean
+          origin_task_id: string | null
           parent_task_id: string | null
           post_type: string | null
           posting_date: string | null
@@ -1553,6 +1554,7 @@ export type Database = {
           id?: string
           is_draft?: boolean
           is_extra_demand?: boolean
+          origin_task_id?: string | null
           parent_task_id?: string | null
           post_type?: string | null
           posting_date?: string | null
@@ -1581,6 +1583,7 @@ export type Database = {
           id?: string
           is_draft?: boolean
           is_extra_demand?: boolean
+          origin_task_id?: string | null
           parent_task_id?: string | null
           post_type?: string | null
           posting_date?: string | null
@@ -1601,6 +1604,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_tasks_origin_task_id_fkey"
+            columns: ["origin_task_id"]
+            isOneToOne: false
+            referencedRelation: "pm_tasks"
             referencedColumns: ["id"]
           },
           {
