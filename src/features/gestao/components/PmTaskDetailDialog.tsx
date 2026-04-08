@@ -452,7 +452,32 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     return existing && existing.length > 0 ? existing[0] : null;
   };
 
+  const checkSubtaskAssignees = (): { missing: number; sameAsParent: number } | null => {
+    if (!childTasks || childTasks.length === 0) return null;
+    const missing = childTasks.filter(c => !c.assignee_id).length;
+    const sameAsParent = task.assignee_id
+      ? childTasks.filter(c => c.assignee_id === task.assignee_id).length
+      : 0;
+    const uniqueAssignees = new Set(childTasks.map(c => c.assignee_id).filter(Boolean));
+    // Warn if any subtask has no assignee, or ALL subtasks have the same single assignee
+    if (missing > 0 || (uniqueAssignees.size === 1 && childTasks.length > 1)) {
+      return { missing, sameAsParent };
+    }
+    return null;
+  };
+
   const advanceStage = async (completedStage: string, nextStage: string, newDueDate?: string) => {
+    // Check subtask assignees before advancing (only for scoring stages)
+    if (completedStage !== "alteracoes" && completedStage !== "revisao") {
+      const warning = checkSubtaskAssignees();
+      if (warning) {
+        setAssigneeWarningDetails(warning);
+        setPendingAdvanceAfterWarning({ completedStage, nextStage, newDueDate });
+        setAssigneeWarningOpen(true);
+        return;
+      }
+    }
+
     // Always check for existing agenda task regardless of date config
     const existing = await findExistingAgendaTaskForStage(nextStage, newDueDate);
     if (existing) {
@@ -462,6 +487,22 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       return;
     }
 
+    doAdvance(completedStage, nextStage, newDueDate);
+  };
+
+  const proceedAfterAssigneeWarning = async () => {
+    setAssigneeWarningOpen(false);
+    if (!pendingAdvanceAfterWarning) return;
+    const { completedStage, nextStage, newDueDate } = pendingAdvanceAfterWarning;
+    setPendingAdvanceAfterWarning(null);
+
+    const existing = await findExistingAgendaTaskForStage(nextStage, newDueDate);
+    if (existing) {
+      setLinkExistingTask(existing);
+      setPendingAdvance({ completedStage, nextStage });
+      setLinkDialogOpen(true);
+      return;
+    }
     doAdvance(completedStage, nextStage, newDueDate);
   };
 
