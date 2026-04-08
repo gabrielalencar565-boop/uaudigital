@@ -280,6 +280,13 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     remainingSplits: { stage: string; stageLabel: string; children: PmTask[]; postType: string }[];
   } | null>(null);
 
+  // Correction mode for completed snapshots
+  const { user: sessionUser } = useSession();
+  const { isAdmin: isRoleAdmin, isPlanner } = useRole(sessionUser?.id);
+  const canCorrect = isRoleAdmin || isPlanner;
+  const isCompletedSnapshot = task.status_global === "concluido" && task.stage_current !== "entrega" && !task.parent_task_id;
+  const [correctionMode, setCorrectionMode] = useState(false);
+
   // Possible next stages from flow
   // Extra demands go straight to entrega after revisão
   const rawNextStages = getNextStages(flowConfig, task.stage_current);
