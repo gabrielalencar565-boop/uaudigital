@@ -265,6 +265,11 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   const [linkExistingTask, setLinkExistingTask] = useState<{ id: string; due_date: string; title: string } | null>(null);
   const [pendingAdvance, setPendingAdvance] = useState<{ completedStage: string; nextStage: string } | null>(null);
 
+  // Assignee warning state
+  const [assigneeWarningOpen, setAssigneeWarningOpen] = useState(false);
+  const [assigneeWarningDetails, setAssigneeWarningDetails] = useState<{ missing: number; sameAsParent: number }>({ missing: 0, sameAsParent: 0 });
+  const [pendingAdvanceAfterWarning, setPendingAdvanceAfterWarning] = useState<{ completedStage: string; nextStage: string; newDueDate?: string } | null>(null);
+
   // Pending split state (for planejamento → design/video linking)
   const [pendingSplit, setPendingSplit] = useState<{
     stage: string;
@@ -447,7 +452,32 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     return existing && existing.length > 0 ? existing[0] : null;
   };
 
+  const checkSubtaskAssignees = (): { missing: number; sameAsParent: number } | null => {
+    if (!childTasks || childTasks.length === 0) return null;
+    const missing = childTasks.filter(c => !c.assignee_id).length;
+    const sameAsParent = task.assignee_id
+      ? childTasks.filter(c => c.assignee_id === task.assignee_id).length
+      : 0;
+    const uniqueAssignees = new Set(childTasks.map(c => c.assignee_id).filter(Boolean));
+    // Warn if any subtask has no assignee, or ALL subtasks have the same single assignee
+    if (missing > 0 || (uniqueAssignees.size === 1 && childTasks.length > 1)) {
+      return { missing, sameAsParent };
+    }
+    return null;
+  };
+
   const advanceStage = async (completedStage: string, nextStage: string, newDueDate?: string) => {
+    // Check subtask assignees before advancing (only for scoring stages)
+    if (completedStage !== "alteracoes" && completedStage !== "revisao") {
+      const warning = checkSubtaskAssignees();
+      if (warning) {
+        setAssigneeWarningDetails(warning);
+        setPendingAdvanceAfterWarning({ completedStage, nextStage, newDueDate });
+        setAssigneeWarningOpen(true);
+        return;
+      }
+    }
+
     // Always check for existing agenda task regardless of date config
     const existing = await findExistingAgendaTaskForStage(nextStage, newDueDate);
     if (existing) {
@@ -457,6 +487,22 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       return;
     }
 
+    doAdvance(completedStage, nextStage, newDueDate);
+  };
+
+  const proceedAfterAssigneeWarning = async () => {
+    setAssigneeWarningOpen(false);
+    if (!pendingAdvanceAfterWarning) return;
+    const { completedStage, nextStage, newDueDate } = pendingAdvanceAfterWarning;
+    setPendingAdvanceAfterWarning(null);
+
+    const existing = await findExistingAgendaTaskForStage(nextStage, newDueDate);
+    if (existing) {
+      setLinkExistingTask(existing);
+      setPendingAdvance({ completedStage, nextStage });
+      setLinkDialogOpen(true);
+      return;
+    }
     doAdvance(completedStage, nextStage, newDueDate);
   };
 
@@ -1305,6 +1351,34 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                   </div>
                 </DialogContent>
               </Dialog>
+
+              {/* Assignee warning dialog */}
+              <AlertDialog open={assigneeWarningOpen} onOpenChange={setAssigneeWarningOpen}>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center gap-2 text-amber-500">
+                      ⚠️ Responsáveis das subtarefas
+                    </AlertDialogTitle>
+                    <AlertDialogDescription className="space-y-2">
+                      {assigneeWarningDetails.missing > 0 && (
+                        <p><strong>{assigneeWarningDetails.missing}</strong> subtarefa(s) sem responsável definido.</p>
+                      )}
+                      {childTasks.length > 1 && new Set(childTasks.map(c => c.assignee_id).filter(Boolean)).size <= 1 && (
+                        <p>Todas as subtarefas estão com o mesmo responsável. A pontuação será atribuída a uma única pessoa.</p>
+                      )}
+                      <p className="text-muted-foreground text-sm mt-2">Deseja revisar os responsáveis antes de avançar, ou continuar mesmo assim?</p>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel onClick={() => { setAssigneeWarningOpen(false); setPendingAdvanceAfterWarning(null); }}>
+                      Revisar responsáveis
+                    </AlertDialogCancel>
+                    <AlertDialogAction onClick={proceedAfterAssigneeWarning} className="bg-amber-500 hover:bg-amber-600">
+                      Continuar mesmo assim
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
 
               {/* Link or Date dialog for existing agenda tasks */}
               <LinkOrDateDialog
