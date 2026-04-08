@@ -790,15 +790,17 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // Find the previous completed design/video snapshot task for the same client
+    // Use origin_task_id chain to find the correct previous snapshot
+    const originId = task.origin_task_id ?? task.id;
     let previousSnapshot: any = null;
     let previousStage: string | null = null;
 
-    for (const stage of ["design", "edicao_videos"]) {
+    // Find the most recent completed snapshot in the same lineage at design or edicao_videos
+    for (const stage of ["edicao_videos", "design"]) {
       const { data: snapshot } = await sb
         .from("pm_tasks")
-        .select("id, assignee_id, watchers, stage_current, post_type")
-        .eq("client_id", task.client_id)
+        .select("id, assignee_id, watchers, stage_current, post_type, tags")
+        .or(`id.eq.${originId},origin_task_id.eq.${originId}`)
         .eq("stage_current", stage)
         .eq("status_global", "concluido")
         .is("parent_task_id", null)
@@ -813,11 +815,14 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
     if (previousSnapshot) {
       // Reactivate the previous snapshot: set stage to alteracoes, status back to em_andamento
+      // Keep the original assignee (designer/video editor) as the person who needs to fix
       const prevUpdates: any = {
         id: previousSnapshot.id,
         stage_current: "alteracoes" as any,
         status_global: "em_andamento" as any,
       };
+      // The assignee stays as the original designer/video editor (previousSnapshot.assignee_id)
+      // so that person receives the alteration task
       updateTask.mutate(prevUpdates);
 
       // Delete old frozen children of the snapshot (they are stale copies)
@@ -840,6 +845,12 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           status_global: "backlog" as any,
         } as any);
       }
+
+      // Reset pm_subtasks of the reactivated snapshot to "nao_iniciado"
+      await sb
+        .from("pm_subtasks")
+        .update({ status: "nao_iniciado" })
+        .eq("task_id", previousSnapshot.id);
 
       // Transfer attachments
       await sb
@@ -883,6 +894,12 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         }
         updateTask.mutate(childUpdates);
       }
+
+      // Reset pm_subtasks of the current task
+      await sb
+        .from("pm_subtasks")
+        .update({ status: "nao_iniciado" })
+        .eq("task_id", task.id);
 
       toast.success("Tarefa enviada para Alteração");
     }
