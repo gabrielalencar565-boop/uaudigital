@@ -407,6 +407,9 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       }
 
       const originId = task.origin_task_id ?? task.id;
+      // Derive post_type from stage if not already set
+      const resolvedPostType = task.post_type
+        ?? (completedStage === "edicao_videos" ? "video" : completedStage === "design" ? "design" : undefined);
       createTask.mutateAsync({
         client_id: task.client_id,
         title: newTitle,
@@ -420,7 +423,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         tags: task.tags ?? [],
         is_extra_demand: task.is_extra_demand,
         status_global: "backlog",
-        post_type: task.post_type ?? undefined,
+        post_type: resolvedPostType,
         origin_task_id: originId,
       }).then((newTask) => {
         cloneChildrenToNewTask(newTask.id, nextStage);
