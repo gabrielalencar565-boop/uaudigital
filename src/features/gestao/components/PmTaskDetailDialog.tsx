@@ -969,7 +969,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         id: task.id,
         stage_current: originalStage as any,
         status_global: "concluido" as any,
-        post_type: task.post_type ?? revisaoTask.post_type ?? (originalStage === "edicao_videos" ? "video" : "design"),
+        post_type: task.post_type ?? revisaoTask.post_type ?? resolvedReturnPostType,
       });
 
       // Mark children as concluído too
@@ -978,7 +978,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           id: child.id,
           stage_current: originalStage as any,
           status_global: "concluido" as any,
-          post_type: child.post_type ?? task.post_type ?? revisaoTask.post_type ?? (originalStage === "edicao_videos" ? "video" : "design"),
+          post_type: child.post_type ?? task.post_type ?? revisaoTask.post_type ?? resolvedReturnPostType,
         } as any);
       }
 
@@ -994,7 +994,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       const revisaoUpdates: any = {
         id: revisaoTask.id,
         status_global: "backlog" as any,
-        post_type: task.post_type ?? revisaoTask.post_type ?? (originalStage === "edicao_videos" ? "video" : "design"),
+        post_type: task.post_type ?? revisaoTask.post_type ?? resolvedReturnPostType,
       };
       if (fixedAssignee !== undefined) {
         revisaoUpdates.assignee_id = fixedAssignee;
@@ -1009,7 +1009,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           parent_task_id: revisaoTask.id,
           stage_current: "revisao" as any,
           status_global: "backlog" as any,
-          post_type: child.post_type ?? task.post_type ?? revisaoTask.post_type ?? (originalStage === "edicao_videos" ? "video" : "design"),
+          post_type: child.post_type ?? task.post_type ?? revisaoTask.post_type ?? resolvedReturnPostType,
         } as any);
       }
 
