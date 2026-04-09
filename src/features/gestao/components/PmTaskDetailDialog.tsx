@@ -446,15 +446,11 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         }
       }
 
-      // Invalidate queries to refresh UI
-      const queryClient = (updateTask as any).__queryClient ?? null;
-      // Use a small timeout to batch React re-renders
-      setTimeout(() => {
-        updateTask.reset?.();
-        // Force refetch all PM queries
-        const event = new CustomEvent("pm-invalidate");
-        window.dispatchEvent(event);
-      }, 100);
+      // Invalidate queries to refresh UI after all DB operations complete
+      queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
+      queryClient.invalidateQueries({ queryKey: ["pm_activity_log"] });
 
       toast.success(nextStage === "entrega" ? "Tarefa marcada como Entregue!" : `Avançou para ${stageLabel(nextStage)}`);
     } catch (err) {
