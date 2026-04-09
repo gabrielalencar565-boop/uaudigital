@@ -856,8 +856,8 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           parent_task_id: previousSnapshot.id,
           stage_current: "alteracoes" as any,
           status_global: "backlog" as any,
-          assignee_id: child.assignee_id ?? previousSnapshot.assignee_id,
-          watchers: child.watchers ?? [],
+          assignee_id: previousSnapshot.assignee_id ?? child.assignee_id,
+          watchers: previousSnapshot.watchers ?? child.watchers ?? [],
           post_type: child.post_type ?? task.post_type ?? previousSnapshot.post_type,
         } as any);
       }
