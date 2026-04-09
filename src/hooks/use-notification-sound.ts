@@ -178,8 +178,9 @@ export function useNotificationSound() {
 
     const { data } = await (supabase as any)
       .from("pm_tasks")
-      .select("id, title, due_date, assignee_id, status_global")
+      .select("id, title, due_date, assignee_id, status_global, parent_task_id")
       .eq("assignee_id", user.id)
+      .is("parent_task_id", null)
       .not("status_global", "in", "(concluido,cancelado)")
       .not("due_date", "is", null)
       .lte("due_date", todayStr)
