@@ -922,14 +922,16 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     const sb = supabase as any;
     const originId = task.origin_task_id ?? task.id;
 
-    // Detect original stage: check post_type first, then tags, then lineage
+    // Detect original stage: check post_type first, then tags, then title as legacy fallback
     const isVideoByPostType = task.post_type === "video";
     const taskTags = task.tags ?? [];
     const isVideoByTag = taskTags.some(t => {
       const parsed = parseTag(t);
       return parsed.name.toLowerCase() === "vídeo" || parsed.name.toLowerCase() === "video";
     });
-    const isVideoTask = isVideoByPostType || isVideoByTag;
+    const normalizedTitle = task.title.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const isVideoByTitle = normalizedTitle.includes("video");
+    const isVideoTask = isVideoByPostType || isVideoByTag || isVideoByTitle;
     const originalStage = isVideoTask ? "edicao_videos" : "design";
 
     // Find the paused revisão task in the same lineage to reactivate
