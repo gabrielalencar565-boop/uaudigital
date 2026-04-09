@@ -299,9 +299,10 @@ export function useNotificationSound() {
           const uid = userIdRef.current;
           if (!uid) return;
           const row = payload.new as any;
-          // Always invalidate so dropdown updates for all new comments
           invalidateNotifications();
           if (row.author_id === uid) return;
+          // Skip subtask comments
+          if (row.subtask_id) return;
           if (row.content && row.content.includes(`@${uid}`)) {
             enqueueOrShow({
               key: `mention-${row.id}`,
@@ -325,6 +326,8 @@ export function useNotificationSound() {
           const row = payload.new as any;
           invalidateNotifications();
           if (row.created_by === uid) return;
+          // Skip child tasks (subtasks)
+          if (row.parent_task_id) return;
           if (row.assignee_id === uid) {
             enqueueOrShow({
               key: `assigned-${row.id}-${row.created_at ?? ""}`,
@@ -345,8 +348,8 @@ export function useNotificationSound() {
           const row = payload.new as any;
           const old = payload.old as any;
           invalidateNotifications();
-          // Trigger when assignee changed TO current user
-          // old may be partial, so also trigger if assignee is uid and old.assignee_id is absent
+          // Skip child tasks (subtasks)
+          if (row.parent_task_id) return;
           const wasAssignedBefore = old?.assignee_id === uid;
           if (row.assignee_id === uid && !wasAssignedBefore) {
             enqueueOrShow({
