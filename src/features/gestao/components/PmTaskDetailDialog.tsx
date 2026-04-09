@@ -243,6 +243,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   const updateTask = useUpdatePmTask();
   const createTask = useCreatePmTask();
   const syncStage = usePmSyncStageCompletion();
+  const queryClient = useQueryClient();
   const { flowConfig, transitionDates, stageAssignees } = useDefaultFlowWithDates();
 
   const allAssigneeIds = [
