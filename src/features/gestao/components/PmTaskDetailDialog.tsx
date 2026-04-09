@@ -460,9 +460,11 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       .order("due_date", { ascending: true })
       .limit(1);
 
-    // When advancing to revisão, only link with same post_type origin
-    if (nextStage === "revisao" && task.post_type) {
-      query = query.eq("post_type", task.post_type);
+    // When advancing to revisão, only link with the same post_type origin
+    const inferredNextStagePostType = task.post_type
+      ?? (task.stage_current === "edicao_videos" ? "video" : task.stage_current === "design" ? "design" : undefined);
+    if (nextStage === "revisao" && inferredNextStagePostType) {
+      query = query.eq("post_type", inferredNextStagePostType);
     }
 
     const { data: existing } = await query;
@@ -800,7 +802,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
     // Find the most recent completed snapshot in the same lineage at design or edicao_videos
     for (const stage of ["edicao_videos", "design"]) {
-      const { data: snapshot } = await sb
+      const query = sb
         .from("pm_tasks")
         .select("id, assignee_id, watchers, stage_current, post_type, tags")
         .or(`id.eq.${originId},origin_task_id.eq.${originId}`)
@@ -809,6 +811,12 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         .is("parent_task_id", null)
         .order("updated_at", { ascending: false })
         .limit(1);
+
+      if (task.post_type) {
+        query.eq("post_type", task.post_type);
+      }
+
+      const { data: snapshot } = await query;
       if (snapshot && snapshot.length > 0) {
         previousSnapshot = snapshot[0];
         previousStage = stage;
@@ -823,6 +831,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         id: previousSnapshot.id,
         stage_current: "alteracoes" as any,
         status_global: "em_andamento" as any,
+        post_type: previousSnapshot.post_type ?? task.post_type,
       };
       // The assignee stays as the original designer/video editor (previousSnapshot.assignee_id)
       // so that person receives the alteration task
@@ -840,15 +849,16 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       }
 
       // Transfer current task's children to the reactivated snapshot
-      // Restore the original assignee from the previous stage (not the revisão assignee)
+      // Keep each subtask with its own original assignee/watchers when available
       for (const child of childTasks) {
         updateTask.mutate({
           id: child.id,
           parent_task_id: previousSnapshot.id,
           stage_current: "alteracoes" as any,
           status_global: "backlog" as any,
-          assignee_id: previousSnapshot.assignee_id ?? child.assignee_id,
-          watchers: previousSnapshot.watchers ?? child.watchers ?? [],
+          assignee_id: child.assignee_id ?? previousSnapshot.assignee_id,
+          watchers: child.watchers ?? [],
+          post_type: child.post_type ?? task.post_type ?? previousSnapshot.post_type,
         } as any);
       }
 
@@ -885,7 +895,11 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           ? getFixedWatchers(stageAssignees, "design", task.client_id)
           : getFixedWatchers(stageAssignees, "edicao_videos", task.client_id));
 
-      const updates: any = { id: task.id, stage_current: "alteracoes" as any };
+      const updates: any = {
+        id: task.id,
+        stage_current: "alteracoes" as any,
+        post_type: task.post_type ?? (task.stage_current === "revisao" ? undefined : task.post_type),
+      };
       if (alteracaoAssignee) {
         updates.assignee_id = alteracaoAssignee;
         updates.watchers = alteracaoWatchers;
@@ -893,7 +907,11 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       updateTask.mutate(updates);
 
       for (const child of childTasks) {
-        const childUpdates: any = { id: child.id, stage_current: "alteracoes" as any };
+        const childUpdates: any = {
+          id: child.id,
+          stage_current: "alteracoes" as any,
+          post_type: child.post_type ?? task.post_type,
+        };
         if (alteracaoAssignee) {
           childUpdates.assignee_id = alteracaoAssignee;
           childUpdates.watchers = alteracaoWatchers;
@@ -915,26 +933,33 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     const sb = supabase as any;
     const originId = task.origin_task_id ?? task.id;
 
-    // Detect original stage: check post_type first, then tags, then lineage
+    // Detect original stage: check post_type first, then tags, then title as legacy fallback
     const isVideoByPostType = task.post_type === "video";
     const taskTags = task.tags ?? [];
     const isVideoByTag = taskTags.some(t => {
       const parsed = parseTag(t);
       return parsed.name.toLowerCase() === "vídeo" || parsed.name.toLowerCase() === "video";
     });
-    const isVideoTask = isVideoByPostType || isVideoByTag;
+    const normalizedTitle = task.title.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const isVideoByTitle = normalizedTitle.includes("video");
+    const isVideoTask = isVideoByPostType || isVideoByTag || isVideoByTitle;
     const originalStage = isVideoTask ? "edicao_videos" : "design";
+    const resolvedReturnPostType = isVideoTask ? "video" : "design";
 
     // Find the paused revisão task in the same lineage to reactivate
-    const { data: pausedRevisao } = await sb
+    let revisaoQuery = sb
       .from("pm_tasks")
-      .select("id, assignee_id, watchers")
+      .select("id, assignee_id, watchers, post_type")
       .or(`id.eq.${originId},origin_task_id.eq.${originId}`)
       .eq("stage_current", "revisao")
       .eq("status_global", "pausado")
       .is("parent_task_id", null)
       .order("updated_at", { ascending: false })
       .limit(1);
+
+    revisaoQuery = revisaoQuery.eq("post_type", task.post_type ?? resolvedReturnPostType);
+
+    const { data: pausedRevisao } = await revisaoQuery;
 
     if (pausedRevisao && pausedRevisao.length > 0) {
       const revisaoTask = pausedRevisao[0];
@@ -944,6 +969,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         id: task.id,
         stage_current: originalStage as any,
         status_global: "concluido" as any,
+        post_type: task.post_type ?? revisaoTask.post_type ?? resolvedReturnPostType,
       });
 
       // Mark children as concluído too
@@ -952,6 +978,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           id: child.id,
           stage_current: originalStage as any,
           status_global: "concluido" as any,
+          post_type: child.post_type ?? task.post_type ?? revisaoTask.post_type ?? resolvedReturnPostType,
         } as any);
       }
 
@@ -967,6 +994,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       const revisaoUpdates: any = {
         id: revisaoTask.id,
         status_global: "backlog" as any,
+        post_type: task.post_type ?? revisaoTask.post_type ?? resolvedReturnPostType,
       };
       if (fixedAssignee !== undefined) {
         revisaoUpdates.assignee_id = fixedAssignee;
@@ -981,6 +1009,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           parent_task_id: revisaoTask.id,
           stage_current: "revisao" as any,
           status_global: "backlog" as any,
+          post_type: child.post_type ?? task.post_type ?? revisaoTask.post_type ?? resolvedReturnPostType,
         } as any);
       }
 
@@ -993,6 +1022,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       const updates: any = {
         id: task.id,
         stage_current: "revisao" as any,
+        post_type: task.post_type ?? resolvedReturnPostType,
       };
       if (fixedAssignee !== undefined) {
         updates.assignee_id = fixedAssignee;
