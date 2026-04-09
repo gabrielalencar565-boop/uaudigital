@@ -840,12 +840,15 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       }
 
       // Transfer current task's children to the reactivated snapshot
+      // Restore the original assignee from the previous stage (not the revisão assignee)
       for (const child of childTasks) {
         updateTask.mutate({
           id: child.id,
           parent_task_id: previousSnapshot.id,
           stage_current: "alteracoes" as any,
           status_global: "backlog" as any,
+          assignee_id: previousSnapshot.assignee_id ?? child.assignee_id,
+          watchers: previousSnapshot.watchers ?? child.watchers ?? [],
         } as any);
       }
 
@@ -912,13 +915,14 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     const sb = supabase as any;
     const originId = task.origin_task_id ?? task.id;
 
-    // Detect original stage: check the tags for "Vídeo" or look at the lineage
-    // A task with tag "Vídeo" or "Video" is a video task
+    // Detect original stage: check post_type first, then tags, then lineage
+    const isVideoByPostType = task.post_type === "video";
     const taskTags = task.tags ?? [];
-    const isVideoTask = taskTags.some(t => {
+    const isVideoByTag = taskTags.some(t => {
       const parsed = parseTag(t);
       return parsed.name.toLowerCase() === "vídeo" || parsed.name.toLowerCase() === "video";
     });
+    const isVideoTask = isVideoByPostType || isVideoByTag;
     const originalStage = isVideoTask ? "edicao_videos" : "design";
 
     // Find the paused revisão task in the same lineage to reactivate
