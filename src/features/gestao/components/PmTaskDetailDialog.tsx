@@ -840,12 +840,15 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       }
 
       // Transfer current task's children to the reactivated snapshot
+      // Restore the original assignee from the previous stage (not the revisão assignee)
       for (const child of childTasks) {
         updateTask.mutate({
           id: child.id,
           parent_task_id: previousSnapshot.id,
           stage_current: "alteracoes" as any,
           status_global: "backlog" as any,
+          assignee_id: previousSnapshot.assignee_id ?? child.assignee_id,
+          watchers: previousSnapshot.watchers ?? child.watchers ?? [],
         } as any);
       }
 
