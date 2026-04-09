@@ -795,49 +795,56 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // Use origin_task_id chain to find the correct previous snapshot
     const originId = task.origin_task_id ?? task.id;
     let previousSnapshot: any = null;
-    let previousStage: string | null = null;
 
-    // Find the most recent completed snapshot in the same lineage at design or edicao_videos
-    for (const stage of ["edicao_videos", "design"]) {
-      const query = sb
-        .from("pm_tasks")
-        .select("id, assignee_id, watchers, stage_current, post_type, tags")
-        .or(`id.eq.${originId},origin_task_id.eq.${originId}`)
-        .eq("stage_current", stage)
-        .eq("status_global", "concluido")
-        .is("parent_task_id", null)
-        .order("updated_at", { ascending: false })
-        .limit(1);
+    const taskTags = task.tags ?? [];
+    const normalizedTitle = task.title.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const isVideoByPostType = task.post_type === "video";
+    const isVideoByTag = taskTags.some((t) => {
+      const parsed = parseTag(t);
+      const tagName = parsed.name.toLowerCase();
+      return tagName === "vídeo" || tagName === "video";
+    });
+    const isVideoByTitle = normalizedTitle.includes("video");
+    const previousWorkStage = isVideoByPostType || isVideoByTag || isVideoByTitle
+      ? "edicao_videos"
+      : "design";
+    const resolvedAlteracaoPostType = task.post_type ?? (previousWorkStage === "edicao_videos" ? "video" : "design");
+    const previousStageAssignee = getFixedAssignee(stageAssignees, previousWorkStage, task.client_id);
+    const previousStageWatchers = getFixedWatchers(stageAssignees, previousWorkStage, task.client_id);
 
-      if (task.post_type) {
-        query.eq("post_type", task.post_type);
-      }
+    const { data: snapshots } = await sb
+      .from("pm_tasks")
+      .select("id, assignee_id, watchers, stage_current, post_type, tags")
+      .or(`id.eq.${originId},origin_task_id.eq.${originId}`)
+      .eq("stage_current", previousWorkStage)
+      .eq("status_global", "concluido")
+      .is("parent_task_id", null)
+      .order("updated_at", { ascending: false })
+      .limit(10);
 
-      const { data: snapshot } = await query;
-      if (snapshot && snapshot.length > 0) {
-        previousSnapshot = snapshot[0];
-        previousStage = stage;
-        break;
-      }
+    if (snapshots?.length) {
+      previousSnapshot = snapshots.find((snapshot: any) => snapshot.post_type === resolvedAlteracaoPostType)
+        ?? snapshots[0];
     }
 
     if (previousSnapshot) {
-      // Reactivate the previous snapshot: set stage to alteracoes, status back to em_andamento
-      // Keep the original assignee (designer/video editor) as the person who needs to fix
+      const resolvedPreviousAssignee = previousSnapshot.assignee_id ?? previousStageAssignee ?? null;
+      const resolvedPreviousWatchers = previousSnapshot.watchers?.length
+        ? previousSnapshot.watchers
+        : previousStageWatchers;
+
       const prevUpdates: any = {
         id: previousSnapshot.id,
         stage_current: "alteracoes" as any,
         status_global: "em_andamento" as any,
-        post_type: previousSnapshot.post_type ?? task.post_type,
+        assignee_id: resolvedPreviousAssignee,
+        watchers: resolvedPreviousWatchers,
+        post_type: previousSnapshot.post_type ?? resolvedAlteracaoPostType,
       };
-      // The assignee stays as the original designer/video editor (previousSnapshot.assignee_id)
-      // so that person receives the alteration task
       updateTask.mutate(prevUpdates);
 
-      // Delete old frozen children of the snapshot (they are stale copies)
       const { data: prevChildren } = await sb
         .from("pm_tasks")
         .select("id")
@@ -848,33 +855,28 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         }
       }
 
-      // Transfer current task's children to the reactivated snapshot
-      // Keep each subtask with its own original assignee/watchers when available
       for (const child of childTasks) {
         updateTask.mutate({
           id: child.id,
           parent_task_id: previousSnapshot.id,
           stage_current: "alteracoes" as any,
           status_global: "backlog" as any,
-          assignee_id: previousSnapshot.assignee_id ?? child.assignee_id,
-          watchers: previousSnapshot.watchers ?? child.watchers ?? [],
-          post_type: child.post_type ?? task.post_type ?? previousSnapshot.post_type,
+          assignee_id: resolvedPreviousAssignee,
+          watchers: resolvedPreviousWatchers,
+          post_type: child.post_type ?? previousSnapshot.post_type ?? resolvedAlteracaoPostType,
         } as any);
       }
 
-      // Reset pm_subtasks of the reactivated snapshot to "nao_iniciado"
       await sb
         .from("pm_subtasks")
         .update({ status: "nao_iniciado" })
         .eq("task_id", previousSnapshot.id);
 
-      // Transfer attachments
       await sb
         .from("pm_attachments")
         .update({ task_id: previousSnapshot.id })
         .eq("task_id", task.id);
 
-      // Mark the current revisão task as paused (waiting for alteração to finish)
       updateTask.mutate({
         id: task.id,
         status_global: "pausado" as any,
@@ -882,50 +884,34 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
       toast.success("Tarefa retornou para alteração no responsável anterior");
     } else {
-      // Fallback: no previous snapshot found — change current task's stage (old behavior)
-      let alteracaoAssignee: string | null = null;
-      let alteracaoWatchers: string[] = [];
-      const altAssignee = getFixedAssignee(stageAssignees, "alteracoes", task.client_id);
-      const designAssignee = getFixedAssignee(stageAssignees, "design", task.client_id);
-      const videoAssignee = getFixedAssignee(stageAssignees, "edicao_videos", task.client_id);
-      alteracaoAssignee = (altAssignee !== undefined ? altAssignee : (designAssignee !== undefined ? designAssignee : (videoAssignee ?? null))) as string | null;
-      alteracaoWatchers = altAssignee !== undefined
-        ? getFixedWatchers(stageAssignees, "alteracoes", task.client_id)
-        : (designAssignee !== undefined
-          ? getFixedWatchers(stageAssignees, "design", task.client_id)
-          : getFixedWatchers(stageAssignees, "edicao_videos", task.client_id));
+      const resolvedPreviousAssignee = previousStageAssignee ?? null;
+      const resolvedPreviousWatchers = previousStageWatchers;
 
       const updates: any = {
         id: task.id,
         stage_current: "alteracoes" as any,
-        post_type: task.post_type ?? (task.stage_current === "revisao" ? undefined : task.post_type),
+        assignee_id: resolvedPreviousAssignee,
+        watchers: resolvedPreviousWatchers,
+        post_type: resolvedAlteracaoPostType,
       };
-      if (alteracaoAssignee) {
-        updates.assignee_id = alteracaoAssignee;
-        updates.watchers = alteracaoWatchers;
-      }
       updateTask.mutate(updates);
 
       for (const child of childTasks) {
-        const childUpdates: any = {
+        updateTask.mutate({
           id: child.id,
           stage_current: "alteracoes" as any,
-          post_type: child.post_type ?? task.post_type,
-        };
-        if (alteracaoAssignee) {
-          childUpdates.assignee_id = alteracaoAssignee;
-          childUpdates.watchers = alteracaoWatchers;
-        }
-        updateTask.mutate(childUpdates);
+          assignee_id: resolvedPreviousAssignee,
+          watchers: resolvedPreviousWatchers,
+          post_type: child.post_type ?? resolvedAlteracaoPostType,
+        } as any);
       }
 
-      // Reset pm_subtasks of the current task
       await sb
         .from("pm_subtasks")
         .update({ status: "nao_iniciado" })
         .eq("task_id", task.id);
 
-      toast.success("Tarefa enviada para Alteração");
+      toast.success("Tarefa enviada para Alteração no responsável anterior");
     }
   };
 
