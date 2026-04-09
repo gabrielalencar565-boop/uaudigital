@@ -312,38 +312,41 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     } catch (_) { /* ignore */ }
   };
 
-  const doAdvance = (completedStage: string, nextStage: string, newDueDate?: string, linkedTaskId?: string) => {
+  const doAdvance = async (completedStage: string, nextStage: string, newDueDate?: string, linkedTaskId?: string) => {
+    const sb = supabase as any;
+    const qc = (window as any).__pmQueryClient ?? null; // fallback, won't be used
+
     const cloneChildrenToNewTask = async (targetTaskId: string, targetStage: string) => {
       const fixedAssignee = getFixedAssignee(stageAssignees, targetStage, task.client_id);
       const fixedWatchers = getFixedWatchers(stageAssignees, targetStage, task.client_id);
-      // 1. Mark original children as concluido + clone in parallel
-      const sb = supabase as any;
-      const [, , attRes] = await Promise.all([
-        // Freeze originals (fire-and-forget style, parallel)
-        Promise.all(childTasks.map(child =>
-          sb.from("pm_tasks").update({ status_global: "concluido" }).eq("id", child.id)
-        )),
-        // Clone children in parallel
-        Promise.all(childTasks.map(child =>
-          createTask.mutateAsync({
-            client_id: child.client_id,
-            title: child.title,
-            description: child.description ?? undefined,
-            stage_current: targetStage,
-            assignee_id: fixedAssignee !== undefined ? (fixedAssignee ?? undefined) : (child.assignee_id ?? undefined),
-            watchers: fixedAssignee !== undefined ? fixedWatchers : (child.watchers ?? []),
-            parent_task_id: targetTaskId,
-            tags: child.tags ?? [],
-            is_extra_demand: child.is_extra_demand,
-            status_global: "backlog",
-            post_type: child.post_type ?? undefined,
-          })
-        )),
-        // Fetch attachments in parallel
-        sb.from("pm_attachments").select("*").eq("task_id", task.id),
-      ]);
-      // 3. Copy attachments in parallel
-      const existingAtts = attRes?.data;
+
+      // Freeze originals via single batch call (avoids multiple mutations)
+      const childIds = childTasks.map(c => c.id);
+      if (childIds.length > 0) {
+        await sb.from("pm_tasks").update({ status_global: "concluido" }).in("id", childIds);
+      }
+
+      // Clone children sequentially to avoid overwhelming React Query
+      const { data: { user } } = await supabase.auth.getUser();
+      for (const child of childTasks) {
+        await sb.from("pm_tasks").insert({
+          client_id: child.client_id,
+          title: child.title,
+          description: child.description ?? null,
+          stage_current: targetStage,
+          assignee_id: fixedAssignee !== undefined ? (fixedAssignee ?? null) : (child.assignee_id ?? null),
+          watchers: fixedAssignee !== undefined ? fixedWatchers : (child.watchers ?? []),
+          parent_task_id: targetTaskId,
+          tags: child.tags ?? [],
+          is_extra_demand: child.is_extra_demand,
+          status_global: "backlog",
+          post_type: child.post_type ?? null,
+          created_by: user?.id,
+        });
+      }
+
+      // Copy attachments
+      const { data: existingAtts } = await sb.from("pm_attachments").select("*").eq("task_id", task.id);
       if (existingAtts?.length) {
         await Promise.all(existingAtts.map((att: any) => {
           const { id: _id, created_at: _ca, ...rest } = att;
@@ -353,105 +356,109 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     };
 
     // Skip scoring for alteracoes and revisao — they don't generate points
-    // Fire early (non-blocking)
     if (completedStage !== "alteracoes" && completedStage !== "revisao") {
       syncCompletedStage(completedStage);
     }
 
-    if (linkedTaskId) {
-      // Snapshot: mark current task as completed at current stage
-      const snapshotDueDate = task.due_date ?? format(new Date(), "yyyy-MM-dd");
-      updateTask.mutate({
-        id: task.id,
-        stage_current: completedStage as any,
-        status_global: "concluido" as any,
-        due_date: snapshotDueDate,
-      });
+    try {
+      if (linkedTaskId) {
+        // Snapshot: mark current task as completed at current stage
+        const snapshotDueDate = task.due_date ?? format(new Date(), "yyyy-MM-dd");
+        await sb.from("pm_tasks").update({
+          stage_current: completedStage,
+          status_global: "concluido",
+          due_date: snapshotDueDate,
+        }).eq("id", task.id);
 
-      // Update linked task and transfer children
-      const linkedUpdates: any = { id: linkedTaskId, status_global: "backlog" as any };
-      const fixedAssignee = getFixedAssignee(stageAssignees, nextStage, task.client_id);
-      const fixedWatchers = getFixedWatchers(stageAssignees, nextStage, task.client_id);
-      if (fixedAssignee !== undefined) {
-        linkedUpdates.assignee_id = fixedAssignee;
-        linkedUpdates.watchers = fixedWatchers;
+        // Update linked task with correct assignee
+        const fixedAssignee = getFixedAssignee(stageAssignees, nextStage, task.client_id);
+        const fixedWatchers = getFixedWatchers(stageAssignees, nextStage, task.client_id);
+        const linkedUpdates: any = { status_global: "backlog" };
+        if (fixedAssignee !== undefined) {
+          linkedUpdates.assignee_id = fixedAssignee;
+          linkedUpdates.watchers = fixedWatchers;
+        }
+        await sb.from("pm_tasks").update(linkedUpdates).eq("id", linkedTaskId);
+        await cloneChildrenToNewTask(linkedTaskId, nextStage);
+      } else if (nextStage === "entrega") {
+        // Final stage: mark parent + all children as delivered in a single batch
+        const allIds = [task.id, ...childTasks.map(c => c.id)];
+        await sb.from("pm_tasks")
+          .update({ stage_current: "entrega", status_global: "concluido" })
+          .in("id", allIds);
+      } else {
+        // Snapshot current task as completed (stays in agenda)
+        const snapshotDueDate = task.due_date ?? format(new Date(), "yyyy-MM-dd");
+        await sb.from("pm_tasks").update({
+          stage_current: completedStage,
+          status_global: "concluido",
+          due_date: snapshotDueDate,
+        }).eq("id", task.id);
+
+        // Create new task for the next stage with correct assignee
+        const fixedAssignee = getFixedAssignee(stageAssignees, nextStage, task.client_id);
+        const fixedWatchers = getFixedWatchers(stageAssignees, nextStage, task.client_id);
+        const nextDueDate = newDueDate ?? format(addDays(new Date(snapshotDueDate + "T12:00:00"), 1), "yyyy-MM-dd");
+
+        // Build new title replacing the stage portion
+        const nextStageLabel = stageLabel(nextStage);
+        const currentStageLabel = stageLabel(completedStage);
+        let newTitle = task.title;
+        if (task.title.includes(` - ${currentStageLabel} - `)) {
+          newTitle = task.title.replace(` - ${currentStageLabel} - `, ` - ${nextStageLabel} - `);
+        } else if (task.title.includes(` - ${currentStageLabel}`)) {
+          newTitle = task.title.replace(` - ${currentStageLabel}`, ` - ${nextStageLabel}`);
+        }
+
+        const originId = task.origin_task_id ?? task.id;
+        const resolvedPostType = task.post_type
+          ?? (completedStage === "edicao_videos" ? "video" : completedStage === "design" ? "design" : undefined);
+
+        const { data: { user } } = await supabase.auth.getUser();
+        const { data: newTask, error: createError } = await sb.from("pm_tasks").insert({
+          client_id: task.client_id,
+          title: newTitle,
+          description: task.description ?? null,
+          stage_current: nextStage,
+          due_date: nextDueDate,
+          assignee_id: fixedAssignee !== undefined ? (fixedAssignee ?? null) : (task.assignee_id ?? null),
+          watchers: fixedAssignee !== undefined ? fixedWatchers : (task.watchers ?? []),
+          priority: task.priority,
+          project_id: task.project_id ?? null,
+          tags: task.tags ?? [],
+          is_extra_demand: task.is_extra_demand,
+          status_global: "backlog",
+          post_type: resolvedPostType ?? null,
+          origin_task_id: originId,
+          created_by: user?.id,
+        }).select().single();
+
+        if (createError) {
+          console.error("Error creating next stage task:", createError);
+          toast.error("Erro ao criar tarefa da próxima etapa");
+          return;
+        }
+
+        if (newTask) {
+          await cloneChildrenToNewTask(newTask.id, nextStage);
+        }
       }
-      updateTask.mutate(linkedUpdates);
-      cloneChildrenToNewTask(linkedTaskId, nextStage);
-    } else if (nextStage === "entrega") {
-      // Final stage: mark parent + all children as delivered in parallel
-      const sb = supabase as any;
-      const allIds = [task.id, ...childTasks.map(c => c.id)];
-      sb.from("pm_tasks")
-        .update({ stage_current: "entrega", status_global: "concluido" })
-        .in("id", allIds)
-        .then(() => {
-          // Optimistic already handled, just invalidate
-          const qc = (updateTask as any).queryClient;
-        });
-      // Optimistic update immediately
-      for (const child of childTasks) {
-        updateTask.mutate({
-          id: child.id,
-          stage_current: "entrega" as any,
-          status_global: "concluido" as any,
-        });
-      }
-      updateTask.mutate({
-        id: task.id,
-        stage_current: "entrega" as any,
-        status_global: "concluido" as any,
-      });
-    } else {
-      // Snapshot current task as completed (stays in agenda)
-      const snapshotDueDate = task.due_date ?? format(new Date(), "yyyy-MM-dd");
-      updateTask.mutate({
-        id: task.id,
-        stage_current: completedStage as any,
-        status_global: "concluido" as any,
-        due_date: snapshotDueDate,
-      });
 
-      // Create new task for the next stage and transfer all children
-      const fixedAssignee = getFixedAssignee(stageAssignees, nextStage, task.client_id);
-      const fixedWatchers = getFixedWatchers(stageAssignees, nextStage, task.client_id);
-      const nextDueDate = newDueDate ?? format(addDays(new Date(snapshotDueDate + "T12:00:00"), 1), "yyyy-MM-dd");
+      // Invalidate queries to refresh UI
+      const queryClient = (updateTask as any).__queryClient ?? null;
+      // Use a small timeout to batch React re-renders
+      setTimeout(() => {
+        updateTask.reset?.();
+        // Force refetch all PM queries
+        const event = new CustomEvent("pm-invalidate");
+        window.dispatchEvent(event);
+      }, 100);
 
-      // Build new title replacing the stage portion
-      const nextStageLabel = stageLabel(nextStage);
-      const currentStageLabel = stageLabel(completedStage);
-      let newTitle = task.title;
-      if (task.title.includes(` - ${currentStageLabel} - `)) {
-        newTitle = task.title.replace(` - ${currentStageLabel} - `, ` - ${nextStageLabel} - `);
-      } else if (task.title.includes(` - ${currentStageLabel}`)) {
-        newTitle = task.title.replace(` - ${currentStageLabel}`, ` - ${nextStageLabel}`);
-      }
-
-      const originId = task.origin_task_id ?? task.id;
-      // Derive post_type from stage if not already set
-      const resolvedPostType = task.post_type
-        ?? (completedStage === "edicao_videos" ? "video" : completedStage === "design" ? "design" : undefined);
-      createTask.mutateAsync({
-        client_id: task.client_id,
-        title: newTitle,
-        description: task.description ?? undefined,
-        stage_current: nextStage,
-        due_date: nextDueDate,
-        assignee_id: fixedAssignee !== undefined ? (fixedAssignee ?? undefined) : (task.assignee_id ?? undefined),
-        watchers: fixedAssignee !== undefined ? fixedWatchers : (task.watchers ?? []),
-        priority: task.priority,
-        project_id: task.project_id ?? undefined,
-        tags: task.tags ?? [],
-        is_extra_demand: task.is_extra_demand,
-        status_global: "backlog",
-        post_type: resolvedPostType,
-        origin_task_id: originId,
-      }).then((newTask) => {
-        cloneChildrenToNewTask(newTask.id, nextStage);
-      });
+      toast.success(nextStage === "entrega" ? "Tarefa marcada como Entregue!" : `Avançou para ${stageLabel(nextStage)}`);
+    } catch (err) {
+      console.error("Error advancing stage:", err);
+      toast.error("Erro ao avançar etapa. Tente novamente.");
     }
-
-    toast.success(nextStage === "entrega" ? "Tarefa marcada como Entregue!" : `Avançou para ${stageLabel(nextStage)}`);
   };
 
   const findExistingAgendaTaskForStage = async (nextStage: string, referenceDueDate?: string) => {
