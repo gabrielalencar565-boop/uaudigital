@@ -893,7 +893,11 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           ? getFixedWatchers(stageAssignees, "design", task.client_id)
           : getFixedWatchers(stageAssignees, "edicao_videos", task.client_id));
 
-      const updates: any = { id: task.id, stage_current: "alteracoes" as any };
+      const updates: any = {
+        id: task.id,
+        stage_current: "alteracoes" as any,
+        post_type: task.post_type ?? (task.stage_current === "revisao" ? undefined : task.post_type),
+      };
       if (alteracaoAssignee) {
         updates.assignee_id = alteracaoAssignee;
         updates.watchers = alteracaoWatchers;
@@ -901,7 +905,11 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       updateTask.mutate(updates);
 
       for (const child of childTasks) {
-        const childUpdates: any = { id: child.id, stage_current: "alteracoes" as any };
+        const childUpdates: any = {
+          id: child.id,
+          stage_current: "alteracoes" as any,
+          post_type: child.post_type ?? task.post_type,
+        };
         if (alteracaoAssignee) {
           childUpdates.assignee_id = alteracaoAssignee;
           childUpdates.watchers = alteracaoWatchers;
