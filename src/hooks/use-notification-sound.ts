@@ -232,17 +232,14 @@ export function useNotificationSound() {
       localStorage.setItem(key, new Date().toISOString());
     }
 
+    // On initial page load, just set last-seen without showing any toasts.
+    // Only realtime events (new mentions/assignments while the tab is open) should trigger toasts.
+    setLastSeen();
+    initialLoadRef.current = false;
+
     const handleVisible = () => {
       if (!isTabActive()) return;
-      if (initialLoadRef.current) {
-        initialLoadRef.current = false;
-        // On initial load: fetch missed mentions/assignments but skip deadline toasts
-        void fetchMissedWhileAway().finally(() => {
-          flushPending();
-          setLastSeen();
-        });
-        return;
-      }
+      // When returning from hidden, fetch missed and show them
       void fetchMissedWhileAway().finally(() => {
         void checkDeadlines().finally(() => {
           flushPending();
@@ -255,16 +252,9 @@ export function useNotificationSound() {
       if (document.visibilityState === "hidden") setLastSeen();
     };
 
-    window.addEventListener("focus", handleVisible);
     document.addEventListener("visibilitychange", handleVisible);
     document.addEventListener("visibilitychange", handleHidden);
     window.addEventListener("beforeunload", setLastSeen);
-
-    // Run fetchMissedWhileAway immediately on mount for instant catch-up
-    void fetchMissedWhileAway().finally(() => {
-      flushPending();
-      setLastSeen();
-    });
 
     // Periodic deadline check every 5 minutes
     deadlineIntervalRef.current = setInterval(() => {
@@ -272,7 +262,6 @@ export function useNotificationSound() {
     }, 5 * 60 * 1000);
 
     return () => {
-      window.removeEventListener("focus", handleVisible);
       document.removeEventListener("visibilitychange", handleVisible);
       document.removeEventListener("visibilitychange", handleHidden);
       window.removeEventListener("beforeunload", setLastSeen);
