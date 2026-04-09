@@ -1363,7 +1363,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
         {task.stage_current !== "alteracoes" && (
         <div className="flex flex-wrap items-center gap-2 pt-2">
-          {!isDone ? (
+          {!(isDone || isCompletedSnapshot) ? (
             <>
               <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={handleConcluido}>
                 <CheckCircle2 className="h-4 w-4" />
