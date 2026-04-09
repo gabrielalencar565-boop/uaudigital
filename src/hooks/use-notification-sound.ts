@@ -139,44 +139,27 @@ export function useNotificationSound() {
     const since = localStorage.getItem(`uau:notif:last-seen:${user.id}`);
     if (!since) return;
 
-    const [mentionsRes, assignedRes] = await Promise.all([
-      (supabase as any)
-        .from("pm_comments")
-        .select("id, content, created_at, author_id")
-        .neq("author_id", user.id)
-        .ilike("content", `%@${user.id}%`)
-        .gte("created_at", since)
-        .order("created_at", { ascending: true })
-        .limit(20),
-      (supabase as any)
-        .from("pm_tasks")
-        .select("id, title, created_by, assignee_id, updated_at")
-        .eq("assignee_id", user.id)
-        .neq("created_by", user.id)
-        .gte("updated_at", since)
-        .order("updated_at", { ascending: true })
-        .limit(20),
-    ]);
+    // Only fetch mentions while away — assignment notifications are handled by realtime
+    const mentionsRes = await (supabase as any)
+      .from("pm_comments")
+      .select("id, content, created_at, author_id, task_id, subtask_id")
+      .neq("author_id", user.id)
+      .ilike("content", `%@${user.id}%`)
+      .is("subtask_id", null)
+      .gte("created_at", since)
+      .order("created_at", { ascending: true })
+      .limit(20);
 
-    const items: PendingNotif[] = [
-      ...(mentionsRes.data ?? []).map((r: any) => ({
-        key: `mention-${r.id}`,
-        type: "mention" as NotificationType,
-        title: "Você foi mencionado",
-        description:
-          r.content
-            ?.substring(0, 80)
-            ?.replace(/@([a-f0-9-]{36})/gi, "@alguém") ?? "",
-        timestamp: r.created_at,
-      })),
-      ...(assignedRes.data ?? []).map((r: any) => ({
-        key: `assigned-${r.id}-${r.updated_at ?? ""}`,
-        type: "task_assigned" as NotificationType,
-        title: "Tarefa atribuída a você",
-        description: r.title ?? "Uma tarefa foi atribuída",
-        timestamp: r.updated_at,
-      })),
-    ];
+    const items: PendingNotif[] = (mentionsRes.data ?? []).map((r: any) => ({
+      key: `mention-${r.id}`,
+      type: "mention" as NotificationType,
+      title: "Você foi mencionado",
+      description:
+        r.content
+          ?.substring(0, 80)
+          ?.replace(/@([a-f0-9-]{36})/gi, "@alguém") ?? "",
+      timestamp: r.created_at,
+    }));
 
     items
       .sort(
