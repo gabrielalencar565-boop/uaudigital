@@ -1363,7 +1363,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
         {task.stage_current !== "alteracoes" && (
         <div className="flex flex-wrap items-center gap-2 pt-2">
-          {!isDone ? (
+          {!(isDone || isCompletedSnapshot) ? (
             <>
               <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={handleConcluido}>
                 <CheckCircle2 className="h-4 w-4" />
@@ -1448,19 +1448,27 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
               className="group/done gap-1.5 min-w-[130px] bg-success text-success-foreground hover:bg-destructive/90 transition-colors duration-200"
               onClick={async () => {
                 const sb = supabase as any;
-                const flowStages = Object.keys(flowConfig).length > 0
-                  ? Object.entries(flowConfig)
-                      .filter(([, v]: [string, any]) => v.enabled)
-                      .sort(([, a]: [string, any], [, b]: [string, any]) => (a.order ?? 0) - (b.order ?? 0))
-                      .map(([k]) => k)
-                  : PM_ACTIVE_STAGES.map(s => s.key);
-                const entregaIdx = flowStages.indexOf("entrega");
-                const prevStage = entregaIdx > 0 ? flowStages[entregaIdx - 1] : "agendamento";
-                
                 const allIds = [task.id, ...childTasks.map(c => c.id)];
-                await sb.from("pm_tasks")
-                  .update({ stage_current: prevStage, status_global: "backlog" })
-                  .in("id", allIds);
+
+                if (isCompletedSnapshot) {
+                  // Snapshot: keep stage, just reset status
+                  await sb.from("pm_tasks")
+                    .update({ status_global: "backlog" })
+                    .in("id", allIds);
+                } else {
+                  // Normal entrega: revert to previous stage
+                  const flowStages = Object.keys(flowConfig).length > 0
+                    ? Object.entries(flowConfig)
+                        .filter(([, v]: [string, any]) => v.enabled)
+                        .sort(([, a]: [string, any], [, b]: [string, any]) => (a.order ?? 0) - (b.order ?? 0))
+                        .map(([k]) => k)
+                    : PM_ACTIVE_STAGES.map(s => s.key);
+                  const entregaIdx = flowStages.indexOf("entrega");
+                  const prevStage = entregaIdx > 0 ? flowStages[entregaIdx - 1] : "agendamento";
+                  await sb.from("pm_tasks")
+                    .update({ stage_current: prevStage, status_global: "backlog" })
+                    .in("id", allIds);
+                }
                 queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
                 queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
                 queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
