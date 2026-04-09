@@ -1367,7 +1367,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
             <>
               <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={handleConcluido}>
                 <CheckCircle2 className="h-4 w-4" />
-                {task.stage_current === "revisao" ? "Aprovar e seguir fluxo" : "Concluído"}
+                {task.stage_current === "revisao" ? "Aprovar e seguir fluxo" : "Concluir"}
                 <ChevronRight className="h-3.5 w-3.5" />
               </Button>
 
@@ -1443,28 +1443,34 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
               />
             </>
           ) : (
-            <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={async () => {
-              const sb = supabase as any;
-              const flowStages = Object.keys(flowConfig).length > 0
-                ? Object.entries(flowConfig)
-                    .filter(([, v]: [string, any]) => v.enabled)
-                    .sort(([, a]: [string, any], [, b]: [string, any]) => (a.order ?? 0) - (b.order ?? 0))
-                    .map(([k]) => k)
-                : PM_ACTIVE_STAGES.map(s => s.key);
-              const entregaIdx = flowStages.indexOf("entrega");
-              const prevStage = entregaIdx > 0 ? flowStages[entregaIdx - 1] : "agendamento";
-              
-              const allIds = [task.id, ...childTasks.map(c => c.id)];
-              await sb.from("pm_tasks")
-                .update({ stage_current: prevStage, status_global: "backlog" })
-                .in("id", allIds);
-              queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
-              queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
-              queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
-              toast.success("Tarefa desconcluída");
-            }}>
-              <CheckCircle2 className="h-4 w-4" />
-              Concluído
+            <Button
+              size="sm"
+              className="group/done gap-1.5 min-w-[120px] bg-success text-success-foreground hover:bg-destructive/90 transition-colors duration-200"
+              onClick={async () => {
+                const sb = supabase as any;
+                const flowStages = Object.keys(flowConfig).length > 0
+                  ? Object.entries(flowConfig)
+                      .filter(([, v]: [string, any]) => v.enabled)
+                      .sort(([, a]: [string, any], [, b]: [string, any]) => (a.order ?? 0) - (b.order ?? 0))
+                      .map(([k]) => k)
+                  : PM_ACTIVE_STAGES.map(s => s.key);
+                const entregaIdx = flowStages.indexOf("entrega");
+                const prevStage = entregaIdx > 0 ? flowStages[entregaIdx - 1] : "agendamento";
+                
+                const allIds = [task.id, ...childTasks.map(c => c.id)];
+                await sb.from("pm_tasks")
+                  .update({ stage_current: prevStage, status_global: "backlog" })
+                  .in("id", allIds);
+                queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
+                queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
+                queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
+                toast.success("Tarefa desconcluída");
+              }}
+            >
+              <CheckCircle2 className="h-4 w-4 group-hover/done:hidden transition-all" />
+              <RotateCcw className="h-4 w-4 hidden group-hover/done:inline transition-all" />
+              <span className="group-hover/done:hidden">Concluído</span>
+              <span className="hidden group-hover/done:inline">Desmarcar</span>
             </Button>
           )}
 
