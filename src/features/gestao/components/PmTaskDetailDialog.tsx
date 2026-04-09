@@ -957,6 +957,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         id: task.id,
         stage_current: originalStage as any,
         status_global: "concluido" as any,
+        post_type: task.post_type ?? revisaoTask.post_type ?? (originalStage === "edicao_videos" ? "video" : "design"),
       });
 
       // Mark children as concluído too
@@ -965,6 +966,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           id: child.id,
           stage_current: originalStage as any,
           status_global: "concluido" as any,
+          post_type: child.post_type ?? task.post_type ?? revisaoTask.post_type ?? (originalStage === "edicao_videos" ? "video" : "design"),
         } as any);
       }
 
