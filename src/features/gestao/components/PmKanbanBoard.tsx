@@ -127,7 +127,16 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, av
   const columns = useMemo(() => {
     return KANBAN_COLUMNS.map((col) => ({
       ...col,
-      tasks: filtered.filter((t) => t.stage_current === col.key),
+      tasks: filtered
+        .filter((t) => t.stage_current === col.key)
+        .sort((a, b) => {
+          const da = a.due_date ?? "";
+          const db = b.due_date ?? "";
+          if (!da && !db) return 0;
+          if (!da) return 1;
+          if (!db) return -1;
+          return da.localeCompare(db);
+        }),
     }));
   }, [filtered]);
 
