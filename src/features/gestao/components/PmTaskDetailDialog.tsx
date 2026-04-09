@@ -1442,7 +1442,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                 }}
               />
             </>
-          ) : canCorrect ? (
+          ) : (
             <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={async () => {
               const sb = supabase as any;
               const flowStages = Object.keys(flowConfig).length > 0
@@ -1466,10 +1466,6 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
               <CheckCircle2 className="h-4 w-4" />
               Concluído
             </Button>
-          ) : (
-            <Badge className="bg-emerald-500/20 text-emerald-400 border-0 gap-1">
-              <Check className="h-3 w-3" /> Entregue
-            </Badge>
           )}
 
           {/* Enviar para Alteração — only from Revisão */}
