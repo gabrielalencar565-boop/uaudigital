@@ -146,14 +146,14 @@ export function useCreatePmTask() {
       }).select().single();
       if (error) throw error;
 
-      // Activity log
-      await sb.from("pm_activity_log").insert({
+      // Activity log (fire-and-forget)
+      sb.from("pm_activity_log").insert({
         entity_type: "task",
         entity_id: data.parent_task_id ?? data.id,
         action: "created",
         metadata: { title: data.title, parent_task_id: data.parent_task_id, child_id: data.parent_task_id ? data.id : undefined },
         created_by: user.id,
-      });
+      }).catch(() => {});
 
       return data as PmTask;
     },
