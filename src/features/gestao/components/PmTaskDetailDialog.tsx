@@ -1442,37 +1442,34 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                 }}
               />
             </>
+          ) : canCorrect ? (
+            <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={async () => {
+              const sb = supabase as any;
+              const flowStages = Object.keys(flowConfig).length > 0
+                ? Object.entries(flowConfig)
+                    .filter(([, v]: [string, any]) => v.enabled)
+                    .sort(([, a]: [string, any], [, b]: [string, any]) => (a.order ?? 0) - (b.order ?? 0))
+                    .map(([k]) => k)
+                : PM_ACTIVE_STAGES.map(s => s.key);
+              const entregaIdx = flowStages.indexOf("entrega");
+              const prevStage = entregaIdx > 0 ? flowStages[entregaIdx - 1] : "agendamento";
+              
+              const allIds = [task.id, ...childTasks.map(c => c.id)];
+              await sb.from("pm_tasks")
+                .update({ stage_current: prevStage, status_global: "backlog" })
+                .in("id", allIds);
+              queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
+              queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
+              queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
+              toast.success("Tarefa desconcluída");
+            }}>
+              <CheckCircle2 className="h-4 w-4" />
+              Concluído
+            </Button>
           ) : (
-            <>
-              <Badge className="bg-emerald-500/20 text-emerald-400 border-0 gap-1">
-                <Check className="h-3 w-3" /> Entregue
-              </Badge>
-              {canCorrect && (
-                <Button size="sm" variant="outline" className="gap-1.5 text-muted-foreground border-border/40 hover:bg-muted/60" onClick={async () => {
-                  const sb = supabase as any;
-                  // Find the previous stage before entrega from the flow
-                  const flowStages = Object.keys(flowConfig).length > 0
-                    ? Object.entries(flowConfig)
-                        .filter(([, v]: [string, any]) => v.enabled)
-                        .sort(([, a]: [string, any], [, b]: [string, any]) => (a.order ?? 0) - (b.order ?? 0))
-                        .map(([k]) => k)
-                    : PM_ACTIVE_STAGES.map(s => s.key);
-                  const entregaIdx = flowStages.indexOf("entrega");
-                  const prevStage = entregaIdx > 0 ? flowStages[entregaIdx - 1] : "agendamento";
-                  
-                  const allIds = [task.id, ...childTasks.map(c => c.id)];
-                  await sb.from("pm_tasks")
-                    .update({ stage_current: prevStage, status_global: "backlog" })
-                    .in("id", allIds);
-                  queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
-                  queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
-                  queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
-                  toast.success("Tarefa desconcluída");
-                }}>
-                  <RotateCcw className="h-3.5 w-3.5" /> Desconcluir
-                </Button>
-              )}
-            </>
+            <Badge className="bg-emerald-500/20 text-emerald-400 border-0 gap-1">
+              <Check className="h-3 w-3" /> Entregue
+            </Badge>
           )}
 
           {/* Enviar para Alteração — only from Revisão */}
@@ -1482,12 +1479,6 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
             </Button>
           )}
 
-          {/* Revert button — go back to previous stage */}
-          {!isDone && task.stage_current !== "captacao" && (
-            <Button size="sm" variant="outline" className="gap-1.5 text-muted-foreground border-border/40 hover:bg-muted/60" onClick={handleRevert}>
-              <RotateCcw className="h-3.5 w-3.5" /> Reverter
-            </Button>
-          )}
         </div>
         )}
           </>
