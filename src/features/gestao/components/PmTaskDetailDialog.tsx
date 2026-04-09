@@ -944,6 +944,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     const isVideoByTitle = normalizedTitle.includes("video");
     const isVideoTask = isVideoByPostType || isVideoByTag || isVideoByTitle;
     const originalStage = isVideoTask ? "edicao_videos" : "design";
+    const resolvedReturnPostType = isVideoTask ? "video" : "design";
 
     // Find the paused revisão task in the same lineage to reactivate
     let revisaoQuery = sb
@@ -956,9 +957,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       .order("updated_at", { ascending: false })
       .limit(1);
 
-    if (task.post_type) {
-      revisaoQuery = revisaoQuery.eq("post_type", task.post_type);
-    }
+    revisaoQuery = revisaoQuery.eq("post_type", task.post_type ?? resolvedReturnPostType);
 
     const { data: pausedRevisao } = await revisaoQuery;
 
