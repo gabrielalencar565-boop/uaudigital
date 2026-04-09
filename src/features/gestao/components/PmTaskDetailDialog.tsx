@@ -933,15 +933,21 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     const originalStage = isVideoTask ? "edicao_videos" : "design";
 
     // Find the paused revisão task in the same lineage to reactivate
-    const { data: pausedRevisao } = await sb
+    let revisaoQuery = sb
       .from("pm_tasks")
-      .select("id, assignee_id, watchers")
+      .select("id, assignee_id, watchers, post_type")
       .or(`id.eq.${originId},origin_task_id.eq.${originId}`)
       .eq("stage_current", "revisao")
       .eq("status_global", "pausado")
       .is("parent_task_id", null)
       .order("updated_at", { ascending: false })
       .limit(1);
+
+    if (task.post_type) {
+      revisaoQuery = revisaoQuery.eq("post_type", task.post_type);
+    }
+
+    const { data: pausedRevisao } = await revisaoQuery;
 
     if (pausedRevisao && pausedRevisao.length > 0) {
       const revisaoTask = pausedRevisao[0];
