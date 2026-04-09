@@ -237,7 +237,8 @@ export function useUpdatePmTask() {
                 : []),
               ...(Object.prototype.hasOwnProperty.call(updates, "tags")
                 ? downstreamIds.map((did: string) =>
-                    supabase.rpc("pm_recalc_tag_points", { _pm_task_id: did } as any).catch(console.error)
+                    (supabase.rpc("pm_recalc_tag_points", { _pm_task_id: did } as any) as any).catch(console.error)
+                  )
                   )
                 : []),
             ]);
