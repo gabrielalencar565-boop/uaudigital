@@ -168,23 +168,42 @@ export function PostDetailSidebar({ post, onClose, onUpdate, onRename, onEditTas
               const rawCaption = post.caption ? post.caption.replace(/<[^>]+>/g, '') : '';
               const plainCaption = rawCaption.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/\s+/g, ' ').trim();
               if (!plainCaption) return <span className="text-sm text-muted-foreground italic">sem legenda</span>;
-              const LIMIT = 120;
-              if (plainCaption.length <= LIMIT || captionExpanded) {
-                return (
-                  <>
-                    <span className="text-sm text-foreground/80 whitespace-pre-line">{plainCaption}</span>
-                    {plainCaption.length > LIMIT &&
-                    <button onClick={() => setCaptionExpanded(false)} className="text-sm text-muted-foreground ml-1 hover:text-primary transition-colors">menos</button>
-                    }
-                  </>);
 
-              }
+              // Extract URLs from caption
+              const urlRegex = /(https?:\/\/[^\s]+)/g;
+              const urls = plainCaption.match(urlRegex) || [];
+              // Remove URLs from the text for display
+              const textWithoutUrls = plainCaption.replace(urlRegex, '').replace(/\s+/g, ' ').trim();
+
+              const LIMIT = 120;
+              const isLong = textWithoutUrls.length > LIMIT;
+
               return (
                 <>
-                  <span className="text-sm text-foreground/80">{plainCaption.substring(0, LIMIT)}</span>
-                  <button onClick={() => setCaptionExpanded(true)} className="text-sm text-muted-foreground ml-0.5 hover:text-primary transition-colors">... mais</button>
-                </>);
-
+                  {textWithoutUrls && (
+                    isLong && !captionExpanded ? (
+                      <>
+                        <span className="text-sm text-foreground/80">{textWithoutUrls.substring(0, LIMIT)}</span>
+                        <button onClick={() => setCaptionExpanded(true)} className="text-sm text-muted-foreground ml-0.5 hover:text-primary transition-colors">... mais</button>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-sm text-foreground/80 whitespace-pre-line">{textWithoutUrls}</span>
+                        {isLong && <button onClick={() => setCaptionExpanded(false)} className="text-sm text-muted-foreground ml-1 hover:text-primary transition-colors">menos</button>}
+                      </>
+                    )
+                  )}
+                  {urls.length > 0 && (
+                    <div className="mt-1.5 flex flex-col gap-1">
+                      {urls.map((url, i) => (
+                        <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline break-all truncate block">
+                          🔗 {url.replace(/^https?:\/\//, '').substring(0, 60)}{url.replace(/^https?:\/\//, '').length > 60 ? '…' : ''}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </>
+              );
             })()}
           </div>
 
