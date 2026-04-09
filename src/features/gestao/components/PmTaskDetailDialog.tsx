@@ -1012,6 +1012,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       const updates: any = {
         id: task.id,
         stage_current: "revisao" as any,
+        post_type: task.post_type ?? (originalStage === "edicao_videos" ? "video" : "design"),
       };
       if (fixedAssignee !== undefined) {
         updates.assignee_id = fixedAssignee;
