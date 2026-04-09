@@ -474,6 +474,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       .eq("client_id", task.client_id)
       .eq("stage_current", nextStage)
       .neq("status_global", "concluido")
+      .is("deleted_at", null)
       .is("parent_task_id", null)
       .not("due_date", "is", null)
       .gte("due_date", monthStart)
