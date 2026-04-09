@@ -153,7 +153,7 @@ export function useCreatePmTask() {
         action: "created",
         metadata: { title: data.title, parent_task_id: data.parent_task_id, child_id: data.parent_task_id ? data.id : undefined },
         created_by: user.id,
-      }).catch(() => {});
+      }).then(() => {}, () => {});
 
       return data as PmTask;
     },
