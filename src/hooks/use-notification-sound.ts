@@ -36,6 +36,7 @@ export function useNotificationSound() {
   const shownKeysRef = useRef<Set<string>>(new Set());
   const persistedShownRef = useRef<Set<string>>(new Set());
   const deadlineIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const sessionStartedAtRef = useRef<string>(new Date().toISOString());
 
   // ── helpers ──
   const isTabActive = useCallback(() => {
@@ -95,6 +96,7 @@ export function useNotificationSound() {
   useEffect(() => {
     shownKeysRef.current.clear();
     pendingRef.current = [];
+    sessionStartedAtRef.current = new Date().toISOString();
 
     if (!user?.id) {
       persistedShownRef.current = new Set();
@@ -132,6 +134,15 @@ export function useNotificationSound() {
       new Date().toISOString()
     );
   }, [user?.id]);
+
+  const isEventNewForCurrentSession = useCallback((timestamp?: string) => {
+    if (!timestamp) return false;
+
+    const eventTime = new Date(timestamp).getTime();
+    const sessionStart = new Date(sessionStartedAtRef.current).getTime() - 5000;
+
+    return Number.isFinite(eventTime) && Number.isFinite(sessionStart) && eventTime >= sessionStart;
+  }, []);
 
   // ── Fetch missed while away ──
   const fetchMissedWhileAway = useCallback(async () => {
@@ -222,8 +233,6 @@ export function useNotificationSound() {
   }, [user?.id]);
 
   // ── Visibility & lifecycle ──
-  const initialLoadRef = useRef(true);
-
   useEffect(() => {
     if (!user?.id) return;
 
@@ -232,14 +241,12 @@ export function useNotificationSound() {
       localStorage.setItem(key, new Date().toISOString());
     }
 
-    // On initial page load, just set last-seen without showing any toasts.
-    // Only realtime events (new mentions/assignments while the tab is open) should trigger toasts.
+    // On initial page load, only establish the session baseline.
+    // Existing notifications should not replay when the user opens the system.
     setLastSeen();
-    initialLoadRef.current = false;
 
     const handleVisible = () => {
-      if (!isTabActive()) return;
-      // When returning from hidden, fetch missed and show them
+      if (!isTabActive() || document.visibilityState !== "visible") return;
       void fetchMissedWhileAway().finally(() => {
         void checkDeadlines().finally(() => {
           flushPending();
@@ -293,6 +300,8 @@ export function useNotificationSound() {
           if (row.author_id === uid) return;
           // Skip subtask comments
           if (row.subtask_id) return;
+          // Ignore historical/replayed events when opening the app
+          if (!isEventNewForCurrentSession(row.created_at)) return;
           if (row.content && row.content.includes(`@${uid}`)) {
             enqueueOrShow({
               key: `mention-${row.id}`,
@@ -318,9 +327,11 @@ export function useNotificationSound() {
           if (row.created_by === uid) return;
           // Skip child tasks (subtasks)
           if (row.parent_task_id) return;
+          // Ignore tasks that already existed before the current session started
+          if (!isEventNewForCurrentSession(row.created_at)) return;
           if (row.assignee_id === uid) {
             enqueueOrShow({
-              key: `assigned-${row.id}-${row.created_at ?? ""}`,
+              key: `assigned-${row.id}`,
               type: "task_assigned",
               title: "Nova tarefa atribuída a você",
               description: row.title ?? "Uma nova tarefa foi atribuída",
@@ -340,10 +351,18 @@ export function useNotificationSound() {
           invalidateNotifications();
           // Skip child tasks (subtasks)
           if (row.parent_task_id) return;
+          // Ignore historical/replayed events when opening the app
+          if (!isEventNewForCurrentSession(row.updated_at)) return;
+
+          // If the previous assignee is not present in the payload, don't guess.
+          // This avoids re-firing the same assignment toast on reconnect/page open.
+          const oldAssigneeKnown = Object.prototype.hasOwnProperty.call(old ?? {}, "assignee_id");
+          if (!oldAssigneeKnown) return;
+
           const wasAssignedBefore = old?.assignee_id === uid;
           if (row.assignee_id === uid && !wasAssignedBefore) {
             enqueueOrShow({
-              key: `assigned-${row.id}-${row.updated_at ?? ""}`,
+              key: `assigned-${row.id}`,
               type: "task_assigned",
               title: "Tarefa atribuída a você",
               description: row.title ?? "Uma tarefa foi atribuída",
@@ -359,5 +378,5 @@ export function useNotificationSound() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [enqueueOrShow, queryClient, user?.id]);
+  }, [enqueueOrShow, isEventNewForCurrentSession, queryClient, user?.id]);
 }
