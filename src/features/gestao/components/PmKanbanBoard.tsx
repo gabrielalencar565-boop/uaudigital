@@ -211,6 +211,7 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, av
         .eq("client_id", droppedTask.client_id)
         .eq("stage_current", newStage)
         .neq("status_global", "concluido")
+        .is("deleted_at", null)
         .is("parent_task_id", null)
         .not("due_date", "is", null)
         .gte("due_date", monthStart)
