@@ -800,7 +800,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
     // Find the most recent completed snapshot in the same lineage at design or edicao_videos
     for (const stage of ["edicao_videos", "design"]) {
-      const { data: snapshot } = await sb
+      const query = sb
         .from("pm_tasks")
         .select("id, assignee_id, watchers, stage_current, post_type, tags")
         .or(`id.eq.${originId},origin_task_id.eq.${originId}`)
@@ -809,6 +809,12 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         .is("parent_task_id", null)
         .order("updated_at", { ascending: false })
         .limit(1);
+
+      if (task.post_type) {
+        query.eq("post_type", task.post_type);
+      }
+
+      const { data: snapshot } = await query;
       if (snapshot && snapshot.length > 0) {
         previousSnapshot = snapshot[0];
         previousStage = stage;
