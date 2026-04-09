@@ -316,36 +316,47 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     const cloneChildrenToNewTask = async (targetTaskId: string, targetStage: string) => {
       const fixedAssignee = getFixedAssignee(stageAssignees, targetStage, task.client_id);
       const fixedWatchers = getFixedWatchers(stageAssignees, targetStage, task.client_id);
-      // 1. Mark original children as concluido (frozen on the snapshot)
-      for (const child of childTasks) {
-        updateTask.mutate({ id: child.id, status_global: "concluido" as any });
-      }
-      // 2. Clone children to the new task
-      for (const child of childTasks) {
-        await createTask.mutateAsync({
-          client_id: child.client_id,
-          title: child.title,
-          description: child.description ?? undefined,
-          stage_current: targetStage,
-          assignee_id: fixedAssignee !== undefined ? (fixedAssignee ?? undefined) : (child.assignee_id ?? undefined),
-          watchers: fixedAssignee !== undefined ? fixedWatchers : (child.watchers ?? []),
-          parent_task_id: targetTaskId,
-          tags: child.tags ?? [],
-          is_extra_demand: child.is_extra_demand,
-          status_global: "backlog",
-          post_type: child.post_type ?? undefined,
-        });
-      }
-      // 3. Copy attachments (keep originals on snapshot)
+      // 1. Mark original children as concluido + clone in parallel
       const sb = supabase as any;
-      const { data: existingAtts } = await sb.from("pm_attachments").select("*").eq("task_id", task.id);
+      const [, , attRes] = await Promise.all([
+        // Freeze originals (fire-and-forget style, parallel)
+        Promise.all(childTasks.map(child =>
+          sb.from("pm_tasks").update({ status_global: "concluido" }).eq("id", child.id)
+        )),
+        // Clone children in parallel
+        Promise.all(childTasks.map(child =>
+          createTask.mutateAsync({
+            client_id: child.client_id,
+            title: child.title,
+            description: child.description ?? undefined,
+            stage_current: targetStage,
+            assignee_id: fixedAssignee !== undefined ? (fixedAssignee ?? undefined) : (child.assignee_id ?? undefined),
+            watchers: fixedAssignee !== undefined ? fixedWatchers : (child.watchers ?? []),
+            parent_task_id: targetTaskId,
+            tags: child.tags ?? [],
+            is_extra_demand: child.is_extra_demand,
+            status_global: "backlog",
+            post_type: child.post_type ?? undefined,
+          })
+        )),
+        // Fetch attachments in parallel
+        sb.from("pm_attachments").select("*").eq("task_id", task.id),
+      ]);
+      // 3. Copy attachments in parallel
+      const existingAtts = attRes?.data;
       if (existingAtts?.length) {
-        for (const att of existingAtts) {
+        await Promise.all(existingAtts.map((att: any) => {
           const { id: _id, created_at: _ca, ...rest } = att;
-          await sb.from("pm_attachments").insert({ ...rest, task_id: targetTaskId });
-        }
+          return sb.from("pm_attachments").insert({ ...rest, task_id: targetTaskId });
+        }));
       }
     };
+
+    // Skip scoring for alteracoes and revisao — they don't generate points
+    // Fire early (non-blocking)
+    if (completedStage !== "alteracoes" && completedStage !== "revisao") {
+      syncCompletedStage(completedStage);
+    }
 
     if (linkedTaskId) {
       // Snapshot: mark current task as completed at current stage
@@ -368,12 +379,17 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       updateTask.mutate(linkedUpdates);
       cloneChildrenToNewTask(linkedTaskId, nextStage);
     } else if (nextStage === "entrega") {
-      // Final stage: mark as delivered
-      updateTask.mutate({
-        id: task.id,
-        stage_current: "entrega" as any,
-        status_global: "concluido" as any,
-      });
+      // Final stage: mark parent + all children as delivered in parallel
+      const sb = supabase as any;
+      const allIds = [task.id, ...childTasks.map(c => c.id)];
+      sb.from("pm_tasks")
+        .update({ stage_current: "entrega", status_global: "concluido" })
+        .in("id", allIds)
+        .then(() => {
+          // Optimistic already handled, just invalidate
+          const qc = (updateTask as any).queryClient;
+        });
+      // Optimistic update immediately
       for (const child of childTasks) {
         updateTask.mutate({
           id: child.id,
@@ -381,6 +397,11 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           status_global: "concluido" as any,
         });
       }
+      updateTask.mutate({
+        id: task.id,
+        stage_current: "entrega" as any,
+        status_global: "concluido" as any,
+      });
     } else {
       // Snapshot current task as completed (stays in agenda)
       const snapshotDueDate = task.due_date ?? format(new Date(), "yyyy-MM-dd");
@@ -430,10 +451,6 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       });
     }
 
-    // Skip scoring for alteracoes and revisao — they don't generate points
-    if (completedStage !== "alteracoes" && completedStage !== "revisao") {
-      syncCompletedStage(completedStage);
-    }
     toast.success(nextStage === "entrega" ? "Tarefa marcada como Entregue!" : `Avançou para ${stageLabel(nextStage)}`);
   };
 
