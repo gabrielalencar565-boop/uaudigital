@@ -829,6 +829,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         id: previousSnapshot.id,
         stage_current: "alteracoes" as any,
         status_global: "em_andamento" as any,
+        post_type: previousSnapshot.post_type ?? task.post_type,
       };
       // The assignee stays as the original designer/video editor (previousSnapshot.assignee_id)
       // so that person receives the alteration task
