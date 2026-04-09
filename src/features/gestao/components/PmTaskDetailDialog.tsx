@@ -675,20 +675,16 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
     // ═══ CAPTAÇÃO: just mark as done, no stage advancement ═══
     if (completedStage === "captacao") {
-      updateTask.mutate({
-        id: task.id,
-        stage_current: "captacao" as any,
-        status_global: "concluido" as any,
-      });
-      for (const child of childTasks) {
-        updateTask.mutate({
-          id: child.id,
-          stage_current: "captacao" as any,
-          status_global: "concluido" as any,
-        });
-      }
+      const sb = supabase as any;
+      const allIds = [task.id, ...childTasks.map(c => c.id)];
+      await sb.from("pm_tasks")
+        .update({ stage_current: "captacao", status_global: "concluido" })
+        .in("id", allIds);
       // Sync scoring for captação
       syncCompletedStage(completedStage);
+      queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
       toast.success("Captação concluída!");
       return;
     }
@@ -711,22 +707,23 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       const hasDesign = designChildren.length > 0;
 
       if (hasVideo || hasDesign) {
-        // Snapshot current task as completed
+        // Snapshot current task as completed + freeze all children via single batch
         const snapshotDueDate = task.due_date ?? format(new Date(), "yyyy-MM-dd");
-        updateTask.mutate({
-          id: task.id,
-          stage_current: completedStage as any,
-          status_global: "concluido" as any,
+        const sb = supabase as any;
+        const allIds = [task.id, ...childTasks.map(c => c.id)];
+        await sb.from("pm_tasks").update({ status_global: "concluido" }).in("id", allIds);
+        await sb.from("pm_tasks").update({
+          stage_current: completedStage,
+          status_global: "concluido",
           due_date: snapshotDueDate,
-        });
+        }).eq("id", task.id);
 
         // Sync scoring for planejamento
         syncCompletedStage(completedStage);
 
-        // Mark ALL children as concluido (frozen on snapshot)
-        for (const child of childTasks) {
-          updateTask.mutate({ id: child.id, status_global: "concluido" as any });
-        }
+        queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
+        queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
+        queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
 
         const clientName = clientsMap[task.client_id] || task.title.split(" - ")[0];
         let monthLabel: string | null = null;
