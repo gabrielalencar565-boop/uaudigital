@@ -186,91 +186,83 @@ export function useUpdatePmTask() {
       const { data, error } = await sb.from("pm_tasks").update(updates).eq("id", id).select().single();
       if (error) throw error;
 
-      const shouldRecalcTagPoints = Object.prototype.hasOwnProperty.call(updates, "tags") && !data.parent_task_id;
-      if (shouldRecalcTagPoints) {
-        try {
-          const { error: recalcError } = await supabase.rpc("pm_recalc_tag_points", { _pm_task_id: id } as any);
-          if (recalcError) throw recalcError;
-        } catch (recalcError) {
-          console.error("Error recalculating tag points:", recalcError);
+      // ── Fire-and-forget background work (non-blocking) ──
+      const bgWork = async () => {
+        const shouldRecalcTagPoints = Object.prototype.hasOwnProperty.call(updates, "tags") && !data.parent_task_id;
+        if (shouldRecalcTagPoints) {
+          try {
+            await supabase.rpc("pm_recalc_tag_points", { _pm_task_id: id } as any);
+          } catch (e) { console.error("Error recalculating tag points:", e); }
         }
-      }
 
-      // ── Forward-sync: propagate certain fields to downstream tasks ──
-      const SYNCED_FIELDS = ["description", "tags", "project_id", "is_extra_demand", "caption", "cover_url", "post_type", "priority"] as const;
-      const hasSyncedField = SYNCED_FIELDS.some(f => Object.prototype.hasOwnProperty.call(updates, f));
+        // Forward-sync: propagate certain fields to downstream tasks
+        const SYNCED_FIELDS = ["description", "tags", "project_id", "is_extra_demand", "caption", "cover_url", "post_type", "priority"] as const;
+        const hasSyncedField = SYNCED_FIELDS.some(f => Object.prototype.hasOwnProperty.call(updates, f));
 
-      if (hasSyncedField && !data.parent_task_id) {
-        // Build the subset of fields that were actually updated
-        const syncPayload: Record<string, any> = {};
-        for (const f of SYNCED_FIELDS) {
-          if (Object.prototype.hasOwnProperty.call(updates, f)) {
-            syncPayload[f] = (updates as any)[f];
+        if (hasSyncedField && !data.parent_task_id) {
+          const syncPayload: Record<string, any> = {};
+          for (const f of SYNCED_FIELDS) {
+            if (Object.prototype.hasOwnProperty.call(updates, f)) {
+              syncPayload[f] = (updates as any)[f];
+            }
           }
-        }
 
-        // Find all downstream root tasks that share the same origin
-        const originId = data.origin_task_id ?? data.id;
-        const { data: downstream } = await sb
-          .from("pm_tasks")
-          .select("id, created_at")
-          .or(`origin_task_id.eq.${originId},id.eq.${originId}`)
-          .is("parent_task_id", null)
-          .is("deleted_at", null)
-          .gt("created_at", data.created_at)
-          .neq("id", id);
-
-        if (downstream?.length) {
-          // Update all downstream root tasks
-          const downstreamIds = downstream.map((d: any) => d.id);
-          await sb
+          const originId = data.origin_task_id ?? data.id;
+          const { data: downstream } = await sb
             .from("pm_tasks")
-            .update(syncPayload)
-            .in("id", downstreamIds);
+            .select("id, created_at")
+            .or(`origin_task_id.eq.${originId},id.eq.${originId}`)
+            .is("parent_task_id", null)
+            .is("deleted_at", null)
+            .gt("created_at", data.created_at)
+            .neq("id", id);
 
-          // Also sync to children of downstream tasks
-          for (const did of downstreamIds) {
+          if (downstream?.length) {
+            const downstreamIds = downstream.map((d: any) => d.id);
+            // Build child sync payload once
             const childSyncPayload: Record<string, any> = {};
-            // For children, only sync tags, is_extra_demand, post_type
             for (const f of ["tags", "is_extra_demand", "post_type"] as const) {
               if (Object.prototype.hasOwnProperty.call(updates, f)) {
                 childSyncPayload[f] = (updates as any)[f];
               }
             }
-            if (Object.keys(childSyncPayload).length > 0) {
-              await sb
-                .from("pm_tasks")
-                .update(childSyncPayload)
-                .eq("parent_task_id", did)
-                .is("deleted_at", null);
-            }
-          }
 
-          // Recalc tag points for downstream tasks if tags changed
-          if (Object.prototype.hasOwnProperty.call(updates, "tags")) {
-            for (const did of downstreamIds) {
-              try {
-                await supabase.rpc("pm_recalc_tag_points", { _pm_task_id: did } as any);
-              } catch (e) {
-                console.error("Error recalculating downstream tag points:", e);
-              }
-            }
+            // Run all downstream updates in parallel
+            await Promise.all([
+              sb.from("pm_tasks").update(syncPayload).in("id", downstreamIds),
+              ...(Object.keys(childSyncPayload).length > 0
+                ? downstreamIds.map((did: string) =>
+                    sb.from("pm_tasks").update(childSyncPayload).eq("parent_task_id", did).is("deleted_at", null)
+                  )
+                : []),
+              ...(Object.prototype.hasOwnProperty.call(updates, "tags")
+                ? downstreamIds.map((did: string) =>
+                    supabase.rpc("pm_recalc_tag_points", { _pm_task_id: did } as any).catch(console.error)
+                  )
+                : []),
+            ]);
           }
         }
-      }
 
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        // Log to parent task if this is a child
-        const logEntityId = data.parent_task_id ?? id;
-        await sb.from("pm_activity_log").insert({
-          entity_type: "task",
-          entity_id: logEntityId,
-          action: "updated",
-          metadata: { ...updates, task_id: id, title: data.title },
-          created_by: user.id,
-        });
-      }
+        // Activity log (fire-and-forget)
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const logEntityId = data.parent_task_id ?? id;
+            await sb.from("pm_activity_log").insert({
+              entity_type: "task",
+              entity_id: logEntityId,
+              action: "updated",
+              metadata: { ...updates, task_id: id, title: data.title },
+              created_by: user.id,
+            });
+          }
+        } catch (_) {}
+      };
+
+      // Don't await background work - let it run async
+      bgWork().catch(console.error);
+
       return data as PmTask;
     },
     onMutate: async ({ id, ...updates }) => {
