@@ -1445,7 +1445,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           ) : (
             <Button
               size="sm"
-              className="group/done gap-1.5 min-w-[120px] bg-success text-success-foreground hover:bg-destructive/90 transition-colors duration-200"
+              className="group/done gap-1.5 min-w-[130px] bg-success text-success-foreground hover:bg-destructive/90 transition-colors duration-200"
               onClick={async () => {
                 const sb = supabase as any;
                 const flowStages = Object.keys(flowConfig).length > 0
@@ -1467,10 +1467,14 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                 toast.success("Tarefa desconcluída");
               }}
             >
-              <CheckCircle2 className="h-4 w-4 group-hover/done:hidden transition-all" />
-              <RotateCcw className="h-4 w-4 hidden group-hover/done:inline transition-all" />
-              <span className="group-hover/done:hidden">Concluído</span>
-              <span className="hidden group-hover/done:inline">Desmarcar</span>
+              <span className="contents group-hover/done:hidden">
+                <CheckCircle2 className="h-4 w-4" />
+                Concluído
+              </span>
+              <span className="hidden group-hover/done:contents">
+                <RotateCcw className="h-4 w-4" />
+                Desmarcar
+              </span>
             </Button>
           )}
 
