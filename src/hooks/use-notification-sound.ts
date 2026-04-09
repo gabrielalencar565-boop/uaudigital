@@ -139,44 +139,27 @@ export function useNotificationSound() {
     const since = localStorage.getItem(`uau:notif:last-seen:${user.id}`);
     if (!since) return;
 
-    const [mentionsRes, assignedRes] = await Promise.all([
-      (supabase as any)
-        .from("pm_comments")
-        .select("id, content, created_at, author_id")
-        .neq("author_id", user.id)
-        .ilike("content", `%@${user.id}%`)
-        .gte("created_at", since)
-        .order("created_at", { ascending: true })
-        .limit(20),
-      (supabase as any)
-        .from("pm_tasks")
-        .select("id, title, created_by, assignee_id, updated_at")
-        .eq("assignee_id", user.id)
-        .neq("created_by", user.id)
-        .gte("updated_at", since)
-        .order("updated_at", { ascending: true })
-        .limit(20),
-    ]);
+    // Only fetch mentions while away — assignment notifications are handled by realtime
+    const mentionsRes = await (supabase as any)
+      .from("pm_comments")
+      .select("id, content, created_at, author_id, task_id, subtask_id")
+      .neq("author_id", user.id)
+      .ilike("content", `%@${user.id}%`)
+      .is("subtask_id", null)
+      .gte("created_at", since)
+      .order("created_at", { ascending: true })
+      .limit(20);
 
-    const items: PendingNotif[] = [
-      ...(mentionsRes.data ?? []).map((r: any) => ({
-        key: `mention-${r.id}`,
-        type: "mention" as NotificationType,
-        title: "Você foi mencionado",
-        description:
-          r.content
-            ?.substring(0, 80)
-            ?.replace(/@([a-f0-9-]{36})/gi, "@alguém") ?? "",
-        timestamp: r.created_at,
-      })),
-      ...(assignedRes.data ?? []).map((r: any) => ({
-        key: `assigned-${r.id}-${r.updated_at ?? ""}`,
-        type: "task_assigned" as NotificationType,
-        title: "Tarefa atribuída a você",
-        description: r.title ?? "Uma tarefa foi atribuída",
-        timestamp: r.updated_at,
-      })),
-    ];
+    const items: PendingNotif[] = (mentionsRes.data ?? []).map((r: any) => ({
+      key: `mention-${r.id}`,
+      type: "mention" as NotificationType,
+      title: "Você foi mencionado",
+      description:
+        r.content
+          ?.substring(0, 80)
+          ?.replace(/@([a-f0-9-]{36})/gi, "@alguém") ?? "",
+      timestamp: r.created_at,
+    }));
 
     items
       .sort(
@@ -195,8 +178,9 @@ export function useNotificationSound() {
 
     const { data } = await (supabase as any)
       .from("pm_tasks")
-      .select("id, title, due_date, assignee_id, status_global")
+      .select("id, title, due_date, assignee_id, status_global, parent_task_id")
       .eq("assignee_id", user.id)
+      .is("parent_task_id", null)
       .not("status_global", "in", "(concluido,cancelado)")
       .not("due_date", "is", null)
       .lte("due_date", todayStr)
@@ -316,9 +300,10 @@ export function useNotificationSound() {
           const uid = userIdRef.current;
           if (!uid) return;
           const row = payload.new as any;
-          // Always invalidate so dropdown updates for all new comments
           invalidateNotifications();
           if (row.author_id === uid) return;
+          // Skip subtask comments
+          if (row.subtask_id) return;
           if (row.content && row.content.includes(`@${uid}`)) {
             enqueueOrShow({
               key: `mention-${row.id}`,
@@ -342,6 +327,8 @@ export function useNotificationSound() {
           const row = payload.new as any;
           invalidateNotifications();
           if (row.created_by === uid) return;
+          // Skip child tasks (subtasks)
+          if (row.parent_task_id) return;
           if (row.assignee_id === uid) {
             enqueueOrShow({
               key: `assigned-${row.id}-${row.created_at ?? ""}`,
@@ -362,8 +349,8 @@ export function useNotificationSound() {
           const row = payload.new as any;
           const old = payload.old as any;
           invalidateNotifications();
-          // Trigger when assignee changed TO current user
-          // old may be partial, so also trigger if assignee is uid and old.assignee_id is absent
+          // Skip child tasks (subtasks)
+          if (row.parent_task_id) return;
           const wasAssignedBefore = old?.assignee_id === uid;
           if (row.assignee_id === uid && !wasAssignedBefore) {
             enqueueOrShow({
