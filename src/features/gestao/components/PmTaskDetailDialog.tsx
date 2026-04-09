@@ -984,6 +984,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       const revisaoUpdates: any = {
         id: revisaoTask.id,
         status_global: "backlog" as any,
+        post_type: task.post_type ?? revisaoTask.post_type ?? (originalStage === "edicao_videos" ? "video" : "design"),
       };
       if (fixedAssignee !== undefined) {
         revisaoUpdates.assignee_id = fixedAssignee;
