@@ -915,13 +915,14 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     const sb = supabase as any;
     const originId = task.origin_task_id ?? task.id;
 
-    // Detect original stage: check the tags for "Vídeo" or look at the lineage
-    // A task with tag "Vídeo" or "Video" is a video task
+    // Detect original stage: check post_type first, then tags, then lineage
+    const isVideoByPostType = task.post_type === "video";
     const taskTags = task.tags ?? [];
-    const isVideoTask = taskTags.some(t => {
+    const isVideoByTag = taskTags.some(t => {
       const parsed = parseTag(t);
       return parsed.name.toLowerCase() === "vídeo" || parsed.name.toLowerCase() === "video";
     });
+    const isVideoTask = isVideoByPostType || isVideoByTag;
     const originalStage = isVideoTask ? "edicao_videos" : "design";
 
     // Find the paused revisão task in the same lineage to reactivate
