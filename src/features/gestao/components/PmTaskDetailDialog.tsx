@@ -460,9 +460,11 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       .order("due_date", { ascending: true })
       .limit(1);
 
-    // When advancing to revisão, only link with same post_type origin
-    if (nextStage === "revisao" && task.post_type) {
-      query = query.eq("post_type", task.post_type);
+    // When advancing to revisão, only link with the same post_type origin
+    const inferredNextStagePostType = task.post_type
+      ?? (task.stage_current === "edicao_videos" ? "video" : task.stage_current === "design" ? "design" : undefined);
+    if (nextStage === "revisao" && inferredNextStagePostType) {
+      query = query.eq("post_type", inferredNextStagePostType);
     }
 
     const { data: existing } = await query;
