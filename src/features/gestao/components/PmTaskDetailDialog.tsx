@@ -996,6 +996,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           parent_task_id: revisaoTask.id,
           stage_current: "revisao" as any,
           status_global: "backlog" as any,
+          post_type: child.post_type ?? task.post_type ?? revisaoTask.post_type ?? (originalStage === "edicao_videos" ? "video" : "design"),
         } as any);
       }
 
