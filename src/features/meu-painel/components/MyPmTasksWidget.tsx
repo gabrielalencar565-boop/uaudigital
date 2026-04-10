@@ -199,11 +199,12 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
   );
 
   const renderRow = (t: PmTask) => {
-    const due = dueDateLabel(t.due_date, todayKey);
+    const isDone = t.stage_current === "entrega";
+    const due = dueDateLabel(t.due_date, todayKey, isDone);
     const commentCount = commentCounts[t.id] ?? 0;
     const childCount = childCounts[t.id] ?? 0;
     const stageColor = getStageCircleColor(t.stage_current);
-    const isDone = t.stage_current === "entrega";
+    
     const flagClass = PRIORITY_FLAG[t.priority] ?? PRIORITY_FLAG.baixa;
     const isExpanded = expandedTasks.has(t.id);
     const children = childTasksByParent[t.id] ?? [];
@@ -299,7 +300,7 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
         {isExpanded && children.length > 0 && (
           <div className="border-b border-border/20">
             {children.map(sub => {
-              const subDue = dueDateLabel(sub.due_date, todayKey);
+              const subDue = dueDateLabel(sub.due_date, todayKey, subIsDone);
               const subStageColor = getStageCircleColor(sub.stage_current);
               const subIsDone = sub.stage_current === "entrega";
               const subFlagClass = PRIORITY_FLAG[sub.priority] ?? PRIORITY_FLAG.baixa;
