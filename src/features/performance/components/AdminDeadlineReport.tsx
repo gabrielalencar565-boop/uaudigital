@@ -593,6 +593,7 @@ export function AdminDeadlineReport({
                 <TableBody>
                   {userTasks.map((t) => {
                     const auto = calcPoints(t, scoringConfigMap, year, month, pmTagsMap);
+                    const expected = calcExpectedPoints(t, scoringConfigMap, pmTagsMap);
                     const override = overrideByTaskId.get(t.id);
                     const current = override ? String(override.override_points) : "auto";
 
@@ -654,14 +655,14 @@ export function AdminDeadlineReport({
                         <TableCell className="text-center">
                           <Select
                             value={current}
-                            onValueChange={(v) => setOverrideMut.mutate({ taskId: t.id, value: v as any })}
+                            onValueChange={(v) => setOverrideMut.mutate({ taskId: t.id, value: v })}
                           >
-                            <SelectTrigger className="mx-auto w-[140px]">
+                            <SelectTrigger className="mx-auto w-[160px]">
                               <SelectValue placeholder="Auto" />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="auto">Auto</SelectItem>
-                              <SelectItem value="1">Forçar +1</SelectItem>
+                              <SelectItem value={String(expected)}>Forçar +{expected}</SelectItem>
                               <SelectItem value="0">Forçar 0</SelectItem>
                               <SelectItem value="-1">Forçar -1</SelectItem>
                             </SelectContent>
