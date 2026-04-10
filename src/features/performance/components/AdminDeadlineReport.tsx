@@ -398,6 +398,44 @@ export function AdminDeadlineReport({
     })();
   }, [storedScoresQ.data, summary, tasksQ.isLoading, scoringConfigQ.isLoading]);
 
+  // Auto-resync tasks with old description format (no user suffix) — stale data from before multi-assignee fix
+  const resyncedRef = useRef(false);
+  useEffect(() => { resyncedRef.current = false; }, [year, month]);
+  useEffect(() => {
+    if (resyncedRef.current) return;
+    if (!tasksQ.data || tasksQ.isLoading) return;
+
+    // Find tasks with old format: "pm:<uuid>:<stage>" (exactly 3 parts, no user suffix)
+    const stale = (tasksQ.data ?? []).filter((t) => {
+      if (!t.description || !t.description.startsWith("pm:")) return false;
+      const parts = t.description.split(":");
+      return parts.length === 3; // old format without user_id suffix
+    });
+
+    if (stale.length === 0) return;
+    resyncedRef.current = true;
+
+    (async () => {
+      for (const t of stale) {
+        const parts = t.description!.split(":");
+        const pmTaskId = parts[1];
+        const stage = parts[2];
+        try {
+          await supabase.rpc("pm_resync_correction", {
+            _pm_task_id: pmTaskId,
+            _completed_stage: stage,
+          });
+        } catch (e) {
+          console.error("Auto-resync failed for", pmTaskId, stage, e);
+        }
+      }
+      qc.invalidateQueries({ queryKey: ["deadline_report_tasks", year, month] });
+      qc.invalidateQueries({ queryKey: ["deadline_report_assignees", year, month] });
+      qc.invalidateQueries({ queryKey: ["performance_scores"] });
+      qc.invalidateQueries({ queryKey: ["performance_scores_metas", year, month] });
+    })();
+  }, [tasksQ.data, tasksQ.isLoading]);
+
   const userTasks = useMemo(() => {
     return (tasksQ.data ?? []).filter((t) => {
       if (t.status !== "concluido") return false;
