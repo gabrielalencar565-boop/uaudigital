@@ -420,7 +420,8 @@ export function AdminPontuacaoPanel() {
                           />
                         </TableCell>
                       </TableRow>
-                    ))}
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
