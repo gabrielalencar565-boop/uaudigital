@@ -437,11 +437,13 @@ export function AdminDeadlineReport({
   }, [tasksQ.data, tasksQ.isLoading]);
 
   const userTasks = useMemo(() => {
-    return (tasksQ.data ?? []).filter((t) => {
-      if (t.status !== "concluido") return false;
-      const userIds = getTaskUserIds(t);
-      return userIds.includes(selectedUserId);
-    });
+    return (tasksQ.data ?? [])
+      .filter((t) => {
+        if (t.status !== "concluido") return false;
+        const userIds = getTaskUserIds(t);
+        return userIds.includes(selectedUserId);
+      })
+      .sort((a, b) => a.due_date.localeCompare(b.due_date));
   }, [tasksQ.data, selectedUserId, assigneesByTask]);
 
   const handleOpenPmTask = (task: TaskForReport) => {
