@@ -246,11 +246,12 @@ export function AdminDeadlineReport({
     return map;
   }, [assigneesQ.data]);
 
-  // Returns all user_ids associated with a task (assignees if any, else assigned_user_id)
+  // Returns all user_ids associated with a task (always includes assigned_user_id + any task_assignees)
   function getTaskUserIds(task: TaskForReport): string[] {
     const assignees = assigneesByTask.get(task.id);
-    if (assignees && assignees.length > 0) return assignees;
-    return [task.assigned_user_id];
+    const ids = new Set<string>([task.assigned_user_id]);
+    if (assignees) assignees.forEach(a => ids.add(a));
+    return Array.from(ids);
   }
 
   const overridesQ = useQuery({
