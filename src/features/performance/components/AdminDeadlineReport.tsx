@@ -507,7 +507,7 @@ export function AdminDeadlineReport({
           <CardHeader>
             <CardTitle>Relatório — Entregas no prazo x atrasadas</CardTitle>
             <CardDescription>
-              Mês do prazo • Admin pode marcar exceções por tarefa (+1 / 0 / -1) para ajustar Metas/Prazos
+              Mês do prazo • Admin pode marcar exceções por tarefa (forçar pontuação da etapa / 0 / -1) para ajustar Metas/Prazos
             </CardDescription>
           </CardHeader>
           <CardContent>
