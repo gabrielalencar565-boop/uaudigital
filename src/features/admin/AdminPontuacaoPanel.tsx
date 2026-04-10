@@ -377,10 +377,20 @@ export function AdminPontuacaoPanel() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {tagRows.map((row) => (
+                    {tagRows.map((row) => {
+                      const matchedTag = globalTags.find(gt => `tag_${gt.name.toLowerCase().replace(/\s+/g, "_")}` === row.stage);
+                      const rawTag = matchedTag ? `${matchedTag.name}:${matchedTag.color_key}` : null;
+                      const tc = rawTag ? tagColor(rawTag) : null;
+                      return (
                       <TableRow key={row.id}>
                         <TableCell>
-                          <span className="font-medium">{getVal(row, "label")}</span>
+                          {tc ? (
+                            <Badge className={cn("text-xs h-6 px-2.5 gap-1 border-0", tc.bg, tc.text)}>
+                              {getVal(row, "label")}
+                            </Badge>
+                          ) : (
+                            <span className="font-medium">{getVal(row, "label")}</span>
+                          )}
                         </TableCell>
                         <TableCell className="text-center">
                           <Input
@@ -410,7 +420,8 @@ export function AdminPontuacaoPanel() {
                           />
                         </TableCell>
                       </TableRow>
-                    ))}
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
