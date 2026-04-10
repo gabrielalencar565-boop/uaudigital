@@ -19,17 +19,25 @@ const PRIORITY_FLAG: Record<string, string> = {
   baixa: "text-muted-foreground/40",
 };
 
-function dueDateLabel(dueDate: string | null, todayKey: string) {
+function dueDateLabel(dueDate: string | null, todayKey: string, isDone = false) {
   if (!dueDate) return { text: "—", color: "text-muted-foreground" };
   const today = new Date(todayKey + "T00:00:00");
   const due = new Date(dueDate + "T00:00:00");
   const diff = differenceInCalendarDays(due, today);
 
-  if (diff < -1) return { text: format(due, "dd/MM/yyyy"), color: "text-destructive" };
-  if (diff === -1) return { text: "Ontem", color: "text-destructive" };
-  if (diff === 0) return { text: "Hoje", color: "text-warning" };
-  if (diff === 1) return { text: "Amanhã", color: "text-foreground" };
-  return { text: format(due, "dd/MM/yyyy"), color: "text-muted-foreground" };
+  const text = diff < -1 ? format(due, "dd/MM/yyyy")
+    : diff === -1 ? "Ontem"
+    : diff === 0 ? "Hoje"
+    : diff === 1 ? "Amanhã"
+    : format(due, "dd/MM/yyyy");
+
+  if (isDone) return { text, color: "text-success" };
+
+  if (diff < -1) return { text, color: "text-destructive" };
+  if (diff === -1) return { text, color: "text-destructive" };
+  if (diff === 0) return { text, color: "text-warning" };
+  if (diff === 1) return { text, color: "text-foreground" };
+  return { text, color: "text-muted-foreground" };
 }
 
 interface Props {
@@ -191,11 +199,12 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
   );
 
   const renderRow = (t: PmTask) => {
-    const due = dueDateLabel(t.due_date, todayKey);
+    const isDone = t.stage_current === "entrega";
+    const due = dueDateLabel(t.due_date, todayKey, isDone);
     const commentCount = commentCounts[t.id] ?? 0;
     const childCount = childCounts[t.id] ?? 0;
     const stageColor = getStageCircleColor(t.stage_current);
-    const isDone = t.stage_current === "entrega";
+    
     const flagClass = PRIORITY_FLAG[t.priority] ?? PRIORITY_FLAG.baixa;
     const isExpanded = expandedTasks.has(t.id);
     const children = childTasksByParent[t.id] ?? [];
@@ -291,9 +300,9 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
         {isExpanded && children.length > 0 && (
           <div className="border-b border-border/20">
             {children.map(sub => {
-              const subDue = dueDateLabel(sub.due_date, todayKey);
               const subStageColor = getStageCircleColor(sub.stage_current);
               const subIsDone = sub.stage_current === "entrega";
+              const subDue = dueDateLabel(sub.due_date, todayKey, subIsDone);
               const subFlagClass = PRIORITY_FLAG[sub.priority] ?? PRIORITY_FLAG.baixa;
               const subCommentCount = commentCounts[sub.id] ?? 0;
 
