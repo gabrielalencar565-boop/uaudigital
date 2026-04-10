@@ -1083,9 +1083,38 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     }
   };
 
+  const handleTagCorrectionResync = async (oldTags: string[], newTags: string[]) => {
+    if (!correctionMode || !isCompletedSnapshot) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    // Log the correction
+    await (supabase as any).from("pm_activity_log").insert({
+      entity_type: "task",
+      entity_id: task.id,
+      action: "correction_tags",
+      metadata: { old_tags: oldTags, new_tags: newTags, changed_by: user.id },
+      created_by: user.id,
+    });
+    // Resync scoring for the current stage
+    try {
+      await supabase.rpc("pm_resync_correction" as any, {
+        _pm_task_id: task.id,
+        _completed_stage: task.stage_current,
+      });
+      toast.success("Pontuação recalculada após correção de etiquetas");
+    } catch (e) {
+      console.error("Error resyncing after tag correction:", e);
+    }
+  };
+
   const removeTag = (tag: string) => {
-    updateTask.mutate({ id: task.id, tags: (task.tags ?? []).filter(t => t !== tag) } as any, {
-      onSuccess: () => { recalcTagPoints(task.id); },
+    const oldTags = task.tags ?? [];
+    const newTags = oldTags.filter(t => t !== tag);
+    updateTask.mutate({ id: task.id, tags: newTags } as any, {
+      onSuccess: async () => {
+        await recalcTagPoints(task.id);
+        await handleTagCorrectionResync(oldTags, newTags);
+      },
     });
   };
   const toggleGlobalTag = (tag: string) => {
@@ -1093,8 +1122,12 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     if (existing.includes(tag)) {
       removeTag(tag);
     } else {
-      updateTask.mutate({ id: task.id, tags: [...existing, tag] } as any, {
-        onSuccess: () => { recalcTagPoints(task.id); },
+      const newTags = [...existing, tag];
+      updateTask.mutate({ id: task.id, tags: newTags } as any, {
+        onSuccess: async () => {
+          await recalcTagPoints(task.id);
+          await handleTagCorrectionResync(existing, newTags);
+        },
       });
     }
   };
