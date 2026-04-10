@@ -91,7 +91,7 @@ export function ProductivityWidget({ tasks, allMonthTasks, todayKey }: Props) {
   const scoringQ = useQuery({
     queryKey: ["scoring_config"],
     queryFn: async () => {
-      const { data } = await supabase.from("scoring_config").select("stage, base_points, late_penalty, uses_quantity, extra_demand_multiplier");
+      const { data } = await supabase.from("scoring_config").select("id, stage, label, base_points, late_penalty, uses_quantity, extra_demand_multiplier");
       return (data ?? []) as ScoringRow[];
     },
     staleTime: 5 * 60_000,
