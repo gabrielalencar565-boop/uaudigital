@@ -120,6 +120,43 @@ function calcPoints(task: TaskForReport, configMap: Map<string, ScoringConfigRow
   return pts;
 }
 
+/** Calculate the points a task WOULD earn if delivered on time (for exception dropdown) */
+function calcExpectedPoints(task: TaskForReport, configMap: Map<string, ScoringConfigRow>, pmTagsMap?: Map<string, string[]>): number {
+  // If there's a snapshot, use it (reflects tag-based scoring already computed)
+  if (task.point_value != null && task.point_value > 0) return task.point_value;
+
+  const cfg = configMap.get(task.stage);
+  if (!cfg) return 1;
+
+  let pts = cfg.base_points;
+
+  // For tag-based stages (design, edicao_videos), sum tag points from pm_tasks
+  const pmId = extractPmTaskId(task.description);
+  if (pmId && pmTagsMap) {
+    const tags = pmTagsMap.get(pmId);
+    if (tags && tags.length > 0) {
+      let tagSum = 0;
+      for (const tag of tags) {
+        const tagName = tag.split(":")[0];
+        const tagKey = "tag_" + tagName.toLowerCase().replace(/\s+/g, "_");
+        const tagCfg = configMap.get(tagKey);
+        if (tagCfg) tagSum += tagCfg.base_points;
+      }
+      if (tagSum > 0) pts = tagSum;
+    }
+  }
+
+  if (cfg.uses_quantity) {
+    pts *= (task.quantity ?? 1);
+    if (task.is_extra_demand) {
+      const mult = cfg.extra_demand_multiplier > 0 ? cfg.extra_demand_multiplier : 1;
+      pts *= mult;
+    }
+  }
+
+  return pts;
+}
+
 export function AdminDeadlineReport({
   year,
   month,
@@ -379,13 +416,13 @@ export function AdminDeadlineReport({
   };
 
   const setOverrideMut = useMutation({
-    mutationFn: async (input: { taskId: string; value: "auto" | "1" | "0" | "-1" }) => {
+    mutationFn: async (input: { taskId: string; value: string }) => {
       if (input.value === "auto") {
         const { error } = await supabase.from("task_deadline_overrides").delete().eq("task_id", input.taskId);
         if (error) throw error;
       } else {
         const override_points = Number(input.value);
-        if (![1, 0, -1].includes(override_points)) throw new Error("Valor inválido");
+        if (isNaN(override_points)) throw new Error("Valor inválido");
 
         const { error } = await supabase
           .from("task_deadline_overrides")
@@ -470,7 +507,7 @@ export function AdminDeadlineReport({
           <CardHeader>
             <CardTitle>Relatório — Entregas no prazo x atrasadas</CardTitle>
             <CardDescription>
-              Mês do prazo • Admin pode marcar exceções por tarefa (+1 / 0 / -1) para ajustar Metas/Prazos
+              Mês do prazo • Admin pode marcar exceções por tarefa (forçar pontuação da etapa / 0 / -1) para ajustar Metas/Prazos
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -556,6 +593,7 @@ export function AdminDeadlineReport({
                 <TableBody>
                   {userTasks.map((t) => {
                     const auto = calcPoints(t, scoringConfigMap, year, month, pmTagsMap);
+                    const expected = calcExpectedPoints(t, scoringConfigMap, pmTagsMap);
                     const override = overrideByTaskId.get(t.id);
                     const current = override ? String(override.override_points) : "auto";
 
@@ -617,14 +655,14 @@ export function AdminDeadlineReport({
                         <TableCell className="text-center">
                           <Select
                             value={current}
-                            onValueChange={(v) => setOverrideMut.mutate({ taskId: t.id, value: v as any })}
+                            onValueChange={(v) => setOverrideMut.mutate({ taskId: t.id, value: v })}
                           >
-                            <SelectTrigger className="mx-auto w-[140px]">
+                            <SelectTrigger className="mx-auto w-[160px]">
                               <SelectValue placeholder="Auto" />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="auto">Auto</SelectItem>
-                              <SelectItem value="1">Forçar +1</SelectItem>
+                              <SelectItem value={String(expected)}>Forçar +{expected}</SelectItem>
                               <SelectItem value="0">Forçar 0</SelectItem>
                               <SelectItem value="-1">Forçar -1</SelectItem>
                             </SelectContent>
