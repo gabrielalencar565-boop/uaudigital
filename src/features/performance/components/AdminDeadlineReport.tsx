@@ -416,13 +416,13 @@ export function AdminDeadlineReport({
   };
 
   const setOverrideMut = useMutation({
-    mutationFn: async (input: { taskId: string; value: "auto" | "1" | "0" | "-1" }) => {
+    mutationFn: async (input: { taskId: string; value: string }) => {
       if (input.value === "auto") {
         const { error } = await supabase.from("task_deadline_overrides").delete().eq("task_id", input.taskId);
         if (error) throw error;
       } else {
         const override_points = Number(input.value);
-        if (![1, 0, -1].includes(override_points)) throw new Error("Valor inválido");
+        if (isNaN(override_points)) throw new Error("Valor inválido");
 
         const { error } = await supabase
           .from("task_deadline_overrides")
