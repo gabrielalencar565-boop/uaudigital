@@ -148,6 +148,20 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
       else upcoming.push(t);
     });
 
+    const sortByDue = (a: PmTask, b: PmTask) => {
+      const da = a.due_date ?? "";
+      const db = b.due_date ?? "";
+      if (!da && !db) return 0;
+      if (!da) return 1;
+      if (!db) return -1;
+      return da.localeCompare(db);
+    };
+
+    overdue.sort(sortByDue);
+    todayGroup.sort(sortByDue);
+    upcoming.sort(sortByDue);
+    completed.sort(sortByDue);
+
     return { overdue, today: todayGroup, upcoming, noDue, completed };
   }, [myTasks, todayKey]);
 
