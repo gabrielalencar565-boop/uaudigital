@@ -19,17 +19,25 @@ const PRIORITY_FLAG: Record<string, string> = {
   baixa: "text-muted-foreground/40",
 };
 
-function dueDateLabel(dueDate: string | null, todayKey: string) {
+function dueDateLabel(dueDate: string | null, todayKey: string, isDone = false) {
   if (!dueDate) return { text: "—", color: "text-muted-foreground" };
   const today = new Date(todayKey + "T00:00:00");
   const due = new Date(dueDate + "T00:00:00");
   const diff = differenceInCalendarDays(due, today);
 
-  if (diff < -1) return { text: format(due, "dd/MM/yyyy"), color: "text-destructive" };
-  if (diff === -1) return { text: "Ontem", color: "text-destructive" };
-  if (diff === 0) return { text: "Hoje", color: "text-warning" };
-  if (diff === 1) return { text: "Amanhã", color: "text-foreground" };
-  return { text: format(due, "dd/MM/yyyy"), color: "text-muted-foreground" };
+  const text = diff < -1 ? format(due, "dd/MM/yyyy")
+    : diff === -1 ? "Ontem"
+    : diff === 0 ? "Hoje"
+    : diff === 1 ? "Amanhã"
+    : format(due, "dd/MM/yyyy");
+
+  if (isDone) return { text, color: "text-success" };
+
+  if (diff < -1) return { text, color: "text-destructive" };
+  if (diff === -1) return { text, color: "text-destructive" };
+  if (diff === 0) return { text, color: "text-warning" };
+  if (diff === 1) return { text, color: "text-foreground" };
+  return { text, color: "text-muted-foreground" };
 }
 
 interface Props {
