@@ -199,7 +199,7 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
   );
 
   const renderRow = (t: PmTask) => {
-    const isDone = t.stage_current === "entrega";
+    const isDone = t.stage_current === "entrega" || t.status_global === "concluido";
     const due = dueDateLabel(t.due_date, todayKey, isDone);
     const commentCount = commentCounts[t.id] ?? 0;
     const childCount = childCounts[t.id] ?? 0;
