@@ -17,6 +17,7 @@ import { AppErrorBoundary } from "@/components/error/AppErrorBoundary";
 import { useLocation } from "react-router-dom";
 import { createQueryClient } from "@/lib/query-client";
 import { AvatarBootstrap } from "@/components/avatar/AvatarBootstrap";
+import { PwaInstallPrompt } from "@/components/pwa/PwaInstallPrompt";
 
 function AppRoutes() {
   const location = useLocation();
