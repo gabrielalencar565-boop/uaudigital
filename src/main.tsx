@@ -71,3 +71,20 @@ try {
 }
 
 createRoot(rootEl).render(<App />);
+
+// Register service worker only in production (not in iframe/preview)
+(() => {
+  if (!("serviceWorker" in navigator)) return;
+  const isInIframe = (() => { try { return window.self !== window.top; } catch { return true; } })();
+  const isPreview =
+    window.location.hostname.includes("id-preview--") ||
+    window.location.hostname.includes("lovableproject.com");
+
+  if (isPreview || isInIframe) {
+    navigator.serviceWorker.getRegistrations().then((regs) => regs.forEach((r) => r.unregister()));
+    return;
+  }
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/service-worker.js").catch(() => {});
+  });
+})();
