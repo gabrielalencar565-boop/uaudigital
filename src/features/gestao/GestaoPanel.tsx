@@ -835,10 +835,18 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
               .filter(([k]) => k === todayKey)
               .reduce((sum, [, ts]) => sum + ts.filter(t => t.status_global !== "concluido").length, 0);
             return todayCount > 0 ? (
-              <Badge variant="secondary" className="gap-1 rounded-xl px-2.5 py-1 text-xs font-semibold">
-                <Calendar className="h-3.5 w-3.5" />
-                {todayCount} hoje
-              </Badge>
+              <button
+                type="button"
+                onClick={() => {
+                  const el = document.querySelector(`[data-day-key="${todayKey}"]`);
+                  if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+                }}
+              >
+                <Badge variant="secondary" className="gap-1 rounded-xl px-2.5 py-1 text-xs font-semibold cursor-pointer hover:bg-secondary/80 transition-colors">
+                  <Calendar className="h-3.5 w-3.5" />
+                  {todayCount} hoje
+                </Badge>
+              </button>
             ) : null;
           })()}
           {(() => {
