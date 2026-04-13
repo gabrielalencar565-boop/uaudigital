@@ -1,13 +1,15 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Send, ChevronDown, ChevronUp, Paperclip, X, ExternalLink, Play, Instagram, Youtube, Globe, Link2, Maximize2, FileText, Download } from "lucide-react";
+import { Send, ChevronDown, ChevronUp, Paperclip, X, ExternalLink, Play, Instagram, Youtube, Globe, Link2, Maximize2, FileText, Download, MoreHorizontal, Trash2, Copy, ClipboardCopy } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAddPmComment, useUploadPmAttachment, usePmActivityLog } from "../hooks/use-pm-data";
+import { useQueryClient } from "@tanstack/react-query";
 import { stageLabel } from "../pm-constants";
 import type { PmComment } from "../pm-types";
 import { toast } from "sonner";
@@ -258,7 +260,7 @@ function formatFileSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function CommentBubble({ c, membersMap, formatMentions, onOpenPreview }: { c: PmComment; membersMap: Record<string, { name: string; avatar?: string }>; formatMentions: (t: string) => string; onOpenPreview: (data: PreviewModalData) => void }) {
+function CommentBubble({ c, membersMap, formatMentions, onOpenPreview, onDelete }: { c: PmComment; membersMap: Record<string, { name: string; avatar?: string }>; formatMentions: (t: string) => string; onOpenPreview: (data: PreviewModalData) => void; onDelete?: (id: string) => void }) {
   const member = membersMap[c.author_id];
   const { preview, loading } = useSavedPreview(c);
   const displayContent = c.content ? formatMentions(c.content) : "";
@@ -266,8 +268,8 @@ function CommentBubble({ c, membersMap, formatMentions, onOpenPreview }: { c: Pm
   const fileName = c.image_description || "Arquivo";
   const isImage = fileUrl ? isImageUrl(fileUrl) : false;
 
-  const handleDownload = async (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleDownload = async (e?: React.MouseEvent) => {
+    e?.stopPropagation();
     if (!fileUrl) return;
     try {
       const res = await fetch(fileUrl);
@@ -282,8 +284,15 @@ function CommentBubble({ c, membersMap, formatMentions, onOpenPreview }: { c: Pm
     } catch { window.open(fileUrl, "_blank"); }
   };
 
+  const handleCopyText = () => {
+    if (displayContent) {
+      navigator.clipboard.writeText(displayContent);
+      toast.success("Texto copiado!");
+    }
+  };
+
   return (
-    <div className="flex gap-2.5 items-start">
+    <div className="flex gap-2.5 items-start group/comment">
       <Avatar className="h-6 w-6 shrink-0 mt-0.5">
         <AvatarImage src={member?.avatar} />
         <AvatarFallback className="text-[8px] bg-primary/10 text-primary">{initials(member?.name ?? "?")}</AvatarFallback>
@@ -322,6 +331,31 @@ function CommentBubble({ c, membersMap, formatMentions, onOpenPreview }: { c: Pm
           </div>
         )}
       </div>
+      {/* 3-dot menu */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button className="h-6 w-6 rounded-md flex items-center justify-center opacity-0 group-hover/comment:opacity-100 transition hover:bg-muted shrink-0 mt-0.5">
+            <MoreHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="min-w-[140px]" style={{ zIndex: 99999 }}>
+          {displayContent && (
+            <DropdownMenuItem onClick={handleCopyText} className="gap-2 text-xs">
+              <ClipboardCopy className="h-3.5 w-3.5" /> Copiar texto
+            </DropdownMenuItem>
+          )}
+          {fileUrl && (
+            <DropdownMenuItem onClick={() => handleDownload()} className="gap-2 text-xs">
+              <Download className="h-3.5 w-3.5" /> Baixar anexo
+            </DropdownMenuItem>
+          )}
+          {onDelete && (
+            <DropdownMenuItem onClick={() => onDelete(c.id)} className="gap-2 text-xs text-destructive focus:text-destructive">
+              <Trash2 className="h-3.5 w-3.5" /> Remover
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
@@ -341,6 +375,7 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addComment = useAddPmComment();
+  const queryClient = useQueryClient();
   const uploadAttachment = useUploadPmAttachment();
   const activityLogQ = usePmActivityLog(taskId);
   const activityLog = activityLogQ.data ?? [];
@@ -492,10 +527,19 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
 
   const filteredMembers = members.filter(m => m.name.toLowerCase().includes(mentionSearch));
 
+  const handleDeleteComment = async (commentId: string) => {
+    try {
+      const { error } = await supabase.from("pm_comments").delete().eq("id", commentId);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["pm_comments"] });
+      toast.success("Comentário removido");
+    } catch { toast.error("Erro ao remover comentário"); }
+  };
+
   const renderTimelineItem = (item: { type: "comment" | "activity"; data: any; timestamp: string }) => {
     if (item.type === "comment") {
       const c = item.data as PmComment;
-      return <CommentBubble key={`c-${c.id}`} c={c} membersMap={membersMap} formatMentions={formatMentions} onOpenPreview={(data) => setPreviewModal(data)} />;
+      return <CommentBubble key={`c-${c.id}`} c={c} membersMap={membersMap} formatMentions={formatMentions} onOpenPreview={(data) => setPreviewModal(data)} onDelete={handleDeleteComment} />;
     } else {
       const a = item.data;
       const member = membersMap[a.created_by];
