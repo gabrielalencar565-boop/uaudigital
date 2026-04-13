@@ -350,6 +350,25 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
   const [mentionMap, setMentionMap] = useState<Record<string, string>>({});
   const [expanded, setExpanded] = useState(false);
   const [previewModal, setPreviewModal] = useState<PreviewModalData | null>(null);
+  const [draggingOver, setDraggingOver] = useState(false);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDraggingOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    if (file.size > 200 * 1024 * 1024) { toast.error("Arquivo muito grande (máx 200MB)"); return; }
+    const isImage = file.type.startsWith("image/") || /\.(heic|heif)$/i.test(file.name);
+    const preview = isImage ? URL.createObjectURL(file) : null;
+    setPendingFile({ file, preview, isImage });
+    setFileDescription("");
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => { e.preventDefault(); setDraggingOver(true); }, []);
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+    setDraggingOver(false);
+  }, []);
 
   // Live link preview while typing
   const { preview: typingPreview, loading: typingLoading } = useTypingPreview(content);
@@ -526,7 +545,17 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
         {lastItem && renderTimelineItem(lastItem)}
       </div>
 
-      <div className="border-t border-border/30 pt-3 relative">
+      <div
+        className={`border-t border-border/30 pt-3 relative rounded-lg transition ${draggingOver ? "ring-2 ring-primary/50 bg-primary/5" : ""}`}
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+      >
+        {draggingOver && (
+          <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+            <p className="text-sm text-primary font-medium">Solte o arquivo aqui</p>
+          </div>
+        )}
         {pendingFile && (
           <div className="mb-2 relative inline-block">
             {pendingFile.isImage && pendingFile.preview ? (
