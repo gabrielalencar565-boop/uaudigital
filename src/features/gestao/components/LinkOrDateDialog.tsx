@@ -32,14 +32,12 @@ export function LinkOrDateDialog({ open, onClose, existingTask, onLink, onSelect
   const handleLink = () => {
     if (existingTask?.due_date) {
       onLink(existingTask.due_date);
-      onClose();
     }
   };
 
   const handleSelectDate = () => {
     if (dateMode) {
       onSelectDate(selectedDate);
-      onClose();
     } else {
       setDateMode(true);
     }
