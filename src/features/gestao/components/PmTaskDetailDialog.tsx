@@ -350,28 +350,29 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         if (newChild) childIdMap[child.id] = newChild.id;
       }
 
-      // Copy parent task attachments
-      const { data: existingAtts } = await sb.from("pm_attachments").select("*").eq("task_id", task.id);
-      if (existingAtts?.length) {
-        await Promise.all(existingAtts.map((att: any) => {
-          const { id: _id, created_at: _ca, ...rest } = att;
-          return sb.from("pm_attachments").insert({ ...rest, task_id: targetTaskId });
-        }));
-      }
-
-      // Copy child task attachments to their cloned counterparts
-      const oldChildIds = Object.keys(childIdMap);
-      if (oldChildIds.length > 0) {
-        const { data: childAtts } = await sb.from("pm_attachments").select("*").in("task_id", oldChildIds);
-        if (childAtts?.length) {
-          await Promise.all(childAtts.map((att: any) => {
-            const { id: _id, created_at: _ca, task_id: oldTaskId, ...rest } = att;
-            const newTaskId = childIdMap[oldTaskId];
-            if (!newTaskId) return Promise.resolve();
-            return sb.from("pm_attachments").insert({ ...rest, task_id: newTaskId });
+      // Copy attachments in background (fire-and-forget to avoid blocking UI)
+      const copyAttachments = async () => {
+        const { data: existingAtts } = await sb.from("pm_attachments").select("*").eq("task_id", task.id);
+        if (existingAtts?.length) {
+          await Promise.all(existingAtts.map((att: any) => {
+            const { id: _id, created_at: _ca, ...rest } = att;
+            return sb.from("pm_attachments").insert({ ...rest, task_id: targetTaskId });
           }));
         }
-      }
+        const oldChildIds = Object.keys(childIdMap);
+        if (oldChildIds.length > 0) {
+          const { data: childAtts } = await sb.from("pm_attachments").select("*").in("task_id", oldChildIds);
+          if (childAtts?.length) {
+            await Promise.all(childAtts.map((att: any) => {
+              const { id: _id, created_at: _ca, task_id: oldTaskId, ...rest } = att;
+              const newTaskId = childIdMap[oldTaskId];
+              if (!newTaskId) return Promise.resolve();
+              return sb.from("pm_attachments").insert({ ...rest, task_id: newTaskId });
+            }));
+          }
+        }
+      };
+      copyAttachments(); // non-blocking
     };
 
     // Skip scoring for alteracoes and revisao — they don't generate points
@@ -402,9 +403,20 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       } else if (nextStage === "entrega") {
         // Final stage: mark parent + all children as delivered in a single batch
         const allIds = [task.id, ...childTasks.map(c => c.id)];
-        await sb.from("pm_tasks")
+        // Optimistic: show feedback immediately
+        toast.success("Tarefa marcada como Entregue!");
+        queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
+        queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
+        queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
+        queryClient.invalidateQueries({ queryKey: ["pm_activity_log"] });
+        // Fire DB in background
+        sb.from("pm_tasks")
           .update({ stage_current: "entrega", status_global: "concluido" })
-          .in("id", allIds);
+          .in("id", allIds)
+          .then(() => {
+            queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
+          });
+        return; // skip the generic toast/invalidation below
       } else {
         // Snapshot current task as completed (stays in agenda)
         const snapshotDueDate = task.due_date ?? format(new Date(), "yyyy-MM-dd");
@@ -1505,17 +1517,26 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
             <Button
               size="sm"
               className="group/done gap-1.5 min-w-[130px] bg-success text-success-foreground hover:bg-destructive/90 transition-colors duration-200"
-              onClick={async () => {
+              onClick={() => {
                 const sb = supabase as any;
                 const allIds = [task.id, ...childTasks.map(c => c.id)];
 
+                // Optimistic: invalidate immediately + toast
+                queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
+                queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
+                queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
+                toast.success("Tarefa desconcluída");
+
+                // Fire DB update in background
                 if (isCompletedSnapshot) {
-                  // Snapshot: keep stage, just reset status
-                  await sb.from("pm_tasks")
+                  sb.from("pm_tasks")
                     .update({ status_global: "backlog" })
-                    .in("id", allIds);
+                    .in("id", allIds)
+                    .then(() => {
+                      queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
+                      queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
+                    });
                 } else {
-                  // Normal entrega: revert to previous stage
                   const flowStages = Object.keys(flowConfig).length > 0
                     ? Object.entries(flowConfig)
                         .filter(([, v]: [string, any]) => v.enabled)
@@ -1524,14 +1545,14 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                     : PM_ACTIVE_STAGES.map(s => s.key);
                   const entregaIdx = flowStages.indexOf("entrega");
                   const prevStage = entregaIdx > 0 ? flowStages[entregaIdx - 1] : "agendamento";
-                  await sb.from("pm_tasks")
+                  sb.from("pm_tasks")
                     .update({ stage_current: prevStage, status_global: "backlog" })
-                    .in("id", allIds);
+                    .in("id", allIds)
+                    .then(() => {
+                      queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
+                      queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
+                    });
                 }
-                queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
-                queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
-                queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
-                toast.success("Tarefa desconcluída");
               }}
             >
               <span className="contents group-hover/done:hidden">
