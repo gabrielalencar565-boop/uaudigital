@@ -293,14 +293,14 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
                 <GripVertical className="h-3.5 w-3.5 text-muted-foreground bg-background/80 rounded" />
               </div>
 
-              {/* Thumbnail / Icon area */}
-              {isImg && att.public_url ? (
-                <div
-                  className="w-full aspect-[4/3] cursor-pointer overflow-hidden rounded-t-md bg-muted"
-                  onClick={() => openViewer(att)}
-                >
-                  <img src={att.public_url} alt={att.file_name} className="w-full h-full object-cover transition group-hover:scale-105" />
-                </div>
+              {/* Thumbnail / Icon area — always try image preview */}
+              {att.public_url ? (
+                <AttachmentThumbnail
+                  url={att.public_url}
+                  name={att.file_name}
+                  isKnownImage={!!isImg || isHeic(att.file_name)}
+                  onClick={() => (isImg || isHeic(att.file_name)) ? openViewer(att) : undefined}
+                />
               ) : (
                 <div className="w-full aspect-[4/3] flex items-center justify-center overflow-hidden rounded-t-md bg-muted/50">
                   <FileText className="h-6 w-6 text-muted-foreground/40" />
