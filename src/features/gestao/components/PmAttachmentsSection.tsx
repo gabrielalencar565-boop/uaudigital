@@ -41,6 +41,32 @@ interface Props {
   currentCoverUrl?: string | null;
 }
 
+function AttachmentThumbnail({ url, name, isKnownImage, onClick }: { url: string; name: string; isKnownImage: boolean; onClick?: () => void }) {
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return (
+      <div className="w-full aspect-[4/3] flex items-center justify-center overflow-hidden rounded-t-md bg-muted/50">
+        <FileText className="h-6 w-6 text-muted-foreground/40" />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={cn("w-full aspect-[4/3] overflow-hidden rounded-t-md bg-muted", isKnownImage && "cursor-pointer")}
+      onClick={onClick}
+    >
+      <img
+        src={url}
+        alt={name}
+        className="w-full h-full object-cover transition group-hover:scale-105"
+        onError={() => setFailed(true)}
+      />
+    </div>
+  );
+}
+
 export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCover, currentCoverUrl }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const upload = useUploadPmAttachment();
