@@ -1526,25 +1526,26 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
             <Button
               size="sm"
               className="group/done gap-1.5 min-w-[130px] bg-success text-success-foreground hover:bg-destructive/90 transition-colors duration-200"
-              onClick={() => {
-                const sb = supabase as any;
+              onClick={async () => {
+                const sbx = supabase as any;
                 const allIds = [task.id, ...childTasks.map(c => c.id)];
 
-                // Optimistic: invalidate immediately + toast
-                queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
-                queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
-                queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
-                toast.success("Tarefa desconcluída");
+                // Cancel in-flight queries to prevent stale overwrites
+                await queryClient.cancelQueries({ queryKey: ["pm_tasks"] });
+                await queryClient.cancelQueries({ queryKey: ["pm_child_tasks"] });
+                await queryClient.cancelQueries({ queryKey: ["pm_child_tasks_all"] });
 
-                // Fire DB update in background
                 if (isCompletedSnapshot) {
-                  sb.from("pm_tasks")
-                    .update({ status_global: "backlog" })
-                    .in("id", allIds)
-                    .then(() => {
-                      queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
-                      queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
-                    });
+                  // Optimistic: instantly mark as backlog in cache
+                  const markBacklog = (old: PmTask[] | undefined) =>
+                    old?.map(t => allIds.includes(t.id) ? { ...t, status_global: "backlog" as any } : t);
+                  queryClient.setQueriesData<PmTask[]>({ queryKey: ["pm_tasks"] }, markBacklog);
+                  queryClient.setQueriesData<PmTask[]>({ queryKey: ["pm_child_tasks"] }, markBacklog);
+                  queryClient.setQueriesData<PmTask[]>({ queryKey: ["pm_child_tasks_all"] }, markBacklog);
+                  toast.success("Tarefa desconcluída");
+                  // DB in background
+                  sbx.from("pm_tasks").update({ status_global: "backlog" }).in("id", allIds)
+                    .then(() => { queryClient.invalidateQueries({ queryKey: ["pm_tasks"] }); queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] }); queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] }); });
                 } else {
                   const flowStages = Object.keys(flowConfig).length > 0
                     ? Object.entries(flowConfig)
@@ -1554,13 +1555,16 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                     : PM_ACTIVE_STAGES.map(s => s.key);
                   const entregaIdx = flowStages.indexOf("entrega");
                   const prevStage = entregaIdx > 0 ? flowStages[entregaIdx - 1] : "agendamento";
-                  sb.from("pm_tasks")
-                    .update({ stage_current: prevStage, status_global: "backlog" })
-                    .in("id", allIds)
-                    .then(() => {
-                      queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
-                      queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
-                    });
+                  // Optimistic: instantly revert in cache
+                  const revert = (old: PmTask[] | undefined) =>
+                    old?.map(t => allIds.includes(t.id) ? { ...t, stage_current: prevStage as any, status_global: "backlog" as any } : t);
+                  queryClient.setQueriesData<PmTask[]>({ queryKey: ["pm_tasks"] }, revert);
+                  queryClient.setQueriesData<PmTask[]>({ queryKey: ["pm_child_tasks"] }, revert);
+                  queryClient.setQueriesData<PmTask[]>({ queryKey: ["pm_child_tasks_all"] }, revert);
+                  toast.success("Tarefa desconcluída");
+                  // DB in background
+                  sbx.from("pm_tasks").update({ stage_current: prevStage, status_global: "backlog" }).in("id", allIds)
+                    .then(() => { queryClient.invalidateQueries({ queryKey: ["pm_tasks"] }); queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] }); queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] }); });
                 }
               }}
             >
