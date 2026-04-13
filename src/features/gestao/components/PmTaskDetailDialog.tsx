@@ -722,6 +722,9 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       if (deferredCompletion) {
         await finalizePlanejamentoCompletion(deferredCompletion);
       }
+      setLinkDialogOpen(false);
+      setLinkExistingTask(null);
+      setPendingSplit(null);
       toast.success("Planejamento concluído! Tarefas criadas.");
       return;
     }
@@ -1599,7 +1602,6 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
             if (pendingSplit) {
               const s = pendingSplit;
               await executeSplitTask(s.stage, s.stageLabel, s.children, s.postType, dueDate, s.clientName, s.monthLabel, linkExistingTask?.id);
-              setLinkDialogOpen(false); setLinkExistingTask(null); setPendingSplit(null);
               await processSplitQueue(s.remainingSplits, s.snapshotDueDate, s.nextDueDate, s.clientName, s.monthLabel, s.deferredCompletion);
             } else if (pendingAdvance) {
               doAdvance(pendingAdvance.completedStage, pendingAdvance.nextStage, dueDate, linkExistingTask?.id);
@@ -1610,7 +1612,6 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
             if (pendingSplit) {
               const s = pendingSplit;
               await executeSplitTask(s.stage, s.stageLabel, s.children, s.postType, dueDate, s.clientName, s.monthLabel);
-              setLinkDialogOpen(false); setLinkExistingTask(null); setPendingSplit(null);
               await processSplitQueue(s.remainingSplits, s.snapshotDueDate, s.nextDueDate, s.clientName, s.monthLabel, s.deferredCompletion);
             } else if (pendingAdvance) {
               doAdvance(pendingAdvance.completedStage, pendingAdvance.nextStage, dueDate);
