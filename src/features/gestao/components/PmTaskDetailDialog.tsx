@@ -617,106 +617,113 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     stage: string, stageLabel_: string, children: PmTask[], postType: string,
     dueDate: string, clientName: string, monthLabel: string | null, linkedTaskId?: string
   ) => {
+    const sbx = supabase as any;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("Não autenticado");
+
     const fixedAssignee = getFixedAssignee(stageAssignees, stage, task.client_id);
     const fixedWatchers_ = getFixedWatchers(stageAssignees, stage, task.client_id);
 
+    const insertChildren = async (targetTaskId: string) => {
+      const inserted = await Promise.all(
+        children.map(async (child) => {
+          const { data, error } = await sbx.from("pm_tasks").insert({
+            client_id: child.client_id,
+            title: child.title,
+            description: child.description ?? null,
+            stage_current: stage,
+            assignee_id: fixedAssignee !== undefined ? (fixedAssignee ?? null) : (child.assignee_id ?? null),
+            watchers: fixedAssignee !== undefined ? fixedWatchers_ : (child.watchers ?? []),
+            parent_task_id: targetTaskId,
+            tags: child.tags ?? [],
+            is_extra_demand: child.is_extra_demand,
+            status_global: "backlog",
+            post_type: child.post_type ?? null,
+            created_by: user.id,
+          }).select("id").single();
+
+          if (error || !data) throw error ?? new Error("Falha ao criar subtarefa");
+          return [child.id, data.id] as const;
+        })
+      );
+
+      return Object.fromEntries(inserted) as Record<string, string>;
+    };
+
+    const copyAttachmentsInBackground = (targetTaskId: string, childIdMap: Record<string, string>) => {
+      const allOldIds = [task.id, ...Object.keys(childIdMap)];
+      void (async () => {
+        const { data: existingAtts } = await sbx.from("pm_attachments").select("*").in("task_id", allOldIds);
+        if (!existingAtts?.length) return;
+
+        await Promise.all(existingAtts.map((att: any) => {
+          const { id: _id, created_at: _ca, task_id: oldTid, ...rest } = att;
+          const newTid = oldTid === task.id ? targetTaskId : childIdMap[oldTid];
+          if (!newTid) return Promise.resolve();
+          return sbx.from("pm_attachments").insert({ ...rest, task_id: newTid });
+        }));
+      })()
+        .catch((err) => console.error("Error copying split attachments:", err))
+        .finally(() => invalidatePmTaskQueries());
+    };
+
     if (linkedTaskId) {
-      // Link to existing task: update it and transfer children
       const linkedUpdates: any = { id: linkedTaskId, status_global: "backlog" as any };
       if (fixedAssignee !== undefined) {
         linkedUpdates.assignee_id = fixedAssignee;
         linkedUpdates.watchers = fixedWatchers_;
       }
       updateTask.mutate(linkedUpdates);
-      // Clone children to linked task (originals stay frozen on snapshot)
-      const linkedChildMap: Record<string, string> = {};
-      for (const child of children) {
-        const newChild = await createTask.mutateAsync({
-          client_id: child.client_id, title: child.title,
-          description: child.description ?? undefined, stage_current: stage,
-          assignee_id: fixedAssignee !== undefined ? (fixedAssignee ?? undefined) : (child.assignee_id ?? undefined),
-          watchers: fixedAssignee !== undefined ? fixedWatchers_ : (child.watchers ?? []),
-          parent_task_id: linkedTaskId, tags: child.tags ?? [],
-          is_extra_demand: child.is_extra_demand, status_global: "backlog",
-          post_type: child.post_type ?? undefined,
-        });
-        if (newChild?.id) linkedChildMap[child.id] = newChild.id;
-      }
-      // Clone parent + child attachments
-      const sbx = supabase as any;
-      const allOldIds = [task.id, ...Object.keys(linkedChildMap)];
-      const { data: attsLinked } = await sbx.from("pm_attachments").select("*").in("task_id", allOldIds);
-      if (attsLinked?.length) {
-        await Promise.all(attsLinked.map((att: any) => {
-          const { id: _id, created_at: _ca, task_id: oldTid, ...rest } = att;
-          const newTid = oldTid === task.id ? linkedTaskId : linkedChildMap[oldTid];
-          if (!newTid) return Promise.resolve();
-          return sbx.from("pm_attachments").insert({ ...rest, task_id: newTid });
-        }));
-      }
-    } else {
-      // Create new task
-      const title = monthLabel
-        ? `${clientName} - ${stageLabel_} - ${monthLabel}`
-        : `${clientName} - ${stageLabel_}`;
-      const originId = task.origin_task_id ?? task.id;
-      const newTask = await createTask.mutateAsync({
-        client_id: task.client_id,
-        title,
-        description: task.description ?? undefined,
-        stage_current: stage,
-        due_date: dueDate,
-        assignee_id: fixedAssignee !== undefined ? (fixedAssignee ?? undefined) : (task.assignee_id ?? undefined),
-        watchers: fixedAssignee !== undefined ? fixedWatchers_ : (task.watchers ?? []),
-        priority: task.priority,
-        project_id: task.project_id ?? undefined,
-        tags: task.tags ?? [],
-        is_extra_demand: task.is_extra_demand,
-        status_global: "backlog",
-        post_type: postType,
-        origin_task_id: originId,
-      });
-      // Clone children to new task (originals stay frozen on snapshot)
-      const newChildMap: Record<string, string> = {};
-      for (const child of children) {
-        const newChild = await createTask.mutateAsync({
-          client_id: child.client_id, title: child.title,
-          description: child.description ?? undefined, stage_current: stage,
-          assignee_id: fixedAssignee !== undefined ? (fixedAssignee ?? undefined) : (child.assignee_id ?? undefined),
-          watchers: fixedAssignee !== undefined ? fixedWatchers_ : (child.watchers ?? []),
-          parent_task_id: newTask.id, tags: child.tags ?? [],
-          is_extra_demand: child.is_extra_demand, status_global: "backlog",
-          post_type: child.post_type ?? undefined,
-        });
-        if (newChild?.id) newChildMap[child.id] = newChild.id;
-      }
-      // Clone parent + child attachments
-      const sbx2 = supabase as any;
-      const allOldIds2 = [task.id, ...Object.keys(newChildMap)];
-      const { data: attsNew } = await sbx2.from("pm_attachments").select("*").in("task_id", allOldIds2);
-      if (attsNew?.length) {
-        await Promise.all(attsNew.map((att: any) => {
-          const { id: _id, created_at: _ca, task_id: oldTid, ...rest } = att;
-          const newTid = oldTid === task.id ? newTask.id : newChildMap[oldTid];
-          if (!newTid) return Promise.resolve();
-          return sbx2.from("pm_attachments").insert({ ...rest, task_id: newTid });
-        }));
-      }
+
+      const linkedChildMap = await insertChildren(linkedTaskId);
+      copyAttachmentsInBackground(linkedTaskId, linkedChildMap);
+      invalidatePmTaskQueries();
+      return;
     }
+
+    const title = monthLabel
+      ? `${clientName} - ${stageLabel_} - ${monthLabel}`
+      : `${clientName} - ${stageLabel_}`;
+    const originId = task.origin_task_id ?? task.id;
+    const newTask = await createTask.mutateAsync({
+      client_id: task.client_id,
+      title,
+      description: task.description ?? undefined,
+      stage_current: stage,
+      due_date: dueDate,
+      assignee_id: fixedAssignee !== undefined ? (fixedAssignee ?? undefined) : (task.assignee_id ?? undefined),
+      watchers: fixedAssignee !== undefined ? fixedWatchers_ : (task.watchers ?? []),
+      priority: task.priority,
+      project_id: task.project_id ?? undefined,
+      tags: task.tags ?? [],
+      is_extra_demand: task.is_extra_demand,
+      status_global: "backlog",
+      post_type: postType,
+      origin_task_id: originId,
+    });
+
+    const newChildMap = await insertChildren(newTask.id);
+    copyAttachmentsInBackground(newTask.id, newChildMap);
+    invalidatePmTaskQueries();
   };
 
   const finalizePlanejamentoCompletion = async (deferred: { allIds: string[]; completedStage: string; snapshotDueDate: string }) => {
     const sb = supabase as any;
-    await sb.from("pm_tasks").update({ status_global: "concluido" }).in("id", deferred.allIds);
-    await sb.from("pm_tasks").update({
-      stage_current: deferred.completedStage,
-      status_global: "concluido",
-      due_date: deferred.snapshotDueDate,
-    }).eq("id", deferred.allIds[0]); // first id is the parent task
+    const [parentId, ...childIds] = deferred.allIds;
+
+    await Promise.all([
+      childIds.length > 0
+        ? sb.from("pm_tasks").update({ status_global: "concluido" }).in("id", childIds)
+        : Promise.resolve(),
+      sb.from("pm_tasks").update({
+        stage_current: deferred.completedStage,
+        status_global: "concluido",
+        due_date: deferred.snapshotDueDate,
+      }).eq("id", parentId),
+    ]);
+
     syncCompletedStage(deferred.completedStage);
-    queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
-    queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
-    queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
+    invalidatePmTaskQueries();
   };
 
   const processSplitQueue = async (
@@ -725,23 +732,20 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     deferredCompletion?: { allIds: string[]; completedStage: string; snapshotDueDate: string }
   ) => {
     if (splits.length === 0) {
-      // All splits processed — now finalize the planejamento completion
       if (deferredCompletion) {
         await finalizePlanejamentoCompletion(deferredCompletion);
       }
       setLinkDialogOpen(false);
       setLinkExistingTask(null);
       setPendingSplit(null);
-      toast.success("Planejamento concluído! Tarefas criadas.");
+      toast.success("Próximas tarefas prontas.");
       return;
     }
 
     const [current, ...remaining] = splits;
-
-    // Check for existing agenda task for this stage
     const existing = await findExistingAgendaTaskForStage(current.stage, snapshotDueDate);
+
     if (existing) {
-      // Store pending split info and show link dialog
       setPendingSplit({
         stage: current.stage,
         stageLabel: current.stageLabel,
@@ -759,10 +763,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       return;
     }
 
-    // No existing task — create directly
     await executeSplitTask(current.stage, current.stageLabel, current.children, current.postType, nextDueDate, clientName, monthLabel);
-
-    // Process remaining splits
     await processSplitQueue(remaining, snapshotDueDate, nextDueDate, clientName, monthLabel, deferredCompletion);
   };
 
@@ -815,16 +816,36 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         }
         const nextDueDate = newDueDate ?? format(addDays(new Date(snapshotDueDate + "T12:00:00"), 1), "yyyy-MM-dd");
 
-        // Build split list
         const splits: { stage: string; stageLabel: string; children: PmTask[]; postType: string }[] = [];
         if (hasVideo) splits.push({ stage: "edicao_videos", stageLabel: "Vídeo", children: videoChildren, postType: "video" });
         if (hasDesign) splits.push({ stage: "design", stageLabel: "Design", children: designChildren, postType: "design" });
 
-        // Defer completion — only mark concluído after all splits are processed
         const deferredCompletion = { allIds, completedStage, snapshotDueDate };
+        const optimisticUpdater = (old: PmTask[] | undefined) => old?.map((item) => {
+          if (item.id === task.id) {
+            return {
+              ...item,
+              stage_current: completedStage as any,
+              status_global: "concluido" as any,
+              due_date: snapshotDueDate,
+            };
+          }
+          if (allIds.includes(item.id)) {
+            return { ...item, status_global: "concluido" as any };
+          }
+          return item;
+        });
 
-        // Process splits sequentially, checking for existing tasks
-        await processSplitQueue(splits, snapshotDueDate, nextDueDate, clientName, monthLabel, deferredCompletion);
+        queryClient.setQueriesData<PmTask[]>({ queryKey: ["pm_tasks"] }, optimisticUpdater);
+        queryClient.setQueriesData<PmTask[]>({ queryKey: ["pm_child_tasks"] }, optimisticUpdater);
+        queryClient.setQueriesData<PmTask[]>({ queryKey: ["pm_child_tasks_all"] }, optimisticUpdater);
+        toast.success("Planejamento concluído! Criando próximas tarefas...");
+
+        void processSplitQueue(splits, snapshotDueDate, nextDueDate, clientName, monthLabel, deferredCompletion).catch((err) => {
+          console.error("Error processing planejamento splits:", err);
+          invalidatePmTaskQueries();
+          toast.error("Erro ao criar próximas tarefas. Tente novamente.");
+        });
         return;
       }
     }
