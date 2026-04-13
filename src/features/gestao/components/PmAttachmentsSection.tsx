@@ -43,11 +43,40 @@ interface Props {
 
 function AttachmentThumbnail({ url, name, isKnownImage, onClick }: { url: string; name: string; isKnownImage: boolean; onClick?: () => void }) {
   const [failed, setFailed] = useState(false);
+  const [convertedUrl, setConvertedUrl] = useState<string | null>(null);
+  const isHeicFile = /\.heic$/i.test(name);
+
+  useEffect(() => {
+    if (!isHeicFile) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(url);
+        const blob = await res.blob();
+        const heic2any = (await import("heic2any")).default;
+        const converted = await heic2any({ blob, toType: "image/jpeg", quality: 0.8 });
+        if (cancelled) return;
+        const result = Array.isArray(converted) ? converted[0] : converted;
+        setConvertedUrl(URL.createObjectURL(result));
+      } catch {
+        if (!cancelled) setFailed(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [url, isHeicFile]);
 
   if (failed) {
     return (
       <div className="w-full aspect-[4/3] flex items-center justify-center overflow-hidden rounded-t-md bg-muted/50">
         <FileText className="h-6 w-6 text-muted-foreground/40" />
+      </div>
+    );
+  }
+
+  if (isHeicFile && !convertedUrl) {
+    return (
+      <div className="w-full aspect-[4/3] flex items-center justify-center overflow-hidden rounded-t-md bg-muted">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground/50" />
       </div>
     );
   }
@@ -58,7 +87,7 @@ function AttachmentThumbnail({ url, name, isKnownImage, onClick }: { url: string
       onClick={onClick}
     >
       <img
-        src={url}
+        src={convertedUrl ?? url}
         alt={name}
         className="w-full h-full object-cover transition group-hover:scale-105"
         onError={() => setFailed(true)}
