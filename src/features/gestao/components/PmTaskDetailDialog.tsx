@@ -403,18 +403,27 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       } else if (nextStage === "entrega") {
         // Final stage: mark parent + all children as delivered in a single batch
         const allIds = [task.id, ...childTasks.map(c => c.id)];
-        // Optimistic: show feedback immediately
+
+        // Optimistic cache update — instant UI feedback
+        await queryClient.cancelQueries({ queryKey: ["pm_tasks"] });
+        await queryClient.cancelQueries({ queryKey: ["pm_child_tasks"] });
+        await queryClient.cancelQueries({ queryKey: ["pm_child_tasks_all"] });
+        const markDone = (old: PmTask[] | undefined) =>
+          old?.map(t => allIds.includes(t.id) ? { ...t, stage_current: "entrega" as any, status_global: "concluido" as any } : t);
+        queryClient.setQueriesData<PmTask[]>({ queryKey: ["pm_tasks"] }, markDone);
+        queryClient.setQueriesData<PmTask[]>({ queryKey: ["pm_child_tasks"] }, markDone);
+        queryClient.setQueriesData<PmTask[]>({ queryKey: ["pm_child_tasks_all"] }, markDone);
         toast.success("Tarefa marcada como Entregue!");
-        queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
-        queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
-        queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
-        queryClient.invalidateQueries({ queryKey: ["pm_activity_log"] });
-        // Fire DB in background
+
+        // Fire DB in background then resync
         sb.from("pm_tasks")
           .update({ stage_current: "entrega", status_global: "concluido" })
           .in("id", allIds)
           .then(() => {
             queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
+            queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
+            queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
+            queryClient.invalidateQueries({ queryKey: ["pm_activity_log"] });
           });
         return; // skip the generic toast/invalidation below
       } else {
