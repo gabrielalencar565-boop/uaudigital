@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAddPmComment, useUploadPmAttachment, usePmActivityLog } from "../hooks/use-pm-data";
+import { useQueryClient } from "@tanstack/react-query";
 import { stageLabel } from "../pm-constants";
 import type { PmComment } from "../pm-types";
 import { toast } from "sonner";
