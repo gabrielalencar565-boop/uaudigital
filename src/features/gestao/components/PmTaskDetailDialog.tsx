@@ -490,6 +490,10 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         });
         return;
       }
+    } catch (err) {
+      console.error("Error advancing stage:", err);
+      toast.error("Erro ao avançar etapa. Tente novamente.");
+    }
   };
 
   const findExistingAgendaTaskForStage = async (nextStage: string, referenceDueDate?: string) => {
