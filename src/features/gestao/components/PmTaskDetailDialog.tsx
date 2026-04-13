@@ -315,6 +315,13 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     } catch (_) { /* ignore */ }
   };
 
+  const invalidatePmTaskQueries = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
+    queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
+    queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
+    queryClient.invalidateQueries({ queryKey: ["pm_activity_log"] });
+  }, [queryClient]);
+
   const doAdvance = async (completedStage: string, nextStage: string, newDueDate?: string, linkedTaskId?: string) => {
     const sb = supabase as any;
     const qc = (window as any).__pmQueryClient ?? null; // fallback, won't be used
