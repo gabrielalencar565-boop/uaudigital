@@ -350,28 +350,29 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         if (newChild) childIdMap[child.id] = newChild.id;
       }
 
-      // Copy parent task attachments
-      const { data: existingAtts } = await sb.from("pm_attachments").select("*").eq("task_id", task.id);
-      if (existingAtts?.length) {
-        await Promise.all(existingAtts.map((att: any) => {
-          const { id: _id, created_at: _ca, ...rest } = att;
-          return sb.from("pm_attachments").insert({ ...rest, task_id: targetTaskId });
-        }));
-      }
-
-      // Copy child task attachments to their cloned counterparts
-      const oldChildIds = Object.keys(childIdMap);
-      if (oldChildIds.length > 0) {
-        const { data: childAtts } = await sb.from("pm_attachments").select("*").in("task_id", oldChildIds);
-        if (childAtts?.length) {
-          await Promise.all(childAtts.map((att: any) => {
-            const { id: _id, created_at: _ca, task_id: oldTaskId, ...rest } = att;
-            const newTaskId = childIdMap[oldTaskId];
-            if (!newTaskId) return Promise.resolve();
-            return sb.from("pm_attachments").insert({ ...rest, task_id: newTaskId });
+      // Copy attachments in background (fire-and-forget to avoid blocking UI)
+      const copyAttachments = async () => {
+        const { data: existingAtts } = await sb.from("pm_attachments").select("*").eq("task_id", task.id);
+        if (existingAtts?.length) {
+          await Promise.all(existingAtts.map((att: any) => {
+            const { id: _id, created_at: _ca, ...rest } = att;
+            return sb.from("pm_attachments").insert({ ...rest, task_id: targetTaskId });
           }));
         }
-      }
+        const oldChildIds = Object.keys(childIdMap);
+        if (oldChildIds.length > 0) {
+          const { data: childAtts } = await sb.from("pm_attachments").select("*").in("task_id", oldChildIds);
+          if (childAtts?.length) {
+            await Promise.all(childAtts.map((att: any) => {
+              const { id: _id, created_at: _ca, task_id: oldTaskId, ...rest } = att;
+              const newTaskId = childIdMap[oldTaskId];
+              if (!newTaskId) return Promise.resolve();
+              return sb.from("pm_attachments").insert({ ...rest, task_id: newTaskId });
+            }));
+          }
+        }
+      };
+      copyAttachments(); // non-blocking
     };
 
     // Skip scoring for alteracoes and revisao — they don't generate points
