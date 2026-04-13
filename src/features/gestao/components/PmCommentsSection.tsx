@@ -247,10 +247,40 @@ function stripUrls(text: string): string {
 }
 
 /* ── Comment Bubble ── */
+/* helper: is the URL pointing to an image? */
+function isImageUrl(url: string): boolean {
+  return /\.(jpe?g|png|gif|webp|svg|bmp|avif|heic|heif)(\?|$)/i.test(url);
+}
+
+function formatFileSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 function CommentBubble({ c, membersMap, formatMentions, onOpenPreview }: { c: PmComment; membersMap: Record<string, { name: string; avatar?: string }>; formatMentions: (t: string) => string; onOpenPreview: (data: PreviewModalData) => void }) {
   const member = membersMap[c.author_id];
   const { preview, loading } = useSavedPreview(c);
   const displayContent = c.content ? formatMentions(c.content) : "";
+  const fileUrl = c.image_url;
+  const fileName = c.image_description || "Arquivo";
+  const isImage = fileUrl ? isImageUrl(fileUrl) : false;
+
+  const handleDownload = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!fileUrl) return;
+    try {
+      const res = await fetch(fileUrl);
+      const blob = await res.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+    } catch { window.open(fileUrl, "_blank"); }
+  };
 
   return (
     <div className="flex gap-2.5 items-start">
@@ -268,17 +298,27 @@ function CommentBubble({ c, membersMap, formatMentions, onOpenPreview }: { c: Pm
         {displayContent && (
           <p className="mt-1 whitespace-pre-wrap text-[13px] text-foreground/90 leading-relaxed">{displayContent}</p>
         )}
-        {c.image_url && (
+        {fileUrl && isImage && (
           <div className="mt-2">
             <img
-              src={c.image_url}
-              alt={c.image_description || "Imagem"}
+              src={fileUrl}
+              alt={fileName}
               className="rounded-lg max-w-[280px] max-h-[200px] object-cover border border-border/30 cursor-pointer hover:opacity-90 transition"
-              onClick={() => window.open(c.image_url!, "_blank")}
+              onClick={() => window.open(fileUrl, "_blank")}
             />
-            {c.image_description && (
-              <p className="text-[11px] text-muted-foreground mt-1 italic">{c.image_description}</p>
+            {fileName && fileName !== "Arquivo" && (
+              <p className="text-[11px] text-muted-foreground mt-1">{fileName}</p>
             )}
+          </div>
+        )}
+        {fileUrl && !isImage && (
+          <div
+            className="mt-2 flex items-center gap-2.5 rounded-lg border border-border/40 bg-muted/30 px-3 py-2.5 max-w-xs cursor-pointer hover:bg-muted/50 transition group"
+            onClick={handleDownload}
+          >
+            <FileText className="h-5 w-5 text-muted-foreground shrink-0" />
+            <span className="text-xs truncate flex-1 text-foreground/80">{fileName}</span>
+            <Download className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition shrink-0" />
           </div>
         )}
       </div>
