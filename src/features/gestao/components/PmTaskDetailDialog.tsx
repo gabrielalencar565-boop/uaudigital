@@ -638,6 +638,15 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           post_type: child.post_type ?? undefined,
         });
       }
+      // Clone attachments from current task to new task
+      const sbx2 = supabase as any;
+      const { data: attsNew } = await sbx2.from("pm_attachments").select("*").eq("task_id", task.id);
+      if (attsNew?.length) {
+        await Promise.all(attsNew.map((att: any) => {
+          const { id: _id, created_at: _ca, ...rest } = att;
+          return sbx2.from("pm_attachments").insert({ ...rest, task_id: newTask.id });
+        }));
+      }
     }
   };
 
