@@ -525,10 +525,17 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
 
   const filteredMembers = members.filter(m => m.name.toLowerCase().includes(mentionSearch));
 
+  const handleDeleteComment = async (commentId: string) => {
+    try {
+      await supabase.from("pm_comments").delete().eq("id", commentId);
+      toast.success("Comentário removido");
+    } catch { toast.error("Erro ao remover comentário"); }
+  };
+
   const renderTimelineItem = (item: { type: "comment" | "activity"; data: any; timestamp: string }) => {
     if (item.type === "comment") {
       const c = item.data as PmComment;
-      return <CommentBubble key={`c-${c.id}`} c={c} membersMap={membersMap} formatMentions={formatMentions} onOpenPreview={(data) => setPreviewModal(data)} />;
+      return <CommentBubble key={`c-${c.id}`} c={c} membersMap={membersMap} formatMentions={formatMentions} onOpenPreview={(data) => setPreviewModal(data)} onDelete={handleDeleteComment} />;
     } else {
       const a = item.data;
       const member = membersMap[a.created_by];
