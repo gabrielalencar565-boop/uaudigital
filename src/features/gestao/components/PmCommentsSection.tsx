@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Send, ChevronDown, ChevronUp, ImagePlus, X, ExternalLink, Play, Instagram, Youtube, Globe, Link2, Maximize2 } from "lucide-react";
+import { Send, ChevronDown, ChevronUp, Paperclip, X, ExternalLink, Play, Instagram, Youtube, Globe, Link2, Maximize2, FileText, Download } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
