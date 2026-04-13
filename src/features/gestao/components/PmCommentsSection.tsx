@@ -529,7 +529,9 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
 
   const handleDeleteComment = async (commentId: string) => {
     try {
-      await supabase.from("pm_comments").delete().eq("id", commentId);
+      const { error } = await supabase.from("pm_comments").delete().eq("id", commentId);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["pm_comments"] });
       toast.success("Comentário removido");
     } catch { toast.error("Erro ao remover comentário"); }
   };
