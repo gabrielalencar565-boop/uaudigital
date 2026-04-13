@@ -402,9 +402,20 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       } else if (nextStage === "entrega") {
         // Final stage: mark parent + all children as delivered in a single batch
         const allIds = [task.id, ...childTasks.map(c => c.id)];
-        await sb.from("pm_tasks")
+        // Optimistic: show feedback immediately
+        toast.success("Tarefa marcada como Entregue!");
+        queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
+        queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
+        queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
+        queryClient.invalidateQueries({ queryKey: ["pm_activity_log"] });
+        // Fire DB in background
+        sb.from("pm_tasks")
           .update({ stage_current: "entrega", status_global: "concluido" })
-          .in("id", allIds);
+          .in("id", allIds)
+          .then(() => {
+            queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
+          });
+        return; // skip the generic toast/invalidation below
       } else {
         // Snapshot current task as completed (stays in agenda)
         const snapshotDueDate = task.due_date ?? format(new Date(), "yyyy-MM-dd");
