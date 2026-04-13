@@ -678,11 +678,30 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     }
   };
 
+  const finalizePlanejamentoCompletion = async (deferred: { allIds: string[]; completedStage: string; snapshotDueDate: string }) => {
+    const sb = supabase as any;
+    await sb.from("pm_tasks").update({ status_global: "concluido" }).in("id", deferred.allIds);
+    await sb.from("pm_tasks").update({
+      stage_current: deferred.completedStage,
+      status_global: "concluido",
+      due_date: deferred.snapshotDueDate,
+    }).eq("id", deferred.allIds[0]); // first id is the parent task
+    syncCompletedStage(deferred.completedStage);
+    queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
+    queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
+    queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
+  };
+
   const processSplitQueue = async (
     splits: { stage: string; stageLabel: string; children: PmTask[]; postType: string }[],
-    snapshotDueDate: string, nextDueDate: string, clientName: string, monthLabel: string | null
+    snapshotDueDate: string, nextDueDate: string, clientName: string, monthLabel: string | null,
+    deferredCompletion?: { allIds: string[]; completedStage: string; snapshotDueDate: string }
   ) => {
     if (splits.length === 0) {
+      // All splits processed — now finalize the planejamento completion
+      if (deferredCompletion) {
+        await finalizePlanejamentoCompletion(deferredCompletion);
+      }
       toast.success("Planejamento concluído! Tarefas criadas.");
       return;
     }
@@ -703,6 +722,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         clientName,
         monthLabel,
         remainingSplits: remaining,
+        deferredCompletion,
       });
       setLinkExistingTask(existing);
       setLinkDialogOpen(true);
@@ -713,7 +733,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     await executeSplitTask(current.stage, current.stageLabel, current.children, current.postType, nextDueDate, clientName, monthLabel);
 
     // Process remaining splits
-    await processSplitQueue(remaining, snapshotDueDate, nextDueDate, clientName, monthLabel);
+    await processSplitQueue(remaining, snapshotDueDate, nextDueDate, clientName, monthLabel, deferredCompletion);
   };
 
   const handleConcluido = async () => {
