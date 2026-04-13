@@ -280,6 +280,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     clientName: string;
     monthLabel: string | null;
     remainingSplits: { stage: string; stageLabel: string; children: PmTask[]; postType: string }[];
+    deferredCompletion?: { allIds: string[]; completedStage: string; snapshotDueDate: string };
   } | null>(null);
 
   // Correction mode for completed snapshots
