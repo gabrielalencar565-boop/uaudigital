@@ -115,74 +115,6 @@ const TABLE_TO_QUERY_KEYS: Record<RealtimeTable, string[][]> = {
   notification_reads: [["notification_reads"]],
 };
 
-// ─── Debounced invalidation ───────────────────────────────────
-// Batches all realtime events within a 500ms window into a single
-// invalidation pass, preventing cascading refetches.
-const DEBOUNCE_MS = 500;
-
-/**
- * Hook que sincroniza dados em tempo real via Supabase Realtime.
- * Debounce invalidations within a 500ms window to avoid thundering herd.
- */
-export function useRealtimeSync(tables: RealtimeTable[] = []) {
-  const queryClient = useQueryClient();
-  const pendingKeysRef = useRef<Set<string>>(new Set());
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    if (tables.length === 0) return;
-
-    const flush = () => {
-      const keys = Array.from(pendingKeysRef.current);
-      pendingKeysRef.current.clear();
-      timerRef.current = null;
-
-      // Deduplicated set of query key prefixes
-      const seen = new Set<string>();
-      keys.forEach((k) => {
-        if (seen.has(k)) return;
-        seen.add(k);
-        const parsed = JSON.parse(k) as string[];
-        queryClient.invalidateQueries({
-          predicate: (query) => {
-            const qk = query.queryKey;
-            if (!Array.isArray(qk)) return false;
-            return parsed.every((p, i) => qk[i] === p);
-          },
-        });
-      });
-    };
-
-    const enqueue = (table: RealtimeTable) => {
-      const queryKeys = TABLE_TO_QUERY_KEYS[table] ?? [[table]];
-      queryKeys.forEach((key) => {
-        pendingKeysRef.current.add(JSON.stringify(key));
-      });
-      if (!timerRef.current) {
-        timerRef.current = setTimeout(flush, DEBOUNCE_MS);
-      }
-    };
-
-    const channel = supabase.channel("realtime-sync");
-
-    tables.forEach((table) => {
-      channel.on(
-        "postgres_changes",
-        { event: "*", schema: "public", table },
-        () => enqueue(table)
-      );
-    });
-
-    channel.subscribe();
-
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-      supabase.removeChannel(channel);
-    };
-  }, [queryClient, tables.join(",")]);
-}
-
-// ─── Core tables (always subscribed) ──────────────────────────
 const CORE_TABLES: RealtimeTable[] = [
   "tasks",
   "clients",
@@ -197,7 +129,6 @@ const CORE_TABLES: RealtimeTable[] = [
   "app_settings",
 ];
 
-// ─── Secondary tables (less frequent updates) ────────────────
 const SECONDARY_TABLES: RealtimeTable[] = [
   "client_cycle_stages",
   "client_stages",
@@ -236,11 +167,86 @@ const SECONDARY_TABLES: RealtimeTable[] = [
   "client_squads",
 ];
 
+const CORE_TABLE_SET = new Set<RealtimeTable>(CORE_TABLES);
+const DEBOUNCE_MS = 500;
+
+function buildGroups(tables: RealtimeTable[]) {
+  const unique = Array.from(new Set(tables));
+  const core = unique.filter((table) => CORE_TABLE_SET.has(table));
+  const secondary = unique.filter((table) => !CORE_TABLE_SET.has(table));
+  return [core, secondary].filter((group) => group.length > 0);
+}
+
 /**
- * Hook pré-configurado para sincronizar TODAS as tabelas.
- * Split into two channels to reduce per-channel overhead.
+ * Hook que sincroniza dados em tempo real via Realtime.
+ * Mantém um único hook call para evitar problemas com Fast Refresh,
+ * mas divide internamente em grupos de canais para reduzir overhead.
+ */
+export function useRealtimeSync(tables: RealtimeTable[] = []) {
+  const queryClient = useQueryClient();
+  const pendingKeysRef = useRef<Set<string>>(new Set());
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (tables.length === 0) return;
+
+    const flush = () => {
+      const keys = Array.from(pendingKeysRef.current);
+      pendingKeysRef.current.clear();
+      timerRef.current = null;
+
+      const seen = new Set<string>();
+      keys.forEach((serializedKey) => {
+        if (seen.has(serializedKey)) return;
+        seen.add(serializedKey);
+        const parsedKey = JSON.parse(serializedKey) as string[];
+        queryClient.invalidateQueries({
+          predicate: (query) => {
+            const qk = query.queryKey;
+            if (!Array.isArray(qk)) return false;
+            return parsedKey.every((segment, index) => qk[index] === segment);
+          },
+        });
+      });
+    };
+
+    const enqueue = (table: RealtimeTable) => {
+      const queryKeys = TABLE_TO_QUERY_KEYS[table] ?? [[table]];
+      queryKeys.forEach((key) => pendingKeysRef.current.add(JSON.stringify(key)));
+      if (!timerRef.current) {
+        timerRef.current = setTimeout(flush, DEBOUNCE_MS);
+      }
+    };
+
+    const channels = buildGroups(tables).map((group, index) => {
+      const channel = supabase.channel(index === 0 ? "realtime-sync-core" : "realtime-sync-secondary");
+      group.forEach((table) => {
+        channel.on(
+          "postgres_changes",
+          { event: "*", schema: "public", table },
+          () => enqueue(table)
+        );
+      });
+      channel.subscribe();
+      return channel;
+    });
+
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      pendingKeysRef.current.clear();
+      channels.forEach((channel) => {
+        supabase.removeChannel(channel);
+      });
+    };
+  }, [queryClient, tables.join(",")]);
+}
+
+/**
+ * Hook pré-configurado para sincronizar todas as tabelas.
  */
 export function useRealtimeSyncAll() {
-  useRealtimeSync(CORE_TABLES);
-  useRealtimeSync(SECONDARY_TABLES);
+  useRealtimeSync([...CORE_TABLES, ...SECONDARY_TABLES]);
 }
