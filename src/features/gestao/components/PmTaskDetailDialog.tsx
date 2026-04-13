@@ -1567,7 +1567,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
               const s = pendingSplit;
               await executeSplitTask(s.stage, s.stageLabel, s.children, s.postType, dueDate, s.clientName, s.monthLabel, linkExistingTask?.id);
               setLinkDialogOpen(false); setLinkExistingTask(null); setPendingSplit(null);
-              await processSplitQueue(s.remainingSplits, s.snapshotDueDate, s.nextDueDate, s.clientName, s.monthLabel);
+              await processSplitQueue(s.remainingSplits, s.snapshotDueDate, s.nextDueDate, s.clientName, s.monthLabel, s.deferredCompletion);
             } else if (pendingAdvance) {
               doAdvance(pendingAdvance.completedStage, pendingAdvance.nextStage, dueDate, linkExistingTask?.id);
               setLinkDialogOpen(false); setLinkExistingTask(null); setPendingAdvance(null);
@@ -1578,7 +1578,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
               const s = pendingSplit;
               await executeSplitTask(s.stage, s.stageLabel, s.children, s.postType, dueDate, s.clientName, s.monthLabel);
               setLinkDialogOpen(false); setLinkExistingTask(null); setPendingSplit(null);
-              await processSplitQueue(s.remainingSplits, s.snapshotDueDate, s.nextDueDate, s.clientName, s.monthLabel);
+              await processSplitQueue(s.remainingSplits, s.snapshotDueDate, s.nextDueDate, s.clientName, s.monthLabel, s.deferredCompletion);
             } else if (pendingAdvance) {
               doAdvance(pendingAdvance.completedStage, pendingAdvance.nextStage, dueDate);
               setLinkDialogOpen(false); setLinkExistingTask(null); setPendingAdvance(null);
