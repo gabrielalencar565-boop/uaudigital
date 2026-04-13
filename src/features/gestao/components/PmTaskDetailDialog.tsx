@@ -596,11 +596,12 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         });
       }
       // Clone attachments from current task to linked task
-      const { data: attsLinked } = await sb.from("pm_attachments").select("*").eq("task_id", task.id);
+      const sbx = supabase as any;
+      const { data: attsLinked } = await sbx.from("pm_attachments").select("*").eq("task_id", task.id);
       if (attsLinked?.length) {
         await Promise.all(attsLinked.map((att: any) => {
           const { id: _id, created_at: _ca, ...rest } = att;
-          return sb.from("pm_attachments").insert({ ...rest, task_id: linkedTaskId });
+          return sbx.from("pm_attachments").insert({ ...rest, task_id: linkedTaskId });
         }));
       }
     } else {
