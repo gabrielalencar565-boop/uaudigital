@@ -1490,36 +1490,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                 </DialogContent>
               </Dialog>
 
-              {/* Link or Date dialog for existing agenda tasks */}
-              <LinkOrDateDialog
-                open={linkDialogOpen}
-                onClose={() => { setLinkDialogOpen(false); setLinkExistingTask(null); setPendingAdvance(null); setPendingSplit(null); }}
-                existingTask={linkExistingTask}
-                onLink={async (dueDate) => {
-                  if (pendingSplit) {
-                    // Handle split linking
-                    const s = pendingSplit;
-                    await executeSplitTask(s.stage, s.stageLabel, s.children, s.postType, dueDate, s.clientName, s.monthLabel, linkExistingTask?.id);
-                    setLinkDialogOpen(false); setLinkExistingTask(null); setPendingSplit(null);
-                    // Process remaining splits
-                    await processSplitQueue(s.remainingSplits, s.snapshotDueDate, s.nextDueDate, s.clientName, s.monthLabel);
-                  } else if (pendingAdvance) {
-                    doAdvance(pendingAdvance.completedStage, pendingAdvance.nextStage, dueDate, linkExistingTask?.id);
-                    setLinkDialogOpen(false); setLinkExistingTask(null); setPendingAdvance(null);
-                  }
-                }}
-                onSelectDate={async (dueDate) => {
-                  if (pendingSplit) {
-                    const s = pendingSplit;
-                    await executeSplitTask(s.stage, s.stageLabel, s.children, s.postType, dueDate, s.clientName, s.monthLabel);
-                    setLinkDialogOpen(false); setLinkExistingTask(null); setPendingSplit(null);
-                    await processSplitQueue(s.remainingSplits, s.snapshotDueDate, s.nextDueDate, s.clientName, s.monthLabel);
-                  } else if (pendingAdvance) {
-                    doAdvance(pendingAdvance.completedStage, pendingAdvance.nextStage, dueDate);
-                    setLinkDialogOpen(false); setLinkExistingTask(null); setPendingAdvance(null);
-                  }
-                }}
-              />
+              
             </>
           ) : (
             <Button
