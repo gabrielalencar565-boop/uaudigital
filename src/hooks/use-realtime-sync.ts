@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -115,15 +115,53 @@ const TABLE_TO_QUERY_KEYS: Record<RealtimeTable, string[][]> = {
   notification_reads: [["notification_reads"]],
 };
 
+// ─── Debounced invalidation ───────────────────────────────────
+// Batches all realtime events within a 500ms window into a single
+// invalidation pass, preventing cascading refetches.
+const DEBOUNCE_MS = 500;
+
 /**
  * Hook que sincroniza dados em tempo real via Supabase Realtime.
- * Quando qualquer mudança ocorre nas tabelas monitoradas, invalida as queries correspondentes.
+ * Debounce invalidations within a 500ms window to avoid thundering herd.
  */
 export function useRealtimeSync(tables: RealtimeTable[] = []) {
   const queryClient = useQueryClient();
+  const pendingKeysRef = useRef<Set<string>>(new Set());
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (tables.length === 0) return;
+
+    const flush = () => {
+      const keys = Array.from(pendingKeysRef.current);
+      pendingKeysRef.current.clear();
+      timerRef.current = null;
+
+      // Deduplicated set of query key prefixes
+      const seen = new Set<string>();
+      keys.forEach((k) => {
+        if (seen.has(k)) return;
+        seen.add(k);
+        const parsed = JSON.parse(k) as string[];
+        queryClient.invalidateQueries({
+          predicate: (query) => {
+            const qk = query.queryKey;
+            if (!Array.isArray(qk)) return false;
+            return parsed.every((p, i) => qk[i] === p);
+          },
+        });
+      });
+    };
+
+    const enqueue = (table: RealtimeTable) => {
+      const queryKeys = TABLE_TO_QUERY_KEYS[table] ?? [[table]];
+      queryKeys.forEach((key) => {
+        pendingKeysRef.current.add(JSON.stringify(key));
+      });
+      if (!timerRef.current) {
+        timerRef.current = setTimeout(flush, DEBOUNCE_MS);
+      }
+    };
 
     const channel = supabase.channel("realtime-sync");
 
@@ -131,84 +169,78 @@ export function useRealtimeSync(tables: RealtimeTable[] = []) {
       channel.on(
         "postgres_changes",
         { event: "*", schema: "public", table },
-        (payload) => {
-          console.log(`[Realtime] ${table} changed:`, payload.eventType);
-          
-          const queryKeys = TABLE_TO_QUERY_KEYS[table] ?? [[table]];
-          queryKeys.forEach((key) => {
-            queryClient.invalidateQueries({
-              predicate: (query) => {
-                const qk = query.queryKey;
-                if (!Array.isArray(qk)) return false;
-                return key.every((k, i) => qk[i] === k);
-              },
-            });
-          });
-        }
+        () => enqueue(table)
       );
     });
 
-    channel.subscribe((status) => {
-      console.log(`[Realtime] Channel status: ${status}`);
-    });
+    channel.subscribe();
 
     return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
       supabase.removeChannel(channel);
     };
   }, [queryClient, tables.join(",")]);
 }
 
+// ─── Core tables (always subscribed) ──────────────────────────
+const CORE_TABLES: RealtimeTable[] = [
+  "tasks",
+  "clients",
+  "task_assignees",
+  "pm_tasks",
+  "pm_subtasks",
+  "pm_comments",
+  "pm_attachments",
+  "profiles",
+  "team_members",
+  "notification_reads",
+  "app_settings",
+];
+
+// ─── Secondary tables (less frequent updates) ────────────────
+const SECONDARY_TABLES: RealtimeTable[] = [
+  "client_cycle_stages",
+  "client_stages",
+  "client_cycles",
+  "magic2_cycles",
+  "magic2_cycle_stages",
+  "magic2_clients",
+  "magic2_client_links",
+  "user_roles",
+  "access_requests",
+  "performance_scores",
+  "task_deadline_overrides",
+  "task_activity_log",
+  "cleaning_categories",
+  "cleaning_schedules",
+  "cleaning_completions",
+  "pm_activity_log",
+  "pm_projects",
+  "pm_stage_flows",
+  "pm_tags",
+  "pm_pdf_settings",
+  "pm_cronograma_feedback",
+  "scoring_config",
+  "internal_dates",
+  "health_scores",
+  "health_score_tokens",
+  "financial_clients",
+  "financial_expenses",
+  "financial_revenues",
+  "financial_goals",
+  "financial_transactions",
+  "financial_credit_cards",
+  "mrr_movements",
+  "squads",
+  "squad_members",
+  "client_squads",
+];
+
 /**
  * Hook pré-configurado para sincronizar TODAS as tabelas.
- * Use este hook em layouts ou componentes de alto nível.
+ * Split into two channels to reduce per-channel overhead.
  */
 export function useRealtimeSyncAll() {
-  useRealtimeSync([
-    "client_cycle_stages",
-    "client_stages",
-    "tasks",
-    "clients",
-    "client_cycles",
-    "task_assignees",
-    "magic2_cycles",
-    "magic2_cycle_stages",
-    "magic2_clients",
-    "magic2_client_links",
-    "user_roles",
-    "access_requests",
-    "team_members",
-    "profiles",
-    "performance_scores",
-    "task_deadline_overrides",
-    "task_activity_log",
-    "cleaning_categories",
-    "cleaning_schedules",
-    "cleaning_completions",
-    "pm_tasks",
-    "pm_subtasks",
-    "pm_comments",
-    "pm_attachments",
-    "pm_activity_log",
-    "pm_projects",
-    "pm_stage_flows",
-    "pm_tags",
-    "pm_pdf_settings",
-    "pm_cronograma_feedback",
-    "scoring_config",
-    "internal_dates",
-    "app_settings",
-    "health_scores",
-    "health_score_tokens",
-    "financial_clients",
-    "financial_expenses",
-    "financial_revenues",
-    "financial_goals",
-    "financial_transactions",
-    "financial_credit_cards",
-    "mrr_movements",
-    "squads",
-    "squad_members",
-    "client_squads",
-    "notification_reads",
-  ]);
+  useRealtimeSync(CORE_TABLES);
+  useRealtimeSync(SECONDARY_TABLES);
 }
