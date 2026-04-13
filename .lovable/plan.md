@@ -1,31 +1,39 @@
 
 
-## Plano: Opções de exceção dinâmicas baseadas na pontuação da etapa
+## Diagnóstico
 
-### Problema atual
-O dropdown de exceção oferece apenas valores fixos: +1, 0, -1. Porém as etapas têm pontuações variadas (Captação = 2.5, Planejamento = 8, PDF = 1.5, etc.), e tarefas de Design/Vídeo pontuam por tags das subtarefas. Quando uma tarefa atrasou, o admin precisa forçar a pontuação que ela **teria** recebido, mas o dropdown não oferece esse valor.
+Dois bugs identificados ao concluir tarefa de Planejamento:
 
-### Solução
-Mostrar no dropdown de exceção o valor que a tarefa **valeria se tivesse sido entregue no prazo**, calculado automaticamente com base na etapa e nas tags/subtarefas. Assim o admin pode "forçar a exceção" com o valor correto.
+1. **Dialog de Design não aparece**: Após vincular a tarefa de Vídeo, o `LinkOrDateDialog` chama `onLink()` e depois `onClose()`. O `onLink` do pai já fecha o dialog (`setLinkDialogOpen(false)`) e limpa estados, depois chama `processSplitQueue` para Design. Quando `processSplitQueue` encontra tarefa existente de Design e tenta reabrir o dialog (`setLinkDialogOpen(true)`), o React não consegue distinguir a mudança porque `onClose()` do `LinkOrDateDialog` também roda quase simultaneamente, causando um conflito de state que impede o dialog de reabrir.
 
-### Mudanças
+2. **Tarefa não fica concluída**: Como o dialog de Design nunca aparece, o `processSplitQueue` fica "preso" esperando interação do usuário. O `finalizePlanejamentoCompletion` (que marca como concluído) só roda quando TODOS os splits são processados, então nunca é chamado.
 
-**1. Migração: alterar `override_points` de `integer` para `numeric`**
-- A coluna atual é `integer` e não suporta valores como 2.5 ou 1.5.
-- Alterar para `numeric` para aceitar decimais.
+## Plano de Correção
 
-**2. Atualizar `AdminDeadlineReport.tsx`**
-- Calcular o valor "on-time" que a tarefa teria (`expectedPoints`) usando a mesma lógica de `calcPoints` mas assumindo entrega no prazo.
-- No dropdown de exceção, adicionar uma opção dinâmica: `Forçar +{expectedPoints}` (ex: "Forçar +2.5" para captação).
-- Manter as opções existentes (Auto, Forçar 0, Forçar -1) e remover o "Forçar +1" genérico, substituindo pelo valor calculado.
-- Remover a validação que restringe a `[1, 0, -1]` no `setOverrideMut`, permitindo qualquer valor numérico.
+### 1. Remover `onClose()` duplicado no `LinkOrDateDialog`
 
-**3. Lógica de cálculo do valor esperado**
-- Para etapas com `base_points` fixo (captação, planejamento, pdf, agendamento): usar o `base_points` da config.
-- Para etapas com tags (design, vídeo): usar o `point_value` do snapshot da tarefa (que já reflete as subtarefas), ou calcular a partir das tags se disponível.
-- Considerar multiplicador de demanda extra quando aplicável.
+No `LinkOrDateDialog.tsx`, as funções `handleLink` e `handleSelectDate` chamam tanto o callback (`onLink`/`onSelectDate`) quanto `onClose()`. Mas o pai já gerencia o fechamento. Remover o `onClose()` de dentro de `handleLink` e `handleSelectDate` para que apenas o pai controle o estado do dialog.
 
-### Detalhes técnicos
-- Criar função auxiliar `calcExpectedPoints(task, configMap, pmTagsMap)` que retorna a pontuação que a tarefa valeria no prazo.
-- O dropdown mostrará: Auto | Forçar +{expected} | Forçar 0 | Forçar -{penalty}.
+### 2. Não fechar/limpar estados antes de processar splits restantes
+
+No `PmTaskDetailDialog.tsx`, dentro do `onLink` callback (linha ~1598-1607):
+- **Antes**: `setLinkDialogOpen(false); setLinkExistingTask(null); setPendingSplit(null);` era chamado ANTES de `processSplitQueue`
+- **Depois**: Só limpar esses estados se NÃO houver mais splits. Deixar `processSplitQueue` decidir se reabre o dialog ou fecha tudo.
+
+Mesma correção no `onSelectDate` callback (linha ~1609-1618).
+
+### 3. Fechar dialog só quando a fila estiver vazia
+
+No final de `processSplitQueue`, quando `splits.length === 0`, adicionar fechamento explícito do dialog:
+```
+setLinkDialogOpen(false);
+setLinkExistingTask(null);
+setPendingSplit(null);
+```
+
+Isso garante que o dialog só fecha após TODOS os splits (Vídeo + Design) serem processados e o `finalizePlanejamentoCompletion` ser chamado.
+
+### Arquivos alterados
+- `src/features/gestao/components/LinkOrDateDialog.tsx` — remover `onClose()` de dentro de `handleLink` e `handleSelectDate`
+- `src/features/gestao/components/PmTaskDetailDialog.tsx` — reestruturar callbacks `onLink`/`onSelectDate` para não fechar dialog prematuramente; fechar no final de `processSplitQueue`
 
