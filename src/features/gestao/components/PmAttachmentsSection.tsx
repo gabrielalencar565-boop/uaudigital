@@ -168,7 +168,9 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
   };
 
   const isImage = (type: string | null) => type?.startsWith("image/");
-  const imageAttachments = attachments.filter(a => isImage(a.file_type) && a.public_url);
+  const isHeic = (name: string) => /\.heic$/i.test(name);
+  const hasPreviewableUrl = (att: PmAttachment) => !!att.public_url;
+  const imageAttachments = attachments.filter(a => (isImage(a.file_type) || isHeic(a.file_name)) && a.public_url);
 
   const openViewer = (att: PmAttachment) => {
     const idx = imageAttachments.findIndex(a => a.id === att.id);
