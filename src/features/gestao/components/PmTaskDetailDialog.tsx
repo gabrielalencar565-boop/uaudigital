@@ -330,8 +330,9 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
       // Clone children sequentially to avoid overwhelming React Query
       const { data: { user } } = await supabase.auth.getUser();
+      const childIdMap: Record<string, string> = {}; // old id → new id
       for (const child of childTasks) {
-        await sb.from("pm_tasks").insert({
+        const { data: newChild } = await sb.from("pm_tasks").insert({
           client_id: child.client_id,
           title: child.title,
           description: child.description ?? null,
@@ -344,16 +345,31 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           status_global: "backlog",
           post_type: child.post_type ?? null,
           created_by: user?.id,
-        });
+        }).select("id").single();
+        if (newChild) childIdMap[child.id] = newChild.id;
       }
 
-      // Copy attachments
+      // Copy parent task attachments
       const { data: existingAtts } = await sb.from("pm_attachments").select("*").eq("task_id", task.id);
       if (existingAtts?.length) {
         await Promise.all(existingAtts.map((att: any) => {
           const { id: _id, created_at: _ca, ...rest } = att;
           return sb.from("pm_attachments").insert({ ...rest, task_id: targetTaskId });
         }));
+      }
+
+      // Copy child task attachments to their cloned counterparts
+      const oldChildIds = Object.keys(childIdMap);
+      if (oldChildIds.length > 0) {
+        const { data: childAtts } = await sb.from("pm_attachments").select("*").in("task_id", oldChildIds);
+        if (childAtts?.length) {
+          await Promise.all(childAtts.map((att: any) => {
+            const { id: _id, created_at: _ca, task_id: oldTaskId, ...rest } = att;
+            const newTaskId = childIdMap[oldTaskId];
+            if (!newTaskId) return Promise.resolve();
+            return sb.from("pm_attachments").insert({ ...rest, task_id: newTaskId });
+          }));
+        }
       }
     };
 
@@ -584,8 +600,9 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       }
       updateTask.mutate(linkedUpdates);
       // Clone children to linked task (originals stay frozen on snapshot)
+      const linkedChildMap: Record<string, string> = {};
       for (const child of children) {
-        await createTask.mutateAsync({
+        const newChild = await createTask.mutateAsync({
           client_id: child.client_id, title: child.title,
           description: child.description ?? undefined, stage_current: stage,
           assignee_id: fixedAssignee !== undefined ? (fixedAssignee ?? undefined) : (child.assignee_id ?? undefined),
@@ -594,14 +611,18 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           is_extra_demand: child.is_extra_demand, status_global: "backlog",
           post_type: child.post_type ?? undefined,
         });
+        if (newChild?.id) linkedChildMap[child.id] = newChild.id;
       }
-      // Clone attachments from current task to linked task
+      // Clone parent + child attachments
       const sbx = supabase as any;
-      const { data: attsLinked } = await sbx.from("pm_attachments").select("*").eq("task_id", task.id);
+      const allOldIds = [task.id, ...Object.keys(linkedChildMap)];
+      const { data: attsLinked } = await sbx.from("pm_attachments").select("*").in("task_id", allOldIds);
       if (attsLinked?.length) {
         await Promise.all(attsLinked.map((att: any) => {
-          const { id: _id, created_at: _ca, ...rest } = att;
-          return sbx.from("pm_attachments").insert({ ...rest, task_id: linkedTaskId });
+          const { id: _id, created_at: _ca, task_id: oldTid, ...rest } = att;
+          const newTid = oldTid === task.id ? linkedTaskId : linkedChildMap[oldTid];
+          if (!newTid) return Promise.resolve();
+          return sbx.from("pm_attachments").insert({ ...rest, task_id: newTid });
         }));
       }
     } else {
@@ -627,8 +648,9 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         origin_task_id: originId,
       });
       // Clone children to new task (originals stay frozen on snapshot)
+      const newChildMap: Record<string, string> = {};
       for (const child of children) {
-        await createTask.mutateAsync({
+        const newChild = await createTask.mutateAsync({
           client_id: child.client_id, title: child.title,
           description: child.description ?? undefined, stage_current: stage,
           assignee_id: fixedAssignee !== undefined ? (fixedAssignee ?? undefined) : (child.assignee_id ?? undefined),
@@ -637,14 +659,18 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           is_extra_demand: child.is_extra_demand, status_global: "backlog",
           post_type: child.post_type ?? undefined,
         });
+        if (newChild?.id) newChildMap[child.id] = newChild.id;
       }
-      // Clone attachments from current task to new task
+      // Clone parent + child attachments
       const sbx2 = supabase as any;
-      const { data: attsNew } = await sbx2.from("pm_attachments").select("*").eq("task_id", task.id);
+      const allOldIds2 = [task.id, ...Object.keys(newChildMap)];
+      const { data: attsNew } = await sbx2.from("pm_attachments").select("*").in("task_id", allOldIds2);
       if (attsNew?.length) {
         await Promise.all(attsNew.map((att: any) => {
-          const { id: _id, created_at: _ca, ...rest } = att;
-          return sbx2.from("pm_attachments").insert({ ...rest, task_id: newTask.id });
+          const { id: _id, created_at: _ca, task_id: oldTid, ...rest } = att;
+          const newTid = oldTid === task.id ? newTask.id : newChildMap[oldTid];
+          if (!newTid) return Promise.resolve();
+          return sbx2.from("pm_attachments").insert({ ...rest, task_id: newTid });
         }));
       }
     }
