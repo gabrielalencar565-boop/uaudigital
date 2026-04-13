@@ -375,6 +375,7 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addComment = useAddPmComment();
+  const queryClient = useQueryClient();
   const uploadAttachment = useUploadPmAttachment();
   const activityLogQ = usePmActivityLog(taskId);
   const activityLog = activityLogQ.data ?? [];
