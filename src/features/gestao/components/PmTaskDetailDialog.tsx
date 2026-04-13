@@ -754,23 +754,8 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       const hasDesign = designChildren.length > 0;
 
       if (hasVideo || hasDesign) {
-        // Snapshot current task as completed + freeze all children via single batch
         const snapshotDueDate = task.due_date ?? format(new Date(), "yyyy-MM-dd");
-        const sb = supabase as any;
         const allIds = [task.id, ...childTasks.map(c => c.id)];
-        await sb.from("pm_tasks").update({ status_global: "concluido" }).in("id", allIds);
-        await sb.from("pm_tasks").update({
-          stage_current: completedStage,
-          status_global: "concluido",
-          due_date: snapshotDueDate,
-        }).eq("id", task.id);
-
-        // Sync scoring for planejamento
-        syncCompletedStage(completedStage);
-
-        queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
-        queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
-        queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
 
         const clientName = clientsMap[task.client_id] || task.title.split(" - ")[0];
         let monthLabel: string | null = null;
@@ -785,8 +770,11 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         if (hasVideo) splits.push({ stage: "edicao_videos", stageLabel: "Vídeo", children: videoChildren, postType: "video" });
         if (hasDesign) splits.push({ stage: "design", stageLabel: "Design", children: designChildren, postType: "design" });
 
+        // Defer completion — only mark concluído after all splits are processed
+        const deferredCompletion = { allIds, completedStage, snapshotDueDate };
+
         // Process splits sequentially, checking for existing tasks
-        await processSplitQueue(splits, snapshotDueDate, nextDueDate, clientName, monthLabel);
+        await processSplitQueue(splits, snapshotDueDate, nextDueDate, clientName, monthLabel, deferredCompletion);
         return;
       }
     }
