@@ -259,7 +259,7 @@ function formatFileSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function CommentBubble({ c, membersMap, formatMentions, onOpenPreview }: { c: PmComment; membersMap: Record<string, { name: string; avatar?: string }>; formatMentions: (t: string) => string; onOpenPreview: (data: PreviewModalData) => void }) {
+function CommentBubble({ c, membersMap, formatMentions, onOpenPreview, onDelete }: { c: PmComment; membersMap: Record<string, { name: string; avatar?: string }>; formatMentions: (t: string) => string; onOpenPreview: (data: PreviewModalData) => void; onDelete?: (id: string) => void }) {
   const member = membersMap[c.author_id];
   const { preview, loading } = useSavedPreview(c);
   const displayContent = c.content ? formatMentions(c.content) : "";
@@ -267,8 +267,8 @@ function CommentBubble({ c, membersMap, formatMentions, onOpenPreview }: { c: Pm
   const fileName = c.image_description || "Arquivo";
   const isImage = fileUrl ? isImageUrl(fileUrl) : false;
 
-  const handleDownload = async (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleDownload = async (e?: React.MouseEvent) => {
+    e?.stopPropagation();
     if (!fileUrl) return;
     try {
       const res = await fetch(fileUrl);
@@ -283,8 +283,15 @@ function CommentBubble({ c, membersMap, formatMentions, onOpenPreview }: { c: Pm
     } catch { window.open(fileUrl, "_blank"); }
   };
 
+  const handleCopyText = () => {
+    if (displayContent) {
+      navigator.clipboard.writeText(displayContent);
+      toast.success("Texto copiado!");
+    }
+  };
+
   return (
-    <div className="flex gap-2.5 items-start">
+    <div className="flex gap-2.5 items-start group/comment">
       <Avatar className="h-6 w-6 shrink-0 mt-0.5">
         <AvatarImage src={member?.avatar} />
         <AvatarFallback className="text-[8px] bg-primary/10 text-primary">{initials(member?.name ?? "?")}</AvatarFallback>
@@ -323,6 +330,31 @@ function CommentBubble({ c, membersMap, formatMentions, onOpenPreview }: { c: Pm
           </div>
         )}
       </div>
+      {/* 3-dot menu */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button className="h-6 w-6 rounded-md flex items-center justify-center opacity-0 group-hover/comment:opacity-100 transition hover:bg-muted shrink-0 mt-0.5">
+            <MoreHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="min-w-[140px]" style={{ zIndex: 99999 }}>
+          {displayContent && (
+            <DropdownMenuItem onClick={handleCopyText} className="gap-2 text-xs">
+              <ClipboardCopy className="h-3.5 w-3.5" /> Copiar texto
+            </DropdownMenuItem>
+          )}
+          {fileUrl && (
+            <DropdownMenuItem onClick={() => handleDownload()} className="gap-2 text-xs">
+              <Download className="h-3.5 w-3.5" /> Baixar anexo
+            </DropdownMenuItem>
+          )}
+          {onDelete && (
+            <DropdownMenuItem onClick={() => onDelete(c.id)} className="gap-2 text-xs text-destructive focus:text-destructive">
+              <Trash2 className="h-3.5 w-3.5" /> Remover
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
