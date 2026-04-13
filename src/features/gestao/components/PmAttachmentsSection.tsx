@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import { format } from "date-fns";
 import { Upload, FileText, Download, MoreHorizontal, Link2, ImagePlus, GripVertical, Trash2, Loader2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,32 @@ interface Props {
   membersMap: Record<string, { name: string; avatar?: string }>;
   onSetCover?: (url: string) => void;
   currentCoverUrl?: string | null;
+}
+
+function AttachmentThumbnail({ url, name, isKnownImage, onClick }: { url: string; name: string; isKnownImage: boolean; onClick?: () => void }) {
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return (
+      <div className="w-full aspect-[4/3] flex items-center justify-center overflow-hidden rounded-t-md bg-muted/50">
+        <FileText className="h-6 w-6 text-muted-foreground/40" />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={cn("w-full aspect-[4/3] overflow-hidden rounded-t-md bg-muted", isKnownImage && "cursor-pointer")}
+      onClick={onClick}
+    >
+      <img
+        src={url}
+        alt={name}
+        className="w-full h-full object-cover transition group-hover:scale-105"
+        onError={() => setFailed(true)}
+      />
+    </div>
+  );
 }
 
 export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCover, currentCoverUrl }: Props) {
@@ -168,7 +194,9 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
   };
 
   const isImage = (type: string | null) => type?.startsWith("image/");
-  const imageAttachments = attachments.filter(a => isImage(a.file_type) && a.public_url);
+  const isHeic = (name: string) => /\.heic$/i.test(name);
+  const hasPreviewableUrl = (att: PmAttachment) => !!att.public_url;
+  const imageAttachments = attachments.filter(a => (isImage(a.file_type) || isHeic(a.file_name)) && a.public_url);
 
   const openViewer = (att: PmAttachment) => {
     const idx = imageAttachments.findIndex(a => a.id === att.id);
@@ -291,14 +319,14 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
                 <GripVertical className="h-3.5 w-3.5 text-muted-foreground bg-background/80 rounded" />
               </div>
 
-              {/* Thumbnail / Icon area */}
-              {isImg && att.public_url ? (
-                <div
-                  className="w-full aspect-[4/3] cursor-pointer overflow-hidden rounded-t-md bg-muted"
-                  onClick={() => openViewer(att)}
-                >
-                  <img src={att.public_url} alt={att.file_name} className="w-full h-full object-cover transition group-hover:scale-105" />
-                </div>
+              {/* Thumbnail / Icon area — always try image preview */}
+              {att.public_url ? (
+                <AttachmentThumbnail
+                  url={att.public_url}
+                  name={att.file_name}
+                  isKnownImage={!!isImg || isHeic(att.file_name)}
+                  onClick={() => (isImg || isHeic(att.file_name)) ? openViewer(att) : undefined}
+                />
               ) : (
                 <div className="w-full aspect-[4/3] flex items-center justify-center overflow-hidden rounded-t-md bg-muted/50">
                   <FileText className="h-6 w-6 text-muted-foreground/40" />
