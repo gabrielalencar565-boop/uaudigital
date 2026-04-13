@@ -350,6 +350,25 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
   const [mentionMap, setMentionMap] = useState<Record<string, string>>({});
   const [expanded, setExpanded] = useState(false);
   const [previewModal, setPreviewModal] = useState<PreviewModalData | null>(null);
+  const [draggingOver, setDraggingOver] = useState(false);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDraggingOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    if (file.size > 200 * 1024 * 1024) { toast.error("Arquivo muito grande (máx 200MB)"); return; }
+    const isImage = file.type.startsWith("image/") || /\.(heic|heif)$/i.test(file.name);
+    const preview = isImage ? URL.createObjectURL(file) : null;
+    setPendingFile({ file, preview, isImage });
+    setFileDescription("");
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => { e.preventDefault(); setDraggingOver(true); }, []);
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+    setDraggingOver(false);
+  }, []);
 
   // Live link preview while typing
   const { preview: typingPreview, loading: typingLoading } = useTypingPreview(content);
