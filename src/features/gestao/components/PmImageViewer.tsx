@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { X, ChevronLeft, ChevronRight, Download } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Download, Loader2 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -9,6 +9,36 @@ interface Props {
   initialIndex: number;
   open: boolean;
   onClose: () => void;
+}
+
+function useHeicUrl(url: string, name: string) {
+  const [converted, setConverted] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const isHeic = /\.heic$/i.test(name);
+
+  useEffect(() => {
+    if (!isHeic) { setConverted(null); return; }
+    let cancelled = false;
+    setLoading(true);
+    (async () => {
+      try {
+        const res = await fetch(url);
+        const blob = await res.blob();
+        const heic2any = (await import("heic2any")).default;
+        const result = await heic2any({ blob, toType: "image/jpeg", quality: 0.85 });
+        if (cancelled) return;
+        const out = Array.isArray(result) ? result[0] : result;
+        setConverted(URL.createObjectURL(out));
+      } catch {
+        if (!cancelled) setConverted(null);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [url, isHeic]);
+
+  return { src: isHeic ? converted : url, loading: isHeic && loading };
 }
 
 export function PmImageViewer({ images, initialIndex, open, onClose }: Props) {
@@ -71,7 +101,7 @@ export function PmImageViewer({ images, initialIndex, open, onClose }: Props) {
               <ChevronLeft className="h-6 w-6" />
             </button>
           )}
-          <img src={current.url} alt={current.name} className="max-w-full max-h-full object-contain" />
+          <ViewerImage url={current.url} name={current.name} />
           {hasNext && (
             <button
               onClick={() => setIndex((i) => i + 1)}
@@ -84,4 +114,14 @@ export function PmImageViewer({ images, initialIndex, open, onClose }: Props) {
       </DialogContent>
     </Dialog>
   );
+}
+
+function ViewerImage({ url, name }: { url: string; name: string }) {
+  const { src, loading } = useHeicUrl(url, name);
+
+  if (loading) {
+    return <Loader2 className="h-8 w-8 animate-spin text-white/50" />;
+  }
+
+  return <img src={src ?? url} alt={name} className="max-w-full max-h-full object-contain" />;
 }
