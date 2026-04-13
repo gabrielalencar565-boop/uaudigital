@@ -330,8 +330,9 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
       // Clone children sequentially to avoid overwhelming React Query
       const { data: { user } } = await supabase.auth.getUser();
+      const childIdMap: Record<string, string> = {}; // old id → new id
       for (const child of childTasks) {
-        await sb.from("pm_tasks").insert({
+        const { data: newChild } = await sb.from("pm_tasks").insert({
           client_id: child.client_id,
           title: child.title,
           description: child.description ?? null,
@@ -344,7 +345,8 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           status_global: "backlog",
           post_type: child.post_type ?? null,
           created_by: user?.id,
-        });
+        }).select("id").single();
+        if (newChild) childIdMap[child.id] = newChild.id;
       }
 
       // Copy attachments
