@@ -545,7 +545,17 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
         {lastItem && renderTimelineItem(lastItem)}
       </div>
 
-      <div className="border-t border-border/30 pt-3 relative">
+      <div
+        className={`border-t border-border/30 pt-3 relative rounded-lg transition ${draggingOver ? "ring-2 ring-primary/50 bg-primary/5" : ""}`}
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+      >
+        {draggingOver && (
+          <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+            <p className="text-sm text-primary font-medium">Solte o arquivo aqui</p>
+          </div>
+        )}
         {pendingFile && (
           <div className="mb-2 relative inline-block">
             {pendingFile.isImage && pendingFile.preview ? (
