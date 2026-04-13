@@ -280,6 +280,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     clientName: string;
     monthLabel: string | null;
     remainingSplits: { stage: string; stageLabel: string; children: PmTask[]; postType: string }[];
+    deferredCompletion?: { allIds: string[]; completedStage: string; snapshotDueDate: string };
   } | null>(null);
 
   // Correction mode for completed snapshots
@@ -677,11 +678,30 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     }
   };
 
+  const finalizePlanejamentoCompletion = async (deferred: { allIds: string[]; completedStage: string; snapshotDueDate: string }) => {
+    const sb = supabase as any;
+    await sb.from("pm_tasks").update({ status_global: "concluido" }).in("id", deferred.allIds);
+    await sb.from("pm_tasks").update({
+      stage_current: deferred.completedStage,
+      status_global: "concluido",
+      due_date: deferred.snapshotDueDate,
+    }).eq("id", deferred.allIds[0]); // first id is the parent task
+    syncCompletedStage(deferred.completedStage);
+    queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
+    queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
+    queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
+  };
+
   const processSplitQueue = async (
     splits: { stage: string; stageLabel: string; children: PmTask[]; postType: string }[],
-    snapshotDueDate: string, nextDueDate: string, clientName: string, monthLabel: string | null
+    snapshotDueDate: string, nextDueDate: string, clientName: string, monthLabel: string | null,
+    deferredCompletion?: { allIds: string[]; completedStage: string; snapshotDueDate: string }
   ) => {
     if (splits.length === 0) {
+      // All splits processed — now finalize the planejamento completion
+      if (deferredCompletion) {
+        await finalizePlanejamentoCompletion(deferredCompletion);
+      }
       toast.success("Planejamento concluído! Tarefas criadas.");
       return;
     }
@@ -702,6 +722,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         clientName,
         monthLabel,
         remainingSplits: remaining,
+        deferredCompletion,
       });
       setLinkExistingTask(existing);
       setLinkDialogOpen(true);
@@ -712,7 +733,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     await executeSplitTask(current.stage, current.stageLabel, current.children, current.postType, nextDueDate, clientName, monthLabel);
 
     // Process remaining splits
-    await processSplitQueue(remaining, snapshotDueDate, nextDueDate, clientName, monthLabel);
+    await processSplitQueue(remaining, snapshotDueDate, nextDueDate, clientName, monthLabel, deferredCompletion);
   };
 
   const handleConcluido = async () => {
@@ -753,23 +774,8 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       const hasDesign = designChildren.length > 0;
 
       if (hasVideo || hasDesign) {
-        // Snapshot current task as completed + freeze all children via single batch
         const snapshotDueDate = task.due_date ?? format(new Date(), "yyyy-MM-dd");
-        const sb = supabase as any;
         const allIds = [task.id, ...childTasks.map(c => c.id)];
-        await sb.from("pm_tasks").update({ status_global: "concluido" }).in("id", allIds);
-        await sb.from("pm_tasks").update({
-          stage_current: completedStage,
-          status_global: "concluido",
-          due_date: snapshotDueDate,
-        }).eq("id", task.id);
-
-        // Sync scoring for planejamento
-        syncCompletedStage(completedStage);
-
-        queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
-        queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
-        queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
 
         const clientName = clientsMap[task.client_id] || task.title.split(" - ")[0];
         let monthLabel: string | null = null;
@@ -784,8 +790,11 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         if (hasVideo) splits.push({ stage: "edicao_videos", stageLabel: "Vídeo", children: videoChildren, postType: "video" });
         if (hasDesign) splits.push({ stage: "design", stageLabel: "Design", children: designChildren, postType: "design" });
 
+        // Defer completion — only mark concluído after all splits are processed
+        const deferredCompletion = { allIds, completedStage, snapshotDueDate };
+
         // Process splits sequentially, checking for existing tasks
-        await processSplitQueue(splits, snapshotDueDate, nextDueDate, clientName, monthLabel);
+        await processSplitQueue(splits, snapshotDueDate, nextDueDate, clientName, monthLabel, deferredCompletion);
         return;
       }
     }
@@ -1558,7 +1567,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
               const s = pendingSplit;
               await executeSplitTask(s.stage, s.stageLabel, s.children, s.postType, dueDate, s.clientName, s.monthLabel, linkExistingTask?.id);
               setLinkDialogOpen(false); setLinkExistingTask(null); setPendingSplit(null);
-              await processSplitQueue(s.remainingSplits, s.snapshotDueDate, s.nextDueDate, s.clientName, s.monthLabel);
+              await processSplitQueue(s.remainingSplits, s.snapshotDueDate, s.nextDueDate, s.clientName, s.monthLabel, s.deferredCompletion);
             } else if (pendingAdvance) {
               doAdvance(pendingAdvance.completedStage, pendingAdvance.nextStage, dueDate, linkExistingTask?.id);
               setLinkDialogOpen(false); setLinkExistingTask(null); setPendingAdvance(null);
@@ -1569,7 +1578,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
               const s = pendingSplit;
               await executeSplitTask(s.stage, s.stageLabel, s.children, s.postType, dueDate, s.clientName, s.monthLabel);
               setLinkDialogOpen(false); setLinkExistingTask(null); setPendingSplit(null);
-              await processSplitQueue(s.remainingSplits, s.snapshotDueDate, s.nextDueDate, s.clientName, s.monthLabel);
+              await processSplitQueue(s.remainingSplits, s.snapshotDueDate, s.nextDueDate, s.clientName, s.monthLabel, s.deferredCompletion);
             } else if (pendingAdvance) {
               doAdvance(pendingAdvance.completedStage, pendingAdvance.nextStage, dueDate);
               setLinkDialogOpen(false); setLinkExistingTask(null); setPendingAdvance(null);
