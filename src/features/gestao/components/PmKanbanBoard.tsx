@@ -207,6 +207,12 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, av
     const newStage = over.id as string;
     if (droppedTask.stage_current === newStage) return;
 
+    // Skip link dialog for extra demand tasks
+    if (droppedTask.is_extra_demand) {
+      applyMove(droppedTask, newStage);
+      return;
+    }
+
     // Check for existing agenda task in the same month/client/stage
     try {
       const sb = supabase as any;
@@ -220,6 +226,7 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, av
         .eq("client_id", droppedTask.client_id)
         .eq("stage_current", newStage)
         .neq("status_global", "concluido")
+        .eq("is_extra_demand", false)
         .is("deleted_at", null)
         .is("parent_task_id", null)
         .not("due_date", "is", null)
