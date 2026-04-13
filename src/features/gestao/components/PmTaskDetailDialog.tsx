@@ -595,6 +595,14 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           post_type: child.post_type ?? undefined,
         });
       }
+      // Clone attachments from current task to linked task
+      const { data: attsLinked } = await sb.from("pm_attachments").select("*").eq("task_id", task.id);
+      if (attsLinked?.length) {
+        await Promise.all(attsLinked.map((att: any) => {
+          const { id: _id, created_at: _ca, ...rest } = att;
+          return sb.from("pm_attachments").insert({ ...rest, task_id: linkedTaskId });
+        }));
+      }
     } else {
       // Create new task
       const title = monthLabel
