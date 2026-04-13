@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Send, ChevronDown, ChevronUp, ImagePlus, X, ExternalLink, Play, Instagram, Youtube, Globe, Link2, Maximize2 } from "lucide-react";
+import { Send, ChevronDown, ChevronUp, Paperclip, X, ExternalLink, Play, Instagram, Youtube, Globe, Link2, Maximize2, FileText, Download } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -247,10 +247,40 @@ function stripUrls(text: string): string {
 }
 
 /* ── Comment Bubble ── */
+/* helper: is the URL pointing to an image? */
+function isImageUrl(url: string): boolean {
+  return /\.(jpe?g|png|gif|webp|svg|bmp|avif|heic|heif)(\?|$)/i.test(url);
+}
+
+function formatFileSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 function CommentBubble({ c, membersMap, formatMentions, onOpenPreview }: { c: PmComment; membersMap: Record<string, { name: string; avatar?: string }>; formatMentions: (t: string) => string; onOpenPreview: (data: PreviewModalData) => void }) {
   const member = membersMap[c.author_id];
   const { preview, loading } = useSavedPreview(c);
   const displayContent = c.content ? formatMentions(c.content) : "";
+  const fileUrl = c.image_url;
+  const fileName = c.image_description || "Arquivo";
+  const isImage = fileUrl ? isImageUrl(fileUrl) : false;
+
+  const handleDownload = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!fileUrl) return;
+    try {
+      const res = await fetch(fileUrl);
+      const blob = await res.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+    } catch { window.open(fileUrl, "_blank"); }
+  };
 
   return (
     <div className="flex gap-2.5 items-start">
@@ -268,17 +298,27 @@ function CommentBubble({ c, membersMap, formatMentions, onOpenPreview }: { c: Pm
         {displayContent && (
           <p className="mt-1 whitespace-pre-wrap text-[13px] text-foreground/90 leading-relaxed">{displayContent}</p>
         )}
-        {c.image_url && (
+        {fileUrl && isImage && (
           <div className="mt-2">
             <img
-              src={c.image_url}
-              alt={c.image_description || "Imagem"}
+              src={fileUrl}
+              alt={fileName}
               className="rounded-lg max-w-[280px] max-h-[200px] object-cover border border-border/30 cursor-pointer hover:opacity-90 transition"
-              onClick={() => window.open(c.image_url!, "_blank")}
+              onClick={() => window.open(fileUrl, "_blank")}
             />
-            {c.image_description && (
-              <p className="text-[11px] text-muted-foreground mt-1 italic">{c.image_description}</p>
+            {fileName && fileName !== "Arquivo" && (
+              <p className="text-[11px] text-muted-foreground mt-1">{fileName}</p>
             )}
+          </div>
+        )}
+        {fileUrl && !isImage && (
+          <div
+            className="mt-2 flex items-center gap-2.5 rounded-lg border border-border/40 bg-muted/30 px-3 py-2.5 max-w-xs cursor-pointer hover:bg-muted/50 transition group"
+            onClick={handleDownload}
+          >
+            <FileText className="h-5 w-5 text-muted-foreground shrink-0" />
+            <span className="text-xs truncate flex-1 text-foreground/80">{fileName}</span>
+            <Download className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition shrink-0" />
           </div>
         )}
       </div>
@@ -299,14 +339,14 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
   const [showMentions, setShowMentions] = useState(false);
   const [mentionSearch, setMentionSearch] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const addComment = useAddPmComment();
   const uploadAttachment = useUploadPmAttachment();
   const activityLogQ = usePmActivityLog(taskId);
   const activityLog = activityLogQ.data ?? [];
 
-  const [pendingImage, setPendingImage] = useState<{ file: File; preview: string } | null>(null);
-  const [imageDescription, setImageDescription] = useState("");
+  const [pendingFile, setPendingFile] = useState<{ file: File; preview: string | null; isImage: boolean } | null>(null);
+  const [fileDescription, setFileDescription] = useState("");
   const [mentionMap, setMentionMap] = useState<Record<string, string>>({});
   const [expanded, setExpanded] = useState(false);
   const [previewModal, setPreviewModal] = useState<PreviewModalData | null>(null);
@@ -330,44 +370,44 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
     return items;
   }, [comments, activityLog]);
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith("image/")) { toast.error("Apenas imagens são permitidas"); return; }
-    if (file.size > 50 * 1024 * 1024) { toast.error("Imagem muito grande (máx 50MB)"); return; }
-    const preview = URL.createObjectURL(file);
-    setPendingImage({ file, preview });
-    setImageDescription("");
-    if (imageInputRef.current) imageInputRef.current.value = "";
+    if (file.size > 200 * 1024 * 1024) { toast.error("Arquivo muito grande (máx 200MB)"); return; }
+    const isImage = file.type.startsWith("image/") || /\.(heic|heif)$/i.test(file.name);
+    const preview = isImage ? URL.createObjectURL(file) : null;
+    setPendingFile({ file, preview, isImage });
+    setFileDescription("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const clearPendingImage = () => {
-    if (pendingImage) URL.revokeObjectURL(pendingImage.preview);
-    setPendingImage(null);
-    setImageDescription("");
+  const clearPendingFile = () => {
+    if (pendingFile?.preview) URL.revokeObjectURL(pendingFile.preview);
+    setPendingFile(null);
+    setFileDescription("");
   };
 
   const handleSend = async () => {
-    if (!content.trim() && !pendingImage) return;
+    if (!content.trim() && !pendingFile) return;
 
     let imageUrl: string | null = null;
-    if (pendingImage) {
+    let fileName: string | undefined;
+    if (pendingFile) {
       try {
-        const att = await uploadAttachment.mutateAsync({ task_id: taskId, file: pendingImage.file });
+        const att = await uploadAttachment.mutateAsync({ task_id: taskId, file: pendingFile.file });
         imageUrl = att.public_url;
-      } catch { toast.error("Erro ao enviar imagem"); return; }
+        fileName = pendingFile.file.name;
+      } catch { toast.error("Erro ao enviar arquivo"); return; }
     }
 
     const linkUrl = extractUrl(content.trim());
 
-    // Fetch link preview data for storage
     let linkTitle: string | undefined;
     let linkImage: string | undefined;
     if (linkUrl && typingPreview) {
       linkTitle = typingPreview.title ?? undefined;
       linkImage = typingPreview.image ?? undefined;
     } else if (linkUrl) {
-      // Try to fetch if not yet loaded
       const data = await fetchLinkPreview(linkUrl);
       if (data) { linkTitle = data.title ?? undefined; linkImage = data.image ?? undefined; }
     }
@@ -375,16 +415,16 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
     const storageContent = contentToStorage(content.trim());
     await addComment.mutateAsync({
       task_id: taskId,
-      content: storageContent || (pendingImage ? (imageDescription || "Imagem anexada") : ""),
+      content: storageContent || (pendingFile ? (fileDescription || fileName || "Arquivo anexado") : ""),
       image_url: imageUrl ?? undefined,
-      image_description: imageDescription || undefined,
+      image_description: pendingFile ? (fileDescription || fileName) : undefined,
       link_url: linkUrl ?? undefined,
       link_title: linkTitle,
       link_image: linkImage,
     });
     setContent("");
     setMentionMap({});
-    clearPendingImage();
+    clearPendingFile();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -487,17 +527,23 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
       </div>
 
       <div className="border-t border-border/30 pt-3 relative">
-        {pendingImage && (
+        {pendingFile && (
           <div className="mb-2 relative inline-block">
-            <img src={pendingImage.preview} alt="Preview" className="rounded-lg max-h-32 max-w-[200px] object-cover border border-border/40" />
-            <button onClick={clearPendingImage} className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center">
+            {pendingFile.isImage && pendingFile.preview ? (
+              <img src={pendingFile.preview} alt="Preview" className="rounded-lg max-h-32 max-w-[200px] object-cover border border-border/40" />
+            ) : (
+              <div className="flex items-center gap-2 rounded-lg border border-border/40 bg-muted/30 px-3 py-2 max-w-[260px]">
+                <FileText className="h-5 w-5 text-muted-foreground shrink-0" />
+                <span className="text-xs truncate text-foreground/80">{pendingFile.file.name}</span>
+              </div>
+            )}
+            <button onClick={clearPendingFile} className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center">
               <X className="h-3 w-3" />
             </button>
-            <Input value={imageDescription} onChange={(e) => setImageDescription(e.target.value)} placeholder="Descrição da imagem (opcional)" className="mt-1.5 h-7 text-xs" />
+            <Input value={fileDescription} onChange={(e) => setFileDescription(e.target.value)} placeholder="Descrição (opcional)" className="mt-1.5 h-7 text-xs" />
           </div>
         )}
 
-        {/* Live link preview while typing */}
         {typingLoading && <LinkPreviewSkeleton />}
         {typingPreview && !typingLoading && extractUrl(content) && (
           <div className="mb-2">
@@ -535,12 +581,12 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
         )}
         <div className="flex items-center justify-between mt-2">
           <div className="flex items-center gap-1">
-            <Button type="button" size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-primary" onClick={() => imageInputRef.current?.click()}>
-              <ImagePlus className="h-4 w-4" />
+            <Button type="button" size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-primary" onClick={() => fileInputRef.current?.click()}>
+              <Paperclip className="h-4 w-4" />
             </Button>
-            <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
+            <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileSelect} />
           </div>
-          <Button size="sm" onClick={handleSend} disabled={(!content.trim() && !pendingImage) || addComment.isPending || uploadAttachment.isPending} className="gap-1.5">
+          <Button size="sm" onClick={handleSend} disabled={(!content.trim() && !pendingFile) || addComment.isPending || uploadAttachment.isPending} className="gap-1.5">
             <Send className="h-3 w-3" /> Enviar
           </Button>
         </div>
