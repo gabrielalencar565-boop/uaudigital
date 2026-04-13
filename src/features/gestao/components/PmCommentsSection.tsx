@@ -299,14 +299,14 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
   const [showMentions, setShowMentions] = useState(false);
   const [mentionSearch, setMentionSearch] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const addComment = useAddPmComment();
   const uploadAttachment = useUploadPmAttachment();
   const activityLogQ = usePmActivityLog(taskId);
   const activityLog = activityLogQ.data ?? [];
 
-  const [pendingImage, setPendingImage] = useState<{ file: File; preview: string } | null>(null);
-  const [imageDescription, setImageDescription] = useState("");
+  const [pendingFile, setPendingFile] = useState<{ file: File; preview: string | null; isImage: boolean } | null>(null);
+  const [fileDescription, setFileDescription] = useState("");
   const [mentionMap, setMentionMap] = useState<Record<string, string>>({});
   const [expanded, setExpanded] = useState(false);
   const [previewModal, setPreviewModal] = useState<PreviewModalData | null>(null);
@@ -330,21 +330,21 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
     return items;
   }, [comments, activityLog]);
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith("image/")) { toast.error("Apenas imagens são permitidas"); return; }
-    if (file.size > 50 * 1024 * 1024) { toast.error("Imagem muito grande (máx 50MB)"); return; }
-    const preview = URL.createObjectURL(file);
-    setPendingImage({ file, preview });
-    setImageDescription("");
-    if (imageInputRef.current) imageInputRef.current.value = "";
+    if (file.size > 200 * 1024 * 1024) { toast.error("Arquivo muito grande (máx 200MB)"); return; }
+    const isImage = file.type.startsWith("image/") || /\.(heic|heif)$/i.test(file.name);
+    const preview = isImage ? URL.createObjectURL(file) : null;
+    setPendingFile({ file, preview, isImage });
+    setFileDescription("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const clearPendingImage = () => {
-    if (pendingImage) URL.revokeObjectURL(pendingImage.preview);
-    setPendingImage(null);
-    setImageDescription("");
+  const clearPendingFile = () => {
+    if (pendingFile?.preview) URL.revokeObjectURL(pendingFile.preview);
+    setPendingFile(null);
+    setFileDescription("");
   };
 
   const handleSend = async () => {
