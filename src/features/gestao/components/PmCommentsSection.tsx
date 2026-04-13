@@ -348,26 +348,26 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
   };
 
   const handleSend = async () => {
-    if (!content.trim() && !pendingImage) return;
+    if (!content.trim() && !pendingFile) return;
 
     let imageUrl: string | null = null;
-    if (pendingImage) {
+    let fileName: string | undefined;
+    if (pendingFile) {
       try {
-        const att = await uploadAttachment.mutateAsync({ task_id: taskId, file: pendingImage.file });
+        const att = await uploadAttachment.mutateAsync({ task_id: taskId, file: pendingFile.file });
         imageUrl = att.public_url;
-      } catch { toast.error("Erro ao enviar imagem"); return; }
+        fileName = pendingFile.file.name;
+      } catch { toast.error("Erro ao enviar arquivo"); return; }
     }
 
     const linkUrl = extractUrl(content.trim());
 
-    // Fetch link preview data for storage
     let linkTitle: string | undefined;
     let linkImage: string | undefined;
     if (linkUrl && typingPreview) {
       linkTitle = typingPreview.title ?? undefined;
       linkImage = typingPreview.image ?? undefined;
     } else if (linkUrl) {
-      // Try to fetch if not yet loaded
       const data = await fetchLinkPreview(linkUrl);
       if (data) { linkTitle = data.title ?? undefined; linkImage = data.image ?? undefined; }
     }
@@ -375,16 +375,16 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
     const storageContent = contentToStorage(content.trim());
     await addComment.mutateAsync({
       task_id: taskId,
-      content: storageContent || (pendingImage ? (imageDescription || "Imagem anexada") : ""),
+      content: storageContent || (pendingFile ? (fileDescription || fileName || "Arquivo anexado") : ""),
       image_url: imageUrl ?? undefined,
-      image_description: imageDescription || undefined,
+      image_description: pendingFile ? (fileDescription || fileName) : undefined,
       link_url: linkUrl ?? undefined,
       link_title: linkTitle,
       link_image: linkImage,
     });
     setContent("");
     setMentionMap({});
-    clearPendingImage();
+    clearPendingFile();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
