@@ -1505,17 +1505,26 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
             <Button
               size="sm"
               className="group/done gap-1.5 min-w-[130px] bg-success text-success-foreground hover:bg-destructive/90 transition-colors duration-200"
-              onClick={async () => {
+              onClick={() => {
                 const sb = supabase as any;
                 const allIds = [task.id, ...childTasks.map(c => c.id)];
 
+                // Optimistic: invalidate immediately + toast
+                queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
+                queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
+                queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
+                toast.success("Tarefa desconcluída");
+
+                // Fire DB update in background
                 if (isCompletedSnapshot) {
-                  // Snapshot: keep stage, just reset status
-                  await sb.from("pm_tasks")
+                  sb.from("pm_tasks")
                     .update({ status_global: "backlog" })
-                    .in("id", allIds);
+                    .in("id", allIds)
+                    .then(() => {
+                      queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
+                      queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
+                    });
                 } else {
-                  // Normal entrega: revert to previous stage
                   const flowStages = Object.keys(flowConfig).length > 0
                     ? Object.entries(flowConfig)
                         .filter(([, v]: [string, any]) => v.enabled)
@@ -1524,14 +1533,14 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                     : PM_ACTIVE_STAGES.map(s => s.key);
                   const entregaIdx = flowStages.indexOf("entrega");
                   const prevStage = entregaIdx > 0 ? flowStages[entregaIdx - 1] : "agendamento";
-                  await sb.from("pm_tasks")
+                  sb.from("pm_tasks")
                     .update({ stage_current: prevStage, status_global: "backlog" })
-                    .in("id", allIds);
+                    .in("id", allIds)
+                    .then(() => {
+                      queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
+                      queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
+                    });
                 }
-                queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
-                queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
-                queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
-                toast.success("Tarefa desconcluída");
               }}
             >
               <span className="contents group-hover/done:hidden">
