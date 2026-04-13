@@ -429,72 +429,67 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       } else {
         // Snapshot current task as completed (stays in agenda)
         const snapshotDueDate = task.due_date ?? format(new Date(), "yyyy-MM-dd");
-        await sb.from("pm_tasks").update({
+
+        // Optimistic: mark current task as completed in cache immediately
+        await queryClient.cancelQueries({ queryKey: ["pm_tasks"] });
+        const markSnapshot = (old: PmTask[] | undefined) =>
+          old?.map(t => t.id === task.id ? { ...t, stage_current: completedStage as any, status_global: "concluido" as any, due_date: snapshotDueDate } : t);
+        queryClient.setQueriesData<PmTask[]>({ queryKey: ["pm_tasks"] }, markSnapshot);
+        toast.success(`Avançou para ${stageLabel(nextStage)}`);
+
+        // Fire DB operations — snapshot + create next stage task
+        sb.from("pm_tasks").update({
           stage_current: completedStage,
           status_global: "concluido",
           due_date: snapshotDueDate,
-        }).eq("id", task.id);
+        }).eq("id", task.id).then(async () => {
+          const fixedAssignee = getFixedAssignee(stageAssignees, nextStage, task.client_id);
+          const fixedWatchers_ = getFixedWatchers(stageAssignees, nextStage, task.client_id);
+          const nextDueDate = newDueDate ?? format(addDays(new Date(snapshotDueDate + "T12:00:00"), 1), "yyyy-MM-dd");
 
-        // Create new task for the next stage with correct assignee
-        const fixedAssignee = getFixedAssignee(stageAssignees, nextStage, task.client_id);
-        const fixedWatchers = getFixedWatchers(stageAssignees, nextStage, task.client_id);
-        const nextDueDate = newDueDate ?? format(addDays(new Date(snapshotDueDate + "T12:00:00"), 1), "yyyy-MM-dd");
+          const nextStageLabel = stageLabel(nextStage);
+          const currentStageLabel = stageLabel(completedStage);
+          let newTitle = task.title;
+          if (task.title.includes(` - ${currentStageLabel} - `)) {
+            newTitle = task.title.replace(` - ${currentStageLabel} - `, ` - ${nextStageLabel} - `);
+          } else if (task.title.includes(` - ${currentStageLabel}`)) {
+            newTitle = task.title.replace(` - ${currentStageLabel}`, ` - ${nextStageLabel}`);
+          }
 
-        // Build new title replacing the stage portion
-        const nextStageLabel = stageLabel(nextStage);
-        const currentStageLabel = stageLabel(completedStage);
-        let newTitle = task.title;
-        if (task.title.includes(` - ${currentStageLabel} - `)) {
-          newTitle = task.title.replace(` - ${currentStageLabel} - `, ` - ${nextStageLabel} - `);
-        } else if (task.title.includes(` - ${currentStageLabel}`)) {
-          newTitle = task.title.replace(` - ${currentStageLabel}`, ` - ${nextStageLabel}`);
-        }
+          const originId = task.origin_task_id ?? task.id;
+          const resolvedPostType = task.post_type
+            ?? (completedStage === "edicao_videos" ? "video" : completedStage === "design" ? "design" : undefined);
 
-        const originId = task.origin_task_id ?? task.id;
-        const resolvedPostType = task.post_type
-          ?? (completedStage === "edicao_videos" ? "video" : completedStage === "design" ? "design" : undefined);
+          const { data: { user } } = await supabase.auth.getUser();
+          const { data: newTask } = await sb.from("pm_tasks").insert({
+            client_id: task.client_id,
+            title: newTitle,
+            description: task.description ?? null,
+            stage_current: nextStage,
+            due_date: nextDueDate,
+            assignee_id: fixedAssignee !== undefined ? (fixedAssignee ?? null) : (task.assignee_id ?? null),
+            watchers: fixedAssignee !== undefined ? fixedWatchers_ : (task.watchers ?? []),
+            priority: task.priority,
+            project_id: task.project_id ?? null,
+            tags: task.tags ?? [],
+            is_extra_demand: task.is_extra_demand,
+            status_global: "backlog",
+            post_type: resolvedPostType ?? null,
+            origin_task_id: originId,
+            created_by: user?.id,
+          }).select().single();
 
-        const { data: { user } } = await supabase.auth.getUser();
-        const { data: newTask, error: createError } = await sb.from("pm_tasks").insert({
-          client_id: task.client_id,
-          title: newTitle,
-          description: task.description ?? null,
-          stage_current: nextStage,
-          due_date: nextDueDate,
-          assignee_id: fixedAssignee !== undefined ? (fixedAssignee ?? null) : (task.assignee_id ?? null),
-          watchers: fixedAssignee !== undefined ? fixedWatchers : (task.watchers ?? []),
-          priority: task.priority,
-          project_id: task.project_id ?? null,
-          tags: task.tags ?? [],
-          is_extra_demand: task.is_extra_demand,
-          status_global: "backlog",
-          post_type: resolvedPostType ?? null,
-          origin_task_id: originId,
-          created_by: user?.id,
-        }).select().single();
+          if (newTask) {
+            cloneChildrenToNewTask(newTask.id, nextStage);
+          }
 
-        if (createError) {
-          console.error("Error creating next stage task:", createError);
-          toast.error("Erro ao criar tarefa da próxima etapa");
-          return;
-        }
-
-        if (newTask) {
-          await cloneChildrenToNewTask(newTask.id, nextStage);
-        }
+          queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
+          queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
+          queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
+          queryClient.invalidateQueries({ queryKey: ["pm_activity_log"] });
+        });
+        return;
       }
-
-      // Invalidate queries to refresh UI after all DB operations complete
-      queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
-      queryClient.invalidateQueries({ queryKey: ["pm_activity_log"] });
-
-      toast.success(nextStage === "entrega" ? "Tarefa marcada como Entregue!" : `Avançou para ${stageLabel(nextStage)}`);
-    } catch (err) {
-      console.error("Error advancing stage:", err);
-      toast.error("Erro ao avançar etapa. Tente novamente.");
-    }
   };
 
   const findExistingAgendaTaskForStage = async (nextStage: string, referenceDueDate?: string) => {
