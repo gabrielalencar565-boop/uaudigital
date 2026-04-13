@@ -487,17 +487,23 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
       </div>
 
       <div className="border-t border-border/30 pt-3 relative">
-        {pendingImage && (
+        {pendingFile && (
           <div className="mb-2 relative inline-block">
-            <img src={pendingImage.preview} alt="Preview" className="rounded-lg max-h-32 max-w-[200px] object-cover border border-border/40" />
-            <button onClick={clearPendingImage} className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center">
+            {pendingFile.isImage && pendingFile.preview ? (
+              <img src={pendingFile.preview} alt="Preview" className="rounded-lg max-h-32 max-w-[200px] object-cover border border-border/40" />
+            ) : (
+              <div className="flex items-center gap-2 rounded-lg border border-border/40 bg-muted/30 px-3 py-2 max-w-[260px]">
+                <FileText className="h-5 w-5 text-muted-foreground shrink-0" />
+                <span className="text-xs truncate text-foreground/80">{pendingFile.file.name}</span>
+              </div>
+            )}
+            <button onClick={clearPendingFile} className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center">
               <X className="h-3 w-3" />
             </button>
-            <Input value={imageDescription} onChange={(e) => setImageDescription(e.target.value)} placeholder="Descrição da imagem (opcional)" className="mt-1.5 h-7 text-xs" />
+            <Input value={fileDescription} onChange={(e) => setFileDescription(e.target.value)} placeholder="Descrição (opcional)" className="mt-1.5 h-7 text-xs" />
           </div>
         )}
 
-        {/* Live link preview while typing */}
         {typingLoading && <LinkPreviewSkeleton />}
         {typingPreview && !typingLoading && extractUrl(content) && (
           <div className="mb-2">
@@ -535,12 +541,12 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
         )}
         <div className="flex items-center justify-between mt-2">
           <div className="flex items-center gap-1">
-            <Button type="button" size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-primary" onClick={() => imageInputRef.current?.click()}>
-              <ImagePlus className="h-4 w-4" />
+            <Button type="button" size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-primary" onClick={() => fileInputRef.current?.click()}>
+              <Paperclip className="h-4 w-4" />
             </Button>
-            <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
+            <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileSelect} />
           </div>
-          <Button size="sm" onClick={handleSend} disabled={(!content.trim() && !pendingImage) || addComment.isPending || uploadAttachment.isPending} className="gap-1.5">
+          <Button size="sm" onClick={handleSend} disabled={(!content.trim() && !pendingFile) || addComment.isPending || uploadAttachment.isPending} className="gap-1.5">
             <Send className="h-3 w-3" /> Enviar
           </Button>
         </div>
