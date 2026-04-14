@@ -135,10 +135,77 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
     });
   }, []);
 
+  // Detect cursor inside a spell-error word (Word-style)
+  const checkCursorForSpellError = useCallback(() => {
+    const sel = window.getSelection();
+    if (!sel || !editorRef.current?.contains(sel.anchorNode)) {
+      return;
+    }
+
+    // Only show spell popover when cursor is collapsed (no text selected, which would show toolbar)
+    if (!sel.isCollapsed) {
+      setSpellPopover(null);
+      return;
+    }
+
+    // Get cursor offset in plain text
+    const walker = document.createTreeWalker(editorRef.current, NodeFilter.SHOW_TEXT);
+    let cumOffset = 0;
+    let node: Text | null;
+    let cursorPlainOffset = -1;
+
+    while ((node = walker.nextNode() as Text | null)) {
+      if (node === sel.anchorNode) {
+        cursorPlainOffset = cumOffset + sel.anchorOffset;
+        break;
+      }
+      cumOffset += (node.textContent?.length || 0);
+    }
+
+    if (cursorPlainOffset < 0) { setSpellPopover(null); return; }
+
+    // Find if cursor is inside any error
+    const hitError = spellErrors.find(e =>
+      cursorPlainOffset >= e.offset && cursorPlainOffset <= e.offset + e.length
+    );
+
+    if (!hitError) { setSpellPopover(null); return; }
+
+    // Get the rect of the error word to position the popover
+    const walker2 = document.createTreeWalker(editorRef.current, NodeFilter.SHOW_TEXT);
+    let cum2 = 0;
+    let foundRect: DOMRect | null = null;
+    while ((node = walker2.nextNode() as Text | null)) {
+      const len = node.textContent?.length || 0;
+      if (cum2 + len > hitError.offset) {
+        const localStart = Math.max(hitError.offset - cum2, 0);
+        const localEnd = Math.min(hitError.offset + hitError.length - cum2, len);
+        try {
+          const range = document.createRange();
+          range.setStart(node, localStart);
+          range.setEnd(node, localEnd);
+          foundRect = range.getBoundingClientRect();
+        } catch {}
+        break;
+      }
+      cum2 += len;
+    }
+
+    if (foundRect && foundRect.width > 0) {
+      setSpellPopover({ error: hitError, rect: foundRect });
+    } else {
+      setSpellPopover(null);
+    }
+  }, [spellErrors]);
+
   useEffect(() => {
-    document.addEventListener("selectionchange", updateToolbarPosition);
-    return () => document.removeEventListener("selectionchange", updateToolbarPosition);
-  }, [updateToolbarPosition]);
+    const handleSelectionChange = () => {
+      updateToolbarPosition();
+      checkCursorForSpellError();
+    };
+    document.addEventListener("selectionchange", handleSelectionChange);
+    return () => document.removeEventListener("selectionchange", handleSelectionChange);
+  }, [updateToolbarPosition, checkCursorForSpellError]);
 
   const execCmd = useCallback((cmd: string) => {
     document.execCommand(cmd, false);
@@ -390,7 +457,6 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
       <SpellCheckOverlay
         editorRef={editorRef as React.RefObject<HTMLDivElement>}
         errors={spellErrors}
-        onErrorClick={(error, rect) => setSpellPopover({ error, rect })}
       />
 
       {/* Spell suggestion popover */}
