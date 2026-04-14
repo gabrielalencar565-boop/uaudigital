@@ -1863,6 +1863,7 @@ export type Database = {
           due_date: string
           id: string
           is_extra_demand: boolean
+          late_penalty_value: number | null
           point_value: number | null
           quantity: number
           stage: Database["public"]["Enums"]["stage_type"]
@@ -1883,6 +1884,7 @@ export type Database = {
           due_date: string
           id?: string
           is_extra_demand?: boolean
+          late_penalty_value?: number | null
           point_value?: number | null
           quantity?: number
           stage: Database["public"]["Enums"]["stage_type"]
@@ -1903,6 +1905,7 @@ export type Database = {
           due_date?: string
           id?: string
           is_extra_demand?: boolean
+          late_penalty_value?: number | null
           point_value?: number | null
           quantity?: number
           stage?: Database["public"]["Enums"]["stage_type"]
