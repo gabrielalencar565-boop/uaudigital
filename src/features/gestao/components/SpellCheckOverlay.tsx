@@ -6,13 +6,11 @@ interface ErrorRect {
   left: number;
   width: number;
   height: number;
-  error: SpellError;
 }
 
 interface Props {
   editorRef: RefObject<HTMLDivElement>;
   errors: SpellError[];
-  onErrorClick: (error: SpellError, rect: DOMRect) => void;
 }
 
 function findTextNodesIn(node: Node): Text[] {
@@ -23,7 +21,12 @@ function findTextNodesIn(node: Node): Text[] {
   return result;
 }
 
-export function SpellCheckOverlay({ editorRef, errors, onErrorClick }: Props) {
+/**
+ * Pure visual overlay – renders wavy red underlines on spelling errors.
+ * Completely non-interactive (pointer-events: none) so the underlying
+ * contenteditable remains fully editable.
+ */
+export function SpellCheckOverlay({ editorRef, errors }: Props) {
   const [rects, setRects] = useState<ErrorRect[]>([]);
 
   const recalc = useCallback(() => {
@@ -33,7 +36,6 @@ export function SpellCheckOverlay({ editorRef, errors, onErrorClick }: Props) {
     const editorRect = el.getBoundingClientRect();
     const textNodes = findTextNodesIn(el);
 
-    // Build a map of cumulative offsets for text nodes (plain text offset)
     let cumOffset = 0;
     const nodeMap: { node: Text; start: number; end: number }[] = [];
     for (const tn of textNodes) {
@@ -48,7 +50,6 @@ export function SpellCheckOverlay({ editorRef, errors, onErrorClick }: Props) {
       const errStart = err.offset;
       const errEnd = err.offset + err.length;
 
-      // Find which text nodes overlap this error
       for (const nm of nodeMap) {
         if (nm.end <= errStart || nm.start >= errEnd) continue;
 
@@ -68,7 +69,6 @@ export function SpellCheckOverlay({ editorRef, errors, onErrorClick }: Props) {
               left: r.left - editorRect.left + el.scrollLeft,
               width: r.width,
               height: r.height,
-              error: err,
             });
           }
         } catch {
@@ -84,7 +84,6 @@ export function SpellCheckOverlay({ editorRef, errors, onErrorClick }: Props) {
     recalc();
   }, [recalc]);
 
-  // Recalculate on scroll/resize
   useEffect(() => {
     const el = editorRef.current;
     if (!el) return;
@@ -110,28 +109,15 @@ export function SpellCheckOverlay({ editorRef, errors, onErrorClick }: Props) {
     >
       {rects.map((r, i) => (
         <div
-          key={`${r.error.offset}-${r.error.length}-${i}`}
-          className="absolute cursor-pointer"
+          key={i}
+          className="absolute"
           style={{
             top: r.top,
             left: r.left,
             width: r.width,
             height: r.height,
-            pointerEvents: "auto",
-          }}
-          onMouseDown={(e) => {
-            e.stopPropagation();
-            e.preventDefault();
-          }}
-          onClick={(e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            const container = e.currentTarget;
-            const domRect = container.getBoundingClientRect();
-            onErrorClick(r.error, domRect);
           }}
         >
-          {/* Wavy underline at the bottom */}
           <div
             className="absolute bottom-0 left-0 w-full"
             style={{
