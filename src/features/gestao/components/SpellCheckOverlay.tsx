@@ -119,9 +119,15 @@ export function SpellCheckOverlay({ editorRef, errors, onErrorClick }: Props) {
             height: r.height,
             pointerEvents: "auto",
           }}
+          onMouseDown={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+          }}
           onClick={(e) => {
             e.stopPropagation();
-            const domRect = (e.target as HTMLElement).getBoundingClientRect();
+            e.preventDefault();
+            const container = e.currentTarget;
+            const domRect = container.getBoundingClientRect();
             onErrorClick(r.error, domRect);
           }}
         >
