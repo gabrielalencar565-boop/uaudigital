@@ -14,7 +14,7 @@ import { SpellSuggestionPopover } from "./SpellSuggestionPopover";
 
 const AI_ACTIONS = [
   { key: "improve", label: "Melhorar a escrita", icon: Sparkles },
-  { key: "grammar", label: "Corrigir ortografia e gramática", icon: SpellCheck },
+  { key: "grammar", label: "Corrigir ortografia e gramática", icon: SpellCheckIcon },
   { key: "longer", label: "Tornar mais longo", icon: ArrowUpRight },
   { key: "shorter", label: "Tornar mais curto", icon: ArrowDownRight },
   { key: "simplify", label: "Simplificar a escrita", icon: Feather },
