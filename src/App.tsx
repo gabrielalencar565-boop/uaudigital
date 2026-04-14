@@ -79,7 +79,7 @@ const App = () => {
           <BrowserRouter>
             <AppRoutes />
           </BrowserRouter>
-          <PwaInstallPrompt />
+          
         </TooltipProvider>
       </QueryClientProvider>
     </ThemeProvider>

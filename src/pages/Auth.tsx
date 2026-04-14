@@ -466,6 +466,7 @@ export default function Auth() {
       >
         <MasonryGallery avatars={galleryPhotos} />
       </div>
+      <PwaInstallPrompt />
     </div>
   );
 }
