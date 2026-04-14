@@ -24,6 +24,7 @@ import { useTeamMembers } from "@/features/data/queries";
 import { useQuery as useQ } from "@tanstack/react-query";
 import { useRole } from "@/hooks/use-role";
 import type { PmTask } from "@/features/gestao/pm-types";
+import { normalizePmTagStageKey } from "@/features/gestao/utils/normalize-pm-tag-stage";
 
 type TaskForReport = {
   id: string;
@@ -37,6 +38,7 @@ type TaskForReport = {
   is_extra_demand: boolean;
   quantity: number;
   point_value: number | null;
+  late_penalty_value: number | null;
   description: string | null;
   client?: { name: string } | null;
 };
@@ -91,15 +93,16 @@ function calcPoints(task: TaskForReport, configMap: Map<string, ScoringConfigRow
 
   const cfg = configMap.get(task.stage);
   if (!onTime) {
+    if (task.late_penalty_value != null) return task.late_penalty_value;
+
     let penalty = cfg?.late_penalty ?? -1;
-    // Also sum tag late penalties
     const pmId = extractPmTaskId(task.description);
     if (pmId && pmTagsMap) {
       const tags = pmTagsMap.get(pmId);
       if (tags) {
         for (const tag of tags) {
           const tagName = tag.split(":")[0];
-          const tagKey = "tag_" + tagName.toLowerCase().replace(/\s+/g, "_");
+          const tagKey = normalizePmTagStageKey(tagName);
           const tagCfg = configMap.get(tagKey);
           if (tagCfg) penalty += tagCfg.late_penalty;
         }
@@ -138,7 +141,7 @@ function calcExpectedPoints(task: TaskForReport, configMap: Map<string, ScoringC
       let tagSum = 0;
       for (const tag of tags) {
         const tagName = tag.split(":")[0];
-        const tagKey = "tag_" + tagName.toLowerCase().replace(/\s+/g, "_");
+        const tagKey = normalizePmTagStageKey(tagName);
         const tagCfg = configMap.get(tagKey);
         if (tagCfg) tagSum += tagCfg.base_points;
       }
@@ -211,7 +214,7 @@ export function AdminDeadlineReport({
       const end = `${yyyymm(year, month)}-${String(lastDay).padStart(2, "0")}`;
       const { data, error } = await supabase
         .from("tasks")
-        .select("id,title,due_date,status,completed_at,assigned_user_id,client_id,stage,is_extra_demand,quantity,point_value,description,client:clients(name)")
+        .select("id,title,due_date,status,completed_at,assigned_user_id,client_id,stage,is_extra_demand,quantity,point_value,late_penalty_value,description,client:clients(name)")
         .is("deleted_at", null)
         .gte("due_date", start)
         .lte("due_date", end)
