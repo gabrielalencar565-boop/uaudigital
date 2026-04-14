@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Check, X } from "lucide-react";
 import type { SpellError } from "../hooks/use-spellcheck";
 
@@ -12,6 +12,7 @@ interface Props {
 
 export function SpellSuggestionPopover({ error, anchorRect, onSelect, onIgnore, onClose }: Props) {
   const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -28,14 +29,33 @@ export function SpellSuggestionPopover({ error, anchorRect, onSelect, onIgnore, 
     };
   }, [onClose]);
 
+  useLayoutEffect(() => {
+    if (!ref.current) return;
+    const el = ref.current;
+    const h = el.offsetHeight;
+    const w = el.offsetWidth;
+    const gap = 8;
+
+    let top = anchorRect.top - h - gap;
+    if (top < 4) {
+      top = anchorRect.bottom + gap;
+    }
+
+    let left = anchorRect.left + anchorRect.width / 2 - w / 2;
+    left = Math.max(8, Math.min(left, window.innerWidth - w - 8));
+
+    setPos({ top, left });
+  }, [anchorRect]);
+
   const bestSuggestion = error.suggestions[0];
   if (!bestSuggestion) return null;
 
   const style: React.CSSProperties = {
     position: "fixed",
-    top: anchorRect.top - 44,
-    left: Math.max(8, anchorRect.left + anchorRect.width / 2 - 70),
+    top: pos?.top ?? -9999,
+    left: pos?.left ?? -9999,
     zIndex: 9999,
+    visibility: pos ? "visible" : "hidden",
   };
 
   return (
