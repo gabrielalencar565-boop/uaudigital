@@ -1,13 +1,16 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import {
   Bold, Italic, Underline, Strikethrough, List, ListOrdered,
-  Wand2, Loader2, SpellCheck, ArrowUpRight, ArrowDownRight, Feather, Sparkles,
+  Wand2, Loader2, SpellCheck as SpellCheckIcon, ArrowUpRight, ArrowDownRight, Feather, Sparkles,
   Undo2, Redo2, Type, Heading1, Heading2, Heading3, Heading4, ChevronDown, Check,
-  Clock, Maximize2, CheckCircle2,
+  Clock, Maximize2, CheckCircle2, AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useSpellcheck, type SpellError } from "../hooks/use-spellcheck";
+import { SpellCheckOverlay } from "./SpellCheckOverlay";
+import { SpellSuggestionPopover } from "./SpellSuggestionPopover";
 
 const AI_ACTIONS = [
   { key: "improve", label: "Melhorar a escrita", icon: Sparkles },
