@@ -1,102 +1,113 @@
 
-## Diagnóstico
 
-Confirmei 2 causas principais no fluxo de conclusão do Planejamento:
+## Problema
+O editor de descrição/legenda (SmartCaptionEditor) não possui correção ortográfica em tempo real. O usuário precisa de um sistema tipo Word que destaque erros e ofereça sugestões.
 
-1. **Conclusão acontece cedo demais**
-   - Em `PmTaskDetailDialog.tsx`, o ramo de `handleConcluido()` para `planejamento` já grava `status_global = "concluido"` no banco e no cache **antes** de terminar a fila de vinculações.
-   - Isso faz a tarefa entrar em modo de snapshot concluído enquanto o diálogo de vínculo ainda está sendo aberto/processado, o que explica o comportamento de **“aparece e some”**.
+## Desafio técnico
+O SmartCaptionEditor usa `contentEditable` com `document.execCommand`. Adicionar underlining de erros ortográficos diretamente no HTML do contentEditable é complexo — inserir `<span>` para destacar erros pode quebrar o cursor, conflitar com formatação existente e causar problemas de sincronização.
 
-2. **Busca da tarefa existente usa a data errada no split**
-   - Em `processSplitQueue()`, a busca de tarefa já existente para `design`/`edicao_videos` está usando `snapshotDueDate`.
-   - Para tarefas da próxima etapa, o correto é procurar com base em **`nextDueDate`**. Isso pode fazer uma tarefa já criada não ser encontrada, principalmente quando a próxima etapa cai em outra janela/mês.
+## Solução
+Criar uma **camada de overlay** sobre o editor que renderiza os sublinhados ondulados vermelhos sem modificar o HTML do contentEditable. Isso preserva 100% do comportamento atual do editor.
 
-## Regras já confirmadas
+### Arquitetura
 
-A regra de negócio que você pediu já existe na busca e deve ser mantida:
-- **não vincular demanda extra**
-- **não vincular tarefa já concluída**
+```text
+┌─────────────────────────────────┐
+│  SmartCaptionEditor (existing)  │
+│  ┌───────────────────────────┐  │
+│  │ contentEditable div       │  │  ← texto real, sem alteração
+│  │ (position: relative)      │  │
+│  └───────────────────────────┘  │
+│  ┌───────────────────────────┐  │
+│  │ SpellCheckOverlay         │  │  ← camada de SVG/CSS com 
+│  │ (position: absolute,      │  │     underlining ondulado
+│  │  pointer-events: none)    │  │
+│  └───────────────────────────┘  │
+│  ┌───────────────────────────┐  │
+│  │ SuggestionPopover         │  │  ← popover ao clicar em erro
+│  └───────────────────────────┘  │
+└─────────────────────────────────┘
+```
 
-Hoje isso já está filtrado por:
-- `.eq("is_extra_demand", false)`
-- `.neq("status_global", "concluido")`
+### Componentes a criar/modificar
 
-Então **não precisa mudança de banco nem de permissões**. O problema é de fluxo no frontend.
+1. **`src/features/gestao/hooks/use-spellcheck.ts`** — Hook customizado
+   - Recebe o texto plain-text extraído do editor
+   - Debounce de 500ms
+   - Chama a API do LanguageTool (`POST https://api.languagetool.org/v2/check`)
+   - Retorna array de `SpellError[]` com `{ offset, length, message, suggestions[], rule }`
+   - Cache inteligente: só re-verifica trechos alterados quando possível
 
-## Plano de correção
+2. **`src/features/gestao/components/SpellCheckOverlay.tsx`** — Overlay visual
+   - Recebe `editorRef` e lista de erros
+   - Usa `Range` API para localizar cada erro no DOM do editor
+   - Renderiza `<div>` posicionado absolutamente com `border-bottom: 2px wavy red` sobre cada palavra
+   - `pointer-events: none` para não interferir na edição
+   - Recalcula posições on scroll/resize
 
-### 1. Adiar a conclusão real do Planejamento
-No fluxo de `planejamento`, vou remover a conclusão antecipada.
+3. **`src/features/gestao/components/SpellSuggestionPopover.tsx`** — Popover de sugestões
+   - Aparece ao clicar com botão direito ou clique normal sobre uma palavra com erro
+   - Mostra: mensagem do erro, lista de sugestões, botão "Ignorar"
+   - "Corrigir tudo" quando há múltiplos erros do mesmo tipo
+   - Ao selecionar sugestão, substitui o texto no editor e re-trigger spellcheck
 
-Em vez de:
-- marcar pai/filhas como concluídas logo no começo
-- abrir os diálogos depois
+4. **Modificar `SmartCaptionEditor.tsx`**
+   - Integrar o hook `useSpellcheck` passando o texto plain-text
+   - Adicionar `SpellCheckOverlay` como filho posicionado
+   - Detectar clique em palavra com erro para abrir `SpellSuggestionPopover`
+   - Indicador visual discreto no status bar: "🔴 3 erros" ou "✅ Sem erros"
 
-o fluxo ficará assim:
-1. detectar os splits de **Vídeo** e **Design**
-2. abrir os diálogos de vínculo, se existirem tarefas elegíveis
-3. criar/vincular as próximas tarefas
-4. **só no final** marcar o Planejamento como concluído
+### Fluxo de dados
 
-Isso evita que a UI entre em estado de concluído antes da hora.
+1. Usuário digita → `handleInput` dispara (já existente)
+2. Após debounce de 500ms → extrai texto puro do editor
+3. `POST` para LanguageTool com `{ text, language: "pt-BR" }`
+4. Resposta retorna `matches[]` com offset/length/sugestões
+5. Overlay renderiza sublinhados nas posições corretas
+6. Clique em erro → popover com sugestões
+7. Selecionar sugestão → substitui texto via Range API → re-check
 
-### 2. Fazer o `finalizePlanejamentoCompletion()` concluir de verdade
-Hoje essa função praticamente só sincroniza/invalida dados.
+### API LanguageTool (gratuita, sem chave)
 
-Vou mover para ela a finalização real:
-- atualizar pai e subtarefas originais para `status_global = "concluido"`
-- aplicar atualização otimista no cache só nesse momento
-- sincronizar pontuação
-- invalidar queries ao final
+```
+POST https://api.languagetool.org/v2/check
+Content-Type: application/x-www-form-urlencoded
 
-Assim a conclusão fica exatamente na ordem correta: **primeiro vínculo/criação, depois conclusão**.
+text=Ola%20mundo&language=pt-BR
+```
 
-### 3. Corrigir a busca de tarefa existente para Design/Vídeo
-No `processSplitQueue()`, vou trocar a busca para usar **`nextDueDate`** ao procurar tarefa já existente da próxima etapa.
+### CSS do sublinhado ondulado
 
-Resultado:
-- se já existir **Design**, aparece opção de vincular
-- se já existir **Vídeo**, aparece opção de vincular
-- se não existir, o sistema cria normalmente
+```css
+.spell-error-underline {
+  position: absolute;
+  pointer-events: none;
+  border-bottom: 2px wavy #ef4444;
+  z-index: 1;
+}
+```
 
-### 4. Manter o diálogo estável até o fim da fila
-Vou preservar a lógica para o diálogo só fechar quando a fila terminar, mas sem depender do estado “concluído” da tarefa.
+### Performance
+- Debounce de 500ms evita chamadas excessivas
+- Cache do último texto verificado — não re-envia se texto não mudou
+- Erros "ignorados" ficam em estado local (não re-aparecem)
+- Overlay recalcula posições apenas quando erros ou scroll mudam
 
-Também vou garantir que:
-- fechar/cancelar o diálogo limpa os estados pendentes
-- cancelar **não conclui** o Planejamento por engano
-- a abertura do próximo diálogo (Vídeo → Design) não seja interrompida por mudança prematura de status
+### Experiência do usuário
+- Sublinhado vermelho ondulado aparece suavemente (fade-in)
+- Cursor nunca é afetado (overlay é separado do contentEditable)
+- Popover fecha automaticamente ao continuar digitando
+- Status bar mostra contagem de erros
+- Botão "Corrigir tudo" para aplicar todas as sugestões de uma vez
 
-## Arquivo principal a ajustar
+## Arquivos
 
-- `src/features/gestao/components/PmTaskDetailDialog.tsx`
+| Ação | Arquivo |
+|------|---------|
+| Criar | `src/features/gestao/hooks/use-spellcheck.ts` |
+| Criar | `src/features/gestao/components/SpellCheckOverlay.tsx` |
+| Criar | `src/features/gestao/components/SpellSuggestionPopover.tsx` |
+| Editar | `src/features/gestao/components/SmartCaptionEditor.tsx` |
 
-Possivelmente **sem necessidade** de mexer no `LinkOrDateDialog.tsx`, porque o problema atual está na ordem das ações no pai.
+Sem necessidade de migration, edge function ou chave de API.
 
-## Validação esperada após a correção
-
-### Cenário 1
-Planejamento com **Vídeo já criado** e **Design já criado**:
-- clicar em **Concluir**
-- aparecer vínculo de um
-- depois aparecer vínculo do outro
-- **só depois** o Planejamento fica concluído
-
-### Cenário 2
-Planejamento com só uma tarefa existente:
-- aparece vínculo apenas para a que existe
-- a outra é criada automaticamente
-- no fim, Planejamento fica concluído
-
-### Cenário 3
-Se existir tarefa de próxima etapa que seja:
-- **demanda extra**, ou
-- **já concluída**
-
-ela **não deve aparecer** como opção de vínculo.
-
-## Detalhes técnicos
-
-- Não há necessidade de migration, tabela nova, RLS ou backend.
-- A correção é totalmente no controle de estado e na sequência de execução do fluxo de `planejamento`.
-- Vou manter a fluidez já introduzida no split em background, mas sem sacrificar a ordem correta de conclusão.
