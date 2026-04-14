@@ -1,18 +1,20 @@
 
 
-## Problema
-Ao clicar em uma palavra com erro no título, o `stopPropagation` no `handleErrorClick` não impede o `onClick` do `<span>` pai (que envolve todos os segmentos), porque ambos estão no mesmo elemento DOM hierárquico. Resultado: o popover aparece MAS o título também entra em modo de edição.
+## Ajuste de posicionamento do popover de correção
 
-## Solução
-Separar os handlers: o `onClick` (que ativa modo edição) deve ser aplicado apenas nos segmentos de texto **sem erro**, não no wrapper geral. Os segmentos com erro terão apenas o handler do popover.
+### Problema
+O popover de sugestão está usando `top: anchorRect.top - 44` (offset fixo de 44px), o que faz ele cobrir parcialmente a palavra. Precisa aparecer **acima** da palavra sem sobrepô-la.
 
-## Alteração
+### Solução
+No `SpellSuggestionPopover.tsx`, calcular a posição dinâmica com base na altura real do popover usando um `useEffect` + `ref.current.offsetHeight`, garantindo um gap entre o popover e a palavra.
 
-**`src/features/gestao/components/SpellCheckText.tsx`**
+### Alteração em `SpellSuggestionPopover.tsx`
 
-- Remover `onClick={onClick}` do `<span>` wrapper pai (linha 81)
-- Adicionar `onClick={onClick}` apenas nos segmentos de texto normal (não-erro), nas linhas 53 e 76
-- Manter `stopPropagation` nos segmentos de erro como segurança extra
+1. Após o popover renderizar, usar `useLayoutEffect` para medir sua altura real e reposicionar
+2. Calcular `top = anchorRect.top - popoverHeight - 8` (8px de gap)
+3. Centralizar horizontalmente: `left = anchorRect.left + anchorRect.width / 2 - popoverWidth / 2`
+4. Clampar para não sair da tela: `Math.max(8, Math.min(left, window.innerWidth - popoverWidth - 8))`
+5. Se não couber acima, posicionar abaixo: `top = anchorRect.bottom + 8`
 
-Assim, clicar em "Aniversario" (erro) → só abre o popover. Clicar em qualquer outra parte do título → entra em modo edição normalmente.
+Resultado: o popover aparece flutuando **acima** da palavra com um pequeno espaço, sem cobri-la.
 
