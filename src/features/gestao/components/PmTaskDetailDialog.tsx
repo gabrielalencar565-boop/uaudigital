@@ -1315,7 +1315,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         {isCompletedSnapshot ? (
           <h1 className="text-xl sm:text-2xl font-bold text-muted-foreground">{task.title}</h1>
         ) : editingTitle ? (
-          <Input autoFocus value={titleDraft} onChange={(e) => setTitleDraft(e.target.value)} onBlur={saveTitle} onKeyDown={(e) => e.key === "Enter" && saveTitle()} className="text-xl sm:text-2xl font-bold border-0 bg-transparent p-0 h-auto focus-visible:ring-0 focus-visible:ring-offset-0" />
+          <Input autoFocus value={titleDraft} onChange={(e) => setTitleDraft(e.target.value)} onBlur={saveTitle} onKeyDown={(e) => e.key === "Enter" && saveTitle()} className="text-xl sm:text-2xl font-bold border-0 bg-transparent p-0 h-auto leading-normal focus-visible:ring-0 focus-visible:ring-offset-0" style={{ fontSize: "inherit", lineHeight: "inherit", minHeight: "2rem" }} />
         ) : (
           <h1 className="cursor-pointer text-xl sm:text-2xl font-bold hover:text-primary transition-colors">
             <SpellCheckText
