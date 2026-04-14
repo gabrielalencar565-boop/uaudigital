@@ -1,17 +1,20 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import {
   Bold, Italic, Underline, Strikethrough, List, ListOrdered,
-  Wand2, Loader2, SpellCheck, ArrowUpRight, ArrowDownRight, Feather, Sparkles,
+  Wand2, Loader2, SpellCheck as SpellCheckIcon, ArrowUpRight, ArrowDownRight, Feather, Sparkles,
   Undo2, Redo2, Type, Heading1, Heading2, Heading3, Heading4, ChevronDown, Check,
-  Clock, Maximize2, CheckCircle2,
+  Clock, Maximize2, CheckCircle2, AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useSpellcheck, type SpellError } from "../hooks/use-spellcheck";
+import { SpellCheckOverlay } from "./SpellCheckOverlay";
+import { SpellSuggestionPopover } from "./SpellSuggestionPopover";
 
 const AI_ACTIONS = [
   { key: "improve", label: "Melhorar a escrita", icon: Sparkles },
-  { key: "grammar", label: "Corrigir ortografia e gramática", icon: SpellCheck },
+  { key: "grammar", label: "Corrigir ortografia e gramática", icon: SpellCheckIcon },
   { key: "longer", label: "Tornar mais longo", icon: ArrowUpRight },
   { key: "shorter", label: "Tornar mais curto", icon: ArrowDownRight },
   { key: "simplify", label: "Simplificar a escrita", icon: Feather },
@@ -60,6 +63,16 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
   const [historyExpanded, setHistoryExpanded] = useState(false);
   const [history, setHistory] = useState<{ html: string; time: Date }[]>([]);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const [plainText, setPlainText] = useState("");
+  const [spellPopover, setSpellPopover] = useState<{ error: SpellError; rect: DOMRect } | null>(null);
+
+  const stripHtmlToPlain = (html: string) => {
+    const tmp = document.createElement("div");
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || "";
+  };
+
+  const { errors: spellErrors, ignoreWord, recheck: recheckSpelling } = useSpellcheck(plainText);
 
   // Sync content when value changes externally (e.g. switching between subtasks)
   const lastSyncedValue = useRef(value);
@@ -69,12 +82,14 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
     if (value !== lastSyncedValue.current) {
       editorRef.current.innerHTML = value || "";
       lastSyncedValue.current = value;
+      setPlainText(stripHtmlToPlain(value || ""));
       if (value) {
         setHistory([{ html: value, time: new Date() }]);
       }
     } else if (!editorRef.current.innerHTML && value) {
       // Initial mount
       editorRef.current.innerHTML = value;
+      setPlainText(stripHtmlToPlain(value));
       setHistory([{ html: value, time: new Date() }]);
     }
   }, [value]);
@@ -83,11 +98,13 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
   const handleInput = useCallback(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     setSaveStatus("saving");
+    setSpellPopover(null);
     debounceRef.current = setTimeout(() => {
       if (editorRef.current) {
         const html = editorRef.current.innerHTML;
         lastSyncedValue.current = html;
         onChange(html);
+        setPlainText(stripHtmlToPlain(html));
         setHistory(prev => {
           const last = prev[prev.length - 1];
           if (last?.html === html) return prev;
@@ -204,6 +221,47 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
   const formatTime = (d: Date) =>
     d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
+  // Spell correction: replace word in editor
+  const handleSpellReplace = useCallback((error: SpellError, replacement: string) => {
+    const el = editorRef.current;
+    if (!el) return;
+
+    // Walk text nodes to find the error offset
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    let cumOffset = 0;
+    let node: Text | null;
+    while ((node = walker.nextNode() as Text | null)) {
+      const len = node.textContent?.length || 0;
+      if (cumOffset + len > error.offset) {
+        const localStart = error.offset - cumOffset;
+        const localEnd = localStart + error.length;
+        const range = document.createRange();
+        range.setStart(node, localStart);
+        range.setEnd(node, Math.min(localEnd, len));
+
+        // If error spans multiple nodes, just handle first
+        range.deleteContents();
+        range.insertNode(document.createTextNode(replacement));
+
+        // Normalize to merge adjacent text nodes
+        el.normalize();
+
+        const html = el.innerHTML;
+        lastSyncedValue.current = html;
+        onChange(html);
+        setPlainText(stripHtmlToPlain(html));
+        break;
+      }
+      cumOffset += len;
+    }
+    setSpellPopover(null);
+  }, [onChange]);
+
+  const handleSpellIgnore = useCallback((error: SpellError) => {
+    ignoreWord(error.word);
+    setSpellPopover(null);
+  }, [ignoreWord]);
+
   return (
     <div className={cn("relative", className)}>
       {/* Top-right status bar */}
@@ -216,6 +274,13 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
           </div>
         )}
 
+        {/* Spell error count */}
+        {spellErrors.length > 0 && (
+          <div className="flex items-center gap-1 text-[11px] text-destructive pr-1 border-r border-border/30">
+            <AlertCircle className="h-3 w-3" />
+            <span>{spellErrors.length} {spellErrors.length === 1 ? "erro" : "erros"}</span>
+          </div>
+        )}
         {/* History toggle */}
         <button
           type="button"
@@ -319,6 +384,24 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
         style={{ minHeight }}
         suppressContentEditableWarning
       />
+
+      {/* Spell check overlay */}
+      <SpellCheckOverlay
+        editorRef={editorRef as React.RefObject<HTMLDivElement>}
+        errors={spellErrors}
+        onErrorClick={(error, rect) => setSpellPopover({ error, rect })}
+      />
+
+      {/* Spell suggestion popover */}
+      {spellPopover && (
+        <SpellSuggestionPopover
+          error={spellPopover.error}
+          anchorRect={spellPopover.rect}
+          onSelect={(replacement) => handleSpellReplace(spellPopover.error, replacement)}
+          onIgnore={() => handleSpellIgnore(spellPopover.error)}
+          onClose={() => setSpellPopover(null)}
+        />
+      )}
 
       {/* Floating toolbar */}
       {toolbarPos && !aiLoading && (
