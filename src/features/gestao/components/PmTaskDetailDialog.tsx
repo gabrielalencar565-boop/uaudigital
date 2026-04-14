@@ -40,6 +40,7 @@ import { toast } from "sonner";
 import { SmartCaptionEditor } from "./SmartCaptionEditor";
 import { LinkOrDateDialog } from "./LinkOrDateDialog";
 import { SpellCheckText } from "./SpellCheckText";
+import { EditableTitleWithSpellCheck } from "./EditableTitleWithSpellCheck";
 import { supabase } from "@/integrations/supabase/client";
 
 function initials(n: string) {
