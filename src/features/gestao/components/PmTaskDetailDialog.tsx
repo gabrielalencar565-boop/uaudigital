@@ -708,9 +708,34 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   };
 
   const finalizePlanejamentoCompletion = async (deferred: { allIds: string[]; completedStage: string; snapshotDueDate: string }) => {
-    // DB writes already happened in handleConcluido, just sync scoring
+    const sb = supabase as any;
+
+    // Optimistic cache update — mark as completed NOW (after all splits are done)
+    const optimisticUpdater = (old: PmTask[] | undefined) => old?.map((item) => {
+      if (item.id === task.id) {
+        return { ...item, stage_current: deferred.completedStage as any, status_global: "concluido" as any, due_date: deferred.snapshotDueDate };
+      }
+      if (deferred.allIds.includes(item.id)) {
+        return { ...item, status_global: "concluido" as any };
+      }
+      return item;
+    });
+    queryClient.setQueriesData<PmTask[]>({ queryKey: ["pm_tasks"] }, optimisticUpdater);
+    queryClient.setQueriesData<PmTask[]>({ queryKey: ["pm_child_tasks"] }, optimisticUpdater);
+    queryClient.setQueriesData<PmTask[]>({ queryKey: ["pm_child_tasks_all"] }, optimisticUpdater);
+
+    // DB writes — mark parent + children as concluído
+    void Promise.all([
+      sb.from("pm_tasks").update({ stage_current: deferred.completedStage, status_global: "concluido", due_date: deferred.snapshotDueDate }).eq("id", task.id),
+      ...(deferred.allIds.length > 1
+        ? [sb.from("pm_tasks").update({ status_global: "concluido" }).in("id", deferred.allIds.filter((id: string) => id !== task.id))]
+        : []),
+    ]).catch((e: any) => console.error("Error marking planejamento as done:", e));
+
+    // Sync scoring
     syncCompletedStage(deferred.completedStage);
     invalidatePmTaskQueries();
+    toast.success("Planejamento concluído!");
   };
 
   const processSplitQueue = async (
@@ -730,7 +755,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     }
 
     const [current, ...remaining] = splits;
-    const existing = await findExistingAgendaTaskForStage(current.stage, snapshotDueDate);
+    const existing = await findExistingAgendaTaskForStage(current.stage, nextDueDate);
 
     if (existing) {
       setPendingSplit({
@@ -824,34 +849,8 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
         const deferredCompletion = { allIds, completedStage, snapshotDueDate };
 
-        // Write to DB immediately (don't rely on optimistic-only)
-        const sb = supabase as any;
-        void Promise.all([
-          sb.from("pm_tasks").update({ stage_current: completedStage, status_global: "concluido", due_date: snapshotDueDate }).eq("id", task.id),
-          ...(childTasks.length > 0
-            ? [sb.from("pm_tasks").update({ status_global: "concluido" }).in("id", childTasks.map(c => c.id))]
-            : []),
-        ]).catch((e: any) => console.error("Error marking planejamento as done:", e));
-
-        const optimisticUpdater = (old: PmTask[] | undefined) => old?.map((item) => {
-          if (item.id === task.id) {
-            return {
-              ...item,
-              stage_current: completedStage as any,
-              status_global: "concluido" as any,
-              due_date: snapshotDueDate,
-            };
-          }
-          if (allIds.includes(item.id)) {
-            return { ...item, status_global: "concluido" as any };
-          }
-          return item;
-        });
-
-        queryClient.setQueriesData<PmTask[]>({ queryKey: ["pm_tasks"] }, optimisticUpdater);
-        queryClient.setQueriesData<PmTask[]>({ queryKey: ["pm_child_tasks"] }, optimisticUpdater);
-        queryClient.setQueriesData<PmTask[]>({ queryKey: ["pm_child_tasks_all"] }, optimisticUpdater);
-        toast.success("Planejamento concluído! Criando próximas tarefas...");
+        // Do NOT mark as concluído here — defer until all splits are processed
+        // This prevents the dialog from switching to "completed snapshot" mode prematurely
 
         // Use await instead of void to ensure sequential dialog flow works
         try {
