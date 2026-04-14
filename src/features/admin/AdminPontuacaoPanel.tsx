@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { TAG_COLORS, tagColor } from "@/features/gestao/pm-constants";
 import { usePmTags, useDeletePmTag } from "@/features/gestao/hooks/use-pm-tags";
+import { normalizePmTagStageKey } from "@/features/gestao/utils/normalize-pm-tag-stage";
 
 const sb = supabase as any;
 
@@ -95,7 +96,7 @@ export function AdminPontuacaoPanel() {
       if (tagErr) throw tagErr;
 
       // 2. Create scoring_config entry
-      const stageKey = `tag_${name.toLowerCase().replace(/\s+/g, "_")}`;
+      const stageKey = normalizePmTagStageKey(name);
       const { error: scoreErr } = await sb
         .from("scoring_config")
         .insert({
@@ -140,7 +141,7 @@ export function AdminPontuacaoPanel() {
       }
 
       // 2. Delete scoring_config entry
-      const stageKey = `tag_${gt.name.toLowerCase().replace(/\s+/g, "_")}`;
+      const stageKey = normalizePmTagStageKey(gt.name);
       await sb.from("scoring_config").delete().eq("stage", stageKey);
     },
     onSuccess: () => {
@@ -179,7 +180,8 @@ export function AdminPontuacaoPanel() {
 
   const handleCreateTag = () => {
     if (!newTagName.trim()) return;
-    const exists = globalTags.some(gt => gt.name.toLowerCase() === newTagName.trim().toLowerCase());
+    const newTagKey = normalizePmTagStageKey(newTagName);
+    const exists = globalTags.some((gt) => normalizePmTagStageKey(gt.name) === newTagKey);
     if (exists) {
       toast.error("Etiqueta já existe!");
       return;
@@ -378,7 +380,7 @@ export function AdminPontuacaoPanel() {
                   </TableHeader>
                   <TableBody>
                     {tagRows.map((row) => {
-                      const matchedTag = globalTags.find(gt => `tag_${gt.name.toLowerCase().replace(/\s+/g, "_")}` === row.stage);
+                      const matchedTag = globalTags.find((gt) => normalizePmTagStageKey(gt.name) === row.stage);
                       const rawTag = matchedTag ? `${matchedTag.name}:${matchedTag.color_key}` : null;
                       const tc = rawTag ? tagColor(rawTag) : null;
                       return (
