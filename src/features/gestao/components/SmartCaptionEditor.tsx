@@ -63,6 +63,16 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
   const [historyExpanded, setHistoryExpanded] = useState(false);
   const [history, setHistory] = useState<{ html: string; time: Date }[]>([]);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const [plainText, setPlainText] = useState("");
+  const [spellPopover, setSpellPopover] = useState<{ error: SpellError; rect: DOMRect } | null>(null);
+
+  const stripHtmlToPlain = (html: string) => {
+    const tmp = document.createElement("div");
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || "";
+  };
+
+  const { errors: spellErrors, ignoreWord, recheck: recheckSpelling } = useSpellcheck(plainText);
 
   // Sync content when value changes externally (e.g. switching between subtasks)
   const lastSyncedValue = useRef(value);
