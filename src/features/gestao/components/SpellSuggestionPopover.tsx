@@ -29,11 +29,14 @@ export function SpellSuggestionPopover({ error, anchorRect, onSelect, onIgnore, 
     };
   }, [onClose]);
 
-  // Position below the anchor
+  // Estimate popover height (~200px) and position above the word
+  const popoverHeight = 220;
+  const fitsAbove = anchorRect.top - popoverHeight - 6 > 0;
+
   const style: React.CSSProperties = {
     position: "fixed",
-    top: anchorRect.bottom + 6,
-    left: Math.max(8, anchorRect.left - 40),
+    top: fitsAbove ? anchorRect.top - popoverHeight - 6 : anchorRect.bottom + 6,
+    left: Math.max(8, Math.min(anchorRect.left - 40, window.innerWidth - 280)),
     zIndex: 9999,
   };
 
