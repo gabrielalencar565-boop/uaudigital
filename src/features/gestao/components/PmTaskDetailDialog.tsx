@@ -699,7 +699,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       updateTask.mutate(linkedUpdates);
 
       const linkedChildMap = await insertChildren(linkedTaskId);
-      copyAttachmentsInBackground(linkedTaskId, linkedChildMap);
+      copyAttachmentsAndCommentsInBackground(linkedTaskId, linkedChildMap);
       invalidatePmTaskQueries();
       return;
     }
@@ -726,7 +726,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     });
 
     const newChildMap = await insertChildren(newTask.id);
-    copyAttachmentsInBackground(newTask.id, newChildMap);
+    copyAttachmentsAndCommentsInBackground(newTask.id, newChildMap);
     invalidatePmTaskQueries();
   };
 
