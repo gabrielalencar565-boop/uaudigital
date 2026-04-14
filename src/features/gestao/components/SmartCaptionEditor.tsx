@@ -219,6 +219,47 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
   const formatTime = (d: Date) =>
     d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
+  // Spell correction: replace word in editor
+  const handleSpellReplace = useCallback((error: SpellError, replacement: string) => {
+    const el = editorRef.current;
+    if (!el) return;
+
+    // Walk text nodes to find the error offset
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    let cumOffset = 0;
+    let node: Text | null;
+    while ((node = walker.nextNode() as Text | null)) {
+      const len = node.textContent?.length || 0;
+      if (cumOffset + len > error.offset) {
+        const localStart = error.offset - cumOffset;
+        const localEnd = localStart + error.length;
+        const range = document.createRange();
+        range.setStart(node, localStart);
+        range.setEnd(node, Math.min(localEnd, len));
+
+        // If error spans multiple nodes, just handle first
+        range.deleteContents();
+        range.insertNode(document.createTextNode(replacement));
+
+        // Normalize to merge adjacent text nodes
+        el.normalize();
+
+        const html = el.innerHTML;
+        lastSyncedValue.current = html;
+        onChange(html);
+        setPlainText(stripHtmlToPlain(html));
+        break;
+      }
+      cumOffset += len;
+    }
+    setSpellPopover(null);
+  }, [onChange]);
+
+  const handleSpellIgnore = useCallback((error: SpellError) => {
+    ignoreWord(error.word);
+    setSpellPopover(null);
+  }, [ignoreWord]);
+
   return (
     <div className={cn("relative", className)}>
       {/* Top-right status bar */}
