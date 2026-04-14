@@ -357,8 +357,9 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         if (newChild) childIdMap[child.id] = newChild.id;
       }
 
-      // Copy attachments in background (fire-and-forget to avoid blocking UI)
-      const copyAttachments = async () => {
+      // Copy attachments AND comments in background (fire-and-forget to avoid blocking UI)
+      const copyAttachmentsAndComments = async () => {
+        // --- Attachments ---
         const { data: existingAtts } = await sb.from("pm_attachments").select("*").eq("task_id", task.id);
         if (existingAtts?.length) {
           await Promise.all(existingAtts.map((att: any) => {
@@ -378,8 +379,19 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
             }));
           }
         }
+        // --- Comments ---
+        const allOldCommentIds = [task.id, ...oldChildIds];
+        const { data: existingComments } = await sb.from("pm_comments").select("*").in("task_id", allOldCommentIds);
+        if (existingComments?.length) {
+          await Promise.all(existingComments.map((c: any) => {
+            const { id: _id, created_at: _ca, task_id: oldTid, ...rest } = c;
+            const newTid = oldTid === task.id ? targetTaskId : childIdMap[oldTid];
+            if (!newTid) return Promise.resolve();
+            return sb.from("pm_comments").insert({ ...rest, task_id: newTid });
+          }));
+        }
       };
-      copyAttachments(); // non-blocking
+      copyAttachmentsAndComments(); // non-blocking
     };
 
     // Skip scoring for alteracoes and revisao — they don't generate points
@@ -650,20 +662,31 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       return Object.fromEntries(inserted) as Record<string, string>;
     };
 
-    const copyAttachmentsInBackground = (targetTaskId: string, childIdMap: Record<string, string>) => {
+    const copyAttachmentsAndCommentsInBackground = (targetTaskId: string, childIdMap: Record<string, string>) => {
       const allOldIds = [task.id, ...Object.keys(childIdMap)];
       void (async () => {
+        // --- Attachments ---
         const { data: existingAtts } = await sbx.from("pm_attachments").select("*").in("task_id", allOldIds);
-        if (!existingAtts?.length) return;
-
-        await Promise.all(existingAtts.map((att: any) => {
-          const { id: _id, created_at: _ca, task_id: oldTid, ...rest } = att;
-          const newTid = oldTid === task.id ? targetTaskId : childIdMap[oldTid];
-          if (!newTid) return Promise.resolve();
-          return sbx.from("pm_attachments").insert({ ...rest, task_id: newTid });
-        }));
+        if (existingAtts?.length) {
+          await Promise.all(existingAtts.map((att: any) => {
+            const { id: _id, created_at: _ca, task_id: oldTid, ...rest } = att;
+            const newTid = oldTid === task.id ? targetTaskId : childIdMap[oldTid];
+            if (!newTid) return Promise.resolve();
+            return sbx.from("pm_attachments").insert({ ...rest, task_id: newTid });
+          }));
+        }
+        // --- Comments ---
+        const { data: existingComments } = await sbx.from("pm_comments").select("*").in("task_id", allOldIds);
+        if (existingComments?.length) {
+          await Promise.all(existingComments.map((c: any) => {
+            const { id: _id, created_at: _ca, task_id: oldTid, ...rest } = c;
+            const newTid = oldTid === task.id ? targetTaskId : childIdMap[oldTid];
+            if (!newTid) return Promise.resolve();
+            return sbx.from("pm_comments").insert({ ...rest, task_id: newTid });
+          }));
+        }
       })()
-        .catch((err) => console.error("Error copying split attachments:", err))
+        .catch((err) => console.error("Error copying split attachments/comments:", err))
         .finally(() => invalidatePmTaskQueries());
     };
 
