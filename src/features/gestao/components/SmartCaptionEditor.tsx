@@ -82,12 +82,14 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
     if (value !== lastSyncedValue.current) {
       editorRef.current.innerHTML = value || "";
       lastSyncedValue.current = value;
+      setPlainText(stripHtmlToPlain(value || ""));
       if (value) {
         setHistory([{ html: value, time: new Date() }]);
       }
     } else if (!editorRef.current.innerHTML && value) {
       // Initial mount
       editorRef.current.innerHTML = value;
+      setPlainText(stripHtmlToPlain(value));
       setHistory([{ html: value, time: new Date() }]);
     }
   }, [value]);
