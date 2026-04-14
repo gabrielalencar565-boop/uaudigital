@@ -1,39 +1,26 @@
 
 
-## Diagnóstico
+## Problema
 
-Dois bugs identificados ao concluir tarefa de Planejamento:
+Ao clicar em "Vincular tarefa", o sistema executa sequencialmente:
+1. `executeSplitTask` (insere subtarefas no banco, copia anexos)
+2. `processSplitQueue` (consulta banco para próxima etapa)
 
-1. **Dialog de Design não aparece**: Após vincular a tarefa de Vídeo, o `LinkOrDateDialog` chama `onLink()` e depois `onClose()`. O `onLink` do pai já fecha o dialog (`setLinkDialogOpen(false)`) e limpa estados, depois chama `processSplitQueue` para Design. Quando `processSplitQueue` encontra tarefa existente de Design e tenta reabrir o dialog (`setLinkDialogOpen(true)`), o React não consegue distinguir a mudança porque `onClose()` do `LinkOrDateDialog` também roda quase simultaneamente, causando um conflito de state que impede o dialog de reabrir.
+Só depois de tudo isso terminar é que o próximo diálogo aparece. O delay vem de aguardar as operações de banco antes de mostrar a UI.
 
-2. **Tarefa não fica concluída**: Como o dialog de Design nunca aparece, o `processSplitQueue` fica "preso" esperando interação do usuário. O `finalizePlanejamentoCompletion` (que marca como concluído) só roda quando TODOS os splits são processados, então nunca é chamado.
+## Solução
 
-## Plano de Correção
+Tornar o fluxo não-bloqueante: ao vincular, disparar `executeSplitTask` em background e avançar imediatamente para o próximo item da fila (Design).
 
-### 1. Remover `onClose()` duplicado no `LinkOrDateDialog`
+### Alterações em `PmTaskDetailDialog.tsx`
 
-No `LinkOrDateDialog.tsx`, as funções `handleLink` e `handleSelectDate` chamam tanto o callback (`onLink`/`onSelectDate`) quanto `onClose()`. Mas o pai já gerencia o fechamento. Remover o `onClose()` de dentro de `handleLink` e `handleSelectDate` para que apenas o pai controle o estado do dialog.
+1. **Nos callbacks `onLink` e `onSelectDate` do `LinkOrDateDialog`**: Em vez de `await executeSplitTask(...)` seguido de `await processSplitQueue(...)`, disparar `executeSplitTask` como fire-and-forget (`void executeSplitTask(...)`) e chamar `processSplitQueue` imediatamente sem esperar a execução terminar.
 
-### 2. Não fechar/limpar estados antes de processar splits restantes
+2. **No `processSplitQueue` (quando não encontra tarefa existente)**: Mesmo ajuste — disparar `executeSplitTask` em background e avançar para o próximo split sem aguardar.
 
-No `PmTaskDetailDialog.tsx`, dentro do `onLink` callback (linha ~1598-1607):
-- **Antes**: `setLinkDialogOpen(false); setLinkExistingTask(null); setPendingSplit(null);` era chamado ANTES de `processSplitQueue`
-- **Depois**: Só limpar esses estados se NÃO houver mais splits. Deixar `processSplitQueue` decidir se reabre o dialog ou fecha tudo.
+3. **Garantir consistência**: O `invalidatePmTaskQueries()` já é chamado dentro de `executeSplitTask` ao final, então os dados serão atualizados quando terminar. O `finalizePlanejamentoCompletion` no final da fila também invalida queries.
 
-Mesma correção no `onSelectDate` callback (linha ~1609-1618).
-
-### 3. Fechar dialog só quando a fila estiver vazia
-
-No final de `processSplitQueue`, quando `splits.length === 0`, adicionar fechamento explícito do dialog:
-```
-setLinkDialogOpen(false);
-setLinkExistingTask(null);
-setPendingSplit(null);
-```
-
-Isso garante que o dialog só fecha após TODOS os splits (Vídeo + Design) serem processados e o `finalizePlanejamentoCompletion` ser chamado.
-
-### Arquivos alterados
-- `src/features/gestao/components/LinkOrDateDialog.tsx` — remover `onClose()` de dentro de `handleLink` e `handleSelectDate`
-- `src/features/gestao/components/PmTaskDetailDialog.tsx` — reestruturar callbacks `onLink`/`onSelectDate` para não fechar dialog prematuramente; fechar no final de `processSplitQueue`
+### Resultado esperado
+- Ao clicar "Vincular tarefa" para Vídeo, o diálogo de Design aparece instantaneamente
+- As operações de banco rodam em paralelo sem bloquear a UI
 
