@@ -278,7 +278,7 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
             <AlertCircle className="h-3 w-3" />
             <span>{spellErrors.length} {spellErrors.length === 1 ? "erro" : "erros"}</span>
           </div>
-
+        )}
         {/* History toggle */}
         <button
           type="button"
