@@ -10,7 +10,6 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useSession } from "@/hooks/use-session";
 import { useAppSettings } from "@/features/data/queries";
-import { PwaInstallPrompt } from "@/components/pwa/PwaInstallPrompt";
 
 /* ── Schemas ── */
 const loginSignupSchema = z.object({
@@ -467,7 +466,6 @@ export default function Auth() {
       >
         <MasonryGallery avatars={galleryPhotos} />
       </div>
-      <PwaInstallPrompt />
     </div>
   );
 }
