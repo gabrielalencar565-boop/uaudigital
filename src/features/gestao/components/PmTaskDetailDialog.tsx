@@ -750,7 +750,8 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       return;
     }
 
-    await executeSplitTask(current.stage, current.stageLabel, current.children, current.postType, nextDueDate, clientName, monthLabel);
+    void executeSplitTask(current.stage, current.stageLabel, current.children, current.postType, nextDueDate, clientName, monthLabel)
+      .catch((err) => console.error("bg split error:", err));
     await processSplitQueue(remaining, snapshotDueDate, nextDueDate, clientName, monthLabel, deferredCompletion);
   };
 
@@ -1643,7 +1644,8 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           onLink={async (dueDate) => {
             if (pendingSplit) {
               const s = pendingSplit;
-              await executeSplitTask(s.stage, s.stageLabel, s.children, s.postType, dueDate, s.clientName, s.monthLabel, linkExistingTask?.id);
+              void executeSplitTask(s.stage, s.stageLabel, s.children, s.postType, dueDate, s.clientName, s.monthLabel, linkExistingTask?.id)
+                .catch((err) => console.error("bg split error:", err));
               await processSplitQueue(s.remainingSplits, s.snapshotDueDate, s.nextDueDate, s.clientName, s.monthLabel, s.deferredCompletion);
             } else if (pendingAdvance) {
               doAdvance(pendingAdvance.completedStage, pendingAdvance.nextStage, dueDate, linkExistingTask?.id);
@@ -1653,7 +1655,8 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           onSelectDate={async (dueDate) => {
             if (pendingSplit) {
               const s = pendingSplit;
-              await executeSplitTask(s.stage, s.stageLabel, s.children, s.postType, dueDate, s.clientName, s.monthLabel);
+              void executeSplitTask(s.stage, s.stageLabel, s.children, s.postType, dueDate, s.clientName, s.monthLabel)
+                .catch((err) => console.error("bg split error:", err));
               await processSplitQueue(s.remainingSplits, s.snapshotDueDate, s.nextDueDate, s.clientName, s.monthLabel, s.deferredCompletion);
             } else if (pendingAdvance) {
               doAdvance(pendingAdvance.completedStage, pendingAdvance.nextStage, dueDate);
