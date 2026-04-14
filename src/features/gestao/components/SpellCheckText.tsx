@@ -50,7 +50,7 @@ export function SpellCheckText({ text, className, onClick, onCorrect }: Props) {
 
   for (const err of sorted) {
     if (err.offset > lastIndex) {
-      segments.push(<span key={`t-${lastIndex}`}>{text.slice(lastIndex, err.offset)}</span>);
+      segments.push(<span key={`t-${lastIndex}`} onClick={onClick} className="cursor-text">{text.slice(lastIndex, err.offset)}</span>);
     }
     segments.push(
       <span
@@ -73,12 +73,12 @@ export function SpellCheckText({ text, className, onClick, onCorrect }: Props) {
   }
 
   if (lastIndex < text.length) {
-    segments.push(<span key={`t-${lastIndex}`}>{text.slice(lastIndex)}</span>);
+    segments.push(<span key={`t-${lastIndex}`} onClick={onClick} className="cursor-text">{text.slice(lastIndex)}</span>);
   }
 
   return (
     <>
-      <span className={className} onClick={onClick}>
+      <span className={className}>
         {segments}
       </span>
       {popover && (
