@@ -113,13 +113,10 @@ export function SpellCheckOverlay({ editorRef, errors, onErrorClick }: Props) {
           key={`${r.error.offset}-${r.error.length}-${i}`}
           className="absolute cursor-pointer"
           style={{
-            top: r.top + r.height - 2,
+            top: r.top,
             left: r.left,
             width: r.width,
-            height: 3,
-            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='3'%3E%3Cpath d='M0 2.5 Q1 0 2 2.5 Q3 5 4 2.5' stroke='%23ef4444' fill='none' stroke-width='1'/%3E%3C/svg%3E")`,
-            backgroundRepeat: "repeat-x",
-            backgroundSize: "4px 3px",
+            height: r.height,
             pointerEvents: "auto",
           }}
           onClick={(e) => {
@@ -127,7 +124,18 @@ export function SpellCheckOverlay({ editorRef, errors, onErrorClick }: Props) {
             const domRect = (e.target as HTMLElement).getBoundingClientRect();
             onErrorClick(r.error, domRect);
           }}
-        />
+        >
+          {/* Wavy underline at the bottom */}
+          <div
+            className="absolute bottom-0 left-0 w-full"
+            style={{
+              height: 3,
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='3'%3E%3Cpath d='M0 2.5 Q1 0 2 2.5 Q3 5 4 2.5' stroke='%23ef4444' fill='none' stroke-width='1'/%3E%3C/svg%3E")`,
+              backgroundRepeat: "repeat-x",
+              backgroundSize: "4px 3px",
+            }}
+          />
+        </div>
       ))}
     </div>
   );
