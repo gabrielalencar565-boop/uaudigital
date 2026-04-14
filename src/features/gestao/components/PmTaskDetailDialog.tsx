@@ -799,10 +799,24 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
     // If planejamento → split into video + design tasks
     if (completedStage === "planejamento" && !task.parent_task_id) {
-      const videoChildren = childTasks.filter(c => c.post_type === "video");
-      const designChildren = childTasks.filter(c => c.post_type === "design");
+      // Use inferPmPostType to catch children without explicit post_type
+      const { inferPmPostType } = await import("../utils/infer-pm-post-type");
+      const videoChildren: PmTask[] = [];
+      const designChildren: PmTask[] = [];
+      for (const c of childTasks) {
+        const inferred = inferPmPostType(c);
+        if (inferred === "video") videoChildren.push(c);
+        else if (inferred === "design") designChildren.push(c);
+      }
       const hasVideo = videoChildren.length > 0;
       const hasDesign = designChildren.length > 0;
+
+      console.log("[handleConcluido] planejamento split check:", {
+        childCount: childTasks.length,
+        videoCount: videoChildren.length,
+        designCount: designChildren.length,
+        childPostTypes: childTasks.map(c => ({ id: c.id, post_type: c.post_type, title: c.title })),
+      });
 
       if (hasVideo || hasDesign) {
         const snapshotDueDate = task.due_date ?? format(new Date(), "yyyy-MM-dd");
@@ -821,6 +835,16 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         if (hasDesign) splits.push({ stage: "design", stageLabel: "Design", children: designChildren, postType: "design" });
 
         const deferredCompletion = { allIds, completedStage, snapshotDueDate };
+
+        // Write to DB immediately (don't rely on optimistic-only)
+        const sb = supabase as any;
+        void Promise.all([
+          sb.from("pm_tasks").update({ stage_current: completedStage, status_global: "concluido", due_date: snapshotDueDate }).eq("id", task.id),
+          ...(childTasks.length > 0
+            ? [sb.from("pm_tasks").update({ status_global: "concluido" }).in("id", childTasks.map(c => c.id))]
+            : []),
+        ]).catch((e: any) => console.error("Error marking planejamento as done:", e));
+
         const optimisticUpdater = (old: PmTask[] | undefined) => old?.map((item) => {
           if (item.id === task.id) {
             return {
@@ -841,11 +865,14 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         queryClient.setQueriesData<PmTask[]>({ queryKey: ["pm_child_tasks_all"] }, optimisticUpdater);
         toast.success("Planejamento concluído! Criando próximas tarefas...");
 
-        void processSplitQueue(splits, snapshotDueDate, nextDueDate, clientName, monthLabel, deferredCompletion).catch((err) => {
+        // Use await instead of void to ensure sequential dialog flow works
+        try {
+          await processSplitQueue(splits, snapshotDueDate, nextDueDate, clientName, monthLabel, deferredCompletion);
+        } catch (err) {
           console.error("Error processing planejamento splits:", err);
           invalidatePmTaskQueries();
           toast.error("Erro ao criar próximas tarefas. Tente novamente.");
-        });
+        }
         return;
       }
     }
