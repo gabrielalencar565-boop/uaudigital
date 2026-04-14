@@ -708,20 +708,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   };
 
   const finalizePlanejamentoCompletion = async (deferred: { allIds: string[]; completedStage: string; snapshotDueDate: string }) => {
-    const sb = supabase as any;
-    const [parentId, ...childIds] = deferred.allIds;
-
-    await Promise.all([
-      childIds.length > 0
-        ? sb.from("pm_tasks").update({ status_global: "concluido" }).in("id", childIds)
-        : Promise.resolve(),
-      sb.from("pm_tasks").update({
-        stage_current: deferred.completedStage,
-        status_global: "concluido",
-        due_date: deferred.snapshotDueDate,
-      }).eq("id", parentId),
-    ]);
-
+    // DB writes already happened in handleConcluido, just sync scoring
     syncCompletedStage(deferred.completedStage);
     invalidatePmTaskQueries();
   };
