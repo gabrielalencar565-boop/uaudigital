@@ -500,6 +500,16 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
           if (newTask) {
             cloneChildrenToNewTask(newTask.id, nextStage);
+            // Copy parent-level comments to new task (background)
+            void (async () => {
+              const { data: parentComments } = await sb.from("pm_comments").select("*").eq("task_id", task.id);
+              if (parentComments?.length) {
+                await Promise.all(parentComments.map((c: any) => {
+                  const { id: _id, created_at: _ca, ...rest } = c;
+                  return sb.from("pm_comments").insert({ ...rest, task_id: newTask.id });
+                }));
+              }
+            })().catch((err: any) => console.error("Error copying parent comments:", err));
           }
 
           queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
