@@ -34,8 +34,8 @@ export function SpellCheckText({ text, className, onClick, onCorrect }: Props) {
 
     // Use caretPositionFromPoint or caretRangeAtPoint
     let range: Range | null = null;
-    if (document.caretRangeAtPoint) {
-      range = document.caretRangeAtPoint(e.clientX, e.clientY);
+    if (document.caretRangeFromPoint) {
+      range = document.caretRangeFromPoint(e.clientX, e.clientY);
     }
     if (!range) return -1;
 
