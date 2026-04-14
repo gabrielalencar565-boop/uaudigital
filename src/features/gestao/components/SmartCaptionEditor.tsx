@@ -383,6 +383,24 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
         suppressContentEditableWarning
       />
 
+      {/* Spell check overlay */}
+      <SpellCheckOverlay
+        editorRef={editorRef as React.RefObject<HTMLDivElement>}
+        errors={spellErrors}
+        onErrorClick={(error, rect) => setSpellPopover({ error, rect })}
+      />
+
+      {/* Spell suggestion popover */}
+      {spellPopover && (
+        <SpellSuggestionPopover
+          error={spellPopover.error}
+          anchorRect={spellPopover.rect}
+          onSelect={(replacement) => handleSpellReplace(spellPopover.error, replacement)}
+          onIgnore={() => handleSpellIgnore(spellPopover.error)}
+          onClose={() => setSpellPopover(null)}
+        />
+      )}
+
       {/* Floating toolbar */}
       {toolbarPos && !aiLoading && (
         <div
