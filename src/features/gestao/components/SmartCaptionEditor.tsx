@@ -376,6 +376,7 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
         className={cn(
           "w-full rounded-lg border border-border/40 bg-background px-3 py-2",
           "text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40",
+          "[&_*]:!text-inherit [&_span]:!text-inherit [&_div]:!text-inherit [&_p]:!text-inherit [&_font]:!text-inherit",
           "[&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5",
           "[&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-2 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mb-1 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mb-1 [&_h4]:text-sm [&_h4]:font-semibold [&_h4]:mb-0.5",
           "empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground/50 empty:before:pointer-events-none",
