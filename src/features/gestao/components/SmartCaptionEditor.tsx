@@ -96,11 +96,13 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
   const handleInput = useCallback(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     setSaveStatus("saving");
+    setSpellPopover(null);
     debounceRef.current = setTimeout(() => {
       if (editorRef.current) {
         const html = editorRef.current.innerHTML;
         lastSyncedValue.current = html;
         onChange(html);
+        setPlainText(stripHtmlToPlain(html));
         setHistory(prev => {
           const last = prev[prev.length - 1];
           if (last?.html === html) return prev;
