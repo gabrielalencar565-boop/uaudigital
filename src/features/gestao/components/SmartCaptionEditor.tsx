@@ -390,7 +390,6 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
       <SpellCheckOverlay
         editorRef={editorRef as React.RefObject<HTMLDivElement>}
         errors={spellErrors}
-        onErrorClick={(error, rect) => setSpellPopover({ error, rect })}
       />
 
       {/* Spell suggestion popover */}
