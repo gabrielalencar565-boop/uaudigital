@@ -40,6 +40,7 @@ import { toast } from "sonner";
 import { SmartCaptionEditor } from "./SmartCaptionEditor";
 import { LinkOrDateDialog } from "./LinkOrDateDialog";
 import { SpellCheckText } from "./SpellCheckText";
+import { EditableTitleWithSpellCheck } from "./EditableTitleWithSpellCheck";
 import { supabase } from "@/integrations/supabase/client";
 
 function initials(n: string) {
@@ -1314,16 +1315,12 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         {/* Title */}
         {isCompletedSnapshot ? (
           <h1 className="text-xl sm:text-2xl font-bold text-muted-foreground">{task.title}</h1>
-        ) : editingTitle ? (
-          <input autoFocus value={titleDraft} onChange={(e) => setTitleDraft(e.target.value)} onBlur={saveTitle} onKeyDown={(e) => { if (e.key === "Enter") saveTitle(); }} className="w-full text-xl sm:text-2xl font-bold bg-transparent border-none outline-none p-0 m-0 text-foreground" />
         ) : (
-          <h1 className="cursor-pointer text-xl sm:text-2xl font-bold hover:text-primary transition-colors">
-            <SpellCheckText
-              text={task.title}
-              onClick={() => { setTitleDraft(task.title); setEditingTitle(true); }}
-              onCorrect={(corrected) => { updateTask.mutate({ id: task.id, title: corrected }); }}
-            />
-          </h1>
+          <EditableTitleWithSpellCheck
+            value={task.title}
+            onSave={(newTitle) => updateTask.mutate({ id: task.id, title: newTitle })}
+            className="text-xl sm:text-2xl font-bold text-foreground cursor-text"
+          />
         )}
 
         {/* Properties grid */}
