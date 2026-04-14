@@ -39,6 +39,7 @@ import type { PmTask } from "../pm-types";
 import { toast } from "sonner";
 import { SmartCaptionEditor } from "./SmartCaptionEditor";
 import { LinkOrDateDialog } from "./LinkOrDateDialog";
+import { SpellCheckText } from "./SpellCheckText";
 import { supabase } from "@/integrations/supabase/client";
 
 function initials(n: string) {
@@ -1316,7 +1317,13 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         ) : editingTitle ? (
           <Input autoFocus value={titleDraft} onChange={(e) => setTitleDraft(e.target.value)} onBlur={saveTitle} onKeyDown={(e) => e.key === "Enter" && saveTitle()} className="text-xl sm:text-2xl font-bold border-0 bg-transparent p-0 h-auto focus-visible:ring-0 focus-visible:ring-offset-0" />
         ) : (
-          <h1 className="cursor-pointer text-xl sm:text-2xl font-bold hover:text-primary transition-colors" onClick={() => { setTitleDraft(task.title); setEditingTitle(true); }}>{task.title}</h1>
+          <h1 className="cursor-pointer text-xl sm:text-2xl font-bold hover:text-primary transition-colors" onClick={() => { setTitleDraft(task.title); setEditingTitle(true); }}>
+            <SpellCheckText
+              text={task.title}
+              onClick={() => { setTitleDraft(task.title); setEditingTitle(true); }}
+              onCorrect={(corrected) => { updateTask.mutate({ id: task.id, title: corrected }); }}
+            />
+          </h1>
         )}
 
         {/* Properties grid */}
