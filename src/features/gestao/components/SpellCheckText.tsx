@@ -78,7 +78,7 @@ export function SpellCheckText({ text, className, onClick, onCorrect }: Props) {
 
   return (
     <>
-      <span className={className} onClick={onClick}>
+      <span className={className}>
         {segments}
       </span>
       {popover && (
