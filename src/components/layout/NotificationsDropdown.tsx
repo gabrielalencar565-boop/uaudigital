@@ -51,11 +51,18 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
     enabled: !!user?.id,
     staleTime: 0,
     queryFn: async () => {
+      const brNow = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+      const tomorrow = new Date(brNow);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, "0")}-${String(tomorrow.getDate()).padStart(2, "0")}`;
+
       const { data } = await (supabase as any)
         .from("pm_tasks")
         .select("id, title, client_id, due_date, status_global, assignee_id, created_at")
         .eq("assignee_id", user!.id)
+        .is("deleted_at", null)
         .not("status_global", "in", "(concluido,cancelado)")
+        .lte("due_date", tomorrowStr)
         .order("created_at", { ascending: false })
         .limit(30);
       return data ?? [];
