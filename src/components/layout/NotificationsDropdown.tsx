@@ -51,10 +51,6 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
     enabled: !!user?.id,
     staleTime: 0,
     queryFn: async () => {
-      const brNow = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
-      const tomorrow = new Date(brNow);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      const tomorrowStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, "0")}-${String(tomorrow.getDate()).padStart(2, "0")}`;
 
       const { data } = await (supabase as any)
         .from("pm_tasks")
