@@ -62,9 +62,9 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
         .eq("assignee_id", user!.id)
         .is("deleted_at", null)
         .not("status_global", "in", "(concluido,cancelado)")
-        .lte("due_date", tomorrowStr)
+        .not("due_date", "is", null)
         .order("created_at", { ascending: false })
-        .limit(30);
+        .limit(50);
       return data ?? [];
     },
   });
@@ -147,18 +147,16 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
       if (t.due_date) {
         const daysLeft = differenceInCalendarDays(new Date(t.due_date + "T00:00:00"), today);
         if (daysLeft < 0) {
-          // Only show overdue from yesterday (1 day late max)
-          if (Math.abs(daysLeft) <= 1) {
-            items.push({
-              id: `overdue-${t.id}`,
-              key: `overdue-${t.id}`,
-              type: "overdue",
-              title: `Tarefa atrasada: ${t.title}`,
-              subtitle: `Venceu ontem`,
-              timestamp: t.due_date,
-              taskId: t.id,
-            });
-          }
+          const absDays = Math.abs(daysLeft);
+          items.push({
+            id: `overdue-${t.id}`,
+            key: `overdue-${t.id}`,
+            type: "overdue",
+            title: `Tarefa atrasada: ${t.title}`,
+            subtitle: absDays === 1 ? `Venceu ontem` : `Atrasada há ${absDays} dias`,
+            timestamp: t.due_date,
+            taskId: t.id,
+          });
         } else if (daysLeft <= 1) {
           items.push({
             id: `upcoming-${t.id}`,
