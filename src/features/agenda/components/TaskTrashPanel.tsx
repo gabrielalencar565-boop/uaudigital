@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import { differenceInDays } from "date-fns";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Trash2, RotateCcw, AlertTriangle, Loader2, Clock, Kanban } from "lucide-react";
+import { Trash2, RotateCcw, AlertTriangle, Loader2, Clock, Kanban, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -54,6 +55,7 @@ export function TaskTrashPanel({ onClose, isAdmin = false }: { onClose: () => vo
   const [restoringId, setRestoringId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [emptyingTrash, setEmptyingTrash] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const clientsById = new Map((clientsQ.data ?? []).map(c => [c.id, c]));
   const teamByUserId = new Map((teamQ.data ?? []).map(m => [m.user_id, m]));
@@ -102,6 +104,17 @@ export function TaskTrashPanel({ onClose, isAdmin = false }: { onClose: () => vo
     if (!a.deletedAt || !b.deletedAt) return 0;
     return b.deletedAt.getTime() - a.deletedAt.getTime();
   });
+
+  const filteredItems = (() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return allItems;
+    return allItems.filter(it =>
+      (it.title ?? "").toLowerCase().includes(q) ||
+      (it.clientName ?? "").toLowerCase().includes(q) ||
+      (it.assigneeName ?? "").toLowerCase().includes(q) ||
+      (it.stageLabel ?? "").toLowerCase().includes(q)
+    );
+  })();
 
   // Auto-delete legacy tasks older than 30 days
   useEffect(() => {
@@ -208,7 +221,9 @@ export function TaskTrashPanel({ onClose, isAdmin = false }: { onClose: () => vo
               Lixeira de Tarefas
             </CardTitle>
             <CardDescription>
-              {allItems.length} tarefa{allItems.length !== 1 ? "s" : ""} na lixeira
+              {searchQuery.trim()
+                ? `${filteredItems.length} de ${allItems.length} tarefa${allItems.length !== 1 ? "s" : ""}`
+                : `${allItems.length} tarefa${allItems.length !== 1 ? "s" : ""} na lixeira`}
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
@@ -254,7 +269,18 @@ export function TaskTrashPanel({ onClose, isAdmin = false }: { onClose: () => vo
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1 overflow-hidden">
+      <CardContent className="flex-1 overflow-hidden flex flex-col gap-3">
+        {allItems.length > 0 && (
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Pesquisar por título, cliente, responsável ou etapa..."
+              className="pl-9"
+            />
+          </div>
+        )}
         {isLoading ? (
           <div className="flex items-center justify-center h-32">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -264,10 +290,15 @@ export function TaskTrashPanel({ onClose, isAdmin = false }: { onClose: () => vo
             <Trash2 className="h-12 w-12 text-muted-foreground/30 mb-3" />
             <p className="text-muted-foreground">A lixeira está vazia</p>
           </div>
+        ) : filteredItems.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-32 text-center">
+            <Search className="h-12 w-12 text-muted-foreground/30 mb-3" />
+            <p className="text-muted-foreground">Nenhuma tarefa encontrada</p>
+          </div>
         ) : (
           <ScrollArea className="h-[400px] pr-4">
             <div className="space-y-3">
-              {allItems.map(item => {
+              {filteredItems.map(item => {
                 const deletedAt = item.deletedAt;
 
                 return (

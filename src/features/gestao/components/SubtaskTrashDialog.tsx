@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { Trash2, RotateCcw, Loader2, X } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Trash2, RotateCcw, Loader2, X, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -25,6 +26,7 @@ interface Props {
 export function SubtaskTrashDialog({ parentTaskId, open, onOpenChange, membersMap }: Props) {
   const updateTask = useUpdatePmTask();
   const [restoringId, setRestoringId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const sb = supabase as any;
   const deletedSubsQ = useQuery<PmTask[]>({
@@ -54,7 +56,12 @@ export function SubtaskTrashDialog({ parentTaskId, open, onOpenChange, membersMa
     });
   };
 
-  const items = deletedSubsQ.data ?? [];
+  const allItems = deletedSubsQ.data ?? [];
+  const items = (() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return allItems;
+    return allItems.filter(s => (s.title ?? "").toLowerCase().includes(q));
+  })();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -65,9 +72,23 @@ export function SubtaskTrashDialog({ parentTaskId, open, onOpenChange, membersMa
             Lixeira de Subtarefas
           </DialogTitle>
           <DialogDescription>
-            {items.length} subtarefa{items.length !== 1 ? "s" : ""} na lixeira
+            {searchQuery.trim()
+              ? `${items.length} de ${allItems.length} subtarefa${allItems.length !== 1 ? "s" : ""}`
+              : `${allItems.length} subtarefa${allItems.length !== 1 ? "s" : ""} na lixeira`}
           </DialogDescription>
         </DialogHeader>
+
+        {allItems.length > 0 && (
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Pesquisar subtarefas..."
+              className="pl-9"
+            />
+          </div>
+        )}
 
         {deletedSubsQ.isLoading ? (
           <div className="flex items-center justify-center h-32">
@@ -76,7 +97,9 @@ export function SubtaskTrashDialog({ parentTaskId, open, onOpenChange, membersMa
         ) : items.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-32 text-center">
             <Trash2 className="h-12 w-12 text-muted-foreground/30 mb-3" />
-            <p className="text-muted-foreground">A lixeira está vazia</p>
+            <p className="text-muted-foreground">
+              {searchQuery.trim() ? "Nenhuma subtarefa encontrada" : "A lixeira está vazia"}
+            </p>
           </div>
         ) : (
           <ScrollArea className="max-h-[400px] pr-2">
