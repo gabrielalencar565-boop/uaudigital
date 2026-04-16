@@ -1,20 +1,31 @@
 
 
-## Fix: Campo vazio ao selecionar "Personalizar..."
+## Plano: Recuperar tarefa e adicionar busca na lixeira
 
-### Problema
-Quando um valor personalizado é salvo (ex: `7`), o `current` vira `"7"`. Mas o `<Select>` só tem opções `auto`, `String(expected)`, `0`, `-1`, `custom`. Como `"7"` não bate com nenhuma, o dropdown aparece vazio.
+### Contexto
+O usuário quer:
+1. Recuperar uma tarefa específica da lixeira (provavelmente o "Instituto Trid - Vídeo - Abril" ou subtarefas relacionadas mencionadas antes)
+2. Adicionar campo de busca/pesquisa na lixeira de tarefas
 
-### Solução
-No `<Select>`, quando o `current` não corresponde a nenhuma opção predefinida (é um override personalizado), mostrar o valor como uma `SelectItem` dinâmica com o texto do valor, ou usar o input customizado diretamente.
+### Investigação necessária
+Preciso identificar:
+- Qual lixeira tem busca atualmente (`TaskTrashPanel` na agenda? `SubtaskTrashDialog` em gestão? Lixeira do Kanban?)
+- Qual tarefa exatamente recuperar (preciso perguntar ao usuário)
 
-**Arquivo:** `src/features/performance/components/AdminDeadlineReport.tsx`
+### Mudanças propostas
 
-1. Alterar a lógica do `value` do Select: quando o override existe e o valor não é uma das opções fixas (`auto`, `String(expected)`, `0`, `-1`), setar `value="custom"` e exibir o valor real no label.
-2. Adicionar uma `SelectItem` dinâmica que mostra o valor personalizado atual quando existe um override que não bate com as opções fixas.
+**1. Adicionar busca na lixeira de subtarefas (`SubtaskTrashDialog.tsx`)**
+- Adicionar `<Input>` com ícone de busca no topo do dialog
+- Estado local `searchQuery` que filtra `items` por `title` (case-insensitive)
+- Mostrar contagem filtrada vs total
 
-Concretamente:
-- Detectar se `current` é um valor personalizado (não está entre as opções fixas)
-- Se sim, usar `value="custom"` no Select e adicionar uma `SelectItem value="custom"` que mostra `Personalizado: {valor}`
-- Ao clicar "Personalizar..." novamente, pré-preencher o input com o valor atual do override
+**2. Adicionar busca na lixeira principal de tarefas (Kanban — provavelmente em `PmKanbanBoard.tsx` ou um componente de trash de pm_tasks)**
+- Verificar se existe um `TaskTrashDialog` para tarefas pai
+- Aplicar o mesmo padrão de busca
+
+**3. Recuperar a tarefa específica**
+- Preciso saber QUAL tarefa recuperar — o usuário não especificou claramente
+
+### Pergunta ao usuário
+Antes de implementar, preciso confirmar qual tarefa recuperar e em qual lixeira adicionar a busca (subtarefas? tarefas principais? ambas?).
 
