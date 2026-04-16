@@ -695,67 +695,51 @@ export function AdminDeadlineReport({
                           })() : "—"}
                         </TableCell>
                         <TableCell className="text-center">
-                          <Badge variant={auto >= 0 ? "secondary" : "destructive"} className="tabular-nums">
-                            {auto}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-center">
                           {customInputTaskId === t.id ? (
-                            <div className="flex items-center gap-1 mx-auto w-[160px]">
-                              <Input
-                                type="number"
-                                autoFocus
-                                value={customInputValue}
-                                onChange={(e) => setCustomInputValue(e.target.value)}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter" && customInputValue !== "") {
-                                    setOverrideMut.mutate({ taskId: t.id, value: customInputValue });
-                                    setCustomInputTaskId(null);
-                                    setCustomInputValue("");
-                                  } else if (e.key === "Escape") {
-                                    setCustomInputTaskId(null);
-                                    setCustomInputValue("");
-                                  }
-                                }}
-                                onBlur={() => {
+                            <Input
+                              type="number"
+                              autoFocus
+                              value={customInputValue}
+                              onChange={(e) => setCustomInputValue(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
                                   if (customInputValue !== "") {
                                     setOverrideMut.mutate({ taskId: t.id, value: customInputValue });
                                   }
                                   setCustomInputTaskId(null);
                                   setCustomInputValue("");
-                                }}
-                                className="h-8 text-center"
-                                placeholder="Ex: -2"
-                              />
-                            </div>
+                                } else if (e.key === "Escape") {
+                                  setCustomInputTaskId(null);
+                                  setCustomInputValue("");
+                                }
+                              }}
+                              onBlur={() => {
+                                if (customInputValue !== "") {
+                                  setOverrideMut.mutate({ taskId: t.id, value: customInputValue });
+                                }
+                                setCustomInputTaskId(null);
+                                setCustomInputValue("");
+                              }}
+                              className="h-7 w-16 text-center mx-auto"
+                              placeholder="pts"
+                            />
                           ) : (
-                          <Select
-                            value={current}
-                            onValueChange={(v) => {
-                              if (v === "custom") {
+                            <Badge
+                              variant={(() => {
+                                const display = override ? override.override_points : auto;
+                                return display >= 0 ? "secondary" : "destructive";
+                              })()}
+                              className="tabular-nums cursor-pointer hover:ring-2 hover:ring-ring/40 transition-all"
+                              onClick={() => {
+                                const display = override ? override.override_points : auto;
                                 setCustomInputTaskId(t.id);
-                                setCustomInputValue(override ? String(override.override_points) : "");
-                                return;
-                              }
-                              setOverrideMut.mutate({ taskId: t.id, value: v });
-                            }}
-                          >
-                            <SelectTrigger className="mx-auto w-[160px]">
-                              <SelectValue placeholder="Auto" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="auto">Auto</SelectItem>
-                              <SelectItem value={String(expected)}>Forçar +{expected}</SelectItem>
-                              <SelectItem value="0">Forçar 0</SelectItem>
-                              <SelectItem value="-1">Forçar -1</SelectItem>
-                              <SelectItem value="custom">
-                                <span className="flex items-center gap-1">
-                                  <Pencil className="h-3 w-3" />
-                                  Personalizar...
-                                </span>
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
+                                setCustomInputValue(String(display));
+                              }}
+                              title="Clique para editar a pontuação"
+                            >
+                              {override ? override.override_points : auto}
+                              {override && <Pencil className="h-2.5 w-2.5 ml-1 opacity-60" />}
+                            </Badge>
                           )}
                         </TableCell>
                         <TableCell className="text-center">
