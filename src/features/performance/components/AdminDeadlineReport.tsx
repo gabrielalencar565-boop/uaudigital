@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Trash2, ExternalLink, ArrowUpRight } from "lucide-react";
+import { Trash2, ExternalLink, ArrowUpRight, Pencil } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 import { supabase } from "@/integrations/supabase/client";
 import type { TaskAssigneeRow } from "@/features/data/task-assignees-queries";
@@ -175,6 +176,8 @@ export function AdminDeadlineReport({
   const [selectedUserId, setSelectedUserId] = useState<string>(team[0]?.user_id ?? "");
   const [detailTask, setDetailTask] = useState<TaskForReport | null>(null);
   const [pmTaskToOpen, setPmTaskToOpen] = useState<PmTask | null>(null);
+  const [customInputTaskId, setCustomInputTaskId] = useState<string | null>(null);
+  const [customInputValue, setCustomInputValue] = useState("");
 
   const pmTasksQ = usePmTasks(); 
   const teamMembersQ = useTeamMembers();
@@ -697,9 +700,45 @@ export function AdminDeadlineReport({
                           </Badge>
                         </TableCell>
                         <TableCell className="text-center">
+                          {customInputTaskId === t.id ? (
+                            <div className="flex items-center gap-1 mx-auto w-[160px]">
+                              <Input
+                                type="number"
+                                autoFocus
+                                value={customInputValue}
+                                onChange={(e) => setCustomInputValue(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" && customInputValue !== "") {
+                                    setOverrideMut.mutate({ taskId: t.id, value: customInputValue });
+                                    setCustomInputTaskId(null);
+                                    setCustomInputValue("");
+                                  } else if (e.key === "Escape") {
+                                    setCustomInputTaskId(null);
+                                    setCustomInputValue("");
+                                  }
+                                }}
+                                onBlur={() => {
+                                  if (customInputValue !== "") {
+                                    setOverrideMut.mutate({ taskId: t.id, value: customInputValue });
+                                  }
+                                  setCustomInputTaskId(null);
+                                  setCustomInputValue("");
+                                }}
+                                className="h-8 text-center"
+                                placeholder="Ex: -2"
+                              />
+                            </div>
+                          ) : (
                           <Select
                             value={current}
-                            onValueChange={(v) => setOverrideMut.mutate({ taskId: t.id, value: v })}
+                            onValueChange={(v) => {
+                              if (v === "custom") {
+                                setCustomInputTaskId(t.id);
+                                setCustomInputValue(override ? String(override.override_points) : "");
+                                return;
+                              }
+                              setOverrideMut.mutate({ taskId: t.id, value: v });
+                            }}
                           >
                             <SelectTrigger className="mx-auto w-[160px]">
                               <SelectValue placeholder="Auto" />
@@ -709,8 +748,15 @@ export function AdminDeadlineReport({
                               <SelectItem value={String(expected)}>Forçar +{expected}</SelectItem>
                               <SelectItem value="0">Forçar 0</SelectItem>
                               <SelectItem value="-1">Forçar -1</SelectItem>
+                              <SelectItem value="custom">
+                                <span className="flex items-center gap-1">
+                                  <Pencil className="h-3 w-3" />
+                                  Personalizar...
+                                </span>
+                              </SelectItem>
                             </SelectContent>
                           </Select>
+                          )}
                         </TableCell>
                         <TableCell className="text-center">
                           <AlertDialog>
