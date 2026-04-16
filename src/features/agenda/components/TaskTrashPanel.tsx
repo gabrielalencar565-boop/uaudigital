@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import { differenceInDays } from "date-fns";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Trash2, RotateCcw, AlertTriangle, Loader2, Clock, Kanban } from "lucide-react";
+import { Trash2, RotateCcw, AlertTriangle, Loader2, Clock, Kanban, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
