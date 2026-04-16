@@ -632,8 +632,7 @@ export function AdminDeadlineReport({
                      <TableHead className="text-center">Etapa</TableHead>
                      <TableHead className="text-center">Prazo</TableHead>
                      <TableHead className="text-center">Concluiu</TableHead>
-                     <TableHead className="text-center">Auto</TableHead>
-                     <TableHead className="text-center">Exceção</TableHead>
+                     <TableHead className="text-center">Pontuação</TableHead>
                      <TableHead className="w-10"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -643,6 +642,7 @@ export function AdminDeadlineReport({
                     const expected = calcExpectedPoints(t, scoringConfigMap, pmTagsMap);
                     const override = overrideByTaskId.get(t.id);
                     const current = override ? String(override.override_points) : "auto";
+                    const finalPts = override ? override.override_points : auto;
 
                     return (
                       <TableRow key={t.id}>
@@ -695,67 +695,54 @@ export function AdminDeadlineReport({
                           })() : "—"}
                         </TableCell>
                         <TableCell className="text-center">
-                          <Badge variant={auto >= 0 ? "secondary" : "destructive"} className="tabular-nums">
-                            {auto}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-center">
                           {customInputTaskId === t.id ? (
-                            <div className="flex items-center gap-1 mx-auto w-[160px]">
-                              <Input
-                                type="number"
-                                autoFocus
-                                value={customInputValue}
-                                onChange={(e) => setCustomInputValue(e.target.value)}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter" && customInputValue !== "") {
-                                    setOverrideMut.mutate({ taskId: t.id, value: customInputValue });
-                                    setCustomInputTaskId(null);
-                                    setCustomInputValue("");
-                                  } else if (e.key === "Escape") {
-                                    setCustomInputTaskId(null);
-                                    setCustomInputValue("");
-                                  }
-                                }}
-                                onBlur={() => {
-                                  if (customInputValue !== "") {
-                                    setOverrideMut.mutate({ taskId: t.id, value: customInputValue });
-                                  }
+                            <Input
+                              type="number"
+                              autoFocus
+                              value={customInputValue}
+                              onChange={(e) => setCustomInputValue(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  const val = customInputValue.trim();
+                                  setOverrideMut.mutate({ taskId: t.id, value: val === "" || val === String(auto) ? "auto" : val });
                                   setCustomInputTaskId(null);
                                   setCustomInputValue("");
-                                }}
-                                className="h-8 text-center"
-                                placeholder="Ex: -2"
-                              />
-                            </div>
+                                } else if (e.key === "Escape") {
+                                  setCustomInputTaskId(null);
+                                  setCustomInputValue("");
+                                }
+                              }}
+                              onBlur={() => {
+                                const val = customInputValue.trim();
+                                if (val !== "" && val !== String(auto)) {
+                                  setOverrideMut.mutate({ taskId: t.id, value: val });
+                                } else if (val === "" || val === String(auto)) {
+                                  setOverrideMut.mutate({ taskId: t.id, value: "auto" });
+                                }
+                                setCustomInputTaskId(null);
+                                setCustomInputValue("");
+                              }}
+                              className="h-7 w-16 mx-auto text-center tabular-nums"
+                              placeholder={String(auto)}
+                            />
                           ) : (
-                          <Select
-                            value={current}
-                            onValueChange={(v) => {
-                              if (v === "custom") {
+                            <button
+                              type="button"
+                              onClick={() => {
                                 setCustomInputTaskId(t.id);
-                                setCustomInputValue(override ? String(override.override_points) : "");
-                                return;
-                              }
-                              setOverrideMut.mutate({ taskId: t.id, value: v });
-                            }}
-                          >
-                            <SelectTrigger className="mx-auto w-[160px]">
-                              <SelectValue placeholder="Auto" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="auto">Auto</SelectItem>
-                              <SelectItem value={String(expected)}>Forçar +{expected}</SelectItem>
-                              <SelectItem value="0">Forçar 0</SelectItem>
-                              <SelectItem value="-1">Forçar -1</SelectItem>
-                              <SelectItem value="custom">
-                                <span className="flex items-center gap-1">
-                                  <Pencil className="h-3 w-3" />
-                                  Personalizar...
-                                </span>
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
+                                setCustomInputValue(override ? String(override.override_points) : String(auto));
+                              }}
+                              title="Clique para editar a pontuação"
+                              className="inline-flex"
+                            >
+                              <Badge
+                                variant={finalPts >= 0 ? "secondary" : "destructive"}
+                                className={cn("tabular-nums cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all", override && "ring-1 ring-primary/40")}
+                              >
+                                {finalPts}
+                                {override && <Pencil className="h-2.5 w-2.5 ml-1 opacity-60" />}
+                              </Badge>
+                            </button>
                           )}
                         </TableCell>
                         <TableCell className="text-center">
@@ -789,7 +776,7 @@ export function AdminDeadlineReport({
                   })}
                   {userTasks.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
+                      <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
                         Nenhuma tarefa concluída para este colaborador no mês.
                       </TableCell>
                     </TableRow>
