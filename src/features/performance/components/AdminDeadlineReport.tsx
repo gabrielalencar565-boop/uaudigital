@@ -176,6 +176,8 @@ export function AdminDeadlineReport({
   const [selectedUserId, setSelectedUserId] = useState<string>(team[0]?.user_id ?? "");
   const [detailTask, setDetailTask] = useState<TaskForReport | null>(null);
   const [pmTaskToOpen, setPmTaskToOpen] = useState<PmTask | null>(null);
+  const [customInputTaskId, setCustomInputTaskId] = useState<string | null>(null);
+  const [customInputValue, setCustomInputValue] = useState("");
 
   const pmTasksQ = usePmTasks(); 
   const teamMembersQ = useTeamMembers();
