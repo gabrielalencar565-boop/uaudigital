@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { Trash2, RotateCcw, Loader2, X } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Trash2, RotateCcw, Loader2, X, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
