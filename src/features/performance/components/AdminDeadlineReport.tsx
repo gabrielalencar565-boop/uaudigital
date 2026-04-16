@@ -633,6 +633,7 @@ export function AdminDeadlineReport({
                      <TableHead className="text-center">Prazo</TableHead>
                      <TableHead className="text-center">Concluiu</TableHead>
                      <TableHead className="text-center">Pontuação</TableHead>
+                     <TableHead className="text-center">Exceção</TableHead>
                      <TableHead className="w-10"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -746,6 +747,32 @@ export function AdminDeadlineReport({
                           )}
                         </TableCell>
                         <TableCell className="text-center">
+                          <Select
+                            value={current}
+                            onValueChange={(v) => {
+                              if (v === "custom") {
+                                setCustomInputTaskId(t.id);
+                                setCustomInputValue(override ? String(override.override_points) : String(auto));
+                              } else {
+                                setOverrideMut.mutate({ taskId: t.id, value: v });
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="h-7 w-[100px] mx-auto text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="auto">Auto</SelectItem>
+                              <SelectItem value="0">0</SelectItem>
+                              <SelectItem value="-1">-1</SelectItem>
+                              {expected !== 0 && expected !== -1 && (
+                                <SelectItem value={String(expected)}>{expected}</SelectItem>
+                              )}
+                              <SelectItem value="custom">Personalizar...</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                        <TableCell className="text-center">
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" title="Apagar tarefa">
@@ -776,7 +803,7 @@ export function AdminDeadlineReport({
                   })}
                   {userTasks.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
+                      <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
                         Nenhuma tarefa concluída para este colaborador no mês.
                       </TableCell>
                     </TableRow>
