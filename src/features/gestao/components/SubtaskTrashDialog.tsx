@@ -26,6 +26,7 @@ interface Props {
 export function SubtaskTrashDialog({ parentTaskId, open, onOpenChange, membersMap }: Props) {
   const updateTask = useUpdatePmTask();
   const [restoringId, setRestoringId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const sb = supabase as any;
   const deletedSubsQ = useQuery<PmTask[]>({
@@ -55,7 +56,12 @@ export function SubtaskTrashDialog({ parentTaskId, open, onOpenChange, membersMa
     });
   };
 
-  const items = deletedSubsQ.data ?? [];
+  const allItems = deletedSubsQ.data ?? [];
+  const items = (() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return allItems;
+    return allItems.filter(s => (s.title ?? "").toLowerCase().includes(q));
+  })();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
