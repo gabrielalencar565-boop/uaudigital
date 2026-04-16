@@ -642,7 +642,10 @@ export function AdminDeadlineReport({
                     const auto = calcPoints(t, scoringConfigMap, year, month, pmTagsMap);
                     const expected = calcExpectedPoints(t, scoringConfigMap, pmTagsMap);
                     const override = overrideByTaskId.get(t.id);
-                    const current = override ? String(override.override_points) : "auto";
+                    const fixedValues = ["auto", String(expected), "0", "-1"];
+                    const rawCurrent = override ? String(override.override_points) : "auto";
+                    const isCustomValue = override && !fixedValues.includes(rawCurrent);
+                    const current = isCustomValue ? "custom" : rawCurrent;
 
                     return (
                       <TableRow key={t.id}>
@@ -751,7 +754,7 @@ export function AdminDeadlineReport({
                               <SelectItem value="custom">
                                 <span className="flex items-center gap-1">
                                   <Pencil className="h-3 w-3" />
-                                  Personalizar...
+                                  {isCustomValue ? `Personalizado: ${override.override_points}` : "Personalizar..."}
                                 </span>
                               </SelectItem>
                             </SelectContent>
