@@ -733,8 +733,8 @@ export function AdminDeadlineReport({
                             value={current}
                             onValueChange={(v) => {
                               if (v === "custom") {
-                                setCustomInputTaskId(t.id);
-                                setCustomInputValue(override ? String(override.override_points) : "");
+                setCustomInputTaskId(t.id);
+                                setCustomInputValue(override ? String(override.override_points) : String(auto));
                                 return;
                               }
                               setOverrideMut.mutate({ taskId: t.id, value: v });
