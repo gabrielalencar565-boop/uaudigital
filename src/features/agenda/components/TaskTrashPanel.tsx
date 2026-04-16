@@ -55,6 +55,7 @@ export function TaskTrashPanel({ onClose, isAdmin = false }: { onClose: () => vo
   const [restoringId, setRestoringId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [emptyingTrash, setEmptyingTrash] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const clientsById = new Map((clientsQ.data ?? []).map(c => [c.id, c]));
   const teamByUserId = new Map((teamQ.data ?? []).map(m => [m.user_id, m]));
