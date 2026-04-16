@@ -632,8 +632,7 @@ export function AdminDeadlineReport({
                      <TableHead className="text-center">Etapa</TableHead>
                      <TableHead className="text-center">Prazo</TableHead>
                      <TableHead className="text-center">Concluiu</TableHead>
-                     <TableHead className="text-center">Auto</TableHead>
-                     <TableHead className="text-center">Exceção</TableHead>
+                     <TableHead className="text-center">Pts</TableHead>
                      <TableHead className="w-10"></TableHead>
                   </TableRow>
                 </TableHeader>
