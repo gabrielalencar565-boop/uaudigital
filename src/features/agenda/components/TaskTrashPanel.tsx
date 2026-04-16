@@ -269,7 +269,18 @@ export function TaskTrashPanel({ onClose, isAdmin = false }: { onClose: () => vo
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1 overflow-hidden">
+      <CardContent className="flex-1 overflow-hidden flex flex-col gap-3">
+        {allItems.length > 0 && (
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Pesquisar por título, cliente, responsável ou etapa..."
+              className="pl-9"
+            />
+          </div>
+        )}
         {isLoading ? (
           <div className="flex items-center justify-center h-32">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -279,10 +290,15 @@ export function TaskTrashPanel({ onClose, isAdmin = false }: { onClose: () => vo
             <Trash2 className="h-12 w-12 text-muted-foreground/30 mb-3" />
             <p className="text-muted-foreground">A lixeira está vazia</p>
           </div>
+        ) : filteredItems.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-32 text-center">
+            <Search className="h-12 w-12 text-muted-foreground/30 mb-3" />
+            <p className="text-muted-foreground">Nenhuma tarefa encontrada</p>
+          </div>
         ) : (
           <ScrollArea className="h-[400px] pr-4">
             <div className="space-y-3">
-              {allItems.map(item => {
+              {filteredItems.map(item => {
                 const deletedAt = item.deletedAt;
 
                 return (
