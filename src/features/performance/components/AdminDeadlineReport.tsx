@@ -754,7 +754,7 @@ export function AdminDeadlineReport({
                               <SelectItem value="custom">
                                 <span className="flex items-center gap-1">
                                   <Pencil className="h-3 w-3" />
-                                  Personalizar...
+                                  {isCustomValue ? `Personalizado: ${override.override_points}` : "Personalizar..."}
                                 </span>
                               </SelectItem>
                             </SelectContent>
