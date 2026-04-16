@@ -105,6 +105,17 @@ export function TaskTrashPanel({ onClose, isAdmin = false }: { onClose: () => vo
     return b.deletedAt.getTime() - a.deletedAt.getTime();
   });
 
+  const filteredItems = (() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return allItems;
+    return allItems.filter(it =>
+      (it.title ?? "").toLowerCase().includes(q) ||
+      (it.clientName ?? "").toLowerCase().includes(q) ||
+      (it.assigneeName ?? "").toLowerCase().includes(q) ||
+      (it.stageLabel ?? "").toLowerCase().includes(q)
+    );
+  })();
+
   // Auto-delete legacy tasks older than 30 days
   useEffect(() => {
     const deletedTasks = deletedTasksQ.data ?? [];
