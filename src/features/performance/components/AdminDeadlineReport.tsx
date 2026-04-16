@@ -701,7 +701,8 @@ export function AdminDeadlineReport({
                               onKeyDown={(e) => {
                                 if (e.key === "Enter") {
                                   if (customInputValue !== "") {
-                                    setOverrideMut.mutate({ taskId: t.id, value: customInputValue });
+                                    const numVal = Number(customInputValue);
+                                    setOverrideMut.mutate({ taskId: t.id, value: numVal === auto ? "auto" : customInputValue });
                                   }
                                   setCustomInputTaskId(null);
                                   setCustomInputValue("");
@@ -712,7 +713,8 @@ export function AdminDeadlineReport({
                               }}
                               onBlur={() => {
                                 if (customInputValue !== "") {
-                                  setOverrideMut.mutate({ taskId: t.id, value: customInputValue });
+                                  const numVal = Number(customInputValue);
+                                  setOverrideMut.mutate({ taskId: t.id, value: numVal === auto ? "auto" : customInputValue });
                                 }
                                 setCustomInputTaskId(null);
                                 setCustomInputValue("");
