@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Trash2, ExternalLink, ArrowUpRight } from "lucide-react";
+import { Trash2, ExternalLink, ArrowUpRight, Pencil } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 import { supabase } from "@/integrations/supabase/client";
 import type { TaskAssigneeRow } from "@/features/data/task-assignees-queries";
