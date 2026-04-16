@@ -758,15 +758,15 @@ export function AdminDeadlineReport({
                               }
                             }}
                           >
-                            <SelectTrigger className="h-7 w-[100px] mx-auto text-xs">
-                              <SelectValue />
+                            <SelectTrigger className="h-7 w-[120px] mx-auto text-xs border-dashed">
+                              <SelectValue placeholder="—" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="auto">Auto</SelectItem>
-                              <SelectItem value="0">0</SelectItem>
-                              <SelectItem value="-1">-1</SelectItem>
+                              <SelectItem value="auto">Auto ({auto})</SelectItem>
+                              <SelectItem value="0">Zerar (0)</SelectItem>
+                              <SelectItem value="-1">Penalizar (-1)</SelectItem>
                               {expected !== 0 && expected !== -1 && (
-                                <SelectItem value={String(expected)}>{expected}</SelectItem>
+                                <SelectItem value={String(expected)}>Forçar +{expected}</SelectItem>
                               )}
                               <SelectItem value="custom">Personalizar...</SelectItem>
                             </SelectContent>
