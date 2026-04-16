@@ -642,6 +642,7 @@ export function AdminDeadlineReport({
                     const expected = calcExpectedPoints(t, scoringConfigMap, pmTagsMap);
                     const override = overrideByTaskId.get(t.id);
                     const current = override ? String(override.override_points) : "auto";
+                    const finalPts = override ? override.override_points : auto;
 
                     return (
                       <TableRow key={t.id}>
