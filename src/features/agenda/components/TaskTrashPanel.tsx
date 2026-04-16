@@ -221,7 +221,9 @@ export function TaskTrashPanel({ onClose, isAdmin = false }: { onClose: () => vo
               Lixeira de Tarefas
             </CardTitle>
             <CardDescription>
-              {allItems.length} tarefa{allItems.length !== 1 ? "s" : ""} na lixeira
+              {searchQuery.trim()
+                ? `${filteredItems.length} de ${allItems.length} tarefa${allItems.length !== 1 ? "s" : ""}`
+                : `${allItems.length} tarefa${allItems.length !== 1 ? "s" : ""} na lixeira`}
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
