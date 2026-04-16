@@ -701,60 +701,61 @@ export function AdminDeadlineReport({
                         </TableCell>
                         <TableCell className="text-center">
                           {customInputTaskId === t.id ? (
-                            <Input
-                              type="number"
-                              autoFocus
-                              value={customInputValue}
-                              onChange={(e) => setCustomInputValue(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                  if (customInputValue === "" || customInputValue === "auto") {
-                                    setOverrideMut.mutate({ taskId: t.id, value: "auto" });
-                                  } else {
+                            <div className="flex items-center gap-1 mx-auto w-[160px]">
+                              <Input
+                                type="number"
+                                autoFocus
+                                value={customInputValue}
+                                onChange={(e) => setCustomInputValue(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" && customInputValue !== "") {
+                                    setOverrideMut.mutate({ taskId: t.id, value: customInputValue });
+                                    setCustomInputTaskId(null);
+                                    setCustomInputValue("");
+                                  } else if (e.key === "Escape") {
+                                    setCustomInputTaskId(null);
+                                    setCustomInputValue("");
+                                  }
+                                }}
+                                onBlur={() => {
+                                  if (customInputValue !== "") {
                                     setOverrideMut.mutate({ taskId: t.id, value: customInputValue });
                                   }
                                   setCustomInputTaskId(null);
                                   setCustomInputValue("");
-                                } else if (e.key === "Escape") {
-                                  setCustomInputTaskId(null);
-                                  setCustomInputValue("");
-                                }
-                              }}
-                              onBlur={() => {
-                                if (customInputValue === "" || customInputValue === "auto") {
-                                  setOverrideMut.mutate({ taskId: t.id, value: "auto" });
-                                } else {
-                                  setOverrideMut.mutate({ taskId: t.id, value: customInputValue });
-                                }
-                                setCustomInputTaskId(null);
-                                setCustomInputValue("");
-                              }}
-                              className="h-7 w-[72px] mx-auto text-center text-xs tabular-nums"
-                              placeholder="auto"
-                            />
+                                }}
+                                className="h-8 text-center"
+                                placeholder="Ex: -2"
+                              />
+                            </div>
                           ) : (
-                            <button
-                              type="button"
-                              className="inline-flex items-center gap-1 group cursor-pointer"
-                              onClick={() => {
+                          <Select
+                            value={current}
+                            onValueChange={(v) => {
+                              if (v === "custom") {
                                 setCustomInputTaskId(t.id);
                                 setCustomInputValue(override ? String(override.override_points) : "");
-                              }}
-                              title="Clique para editar"
-                            >
-                              <Badge
-                                variant={override ? "default" : "outline"}
-                                className={cn(
-                                  "tabular-nums transition-colors",
-                                  !override && "text-muted-foreground",
-                                  override && override.override_points >= 0 && "bg-primary/20 text-primary border-primary/30",
-                                  override && override.override_points < 0 && "bg-destructive/20 text-destructive border-destructive/30",
-                                )}
-                              >
-                                {override ? override.override_points : "—"}
-                              </Badge>
-                              <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity shrink-0" />
-                            </button>
+                                return;
+                              }
+                              setOverrideMut.mutate({ taskId: t.id, value: v });
+                            }}
+                          >
+                            <SelectTrigger className="mx-auto w-[160px]">
+                              <SelectValue placeholder="Auto" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="auto">Auto</SelectItem>
+                              <SelectItem value={String(expected)}>Forçar +{expected}</SelectItem>
+                              <SelectItem value="0">Forçar 0</SelectItem>
+                              <SelectItem value="-1">Forçar -1</SelectItem>
+                              <SelectItem value="custom">
+                                <span className="flex items-center gap-1">
+                                  <Pencil className="h-3 w-3" />
+                                  Personalizar...
+                                </span>
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
                           )}
                         </TableCell>
                         <TableCell className="text-center">
