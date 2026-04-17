@@ -678,7 +678,10 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
     const isRevisao = t.stage_current === "revisao";
     const isRevisaoVideo = isRevisao && t.post_type === "video";
     const isRevisaoDesign = isRevisao && !isRevisaoVideo;
-    const hasGradient = isAlteracaoWithOrigin || isRevisao;
+    const isPdfWithOrigin = t.stage_current === "pdf" && !!t.post_type;
+    const isPdfVideo = isPdfWithOrigin && t.post_type === "video";
+    const isPdfDesign = isPdfWithOrigin && !isPdfVideo;
+    const hasGradient = isAlteracaoWithOrigin || isRevisao || isPdfWithOrigin;
     const gradientClass = isAlteracaoWithOrigin
       ? (t.post_type === "video"
         ? "bg-gradient-to-r from-stage-alteracoes to-stage-edicao_videos"
@@ -687,6 +690,10 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
       ? "bg-gradient-to-r from-pink-400 to-stage-edicao_videos"
       : isRevisaoDesign
       ? "bg-gradient-to-r from-pink-400 to-stage-design"
+      : isPdfVideo
+      ? "bg-gradient-to-r from-stage-pdf to-stage-edicao_videos"
+      : isPdfDesign
+      ? "bg-gradient-to-r from-stage-pdf to-stage-design"
       : undefined;
     const gradientAbbr = isAlteracaoWithOrigin
       ? (t.post_type === "video" ? "ALT/VDO" : "ALT/DSG")
@@ -694,7 +701,11 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
         ? "REV/VDO"
         : isRevisaoDesign
           ? "REV/DSG"
-          : undefined;
+          : isPdfVideo
+            ? "PDF/VDO"
+            : isPdfDesign
+              ? "PDF/DSG"
+              : undefined;
     const stageBg = gradientClass ?? (STAGE_BADGE_BG[t.stage_current] ?? "bg-muted");
     const abbr = gradientAbbr ?? (STAGE_ABBR[t.stage_current] ?? t.stage_current.toUpperCase().slice(0, 4));
     const assignees = getTaskAssignees(t);
