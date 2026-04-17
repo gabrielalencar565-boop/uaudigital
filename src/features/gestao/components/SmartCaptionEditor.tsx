@@ -186,26 +186,42 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
     }
   }, [value]);
 
+  const getUrlFromPointer = useCallback((clientX: number, clientY: number) => {
+    const docWithCaret = document as Document & {
+      caretRangeFromPoint?: (x: number, y: number) => Range | null;
+      caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null;
+    };
+
+    const caretPosition = docWithCaret.caretPositionFromPoint?.(clientX, clientY);
+    const caretRange = !caretPosition ? docWithCaret.caretRangeFromPoint?.(clientX, clientY) : null;
+    const node = caretPosition?.offsetNode ?? caretRange?.startContainer ?? null;
+    const offset = caretPosition?.offset ?? caretRange?.startOffset ?? 0;
+
+    if (!node || node.nodeType !== Node.TEXT_NODE) return null;
+
+    const text = node.textContent ?? "";
+    let start = Math.min(offset, text.length);
+    let end = Math.min(offset, text.length);
+
+    while (start > 0 && !/\s/.test(text[start - 1] ?? "")) start -= 1;
+    while (end < text.length && !/\s/.test(text[end] ?? "")) end += 1;
+
+    const token = text.slice(start, end).trim();
+    const { cleanUrl } = splitTrailingUrlPunctuation(token);
+
+    return new RegExp(`^${URL_REGEX_SOURCE}$`, "i").test(cleanUrl) ? cleanUrl : null;
+  }, []);
+
   const handleEditorMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const anchor = (e.target as HTMLElement).closest("a[href]");
-    if (!(anchor instanceof HTMLAnchorElement) || !anchor.href) return;
+    const href = anchor instanceof HTMLAnchorElement ? anchor.href : getUrlFromPointer(e.clientX, e.clientY);
+
+    if (!href) return;
 
     e.preventDefault();
     e.stopPropagation();
-    window.open(anchor.href, "_blank", "noopener,noreferrer");
-  }, []);
-
-  const handleEditorPaste = useCallback((e: React.ClipboardEvent<HTMLDivElement>) => {
-    const pastedText = e.clipboardData.getData("text/plain").trim();
-
-    if (!pastedText || !new RegExp(`^${URL_REGEX_SOURCE}$`, "i").test(pastedText)) {
-      return;
-    }
-
-    e.preventDefault();
-    document.execCommand("insertHTML", false, buildAnchorHtml(pastedText));
-    handleInput();
-  }, [handleInput]);
+    window.open(href, "_blank", "noopener,noreferrer");
+  }, [getUrlFromPointer]);
 
   // Debounced auto-save
   const handleInput = useCallback(() => {
@@ -214,7 +230,11 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
     setSpellPopover(null);
     debounceRef.current = setTimeout(() => {
       if (editorRef.current) {
-        const html = editorRef.current.innerHTML;
+        const rawHtml = editorRef.current.innerHTML;
+        const html = linkifyHtmlContent(rawHtml);
+        if (html !== rawHtml) {
+          editorRef.current.innerHTML = html;
+        }
         lastSyncedValue.current = html;
         onChange(html);
         setPlainText(stripHtmlToPlain(html));
@@ -227,6 +247,18 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
       }
     }, 600);
   }, [onChange]);
+
+  const handleEditorPaste = useCallback((e: React.ClipboardEvent<HTMLDivElement>) => {
+    const pastedText = e.clipboardData.getData("text/plain").trim();
+
+    if (!pastedText || !new RegExp(`^${URL_REGEX_SOURCE}$`, "i").test(pastedText)) {
+      return;
+    }
+
+    e.preventDefault();
+    document.execCommand("insertHTML", false, buildAnchorHtml(pastedText));
+    handleInput();
+  }, [handleInput]);
 
   // Show floating toolbar on selection
   const updateToolbarPosition = useCallback(() => {
