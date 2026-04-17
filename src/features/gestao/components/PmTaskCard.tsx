@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { format, isPast, isToday } from "date-fns";
-import { Calendar, UserCircle, Flag, Plus, MoreHorizontal, Archive, Trash2, Pencil, Link2, AlertTriangle, Clapperboard, Palette } from "lucide-react";
+import { Calendar, UserCircle, Flag, Plus, MoreHorizontal, Trash2, Pencil, Link2, AlertTriangle, Clapperboard, Palette } from "lucide-react";
 import { UserAvatar } from "@/components/avatar/UserAvatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,7 +39,6 @@ export function PmTaskCard({ task, clientName, assignees = [], childTasks = [], 
     toast.success("Subtarefa criada");
   };
 
-  const handleArchive = (e: React.MouseEvent) => { e.stopPropagation(); updateTask.mutate({ id: task.id, status_global: "cancelado" as any }); toast.success("Tarefa arquivada"); };
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     setDeleteConfirmOpen(true);
@@ -208,7 +207,6 @@ export function PmTaskCard({ task, clientName, assignees = [], childTasks = [], 
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-44 rounded-xl z-[200]" onClick={(e) => e.stopPropagation()}>
             <DropdownMenuItem onClick={() => { setRenameDraft(task.title); setRenaming(true); }} className="text-xs gap-2 rounded-lg"><Pencil className="h-3.5 w-3.5" /> Renomear</DropdownMenuItem>
-            <DropdownMenuItem onClick={handleArchive} className="text-xs gap-2 rounded-lg"><Archive className="h-3.5 w-3.5" /> Arquivar</DropdownMenuItem>
             {isAdmin && <DropdownMenuItem onClick={handleDelete} className="text-xs gap-2 text-destructive focus:text-destructive rounded-lg"><Trash2 className="h-3.5 w-3.5" /> Excluir</DropdownMenuItem>}
           </DropdownMenuContent>
         </DropdownMenu>
