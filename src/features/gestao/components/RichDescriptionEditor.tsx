@@ -207,6 +207,32 @@ export function RichDescriptionEditor({ value, onChange, onSave, onCancel }: Pro
 /**
  * Read-only expandable description with HTML support
  */
+function linkifyHtml(html: string): string {
+  // Auto-link plain URLs that aren't already inside an <a> tag
+  // Strategy: split by existing anchor tags, only linkify outside of them
+  const parts = html.split(/(<a\b[^>]*>.*?<\/a>)/gi);
+  const urlRe = /(https?:\/\/[^\s<>"']+)/g;
+  const linkified = parts
+    .map((part) => {
+      if (/^<a\b/i.test(part)) {
+        // Ensure existing anchors open in new tab
+        return part
+          .replace(/\starget="[^"]*"/i, "")
+          .replace(/\srel="[^"]*"/i, "")
+          .replace(/^<a\b/i, '<a target="_blank" rel="noopener noreferrer"');
+      }
+      return part.replace(urlRe, (url) => {
+        // Trim trailing punctuation that often isn't part of URL
+        const m = url.match(/^(.*?)([.,;:!?)\]]+)$/);
+        const cleanUrl = m ? m[1] : url;
+        const trail = m ? m[2] : "";
+        return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="text-primary underline hover:text-primary/80">${cleanUrl}</a>${trail}`;
+      });
+    })
+    .join("");
+  return linkified;
+}
+
 export function ExpandableDescription({
   html,
   onEdit,
@@ -218,11 +244,24 @@ export function ExpandableDescription({
   const contentRef = useRef<HTMLDivElement>(null);
   const [needsExpand, setNeedsExpand] = useState(false);
 
+  const processedHtml = html ? linkifyHtml(html) : "";
+
   useEffect(() => {
     if (contentRef.current) {
       setNeedsExpand(contentRef.current.scrollHeight > 80);
     }
-  }, [html]);
+  }, [processedHtml]);
+
+  const handleContentClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    const anchor = target.closest("a");
+    if (anchor) {
+      // Let the link open in new tab; don't trigger edit
+      e.stopPropagation();
+      return;
+    }
+    onEdit();
+  };
 
   if (!html) {
     return (
