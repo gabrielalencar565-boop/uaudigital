@@ -649,27 +649,37 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     const fixedWatchers_ = getFixedWatchers(stageAssignees, stage, task.client_id);
 
     const insertChildren = async (targetTaskId: string) => {
-      const inserted = await Promise.all(
-        children.map(async (child) => {
-          const { data, error } = await sbx.from("pm_tasks").insert({
-            client_id: child.client_id,
-            title: child.title,
-            description: child.description ?? null,
-            stage_current: stage,
-            assignee_id: fixedAssignee !== undefined ? (fixedAssignee ?? null) : (child.assignee_id ?? null),
-            watchers: fixedAssignee !== undefined ? fixedWatchers_ : (child.watchers ?? []),
-            parent_task_id: targetTaskId,
-            tags: child.tags ?? [],
-            is_extra_demand: child.is_extra_demand,
-            status_global: "backlog",
-            post_type: child.post_type ?? null,
-            created_by: user.id,
-          }).select("id").single();
+      // Preserve original creation order so the new stage shows subtasks in
+      // the same sequence as Planejamento. Child tasks are queried elsewhere
+      // ordered by created_at ascending — so we must:
+      //  1) sort the source list by created_at, and
+      //  2) insert SEQUENTIALLY (not via Promise.all) so created_at stays monotonic.
+      const orderedChildren = [...children].sort((a, b) => {
+        const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return ta - tb;
+      });
 
-          if (error || !data) throw error ?? new Error("Falha ao criar subtarefa");
-          return [child.id, data.id] as const;
-        })
-      );
+      const inserted: Array<readonly [string, string]> = [];
+      for (const child of orderedChildren) {
+        const { data, error } = await sbx.from("pm_tasks").insert({
+          client_id: child.client_id,
+          title: child.title,
+          description: child.description ?? null,
+          stage_current: stage,
+          assignee_id: fixedAssignee !== undefined ? (fixedAssignee ?? null) : (child.assignee_id ?? null),
+          watchers: fixedAssignee !== undefined ? fixedWatchers_ : (child.watchers ?? []),
+          parent_task_id: targetTaskId,
+          tags: child.tags ?? [],
+          is_extra_demand: child.is_extra_demand,
+          status_global: "backlog",
+          post_type: child.post_type ?? null,
+          created_by: user.id,
+        }).select("id").single();
+
+        if (error || !data) throw error ?? new Error("Falha ao criar subtarefa");
+        inserted.push([child.id, data.id] as const);
+      }
 
       return Object.fromEntries(inserted) as Record<string, string>;
     };
