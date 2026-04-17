@@ -40,6 +40,96 @@ const TOOLBAR_BUTTONS = [
 
 const GRADIENT_TOOLBAR = "linear-gradient(135deg, hsl(263 70% 50%), hsl(263 70% 36%))";
 const GRADIENT_MENU = "linear-gradient(160deg, hsl(263 70% 42%), hsl(263 70% 30%))";
+const URL_REGEX_SOURCE = String.raw`https?:\/\/[^\s<>"']+`;
+
+function splitTrailingUrlPunctuation(url: string) {
+  const match = url.match(/^(.*?)([.,;:!?\)\]]+)$/);
+  return {
+    cleanUrl: match?.[1] || url,
+    trailingText: match?.[2] || "",
+  };
+}
+
+function buildAnchorHtml(url: string) {
+  const wrapper = document.createElement("div");
+  const { cleanUrl, trailingText } = splitTrailingUrlPunctuation(url.trim());
+  const anchor = document.createElement("a");
+  anchor.href = cleanUrl;
+  anchor.target = "_blank";
+  anchor.rel = "noopener noreferrer";
+  anchor.className = "text-primary underline";
+  anchor.textContent = cleanUrl;
+  wrapper.append(anchor);
+  if (trailingText) wrapper.append(document.createTextNode(trailingText));
+  return wrapper.innerHTML;
+}
+
+function linkifyHtmlContent(html: string) {
+  if (!html) return "";
+
+  const container = document.createElement("div");
+  container.innerHTML = html;
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+  const textNodes: Text[] = [];
+  let currentNode: Node | null;
+
+  while ((currentNode = walker.nextNode())) {
+    const textNode = currentNode as Text;
+    const parent = textNode.parentElement;
+    const text = textNode.textContent ?? "";
+
+    if (!parent || parent.closest("a, code, pre, script, style")) continue;
+    if (!new RegExp(URL_REGEX_SOURCE, "i").test(text)) continue;
+
+    textNodes.push(textNode);
+  }
+
+  textNodes.forEach((textNode) => {
+    const text = textNode.textContent ?? "";
+    const matches = Array.from(text.matchAll(new RegExp(URL_REGEX_SOURCE, "gi")));
+    if (matches.length === 0) return;
+
+    const fragment = document.createDocumentFragment();
+    let lastIndex = 0;
+
+    matches.forEach((match) => {
+      const rawUrl = match[0];
+      const start = match.index ?? 0;
+      const { cleanUrl, trailingText } = splitTrailingUrlPunctuation(rawUrl);
+
+      if (start > lastIndex) {
+        fragment.append(document.createTextNode(text.slice(lastIndex, start)));
+      }
+
+      const anchor = document.createElement("a");
+      anchor.href = cleanUrl;
+      anchor.target = "_blank";
+      anchor.rel = "noopener noreferrer";
+      anchor.className = "text-primary underline";
+      anchor.textContent = cleanUrl;
+      fragment.append(anchor);
+
+      if (trailingText) {
+        fragment.append(document.createTextNode(trailingText));
+      }
+
+      lastIndex = start + rawUrl.length;
+    });
+
+    if (lastIndex < text.length) {
+      fragment.append(document.createTextNode(text.slice(lastIndex)));
+    }
+
+    textNode.parentNode?.replaceChild(fragment, textNode);
+  });
+
+  container.querySelectorAll("a[href]").forEach((anchor) => {
+    anchor.setAttribute("target", "_blank");
+    anchor.setAttribute("rel", "noopener noreferrer");
+  });
+
+  return container.innerHTML;
+}
 
 interface Props {
   value: string;
@@ -78,21 +168,44 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
   const lastSyncedValue = useRef(value);
   useEffect(() => {
     if (!editorRef.current) return;
-    // Only update DOM if the value actually changed from outside
+
+    const normalizedValue = linkifyHtmlContent(value || "");
+
     if (value !== lastSyncedValue.current) {
-      editorRef.current.innerHTML = value || "";
-      lastSyncedValue.current = value;
-      setPlainText(stripHtmlToPlain(value || ""));
-      if (value) {
-        setHistory([{ html: value, time: new Date() }]);
+      editorRef.current.innerHTML = normalizedValue;
+      lastSyncedValue.current = normalizedValue;
+      setPlainText(stripHtmlToPlain(normalizedValue));
+      if (normalizedValue) {
+        setHistory([{ html: normalizedValue, time: new Date() }]);
       }
-    } else if (!editorRef.current.innerHTML && value) {
-      // Initial mount
-      editorRef.current.innerHTML = value;
-      setPlainText(stripHtmlToPlain(value));
-      setHistory([{ html: value, time: new Date() }]);
+    } else if (!editorRef.current.innerHTML && normalizedValue) {
+      editorRef.current.innerHTML = normalizedValue;
+      lastSyncedValue.current = normalizedValue;
+      setPlainText(stripHtmlToPlain(normalizedValue));
+      setHistory([{ html: normalizedValue, time: new Date() }]);
     }
   }, [value]);
+
+  const handleEditorMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const anchor = (e.target as HTMLElement).closest("a[href]");
+    if (!(anchor instanceof HTMLAnchorElement) || !anchor.href) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+    window.open(anchor.href, "_blank", "noopener,noreferrer");
+  }, []);
+
+  const handleEditorPaste = useCallback((e: React.ClipboardEvent<HTMLDivElement>) => {
+    const pastedText = e.clipboardData.getData("text/plain").trim();
+
+    if (!pastedText || !new RegExp(`^${URL_REGEX_SOURCE}$`, "i").test(pastedText)) {
+      return;
+    }
+
+    e.preventDefault();
+    document.execCommand("insertHTML", false, buildAnchorHtml(pastedText));
+    handleInput();
+  }, [handleInput]);
 
   // Debounced auto-save
   const handleInput = useCallback(() => {
