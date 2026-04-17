@@ -264,11 +264,19 @@ export function AgendaPanel() {
       const sb = supabase as any;
       const { data } = await sb
         .from("pm_tasks")
-        .select("id, post_type")
+        .select("id, post_type, parent_task_id")
         .in("id", pmTaskIdsForPostType);
+      const rows = data ?? [];
+      // Collect parents that need fallback lookup
+      const parentIds = [...new Set(rows.filter((r: any) => !r.post_type && r.parent_task_id).map((r: any) => r.parent_task_id))];
+      const parentMap: Record<string, string | null> = {};
+      if (parentIds.length > 0) {
+        const { data: parents } = await sb.from("pm_tasks").select("id, post_type").in("id", parentIds);
+        for (const p of parents ?? []) parentMap[p.id] = p.post_type;
+      }
       const result: Record<string, string | null> = {};
-      for (const row of data ?? []) {
-        result[row.id] = row.post_type;
+      for (const row of rows) {
+        result[row.id] = row.post_type ?? (row.parent_task_id ? parentMap[row.parent_task_id] ?? null : null);
       }
       return result;
     },
