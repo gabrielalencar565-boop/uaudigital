@@ -691,9 +691,9 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
       : isRevisaoDesign
       ? "bg-gradient-to-r from-pink-400 to-stage-design"
       : isPdfVideo
-      ? "bg-gradient-to-r from-stage-pdf to-stage-edicao_videos"
+      ? "bg-gradient-to-r from-indigo-500 to-stage-edicao_videos"
       : isPdfDesign
-      ? "bg-gradient-to-r from-stage-pdf to-stage-design"
+      ? "bg-gradient-to-r from-indigo-500 to-stage-design"
       : undefined;
     const gradientAbbr = isAlteracaoWithOrigin
       ? (t.post_type === "video" ? "ALT/VDO" : "ALT/DSG")
