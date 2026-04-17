@@ -207,6 +207,32 @@ export function RichDescriptionEditor({ value, onChange, onSave, onCancel }: Pro
 /**
  * Read-only expandable description with HTML support
  */
+function linkifyHtml(html: string): string {
+  // Auto-link plain URLs that aren't already inside an <a> tag
+  // Strategy: split by existing anchor tags, only linkify outside of them
+  const parts = html.split(/(<a\b[^>]*>.*?<\/a>)/gi);
+  const urlRe = /(https?:\/\/[^\s<>"']+)/g;
+  const linkified = parts
+    .map((part) => {
+      if (/^<a\b/i.test(part)) {
+        // Ensure existing anchors open in new tab
+        return part
+          .replace(/\starget="[^"]*"/i, "")
+          .replace(/\srel="[^"]*"/i, "")
+          .replace(/^<a\b/i, '<a target="_blank" rel="noopener noreferrer"');
+      }
+      return part.replace(urlRe, (url) => {
+        // Trim trailing punctuation that often isn't part of URL
+        const m = url.match(/^(.*?)([.,;:!?)\]]+)$/);
+        const cleanUrl = m ? m[1] : url;
+        const trail = m ? m[2] : "";
+        return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="text-primary underline hover:text-primary/80">${cleanUrl}</a>${trail}`;
+      });
+    })
+    .join("");
+  return linkified;
+}
+
 export function ExpandableDescription({
   html,
   onEdit,
@@ -218,11 +244,24 @@ export function ExpandableDescription({
   const contentRef = useRef<HTMLDivElement>(null);
   const [needsExpand, setNeedsExpand] = useState(false);
 
+  const processedHtml = html ? linkifyHtml(html) : "";
+
   useEffect(() => {
     if (contentRef.current) {
       setNeedsExpand(contentRef.current.scrollHeight > 80);
     }
-  }, [html]);
+  }, [processedHtml]);
+
+  const handleContentClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    const anchor = target.closest("a");
+    if (anchor) {
+      // Let the link open in new tab; don't trigger edit
+      e.stopPropagation();
+      return;
+    }
+    onEdit();
+  };
 
   if (!html) {
     return (
@@ -262,16 +301,17 @@ export function ExpandableDescription({
       </div>
       <div
         ref={contentRef}
-        onClick={onEdit}
+        onClick={handleContentClick}
         className={cn(
           "cursor-pointer text-sm text-foreground/80 hover:text-foreground transition overflow-hidden",
           "[&_*]:!text-inherit [&_span]:!text-inherit [&_div]:!text-inherit [&_p]:!text-inherit [&_font]:!text-inherit",
+          "[&_a]:!text-primary [&_a]:underline [&_a:hover]:!text-primary/80",
           "[&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-2 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mb-1 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mb-1 [&_h4]:text-sm [&_h4]:font-semibold [&_h4]:mb-0.5",
           "[&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5",
           "[&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs [&_code]:font-mono",
           !expanded && "max-h-[80px]"
         )}
-        dangerouslySetInnerHTML={{ __html: html }}
+        dangerouslySetInnerHTML={{ __html: processedHtml }}
       />
       {!expanded && needsExpand && (
         <div className="h-6 -mt-6 bg-gradient-to-t from-background to-transparent pointer-events-none relative z-10" />
