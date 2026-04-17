@@ -116,8 +116,8 @@ export function AgendaWeekTaskItem({
       : "bg-gradient-to-r from-stage-alteracoes to-stage-design text-white")
     : isPdfWithOrigin
       ? (postType === "video"
-        ? "bg-gradient-to-r from-stage-pdf to-stage-edicao_videos text-stage-foreground-pdf"
-        : "bg-gradient-to-r from-stage-pdf to-stage-design text-stage-foreground-pdf")
+        ? "bg-gradient-to-r from-indigo-500 to-stage-edicao_videos text-white"
+        : "bg-gradient-to-r from-indigo-500 to-stage-design text-white")
       : (postType === "video"
         ? "bg-gradient-to-r from-pink-400 to-stage-edicao_videos text-white"
         : "bg-gradient-to-r from-pink-400 to-stage-design text-white");
