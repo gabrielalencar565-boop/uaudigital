@@ -40,6 +40,96 @@ const TOOLBAR_BUTTONS = [
 
 const GRADIENT_TOOLBAR = "linear-gradient(135deg, hsl(263 70% 50%), hsl(263 70% 36%))";
 const GRADIENT_MENU = "linear-gradient(160deg, hsl(263 70% 42%), hsl(263 70% 30%))";
+const URL_REGEX_SOURCE = String.raw`https?:\/\/[^\s<>"']+`;
+
+function splitTrailingUrlPunctuation(url: string) {
+  const match = url.match(/^(.*?)([.,;:!?\)\]]+)$/);
+  return {
+    cleanUrl: match?.[1] || url,
+    trailingText: match?.[2] || "",
+  };
+}
+
+function buildAnchorHtml(url: string) {
+  const wrapper = document.createElement("div");
+  const { cleanUrl, trailingText } = splitTrailingUrlPunctuation(url.trim());
+  const anchor = document.createElement("a");
+  anchor.href = cleanUrl;
+  anchor.target = "_blank";
+  anchor.rel = "noopener noreferrer";
+  anchor.className = "text-primary underline";
+  anchor.textContent = cleanUrl;
+  wrapper.append(anchor);
+  if (trailingText) wrapper.append(document.createTextNode(trailingText));
+  return wrapper.innerHTML;
+}
+
+function linkifyHtmlContent(html: string) {
+  if (!html) return "";
+
+  const container = document.createElement("div");
+  container.innerHTML = html;
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+  const textNodes: Text[] = [];
+  let currentNode: Node | null;
+
+  while ((currentNode = walker.nextNode())) {
+    const textNode = currentNode as Text;
+    const parent = textNode.parentElement;
+    const text = textNode.textContent ?? "";
+
+    if (!parent || parent.closest("a, code, pre, script, style")) continue;
+    if (!new RegExp(URL_REGEX_SOURCE, "i").test(text)) continue;
+
+    textNodes.push(textNode);
+  }
+
+  textNodes.forEach((textNode) => {
+    const text = textNode.textContent ?? "";
+    const matches = Array.from(text.matchAll(new RegExp(URL_REGEX_SOURCE, "gi")));
+    if (matches.length === 0) return;
+
+    const fragment = document.createDocumentFragment();
+    let lastIndex = 0;
+
+    matches.forEach((match) => {
+      const rawUrl = match[0];
+      const start = match.index ?? 0;
+      const { cleanUrl, trailingText } = splitTrailingUrlPunctuation(rawUrl);
+
+      if (start > lastIndex) {
+        fragment.append(document.createTextNode(text.slice(lastIndex, start)));
+      }
+
+      const anchor = document.createElement("a");
+      anchor.href = cleanUrl;
+      anchor.target = "_blank";
+      anchor.rel = "noopener noreferrer";
+      anchor.className = "text-primary underline";
+      anchor.textContent = cleanUrl;
+      fragment.append(anchor);
+
+      if (trailingText) {
+        fragment.append(document.createTextNode(trailingText));
+      }
+
+      lastIndex = start + rawUrl.length;
+    });
+
+    if (lastIndex < text.length) {
+      fragment.append(document.createTextNode(text.slice(lastIndex)));
+    }
+
+    textNode.parentNode?.replaceChild(fragment, textNode);
+  });
+
+  container.querySelectorAll("a[href]").forEach((anchor) => {
+    anchor.setAttribute("target", "_blank");
+    anchor.setAttribute("rel", "noopener noreferrer");
+  });
+
+  return container.innerHTML;
+}
 
 interface Props {
   value: string;
@@ -78,21 +168,60 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
   const lastSyncedValue = useRef(value);
   useEffect(() => {
     if (!editorRef.current) return;
-    // Only update DOM if the value actually changed from outside
+
+    const normalizedValue = linkifyHtmlContent(value || "");
+
     if (value !== lastSyncedValue.current) {
-      editorRef.current.innerHTML = value || "";
-      lastSyncedValue.current = value;
-      setPlainText(stripHtmlToPlain(value || ""));
-      if (value) {
-        setHistory([{ html: value, time: new Date() }]);
+      editorRef.current.innerHTML = normalizedValue;
+      lastSyncedValue.current = normalizedValue;
+      setPlainText(stripHtmlToPlain(normalizedValue));
+      if (normalizedValue) {
+        setHistory([{ html: normalizedValue, time: new Date() }]);
       }
-    } else if (!editorRef.current.innerHTML && value) {
-      // Initial mount
-      editorRef.current.innerHTML = value;
-      setPlainText(stripHtmlToPlain(value));
-      setHistory([{ html: value, time: new Date() }]);
+    } else if (!editorRef.current.innerHTML && normalizedValue) {
+      editorRef.current.innerHTML = normalizedValue;
+      lastSyncedValue.current = normalizedValue;
+      setPlainText(stripHtmlToPlain(normalizedValue));
+      setHistory([{ html: normalizedValue, time: new Date() }]);
     }
   }, [value]);
+
+  const getUrlFromPointer = useCallback((clientX: number, clientY: number) => {
+    const docWithCaret = document as Document & {
+      caretRangeFromPoint?: (x: number, y: number) => Range | null;
+      caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null;
+    };
+
+    const caretPosition = docWithCaret.caretPositionFromPoint?.(clientX, clientY);
+    const caretRange = !caretPosition ? docWithCaret.caretRangeFromPoint?.(clientX, clientY) : null;
+    const node = caretPosition?.offsetNode ?? caretRange?.startContainer ?? null;
+    const offset = caretPosition?.offset ?? caretRange?.startOffset ?? 0;
+
+    if (!node || node.nodeType !== Node.TEXT_NODE) return null;
+
+    const text = node.textContent ?? "";
+    let start = Math.min(offset, text.length);
+    let end = Math.min(offset, text.length);
+
+    while (start > 0 && !/\s/.test(text[start - 1] ?? "")) start -= 1;
+    while (end < text.length && !/\s/.test(text[end] ?? "")) end += 1;
+
+    const token = text.slice(start, end).trim();
+    const { cleanUrl } = splitTrailingUrlPunctuation(token);
+
+    return new RegExp(`^${URL_REGEX_SOURCE}$`, "i").test(cleanUrl) ? cleanUrl : null;
+  }, []);
+
+  const handleEditorMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const anchor = (e.target as HTMLElement).closest("a[href]");
+    const href = anchor instanceof HTMLAnchorElement ? anchor.href : getUrlFromPointer(e.clientX, e.clientY);
+
+    if (!href) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+    window.open(href, "_blank", "noopener,noreferrer");
+  }, [getUrlFromPointer]);
 
   // Debounced auto-save
   const handleInput = useCallback(() => {
@@ -101,7 +230,11 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
     setSpellPopover(null);
     debounceRef.current = setTimeout(() => {
       if (editorRef.current) {
-        const html = editorRef.current.innerHTML;
+        const rawHtml = editorRef.current.innerHTML;
+        const html = linkifyHtmlContent(rawHtml);
+        if (html !== rawHtml) {
+          editorRef.current.innerHTML = html;
+        }
         lastSyncedValue.current = html;
         onChange(html);
         setPlainText(stripHtmlToPlain(html));
@@ -114,6 +247,18 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
       }
     }, 600);
   }, [onChange]);
+
+  const handleEditorPaste = useCallback((e: React.ClipboardEvent<HTMLDivElement>) => {
+    const pastedText = e.clipboardData.getData("text/plain").trim();
+
+    if (!pastedText || !new RegExp(`^${URL_REGEX_SOURCE}$`, "i").test(pastedText)) {
+      return;
+    }
+
+    e.preventDefault();
+    document.execCommand("insertHTML", false, buildAnchorHtml(pastedText));
+    handleInput();
+  }, [handleInput]);
 
   // Show floating toolbar on selection
   const updateToolbarPosition = useCallback(() => {
@@ -434,10 +579,19 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
       <div
         ref={editorRef}
         contentEditable
+        onMouseDown={handleEditorMouseDown}
+        onPaste={handleEditorPaste}
         onInput={handleInput}
         onBlur={() => {
           if (debounceRef.current) clearTimeout(debounceRef.current);
-          if (editorRef.current) onChange(editorRef.current.innerHTML);
+          if (editorRef.current) {
+            const html = linkifyHtmlContent(editorRef.current.innerHTML);
+            if (html !== editorRef.current.innerHTML) {
+              editorRef.current.innerHTML = html;
+            }
+            lastSyncedValue.current = html;
+            onChange(html);
+          }
         }}
         data-placeholder={placeholder}
         className={cn(
