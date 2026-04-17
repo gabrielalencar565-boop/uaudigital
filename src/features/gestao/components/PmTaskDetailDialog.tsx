@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Calendar, UserCircle, Flag, X, ChevronRight, ArrowLeft, Trash2,
-  Layers, Tag, MessageSquare, Plus, Check, CheckCircle2, RotateCcw, Paperclip, ListTodo, FileText, CalendarDays, Pencil, Lock
+  Layers, Tag, MessageSquare, Plus, Check, CheckCircle2, RotateCcw, Paperclip, ListTodo, FileText, Pencil, Lock
 } from "lucide-react";
 import { useSession } from "@/hooks/use-session";
 import { useRole } from "@/hooks/use-role";
@@ -33,8 +33,6 @@ import { PmPlanningSubtasks } from "./PmPlanningSubtasks";
 import { PmCommentsSection } from "./PmCommentsSection";
 import { PmAttachmentsSection } from "./PmAttachmentsSection";
 import { PmAssigneeSelector } from "./PmAssigneeSelector";
-import { PmCronogramaTab } from "./PmCronogramaTab";
-import { PmPostingFields } from "./PmPostingFields";
 import type { PmTask } from "../pm-types";
 import { toast } from "sonner";
 import { SmartCaptionEditor } from "./SmartCaptionEditor";
@@ -1725,11 +1723,6 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         </div>
 
 
-        {task.parent_task_id && task.stage_current === "pdf" && (
-          <div className="border-t border-border/20 pt-4">
-            <PmPostingFields task={task} />
-          </div>
-        )}
 
         {/* Subtasks — use planning layout for planejamento parent tasks */}
         <div className="border-t border-border/20 pt-4">
@@ -1747,22 +1740,6 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           </div>
         )}
 
-        {/* Cronograma tab (only for parent tasks in PDF stage with children) */}
-        {!task.parent_task_id && task.stage_current === "pdf" && childTasks.length > 0 && (
-          <div className="border-t border-border/20 pt-4">
-            <div className="flex items-center gap-2 mb-3">
-              <CalendarDays className="h-4 w-4 text-muted-foreground" />
-              <h3 className="text-sm font-bold">Cronograma</h3>
-            </div>
-            <PmCronogramaTab
-              parentTask={task}
-              childTasks={childTasks}
-              clientName={clientsMap[task.client_id] ?? ""}
-              membersMap={membersMap}
-              onEditTask={onEditTask}
-            />
-          </div>
-        )}
 
         {/* Mobile-only comments section (since sidebar is hidden) */}
         <div className="border-t border-border/20 pt-4 md:hidden">

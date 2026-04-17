@@ -243,11 +243,11 @@ export function AgendaPanel() {
     return [{ user_id: primary.user_id, display_name: primary.display_name, avatar_url: primary.avatar_url }, ...extra];
   }, [assigneesByTaskId, teamById]);
 
-  // Batch-fetch post_type for revisão tasks coming from pm_tasks
+  // Batch-fetch post_type for revisão/pdf tasks coming from pm_tasks
   const revisaoPostTypes = useMemo(() => {
     const map = new Map<string, string>(); // taskId → pmTaskId
     for (const t of tasks) {
-      if (t.stage === "revisao" && t.description?.startsWith("pm:")) {
+      if ((t.stage === "revisao" || t.stage === "pdf") && t.description?.startsWith("pm:")) {
         const parts = t.description.split(":");
         if (parts.length >= 3) map.set(t.id, parts[1]);
       }

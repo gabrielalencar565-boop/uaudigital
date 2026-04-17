@@ -100,20 +100,27 @@ export function AgendaWeekTaskItem({
   const isCompact = density === "compact";
   const isAssigneeLoading = assigneeName === PENDING_MEMBER_NAME;
 
-  // For revisão or alteração tasks with a post_type origin, show gradient badge
+  // For revisão, alteração or pdf tasks with a post_type origin, show gradient badge
   const isRevisaoWithOrigin = stage === "revisao" && !!postType;
   const isAlteracaoWithOrigin = stage === "alteracoes" && !!postType;
-  const hasGradientPill = isRevisaoWithOrigin || isAlteracaoWithOrigin;
+  const isPdfWithOrigin = stage === "pdf" && !!postType;
+  const hasGradientPill = isRevisaoWithOrigin || isAlteracaoWithOrigin || isPdfWithOrigin;
   const gradientShort = isAlteracaoWithOrigin
     ? (postType === "video" ? "ALT/VDO" : "ALT/DSG")
-    : (postType === "video" ? "REV/VDO" : "REV/DSG");
+    : isPdfWithOrigin
+      ? (postType === "video" ? "PDF/VDO" : "PDF/DSG")
+      : (postType === "video" ? "REV/VDO" : "REV/DSG");
   const gradientClass = isAlteracaoWithOrigin
     ? (postType === "video"
       ? "bg-gradient-to-r from-stage-alteracoes to-stage-edicao_videos text-white"
       : "bg-gradient-to-r from-stage-alteracoes to-stage-design text-white")
-    : (postType === "video"
-      ? "bg-gradient-to-r from-pink-400 to-stage-edicao_videos text-white"
-      : "bg-gradient-to-r from-pink-400 to-stage-design text-white");
+    : isPdfWithOrigin
+      ? (postType === "video"
+        ? "bg-gradient-to-r from-stage-pdf to-stage-edicao_videos text-stage-foreground-pdf"
+        : "bg-gradient-to-r from-stage-pdf to-stage-design text-stage-foreground-pdf")
+      : (postType === "video"
+        ? "bg-gradient-to-r from-pink-400 to-stage-edicao_videos text-white"
+        : "bg-gradient-to-r from-pink-400 to-stage-design text-white");
 
   return (
     <div
