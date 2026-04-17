@@ -579,10 +579,19 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
       <div
         ref={editorRef}
         contentEditable
+        onMouseDown={handleEditorMouseDown}
+        onPaste={handleEditorPaste}
         onInput={handleInput}
         onBlur={() => {
           if (debounceRef.current) clearTimeout(debounceRef.current);
-          if (editorRef.current) onChange(editorRef.current.innerHTML);
+          if (editorRef.current) {
+            const html = linkifyHtmlContent(editorRef.current.innerHTML);
+            if (html !== editorRef.current.innerHTML) {
+              editorRef.current.innerHTML = html;
+            }
+            lastSyncedValue.current = html;
+            onChange(html);
+          }
         }}
         data-placeholder={placeholder}
         className={cn(
