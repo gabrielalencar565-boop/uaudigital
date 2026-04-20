@@ -6,6 +6,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { normalizePmTagStageKey } from "@/features/gestao/utils/normalize-pm-tag-stage";
 
 interface TaskData {
   id: string;
@@ -13,6 +14,8 @@ interface TaskData {
   completed_at: string | null;
   due_date: string;
   point_value?: number | null;
+  late_penalty_value?: number | null;
+  description?: string | null;
   stage: string;
   quantity?: number;
   is_extra_demand?: boolean;
@@ -51,35 +54,76 @@ function GlowBar(props: any) {
   );
 }
 
-function calcTaskPoints(task: TaskData, configMap: Map<string, ScoringRow>): number {
-  // If point_value is already set (snapshot), use it
-  if (task.point_value != null && task.point_value > 0) return task.point_value;
-
-  const cfg = configMap.get(task.stage);
-  if (!cfg) return 0;
-
-  const qty = cfg.uses_quantity ? (task.quantity ?? 1) : 1;
-  let pts = cfg.base_points * qty;
-
-  // Check if late (completed after due_date)
-  if (task.completed_at && task.due_date) {
-    const completedDate = format(new Date(task.completed_at), "yyyy-MM-dd");
-    if (completedDate > task.due_date) {
-      pts += cfg.late_penalty * qty;
-    }
-  }
-
-  // Extra demand multiplier
-  if (task.is_extra_demand) {
-    pts *= cfg.extra_demand_multiplier;
-  }
-
-  return Math.max(0, pts);
+/** Extract pm_task_id from task description like pm:<uuid>:<stage>:<user> */
+function extractPmTaskId(description: string | null | undefined): string | null {
+  if (!description || !description.startsWith("pm:")) return null;
+  const parts = description.split(":");
+  if (parts.length >= 3) return parts[1];
+  return null;
 }
 
-function getMetricValue(tasks: TaskData[], mode: MetricMode, configMap: Map<string, ScoringRow>): number {
+function isOnTime(task: TaskData): boolean | null {
+  if (task.status !== "concluido" || !task.completed_at) return null;
+  const completedSP = new Date(task.completed_at).toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+  return completedSP <= task.due_date;
+}
+
+/**
+ * Mirrors `AdminDeadlineReport.calcPoints` so the productivity widget reflects
+ * exactly the same scoring rules configured in Admin → Pontuação:
+ *  - On-time: snapshot `point_value` (already accounts for tags) or computed via base_points/quantity/extra demand
+ *  - Late: snapshot `late_penalty_value` (already includes tag penalties) or stage `late_penalty` + sum of unique tag penalties
+ */
+function calcTaskPoints(
+  task: TaskData,
+  configMap: Map<string, ScoringRow>,
+  pmTagsMap: Map<string, string[]>,
+): number {
+  const onTime = isOnTime(task);
+  if (onTime === null) return 0;
+
+  const cfg = configMap.get(task.stage);
+
+  // ── Late delivery ──
+  if (!onTime) {
+    if (task.late_penalty_value != null) return task.late_penalty_value;
+
+    let penalty = cfg?.late_penalty ?? -1;
+    const pmId = extractPmTaskId(task.description);
+    if (pmId) {
+      const tags = pmTagsMap.get(pmId);
+      if (tags) {
+        const seen = new Set<string>();
+        for (const tag of tags) {
+          const tagName = tag.split(":")[0];
+          const tagKey = normalizePmTagStageKey(tagName);
+          if (seen.has(tagKey)) continue;
+          seen.add(tagKey);
+          const tagCfg = configMap.get(tagKey);
+          if (tagCfg) penalty += tagCfg.late_penalty;
+        }
+      }
+    }
+    return penalty;
+  }
+
+  // ── On-time: snapshot wins ──
+  if (task.point_value != null) return task.point_value;
+  if (!cfg) return 1;
+
+  let pts = cfg.base_points;
+  if (cfg.uses_quantity) {
+    pts *= (task.quantity ?? 1);
+    if (task.is_extra_demand && cfg.extra_demand_multiplier > 0) {
+      pts *= cfg.extra_demand_multiplier;
+    }
+  }
+  return pts;
+}
+
+function getMetricValue(tasks: TaskData[], mode: MetricMode, configMap: Map<string, ScoringRow>, pmTagsMap: Map<string, string[]>): number {
   if (mode === "tarefas") return tasks.length;
-  return tasks.reduce((s, t) => s + calcTaskPoints(t, configMap), 0);
+  return tasks.reduce((s, t) => s + calcTaskPoints(t, configMap, pmTagsMap), 0);
 }
 
 export function ProductivityWidget({ tasks, allMonthTasks, todayKey }: Props) {
@@ -102,6 +146,36 @@ export function ProductivityWidget({ tasks, allMonthTasks, todayKey }: Props) {
     for (const r of scoringQ.data ?? []) m.set(r.stage, r);
     return m;
   }, [scoringQ.data]);
+
+  // ── Fetch pm_tasks tags so we can apply tag-based late penalties ──
+  const pmIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const t of allMonthTasks) {
+      const pid = extractPmTaskId(t.description);
+      if (pid) ids.add(pid);
+    }
+    return Array.from(ids);
+  }, [allMonthTasks]);
+
+  const pmTagsQ = useQuery({
+    enabled: pmIds.length > 0,
+    queryKey: ["productivity_pm_tags", pmIds.sort().join(",")],
+    queryFn: async () => {
+      if (pmIds.length === 0) return [] as { id: string; tags: string[] | null }[];
+      const { data } = await supabase.from("pm_tasks").select("id, tags").in("id", pmIds);
+      return (data ?? []) as { id: string; tags: string[] | null }[];
+    },
+    staleTime: 60_000,
+  });
+
+  const pmTagsMap = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const pt of pmTagsQ.data ?? []) {
+      if (pt.tags && pt.tags.length > 0) map.set(pt.id, pt.tags);
+    }
+    return map;
+  }, [pmTagsQ.data]);
+
 
   // ── Week ranges (weeks of the current month) ──
   const weekRanges = useMemo(() => {
@@ -133,12 +207,12 @@ export function ProductivityWidget({ tasks, allMonthTasks, todayKey }: Props) {
       });
       return {
         label: w.label,
-        value: getMetricValue(completed, mode, configMap),
+        value: getMetricValue(completed, mode, configMap, pmTagsMap),
         isCurrent: w.isCurrent,
         index: idx,
       };
     });
-  }, [allMonthTasks, todayKey, mode, weekRanges, configMap]);
+  }, [allMonthTasks, todayKey, mode, weekRanges, configMap, pmTagsMap]);
 
   // ── Daily data based on selected week or last 7 days ──
   const dailyData = useMemo(() => {
@@ -165,12 +239,12 @@ export function ProductivityWidget({ tasks, allMonthTasks, todayKey }: Props) {
         label: label.charAt(0).toUpperCase() + label.slice(1),
         date: key,
         tarefas: completed.length,
-        pontos: completed.reduce((s, t) => s + calcTaskPoints(t, configMap), 0),
+        pontos: completed.reduce((s, t) => s + calcTaskPoints(t, configMap, pmTagsMap), 0),
       };
     });
 
     return { data: result, title: chartTitle };
-  }, [allMonthTasks, todayKey, selectedWeekIndex, weekRanges, configMap]);
+  }, [allMonthTasks, todayKey, selectedWeekIndex, weekRanges, configMap, pmTagsMap]);
 
   // ── Weekly trend text ──
   const weeklyTrend = useMemo(() => {
@@ -196,13 +270,13 @@ export function ProductivityWidget({ tasks, allMonthTasks, todayKey }: Props) {
         return isWithinInterval(new Date(t.completed_at), { start, end });
       });
 
-    const thisVal = currentIdx >= 0 ? getMetricValue(filterCompleted(weekRanges[currentIdx].start, weekRanges[currentIdx].end), mode, configMap) : 0;
-    const lastVal = prevIdx >= 0 ? getMetricValue(filterCompleted(weekRanges[prevIdx].start, weekRanges[prevIdx].end), mode, configMap) : 0;
+    const thisVal = currentIdx >= 0 ? getMetricValue(filterCompleted(weekRanges[currentIdx].start, weekRanges[currentIdx].end), mode, configMap, pmTagsMap) : 0;
+    const lastVal = prevIdx >= 0 ? getMetricValue(filterCompleted(weekRanges[prevIdx].start, weekRanges[prevIdx].end), mode, configMap, pmTagsMap) : 0;
 
     if (lastVal === 0) return { pct: thisVal > 0 ? 100 : 0, up: true };
     const pct = Math.round(((thisVal - lastVal) / lastVal) * 100);
     return { pct: Math.abs(pct), up: pct >= 0 };
-  }, [allMonthTasks, todayKey, mode, configMap, weekRanges]);
+  }, [allMonthTasks, todayKey, mode, configMap, weekRanges, pmTagsMap]);
 
   const handleBarClick = useCallback((_: any, index: number) => {
     setSelectedWeekIndex((prev) => (prev === index ? null : index));
