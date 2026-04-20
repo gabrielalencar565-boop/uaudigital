@@ -565,7 +565,7 @@ export function useDeletedTasks() {
     queryFn: async (): Promise<DeletedTaskRow[]> => {
       const { data, error } = await supabase
         .from("tasks")
-        .select("id, client_id, stage, assigned_user_id, due_date, due_at, status, title, description, created_by, completed_at, deleted_at, deleted_by, is_extra_demand, quantity, point_value")
+        .select("id, client_id, stage, assigned_user_id, due_date, due_at, status, title, description, created_by, completed_at, deleted_at, deleted_by, is_extra_demand, quantity, point_value, late_penalty_value")
         .not("deleted_at", "is", null)
         .order("deleted_at", { ascending: false });
       if (error) throw error;
