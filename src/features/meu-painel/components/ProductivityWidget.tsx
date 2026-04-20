@@ -207,12 +207,12 @@ export function ProductivityWidget({ tasks, allMonthTasks, todayKey }: Props) {
       });
       return {
         label: w.label,
-        value: getMetricValue(completed, mode, configMap),
+        value: getMetricValue(completed, mode, configMap, pmTagsMap),
         isCurrent: w.isCurrent,
         index: idx,
       };
     });
-  }, [allMonthTasks, todayKey, mode, weekRanges, configMap]);
+  }, [allMonthTasks, todayKey, mode, weekRanges, configMap, pmTagsMap]);
 
   // ── Daily data based on selected week or last 7 days ──
   const dailyData = useMemo(() => {
@@ -239,12 +239,12 @@ export function ProductivityWidget({ tasks, allMonthTasks, todayKey }: Props) {
         label: label.charAt(0).toUpperCase() + label.slice(1),
         date: key,
         tarefas: completed.length,
-        pontos: completed.reduce((s, t) => s + calcTaskPoints(t, configMap), 0),
+        pontos: completed.reduce((s, t) => s + calcTaskPoints(t, configMap, pmTagsMap), 0),
       };
     });
 
     return { data: result, title: chartTitle };
-  }, [allMonthTasks, todayKey, selectedWeekIndex, weekRanges, configMap]);
+  }, [allMonthTasks, todayKey, selectedWeekIndex, weekRanges, configMap, pmTagsMap]);
 
   // ── Weekly trend text ──
   const weeklyTrend = useMemo(() => {
@@ -270,13 +270,13 @@ export function ProductivityWidget({ tasks, allMonthTasks, todayKey }: Props) {
         return isWithinInterval(new Date(t.completed_at), { start, end });
       });
 
-    const thisVal = currentIdx >= 0 ? getMetricValue(filterCompleted(weekRanges[currentIdx].start, weekRanges[currentIdx].end), mode, configMap) : 0;
-    const lastVal = prevIdx >= 0 ? getMetricValue(filterCompleted(weekRanges[prevIdx].start, weekRanges[prevIdx].end), mode, configMap) : 0;
+    const thisVal = currentIdx >= 0 ? getMetricValue(filterCompleted(weekRanges[currentIdx].start, weekRanges[currentIdx].end), mode, configMap, pmTagsMap) : 0;
+    const lastVal = prevIdx >= 0 ? getMetricValue(filterCompleted(weekRanges[prevIdx].start, weekRanges[prevIdx].end), mode, configMap, pmTagsMap) : 0;
 
     if (lastVal === 0) return { pct: thisVal > 0 ? 100 : 0, up: true };
     const pct = Math.round(((thisVal - lastVal) / lastVal) * 100);
     return { pct: Math.abs(pct), up: pct >= 0 };
-  }, [allMonthTasks, todayKey, mode, configMap, weekRanges]);
+  }, [allMonthTasks, todayKey, mode, configMap, weekRanges, pmTagsMap]);
 
   const handleBarClick = useCallback((_: any, index: number) => {
     setSelectedWeekIndex((prev) => (prev === index ? null : index));
