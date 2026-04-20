@@ -64,6 +64,7 @@ export type TaskRow = {
   is_extra_demand: boolean;
   quantity: number;
   point_value: number | null;
+  late_penalty_value: number | null;
 };
 
 export type ProfileRow = {
@@ -308,7 +309,7 @@ export function useTasks(params?: {
     queryFn: async (): Promise<TaskRow[]> => {
       let q = supabase
         .from("tasks")
-        .select("id, client_id, stage, assigned_user_id, due_date, due_at, status, title, description, created_by, completed_at, deleted_at, deleted_by, is_extra_demand, quantity, point_value")
+        .select("id, client_id, stage, assigned_user_id, due_date, due_at, status, title, description, created_by, completed_at, deleted_at, deleted_by, is_extra_demand, quantity, point_value, late_penalty_value")
         .is("deleted_at", null); // Filtra apenas tarefas ativas
       if (assignedUserId) q = q.eq("assigned_user_id", assignedUserId);
       if (clientId) q = q.eq("client_id", clientId);
