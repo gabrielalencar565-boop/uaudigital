@@ -310,16 +310,30 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
           const subAssignees = allAssigneeIds(sub);
           const circleColor = getStageCircleColor(sub.stage_current);
 
+          const isSelected = selectedIds.has(sub.id);
+
           return (
             <div
               key={sub.id}
               className={cn(
                 "group flex items-center gap-2 px-2 py-2 transition border-b border-border/10 cursor-pointer",
                 isActive ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-card/40",
+                isSelected && "bg-primary/5 ring-1 ring-primary/30 ring-inset",
                 isDone && !correctionMode && "opacity-60"
               )}
               onClick={() => onSelectSubtask?.(sub)}
             >
+              {/* Selection checkbox */}
+              {!readOnly && (
+                <div className="w-5 flex justify-center" onClick={(e) => e.stopPropagation()}>
+                  <Checkbox
+                    checked={isSelected}
+                    onCheckedChange={() => toggleSelect(sub.id)}
+                    aria-label={`Selecionar ${sub.title}`}
+                    className={cn("h-3.5 w-3.5 transition-opacity", selectedIds.size > 0 ? "opacity-100" : "opacity-0 group-hover:opacity-100")}
+                  />
+                </div>
+              )}
               {/* Done toggle + Alteração */}
               <div className="w-8 flex justify-center" onClick={(e) => e.stopPropagation()}>
                 {readOnly && !correctionMode ? (
