@@ -566,6 +566,14 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   const advanceStage = async (completedStage: string, nextStage: string, newDueDate?: string) => {
     // Always check for existing agenda task regardless of date config
     const existing = await findExistingAgendaTaskForStage(nextStage, newDueDate);
+
+    // PDF: auto-merge silently with notification (no dialog)
+    if (existing && nextStage === "pdf") {
+      toast.success(`Vinculado ao PDF do mês`);
+      doAdvance(completedStage, nextStage, existing.due_date ?? newDueDate, existing.id);
+      return;
+    }
+
     if (existing) {
       setLinkExistingTask(existing);
       setPendingAdvance({ completedStage, nextStage });
