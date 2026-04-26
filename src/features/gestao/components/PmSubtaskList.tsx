@@ -281,6 +281,30 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Single delete confirmation (shared, outside rows) */}
+      <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
+        <AlertDialogContent className="z-[200]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir subtarefa?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {(() => {
+                const t = childTasks.find(s => s.id === deletingId);
+                return <>A subtarefa <strong>"{t?.title ?? ""}"</strong> será movida para a lixeira. Os pontos de performance não serão contabilizados.</>;
+              })()}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive hover:bg-destructive/90"
+              onClick={() => deletingId && handleSoftDelete(deletingId)}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Table header */}
       {total > 0 && (
         <div className="flex items-center gap-2 px-2 py-1 text-[10px] uppercase tracking-wider text-muted-foreground border-b border-border/20">
