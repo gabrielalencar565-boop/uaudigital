@@ -476,8 +476,8 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           }
 
           const originId = task.origin_task_id ?? task.id;
-          // PDF is unified (no post_type); other stages inherit from origin
-          const resolvedPostType = nextStage === "pdf"
+          // PDF and Agendamento are unified (no post_type); other stages inherit from origin
+          const resolvedPostType = (nextStage === "pdf" || nextStage === "agendamento")
             ? null
             : (task.post_type
               ?? (completedStage === "edicao_videos" ? "video" : completedStage === "design" ? "design" : undefined));
@@ -570,9 +570,9 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     // Always check for existing agenda task regardless of date config
     const existing = await findExistingAgendaTaskForStage(nextStage, newDueDate);
 
-    // PDF: auto-merge silently with notification (no dialog)
-    if (existing && nextStage === "pdf") {
-      toast.success(`Vinculado ao PDF do mês`);
+    // PDF and Agendamento: auto-merge silently with notification (no dialog)
+    if (existing && (nextStage === "pdf" || nextStage === "agendamento")) {
+      toast.success(nextStage === "pdf" ? `Vinculado ao PDF do mês` : `Vinculado ao Agendamento do mês`);
       doAdvance(completedStage, nextStage, existing.due_date ?? newDueDate, existing.id);
       return;
     }
