@@ -444,33 +444,19 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
               {/* Actions - hidden in readOnly */}
               {!readOnly && (
                 <div className="w-14 flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
-                  <AlertDialog open={deletingId === sub.id} onOpenChange={(open) => !open && setDeletingId(null)}>
-                    <AlertDialogTrigger asChild>
-                      <button
-                        className="h-6 w-6 flex items-center justify-center rounded-md text-destructive/80 hover:bg-destructive/10 hover:text-destructive transition-all"
-                        onClick={(e) => { e.stopPropagation(); setDeletingId(sub.id); }}
-                        aria-label={`Excluir subtarefa ${sub.title}`}
-                        title="Mover para lixeira"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent className="z-[200]">
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Excluir subtarefa?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          A subtarefa <strong>"{sub.title}"</strong> será movida para a lixeira. Os pontos de performance não serão contabilizados.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => handleSoftDelete(sub.id)}>
-                          Excluir
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 group-hover:text-primary transition" onClick={() => onSelectSubtask?.(sub)} />
+                  <button
+                    className="h-6 w-6 flex items-center justify-center rounded-md text-destructive/80 hover:bg-destructive/10 hover:text-destructive transition-all"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setDeletingId(sub.id);
+                    }}
+                    aria-label={`Excluir subtarefa ${sub.title}`}
+                    title="Mover para lixeira"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 group-hover:text-primary transition" />
                 </div>
               )}
 
