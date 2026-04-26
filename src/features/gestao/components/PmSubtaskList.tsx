@@ -496,8 +496,8 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
 
               {/* Correction mode: show chevron for navigation */}
               {readOnly && (
-                <div className="w-6 flex items-center justify-end">
-                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 group-hover:text-primary transition" onClick={() => onSelectSubtask?.(sub)} />
+                <div className="w-6 flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 group-hover:text-primary transition" />
                 </div>
               )}
             </div>
