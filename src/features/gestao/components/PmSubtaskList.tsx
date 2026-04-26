@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { Plus, ChevronRight, Check, RotateCcw, Trash2, Pencil } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, ChevronRight, Check, RotateCcw, Trash2, Pencil, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +37,19 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
   const [newTitle, setNewTitle] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showTrash, setShowTrash] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAll = () => setSelectedIds(new Set(childTasks.map(s => s.id)));
+  const clearSelection = () => setSelectedIds(new Set());
 
   const handleSoftDelete = async (subId: string) => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -43,6 +57,39 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
     toast("Subtarefa movida para lixeira");
     setDeletingId(null);
   };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    const ids = Array.from(selectedIds);
+    const nowIso = new Date().toISOString();
+    ids.forEach(id => {
+      updateTask.mutate({ id, deleted_at: nowIso, deleted_by: user?.id ?? null } as any);
+    });
+    toast.success(`${ids.length} subtarefa${ids.length !== 1 ? "s" : ""} movida${ids.length !== 1 ? "s" : ""} para lixeira`);
+    clearSelection();
+    setBulkConfirmOpen(false);
+  };
+
+  // Keyboard shortcuts: Delete/Backspace -> bulk delete, ESC -> clear selection
+  useEffect(() => {
+    if (selectedIds.size === 0 || readOnly) return;
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      const isEditable = tag === "INPUT" || tag === "TEXTAREA" || target?.isContentEditable;
+      if (isEditable) return;
+      if (e.key === "Escape") {
+        e.preventDefault();
+        clearSelection();
+      } else if (e.key === "Delete" || e.key === "Backspace") {
+        e.preventDefault();
+        setBulkConfirmOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [selectedIds, readOnly]);
 
   const done = childTasks.filter(s => s.status_global === "concluido").length;
   const total = childTasks.length;
@@ -184,9 +231,69 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
         />
       )}
 
+      {/* Bulk selection bar */}
+      {!readOnly && selectedIds.size > 0 && (
+        <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-md border border-primary/30 bg-primary/5">
+          <div className="flex items-center gap-2 text-xs">
+            <span className="font-medium text-primary">
+              {selectedIds.size} selecionada{selectedIds.size !== 1 ? "s" : ""}
+            </span>
+            <span className="text-muted-foreground hidden sm:inline">
+              · <kbd className="px-1 py-0.5 rounded bg-muted text-[10px]">Delete</kbd> para excluir · <kbd className="px-1 py-0.5 rounded bg-muted text-[10px]">Esc</kbd> para cancelar
+            </span>
+          </div>
+          <div className="flex items-center gap-1">
+            {selectedIds.size < total && (
+              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={selectAll}>
+                Selecionar todas
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+              onClick={() => setBulkConfirmOpen(true)}
+            >
+              <Trash2 className="h-3.5 w-3.5 mr-1" /> Excluir
+            </Button>
+            <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={clearSelection} title="Cancelar seleção">
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk delete confirmation */}
+      <AlertDialog open={bulkConfirmOpen} onOpenChange={setBulkConfirmOpen}>
+        <AlertDialogContent className="z-[200]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir {selectedIds.size} subtarefa{selectedIds.size !== 1 ? "s" : ""}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {selectedIds.size === 1 ? "A subtarefa selecionada será movida" : `As ${selectedIds.size} subtarefas selecionadas serão movidas`} para a lixeira. Os pontos de performance não serão contabilizados.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleBulkDelete}>
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Table header */}
       {total > 0 && (
         <div className="flex items-center gap-2 px-2 py-1 text-[10px] uppercase tracking-wider text-muted-foreground border-b border-border/20">
+          {!readOnly && (
+            <div className="w-5 flex justify-center" onClick={(e) => e.stopPropagation()}>
+              <Checkbox
+                checked={selectedIds.size > 0 && selectedIds.size === total}
+                onCheckedChange={(c) => c ? selectAll() : clearSelection()}
+                aria-label="Selecionar todas"
+                className="h-3.5 w-3.5"
+              />
+            </div>
+          )}
           <div className="w-8 text-center">Etapa</div>
           <div className="flex-1">Nome</div>
           <div className="w-20 text-center">Responsável</div>
@@ -203,16 +310,30 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
           const subAssignees = allAssigneeIds(sub);
           const circleColor = getStageCircleColor(sub.stage_current);
 
+          const isSelected = selectedIds.has(sub.id);
+
           return (
             <div
               key={sub.id}
               className={cn(
                 "group flex items-center gap-2 px-2 py-2 transition border-b border-border/10 cursor-pointer",
                 isActive ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-card/40",
+                isSelected && "bg-primary/5 ring-1 ring-primary/30 ring-inset",
                 isDone && !correctionMode && "opacity-60"
               )}
               onClick={() => onSelectSubtask?.(sub)}
             >
+              {/* Selection checkbox */}
+              {!readOnly && (
+                <div className="w-5 flex justify-center" onClick={(e) => e.stopPropagation()}>
+                  <Checkbox
+                    checked={isSelected}
+                    onCheckedChange={() => toggleSelect(sub.id)}
+                    aria-label={`Selecionar ${sub.title}`}
+                    className={cn("h-3.5 w-3.5 transition-opacity", selectedIds.size > 0 ? "opacity-100" : "opacity-0 group-hover:opacity-100")}
+                  />
+                </div>
+              )}
               {/* Done toggle + Alteração */}
               <div className="w-8 flex justify-center" onClick={(e) => e.stopPropagation()}>
                 {readOnly && !correctionMode ? (
