@@ -231,9 +231,69 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
         />
       )}
 
+      {/* Bulk selection bar */}
+      {!readOnly && selectedIds.size > 0 && (
+        <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-md border border-primary/30 bg-primary/5">
+          <div className="flex items-center gap-2 text-xs">
+            <span className="font-medium text-primary">
+              {selectedIds.size} selecionada{selectedIds.size !== 1 ? "s" : ""}
+            </span>
+            <span className="text-muted-foreground hidden sm:inline">
+              · <kbd className="px-1 py-0.5 rounded bg-muted text-[10px]">Delete</kbd> para excluir · <kbd className="px-1 py-0.5 rounded bg-muted text-[10px]">Esc</kbd> para cancelar
+            </span>
+          </div>
+          <div className="flex items-center gap-1">
+            {selectedIds.size < total && (
+              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={selectAll}>
+                Selecionar todas
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+              onClick={() => setBulkConfirmOpen(true)}
+            >
+              <Trash2 className="h-3.5 w-3.5 mr-1" /> Excluir
+            </Button>
+            <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={clearSelection} title="Cancelar seleção">
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk delete confirmation */}
+      <AlertDialog open={bulkConfirmOpen} onOpenChange={setBulkConfirmOpen}>
+        <AlertDialogContent className="z-[200]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir {selectedIds.size} subtarefa{selectedIds.size !== 1 ? "s" : ""}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {selectedIds.size === 1 ? "A subtarefa selecionada será movida" : `As ${selectedIds.size} subtarefas selecionadas serão movidas`} para a lixeira. Os pontos de performance não serão contabilizados.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleBulkDelete}>
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Table header */}
       {total > 0 && (
         <div className="flex items-center gap-2 px-2 py-1 text-[10px] uppercase tracking-wider text-muted-foreground border-b border-border/20">
+          {!readOnly && (
+            <div className="w-5 flex justify-center" onClick={(e) => e.stopPropagation()}>
+              <Checkbox
+                checked={selectedIds.size > 0 && selectedIds.size === total}
+                onCheckedChange={(c) => c ? selectAll() : clearSelection()}
+                aria-label="Selecionar todas"
+                className="h-3.5 w-3.5"
+              />
+            </div>
+          )}
           <div className="w-8 text-center">Etapa</div>
           <div className="flex-1">Nome</div>
           <div className="w-20 text-center">Responsável</div>
