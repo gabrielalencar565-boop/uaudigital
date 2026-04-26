@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { Plus, ChevronRight, Check, RotateCcw, Trash2, Pencil } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, ChevronRight, Check, RotateCcw, Trash2, Pencil, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
