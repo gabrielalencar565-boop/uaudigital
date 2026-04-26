@@ -1,6 +1,8 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Clapperboard, Palette, ChevronDown, Plus, Check, ChevronRight, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 
@@ -35,12 +37,73 @@ interface Props {
 
 export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members, onSelectSubtask, activeSubtaskId, sectionTitle = "Planejamento" }: Props) {
   const [showTrash, setShowTrash] = useState(false);
+  const updateTask = useUpdatePmTask();
 
   const videoTasks = childTasks.filter(c => c.post_type === "video");
   const designTasks = childTasks.filter(c => c.post_type === "design");
 
   const videoDone = videoTasks.filter(t => t.stage_current === "entrega").length;
   const designDone = designTasks.filter(t => t.stage_current === "entrega").length;
+
+  // Shared multi-selection state across both sections
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
+
+  const total = childTasks.length;
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const selectAll = useCallback(() => setSelectedIds(new Set(childTasks.map(s => s.id))), [childTasks]);
+  const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
+
+  // Drop ids that no longer exist (e.g., after stage advance / deletion)
+  useEffect(() => {
+    setSelectedIds(prev => {
+      if (prev.size === 0) return prev;
+      const valid = new Set(childTasks.map(s => s.id));
+      let changed = false;
+      const next = new Set<string>();
+      prev.forEach(id => { if (valid.has(id)) next.add(id); else changed = true; });
+      return changed ? next : prev;
+    });
+  }, [childTasks]);
+
+  // Keyboard shortcuts: Esc clears, Delete/Backspace opens bulk confirm
+  useEffect(() => {
+    if (selectedIds.size === 0) return;
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || target?.isContentEditable) return;
+      if (e.key === "Escape") {
+        clearSelection();
+      } else if (e.key === "Delete" || e.key === "Backspace") {
+        e.preventDefault();
+        setBulkConfirmOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [selectedIds, clearSelection]);
+
+  const handleBulkDelete = useCallback(async () => {
+    if (selectedIds.size === 0) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    const ids = Array.from(selectedIds);
+    const deletedAt = new Date().toISOString();
+    ids.forEach(id => {
+      updateTask.mutate({ id, deleted_at: deletedAt, deleted_by: user?.id ?? null } as any);
+    });
+    toast(`${ids.length} subtarefa${ids.length !== 1 ? "s movidas" : " movida"} para lixeira`);
+    clearSelection();
+    setBulkConfirmOpen(false);
+  }, [selectedIds, updateTask, clearSelection]);
 
   return (
     <div className="space-y-3">
@@ -71,6 +134,61 @@ export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members
         membersMap={membersMap}
       />
 
+      {/* Bulk selection bar */}
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/5 border border-primary/20 sticky top-0 z-10">
+          <span className="text-xs font-medium">
+            {selectedIds.size} selecionada{selectedIds.size !== 1 ? "s" : ""}
+          </span>
+          <span className="text-[10px] text-muted-foreground">
+            (Del para excluir, Esc para limpar)
+          </span>
+          <div className="ml-auto flex items-center gap-1">
+            {selectedIds.size < total && (
+              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={selectAll}>
+                Selecionar todas
+              </Button>
+            )}
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={clearSelection}>
+              Limpar
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              className="h-7 text-xs"
+              onClick={() => setBulkConfirmOpen(true)}
+            >
+              <Trash2 className="h-3 w-3 mr-1" />
+              Excluir
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk delete confirmation (shared) */}
+      <AlertDialog open={bulkConfirmOpen} onOpenChange={setBulkConfirmOpen}>
+        <AlertDialogContent className="z-[200]" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir {selectedIds.size} subtarefa{selectedIds.size !== 1 ? "s" : ""}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {selectedIds.size === 1 ? "A subtarefa selecionada será movida" : `As ${selectedIds.size} subtarefas selecionadas serão movidas`} para a lixeira. Os pontos de performance não serão contabilizados.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive hover:bg-destructive/90"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleBulkDelete();
+              }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <PlanningSection
         type="video"
         icon={<Clapperboard className="h-4 w-4" />}
@@ -85,6 +203,9 @@ export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members
         members={members}
         onSelectSubtask={onSelectSubtask}
         activeSubtaskId={activeSubtaskId}
+        selectedIds={selectedIds}
+        toggleSelect={toggleSelect}
+        bulkConfirmOpen={bulkConfirmOpen}
       />
 
       <PlanningSection
@@ -101,6 +222,9 @@ export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members
         members={members}
         onSelectSubtask={onSelectSubtask}
         activeSubtaskId={activeSubtaskId}
+        selectedIds={selectedIds}
+        toggleSelect={toggleSelect}
+        bulkConfirmOpen={bulkConfirmOpen}
       />
     </div>
   );
@@ -110,6 +234,7 @@ function PlanningSection({
   type, icon, label, headerBg, headerText, borderColor,
   parentTask, tasks, doneCount,
   membersMap, members, onSelectSubtask, activeSubtaskId,
+  selectedIds, toggleSelect, bulkConfirmOpen,
 }: {
   type: "video" | "design";
   icon: React.ReactNode;
@@ -124,7 +249,9 @@ function PlanningSection({
   members?: { id: string; name: string }[];
   onSelectSubtask?: (task: PmTask) => void;
   activeSubtaskId?: string | null;
-  
+  selectedIds: Set<string>;
+  toggleSelect: (id: string) => void;
+  bulkConfirmOpen: boolean;
 }) {
   const updateTask = useUpdatePmTask();
   const createTask = useCreatePmTask();
@@ -136,6 +263,7 @@ function PlanningSection({
   const addInputRef = useRef<HTMLInputElement>(null);
 
   const total = tasks.length;
+  const hasSelection = selectedIds.size > 0;
 
   useEffect(() => {
     if (isAdding && addInputRef.current) {
@@ -222,6 +350,7 @@ function PlanningSection({
           {tasks.map((sub) => {
             const isDone = sub.stage_current === "entrega";
             const isActive = activeSubtaskId === sub.id;
+            const isSelected = selectedIds.has(sub.id);
             const subAssignees = allAssigneeIds(sub);
             const circleColor = getStageCircleColor(sub.stage_current);
 
@@ -231,17 +360,42 @@ function PlanningSection({
                 className={cn(
                   "group flex items-center gap-2 px-2 py-2 transition border-b border-border/10 cursor-pointer",
                   isActive ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-card/40",
+                  isSelected && "bg-primary/5",
                   isDone && "opacity-60"
                 )}
                 onClick={(e) => {
-                  if (deletingId) {
+                  if (deletingId || bulkConfirmOpen) {
                     e.preventDefault();
                     e.stopPropagation();
+                    return;
+                  }
+                  // If user already has a selection active, clicking the row toggles selection instead of opening
+                  if (hasSelection) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleSelect(sub.id);
                     return;
                   }
                   onSelectSubtask?.(sub);
                 }}
               >
+                {/* Selection checkbox */}
+                <div
+                  className="flex items-center justify-center"
+                  onClick={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  <Checkbox
+                    checked={isSelected}
+                    onCheckedChange={() => toggleSelect(sub.id)}
+                    aria-label="Selecionar subtarefa"
+                    className={cn(
+                      "h-3.5 w-3.5 transition-opacity",
+                      hasSelection ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                    )}
+                  />
+                </div>
+
                 {/* Stage circle */}
                 <div className="w-8 flex justify-center" onClick={(e) => e.stopPropagation()}>
                   <Popover>
@@ -258,18 +412,18 @@ function PlanningSection({
                       {PM_ACTIVE_STAGES.map(s => {
                         const sColor = getStageCircleColor(s.key);
                         const isEntrega = s.key === "entrega";
-                        const isSelected = sub.stage_current === s.key;
+                        const isStageSelected = sub.stage_current === s.key;
                         return (
                           <button
                             key={s.key}
-                            className={cn("flex items-center gap-2 w-full px-2 py-1.5 rounded text-xs hover:bg-accent transition", isSelected && "bg-accent")}
+                            className={cn("flex items-center gap-2 w-full px-2 py-1.5 rounded text-xs hover:bg-accent transition", isStageSelected && "bg-accent")}
                             onClick={() => changeStage(sub.id, s.key)}
                           >
                             <span className={cn("h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0", sColor.border, isEntrega && `${sColor.bg}`)}>
                               {isEntrega && <Check className="h-2.5 w-2.5 text-white" />}
                             </span>
                             {s.label}
-                            {isSelected && <Check className="h-3 w-3 ml-auto text-primary" />}
+                            {isStageSelected && <Check className="h-3 w-3 ml-auto text-primary" />}
                           </button>
                         );
                       })}
