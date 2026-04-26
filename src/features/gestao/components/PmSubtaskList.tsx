@@ -348,7 +348,14 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
                 isSelected && "bg-primary/5 ring-1 ring-primary/30 ring-inset",
                 isDone && !correctionMode && "opacity-60"
               )}
-              onClick={() => onSelectSubtask?.(sub)}
+              onClick={(e) => {
+                if (deletingId || bulkConfirmOpen) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  return;
+                }
+                onSelectSubtask?.(sub);
+              }}
             >
               {/* Selection checkbox */}
               {!readOnly && (
