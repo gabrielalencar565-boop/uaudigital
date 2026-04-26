@@ -143,7 +143,7 @@ function PlanningSection({
     }
   }, [isAdding]);
 
-  const handleSoftDelete = async (subId: string, title: string) => {
+  const handleSoftDelete = async (subId: string) => {
     const { data: { user } } = await supabase.auth.getUser();
     updateTask.mutate({ id: subId, deleted_at: new Date().toISOString(), deleted_by: user?.id ?? null } as any);
     toast("Subtarefa movida para lixeira");
