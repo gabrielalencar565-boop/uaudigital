@@ -476,8 +476,8 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           }
 
           const originId = task.origin_task_id ?? task.id;
-          // PDF is unified (no post_type); other stages inherit from origin
-          const resolvedPostType = nextStage === "pdf"
+          // PDF and Agendamento are unified (no post_type); other stages inherit from origin
+          const resolvedPostType = (nextStage === "pdf" || nextStage === "agendamento")
             ? null
             : (task.post_type
               ?? (completedStage === "edicao_videos" ? "video" : completedStage === "design" ? "design" : undefined));
