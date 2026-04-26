@@ -327,6 +327,29 @@ function PlanningSection({
               </div>
             );
           })}
+          {/* Delete confirmation (shared, outside rows) */}
+          <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
+            <AlertDialogContent className="z-[200]">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Excluir subtarefa?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {(() => {
+                    const t = tasks.find(s => s.id === deletingId);
+                    return <>A subtarefa <strong>"{t?.title ?? ""}"</strong> será movida para a lixeira. Os pontos de performance não serão contabilizados.</>;
+                  })()}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive hover:bg-destructive/90"
+                  onClick={() => deletingId && handleSoftDelete(deletingId)}
+                >
+                  Excluir
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
           {/* Add subtask: input or button */}
           {isAdding ? (
