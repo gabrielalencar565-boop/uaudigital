@@ -476,8 +476,11 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           }
 
           const originId = task.origin_task_id ?? task.id;
-          const resolvedPostType = task.post_type
-            ?? (completedStage === "edicao_videos" ? "video" : completedStage === "design" ? "design" : undefined);
+          // PDF is unified (no post_type); other stages inherit from origin
+          const resolvedPostType = nextStage === "pdf"
+            ? null
+            : (task.post_type
+              ?? (completedStage === "edicao_videos" ? "video" : completedStage === "design" ? "design" : undefined));
 
           const { data: { user } } = await supabase.auth.getUser();
           const { data: newTask } = await sb.from("pm_tasks").insert({
@@ -566,6 +569,14 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   const advanceStage = async (completedStage: string, nextStage: string, newDueDate?: string) => {
     // Always check for existing agenda task regardless of date config
     const existing = await findExistingAgendaTaskForStage(nextStage, newDueDate);
+
+    // PDF: auto-merge silently with notification (no dialog)
+    if (existing && nextStage === "pdf") {
+      toast.success(`Vinculado ao PDF do mês`);
+      doAdvance(completedStage, nextStage, existing.due_date ?? newDueDate, existing.id);
+      return;
+    }
+
     if (existing) {
       setLinkExistingTask(existing);
       setPendingAdvance({ completedStage, nextStage });
@@ -1724,10 +1735,18 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
 
 
-        {/* Subtasks — use planning layout for planejamento parent tasks */}
+        {/* Subtasks — use planning layout for parent tasks at planejamento, pdf, agendamento or entrega */}
         <div className="border-t border-border/20 pt-4">
-          {task.stage_current === "planejamento" && !task.parent_task_id ? (
-            <PmPlanningSubtasks parentTask={task} childTasks={childTasks} membersMap={membersMap} members={members} onSelectSubtask={onSelectSubtask} activeSubtaskId={activeSubtaskId} />
+          {!task.parent_task_id && ["planejamento", "pdf", "agendamento", "entrega"].includes(task.stage_current) ? (
+            <PmPlanningSubtasks
+              parentTask={task}
+              childTasks={childTasks}
+              membersMap={membersMap}
+              members={members}
+              onSelectSubtask={onSelectSubtask}
+              activeSubtaskId={activeSubtaskId}
+              sectionTitle={stageLabel(task.stage_current)}
+            />
           ) : (
             <PmSubtaskList parentTask={task} childTasks={childTasks} membersMap={membersMap} members={members} onSelectSubtask={onSelectSubtask} activeSubtaskId={activeSubtaskId} readOnly={isCompletedSnapshot && !correctionMode} correctionMode={correctionMode && isCompletedSnapshot} />
           )}

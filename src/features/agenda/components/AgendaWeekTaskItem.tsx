@@ -100,27 +100,20 @@ export function AgendaWeekTaskItem({
   const isCompact = density === "compact";
   const isAssigneeLoading = assigneeName === PENDING_MEMBER_NAME;
 
-  // For revisão, alteração or pdf tasks with a post_type origin, show gradient badge
+  // For revisão or alteração tasks with a post_type origin, show gradient badge
   const isRevisaoWithOrigin = stage === "revisao" && !!postType;
   const isAlteracaoWithOrigin = stage === "alteracoes" && !!postType;
-  const isPdfWithOrigin = stage === "pdf" && !!postType;
-  const hasGradientPill = isRevisaoWithOrigin || isAlteracaoWithOrigin || isPdfWithOrigin;
+  const hasGradientPill = isRevisaoWithOrigin || isAlteracaoWithOrigin;
   const gradientShort = isAlteracaoWithOrigin
     ? (postType === "video" ? "ALT/VDO" : "ALT/DSG")
-    : isPdfWithOrigin
-      ? (postType === "video" ? "PDF/VDO" : "PDF/DSG")
-      : (postType === "video" ? "REV/VDO" : "REV/DSG");
+    : (postType === "video" ? "REV/VDO" : "REV/DSG");
   const gradientClass = isAlteracaoWithOrigin
     ? (postType === "video"
       ? "bg-gradient-to-r from-stage-alteracoes to-stage-edicao_videos text-white"
       : "bg-gradient-to-r from-stage-alteracoes to-stage-design text-white")
-    : isPdfWithOrigin
-      ? (postType === "video"
-        ? "bg-gradient-to-r from-indigo-500 to-stage-edicao_videos text-white"
-        : "bg-gradient-to-r from-indigo-500 to-stage-design text-white")
-      : (postType === "video"
-        ? "bg-gradient-to-r from-pink-400 to-stage-edicao_videos text-white"
-        : "bg-gradient-to-r from-pink-400 to-stage-design text-white");
+    : (postType === "video"
+      ? "bg-gradient-to-r from-pink-400 to-stage-edicao_videos text-white"
+      : "bg-gradient-to-r from-pink-400 to-stage-design text-white");
 
   return (
     <div

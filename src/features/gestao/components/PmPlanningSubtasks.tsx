@@ -29,9 +29,11 @@ interface Props {
   members?: { id: string; name: string }[];
   onSelectSubtask?: (task: PmTask) => void;
   activeSubtaskId?: string | null;
+  /** Section title (defaults to "Planejamento") */
+  sectionTitle?: string;
 }
 
-export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members, onSelectSubtask, activeSubtaskId }: Props) {
+export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members, onSelectSubtask, activeSubtaskId, sectionTitle = "Planejamento" }: Props) {
   const [showTrash, setShowTrash] = useState(false);
 
   const videoTasks = childTasks.filter(c => c.post_type === "video");
@@ -43,7 +45,7 @@ export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <h3 className="text-sm font-bold">Planejamento</h3>
+        <h3 className="text-sm font-bold">{sectionTitle}</h3>
         <span className="text-xs text-muted-foreground">
           {videoDone + designDone} de {childTasks.length} subtarefas
         </span>
