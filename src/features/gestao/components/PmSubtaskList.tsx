@@ -37,6 +37,19 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
   const [newTitle, setNewTitle] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showTrash, setShowTrash] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAll = () => setSelectedIds(new Set(childTasks.map(s => s.id)));
+  const clearSelection = () => setSelectedIds(new Set());
 
   const handleSoftDelete = async (subId: string) => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -44,6 +57,39 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
     toast("Subtarefa movida para lixeira");
     setDeletingId(null);
   };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    const ids = Array.from(selectedIds);
+    const nowIso = new Date().toISOString();
+    ids.forEach(id => {
+      updateTask.mutate({ id, deleted_at: nowIso, deleted_by: user?.id ?? null } as any);
+    });
+    toast.success(`${ids.length} subtarefa${ids.length !== 1 ? "s" : ""} movida${ids.length !== 1 ? "s" : ""} para lixeira`);
+    clearSelection();
+    setBulkConfirmOpen(false);
+  };
+
+  // Keyboard shortcuts: Delete/Backspace -> bulk delete, ESC -> clear selection
+  useEffect(() => {
+    if (selectedIds.size === 0 || readOnly) return;
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      const isEditable = tag === "INPUT" || tag === "TEXTAREA" || target?.isContentEditable;
+      if (isEditable) return;
+      if (e.key === "Escape") {
+        e.preventDefault();
+        clearSelection();
+      } else if (e.key === "Delete" || e.key === "Backspace") {
+        e.preventDefault();
+        setBulkConfirmOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [selectedIds, readOnly]);
 
   const done = childTasks.filter(s => s.status_global === "concluido").length;
   const total = childTasks.length;
