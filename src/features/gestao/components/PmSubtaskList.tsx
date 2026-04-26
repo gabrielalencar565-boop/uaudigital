@@ -265,7 +265,7 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
 
       {/* Bulk delete confirmation */}
       <AlertDialog open={bulkConfirmOpen} onOpenChange={setBulkConfirmOpen}>
-        <AlertDialogContent className="z-[200]">
+        <AlertDialogContent className="z-[200]" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir {selectedIds.size} subtarefa{selectedIds.size !== 1 ? "s" : ""}?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -273,8 +273,8 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleBulkDelete}>
+            <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={(e) => { e.stopPropagation(); handleBulkDelete(); }}>
               Excluir
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -283,7 +283,7 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
 
       {/* Single delete confirmation (shared, outside rows) */}
       <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
-        <AlertDialogContent className="z-[200]">
+        <AlertDialogContent className="z-[200]" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir subtarefa?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -294,10 +294,13 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive hover:bg-destructive/90"
-              onClick={() => deletingId && handleSoftDelete(deletingId)}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (deletingId) handleSoftDelete(deletingId);
+              }}
             >
               Excluir
             </AlertDialogAction>
@@ -345,7 +348,14 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
                 isSelected && "bg-primary/5 ring-1 ring-primary/30 ring-inset",
                 isDone && !correctionMode && "opacity-60"
               )}
-              onClick={() => onSelectSubtask?.(sub)}
+              onClick={(e) => {
+                if (deletingId || bulkConfirmOpen) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  return;
+                }
+                onSelectSubtask?.(sub);
+              }}
             >
               {/* Selection checkbox */}
               {!readOnly && (
@@ -486,8 +496,8 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
 
               {/* Correction mode: show chevron for navigation */}
               {readOnly && (
-                <div className="w-6 flex items-center justify-end">
-                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 group-hover:text-primary transition" onClick={() => onSelectSubtask?.(sub)} />
+                <div className="w-6 flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 group-hover:text-primary transition" />
                 </div>
               )}
             </div>

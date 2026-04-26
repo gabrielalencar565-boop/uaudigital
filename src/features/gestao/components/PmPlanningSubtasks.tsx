@@ -143,7 +143,7 @@ function PlanningSection({
     }
   }, [isAdding]);
 
-  const handleSoftDelete = async (subId: string, title: string) => {
+  const handleSoftDelete = async (subId: string) => {
     const { data: { user } } = await supabase.auth.getUser();
     updateTask.mutate({ id: subId, deleted_at: new Date().toISOString(), deleted_by: user?.id ?? null } as any);
     toast("Subtarefa movida para lixeira");
@@ -233,7 +233,14 @@ function PlanningSection({
                   isActive ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-card/40",
                   isDone && "opacity-60"
                 )}
-                onClick={() => onSelectSubtask?.(sub)}
+                onClick={(e) => {
+                  if (deletingId) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return;
+                  }
+                  onSelectSubtask?.(sub);
+                }}
               >
                 {/* Stage circle */}
                 <div className="w-8 flex justify-center" onClick={(e) => e.stopPropagation()}>
@@ -313,34 +320,46 @@ function PlanningSection({
                 <div className="w-14 flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
                   <button
                     className="h-6 w-6 flex items-center justify-center rounded-md text-destructive/70 hover:bg-destructive/10 hover:text-destructive transition-all"
-                    onClick={(e) => { e.stopPropagation(); setDeletingId(sub.id); }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setDeletingId(sub.id);
+                    }}
                     title="Mover para lixeira"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
-                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 group-hover:text-primary transition" onClick={() => onSelectSubtask?.(sub)} />
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 group-hover:text-primary transition" />
                 </div>
-
-                {/* Delete confirmation */}
-                <AlertDialog open={deletingId === sub.id} onOpenChange={(open) => !open && setDeletingId(null)}>
-                  <AlertDialogContent className="z-[200]">
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Excluir subtarefa?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        A subtarefa <strong>"{sub.title}"</strong> será movida para a lixeira. Os pontos de performance não serão contabilizados.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                      <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => handleSoftDelete(sub.id, sub.title)}>
-                        Excluir
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
               </div>
             );
           })}
+          {/* Delete confirmation (shared, outside rows) */}
+          <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
+            <AlertDialogContent className="z-[200]" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Excluir subtarefa?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {(() => {
+                    const t = tasks.find(s => s.id === deletingId);
+                    return <>A subtarefa <strong>"{t?.title ?? ""}"</strong> será movida para a lixeira. Os pontos de performance não serão contabilizados.</>;
+                  })()}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive hover:bg-destructive/90"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (deletingId) handleSoftDelete(deletingId);
+                  }}
+                >
+                  Excluir
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
           {/* Add subtask: input or button */}
           {isAdding ? (
