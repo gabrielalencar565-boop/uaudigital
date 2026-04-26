@@ -336,7 +336,7 @@ function PlanningSection({
           })}
           {/* Delete confirmation (shared, outside rows) */}
           <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
-            <AlertDialogContent className="z-[200]">
+            <AlertDialogContent className="z-[200]" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
               <AlertDialogHeader>
                 <AlertDialogTitle>Excluir subtarefa?</AlertDialogTitle>
                 <AlertDialogDescription>
@@ -347,10 +347,13 @@ function PlanningSection({
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancelar</AlertDialogCancel>
                 <AlertDialogAction
                   className="bg-destructive hover:bg-destructive/90"
-                  onClick={() => deletingId && handleSoftDelete(deletingId)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (deletingId) handleSoftDelete(deletingId);
+                  }}
                 >
                   Excluir
                 </AlertDialogAction>
