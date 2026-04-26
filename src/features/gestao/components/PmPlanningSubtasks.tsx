@@ -233,7 +233,14 @@ function PlanningSection({
                   isActive ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-card/40",
                   isDone && "opacity-60"
                 )}
-                onClick={() => onSelectSubtask?.(sub)}
+                onClick={(e) => {
+                  if (deletingId) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return;
+                  }
+                  onSelectSubtask?.(sub);
+                }}
               >
                 {/* Stage circle */}
                 <div className="w-8 flex justify-center" onClick={(e) => e.stopPropagation()}>
