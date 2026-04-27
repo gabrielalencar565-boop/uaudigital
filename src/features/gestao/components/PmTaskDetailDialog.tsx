@@ -676,6 +676,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
       const inserted: Array<readonly [string, string]> = [];
       for (const child of orderedChildren) {
+        const resolvedPostType = inferPmPostType(child, postType as PmPostType);
         const { data, error } = await sbx.from("pm_tasks").insert({
           client_id: child.client_id,
           title: child.title,
@@ -687,7 +688,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           tags: child.tags ?? [],
           is_extra_demand: child.is_extra_demand,
           status_global: "backlog",
-          post_type: child.post_type ?? null,
+          post_type: resolvedPostType ?? null,
           created_by: user.id,
         }).select("id").single();
 
