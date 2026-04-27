@@ -7,7 +7,12 @@ const sb = supabase as any;
 
 // ── Queries ──
 
-/** Fetch only root tasks (no parent) */
+// Colunas leves usadas em listagens (Kanban, Cronograma, agrupamentos).
+// Omite campos pesados como `description` (média 2KB, máx 557KB) que só são
+// necessários ao abrir o detalhe da tarefa — ali usamos queries específicas.
+const PM_TASK_LIST_COLUMNS = "id,project_id,client_id,title,priority,status_global,stage_current,start_date,due_date,created_by,assignee_id,watchers,tags,created_at,updated_at,parent_task_id,cover_url,is_extra_demand,is_draft,post_type,posting_date,posting_time,deleted_at,deleted_by,origin_task_id";
+
+/** Fetch only root tasks (no parent) — SELECT * (description usada em widgets) */
 export function usePmTasks() {
   return useQuery<PmTask[]>({
     queryKey: ["pm_tasks"],
@@ -24,7 +29,7 @@ export function usePmTasks() {
   });
 }
 
-/** Fetch child tasks of a parent */
+/** Fetch child tasks of a parent — versão completa (usado no dialog) */
 export function usePmChildTasks(parentId: string | null) {
   return useQuery<PmTask[]>({
     queryKey: ["pm_child_tasks", parentId],
@@ -42,14 +47,14 @@ export function usePmChildTasks(parentId: string | null) {
   });
 }
 
-/** Fetch all child tasks (for kanban cards progress) */
+/** Fetch all child tasks (kanban progress) — colunas leves */
 export function usePmAllChildTasks() {
   return useQuery<PmTask[]>({
     queryKey: ["pm_child_tasks_all"],
     queryFn: async () => {
       const { data, error } = await sb
         .from("pm_tasks")
-        .select("*")
+        .select(PM_TASK_LIST_COLUMNS)
         .not("parent_task_id", "is", null)
         .is("deleted_at", null)
         .order("created_at", { ascending: true });

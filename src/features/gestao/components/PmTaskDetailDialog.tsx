@@ -71,8 +71,9 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
 
   const currentTaskId = taskStack.length > 0 ? taskStack[taskStack.length - 1] : resolvedRootTask?.id ?? null;
 
-  // Pré-popular cache de child_tasks a partir de pm_child_tasks_all (já em memória)
-  // Evita o "delay" de fetch ao abrir o detalhe da tarefa pela primeira vez.
+  // Pré-popular cache de child_tasks a partir de pm_child_tasks_all (versão leve, em memória)
+  // Evita o "delay" visual ao abrir o detalhe; o usePmChildTasks faz refetch em background
+  // com SELECT * e substitui pelos dados completos (description, etc).
   useEffect(() => {
     if (!open || !currentTaskId) return;
     const allChildren = queryClientPrefetch.getQueryData<PmTask[]>(["pm_child_tasks_all"]);
@@ -81,7 +82,9 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
     if (existing && existing.length > 0) return;
     const filtered = allChildren.filter(c => c.parent_task_id === currentTaskId);
     if (filtered.length > 0) {
+      // Seed com dados leves para render imediato; marca como stale para refetch completo.
       queryClientPrefetch.setQueryData(["pm_child_tasks", currentTaskId], filtered);
+      queryClientPrefetch.invalidateQueries({ queryKey: ["pm_child_tasks", currentTaskId] });
     }
   }, [open, currentTaskId, queryClientPrefetch]);
 
