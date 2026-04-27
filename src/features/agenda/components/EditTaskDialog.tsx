@@ -43,6 +43,8 @@ import { useTaskAssignees, useSetTaskAssignees } from "@/features/data/task-assi
 import { useSession } from "@/hooks/use-session";
 import { useFreelancerClient } from "@/features/data/queries";
 import type { TaskRow, TaskStatus, ClientRow, TeamMemberRow } from "@/features/data/queries";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 
 const AGENDA_STAGES = STAGES.filter((s) => s.key !== "revisao" && s.key !== "entrega");
 
