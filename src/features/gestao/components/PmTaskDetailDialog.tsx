@@ -40,6 +40,7 @@ import { LinkOrDateDialog } from "./LinkOrDateDialog";
 import { SpellCheckText } from "./SpellCheckText";
 import { EditableTitleWithSpellCheck } from "./EditableTitleWithSpellCheck";
 import { supabase } from "@/integrations/supabase/client";
+import { inferPmPostType, type PmPostType } from "../utils/infer-pm-post-type";
 
 function initials(n: string) {
   return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
@@ -329,6 +330,10 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     const cloneChildrenToNewTask = async (targetTaskId: string, targetStage: string) => {
       const fixedAssignee = getFixedAssignee(stageAssignees, targetStage, task.client_id);
       const fixedWatchers = getFixedWatchers(stageAssignees, targetStage, task.client_id);
+      const fallbackPostType = inferPmPostType(
+        task,
+        completedStage === "edicao_videos" ? "video" : completedStage === "design" ? "design" : null
+      );
 
       // Freeze originals via single batch call (avoids multiple mutations)
       const childIds = childTasks.map(c => c.id);
@@ -351,7 +356,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           tags: child.tags ?? [],
           is_extra_demand: child.is_extra_demand,
           status_global: "backlog",
-          post_type: child.post_type ?? null,
+          post_type: inferPmPostType(child, fallbackPostType) ?? null,
           created_by: user?.id,
         }).select("id").single();
         if (newChild) childIdMap[child.id] = newChild.id;
