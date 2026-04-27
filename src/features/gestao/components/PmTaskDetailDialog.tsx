@@ -1258,17 +1258,49 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   const handleSetCover = (url: string) => { updateTask.mutate({ id: task.id, cover_url: url } as any); toast.success("Capa definida!"); };
   const handleRemoveCover = () => { updateTask.mutate({ id: task.id, cover_url: null } as any); toast.success("Capa removida!"); };
 
+  // Propagate assignee change to subtasks dialog state
+  const [pendingPropagateAssignee, setPendingPropagateAssignee] = useState<{
+    newAssigneeId: string | null;
+    differingSubtaskIds: string[];
+  } | null>(null);
+
+  const propagateAssigneeToSubtasks = async (newAssigneeId: string | null, subtaskIds: string[]) => {
+    if (subtaskIds.length === 0) return;
+    const sb = supabase as any;
+    await sb.from("pm_tasks").update({ assignee_id: newAssigneeId, updated_at: new Date().toISOString() }).in("id", subtaskIds);
+    queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
+    queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
+  };
+
+  const maybeAskPropagation = (newAssigneeId: string | null) => {
+    if (task.parent_task_id) return; // Only for parent tasks
+    const subs = (childTasks ?? []).filter(c => !(c as any).deleted_at);
+    if (subs.length === 0) return;
+    // Find subtasks whose assignee differs from the NEW parent assignee
+    const differing = subs.filter(s => (s.assignee_id ?? null) !== newAssigneeId);
+    if (differing.length === 0) return;
+    setPendingPropagateAssignee({ newAssigneeId, differingSubtaskIds: differing.map(s => s.id) });
+  };
+
   const toggleAssignee = (memberId: string) => {
     const currentWatchers = task.watchers ?? [];
+    let newAssigneeId: string | null | undefined;
     if (task.assignee_id === memberId) {
       const remaining = currentWatchers.filter(w => w !== memberId);
-      updateTask.mutate({ id: task.id, assignee_id: remaining[0] ?? null, watchers: remaining.slice(1) } as any);
+      newAssigneeId = remaining[0] ?? null;
+      updateTask.mutate({ id: task.id, assignee_id: newAssigneeId, watchers: remaining.slice(1) } as any);
     } else if (currentWatchers.includes(memberId)) {
       updateTask.mutate({ id: task.id, watchers: currentWatchers.filter(w => w !== memberId) } as any);
+      return; // watcher toggle, no main assignee change
     } else if (!task.assignee_id) {
+      newAssigneeId = memberId;
       updateTask.mutate({ id: task.id, assignee_id: memberId } as any);
     } else {
       updateTask.mutate({ id: task.id, watchers: [...currentWatchers, memberId] } as any);
+      return; // watcher add, no main assignee change
+    }
+    if (newAssigneeId !== undefined) {
+      maybeAskPropagation(newAssigneeId);
     }
   };
 
@@ -1793,6 +1825,36 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           <MobileCommentsInline taskId={task.id} membersMap={membersMap} members={members} />
         </div>
       </div>
+
+      {/* Propagate parent assignee change to subtasks */}
+      <AlertDialog open={!!pendingPropagateAssignee} onOpenChange={(open) => !open && setPendingPropagateAssignee(null)}>
+        <AlertDialogContent className="z-[200]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Aplicar responsável às subtarefas?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingPropagateAssignee && (
+                <>
+                  Existem <strong>{pendingPropagateAssignee.differingSubtaskIds.length}</strong> subtarefa(s) com um responsável diferente.
+                  Deseja aplicar o novo responsável da tarefa principal a todas elas?
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingPropagateAssignee(null)}>Manter diferentes</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (!pendingPropagateAssignee) return;
+                await propagateAssigneeToSubtasks(pendingPropagateAssignee.newAssigneeId, pendingPropagateAssignee.differingSubtaskIds);
+                setPendingPropagateAssignee(null);
+                toast.success("Responsável aplicado às subtarefas");
+              }}
+            >
+              Sim, aplicar a todas
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
