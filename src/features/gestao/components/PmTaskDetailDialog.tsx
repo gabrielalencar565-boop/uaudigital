@@ -61,6 +61,7 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const deleteTask = useUpdatePmTask();
+  const queryClientPrefetch = useQueryClient();
 
   const tasksQ = usePmTasks();
   const resolvedRootTask = useMemo(() => {
@@ -69,6 +70,20 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
   }, [task, tasksQ.data]);
 
   const currentTaskId = taskStack.length > 0 ? taskStack[taskStack.length - 1] : resolvedRootTask?.id ?? null;
+
+  // Pré-popular cache de child_tasks a partir de pm_child_tasks_all (já em memória)
+  // Evita o "delay" de fetch ao abrir o detalhe da tarefa pela primeira vez.
+  useEffect(() => {
+    if (!open || !currentTaskId) return;
+    const allChildren = queryClientPrefetch.getQueryData<PmTask[]>(["pm_child_tasks_all"]);
+    if (!allChildren) return;
+    const existing = queryClientPrefetch.getQueryData<PmTask[]>(["pm_child_tasks", currentTaskId]);
+    if (existing && existing.length > 0) return;
+    const filtered = allChildren.filter(c => c.parent_task_id === currentTaskId);
+    if (filtered.length > 0) {
+      queryClientPrefetch.setQueryData(["pm_child_tasks", currentTaskId], filtered);
+    }
+  }, [open, currentTaskId, queryClientPrefetch]);
 
   const childTasksQ = usePmChildTasks(currentTaskId);
   const rootChildTasksQ = usePmChildTasks(resolvedRootTask?.id ?? null);
