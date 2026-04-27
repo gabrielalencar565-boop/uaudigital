@@ -12,14 +12,14 @@ const sb = supabase as any;
 // necessários ao abrir o detalhe da tarefa — ali usamos queries específicas.
 const PM_TASK_LIST_COLUMNS = "id,project_id,client_id,title,priority,status_global,stage_current,start_date,due_date,created_by,assignee_id,watchers,tags,created_at,updated_at,parent_task_id,cover_url,is_extra_demand,is_draft,post_type,posting_date,posting_time,deleted_at,deleted_by,origin_task_id";
 
-/** Fetch only root tasks (no parent) — colunas leves para listagem */
+/** Fetch only root tasks (no parent) — SELECT * (description usada em widgets) */
 export function usePmTasks() {
   return useQuery<PmTask[]>({
     queryKey: ["pm_tasks"],
     queryFn: async () => {
       const { data, error } = await sb
         .from("pm_tasks")
-        .select(PM_TASK_LIST_COLUMNS)
+        .select("*")
         .is("parent_task_id", null)
         .is("deleted_at", null)
         .order("created_at", { ascending: false });
