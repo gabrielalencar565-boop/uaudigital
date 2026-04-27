@@ -1274,7 +1274,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
   const maybeAskPropagation = (newAssigneeId: string | null) => {
     if (task.parent_task_id) return; // Only for parent tasks
-    const subs = (childTasks ?? []).filter(c => !c.deleted_at);
+    const subs = (childTasks ?? []).filter(c => !(c as any).deleted_at);
     if (subs.length === 0) return;
     // Find subtasks whose assignee differs from the NEW parent assignee
     const differing = subs.filter(s => (s.assignee_id ?? null) !== newAssigneeId);
