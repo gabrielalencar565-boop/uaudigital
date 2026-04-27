@@ -102,6 +102,7 @@ export function EditTaskDialog({
   isPending,
 }: EditTaskDialogProps) {
   const { user } = useSession();
+  const qc = useQueryClient();
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
 
