@@ -43,6 +43,8 @@ import { useTaskAssignees, useSetTaskAssignees } from "@/features/data/task-assi
 import { useSession } from "@/hooks/use-session";
 import { useFreelancerClient } from "@/features/data/queries";
 import type { TaskRow, TaskStatus, ClientRow, TeamMemberRow } from "@/features/data/queries";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 
 const AGENDA_STAGES = STAGES.filter((s) => s.key !== "revisao" && s.key !== "entrega");
 
@@ -100,6 +102,7 @@ export function EditTaskDialog({
   isPending,
 }: EditTaskDialogProps) {
   const { user } = useSession();
+  const qc = useQueryClient();
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
 
@@ -213,6 +216,46 @@ export function EditTaskDialog({
           addedBy: user.id,
         });
       }
+
+      // Recalcula pontos para todos os usuários afetados (antigos + novos)
+      // em ambos os meses (caso a data tenha sido alterada)
+      const previousUserIds = new Set<string>();
+      if (task.assigned_user_id) previousUserIds.add(task.assigned_user_id);
+      (assigneesQ.data ?? []).forEach((a) => previousUserIds.add(a.user_id));
+
+      const allAffectedUserIds = new Set<string>([
+        ...previousUserIds,
+        ...selectedMembers,
+      ]);
+
+      const oldDate = task.due_date ? new Date(`${task.due_date}T00:00:00`) : null;
+      const newDate = new Date(`${values.due_date}T00:00:00`);
+      const periods = new Map<string, { year: number; month: number }>();
+      if (oldDate) {
+        const k = `${oldDate.getFullYear()}-${oldDate.getMonth() + 1}`;
+        periods.set(k, { year: oldDate.getFullYear(), month: oldDate.getMonth() + 1 });
+      }
+      const k2 = `${newDate.getFullYear()}-${newDate.getMonth() + 1}`;
+      periods.set(k2, { year: newDate.getFullYear(), month: newDate.getMonth() + 1 });
+
+      await Promise.all(
+        Array.from(allAffectedUserIds).flatMap((uid) =>
+          Array.from(periods.values()).map(({ year, month }) =>
+            supabase.rpc("recompute_metas_prazos", {
+              _user_id: uid,
+              _year: year,
+              _month: month,
+            }),
+          ),
+        ),
+      );
+
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["performance_scores"] }),
+        qc.invalidateQueries({ queryKey: ["performance_scores_metas"] }),
+        qc.invalidateQueries({ queryKey: ["deadline_report_assignees"] }),
+        qc.invalidateQueries({ queryKey: ["deadline_report_tasks"] }),
+      ]);
 
       toast.success("Tarefa atualizada!");
       onOpenChange(false);
