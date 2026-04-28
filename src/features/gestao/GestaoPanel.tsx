@@ -325,6 +325,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
         {effectiveView === "agenda" &&
         <AgendaCalendarView
           tasks={tasks}
+          childTasksMap={childTasksMap}
           clientsMap={clientsMap}
           membersMap={membersMap}
           teamMembers={membersForSpecialDates}
