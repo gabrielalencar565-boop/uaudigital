@@ -676,8 +676,13 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
     const isDone = t.parent_task_id ? t.status_global === "concluido" : (t.status_global === "concluido" || t.stage_current === "entrega");
     const isAlteracaoWithOrigin = t.stage_current === "alteracoes" && !!t.post_type;
     const isRevisao = t.stage_current === "revisao";
-    const isRevisaoVideo = isRevisao && t.post_type === "video";
-    const isRevisaoDesign = isRevisao && !isRevisaoVideo;
+    // Detect mixed children (parent has both video and design subtasks)
+    const childrenOfThis = childTasksMap[t.id] ?? [];
+    const childPostTypes = new Set(childrenOfThis.map((c) => c.post_type).filter(Boolean) as string[]);
+    const isMixed = childPostTypes.has("video") && childPostTypes.has("design");
+    const isRevisaoMixed = isRevisao && isMixed;
+    const isRevisaoVideo = isRevisao && !isRevisaoMixed && t.post_type === "video";
+    const isRevisaoDesign = isRevisao && !isRevisaoMixed && !isRevisaoVideo;
     const isPdfWithOrigin = false;
     const isPdfVideo = false;
     const isPdfDesign = false;
@@ -686,6 +691,8 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
       ? (t.post_type === "video"
         ? "bg-gradient-to-r from-stage-alteracoes to-stage-edicao_videos"
         : "bg-gradient-to-r from-stage-alteracoes to-stage-design")
+      : isRevisaoMixed
+      ? "bg-gradient-to-r from-pink-400 via-stage-design to-stage-edicao_videos"
       : isRevisaoVideo
       ? "bg-gradient-to-r from-pink-400 to-stage-edicao_videos"
       : isRevisaoDesign
@@ -693,11 +700,13 @@ function AgendaCalendarView({ tasks, clientsMap, membersMap, teamMembers, userId
       : undefined;
     const gradientAbbr = isAlteracaoWithOrigin
       ? (t.post_type === "video" ? "ALT/VDO" : "ALT/DSG")
-      : isRevisaoVideo
-        ? "REV/VDO"
-        : isRevisaoDesign
-          ? "REV/DSG"
-          : undefined;
+      : isRevisaoMixed
+        ? "REV/MIX"
+        : isRevisaoVideo
+          ? "REV/VDO"
+          : isRevisaoDesign
+            ? "REV/DSG"
+            : undefined;
     const stageBg = gradientClass ?? (STAGE_BADGE_BG[t.stage_current] ?? "bg-muted");
     const abbr = gradientAbbr ?? (STAGE_ABBR[t.stage_current] ?? t.stage_current.toUpperCase().slice(0, 4));
     const assignees = getTaskAssignees(t);
