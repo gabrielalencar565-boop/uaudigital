@@ -434,8 +434,9 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         }).eq("id", task.id);
 
         // Update linked task with correct assignee
-        const fixedAssignee = getFixedAssignee(stageAssignees, nextStage, task.client_id);
-        const fixedWatchers = getFixedWatchers(stageAssignees, nextStage, task.client_id);
+        const linkedAssigneeKey = resolveAssigneeStageKey(completedStage, nextStage);
+        const fixedAssignee = getFixedAssignee(stageAssignees, linkedAssigneeKey, task.client_id);
+        const fixedWatchers = getFixedWatchers(stageAssignees, linkedAssigneeKey, task.client_id);
         const linkedUpdates: any = { status_global: "backlog" };
         if (fixedAssignee !== undefined) {
           linkedUpdates.assignee_id = fixedAssignee;
