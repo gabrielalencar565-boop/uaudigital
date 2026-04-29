@@ -888,58 +888,61 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       newDueDate = format(addDays(baseDate, dateConfig), "yyyy-MM-dd");
     }
 
-    // If planejamento → split into video + design tasks
-    if (completedStage === "planejamento" && !task.parent_task_id) {
-      // Use inferPmPostType to catch children without explicit post_type
-      const { inferPmPostType } = await import("../utils/infer-pm-post-type");
-      const videoChildren: PmTask[] = [];
-      const designChildren: PmTask[] = [];
-      for (const c of childTasks) {
-        const inferred = inferPmPostType(c);
-        if (inferred === "video") videoChildren.push(c);
-        else if (inferred === "design") designChildren.push(c);
-      }
-      const hasVideo = videoChildren.length > 0;
-      const hasDesign = designChildren.length > 0;
-
-      console.log("[handleConcluido] planejamento split check:", {
-        childCount: childTasks.length,
-        videoCount: videoChildren.length,
-        designCount: designChildren.length,
-        childPostTypes: childTasks.map(c => ({ id: c.id, post_type: c.post_type, title: c.title })),
-      });
-
-      if (hasVideo || hasDesign) {
-        const snapshotDueDate = task.due_date ?? format(new Date(), "yyyy-MM-dd");
-        const allIds = [task.id, ...childTasks.map(c => c.id)];
-
-        const clientName = clientsMap[task.client_id] || task.title.split(" - ")[0];
-        let monthLabel: string | null = null;
-        if (task.due_date) {
-          const raw = format(parseISO(task.due_date), "MMMM", { locale: ptBR });
-          monthLabel = raw.charAt(0).toUpperCase() + raw.slice(1);
+    // Revisão pós-Planejamento → split into video + design tasks
+    // (split agora acontece na Revisão da pauta, não mais no Planejamento)
+    // Detecta primeira revisão checando se nenhum child já está em design/edicao_videos.
+    if (completedStage === "revisao" && !task.parent_task_id) {
+      const alreadySplit = childTasks.some(
+        (c) => c.stage_current === "design" || c.stage_current === "edicao_videos"
+      );
+      if (!alreadySplit) {
+        // Use inferPmPostType to catch children without explicit post_type
+        const { inferPmPostType } = await import("../utils/infer-pm-post-type");
+        const videoChildren: PmTask[] = [];
+        const designChildren: PmTask[] = [];
+        for (const c of childTasks) {
+          const inferred = inferPmPostType(c);
+          if (inferred === "video") videoChildren.push(c);
+          else if (inferred === "design") designChildren.push(c);
         }
-        const nextDueDate = newDueDate ?? format(addDays(new Date(snapshotDueDate + "T12:00:00"), 1), "yyyy-MM-dd");
+        const hasVideo = videoChildren.length > 0;
+        const hasDesign = designChildren.length > 0;
 
-        const splits: { stage: string; stageLabel: string; children: PmTask[]; postType: string }[] = [];
-        if (hasVideo) splits.push({ stage: "edicao_videos", stageLabel: "Vídeo", children: videoChildren, postType: "video" });
-        if (hasDesign) splits.push({ stage: "design", stageLabel: "Design", children: designChildren, postType: "design" });
+        console.log("[handleConcluido] revisao→split check:", {
+          childCount: childTasks.length,
+          videoCount: videoChildren.length,
+          designCount: designChildren.length,
+        });
 
-        const deferredCompletion = { allIds, completedStage, snapshotDueDate };
+        if (hasVideo || hasDesign) {
+          const snapshotDueDate = task.due_date ?? format(new Date(), "yyyy-MM-dd");
+          const allIds = [task.id, ...childTasks.map(c => c.id)];
 
-        // Do NOT mark as concluído here — defer until all splits are processed
-        // This prevents the dialog from switching to "completed snapshot" mode prematurely
+          const clientName = clientsMap[task.client_id] || task.title.split(" - ")[0];
+          let monthLabel: string | null = null;
+          if (task.due_date) {
+            const raw = format(parseISO(task.due_date), "MMMM", { locale: ptBR });
+            monthLabel = raw.charAt(0).toUpperCase() + raw.slice(1);
+          }
+          const nextDueDate = newDueDate ?? format(addDays(new Date(snapshotDueDate + "T12:00:00"), 1), "yyyy-MM-dd");
 
-        // Use await instead of void to ensure sequential dialog flow works
-        try {
-          await processSplitQueue(splits, snapshotDueDate, nextDueDate, clientName, monthLabel, deferredCompletion);
-        } catch (err) {
-          console.error("Error processing planejamento splits:", err);
-          invalidatePmTaskQueries();
-          toast.error("Erro ao criar próximas tarefas. Tente novamente.");
+          const splits: { stage: string; stageLabel: string; children: PmTask[]; postType: string }[] = [];
+          if (hasVideo) splits.push({ stage: "edicao_videos", stageLabel: "Vídeo", children: videoChildren, postType: "video" });
+          if (hasDesign) splits.push({ stage: "design", stageLabel: "Design", children: designChildren, postType: "design" });
+
+          const deferredCompletion = { allIds, completedStage, snapshotDueDate };
+
+          try {
+            await processSplitQueue(splits, snapshotDueDate, nextDueDate, clientName, monthLabel, deferredCompletion);
+          } catch (err) {
+            console.error("Error processing revisao splits:", err);
+            invalidatePmTaskQueries();
+            toast.error("Erro ao criar próximas tarefas. Tente novamente.");
+          }
+          return;
         }
-        return;
       }
+      // Se já houve split (segunda revisão), cai no fluxo normal: revisao → pdf
     }
 
     // Default flow for other stages
