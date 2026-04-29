@@ -21,9 +21,18 @@ function initials(n: string) {
 // Stages that are editable independently
 // planejamento controls pdf, agendamento (revisão agora é independente)
 const LINKED_STAGES = ["pdf", "agendamento"] as const;
-const EDITABLE_STAGES = PM_ACTIVE_STAGES.filter(
-  s => !LINKED_STAGES.includes(s.key as any) && s.key !== "entrega"
-);
+// Virtual stage 'revisao_pauta' = revisão da pauta (logo após Planejamento).
+// 'revisao' continua representando a revisão dos materiais (após Design/Vídeo).
+const VIRTUAL_REVISAO_PAUTA = { key: "revisao_pauta", label: "Revisão (Pauta)" } as const;
+const EDITABLE_STAGES: { key: string; label: string }[] = (() => {
+  const base = PM_ACTIVE_STAGES.filter(
+    s => !LINKED_STAGES.includes(s.key as any) && s.key !== "entrega"
+  );
+  // Insert revisao_pauta right before 'revisao'
+  const idx = base.findIndex(s => s.key === "revisao");
+  if (idx === -1) return [...base, VIRTUAL_REVISAO_PAUTA];
+  return [...base.slice(0, idx), VIRTUAL_REVISAO_PAUTA, ...base.slice(idx)];
+})();
 
 export function PmAssigneeFlowConfig() {
   const qc = useQueryClient();
@@ -135,7 +144,7 @@ export function PmAssigneeFlowConfig() {
             Responsáveis por Cliente
           </h3>
           <p className="text-sm text-muted-foreground mt-1">
-            Defina quem é responsável fixo em cada etapa para cada cliente. Planejamento, PDF e Agendamento compartilham o mesmo responsável. Revisão é independente.
+            Defina quem é responsável fixo em cada etapa para cada cliente. Planejamento, PDF e Agendamento compartilham o mesmo responsável. <strong className="text-foreground">Revisão (Pauta)</strong> é a revisão logo após o Planejamento; <strong className="text-foreground">Revisão</strong> é a dos materiais (após Design/Vídeo).
           </p>
         </div>
         {dirty && (
@@ -155,7 +164,8 @@ export function PmAssigneeFlowConfig() {
                   Cliente
                 </th>
                 {EDITABLE_STAGES.map(stage => {
-                  const color = getStageCircleColor(stage.key);
+                  // revisao_pauta reusa cor de revisao
+                  const color = getStageCircleColor(stage.key === "revisao_pauta" ? "revisao" : stage.key);
                   const isLinked = stage.key === "planejamento";
                   return (
                     <th key={stage.key} className="text-center px-3 py-2.5 font-semibold uppercase tracking-wider text-muted-foreground min-w-[160px]">

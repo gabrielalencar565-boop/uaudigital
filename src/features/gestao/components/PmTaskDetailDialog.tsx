@@ -27,7 +27,7 @@ import {
   usePmComments, usePmAttachments, usePmSyncStageCompletion,
 } from "../hooks/use-pm-data";
 import { usePmTags } from "../hooks/use-pm-tags";
-import { useDefaultFlowWithDates, getNextStages, getFixedAssignee, getFixedWatchers } from "./PmStageFlowConfig";
+import { useDefaultFlowWithDates, getNextStages, getFixedAssignee, getFixedWatchers, resolveAssigneeStageKey } from "./PmStageFlowConfig";
 import { PmSubtaskList } from "./PmSubtaskList";
 import { PmPlanningSubtasks } from "./PmPlanningSubtasks";
 import { PmCommentsSection } from "./PmCommentsSection";
@@ -346,8 +346,9 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     const qc = (window as any).__pmQueryClient ?? null; // fallback, won't be used
 
     const cloneChildrenToNewTask = async (targetTaskId: string, targetStage: string) => {
-      const fixedAssignee = getFixedAssignee(stageAssignees, targetStage, task.client_id);
-      const fixedWatchers = getFixedWatchers(stageAssignees, targetStage, task.client_id);
+      const assigneeKey = resolveAssigneeStageKey(completedStage, targetStage);
+      const fixedAssignee = getFixedAssignee(stageAssignees, assigneeKey, task.client_id);
+      const fixedWatchers = getFixedWatchers(stageAssignees, assigneeKey, task.client_id);
       const fallbackPostType = inferPmPostType(
         task,
         completedStage === "edicao_videos" ? "video" : completedStage === "design" ? "design" : null
@@ -433,8 +434,9 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         }).eq("id", task.id);
 
         // Update linked task with correct assignee
-        const fixedAssignee = getFixedAssignee(stageAssignees, nextStage, task.client_id);
-        const fixedWatchers = getFixedWatchers(stageAssignees, nextStage, task.client_id);
+        const linkedAssigneeKey = resolveAssigneeStageKey(completedStage, nextStage);
+        const fixedAssignee = getFixedAssignee(stageAssignees, linkedAssigneeKey, task.client_id);
+        const fixedWatchers = getFixedWatchers(stageAssignees, linkedAssigneeKey, task.client_id);
         const linkedUpdates: any = { status_global: "backlog" };
         if (fixedAssignee !== undefined) {
           linkedUpdates.assignee_id = fixedAssignee;
@@ -485,8 +487,9 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           status_global: "concluido",
           due_date: snapshotDueDate,
         }).eq("id", task.id).then(async () => {
-          const fixedAssignee = getFixedAssignee(stageAssignees, nextStage, task.client_id);
-          const fixedWatchers_ = getFixedWatchers(stageAssignees, nextStage, task.client_id);
+          const newAssigneeKey = resolveAssigneeStageKey(completedStage, nextStage);
+          const fixedAssignee = getFixedAssignee(stageAssignees, newAssigneeKey, task.client_id);
+          const fixedWatchers_ = getFixedWatchers(stageAssignees, newAssigneeKey, task.client_id);
           const nextDueDate = newDueDate ?? format(addDays(new Date(snapshotDueDate + "T12:00:00"), 1), "yyyy-MM-dd");
 
           const nextStageLabel = stageLabel(nextStage);
