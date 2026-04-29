@@ -21,9 +21,18 @@ function initials(n: string) {
 // Stages that are editable independently
 // planejamento controls pdf, agendamento (revisão agora é independente)
 const LINKED_STAGES = ["pdf", "agendamento"] as const;
-const EDITABLE_STAGES = PM_ACTIVE_STAGES.filter(
-  s => !LINKED_STAGES.includes(s.key as any) && s.key !== "entrega"
-);
+// Virtual stage 'revisao_pauta' = revisão da pauta (logo após Planejamento).
+// 'revisao' continua representando a revisão dos materiais (após Design/Vídeo).
+const VIRTUAL_REVISAO_PAUTA = { key: "revisao_pauta", label: "Revisão (Pauta)" } as const;
+const EDITABLE_STAGES: { key: string; label: string }[] = (() => {
+  const base = PM_ACTIVE_STAGES.filter(
+    s => !LINKED_STAGES.includes(s.key as any) && s.key !== "entrega"
+  );
+  // Insert revisao_pauta right before 'revisao'
+  const idx = base.findIndex(s => s.key === "revisao");
+  if (idx === -1) return [...base, VIRTUAL_REVISAO_PAUTA];
+  return [...base.slice(0, idx), VIRTUAL_REVISAO_PAUTA, ...base.slice(idx)];
+})();
 
 export function PmAssigneeFlowConfig() {
   const qc = useQueryClient();
