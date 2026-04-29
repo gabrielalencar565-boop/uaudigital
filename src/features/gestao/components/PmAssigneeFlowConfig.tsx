@@ -19,8 +19,8 @@ function initials(n: string) {
 }
 
 // Stages that are editable independently
-// planejamento controls revisão, pdf, agendamento too
-const LINKED_STAGES = ["revisao", "pdf", "agendamento"] as const;
+// planejamento controls pdf, agendamento (revisão agora é independente)
+const LINKED_STAGES = ["pdf", "agendamento"] as const;
 const EDITABLE_STAGES = PM_ACTIVE_STAGES.filter(
   s => !LINKED_STAGES.includes(s.key as any) && s.key !== "entrega"
 );
