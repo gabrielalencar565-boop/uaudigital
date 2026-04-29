@@ -346,8 +346,9 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     const qc = (window as any).__pmQueryClient ?? null; // fallback, won't be used
 
     const cloneChildrenToNewTask = async (targetTaskId: string, targetStage: string) => {
-      const fixedAssignee = getFixedAssignee(stageAssignees, targetStage, task.client_id);
-      const fixedWatchers = getFixedWatchers(stageAssignees, targetStage, task.client_id);
+      const assigneeKey = resolveAssigneeStageKey(completedStage, targetStage);
+      const fixedAssignee = getFixedAssignee(stageAssignees, assigneeKey, task.client_id);
+      const fixedWatchers = getFixedWatchers(stageAssignees, assigneeKey, task.client_id);
       const fallbackPostType = inferPmPostType(
         task,
         completedStage === "edicao_videos" ? "video" : completedStage === "design" ? "design" : null
