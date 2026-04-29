@@ -87,6 +87,14 @@ export function getFixedWatchers(stageAssignees: StageAssignees, stageKey: strin
   return [];
 }
 
+/** Resolve qual chave de stage_assignees usar ao avançar de uma etapa para outra.
+ *  Caso especial: Planejamento → Revisão usa a chave virtual 'revisao_pauta'
+ *  (revisão da pauta tem responsável próprio, separado da revisão de materiais). */
+export function resolveAssigneeStageKey(completedStage: string | undefined, nextStage: string): string {
+  if (completedStage === "planejamento" && nextStage === "revisao") return "revisao_pauta";
+  return nextStage;
+}
+
 const STAGE_OPTIONS = PM_ACTIVE_STAGES;
 
 const DATE_MODE_OPTIONS = [
