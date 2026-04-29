@@ -487,8 +487,9 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           status_global: "concluido",
           due_date: snapshotDueDate,
         }).eq("id", task.id).then(async () => {
-          const fixedAssignee = getFixedAssignee(stageAssignees, nextStage, task.client_id);
-          const fixedWatchers_ = getFixedWatchers(stageAssignees, nextStage, task.client_id);
+          const newAssigneeKey = resolveAssigneeStageKey(completedStage, nextStage);
+          const fixedAssignee = getFixedAssignee(stageAssignees, newAssigneeKey, task.client_id);
+          const fixedWatchers_ = getFixedWatchers(stageAssignees, newAssigneeKey, task.client_id);
           const nextDueDate = newDueDate ?? format(addDays(new Date(snapshotDueDate + "T12:00:00"), 1), "yyyy-MM-dd");
 
           const nextStageLabel = stageLabel(nextStage);
