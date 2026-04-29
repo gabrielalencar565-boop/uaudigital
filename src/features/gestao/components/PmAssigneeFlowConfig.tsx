@@ -164,7 +164,8 @@ export function PmAssigneeFlowConfig() {
                   Cliente
                 </th>
                 {EDITABLE_STAGES.map(stage => {
-                  const color = getStageCircleColor(stage.key);
+                  // revisao_pauta reusa cor de revisao
+                  const color = getStageCircleColor(stage.key === "revisao_pauta" ? "revisao" : stage.key);
                   const isLinked = stage.key === "planejamento";
                   return (
                     <th key={stage.key} className="text-center px-3 py-2.5 font-semibold uppercase tracking-wider text-muted-foreground min-w-[160px]">
