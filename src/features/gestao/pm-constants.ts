@@ -35,10 +35,11 @@ export const PM_ACTIVE_STAGES = PM_STAGES.filter(
 );
 
 // Stage flow: maps each stage to the next one when marked "concluído"
+// Planejamento → Revisão (revisão da pauta) → split em Design/Vídeo → Revisão (dos materiais) → PDF → Agendamento → Entrega
 export const STAGE_FLOW_NEXT: Record<string, string> = {
   captacao: "planejamento",
-  planejamento: "design",
-  design: "edicao_videos",
+  planejamento: "revisao",
+  design: "revisao",
   edicao_videos: "revisao",
   revisao: "pdf",
   pdf: "agendamento",

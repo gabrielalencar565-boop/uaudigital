@@ -19,8 +19,8 @@ function initials(n: string) {
 }
 
 // Stages that are editable independently
-// planejamento controls revisão, pdf, agendamento too
-const LINKED_STAGES = ["revisao", "pdf", "agendamento"] as const;
+// planejamento controls pdf, agendamento (revisão agora é independente)
+const LINKED_STAGES = ["pdf", "agendamento"] as const;
 const EDITABLE_STAGES = PM_ACTIVE_STAGES.filter(
   s => !LINKED_STAGES.includes(s.key as any) && s.key !== "entrega"
 );
@@ -135,7 +135,7 @@ export function PmAssigneeFlowConfig() {
             Responsáveis por Cliente
           </h3>
           <p className="text-sm text-muted-foreground mt-1">
-            Defina quem é responsável fixo em cada etapa para cada cliente. Planejamento, Revisão, PDF e Agendamento compartilham o mesmo responsável.
+            Defina quem é responsável fixo em cada etapa para cada cliente. Planejamento, PDF e Agendamento compartilham o mesmo responsável. Revisão é independente.
           </p>
         </div>
         {dirty && (
@@ -165,7 +165,7 @@ export function PmAssigneeFlowConfig() {
                       </div>
                       {isLinked && (
                         <span className="text-[9px] font-normal normal-case text-muted-foreground/60 block mt-0.5">
-                          = Revisão, PDF, Agend.
+                          = PDF, Agendamento
                         </span>
                       )}
                     </th>
