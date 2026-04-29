@@ -144,7 +144,7 @@ export function PmAssigneeFlowConfig() {
             Responsáveis por Cliente
           </h3>
           <p className="text-sm text-muted-foreground mt-1">
-            Defina quem é responsável fixo em cada etapa para cada cliente. Planejamento, PDF e Agendamento compartilham o mesmo responsável. <strong className="text-foreground">Revisão (Pauta)</strong> é a revisão logo após o Planejamento; <strong className="text-foreground">Revisão</strong> é a dos materiais (após Design/Vídeo).
+            Defina quem é responsável fixo em cada etapa para cada cliente. Planejamento, PDF e Agendamento compartilham o mesmo responsável. <strong className="text-foreground">Revisão (Planejamento)</strong> é a revisão logo após o Planejamento; <strong className="text-foreground">Revisão</strong> é a dos materiais (após Design/Vídeo).
           </p>
         </div>
         {dirty && (
