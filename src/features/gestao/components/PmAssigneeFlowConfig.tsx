@@ -165,7 +165,7 @@ export function PmAssigneeFlowConfig() {
                       </div>
                       {isLinked && (
                         <span className="text-[9px] font-normal normal-case text-muted-foreground/60 block mt-0.5">
-                          = Revisão, PDF, Agend.
+                          = PDF, Agendamento
                         </span>
                       )}
                     </th>
