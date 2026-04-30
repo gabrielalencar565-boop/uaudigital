@@ -318,14 +318,25 @@ export function AdminPontuacaoPanel() {
                 <PopoverTrigger asChild>
                   <button
                     type="button"
-                    className={cn(
-                      "h-8 w-8 rounded-full transition-all ring-2 ring-offset-2 ring-offset-background ring-white/30 hover:scale-110",
-                      TAG_COLORS.find(c => c.key === newTagColor)?.dot ?? "bg-blue-500"
-                    )}
+                    className="h-8 w-8 rounded-full transition-all ring-2 ring-offset-2 ring-offset-background ring-white/30 hover:scale-110"
+                    style={
+                      isHexColor(newTagColor)
+                        ? { backgroundColor: newTagColor }
+                        : undefined
+                    }
                     aria-label="Escolher cor"
-                  />
+                  >
+                    {!isHexColor(newTagColor) && (
+                      <span
+                        className={cn(
+                          "block h-full w-full rounded-full",
+                          TAG_COLORS.find(c => c.key === newTagColor)?.dot ?? "bg-blue-500"
+                        )}
+                      />
+                    )}
+                  </button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-2" align="end">
+                <PopoverContent className="w-auto p-3 space-y-3" align="end">
                   <div className="grid grid-cols-5 gap-1.5">
                     {TAG_COLORS.map(c => (
                       <button
@@ -342,6 +353,30 @@ export function AdminPontuacaoPanel() {
                         onClick={() => setNewTagColor(c.key)}
                       />
                     ))}
+                  </div>
+                  <div className="border-t border-border/60 pt-2 space-y-1.5">
+                    <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                      Cor personalizada
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={isHexColor(newTagColor) ? newTagColor : "#7c5cff"}
+                        onChange={(e) => setNewTagColor(e.target.value.toLowerCase())}
+                        className="h-8 w-10 rounded cursor-pointer bg-transparent border border-border/60 p-0.5"
+                      />
+                      <Input
+                        value={isHexColor(newTagColor) ? newTagColor : ""}
+                        onChange={(e) => {
+                          const v = e.target.value.trim().toLowerCase();
+                          if (isHexColor(v)) setNewTagColor(v);
+                          else if (v === "") setNewTagColor("blue");
+                        }}
+                        placeholder="#a3b1ff"
+                        className="h-8 text-xs flex-1"
+                        maxLength={7}
+                      />
+                    </div>
                   </div>
                 </PopoverContent>
               </Popover>
