@@ -893,6 +893,7 @@ export function DayViewPanel() {
                       </Badge>
                     </div>;
           })}
+                </div>
               </div>}
 
             {/* Tarefas Concluídas - Widget Verde */}
