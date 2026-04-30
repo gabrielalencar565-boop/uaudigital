@@ -130,9 +130,11 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
     // Build title
     let title: string;
     if (isPeriodic) {
-      const namePart = displayClientName ? `[${displayClientName}] - ` : "";
+      // Periodic task: title = "<nome digitado | cliente> - HH:MM"
+      // The stage label (e.g. "Reu") is shown via the periodic_stage_key pill on the card.
+      const namePart = displayClientName || stageLabel;
       const timePart = periodicTime ? ` - ${periodicTime}` : "";
-      title = `${namePart}${stageLabel}${timePart}`;
+      title = `${namePart}${timePart}`;
     } else if (isExtra) {
       title = customTitle.trim() || `[${displayClientName}] - ${stageLabel} - Extra`;
     } else {

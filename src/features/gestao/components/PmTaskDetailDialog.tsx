@@ -1818,9 +1818,10 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
 
 
-        {/* Subtasks — use planning layout for parent tasks at planejamento, pdf, agendamento or entrega */}
+        {/* Subtasks — use planning layout for parent tasks at planejamento, pdf, agendamento or entrega.
+            Periodic tasks (custom_*) are simple standalone tasks → always use the regular subtask list. */}
         <div className="border-t border-border/20 pt-4">
-          {!task.parent_task_id && (["planejamento", "pdf", "agendamento", "entrega"].includes(task.stage_current) || isPlanejamentoReview) ? (
+          {!task.parent_task_id && !task.periodic_stage_key && (["planejamento", "pdf", "agendamento", "entrega"].includes(task.stage_current) || isPlanejamentoReview) ? (
             <PmPlanningSubtasks
               parentTask={task}
               childTasks={childTasks}
@@ -1836,7 +1837,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         </div>
 
         {/* Attachments — hidden for planning parent tasks */}
-        {!((task.stage_current === "planejamento" || task.stage_current === "revisao") && !task.parent_task_id && !childTasks.some(c => c.stage_current === "design" || c.stage_current === "edicao_videos")) && (
+        {!(!task.periodic_stage_key && (task.stage_current === "planejamento" || task.stage_current === "revisao") && !task.parent_task_id && !childTasks.some(c => c.stage_current === "design" || c.stage_current === "edicao_videos")) && (
           <div className={cn("border-t border-border/20 pt-4", isCompletedSnapshot && !correctionMode && "pointer-events-none opacity-60")}>
             <PmAttachmentsSection taskId={task.id} attachments={attachments} membersMap={membersMap} onSetCover={handleSetCover} currentCoverUrl={task.cover_url} />
           </div>

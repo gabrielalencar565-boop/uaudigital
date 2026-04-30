@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
-import { priorityMeta, tagColor, tagDisplay } from "../pm-constants";
+import { priorityMeta, tagColor, tagDisplay, isHexColor, TAG_COLORS } from "../pm-constants";
 import { useUpdatePmTask, useDeletePmTask, useCreatePmTask } from "../hooks/use-pm-data";
+import { usePeriodicStages } from "../hooks/use-periodic-stages";
 import type { PmTask } from "../pm-types";
 import { toast } from "sonner";
 
@@ -28,9 +29,27 @@ export function PmTaskCard({ task, clientName, assignees = [], childTasks = [], 
   const updateTask = useUpdatePmTask();
   const deleteTask = useDeletePmTask();
   const createTask = useCreatePmTask();
+  const { data: periodicStages = [] } = usePeriodicStages();
   const [addingSubtask, setAddingSubtask] = useState(false);
   const [newSubTitle, setNewSubTitle] = useState("");
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+
+  // Periodic stage detection — these are isolated tasks (e.g. "Reu") that are
+  // not part of the standard workflow. Display the stage label as the pill
+  // (instead of client name) and respect the configured color.
+  const periodic = task.periodic_stage_key
+    ? periodicStages.find(p => p.key === task.periodic_stage_key)
+    : null;
+  const isPeriodic = !!task.periodic_stage_key;
+  const periodicColor = periodic?.color_key ?? null;
+  const periodicSwatch = periodicColor && !isHexColor(periodicColor)
+    ? TAG_COLORS.find(c => c.key === periodicColor)
+    : null;
+
+  // Try to extract trailing " - HH:MM" from the title to render as a separate badge.
+  const timeMatch = isPeriodic ? task.title.match(/\s-\s(\d{1,2}:\d{2})\s*$/) : null;
+  const periodicTime = timeMatch?.[1] ?? null;
+  const titleWithoutTime = timeMatch ? task.title.slice(0, timeMatch.index).trim() : task.title;
 
   const handleAddSubtask = async () => {
     if (!newSubTitle.trim()) { setAddingSubtask(false); return; }
@@ -70,10 +89,34 @@ export function PmTaskCard({ task, clientName, assignees = [], childTasks = [], 
       )}
 
       <button type="button" onClick={onClick} className="w-full p-3.5 text-left space-y-2.5">
-        {/* Client name pill */}
-        <span className="inline-flex items-center rounded-md bg-primary/8 px-2 py-0.5 text-[10px] font-semibold text-primary/70 tracking-wide">
-          {clientName}
-        </span>
+        {/* Top pill: client name (default) OR periodic stage label */}
+        {isPeriodic && periodic ? (
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              className={cn(
+                "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold tracking-wide",
+                periodicSwatch ? `${periodicSwatch.bg} ${periodicSwatch.text}` : "bg-primary/10 text-primary/80"
+              )}
+              style={
+                periodicColor && isHexColor(periodicColor)
+                  ? { backgroundColor: `${periodicColor}26`, color: periodicColor }
+                  : undefined
+              }
+            >
+              {periodic.label}
+            </span>
+            {periodicTime && (
+              <span className="inline-flex items-center gap-1 rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                <Calendar className="h-2.5 w-2.5" />
+                {periodicTime}
+              </span>
+            )}
+          </span>
+        ) : (
+          <span className="inline-flex items-center rounded-md bg-primary/8 px-2 py-0.5 text-[10px] font-semibold text-primary/70 tracking-wide">
+            {clientName}
+          </span>
+        )}
 
         {/* Title */}
         {renaming ? (
@@ -81,7 +124,7 @@ export function PmTaskCard({ task, clientName, assignees = [], childTasks = [], 
             onKeyDown={(e) => { if (e.key === "Enter") handleRename(); if (e.key === "Escape") setRenaming(false); }}
             onClick={(e) => e.stopPropagation()} className="text-sm font-semibold h-6 border-0 bg-transparent p-0 focus-visible:ring-0" />
         ) : (
-          <p className="text-[13px] font-semibold leading-snug text-foreground/90">{task.title}</p>
+          <p className="text-[13px] font-semibold leading-snug text-foreground/90">{isPeriodic ? titleWithoutTime : task.title}</p>
         )}
 
         {/* Post type badge — show origin in revisão */}
