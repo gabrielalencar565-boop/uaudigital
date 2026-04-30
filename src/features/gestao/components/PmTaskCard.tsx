@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
-import { priorityMeta, tagColor, tagDisplay } from "../pm-constants";
+import { priorityMeta, tagColor, tagDisplay, isHexColor, TAG_COLORS } from "../pm-constants";
 import { useUpdatePmTask, useDeletePmTask, useCreatePmTask } from "../hooks/use-pm-data";
+import { usePeriodicStages } from "../hooks/use-periodic-stages";
 import type { PmTask } from "../pm-types";
 import { toast } from "sonner";
 
@@ -28,9 +29,27 @@ export function PmTaskCard({ task, clientName, assignees = [], childTasks = [], 
   const updateTask = useUpdatePmTask();
   const deleteTask = useDeletePmTask();
   const createTask = useCreatePmTask();
+  const { data: periodicStages = [] } = usePeriodicStages();
   const [addingSubtask, setAddingSubtask] = useState(false);
   const [newSubTitle, setNewSubTitle] = useState("");
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+
+  // Periodic stage detection — these are isolated tasks (e.g. "Reu") that are
+  // not part of the standard workflow. Display the stage label as the pill
+  // (instead of client name) and respect the configured color.
+  const periodic = task.periodic_stage_key
+    ? periodicStages.find(p => p.key === task.periodic_stage_key)
+    : null;
+  const isPeriodic = !!task.periodic_stage_key;
+  const periodicColor = periodic?.color_key ?? null;
+  const periodicSwatch = periodicColor && !isHexColor(periodicColor)
+    ? TAG_COLORS.find(c => c.key === periodicColor)
+    : null;
+
+  // Try to extract trailing " - HH:MM" from the title to render as a separate badge.
+  const timeMatch = isPeriodic ? task.title.match(/\s-\s(\d{1,2}:\d{2})\s*$/) : null;
+  const periodicTime = timeMatch?.[1] ?? null;
+  const titleWithoutTime = timeMatch ? task.title.slice(0, timeMatch.index).trim() : task.title;
 
   const handleAddSubtask = async () => {
     if (!newSubTitle.trim()) { setAddingSubtask(false); return; }
