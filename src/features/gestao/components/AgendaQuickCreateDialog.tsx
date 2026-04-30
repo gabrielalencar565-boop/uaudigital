@@ -98,37 +98,60 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
   );
 
   const handleCreate = async () => {
-    if (!clientId) { toast.error("Selecione um cliente"); return; }
     if (!stage) { toast.error("Selecione uma etapa"); return; }
-    const clientName = clients.find(c => c.id === clientId)?.name ?? "";
-    const isPeriodic = isPeriodicStageKey(stage);
+    if (!isPeriodic && !clientId) { toast.error("Selecione um cliente"); return; }
+
     const periodicLabel = periodicStages.find(p => p.key === stage)?.label ?? stage;
     const stageLabel = isPeriodic
       ? periodicLabel
       : (PM_ACTIVE_STAGES.find(s => s.key === stage)?.label ?? stage);
     const mainAssignee = selectedMemberIds[0] ?? undefined;
 
+    // Resolve client + name
+    let resolvedClientId = clientId;
+    let displayClientName = clients.find(c => c.id === clientId)?.name ?? "";
+
+    if (isPeriodic) {
+      // If user picked a registered client, use it; else fallback to Freelancer sentinel
+      if (!resolvedClientId) {
+        const sentinel = clients.find(c => /freelancer/i.test(c.name));
+        if (!sentinel) { toast.error("Cliente 'Freelancer' não encontrado"); return; }
+        resolvedClientId = sentinel.id;
+      }
+      // Free-text name (when client not registered) wins for display
+      if (periodicClientName.trim()) {
+        displayClientName = periodicClientName.trim();
+      } else if (!clients.find(c => c.id === resolvedClientId && !/freelancer/i.test(c.name))) {
+        // No name typed and using sentinel — generic
+        displayClientName = "";
+      }
+    }
+
     // Build title
     let title: string;
-    if (isExtra) {
-      title = customTitle.trim() || `[${clientName}] - ${stageLabel} - Extra`;
+    if (isPeriodic) {
+      const namePart = displayClientName ? `[${displayClientName}] - ` : "";
+      const timePart = periodicTime ? ` - ${periodicTime}` : "";
+      title = `${namePart}${stageLabel}${timePart}`;
+    } else if (isExtra) {
+      title = customTitle.trim() || `[${displayClientName}] - ${stageLabel} - Extra`;
     } else {
       const m = parseInt(monthRef, 10);
       const monthLabel = MONTH_LABELS[m - 1] ?? "";
-      title = `[${clientName}] - ${stageLabel} - ${monthLabel}`;
+      title = `[${displayClientName}] - ${stageLabel} - ${monthLabel}`;
     }
 
     const stageForDb = isPeriodic ? "entrega" : stage;
     const watchers = selectedMemberIds.slice(1);
     createTask.mutate({
-      client_id: clientId,
+      client_id: resolvedClientId,
       title,
       stage_current: stageForDb as any,
       periodic_stage_key: isPeriodic ? stage : null,
       due_date: dueDate,
       assignee_id: mainAssignee,
       watchers: watchers.length > 0 ? watchers : undefined,
-      is_extra_demand: isExtra,
+      is_extra_demand: isPeriodic ? true : isExtra,
       status_global: "backlog",
     } as any, {
       onSuccess: () => {
