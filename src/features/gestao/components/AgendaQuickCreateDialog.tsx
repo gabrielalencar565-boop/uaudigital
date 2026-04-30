@@ -174,9 +174,13 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
         <DialogTitle className="text-lg font-bold">Nova tarefa rápida</DialogTitle>
         <div className="space-y-4 mt-2">
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-muted-foreground">Cliente *</Label>
+            <Label className="text-xs font-semibold text-muted-foreground">
+              Cliente {isPeriodic ? "(opcional)" : "*"}
+            </Label>
             <Select value={clientId} onValueChange={setClientId}>
-              <SelectTrigger className="rounded-xl"><SelectValue placeholder="Selecionar cliente" /></SelectTrigger>
+              <SelectTrigger className="rounded-xl">
+                <SelectValue placeholder={isPeriodic ? "Selecionar cliente cadastrado (opcional)" : "Selecionar cliente"} />
+              </SelectTrigger>
               <SelectContent>
                 {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
               </SelectContent>
@@ -203,7 +207,36 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
             </Select>
           </div>
 
-          {!isExtra && (
+          {isPeriodic && (
+            <>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-muted-foreground">
+                  Nome do cliente (livre)
+                </Label>
+                <Input
+                  value={periodicClientName}
+                  onChange={(e) => setPeriodicClientName(e.target.value)}
+                  placeholder="Ex: João da Silva (cliente não cadastrado)"
+                  className="rounded-xl"
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  Use quando o cliente não está cadastrado. Aparecerá no título da tarefa.
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-muted-foreground">Horário</Label>
+                <Input
+                  type="time"
+                  value={periodicTime}
+                  onChange={(e) => setPeriodicTime(e.target.value)}
+                  className="rounded-xl"
+                />
+              </div>
+            </>
+          )}
+
+          {!isExtra && !isPeriodic && (
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-muted-foreground">Mês referente</Label>
               <Select value={monthRef} onValueChange={setMonthRef}>
