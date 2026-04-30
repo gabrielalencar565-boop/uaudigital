@@ -309,6 +309,9 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   const canCorrect = isRoleAdmin || isPlanner;
   const isCompletedSnapshot = task.status_global === "concluido" && task.stage_current !== "entrega" && !task.parent_task_id;
   const [correctionMode, setCorrectionMode] = useState(false);
+  const periodicStagesQ = usePeriodicStages();
+  const periodicStages = periodicStagesQ.data ?? [];
+  const currentPeriodic = task.periodic_stage_key ? periodicStages.find(p => p.key === task.periodic_stage_key) : null;
 
   const isPlanejamentoReview = task.stage_current === "revisao" && !task.parent_task_id && (
     task.post_type === "planejamento" || (
