@@ -752,10 +752,10 @@ export function DayViewPanel() {
     const veryDense = colCount >= 6;
     const renderTaskItem = (t: TaskItem, variant: "pending" | "completed" | "overdue", g: PersonGroup) => {
       const taskItemClass = variant === "completed"
-        ? "flex items-start gap-2 rounded-lg border border-success bg-success cursor-pointer hover:bg-success/90 transition-colors min-w-0"
+        ? "flex items-center gap-2 rounded-lg border border-success bg-success cursor-pointer hover:bg-success/90 transition-colors min-w-0"
         : variant === "overdue"
-        ? "flex items-start gap-2 rounded-lg border border-destructive bg-destructive cursor-pointer hover:bg-destructive/90 transition-colors min-w-0"
-        : "flex items-start gap-2 rounded-lg border border-border bg-card cursor-pointer hover:bg-accent/50 transition-colors min-w-0";
+        ? "flex items-center gap-2 rounded-lg border border-destructive bg-destructive cursor-pointer hover:bg-destructive/90 transition-colors min-w-0"
+        : "flex items-center gap-2 rounded-lg border border-border bg-card cursor-pointer hover:bg-accent/50 transition-colors min-w-0";
       const isAlteracaoWithOrigin = t.stage === "alteracoes" && !!t.post_type;
       const isRevisao = t.stage === "revisao";
       const childTypes = t.childPostTypes ?? new Set<string>();
@@ -807,6 +807,7 @@ export function DayViewPanel() {
           key={`${variant}-${g.user_id}-${t.id}`}
           onClick={() => handleTaskClick(t)}
           className={cn(taskItemClass, veryDense ? "px-2.5 py-2" : dense ? "px-3 py-2.5" : "px-4 py-3")}
+          style={{ containerType: "inline-size" }}
         >
           <span
             className={cn(
@@ -817,7 +818,7 @@ export function DayViewPanel() {
           >
             {stageAbbr}
           </span>
-          <p className={cn("font-semibold leading-tight flex-1 min-w-0 break-words", veryDense ? "text-sm" : dense ? "text-base" : "text-lg", variant === "completed" && "text-success-foreground", variant === "overdue" && "text-destructive-foreground")}>
+          <p className={cn("font-semibold leading-tight flex-1 min-w-0 whitespace-nowrap overflow-hidden text-ellipsis", veryDense ? "text-xs" : dense ? "text-sm" : "text-base", variant === "completed" && "text-success-foreground", variant === "overdue" && "text-destructive-foreground")} style={{ fontSize: "clamp(0.65rem, 1.1cqw, 1rem)" }}>
             {resolveClientName(t)}
           </p>
           {variant === "overdue" && (
