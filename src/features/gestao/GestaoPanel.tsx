@@ -228,6 +228,16 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
               {PM_STAGES.filter(s => !["roteiro", "edicao"].includes(s.key)).map((s) =>
                 <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>
               )}
+              {periodicStages.length > 0 && (
+                <>
+                  <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground border-t mt-1 pt-2">
+                    Periódicas
+                  </div>
+                  {periodicStages.map(p => (
+                    <SelectItem key={p.key} value={p.key}>{p.label}</SelectItem>
+                  ))}
+                </>
+              )}
             </SelectContent>
           </Select>
         </div>
