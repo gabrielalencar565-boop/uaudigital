@@ -910,7 +910,7 @@ export function DayViewPanel() {
                         <span className="text-[10px] text-muted-foreground">{g.tasks.length} {g.tasks.length === 1 ? "tarefa" : "tarefas"}</span>
                       </div>
                       {/* Tarefas da pessoa */}
-                      <div className="flex flex-col gap-1.5 flex-1">
+                      <div className="flex flex-col gap-2 flex-1">
                         {g.tasks.map((t) => {
                           const stageLabel = STAGES.find((s) => s.key === t.stage)?.label ?? t.stage;
                           return (
@@ -919,18 +919,18 @@ export function DayViewPanel() {
                               onClick={() => handleTaskClick(t)}
                               className={cn(
                                 "rounded-md border border-border bg-card cursor-pointer hover:bg-accent/50 transition-colors min-w-0",
-                                veryDense ? "px-1.5 py-1" : dense ? "px-2 py-1" : "px-2 py-1.5"
+                                veryDense ? "px-2 py-1.5" : dense ? "px-2.5 py-2" : "px-3 py-2.5"
                               )}
                             >
-                              <p className={cn("font-medium leading-tight truncate", veryDense ? "text-[10px]" : "text-xs")}>
+                              <p className={cn("font-semibold leading-tight truncate", veryDense ? "text-xs" : dense ? "text-sm" : "text-base")}>
                                 {resolveClientName(t)}
                               </p>
-                              <div className="flex items-center justify-between gap-1 mt-0.5">
-                                <span className={cn("text-muted-foreground truncate", veryDense ? "text-[9px]" : "text-[10px]")}>
+                              <div className="flex items-center justify-between gap-1 mt-1">
+                                <span className={cn("text-muted-foreground truncate", veryDense ? "text-[11px]" : dense ? "text-xs" : "text-sm")}>
                                   {stageLabel}
                                 </span>
-                                {!dense && (
-                                  <Badge variant={t.status === "em_andamento" ? "warning" : "secondary"} className="text-[9px] shrink-0 px-1 py-0 h-4">
+                                {!veryDense && (
+                                  <Badge variant={t.status === "em_andamento" ? "warning" : "secondary"} className={cn("shrink-0", dense ? "text-[10px] px-1.5 py-0 h-4" : "text-xs px-2 py-0.5 h-5")}>
                                     {t.status === "em_andamento" ? "Em and." : "Pend."}
                                   </Badge>
                                 )}
