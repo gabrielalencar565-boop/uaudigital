@@ -92,18 +92,8 @@ export function PmTaskCard({ task, clientName, assignees = [], childTasks = [], 
         {/* Top pill: client name (default) OR periodic stage label */}
         {isPeriodic && periodic ? (
           <span className="inline-flex items-center gap-1.5">
-            <span
-              className={cn(
-                "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold tracking-wide",
-                periodicSwatch ? `${periodicSwatch.bg} ${periodicSwatch.text}` : "bg-primary/10 text-primary/80"
-              )}
-              style={
-                periodicColor && isHexColor(periodicColor)
-                  ? { backgroundColor: `${periodicColor}26`, color: periodicColor }
-                  : undefined
-              }
-            >
-              {periodic.label}
+            <span className="inline-flex items-center gap-1 rounded-md bg-black px-2 py-0.5 text-[10px] font-semibold tracking-wide text-white">
+              {periodic.label.slice(0, 3).toUpperCase()}
             </span>
             {periodicTime && (
               <span className="inline-flex items-center gap-1 rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
