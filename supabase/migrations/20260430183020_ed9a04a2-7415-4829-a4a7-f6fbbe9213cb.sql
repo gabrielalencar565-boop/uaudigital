@@ -1,0 +1,1 @@
+ALTER TABLE public.scoring_config ADD COLUMN IF NOT EXISTS color_key text;

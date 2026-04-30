@@ -1665,6 +1665,7 @@ export type Database = {
       scoring_config: {
         Row: {
           base_points: number
+          color_key: string | null
           extra_demand_multiplier: number
           id: string
           label: string
@@ -1676,6 +1677,7 @@ export type Database = {
         }
         Insert: {
           base_points?: number
+          color_key?: string | null
           extra_demand_multiplier?: number
           id?: string
           label: string
@@ -1687,6 +1689,7 @@ export type Database = {
         }
         Update: {
           base_points?: number
+          color_key?: string | null
           extra_demand_multiplier?: number
           id?: string
           label?: string
