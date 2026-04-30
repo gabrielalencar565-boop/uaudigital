@@ -752,10 +752,10 @@ export function DayViewPanel() {
     const veryDense = colCount >= 6;
     const renderTaskItem = (t: TaskItem, variant: "pending" | "completed" | "overdue", g: PersonGroup) => {
       const taskItemClass = variant === "completed"
-        ? "flex items-center gap-2 rounded-lg border border-success bg-success cursor-pointer hover:bg-success/90 transition-colors min-w-0"
+        ? "flex items-start gap-2 rounded-lg border border-success bg-success cursor-pointer hover:bg-success/90 transition-colors min-w-0"
         : variant === "overdue"
-        ? "flex items-center gap-2 rounded-lg border border-destructive bg-destructive cursor-pointer hover:bg-destructive/90 transition-colors min-w-0"
-        : "flex items-center gap-2 rounded-lg border border-border bg-card cursor-pointer hover:bg-accent/50 transition-colors min-w-0";
+        ? "flex items-start gap-2 rounded-lg border border-destructive bg-destructive cursor-pointer hover:bg-destructive/90 transition-colors min-w-0"
+        : "flex items-start gap-2 rounded-lg border border-border bg-card cursor-pointer hover:bg-accent/50 transition-colors min-w-0";
       const isAlteracaoWithOrigin = t.stage === "alteracoes" && !!t.post_type;
       const isRevisao = t.stage === "revisao";
       const childTypes = t.childPostTypes ?? new Set<string>();
@@ -817,7 +817,7 @@ export function DayViewPanel() {
           >
             {stageAbbr}
           </span>
-          <p className={cn("font-semibold leading-tight truncate flex-1 min-w-0", veryDense ? "text-sm" : dense ? "text-base" : "text-lg", variant === "completed" && "text-success-foreground", variant === "overdue" && "text-destructive-foreground")}>
+          <p className={cn("font-semibold leading-tight flex-1 min-w-0 break-words", veryDense ? "text-sm" : dense ? "text-base" : "text-lg", variant === "completed" && "text-success-foreground", variant === "overdue" && "text-destructive-foreground")}>
             {resolveClientName(t)}
           </p>
           {variant === "overdue" && (
@@ -850,7 +850,7 @@ export function DayViewPanel() {
                     <AvatarFallback>{initials(g.display_name)}</AvatarFallback>
                   </Avatar>
                   <div className="min-w-0 flex-1">
-                    <p className={cn("font-bold truncate", veryDense ? "text-sm" : dense ? "text-base" : "text-lg")}>
+                    <p className={cn("font-bold break-words leading-tight", veryDense ? "text-sm" : dense ? "text-base" : "text-lg")}>
                       {g.display_name}
                     </p>
                     <span className="text-xs text-muted-foreground">{totalCount} {totalCount === 1 ? "tarefa" : "tarefas"}</span>
