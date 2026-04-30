@@ -401,8 +401,14 @@ export function AdminPontuacaoPanel() {
                   const rawTag = `${gt.name}:${gt.color_key}`;
                   const tc = tagColor(rawTag);
                   return (
-                    <div key={gt.id} className={cn("flex items-center gap-1.5 rounded-full pl-2.5 pr-1 py-1", tc.bg)}>
-                      <span className={cn("text-xs font-medium", tc.text)}>{gt.name}</span>
+                    <div
+                      key={gt.id}
+                      className={cn("flex items-center gap-1.5 rounded-full pl-2.5 pr-1 py-1", tc.bg)}
+                      style={tc.style}
+                    >
+                      <span className={cn("text-xs font-medium", tc.text)} style={tc.style ? { color: tc.hex } : undefined}>
+                        {gt.name}
+                      </span>
                       <button
                         className="h-4 w-4 flex items-center justify-center rounded-full hover:bg-destructive/30 transition-all"
                         onClick={() => deleteTagWithScoring.mutate({ id: gt.id, name: gt.name, color_key: gt.color_key })}
