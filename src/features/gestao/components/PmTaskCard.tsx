@@ -89,10 +89,34 @@ export function PmTaskCard({ task, clientName, assignees = [], childTasks = [], 
       )}
 
       <button type="button" onClick={onClick} className="w-full p-3.5 text-left space-y-2.5">
-        {/* Client name pill */}
-        <span className="inline-flex items-center rounded-md bg-primary/8 px-2 py-0.5 text-[10px] font-semibold text-primary/70 tracking-wide">
-          {clientName}
-        </span>
+        {/* Top pill: client name (default) OR periodic stage label */}
+        {isPeriodic && periodic ? (
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              className={cn(
+                "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold tracking-wide",
+                periodicSwatch ? `${periodicSwatch.bg} ${periodicSwatch.text}` : "bg-primary/10 text-primary/80"
+              )}
+              style={
+                periodicColor && isHexColor(periodicColor)
+                  ? { backgroundColor: `${periodicColor}26`, color: periodicColor }
+                  : undefined
+              }
+            >
+              {periodic.label}
+            </span>
+            {periodicTime && (
+              <span className="inline-flex items-center gap-1 rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                <Calendar className="h-2.5 w-2.5" />
+                {periodicTime}
+              </span>
+            )}
+          </span>
+        ) : (
+          <span className="inline-flex items-center rounded-md bg-primary/8 px-2 py-0.5 text-[10px] font-semibold text-primary/70 tracking-wide">
+            {clientName}
+          </span>
+        )}
 
         {/* Title */}
         {renaming ? (
@@ -100,7 +124,7 @@ export function PmTaskCard({ task, clientName, assignees = [], childTasks = [], 
             onKeyDown={(e) => { if (e.key === "Enter") handleRename(); if (e.key === "Escape") setRenaming(false); }}
             onClick={(e) => e.stopPropagation()} className="text-sm font-semibold h-6 border-0 bg-transparent p-0 focus-visible:ring-0" />
         ) : (
-          <p className="text-[13px] font-semibold leading-snug text-foreground/90">{task.title}</p>
+          <p className="text-[13px] font-semibold leading-snug text-foreground/90">{isPeriodic ? titleWithoutTime : task.title}</p>
         )}
 
         {/* Post type badge — show origin in revisão */}
