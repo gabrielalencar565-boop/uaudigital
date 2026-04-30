@@ -29,7 +29,7 @@ import { PmStageFlowConfig, useStageFlows } from "./components/PmStageFlowConfig
 import { PmAssigneeFlowConfig } from "./components/PmAssigneeFlowConfig";
 import type { StageAssignees } from "./components/PmStageFlowConfig";
 import { PmPautaView } from "./components/PmPautaView";
-import { stageLabel, getStageCircleColor, tagColor, tagDisplay } from "./pm-constants";
+import { stageLabel, getStageCircleColor, tagColor, tagDisplay, isHexColor, TAG_COLORS } from "./pm-constants";
 import { cn } from "@/lib/utils";
 import type { PmTask } from "./pm-types";
 import { toast } from "sonner";
@@ -51,6 +51,17 @@ const STAGE_BADGE_BG: Record<string, string> = {
   edicao_videos: "bg-purple-500", revisao: "bg-pink-500", alteracoes: "bg-stage-alteracoes", pdf: "bg-indigo-500",
   agendamento: "bg-lime-500", entrega: "bg-emerald-500"
 };
+
+const PERIODIC_TIME_RE = /\s-\s(\d{1,2}:\d{2})\s*$/;
+
+function stripPeriodicTime(title: string) {
+  const match = title.match(PERIODIC_TIME_RE);
+  return match ? title.slice(0, match.index).trim() : title;
+}
+
+function getPeriodicTime(task: PmTask) {
+  return task.posting_time ?? task.title.match(PERIODIC_TIME_RE)?.[1] ?? null;
+}
 
 const VIEW_TITLES: Record<string, string> = {
   kanban: "Kanban de tarefas",
