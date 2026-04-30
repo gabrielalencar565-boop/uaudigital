@@ -811,16 +811,16 @@ export function DayViewPanel() {
           >
             {stageAbbr}
           </span>
-          <p className={cn("font-semibold leading-tight truncate flex-1 min-w-0", veryDense ? "text-sm" : dense ? "text-base" : "text-lg")}>
+          <p className={cn("font-semibold leading-tight truncate flex-1 min-w-0", veryDense ? "text-sm" : dense ? "text-base" : "text-lg", variant === "completed" && "text-success-foreground", variant === "overdue" && "text-destructive-foreground")}>
             {resolveClientName(t)}
           </p>
           {variant === "overdue" && (
-            <span className={cn("font-bold text-destructive shrink-0", veryDense ? "text-xs" : "text-sm")}>
+            <span className={cn("font-bold text-destructive-foreground shrink-0", veryDense ? "text-xs" : "text-sm")}>
               {daysLate}d
             </span>
           )}
           {variant === "completed" && (
-            <span className={cn("font-bold text-success shrink-0", veryDense ? "text-xs" : "text-sm")}>✓</span>
+            <span className={cn("font-bold text-success-foreground shrink-0", veryDense ? "text-xs" : "text-sm")}>✓</span>
           )}
           {variant === "pending" && t.status === "em_andamento" && !veryDense && (
             <Badge variant="warning" className={cn("shrink-0", dense ? "text-[10px] px-1.5 py-0 h-4" : "text-xs px-2 py-0.5 h-5")}>
