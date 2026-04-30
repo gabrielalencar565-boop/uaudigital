@@ -25,7 +25,9 @@ export function usePeriodicStages() {
       if (error) throw error;
       return (data ?? []).map((r: any) => ({ key: r.stage, label: r.label }));
     },
-    staleTime: 60_000,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
 }
 
