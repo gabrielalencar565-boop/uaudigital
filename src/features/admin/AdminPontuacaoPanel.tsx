@@ -280,6 +280,7 @@ export function AdminPontuacaoPanel() {
                       <TableHead className="text-center w-[100px]">Penalidade atraso</TableHead>
                       <TableHead className="text-center w-[90px]">Usa quantidade</TableHead>
                       <TableHead className="text-center w-[120px]">Multiplicador extra</TableHead>
+                      <TableHead className="text-center w-[60px]"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
