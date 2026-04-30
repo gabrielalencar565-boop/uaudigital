@@ -142,7 +142,7 @@ export function DayViewPanel() {
 
   // ─── PM child tasks per parent (count + post_types for gradient detection) ───
   const pmChildCountQ = useQuery({
-    queryKey: ["pm_child_count_for_dayview", monthKey],
+    queryKey: ["pm_child_count_for_dayview_v2", monthKey],
     queryFn: async () => {
       const parentIds = (pmTasksQ.data ?? []).map(t => t.id);
       if (!parentIds.length) return { counts: new Map<string, number>(), postTypes: new Map<string, Set<string>>() };
