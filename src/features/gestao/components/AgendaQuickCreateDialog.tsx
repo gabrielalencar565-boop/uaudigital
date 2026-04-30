@@ -141,7 +141,11 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
       title = `[${displayClientName}] - ${stageLabel} - ${monthLabel}`;
     }
 
-    const stageForDb = isPeriodic ? "entrega" : stage;
+    // Periodic tasks live outside the standard flow — periodic_stage_key is the
+    // source of truth. We still need a valid enum value for stage_current, so we
+    // use "planejamento" as a neutral placeholder (never "entrega" — that would
+    // make the task appear as completed in lists/kanban).
+    const stageForDb = isPeriodic ? "planejamento" : stage;
     const watchers = selectedMemberIds.slice(1);
     createTask.mutate({
       client_id: resolvedClientId,

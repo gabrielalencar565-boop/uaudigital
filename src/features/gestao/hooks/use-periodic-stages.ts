@@ -6,6 +6,7 @@ const sb = supabase as any;
 export interface PeriodicStage {
   key: string;   // e.g. "custom_reuniao_semanal"
   label: string; // human-readable
+  color_key: string | null; // optional tag color (TAG_COLORS key or hex)
 }
 
 /**
@@ -19,11 +20,15 @@ export function usePeriodicStages() {
     queryFn: async (): Promise<PeriodicStage[]> => {
       const { data, error } = await sb
         .from("scoring_config")
-        .select("stage, label")
+        .select("stage, label, color_key")
         .like("stage", "custom_%")
         .order("label");
       if (error) throw error;
-      return (data ?? []).map((r: any) => ({ key: r.stage, label: r.label }));
+      return (data ?? []).map((r: any) => ({
+        key: r.stage,
+        label: r.label,
+        color_key: r.color_key ?? null,
+      }));
     },
     staleTime: 0,
     refetchOnMount: "always",
