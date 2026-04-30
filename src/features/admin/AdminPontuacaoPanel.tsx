@@ -166,6 +166,53 @@ export function AdminPontuacaoPanel() {
     onError: (e: any) => toast.error(e?.message ?? "Erro ao remover etiqueta"),
   });
 
+  const createCustomStageMut = useMutation({
+    mutationFn: async (name: string) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Não autenticado");
+      const stageKey = makeCustomStageKey(name);
+      if (!stageKey.replace("custom_", "")) throw new Error("Nome inválido");
+
+      // Check duplicate
+      const { data: existing } = await sb
+        .from("scoring_config")
+        .select("id")
+        .eq("stage", stageKey)
+        .maybeSingle();
+      if (existing) throw new Error("Etapa já existe");
+
+      const { error } = await sb.from("scoring_config").insert({
+        stage: stageKey,
+        label: name.trim(),
+        base_points: 1,
+        late_penalty: -1,
+        uses_quantity: false,
+        extra_demand_multiplier: 1.5,
+        updated_by: user.id,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setNewStageName("");
+      qc.invalidateQueries({ queryKey: ["scoring_config"] });
+      toast.success("Etapa periódica criada!");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao criar etapa"),
+  });
+
+  const deleteCustomStageMut = useMutation({
+    mutationFn: async (stage: string) => {
+      if (!stage.startsWith("custom_")) throw new Error("Apenas etapas periódicas podem ser removidas");
+      const { error } = await sb.from("scoring_config").delete().eq("stage", stage);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["scoring_config"] });
+      toast.success("Etapa removida!");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao remover etapa"),
+  });
+
   const rows = configQ.data ?? [];
   const hasEdits = Object.keys(edits).length > 0;
 
