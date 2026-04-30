@@ -194,16 +194,7 @@ export function AdminPontuacaoPanel() {
     <div className="space-y-6">
       <div className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
         <h2 className="text-2xl font-semibold tracking-tight">Pontuação</h2>
-        <p className="text-sm text-muted-foreground">
-          Configure os pontos de cada etapa para o cálculo de Metas/Prazos no desempenho.
-        </p>
       </div>
-
-      <Alert className="opacity-0 border-primary/30 bg-primary/5" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.05s" }}>
-        <AlertDescription className="text-sm text-muted-foreground">
-          Alterações nos critérios afetam apenas <strong>tarefas futuras</strong>. Tarefas já concluídas mantêm a pontuação original automaticamente.
-        </AlertDescription>
-      </Alert>
 
       <Card className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.15s" }}>
         <CardHeader className="pb-3">
