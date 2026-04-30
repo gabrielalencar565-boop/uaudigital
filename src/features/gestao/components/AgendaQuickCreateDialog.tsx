@@ -94,7 +94,11 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
     if (!clientId) { toast.error("Selecione um cliente"); return; }
     if (!stage) { toast.error("Selecione uma etapa"); return; }
     const clientName = clients.find(c => c.id === clientId)?.name ?? "";
-    const stageLabel = PM_ACTIVE_STAGES.find(s => s.key === stage)?.label ?? stage;
+    const isPeriodic = isPeriodicStageKey(stage);
+    const periodicLabel = periodicStages.find(p => p.key === stage)?.label ?? stage;
+    const stageLabel = isPeriodic
+      ? periodicLabel
+      : (PM_ACTIVE_STAGES.find(s => s.key === stage)?.label ?? stage);
     const mainAssignee = selectedMemberIds[0] ?? undefined;
 
     // Build title
@@ -107,17 +111,19 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
       title = `[${clientName}] - ${stageLabel} - ${monthLabel}`;
     }
 
+    const stageForDb = isPeriodic ? "entrega" : stage;
     const watchers = selectedMemberIds.slice(1);
     createTask.mutate({
       client_id: clientId,
       title,
-      stage_current: stage,
+      stage_current: stageForDb as any,
+      periodic_stage_key: isPeriodic ? stage : null,
       due_date: dueDate,
       assignee_id: mainAssignee,
       watchers: watchers.length > 0 ? watchers : undefined,
       is_extra_demand: isExtra,
       status_global: "backlog",
-    }, {
+    } as any, {
       onSuccess: () => {
         toast.success("Tarefa criada!");
         onClose();
