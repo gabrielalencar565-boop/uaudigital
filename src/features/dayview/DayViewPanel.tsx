@@ -630,7 +630,12 @@ export function DayViewPanel() {
     return unifiedTasks.tasks.filter((t) => t.status !== "concluido" && t.due_date && t.due_date < todayKey).sort((a, b) => a.due_date.localeCompare(b.due_date));
   }, [unifiedTasks.tasks, todayKey]);
   const completedTasksCount = useMemo(() => unifiedTasks.tasks.filter((t) => t.status === "concluido").length, [unifiedTasks.tasks]);
-  const totalTasks = unifiedTasks.tasks.length + (pmChildCountQ.data ? Array.from(pmChildCountQ.data.counts.values()).reduce((a, b) => a + b, 0) : 0);
+  const totalTasks = unifiedTasks.tasks.length + (() => {
+    const d = pmChildCountQ.data as any;
+    if (!d) return 0;
+    const counts: Map<string, number> = (d && "counts" in d) ? d.counts : (d instanceof Map ? d : new Map());
+    return Array.from(counts.values()).reduce((a, b) => a + b, 0);
+  })();
 
   // Navegação rápida para hoje
   const goToToday = () => {
