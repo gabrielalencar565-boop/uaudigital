@@ -20,8 +20,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import {
   PM_ACTIVE_STAGES, stageLabel, getStageCircleColor,
-  parseTag, tagColor, tagDisplay
+  parseTag, tagColor, tagDisplay, isHexColor, TAG_COLORS
 } from "../pm-constants";
+import { usePeriodicStages } from "../hooks/use-periodic-stages";
 import {
   useUpdatePmTask, useCreatePmTask, usePmTasks, usePmChildTasks,
   usePmComments, usePmAttachments, usePmSyncStageCompletion,
@@ -308,6 +309,9 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   const canCorrect = isRoleAdmin || isPlanner;
   const isCompletedSnapshot = task.status_global === "concluido" && task.stage_current !== "entrega" && !task.parent_task_id;
   const [correctionMode, setCorrectionMode] = useState(false);
+  const periodicStagesQ = usePeriodicStages();
+  const periodicStages = periodicStagesQ.data ?? [];
+  const currentPeriodic = task.periodic_stage_key ? periodicStages.find(p => p.key === task.periodic_stage_key) : null;
 
   const isPlanejamentoReview = task.stage_current === "revisao" && !task.parent_task_id && (
     task.post_type === "planejamento" || (
@@ -1502,20 +1506,37 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
             <Popover>
               <PopoverTrigger asChild>
                 <button className="flex items-center gap-2 min-h-[28px] hover:opacity-80 transition">
-                  <StageCircleInline stageKey={task.stage_current} />
-                  <span className="text-xs font-medium">{stageLabel(task.stage_current)}</span>
+                  {currentPeriodic ? (
+                    (() => {
+                      const c = currentPeriodic.color_key;
+                      const swatch = c && !isHexColor(c) ? TAG_COLORS.find(t => t.key === c) : null;
+                      return (
+                        <span
+                          className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold", swatch ? `${swatch.bg} ${swatch.text}` : "bg-primary/10 text-primary")}
+                          style={c && isHexColor(c) ? { backgroundColor: `${c}26`, color: c } : undefined}
+                        >
+                          {currentPeriodic.label}
+                        </span>
+                      );
+                    })()
+                  ) : (
+                    <>
+                      <StageCircleInline stageKey={task.stage_current} />
+                      <span className="text-xs font-medium">{stageLabel(task.stage_current)}</span>
+                    </>
+                  )}
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-56 p-1 z-[150]" align="start">
+              <PopoverContent className="w-56 p-1 z-[150] max-h-72 overflow-y-auto" align="start">
                 {PM_ACTIVE_STAGES.map(s => {
                   const color = getStageCircleColor(s.key);
                   const isDoneS = s.key === "entrega";
-                  const isSelected = task.stage_current === s.key;
+                  const isSelected = !task.periodic_stage_key && task.stage_current === s.key;
                   return (
                     <button
                       key={s.key}
                       className={cn("flex items-center gap-3 w-full px-3 py-2 rounded text-sm hover:bg-accent transition", isSelected && "bg-accent")}
-                      onClick={() => updateTask.mutate({ id: task.id, stage_current: s.key as any })}
+                      onClick={() => updateTask.mutate({ id: task.id, stage_current: s.key as any, periodic_stage_key: null as any })}
                     >
                       <span className={cn("h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0", color.border, isDoneS && `${color.bg}`)}>
                         {isDoneS && <Check className="h-3 w-3 text-white" />}
@@ -1525,6 +1546,31 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                     </button>
                   );
                 })}
+                {periodicStages.length > 0 && (
+                  <>
+                    <div className="my-1 border-t border-border" />
+                    <div className="px-3 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">Periódicas</div>
+                    {periodicStages.map(p => {
+                      const isSelected = task.periodic_stage_key === p.key;
+                      const c = p.color_key;
+                      const swatch = c && !isHexColor(c) ? TAG_COLORS.find(t => t.key === c) : null;
+                      return (
+                        <button
+                          key={p.key}
+                          className={cn("flex items-center gap-3 w-full px-3 py-2 rounded text-sm hover:bg-accent transition", isSelected && "bg-accent")}
+                          onClick={() => updateTask.mutate({ id: task.id, periodic_stage_key: p.key as any, stage_current: "entrega" as any, status_global: "concluido" as any })}
+                        >
+                          <span
+                            className={cn("h-5 w-5 rounded-full flex items-center justify-center shrink-0", swatch ? swatch.bg : "bg-primary/20")}
+                            style={c && isHexColor(c) ? { backgroundColor: `${c}40` } : undefined}
+                          />
+                          <span className="font-medium">{p.label}</span>
+                          {isSelected && <Check className="h-3.5 w-3.5 ml-auto text-primary" />}
+                        </button>
+                      );
+                    })}
+                  </>
+                )}
               </PopoverContent>
             </Popover>
           </PropertyRow>
