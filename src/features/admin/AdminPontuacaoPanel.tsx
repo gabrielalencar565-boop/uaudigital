@@ -312,75 +312,59 @@ export function AdminPontuacaoPanel() {
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleCreateTag(); } }}
               />
             </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Cor</label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button
-                    type="button"
-                    className="h-8 w-8 rounded-full transition-all ring-2 ring-offset-2 ring-offset-background ring-white/30 hover:scale-110"
-                    style={
-                      isHexColor(newTagColor)
-                        ? { backgroundColor: newTagColor }
-                        : undefined
-                    }
-                    aria-label="Escolher cor"
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="h-8 w-8 shrink-0 rounded-full ring-1 ring-border/60 hover:ring-foreground/40 transition-all hover:scale-105"
+                  style={isHexColor(newTagColor) ? { backgroundColor: newTagColor } : undefined}
+                  aria-label="Escolher cor"
+                >
+                  {!isHexColor(newTagColor) && (
+                    <span
+                      className={cn(
+                        "block h-full w-full rounded-full",
+                        TAG_COLORS.find(c => c.key === newTagColor)?.dot ?? "bg-blue-500"
+                      )}
+                    />
+                  )}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-2 space-y-2" align="end">
+                <div className="grid grid-cols-5 gap-1.5">
+                  {TAG_COLORS.map(c => (
+                    <button
+                      key={c.key}
+                      type="button"
+                      title={c.label}
+                      className={cn(
+                        "h-5 w-5 rounded-full transition-all",
+                        c.dot,
+                        newTagColor === c.key
+                          ? "ring-2 ring-offset-2 ring-offset-background ring-white/50 scale-110"
+                          : "opacity-70 hover:opacity-100 hover:scale-105"
+                      )}
+                      onClick={() => setNewTagColor(c.key)}
+                    />
+                  ))}
+                  <label
+                    className="h-5 w-5 rounded-full cursor-pointer relative overflow-hidden ring-1 ring-border/60 hover:ring-foreground/40 hover:scale-105 transition-all"
+                    style={{
+                      background:
+                        "conic-gradient(from 0deg, #ef4444, #f59e0b, #eab308, #22c55e, #06b6d4, #3b82f6, #8b5cf6, #ec4899, #ef4444)",
+                    }}
+                    title="Cor personalizada"
                   >
-                    {!isHexColor(newTagColor) && (
-                      <span
-                        className={cn(
-                          "block h-full w-full rounded-full",
-                          TAG_COLORS.find(c => c.key === newTagColor)?.dot ?? "bg-blue-500"
-                        )}
-                      />
-                    )}
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-3 space-y-3" align="end">
-                  <div className="grid grid-cols-5 gap-1.5">
-                    {TAG_COLORS.map(c => (
-                      <button
-                        key={c.key}
-                        type="button"
-                        title={c.label}
-                        className={cn(
-                          "h-6 w-6 rounded-full transition-all",
-                          c.dot,
-                          newTagColor === c.key
-                            ? "ring-2 ring-offset-2 ring-offset-background ring-white/50 scale-110"
-                            : "opacity-70 hover:opacity-100 hover:scale-105"
-                        )}
-                        onClick={() => setNewTagColor(c.key)}
-                      />
-                    ))}
-                  </div>
-                  <div className="border-t border-border/60 pt-2 space-y-1.5">
-                    <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
-                      Cor personalizada
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={isHexColor(newTagColor) ? newTagColor : "#7c5cff"}
-                        onChange={(e) => setNewTagColor(e.target.value.toLowerCase())}
-                        className="h-8 w-10 rounded cursor-pointer bg-transparent border border-border/60 p-0.5"
-                      />
-                      <Input
-                        value={isHexColor(newTagColor) ? newTagColor : ""}
-                        onChange={(e) => {
-                          const v = e.target.value.trim().toLowerCase();
-                          if (isHexColor(v)) setNewTagColor(v);
-                          else if (v === "") setNewTagColor("blue");
-                        }}
-                        placeholder="#a3b1ff"
-                        className="h-8 text-xs flex-1"
-                        maxLength={7}
-                      />
-                    </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </div>
+                    <input
+                      type="color"
+                      value={isHexColor(newTagColor) ? newTagColor : "#7c5cff"}
+                      onChange={(e) => setNewTagColor(e.target.value.toLowerCase())}
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                    />
+                  </label>
+                </div>
+              </PopoverContent>
+            </Popover>
             <Button
               size="sm"
               className="h-8 gap-1.5"
