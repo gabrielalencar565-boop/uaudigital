@@ -143,7 +143,7 @@ export function PmClientView({ tasks, childTasksMap, clientsMap, membersMap, onT
                           <span className="text-[10px] font-semibold text-muted-foreground/60 bg-foreground/5 rounded-full px-2 py-0.5">{childDone}/{children.length}</span>
                         )}
                         <span className="text-[10px] px-2 py-0.5 rounded-md bg-accent/60 text-accent-foreground font-medium shrink-0">
-                          {stageLabel(task.stage_current)}
+                          {taskStageLabel(task, periodicStages)}
                         </span>
                       </div>
 
@@ -163,7 +163,7 @@ export function PmClientView({ tasks, childTasksMap, clientsMap, membersMap, onT
                                 {child.title}
                               </span>
                               <span className="text-[10px] text-muted-foreground/60 font-medium">
-                                {stageLabel(child.stage_current)}
+                                {taskStageLabel(child, periodicStages)}
                               </span>
                             </div>
                           ))}
