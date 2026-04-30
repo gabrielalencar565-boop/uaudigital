@@ -85,6 +85,25 @@ export function statusColor(key: string) {
 export function stageLabel(key: string) {
   return PM_STAGES.find((s) => s.key === key)?.label ?? key;
 }
+
+/**
+ * Returns the visible stage label for a task, accounting for periodic
+ * (custom_*) stages stored in `periodic_stage_key`. The optional
+ * `periodicStages` map provides labels for custom keys.
+ */
+export function taskStageLabel(
+  task: { stage_current: string; periodic_stage_key?: string | null } | null | undefined,
+  periodicStages?: Array<{ key: string; label: string }>
+) {
+  if (!task) return "";
+  if (task.periodic_stage_key) {
+    const found = periodicStages?.find((p) => p.key === task.periodic_stage_key);
+    if (found) return found.label;
+    // Fallback: prettify the key
+    return task.periodic_stage_key.replace(/^custom_/, "").replace(/_/g, " ");
+  }
+  return stageLabel(task.stage_current);
+}
 export function priorityMeta(key: string) {
   return PM_PRIORITIES.find((p) => p.key === key) ?? PM_PRIORITIES[1];
 }
