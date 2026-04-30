@@ -682,20 +682,24 @@ export function DayViewPanel() {
 
   // Helper: render tasks grouped by person in columns (used for pendentes / concluídas / atrasadas)
   type TaskItem = typeof unifiedTasks.tasks[number];
-  const renderPersonGroupedTasks = (
-    tasks: TaskItem[],
-    variant: "pending" | "completed" | "overdue",
+  const renderPersonColumns = (
+    pendingTasks: TaskItem[],
+    completedTasks: TaskItem[],
+    overdueTasksList: TaskItem[],
     title: string
   ) => {
-    if (tasks.length === 0) return null;
+    if (pendingTasks.length === 0 && completedTasks.length === 0 && overdueTasksList.length === 0) return null;
     type PersonGroup = {
       user_id: string;
       display_name: string;
       avatar_url: string | null;
-      tasks: TaskItem[];
+      pending: TaskItem[];
+      completed: TaskItem[];
+      overdue: TaskItem[];
     };
     const groupsMap = new Map<string, PersonGroup>();
-    const unassigned: TaskItem[] = [];
+    const unassigned: { pending: TaskItem[]; completed: TaskItem[]; overdue: TaskItem[] } = { pending: [], completed: [], overdue: [] };
+    const distribute = (tasks: TaskItem[], bucket: "pending" | "completed" | "overdue") => {
     for (const t of tasks) {
       const members = allAssigneesByTaskId.get(t.id) ?? [];
       const person = teamByUserId.get(t.assigned_user_id);
