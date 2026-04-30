@@ -905,54 +905,34 @@ export function DayViewPanel() {
                       const isOverdueCleaning = !isDone && (now.getHours() > dueH || (now.getHours() === dueH && now.getMinutes() >= dueM));
                       const emoji = getCleaningEmoji(cat?.name ?? "");
                       return (
-                        <button
-                          key={`cleaning-${schedule.id}`}
-                          type="button"
-                          disabled={toggleCleaning.isPending}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (!sessionUser) return;
-                            toggleCleaning.mutate({
-                              scheduleId: schedule.id,
-                              date: todayKey,
-                              userId: sessionUser.id,
-                              isCompleted: isDone,
-                            });
-                          }}
-                          className={cn(
-                            "flex flex-col items-start gap-1 rounded-lg border transition-colors min-w-0 text-left",
-                            veryDense ? "px-2.5 py-2" : dense ? "px-3 py-2.5" : "px-4 py-3",
-                            isDone && "border-success bg-success hover:bg-success/90",
-                            isOverdueCleaning && "border-destructive bg-destructive hover:bg-destructive/90",
-                            !isDone && !isOverdueCleaning && "border-border bg-card hover:bg-accent/50"
-                          )}
-                        >
-                          <div className="flex items-center gap-1.5 w-full min-w-0">
-                            <span
+                        <Tooltip key={`cleaning-${schedule.id}`}>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              disabled={toggleCleaning.isPending}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (!sessionUser) return;
+                                toggleCleaning.mutate({
+                                  scheduleId: schedule.id,
+                                  date: todayKey,
+                                  userId: sessionUser.id,
+                                  isCompleted: isDone,
+                                });
+                              }}
                               className={cn(
-                                "inline-flex items-center justify-center rounded-full font-bold tracking-wide text-white shrink-0 leading-none bg-black",
-                                veryDense ? "h-4 text-[8px] px-[5px]" : dense ? "h-[18px] px-[7px] text-[9px]" : "h-5 px-2 text-[10px]"
+                                "inline-flex items-center justify-center rounded-full border-2 transition-colors shrink-0 self-start",
+                                veryDense ? "h-7 w-7 text-base" : dense ? "h-8 w-8 text-lg" : "h-9 w-9 text-xl",
+                                isDone && "border-success bg-success/15 hover:bg-success/25",
+                                isOverdueCleaning && "border-destructive bg-destructive/15 hover:bg-destructive/25",
+                                !isDone && !isOverdueCleaning && "border-border bg-card hover:bg-accent/50"
                               )}
                             >
-                              LIMP
-                            </span>
-                            <span className="text-base leading-none ml-auto">{emoji}</span>
-                            {isDone && (
-                              <span className={cn("font-bold text-success-foreground shrink-0", veryDense ? "text-xs" : "text-sm")}>✓</span>
-                            )}
-                          </div>
-                          <p
-                            className={cn(
-                              "font-semibold leading-tight w-full min-w-0 whitespace-nowrap overflow-hidden text-ellipsis",
-                              veryDense ? "text-xs" : dense ? "text-sm" : "text-base",
-                              isDone && "text-success-foreground",
-                              isOverdueCleaning && "text-destructive-foreground"
-                            )}
-                            title={`${cat?.name ?? "Limpeza"} • até ${dueTimeStr}`}
-                          >
-                            {cat?.name ?? "Limpeza"} • {dueTimeStr}
-                          </p>
-                        </button>
+                              <span className="leading-none">{emoji}</span>
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>{cat?.name ?? "Limpeza"} • até {dueTimeStr}</TooltipContent>
+                        </Tooltip>
                       );
                     })}
                   {g.overdue.map((t) => renderTaskItem(t, "overdue", g))}
