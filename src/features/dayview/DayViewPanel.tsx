@@ -916,12 +916,14 @@ export function DayViewPanel() {
                       <div className="flex flex-col gap-2.5 flex-1">
                         {g.tasks.map((t) => {
                           const stageLabel = STAGES.find((s) => s.key === t.stage)?.label ?? t.stage;
+                          const stageColors = stageColorClass(t.stage);
                           return (
                             <div
                               key={t.id}
                               onClick={() => handleTaskClick(t)}
                               className={cn(
-                                "rounded-lg border border-border bg-card cursor-pointer hover:bg-accent/50 transition-colors min-w-0",
+                                "rounded-lg cursor-pointer hover:opacity-90 transition-opacity min-w-0",
+                                stageColors,
                                 veryDense ? "px-2.5 py-2" : dense ? "px-3 py-2.5" : "px-4 py-3"
                               )}
                             >
@@ -929,11 +931,11 @@ export function DayViewPanel() {
                                 {resolveClientName(t)}
                               </p>
                               <div className="flex items-center justify-between gap-2 mt-1.5">
-                                <span className={cn("text-muted-foreground truncate", veryDense ? "text-xs" : dense ? "text-sm" : "text-base")}>
+                                <span className={cn("truncate opacity-90", veryDense ? "text-xs" : dense ? "text-sm" : "text-base")}>
                                   {stageLabel}
                                 </span>
                                 {!veryDense && (
-                                  <Badge variant={t.status === "em_andamento" ? "warning" : "secondary"} className={cn("shrink-0", dense ? "text-xs px-2 py-0.5 h-5" : "text-sm px-2.5 py-0.5 h-6")}>
+                                  <Badge variant="outline" className={cn("shrink-0 bg-background/20 border-current text-current", dense ? "text-xs px-2 py-0.5 h-5" : "text-sm px-2.5 py-0.5 h-6")}>
                                     {t.status === "em_andamento" ? "Em and." : "Pend."}
                                   </Badge>
                                 )}
