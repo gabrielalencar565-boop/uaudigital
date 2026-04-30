@@ -709,26 +709,34 @@ export function DayViewPanel() {
         avatar_url: person.avatar_url
       }] : [];
       if (displayMembers.length === 0) {
-        unassigned.push(t);
+        unassigned[bucket].push(t);
         continue;
       }
       for (const m of displayMembers) {
         const existing = groupsMap.get(m.user_id);
         if (existing) {
-          existing.tasks.push(t);
+          existing[bucket].push(t);
         } else {
           groupsMap.set(m.user_id, {
             user_id: m.user_id,
             display_name: m.display_name,
             avatar_url: m.avatar_url,
-            tasks: [t]
-          });
+            pending: [],
+            completed: [],
+            overdue: [],
+            [bucket]: [t],
+          } as PersonGroup);
         }
       }
     }
+    };
+    distribute(pendingTasks, "pending");
+    distribute(completedTasks, "completed");
+    distribute(overdueTasksList, "overdue");
     const groups = Array.from(groupsMap.values()).sort((a, b) => a.display_name.localeCompare(b.display_name));
-    if (unassigned.length > 0) {
-      groups.push({ user_id: "__unassigned__", display_name: "Sem responsável", avatar_url: null, tasks: unassigned });
+    const hasUnassigned = unassigned.pending.length + unassigned.completed.length + unassigned.overdue.length > 0;
+    if (hasUnassigned) {
+      groups.push({ user_id: "__unassigned__", display_name: "Sem responsável", avatar_url: null, ...unassigned });
     }
     const colCount = groups.length;
     const gridColsClass = colCount <= 1
