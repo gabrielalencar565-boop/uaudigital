@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -313,21 +314,37 @@ export function AdminPontuacaoPanel() {
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">Cor</label>
-              <div className="flex gap-1.5">
-                {TAG_COLORS.map(c => (
+              <Popover>
+                <PopoverTrigger asChild>
                   <button
-                    key={c.key}
+                    type="button"
                     className={cn(
-                      "h-6 w-6 rounded-full transition-all",
-                      c.dot,
-                      newTagColor === c.key
-                        ? "ring-2 ring-offset-2 ring-offset-background ring-white/50 scale-110"
-                        : "opacity-60 hover:opacity-100"
+                      "h-8 w-8 rounded-full transition-all ring-2 ring-offset-2 ring-offset-background ring-white/30 hover:scale-110",
+                      TAG_COLORS.find(c => c.key === newTagColor)?.dot ?? "bg-blue-500"
                     )}
-                    onClick={() => setNewTagColor(c.key)}
+                    aria-label="Escolher cor"
                   />
-                ))}
-              </div>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-2" align="end">
+                  <div className="grid grid-cols-5 gap-1.5">
+                    {TAG_COLORS.map(c => (
+                      <button
+                        key={c.key}
+                        type="button"
+                        title={c.label}
+                        className={cn(
+                          "h-6 w-6 rounded-full transition-all",
+                          c.dot,
+                          newTagColor === c.key
+                            ? "ring-2 ring-offset-2 ring-offset-background ring-white/50 scale-110"
+                            : "opacity-70 hover:opacity-100 hover:scale-105"
+                        )}
+                        onClick={() => setNewTagColor(c.key)}
+                      />
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
             <Button
               size="sm"
