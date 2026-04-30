@@ -309,10 +309,23 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   const isCompletedSnapshot = task.status_global === "concluido" && task.stage_current !== "entrega" && !task.parent_task_id;
   const [correctionMode, setCorrectionMode] = useState(false);
 
+  const isPlanejamentoReview = task.stage_current === "revisao" && !task.parent_task_id && (
+    task.post_type === "planejamento" || (
+      task.post_type == null &&
+      childTasks.length > 0 &&
+      childTasks.some(c => c.post_type === "video") &&
+      childTasks.some(c => c.post_type === "design") &&
+      !childTasks.some(c => c.stage_current === "design" || c.stage_current === "edicao_videos")
+    )
+  );
+
   // Possible next stages from flow
+  // Planejamento sempre vai completo para Revisão (Planejamento), mesmo se o fluxo salvo estiver legado.
   // Extra demands go straight to entrega after revisão
   const rawNextStages = getNextStages(flowConfig, task.stage_current);
-  const nextStages = (task.is_extra_demand && task.stage_current === "revisao")
+  const nextStages = task.stage_current === "planejamento"
+    ? ["revisao"]
+    : (task.is_extra_demand && task.stage_current === "revisao")
     ? ["entrega"]
     : rawNextStages;
   const isDone = task.parent_task_id
@@ -900,10 +913,9 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       newDueDate = format(addDays(baseDate, dateConfig), "yyyy-MM-dd");
     }
 
-    // Revisão pós-Planejamento → split into video + design tasks
-    // (split agora acontece na Revisão da pauta, não mais no Planejamento)
-    // Detecta primeira revisão checando se nenhum child já está em design/edicao_videos.
-    if (completedStage === "revisao" && !task.parent_task_id) {
+    // Revisão (Planejamento) aprovada → só agora distribui em Vídeo + Design.
+    // Revisões de materiais (post_type design/video) seguem o fluxo normal para PDF.
+    if (completedStage === "revisao" && isPlanejamentoReview) {
       const alreadySplit = childTasks.some(
         (c) => c.stage_current === "design" || c.stage_current === "edicao_videos"
       );
@@ -1808,7 +1820,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
         {/* Subtasks — use planning layout for parent tasks at planejamento, pdf, agendamento or entrega */}
         <div className="border-t border-border/20 pt-4">
-          {!task.parent_task_id && ["planejamento", "pdf", "agendamento", "entrega"].includes(task.stage_current) ? (
+          {!task.parent_task_id && (["planejamento", "pdf", "agendamento", "entrega"].includes(task.stage_current) || isPlanejamentoReview) ? (
             <PmPlanningSubtasks
               parentTask={task}
               childTasks={childTasks}
@@ -1816,7 +1828,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
               members={members}
               onSelectSubtask={onSelectSubtask}
               activeSubtaskId={activeSubtaskId}
-              sectionTitle={stageLabel(task.stage_current)}
+              sectionTitle={isPlanejamentoReview ? "Revisão (Planejamento)" : stageLabel(task.stage_current)}
             />
           ) : (
             <PmSubtaskList parentTask={task} childTasks={childTasks} membersMap={membersMap} members={members} onSelectSubtask={onSelectSubtask} activeSubtaskId={activeSubtaskId} readOnly={isCompletedSnapshot && !correctionMode} correctionMode={correctionMode && isCompletedSnapshot} />
