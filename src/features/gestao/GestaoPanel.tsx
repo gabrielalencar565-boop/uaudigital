@@ -29,7 +29,7 @@ import { PmStageFlowConfig, useStageFlows } from "./components/PmStageFlowConfig
 import { PmAssigneeFlowConfig } from "./components/PmAssigneeFlowConfig";
 import type { StageAssignees } from "./components/PmStageFlowConfig";
 import { PmPautaView } from "./components/PmPautaView";
-import { stageLabel, getStageCircleColor, tagColor, tagDisplay } from "./pm-constants";
+import { stageLabel, getStageCircleColor, tagColor, tagDisplay, isHexColor, TAG_COLORS } from "./pm-constants";
 import { cn } from "@/lib/utils";
 import type { PmTask } from "./pm-types";
 import { toast } from "sonner";
@@ -51,6 +51,17 @@ const STAGE_BADGE_BG: Record<string, string> = {
   edicao_videos: "bg-purple-500", revisao: "bg-pink-500", alteracoes: "bg-stage-alteracoes", pdf: "bg-indigo-500",
   agendamento: "bg-lime-500", entrega: "bg-emerald-500"
 };
+
+const PERIODIC_TIME_RE = /\s-\s(\d{1,2}:\d{2})\s*$/;
+
+function stripPeriodicTime(title: string) {
+  const match = title.match(PERIODIC_TIME_RE);
+  return match ? title.slice(0, match.index).trim() : title;
+}
+
+function getPeriodicTime(task: PmTask) {
+  return task.posting_time ?? task.title.match(PERIODIC_TIME_RE)?.[1] ?? null;
+}
 
 const VIEW_TITLES: Record<string, string> = {
   kanban: "Kanban de tarefas",
@@ -460,6 +471,7 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
   const [trashOpen, setTrashOpen] = useState(false);
   const [draggedTask, setDraggedTask] = useState<PmTask | null>(null);
   const [highlightOverdue, setHighlightOverdue] = useState(false);
+  const { data: periodicStages = [] } = usePeriodicStages();
 
   const todayKey = format(new Date(), "yyyy-MM-dd");
 
@@ -699,6 +711,11 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
     // Detect mixed children (parent has both video and design subtasks)
     const childrenOfThis = childTasksMap[t.id] ?? [];
     const childPostTypes = new Set(childrenOfThis.map((c) => c.post_type).filter(Boolean) as string[]);
+    const periodic = t.periodic_stage_key ? periodicStages.find((p) => p.key === t.periodic_stage_key) : null;
+    const periodicColor = periodic?.color_key ?? null;
+    const periodicSwatch = periodicColor && !isHexColor(periodicColor) ? TAG_COLORS.find((c) => c.key === periodicColor) : null;
+    const periodicTime = t.periodic_stage_key ? getPeriodicTime(t) : null;
+    const periodicTitle = t.periodic_stage_key ? stripPeriodicTime(t.title) : null;
     const isMixed = childPostTypes.has("video") && childPostTypes.has("design");
     const isRevisaoMixed = isRevisao && isMixed;
     // Revisão (Planejamento): parent task on revisão stage with post_type='planejamento'
@@ -738,7 +755,7 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
               ? "REV/DSG"
               : undefined;
     const stageBg = gradientClass ?? (STAGE_BADGE_BG[t.stage_current] ?? "bg-muted");
-    const abbr = gradientAbbr ?? (STAGE_ABBR[t.stage_current] ?? t.stage_current.toUpperCase().slice(0, 4));
+    const abbr = periodic?.label ?? gradientAbbr ?? (STAGE_ABBR[t.stage_current] ?? t.stage_current.toUpperCase().slice(0, 4));
     const assignees = getTaskAssignees(t);
     const visibleAssignees = assignees.slice(0, 2);
     const extraAssignees = Math.max(assignees.length - 2, 0);
@@ -762,7 +779,10 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
         style={isAlteracaoWithOrigin && !(highlightOverdue && isOverdue(t)) ? { background: 'linear-gradient(135deg, #FED404 0%, #FF9A02 100%)' } : (highlightOverdue && isOverdue(t) ? { background: '#ff2c2c', borderColor: '#ff2c2c' } : undefined)}
         onClick={isLegacy ? undefined : () => onTaskClick(t)}>
         <div className="flex items-center justify-between gap-1">
-          <div className={cn("inline-flex h-5 items-center rounded-md px-2 text-[9px] font-bold text-white tracking-wide", stageBg)}>
+          <div
+            className={cn("inline-flex h-5 items-center rounded-md px-2 text-[9px] font-bold tracking-wide", periodic ? (periodicSwatch ? `${periodicSwatch.bg} ${periodicSwatch.text}` : "bg-primary/10 text-primary") : `text-white ${stageBg}`)}
+            style={periodicColor && isHexColor(periodicColor) ? { backgroundColor: `${periodicColor}26`, color: periodicColor } : undefined}
+          >
             {abbr}
           </div>
           <div className="flex items-center gap-0.5">
@@ -810,11 +830,14 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
           <div className="min-w-0">
             {assignees.length === 1 && mainAssignee ? (
               <>
-                <p className="truncate text-xs font-semibold leading-4">{mainAssignee.name.split(" ")[0]}</p>
-                <p className="truncate text-[11px] text-muted-foreground/60 leading-3">{clientName}</p>
+                <p className="truncate text-xs font-semibold leading-4">{periodicTitle ?? mainAssignee.name.split(" ")[0]}</p>
+                <p className="truncate text-[11px] text-muted-foreground/60 leading-3">{periodicTime ?? clientName}</p>
               </>
             ) : (
-              <p className="truncate text-xs font-semibold leading-4">{clientName}</p>
+              <>
+                <p className="truncate text-xs font-semibold leading-4">{periodicTitle ?? clientName}</p>
+                {periodicTime && <p className="truncate text-[11px] text-muted-foreground/60 leading-3">{periodicTime}</p>}
+              </>
             )}
           </div>
         </div>
