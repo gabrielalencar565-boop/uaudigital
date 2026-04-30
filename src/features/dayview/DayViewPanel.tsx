@@ -467,6 +467,7 @@ export function DayViewPanel() {
     post_type?: string | null;
     parent_task_id?: string | null;
     childPostTypes?: Set<string>;
+    periodic_stage_key?: string | null;
   };
 
   const unifiedTasks = useMemo(() => {
