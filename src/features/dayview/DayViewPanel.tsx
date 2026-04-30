@@ -820,17 +820,27 @@ export function DayViewPanel() {
           </span>
           {(() => {
             const clientName = resolveClientName(t);
-            const isSingleWord = !clientName.trim().includes(" ");
+            const trimmed = clientName.trim();
+            const isSingleWord = !trimmed.includes(" ");
+            const isLong = trimmed.length > 18;
+            const sizeClass = isLong
+              ? (veryDense ? "text-[10px]" : dense ? "text-xs" : "text-sm")
+              : (veryDense ? "text-xs" : dense ? "text-sm" : "text-base");
             return (
               <p
+                title={clientName}
                 className={cn(
-                  "font-semibold leading-tight flex-1 min-w-0",
-                  isSingleWord ? "whitespace-nowrap overflow-hidden text-ellipsis" : "break-words [hyphens:none]",
-                  veryDense ? "text-xs" : dense ? "text-sm" : "text-base",
+                  "font-semibold leading-tight flex-1 min-w-0 [hyphens:none]",
+                  isSingleWord ? "whitespace-nowrap" : "break-words",
+                  sizeClass,
                   variant === "completed" && "text-success-foreground",
                   variant === "overdue" && "text-destructive-foreground"
                 )}
-                style={!isSingleWord ? { display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", wordBreak: "normal", overflowWrap: "normal" } : undefined}
+                style={
+                  !isSingleWord
+                    ? { display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", wordBreak: "normal", overflowWrap: "normal" }
+                    : undefined
+                }
               >
                 {clientName}
               </p>
