@@ -63,6 +63,13 @@ function getPeriodicTime(task: PmTask) {
   return task.posting_time ?? task.title.match(PERIODIC_TIME_RE)?.[1] ?? null;
 }
 
+function getPeriodicStageFallbackLabel(key: string) {
+  return key
+    .replace(/^custom_/, "")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 const VIEW_TITLES: Record<string, string> = {
   kanban: "Kanban de tarefas",
   agenda: "Agenda de tarefas",
@@ -755,7 +762,9 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
               ? "REV/DSG"
               : undefined;
     const stageBg = gradientClass ?? (STAGE_BADGE_BG[t.stage_current] ?? "bg-muted");
-    const abbr = periodic?.label ?? gradientAbbr ?? (STAGE_ABBR[t.stage_current] ?? t.stage_current.toUpperCase().slice(0, 4));
+    const abbr = t.periodic_stage_key
+      ? (periodic?.label ?? getPeriodicStageFallbackLabel(t.periodic_stage_key))
+      : gradientAbbr ?? (STAGE_ABBR[t.stage_current] ?? t.stage_current.toUpperCase().slice(0, 4));
     const assignees = getTaskAssignees(t);
     const visibleAssignees = assignees.slice(0, 2);
     const extraAssignees = Math.max(assignees.length - 2, 0);
@@ -1224,9 +1233,22 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
               const clientName = clientsMap[t.client_id] ?? "—";
               return (
                 <div key={t.id} className="flex items-center gap-3 p-3 rounded-xl border border-border/30 bg-card/60 shadow-[0_1px_3px_0_hsl(var(--foreground)/0.06)] cursor-pointer hover:bg-muted/40 transition" onClick={() => { if (!isLegacy) { setMoreOpen(false); onTaskClick(t); } }}>
-                  <div className={cn("inline-flex h-6 items-center rounded-md px-2.5 text-[10px] font-bold text-white shrink-0", STAGE_BADGE_BG[t.stage_current] ?? "bg-muted")}>
-                    {STAGE_ABBR[t.stage_current] ?? t.stage_current.slice(0, 4).toUpperCase()}
-                  </div>
+                  {(() => {
+                    const periodic = t.periodic_stage_key ? periodicStages.find((p) => p.key === t.periodic_stage_key) : null;
+                    const periodicColor = periodic?.color_key ?? null;
+                    const periodicSwatch = periodicColor && !isHexColor(periodicColor) ? TAG_COLORS.find((c) => c.key === periodicColor) : null;
+                    const label = t.periodic_stage_key
+                      ? (periodic?.label ?? getPeriodicStageFallbackLabel(t.periodic_stage_key))
+                      : (STAGE_ABBR[t.stage_current] ?? t.stage_current.slice(0, 4).toUpperCase());
+                    return (
+                      <div
+                        className={cn("inline-flex h-6 items-center rounded-md px-2.5 text-[10px] font-bold shrink-0", t.periodic_stage_key ? (periodicSwatch ? `${periodicSwatch.bg} ${periodicSwatch.text}` : "bg-primary/10 text-primary") : `text-white ${STAGE_BADGE_BG[t.stage_current] ?? "bg-muted"}`)}
+                        style={periodicColor && isHexColor(periodicColor) ? { backgroundColor: `${periodicColor}26`, color: periodicColor } : undefined}
+                      >
+                        {label}
+                      </div>
+                    );
+                  })()}
                   {visibleAssignees.length > 0 ? (
                     <div className="flex flex-col -space-y-1.5 shrink-0">
                       {visibleAssignees.map((member) => (
@@ -1250,13 +1272,15 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
                   )}
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">
-                      {assignees.length === 1 && mainAssignee
-                        ? mainAssignee.name
-                        : assignees.length > 1
-                          ? `${assignees.length} responsáveis`
-                          : "—"}
+                      {t.periodic_stage_key
+                        ? stripPeriodicTime(t.title)
+                        : assignees.length === 1 && mainAssignee
+                          ? mainAssignee.name
+                          : assignees.length > 1
+                            ? `${assignees.length} responsáveis`
+                            : "—"}
                     </p>
-                    <p className="truncate text-xs text-muted-foreground/60">{clientName}</p>
+                    <p className="truncate text-xs text-muted-foreground/60">{t.periodic_stage_key ? (getPeriodicTime(t) ?? clientName) : clientName}</p>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     <button
