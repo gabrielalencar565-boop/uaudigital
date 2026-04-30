@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { ChevronRight, ChevronDown, FolderOpen, CheckCircle2, Circle, AlertOctagon, Hash } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { statusLabel, stageLabel } from "../pm-constants";
+import { statusLabel, stageLabel, taskStageLabel } from "../pm-constants";
+import { usePeriodicStages } from "../hooks/use-periodic-stages";
 import type { PmTask } from "../pm-types";
 
 function statusDot(key: string) {
