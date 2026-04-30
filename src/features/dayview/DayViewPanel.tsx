@@ -459,6 +459,9 @@ export function DayViewPanel() {
     completed_at: string | null;
     source: "agenda" | "pm";
     subtaskCount?: number;
+    post_type?: string | null;
+    parent_task_id?: string | null;
+    childPostTypes?: Set<string>;
   };
 
   const unifiedTasks = useMemo(() => {
