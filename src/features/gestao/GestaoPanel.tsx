@@ -471,6 +471,7 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
   const [trashOpen, setTrashOpen] = useState(false);
   const [draggedTask, setDraggedTask] = useState<PmTask | null>(null);
   const [highlightOverdue, setHighlightOverdue] = useState(false);
+  const { data: periodicStages = [] } = usePeriodicStages();
 
   const todayKey = format(new Date(), "yyyy-MM-dd");
 
