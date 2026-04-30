@@ -534,7 +534,10 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
       list = list.filter((t) => t.title.toLowerCase().includes(q) || (clientsMap[t.client_id] ?? "").toLowerCase().includes(q));
     }
     if (filterStage && filterStage !== "__all__") {
-      list = list.filter((t) => t.stage_current === filterStage);
+      const isPeriodic = isPeriodicStageKey(filterStage);
+      list = list.filter((t: any) =>
+        isPeriodic ? t.periodic_stage_key === filterStage : (t.stage_current === filterStage && !t.periodic_stage_key)
+      );
     }
     return list;
   }, [tasks, filterClient, filterAssignee, search, clientsMap, fixedAssigneeClientIds, filterStage]);
