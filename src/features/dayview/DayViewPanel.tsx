@@ -739,17 +739,7 @@ export function DayViewPanel() {
       groups.push({ user_id: "__unassigned__", display_name: "Sem responsável", avatar_url: null, ...unassigned });
     }
     const colCount = groups.length;
-    const gridColsClass = colCount <= 1
-      ? "grid-cols-1"
-      : colCount === 2
-      ? "grid-cols-1 md:grid-cols-2"
-      : colCount === 3
-      ? "grid-cols-1 md:grid-cols-3"
-      : colCount === 4
-      ? "grid-cols-2 md:grid-cols-4"
-      : colCount === 5
-      ? "grid-cols-2 md:grid-cols-5"
-      : "grid-cols-2 md:grid-cols-3 xl:grid-cols-6";
+    const gridStyle = { gridTemplateColumns: `repeat(${Math.max(colCount, 1)}, minmax(0, 1fr))` };
     const dense = colCount >= 4;
     const veryDense = colCount >= 6;
     const renderTaskItem = (t: TaskItem, variant: "pending" | "completed" | "overdue", g: PersonGroup) => {
@@ -833,7 +823,7 @@ export function DayViewPanel() {
     return (
       <div className="space-y-2">
         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{title}</p>
-        <div className={cn("grid gap-3", gridColsClass)}>
+        <div className="grid gap-3" style={gridStyle}>
           {groups.map((g) => {
             const totalCount = g.pending.length + g.completed.length + g.overdue.length;
             return (
