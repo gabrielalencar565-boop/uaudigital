@@ -791,8 +791,16 @@ export function DayViewPanel() {
         : isRevisaoDesign
         ? "REV/DSG"
         : undefined;
-      const stageAbbr = gradientAbbr ?? STAGE_ABBR[t.stage] ?? t.stage.toUpperCase().slice(0, 4);
-      const stageBg = gradientClass ?? STAGE_BADGE_BG[t.stage] ?? "bg-muted";
+      const periodicKey = t.periodic_stage_key;
+      const periodicLabel = periodicKey
+        ? ((periodicStagesQ.data ?? []).find((p) => p.key === periodicKey)?.label ?? getPeriodicStageFallbackLabel(periodicKey))
+        : null;
+      const stageAbbr = periodicLabel
+        ? periodicLabel.slice(0, 3).toUpperCase()
+        : (gradientAbbr ?? STAGE_ABBR[t.stage] ?? t.stage.toUpperCase().slice(0, 4));
+      const stageBg = periodicKey
+        ? "bg-black"
+        : (gradientClass ?? STAGE_BADGE_BG[t.stage] ?? "bg-muted");
       const daysLate = variant === "overdue" ? differenceInCalendarDays(today, new Date(`${t.due_date}T00:00:00`)) : 0;
       return (
         <div
