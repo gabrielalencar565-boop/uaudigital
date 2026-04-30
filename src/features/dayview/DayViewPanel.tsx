@@ -992,14 +992,9 @@ export function DayViewPanel() {
               </div>
         }
 
-            {/* Tarefas Pendentes / Em andamento (por pessoa) */}
-            {renderPersonGroupedTasks(todayPendingTasks, "pending", isCurrentMonth ? "Hoje" : "Pendentes")}
+            {/* Tarefas agrupadas por pessoa (pendentes, concluídas e atrasadas na mesma coluna) */}
+            {renderPersonColumns(todayPendingTasks, todayCompletedTasks, overdueTasks as any, isCurrentMonth ? "Hoje" : "Pendentes")}
 
-            {/* Tarefas Concluídas (por pessoa, verde) */}
-            {renderPersonGroupedTasks(todayCompletedTasks, "completed", "Concluídas")}
-
-            {/* Tarefas Atrasadas (por pessoa, vermelho) */}
-            {renderPersonGroupedTasks(overdueTasks as any, "overdue", "Atrasadas")}
 
             {/* Mensagem quando não há tarefas */}
             {todayPendingTasks.length === 0 && todayCompletedTasks.length === 0 && overdueTasks.length === 0 && todayCleaningTasks.length === 0 && <p className="text-muted-foreground text-center py-4">
