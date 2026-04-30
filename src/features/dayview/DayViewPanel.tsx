@@ -114,7 +114,7 @@ export function DayViewPanel() {
       const endDate = `${monthKey}-${String(lastDay).padStart(2, "0")}`;
       const { data, error } = await supabase
         .from("pm_tasks")
-        .select("id, title, client_id, assignee_id, watchers, due_date, stage_current, status_global, is_extra_demand, parent_task_id, updated_at")
+        .select("id, title, client_id, assignee_id, watchers, due_date, stage_current, status_global, is_extra_demand, parent_task_id, updated_at, post_type")
         .is("parent_task_id", null)
         .is("deleted_at", null)
         .gte("due_date", startDate)
