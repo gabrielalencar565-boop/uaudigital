@@ -754,9 +754,9 @@ export function DayViewPanel() {
     const veryDense = colCount >= 6;
     const renderTaskItem = (t: TaskItem, variant: "pending" | "completed" | "overdue", g: PersonGroup) => {
       const taskItemClass = variant === "completed"
-        ? "flex items-center gap-2 rounded-lg border border-success/30 bg-success/15 cursor-pointer hover:bg-success/25 transition-colors min-w-0"
+        ? "flex items-center gap-2 rounded-lg border border-success bg-success cursor-pointer hover:bg-success/90 transition-colors min-w-0"
         : variant === "overdue"
-        ? "flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/15 cursor-pointer hover:bg-destructive/25 transition-colors min-w-0"
+        ? "flex items-center gap-2 rounded-lg border border-destructive bg-destructive cursor-pointer hover:bg-destructive/90 transition-colors min-w-0"
         : "flex items-center gap-2 rounded-lg border border-border bg-card cursor-pointer hover:bg-accent/50 transition-colors min-w-0";
       const isAlteracaoWithOrigin = t.stage === "alteracoes" && !!t.post_type;
       const isRevisao = t.stage === "revisao";
@@ -811,16 +811,16 @@ export function DayViewPanel() {
           >
             {stageAbbr}
           </span>
-          <p className={cn("font-semibold leading-tight truncate flex-1 min-w-0", veryDense ? "text-sm" : dense ? "text-base" : "text-lg")}>
+          <p className={cn("font-semibold leading-tight truncate flex-1 min-w-0", veryDense ? "text-sm" : dense ? "text-base" : "text-lg", variant === "completed" && "text-success-foreground", variant === "overdue" && "text-destructive-foreground")}>
             {resolveClientName(t)}
           </p>
           {variant === "overdue" && (
-            <span className={cn("font-bold text-destructive shrink-0", veryDense ? "text-xs" : "text-sm")}>
+            <span className={cn("font-bold text-destructive-foreground shrink-0", veryDense ? "text-xs" : "text-sm")}>
               {daysLate}d
             </span>
           )}
           {variant === "completed" && (
-            <span className={cn("font-bold text-success shrink-0", veryDense ? "text-xs" : "text-sm")}>✓</span>
+            <span className={cn("font-bold text-success-foreground shrink-0", veryDense ? "text-xs" : "text-sm")}>✓</span>
           )}
           {variant === "pending" && t.status === "em_andamento" && !veryDense && (
             <Badge variant="warning" className={cn("shrink-0", dense ? "text-[10px] px-1.5 py-0 h-4" : "text-xs px-2 py-0.5 h-5")}>
