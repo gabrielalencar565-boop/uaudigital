@@ -154,6 +154,7 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
       title,
       stage_current: stageForDb as any,
       periodic_stage_key: isPeriodic ? stage : null,
+      posting_time: isPeriodic && periodicTime ? periodicTime : undefined,
       due_date: dueDate,
       assignee_id: mainAssignee,
       watchers: watchers.length > 0 ? watchers : undefined,
