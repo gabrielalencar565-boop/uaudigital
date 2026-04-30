@@ -229,9 +229,13 @@ export function AdminPontuacaoPanel() {
 
   // Order stages nicely — design and edicao_videos are excluded (scoring defined by tags only)
   const magicStages = ["planejamento", "captacao", "pdf", "alteracoes", "agendamento"];
-  const sorted = [...rows]
+  const fixedRows = [...rows]
     .filter((r) => magicStages.includes(r.stage))
     .sort((a, b) => magicStages.indexOf(a.stage) - magicStages.indexOf(b.stage));
+  const customRows = [...rows]
+    .filter((r) => r.stage.startsWith("custom_"))
+    .sort((a, b) => (a.label ?? "").localeCompare(b.label ?? ""));
+  const sorted = [...fixedRows, ...customRows];
 
   // Tag-based scoring entries
   const tagRows = [...rows]
