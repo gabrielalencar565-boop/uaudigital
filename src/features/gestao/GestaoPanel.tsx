@@ -34,6 +34,7 @@ import { cn } from "@/lib/utils";
 import type { PmTask } from "./pm-types";
 import { toast } from "sonner";
 import { AgendaQuickCreateDialog } from "./components/AgendaQuickCreateDialog";
+import { usePeriodicStages, isPeriodicStageKey } from "./hooks/use-periodic-stages";
 import { useAgendaSpecialDates } from "@/features/agenda/hooks/use-agenda-dates";
 import { getIconById } from "@/features/agenda/components/IconPicker";
 import { AgendaReportsPanel } from "@/features/agenda/components/AgendaReportsPanel";
