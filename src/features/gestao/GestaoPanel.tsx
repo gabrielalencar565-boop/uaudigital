@@ -719,8 +719,6 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
     const childrenOfThis = childTasksMap[t.id] ?? [];
     const childPostTypes = new Set(childrenOfThis.map((c) => c.post_type).filter(Boolean) as string[]);
     const periodic = t.periodic_stage_key ? periodicStages.find((p) => p.key === t.periodic_stage_key) : null;
-    const periodicColor = periodic?.color_key ?? null;
-    const periodicSwatch = periodicColor && !isHexColor(periodicColor) ? TAG_COLORS.find((c) => c.key === periodicColor) : null;
     const periodicTime = t.periodic_stage_key ? getPeriodicTime(t) : null;
     const periodicTitle = t.periodic_stage_key ? stripPeriodicTime(t.title) : null;
     const isMixed = childPostTypes.has("video") && childPostTypes.has("design");
@@ -763,7 +761,7 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
               : undefined;
     const stageBg = gradientClass ?? (STAGE_BADGE_BG[t.stage_current] ?? "bg-muted");
     const abbr = t.periodic_stage_key
-      ? (periodic?.label ?? getPeriodicStageFallbackLabel(t.periodic_stage_key))
+      ? (periodic?.label ?? getPeriodicStageFallbackLabel(t.periodic_stage_key)).slice(0, 3).toUpperCase()
       : gradientAbbr ?? (STAGE_ABBR[t.stage_current] ?? t.stage_current.toUpperCase().slice(0, 4));
     const assignees = getTaskAssignees(t);
     const visibleAssignees = assignees.slice(0, 2);
@@ -789,8 +787,8 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
         onClick={isLegacy ? undefined : () => onTaskClick(t)}>
         <div className="flex items-center justify-between gap-1">
           <div
-            className={cn("inline-flex h-5 items-center rounded-md px-2 text-[9px] font-bold tracking-wide", periodic ? (periodicSwatch ? `${periodicSwatch.bg} ${periodicSwatch.text}` : "bg-primary/10 text-primary") : `text-white ${stageBg}`)}
-            style={periodicColor && isHexColor(periodicColor) ? { backgroundColor: `${periodicColor}26`, color: periodicColor } : undefined}
+            className={cn("inline-flex h-5 items-center rounded-md px-2 text-[9px] font-bold tracking-wide", periodic ? "bg-black text-white" : `text-white ${stageBg}`)}
+            style={undefined}
           >
             {abbr}
           </div>
@@ -1235,15 +1233,12 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
                 <div key={t.id} className="flex items-center gap-3 p-3 rounded-xl border border-border/30 bg-card/60 shadow-[0_1px_3px_0_hsl(var(--foreground)/0.06)] cursor-pointer hover:bg-muted/40 transition" onClick={() => { if (!isLegacy) { setMoreOpen(false); onTaskClick(t); } }}>
                   {(() => {
                     const periodic = t.periodic_stage_key ? periodicStages.find((p) => p.key === t.periodic_stage_key) : null;
-                    const periodicColor = periodic?.color_key ?? null;
-                    const periodicSwatch = periodicColor && !isHexColor(periodicColor) ? TAG_COLORS.find((c) => c.key === periodicColor) : null;
                     const label = t.periodic_stage_key
-                      ? (periodic?.label ?? getPeriodicStageFallbackLabel(t.periodic_stage_key))
+                      ? (periodic?.label ?? getPeriodicStageFallbackLabel(t.periodic_stage_key)).slice(0, 3).toUpperCase()
                       : (STAGE_ABBR[t.stage_current] ?? t.stage_current.slice(0, 4).toUpperCase());
                     return (
                       <div
-                        className={cn("inline-flex h-6 items-center rounded-md px-2.5 text-[10px] font-bold shrink-0", t.periodic_stage_key ? (periodicSwatch ? `${periodicSwatch.bg} ${periodicSwatch.text}` : "bg-primary/10 text-primary") : `text-white ${STAGE_BADGE_BG[t.stage_current] ?? "bg-muted"}`)}
-                        style={periodicColor && isHexColor(periodicColor) ? { backgroundColor: `${periodicColor}26`, color: periodicColor } : undefined}
+                        className={cn("inline-flex h-6 items-center rounded-md px-2.5 text-[10px] font-bold shrink-0", t.periodic_stage_key ? "bg-black text-white" : `text-white ${STAGE_BADGE_BG[t.stage_current] ?? "bg-muted"}`)}
                       >
                         {label}
                       </div>
