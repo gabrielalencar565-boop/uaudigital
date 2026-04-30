@@ -284,12 +284,18 @@ export function AdminPontuacaoPanel() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {sorted.map((row) => (
+                    {sorted.map((row) => {
+                      const isCustom = row.stage.startsWith("custom_");
+                      return (
                       <TableRow key={row.id}>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <span className="font-medium">{getVal(row, "label")}</span>
-                            <Badge variant="outline" className="text-[10px]">{row.stage}</Badge>
+                            {isCustom ? (
+                              <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">Periódica</Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-[10px]">{row.stage}</Badge>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell className="text-center">
@@ -325,11 +331,60 @@ export function AdminPontuacaoPanel() {
                             onChange={(e) => setVal(row, "extra_demand_multiplier", Number(e.target.value))}
                           />
                         </TableCell>
+                        <TableCell className="text-center">
+                          {isCustom && (
+                            <button
+                              type="button"
+                              className="h-7 w-7 mx-auto flex items-center justify-center rounded-md hover:bg-destructive/20 transition-colors"
+                              title="Remover etapa periódica"
+                              disabled={deleteCustomStageMut.isPending}
+                              onClick={() => {
+                                if (confirm(`Remover a etapa "${row.label}"?`)) {
+                                  deleteCustomStageMut.mutate(row.stage);
+                                }
+                              }}
+                            >
+                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                            </button>
+                          )}
+                        </TableCell>
                       </TableRow>
-                    ))}
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
+
+              {/* Create new periodic stage */}
+              <div className="mt-3 flex items-end gap-2 p-3 rounded-lg border border-dashed border-border/60 bg-muted/20">
+                <div className="flex-1 space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Nova etapa periódica</label>
+                  <Input
+                    value={newStageName}
+                    onChange={(e) => setNewStageName(e.target.value)}
+                    placeholder="Ex: Reunião semanal, Relatório mensal..."
+                    className="h-8 text-sm"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && newStageName.trim()) {
+                        e.preventDefault();
+                        createCustomStageMut.mutate(newStageName.trim());
+                      }
+                    }}
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  className="h-8 gap-1.5"
+                  disabled={!newStageName.trim() || createCustomStageMut.isPending}
+                  onClick={() => createCustomStageMut.mutate(newStageName.trim())}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Criar etapa
+                </Button>
+              </div>
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                Etapas periódicas são avulsas — não entram no fluxo do Kanban, Agenda ou Magic Number. Servem como referência de pontuação.
+              </p>
 
               <div className="mt-4 flex justify-end">
                 <Button
