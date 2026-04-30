@@ -27,6 +27,7 @@ type ScoringRow = {
   late_penalty: number;
   uses_quantity: boolean;
   extra_demand_multiplier: number;
+  color_key: string | null;
 };
 
 type EditState = Record<string, Partial<ScoringRow>>;
@@ -37,6 +38,7 @@ export function AdminPontuacaoPanel() {
   const [newTagName, setNewTagName] = useState("");
   const [newTagColor, setNewTagColor] = useState("blue");
   const [newStageName, setNewStageName] = useState("");
+  const [newStageColor, setNewStageColor] = useState("blue");
 
   // Normalize a stage label to "custom_<slug>"
   function makeCustomStageKey(name: string) {
@@ -54,7 +56,7 @@ export function AdminPontuacaoPanel() {
     queryFn: async (): Promise<ScoringRow[]> => {
       const { data, error } = await supabase
         .from("scoring_config")
-        .select("id, stage, label, base_points, late_penalty, uses_quantity, extra_demand_multiplier")
+        .select("id, stage, label, base_points, late_penalty, uses_quantity, extra_demand_multiplier, color_key")
         .order("stage");
       if (error) throw error;
       return (data ?? []) as ScoringRow[];
@@ -167,7 +169,7 @@ export function AdminPontuacaoPanel() {
   });
 
   const createCustomStageMut = useMutation({
-    mutationFn: async (name: string) => {
+    mutationFn: async ({ name, color_key }: { name: string; color_key: string }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Não autenticado");
       const stageKey = makeCustomStageKey(name);
@@ -188,12 +190,14 @@ export function AdminPontuacaoPanel() {
         late_penalty: -1,
         uses_quantity: false,
         extra_demand_multiplier: 1.5,
+        color_key,
         updated_by: user.id,
       });
       if (error) throw error;
     },
     onSuccess: () => {
       setNewStageName("");
+      setNewStageColor("blue");
       qc.invalidateQueries({ queryKey: ["scoring_config"] });
       toast.success("Etapa periódica criada!");
     },
@@ -286,10 +290,21 @@ export function AdminPontuacaoPanel() {
                   <TableBody>
                     {sorted.map((row) => {
                       const isCustom = row.stage.startsWith("custom_");
+                      const ck = row.color_key ?? null;
+                      const swatchClass = ck && !isHexColor(ck)
+                        ? (TAG_COLORS.find(c => c.key === ck)?.dot ?? "bg-blue-500")
+                        : null;
                       return (
                       <TableRow key={row.id}>
                         <TableCell>
                           <div className="flex items-center gap-2">
+                            {isCustom && ck && (
+                              <span
+                                className={cn("h-3 w-3 rounded-full shrink-0 ring-1 ring-border/40", swatchClass ?? "")}
+                                style={!swatchClass && isHexColor(ck) ? { backgroundColor: ck } : undefined}
+                                aria-hidden
+                              />
+                            )}
                             <span className="font-medium">{getVal(row, "label")}</span>
                             {isCustom ? (
                               <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">Periódica</Badge>
@@ -367,16 +382,69 @@ export function AdminPontuacaoPanel() {
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && newStageName.trim()) {
                         e.preventDefault();
-                        createCustomStageMut.mutate(newStageName.trim());
+                        createCustomStageMut.mutate({ name: newStageName.trim(), color_key: newStageColor });
                       }
                     }}
                   />
                 </div>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className="h-8 w-8 shrink-0 rounded-full ring-1 ring-border/60 hover:ring-foreground/40 transition-all hover:scale-105"
+                      style={isHexColor(newStageColor) ? { backgroundColor: newStageColor } : undefined}
+                      aria-label="Escolher cor da etapa"
+                    >
+                      {!isHexColor(newStageColor) && (
+                        <span
+                          className={cn(
+                            "block h-full w-full rounded-full",
+                            TAG_COLORS.find(c => c.key === newStageColor)?.dot ?? "bg-blue-500"
+                          )}
+                        />
+                      )}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-2 space-y-2" align="end">
+                    <div className="grid grid-cols-5 gap-1.5">
+                      {TAG_COLORS.map(c => (
+                        <button
+                          key={c.key}
+                          type="button"
+                          title={c.label}
+                          className={cn(
+                            "h-5 w-5 rounded-full transition-all",
+                            c.dot,
+                            newStageColor === c.key
+                              ? "ring-2 ring-offset-2 ring-offset-background ring-white/50 scale-110"
+                              : "opacity-70 hover:opacity-100 hover:scale-105"
+                          )}
+                          onClick={() => setNewStageColor(c.key)}
+                        />
+                      ))}
+                      <label
+                        className="h-5 w-5 rounded-full cursor-pointer relative overflow-hidden ring-1 ring-border/60 hover:ring-foreground/40 hover:scale-105 transition-all"
+                        style={{
+                          background:
+                            "conic-gradient(from 0deg, #ef4444, #f59e0b, #eab308, #22c55e, #06b6d4, #3b82f6, #8b5cf6, #ec4899, #ef4444)",
+                        }}
+                        title="Cor personalizada"
+                      >
+                        <input
+                          type="color"
+                          value={isHexColor(newStageColor) ? newStageColor : "#7c5cff"}
+                          onChange={(e) => setNewStageColor(e.target.value.toLowerCase())}
+                          className="absolute inset-0 opacity-0 cursor-pointer"
+                        />
+                      </label>
+                    </div>
+                  </PopoverContent>
+                </Popover>
                 <Button
                   size="sm"
                   className="h-8 gap-1.5"
                   disabled={!newStageName.trim() || createCustomStageMut.isPending}
-                  onClick={() => createCustomStageMut.mutate(newStageName.trim())}
+                  onClick={() => createCustomStageMut.mutate({ name: newStageName.trim(), color_key: newStageColor })}
                 >
                   <Plus className="h-3.5 w-3.5" />
                   Criar etapa
