@@ -813,7 +813,7 @@ export function DayViewPanel() {
             className={cn(
               "inline-flex items-center justify-center rounded font-bold tracking-wide text-white shrink-0 self-start",
               stageBg,
-              veryDense ? "h-5 px-1.5 text-[9px]" : dense ? "h-5 px-2 text-[10px]" : "h-6 px-2 text-[11px]"
+              veryDense ? "h-5 text-[9px] px-[6px]" : dense ? "h-5 px-2 text-[10px]" : "h-6 px-2 text-[11px]"
             )}
           >
             {stageAbbr}
