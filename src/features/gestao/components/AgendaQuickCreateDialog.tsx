@@ -40,6 +40,7 @@ interface Props {
 export function AgendaQuickCreateDialog({ open, onClose, clients, members, defaultDate }: Props) {
   const createTask = useCreatePmTask();
   const { stageAssignees } = useDefaultFlowWithDates();
+  const { data: periodicStages = [] } = usePeriodicStages();
   const [clientId, setClientId] = useState("");
   const [stage, setStage] = useState("");
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
