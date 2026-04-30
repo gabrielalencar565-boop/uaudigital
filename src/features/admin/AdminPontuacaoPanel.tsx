@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { TAG_COLORS, tagColor } from "@/features/gestao/pm-constants";
+import { TAG_COLORS, tagColor, isHexColor } from "@/features/gestao/pm-constants";
 import { usePmTags, useDeletePmTag } from "@/features/gestao/hooks/use-pm-tags";
 import { normalizePmTagStageKey } from "@/features/gestao/utils/normalize-pm-tag-stage";
 
