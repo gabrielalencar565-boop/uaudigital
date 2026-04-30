@@ -114,7 +114,7 @@ export function DayViewPanel() {
       const endDate = `${monthKey}-${String(lastDay).padStart(2, "0")}`;
       const { data, error } = await supabase
         .from("pm_tasks")
-        .select("id, title, client_id, assignee_id, watchers, due_date, stage_current, status_global, is_extra_demand, parent_task_id, updated_at")
+        .select("id, title, client_id, assignee_id, watchers, due_date, stage_current, status_global, is_extra_demand, parent_task_id, updated_at, post_type")
         .is("parent_task_id", null)
         .is("deleted_at", null)
         .gte("due_date", startDate)
@@ -140,24 +140,30 @@ export function DayViewPanel() {
     enabled: (pmTasksQ.data ?? []).length > 0,
   });
 
-  // ─── PM child tasks count per parent ───
+  // ─── PM child tasks per parent (count + post_types for gradient detection) ───
   const pmChildCountQ = useQuery({
     queryKey: ["pm_child_count_for_dayview", monthKey],
     queryFn: async () => {
       const parentIds = (pmTasksQ.data ?? []).map(t => t.id);
-      if (!parentIds.length) return new Map<string, number>();
+      if (!parentIds.length) return { counts: new Map<string, number>(), postTypes: new Map<string, Set<string>>() };
       const { data, error } = await supabase
         .from("pm_tasks")
-        .select("parent_task_id")
+        .select("parent_task_id, post_type")
         .in("parent_task_id", parentIds);
       if (error) throw error;
       const counts = new Map<string, number>();
+      const postTypes = new Map<string, Set<string>>();
       for (const row of data ?? []) {
         if (row.parent_task_id) {
           counts.set(row.parent_task_id, (counts.get(row.parent_task_id) ?? 0) + 1);
+          if (row.post_type) {
+            const set = postTypes.get(row.parent_task_id) ?? new Set<string>();
+            set.add(row.post_type);
+            postTypes.set(row.parent_task_id, set);
+          }
         }
       }
-      return counts;
+      return { counts, postTypes };
     },
     enabled: (pmTasksQ.data ?? []).length > 0,
   });
@@ -453,6 +459,9 @@ export function DayViewPanel() {
     completed_at: string | null;
     source: "agenda" | "pm";
     subtaskCount?: number;
+    post_type?: string | null;
+    parent_task_id?: string | null;
+    childPostTypes?: Set<string>;
   };
 
   const unifiedTasks = useMemo(() => {
@@ -502,7 +511,9 @@ export function DayViewPanel() {
     }
 
     // pm_tasks that DON'T have a snapshot in the agenda tasks (avoid duplicates)
-    const childCounts = pmChildCountQ.data ?? new Map<string, number>();
+    const childData = pmChildCountQ.data ?? { counts: new Map<string, number>(), postTypes: new Map<string, Set<string>>() };
+    const childCounts = childData.counts;
+    const childPostTypes = childData.postTypes;
     // Collect all pm task IDs that already have snapshots
     const snapshotPmIds = new Set<string>();
     for (const key of pmSnapshotGroups.keys()) {
@@ -527,6 +538,9 @@ export function DayViewPanel() {
         completed_at: (t.status_global === "concluido" || t.stage_current === "entrega" || t.stage_current === "agendamento") ? (t.updated_at ?? null) : null,
         source: "pm" as const,
         subtaskCount: childCounts.get(t.id) ?? 0,
+        post_type: t.post_type ?? null,
+        parent_task_id: t.parent_task_id ?? null,
+        childPostTypes: childPostTypes.get(t.id),
       }));
 
     return { tasks: [...agendaTasks, ...pmTasks], pmSnapshotGroups };
@@ -616,7 +630,7 @@ export function DayViewPanel() {
     return unifiedTasks.tasks.filter((t) => t.status !== "concluido" && t.due_date && t.due_date < todayKey).sort((a, b) => a.due_date.localeCompare(b.due_date));
   }, [unifiedTasks.tasks, todayKey]);
   const completedTasksCount = useMemo(() => unifiedTasks.tasks.filter((t) => t.status === "concluido").length, [unifiedTasks.tasks]);
-  const totalTasks = unifiedTasks.tasks.length + (pmChildCountQ.data ? Array.from(pmChildCountQ.data.values()).reduce((a, b) => a + b, 0) : 0);
+  const totalTasks = unifiedTasks.tasks.length + (pmChildCountQ.data ? Array.from(pmChildCountQ.data.counts.values()).reduce((a, b) => a + b, 0) : 0);
 
   // Navegação rápida para hoje
   const goToToday = () => {
@@ -925,8 +939,44 @@ export function DayViewPanel() {
                       {/* Tarefas da pessoa */}
                       <div className="flex flex-col gap-2.5 flex-1">
                         {g.tasks.map((t) => {
-                          const stageAbbr = STAGE_ABBR[t.stage] ?? t.stage.toUpperCase().slice(0, 4);
-                          const stageBg = STAGE_BADGE_BG[t.stage] ?? "bg-muted";
+                          // Compute gradient/abbr for revisão & alteração (same as agenda)
+                          const isAlteracaoWithOrigin = t.stage === "alteracoes" && !!t.post_type;
+                          const isRevisao = t.stage === "revisao";
+                          const childTypes = t.childPostTypes ?? new Set<string>();
+                          const isMixed = childTypes.has("video") && childTypes.has("design");
+                          const isRevisaoMixed = isRevisao && isMixed;
+                          const isRevisaoPlanejamento = isRevisao && !t.parent_task_id && (
+                            t.post_type === "planejamento" ||
+                            (childTypes.size > 0 && !childTypes.has("video") && !childTypes.has("design"))
+                          ) && t.post_type !== "video" && t.post_type !== "design";
+                          const isRevisaoVideo = isRevisao && !isRevisaoMixed && !isRevisaoPlanejamento && t.post_type === "video";
+                          const isRevisaoDesign = isRevisao && !isRevisaoMixed && !isRevisaoPlanejamento && !isRevisaoVideo;
+                          const gradientClass = isAlteracaoWithOrigin
+                            ? (t.post_type === "video"
+                              ? "bg-gradient-to-r from-stage-alteracoes to-stage-edicao_videos"
+                              : "bg-gradient-to-r from-stage-alteracoes to-stage-design")
+                            : isRevisaoPlanejamento
+                            ? "bg-gradient-to-r from-pink-400 to-stage-planejamento"
+                            : isRevisaoMixed
+                            ? "bg-gradient-to-r from-pink-400 via-stage-design to-stage-edicao_videos"
+                            : isRevisaoVideo
+                            ? "bg-gradient-to-r from-pink-400 to-stage-edicao_videos"
+                            : isRevisaoDesign
+                            ? "bg-gradient-to-r from-pink-400 to-stage-design"
+                            : undefined;
+                          const gradientAbbr = isAlteracaoWithOrigin
+                            ? (t.post_type === "video" ? "ALT/VDO" : "ALT/DSG")
+                            : isRevisaoPlanejamento
+                            ? "REV/PLAN"
+                            : isRevisaoMixed
+                            ? "REV/MIX"
+                            : isRevisaoVideo
+                            ? "REV/VDO"
+                            : isRevisaoDesign
+                            ? "REV/DSG"
+                            : undefined;
+                          const stageAbbr = gradientAbbr ?? STAGE_ABBR[t.stage] ?? t.stage.toUpperCase().slice(0, 4);
+                          const stageBg = gradientClass ?? STAGE_BADGE_BG[t.stage] ?? "bg-muted";
                           return (
                             <div
                               key={t.id}
