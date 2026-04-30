@@ -142,7 +142,7 @@ export function DayViewPanel() {
 
   // ─── PM child tasks per parent (count + post_types for gradient detection) ───
   const pmChildCountQ = useQuery({
-    queryKey: ["pm_child_count_for_dayview", monthKey],
+    queryKey: ["pm_child_count_for_dayview_v2", monthKey],
     queryFn: async () => {
       const parentIds = (pmTasksQ.data ?? []).map(t => t.id);
       if (!parentIds.length) return { counts: new Map<string, number>(), postTypes: new Map<string, Set<string>>() };
@@ -511,9 +511,9 @@ export function DayViewPanel() {
     }
 
     // pm_tasks that DON'T have a snapshot in the agenda tasks (avoid duplicates)
-    const childData = pmChildCountQ.data ?? { counts: new Map<string, number>(), postTypes: new Map<string, Set<string>>() };
-    const childCounts = childData.counts;
-    const childPostTypes = childData.postTypes;
+    const rawChildData = pmChildCountQ.data;
+    const childCounts: Map<string, number> = (rawChildData && "counts" in rawChildData) ? rawChildData.counts : (rawChildData instanceof Map ? rawChildData : new Map());
+    const childPostTypes: Map<string, Set<string>> = (rawChildData && "postTypes" in rawChildData) ? rawChildData.postTypes : new Map();
     // Collect all pm task IDs that already have snapshots
     const snapshotPmIds = new Set<string>();
     for (const key of pmSnapshotGroups.keys()) {
@@ -630,7 +630,12 @@ export function DayViewPanel() {
     return unifiedTasks.tasks.filter((t) => t.status !== "concluido" && t.due_date && t.due_date < todayKey).sort((a, b) => a.due_date.localeCompare(b.due_date));
   }, [unifiedTasks.tasks, todayKey]);
   const completedTasksCount = useMemo(() => unifiedTasks.tasks.filter((t) => t.status === "concluido").length, [unifiedTasks.tasks]);
-  const totalTasks = unifiedTasks.tasks.length + (pmChildCountQ.data ? Array.from(pmChildCountQ.data.counts.values()).reduce((a, b) => a + b, 0) : 0);
+  const totalTasks = unifiedTasks.tasks.length + (() => {
+    const d = pmChildCountQ.data as any;
+    if (!d) return 0;
+    const counts: Map<string, number> = (d && "counts" in d) ? d.counts : (d instanceof Map ? d : new Map());
+    return Array.from(counts.values()).reduce((a, b) => a + b, 0);
+  })();
 
   // Navegação rápida para hoje
   const goToToday = () => {
@@ -674,6 +679,181 @@ export function DayViewPanel() {
   // Calcular dias restantes até o prazo final (dia 27 do mês selecionado)
   const deadlineDate = new Date(selectedYear, selectedMonth - 1, 27);
   const daysUntilDeadline = differenceInCalendarDays(deadlineDate, today);
+
+  // Helper: render tasks grouped by person in columns (used for pendentes / concluídas / atrasadas)
+  type TaskItem = typeof unifiedTasks.tasks[number];
+  const renderPersonGroupedTasks = (
+    tasks: TaskItem[],
+    variant: "pending" | "completed" | "overdue",
+    title: string
+  ) => {
+    if (tasks.length === 0) return null;
+    type PersonGroup = {
+      user_id: string;
+      display_name: string;
+      avatar_url: string | null;
+      tasks: TaskItem[];
+    };
+    const groupsMap = new Map<string, PersonGroup>();
+    const unassigned: TaskItem[] = [];
+    for (const t of tasks) {
+      const members = allAssigneesByTaskId.get(t.id) ?? [];
+      const person = teamByUserId.get(t.assigned_user_id);
+      const displayMembers = members.length > 0 ? members : person ? [{
+        user_id: person.user_id,
+        display_name: person.display_name,
+        avatar_url: person.avatar_url
+      }] : [];
+      if (displayMembers.length === 0) {
+        unassigned.push(t);
+        continue;
+      }
+      for (const m of displayMembers) {
+        const existing = groupsMap.get(m.user_id);
+        if (existing) {
+          existing.tasks.push(t);
+        } else {
+          groupsMap.set(m.user_id, {
+            user_id: m.user_id,
+            display_name: m.display_name,
+            avatar_url: m.avatar_url,
+            tasks: [t]
+          });
+        }
+      }
+    }
+    const groups = Array.from(groupsMap.values()).sort((a, b) => a.display_name.localeCompare(b.display_name));
+    if (unassigned.length > 0) {
+      groups.push({ user_id: "__unassigned__", display_name: "Sem responsável", avatar_url: null, tasks: unassigned });
+    }
+    const colCount = groups.length;
+    const gridColsClass = colCount <= 1
+      ? "grid-cols-1"
+      : colCount === 2
+      ? "grid-cols-1 md:grid-cols-2"
+      : colCount === 3
+      ? "grid-cols-1 md:grid-cols-3"
+      : colCount === 4
+      ? "grid-cols-2 md:grid-cols-4"
+      : colCount === 5
+      ? "grid-cols-2 md:grid-cols-5"
+      : "grid-cols-2 md:grid-cols-3 xl:grid-cols-6";
+    const dense = colCount >= 4;
+    const veryDense = colCount >= 6;
+    const titleColor = variant === "completed"
+      ? "text-green-600 dark:text-green-400"
+      : variant === "overdue"
+      ? "text-destructive"
+      : "text-muted-foreground";
+    const containerClass = variant === "completed"
+      ? "rounded-xl border border-success/40 bg-success/10 p-3 min-w-0 flex flex-col"
+      : variant === "overdue"
+      ? "rounded-xl border border-destructive/40 bg-destructive/10 p-3 min-w-0 flex flex-col"
+      : "rounded-xl border border-border bg-card/50 p-3 min-w-0 flex flex-col";
+    const taskItemClass = variant === "completed"
+      ? "flex items-center gap-2 rounded-lg border border-success/30 bg-success/15 cursor-pointer hover:bg-success/25 transition-colors min-w-0"
+      : variant === "overdue"
+      ? "flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/15 cursor-pointer hover:bg-destructive/25 transition-colors min-w-0"
+      : "flex items-center gap-2 rounded-lg border border-border bg-card cursor-pointer hover:bg-accent/50 transition-colors min-w-0";
+    return (
+      <div className="space-y-2">
+        <p className={cn("text-xs font-medium uppercase tracking-wide", titleColor)}>{title}</p>
+        <div className={cn("grid gap-3", gridColsClass)}>
+          {groups.map((g) => (
+            <div key={`${variant}-${g.user_id}`} className={containerClass}>
+              <div className="flex items-center gap-3 pb-3 mb-3 border-b border-border/50">
+                <Avatar className={cn("shrink-0", veryDense ? "h-10 w-10" : dense ? "h-12 w-12" : "h-14 w-14")}>
+                  <AvatarImage src={g.avatar_url ?? undefined} />
+                  <AvatarFallback>{initials(g.display_name)}</AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <p className={cn("font-bold truncate", veryDense ? "text-sm" : dense ? "text-base" : "text-lg")}>
+                    {g.display_name}
+                  </p>
+                  <span className="text-xs text-muted-foreground">{g.tasks.length} {g.tasks.length === 1 ? "tarefa" : "tarefas"}</span>
+                </div>
+              </div>
+              <div className="flex flex-col gap-2.5 flex-1">
+                {g.tasks.map((t) => {
+                  const isAlteracaoWithOrigin = t.stage === "alteracoes" && !!t.post_type;
+                  const isRevisao = t.stage === "revisao";
+                  const childTypes = t.childPostTypes ?? new Set<string>();
+                  const isMixed = childTypes.has("video") && childTypes.has("design");
+                  const isRevisaoMixed = isRevisao && isMixed;
+                  const isRevisaoPlanejamento = isRevisao && !t.parent_task_id && (
+                    t.post_type === "planejamento" ||
+                    (childTypes.size > 0 && !childTypes.has("video") && !childTypes.has("design"))
+                  ) && t.post_type !== "video" && t.post_type !== "design";
+                  const isRevisaoVideo = isRevisao && !isRevisaoMixed && !isRevisaoPlanejamento && t.post_type === "video";
+                  const isRevisaoDesign = isRevisao && !isRevisaoMixed && !isRevisaoPlanejamento && !isRevisaoVideo;
+                  const gradientClass = isAlteracaoWithOrigin
+                    ? (t.post_type === "video"
+                      ? "bg-gradient-to-r from-stage-alteracoes to-stage-edicao_videos"
+                      : "bg-gradient-to-r from-stage-alteracoes to-stage-design")
+                    : isRevisaoPlanejamento
+                    ? "bg-gradient-to-r from-pink-400 to-stage-planejamento"
+                    : isRevisaoMixed
+                    ? "bg-gradient-to-r from-pink-400 via-stage-design to-stage-edicao_videos"
+                    : isRevisaoVideo
+                    ? "bg-gradient-to-r from-pink-400 to-stage-edicao_videos"
+                    : isRevisaoDesign
+                    ? "bg-gradient-to-r from-pink-400 to-stage-design"
+                    : undefined;
+                  const gradientAbbr = isAlteracaoWithOrigin
+                    ? (t.post_type === "video" ? "ALT/VDO" : "ALT/DSG")
+                    : isRevisaoPlanejamento
+                    ? "REV/PLAN"
+                    : isRevisaoMixed
+                    ? "REV/MIX"
+                    : isRevisaoVideo
+                    ? "REV/VDO"
+                    : isRevisaoDesign
+                    ? "REV/DSG"
+                    : undefined;
+                  const stageAbbr = gradientAbbr ?? STAGE_ABBR[t.stage] ?? t.stage.toUpperCase().slice(0, 4);
+                  const stageBg = gradientClass ?? STAGE_BADGE_BG[t.stage] ?? "bg-muted";
+                  const daysLate = variant === "overdue" ? differenceInCalendarDays(today, new Date(`${t.due_date}T00:00:00`)) : 0;
+                  return (
+                    <div
+                      key={`${variant}-${g.user_id}-${t.id}`}
+                      onClick={() => handleTaskClick(t)}
+                      className={cn(taskItemClass, veryDense ? "px-2.5 py-2" : dense ? "px-3 py-2.5" : "px-4 py-3")}
+                    >
+                      <span
+                        className={cn(
+                          "inline-flex items-center justify-center rounded-md font-bold tracking-wide text-white shrink-0",
+                          stageBg,
+                          veryDense ? "h-6 px-2 text-[10px]" : dense ? "h-7 px-2.5 text-xs" : "h-8 px-3 text-sm"
+                        )}
+                      >
+                        {stageAbbr}
+                      </span>
+                      <p className={cn("font-semibold leading-tight truncate flex-1 min-w-0", veryDense ? "text-sm" : dense ? "text-base" : "text-lg")}>
+                        {resolveClientName(t)}
+                      </p>
+                      {variant === "overdue" && (
+                        <span className={cn("font-bold text-destructive shrink-0", veryDense ? "text-xs" : "text-sm")}>
+                          {daysLate}d
+                        </span>
+                      )}
+                      {variant === "completed" && (
+                        <span className={cn("font-bold text-success shrink-0", veryDense ? "text-xs" : "text-sm")}>✓</span>
+                      )}
+                      {variant === "pending" && t.status === "em_andamento" && !veryDense && (
+                        <Badge variant="warning" className={cn("shrink-0", dense ? "text-[10px] px-1.5 py-0 h-4" : "text-xs px-2 py-0.5 h-5")}>
+                          Em and.
+                        </Badge>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   return <div ref={containerRef} className={cn("space-y-6", isFullscreen && "bg-background px-4 py-2 overflow-hidden h-screen flex flex-col gap-3 space-y-0")}>
       {/* Header */}
@@ -804,270 +984,14 @@ export function DayViewPanel() {
               </div>
         }
 
-            {/* Tarefas Atrasadas - Widget Vermelho */}
-            {overdueTasks.length > 0 && <div className="space-y-2">
-                <p className="text-xs font-medium text-destructive uppercase tracking-wide">Atrasadas</p>
-                {overdueTasks.map((t) => {
-            const members = allAssigneesByTaskId.get(t.id) ?? [];
-            const person = teamByUserId.get(t.assigned_user_id);
-            const client = clientsById.get(t.client_id);
-            const stageLabel = STAGES.find((s) => s.key === t.stage)?.label ?? t.stage;
-            const daysLate = differenceInCalendarDays(today, new Date(`${t.due_date}T00:00:00`));
-            const displayMembers = members.length > 0 ? members : person ? [{
-              user_id: person.user_id,
-              display_name: person.display_name,
-              avatar_url: person.avatar_url
-            }] : [];
-            const primaryDisplayMember = displayMembers[0];
-            return <div key={t.id} onClick={() => handleTaskClick(t)} className="flex items-center gap-3 rounded-lg bg-destructive px-3 py-2 cursor-pointer hover:opacity-90 transition-opacity">
-                      {displayMembers.length > 1 ? <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div className="flex -space-x-2 shrink-0">
-                              {displayMembers.slice(0, 3).map((m) => <Avatar key={m.user_id} className="h-8 w-8 border-2 border-destructive-foreground/30">
-                                  <AvatarImage src={m.avatar_url ?? undefined} />
-                                  <AvatarFallback className="text-[10px] bg-destructive-foreground/20 text-destructive-foreground">{initials(m.display_name)}</AvatarFallback>
-                                </Avatar>)}
-                              {displayMembers.length > 3 && <div className="h-8 w-8 flex items-center justify-center rounded-full border-2 border-destructive-foreground/30 bg-destructive-foreground/20 text-destructive-foreground text-xs">
-                                  +{displayMembers.length - 3}
-                                </div>}
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent side="top" className="max-w-[200px]">
-                            <div className="space-y-1">
-                              {displayMembers.map((m) => <div key={m.user_id} className="flex items-center gap-2">
-                                  <Avatar className="h-5 w-5">
-                                    <AvatarImage src={m.avatar_url ?? undefined} />
-                                    <AvatarFallback className="text-[8px]">{initials(m.display_name)}</AvatarFallback>
-                                  </Avatar>
-                                  <span className="text-xs">{m.display_name}</span>
-                                </div>)}
-                            </div>
-                          </TooltipContent>
-                        </Tooltip> : <Avatar className="h-8 w-8 border-2 border-destructive-foreground/30">
-                          <AvatarImage src={primaryDisplayMember?.avatar_url ?? undefined} />
-                          <AvatarFallback className="bg-destructive-foreground/20 text-destructive-foreground">{initials(primaryDisplayMember?.display_name ?? person?.display_name ?? "?")}</AvatarFallback>
-                        </Avatar>}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-destructive-foreground leading-5">
-                          <span className="block sm:inline truncate">{displayMembers.length > 1 ? displayMembers.map((m) => m.display_name).join(", ") : primaryDisplayMember?.display_name ?? person?.display_name}</span>
-                          <span className="hidden sm:inline">{" "}•{" "}</span>
-                          <span className="block sm:inline text-xs sm:text-sm opacity-90 truncate">({resolveClientName(t)}) • {stageLabel}</span>
-                        </p>
-                      </div>
-                      <span className="text-sm font-bold text-destructive-foreground shrink-0">
-                        {daysLate} {daysLate === 1 ? "dia" : "dias"}
-                      </span>
-                    </div>;
-          })}
-              </div>}
+            {/* Tarefas Pendentes / Em andamento (por pessoa) */}
+            {renderPersonGroupedTasks(todayPendingTasks, "pending", isCurrentMonth ? "Hoje" : "Pendentes")}
 
-            {/* Tarefas de Hoje (Pendentes/Em Andamento) - Widget Branco */}
-            {todayPendingTasks.length > 0 && (() => {
-              // Agrupar tarefas por pessoa (cada tarefa pode aparecer em múltiplas colunas se tiver múltiplos responsáveis)
-              type PersonGroup = {
-                user_id: string;
-                display_name: string;
-                avatar_url: string | null;
-                tasks: typeof todayPendingTasks;
-              };
-              const groupsMap = new Map<string, PersonGroup>();
-              const unassigned: typeof todayPendingTasks = [];
-              for (const t of todayPendingTasks) {
-                const members = allAssigneesByTaskId.get(t.id) ?? [];
-                const person = teamByUserId.get(t.assigned_user_id);
-                const displayMembers = members.length > 0 ? members : person ? [{
-                  user_id: person.user_id,
-                  display_name: person.display_name,
-                  avatar_url: person.avatar_url
-                }] : [];
-                if (displayMembers.length === 0) {
-                  unassigned.push(t);
-                  continue;
-                }
-                for (const m of displayMembers) {
-                  const existing = groupsMap.get(m.user_id);
-                  if (existing) {
-                    existing.tasks.push(t);
-                  } else {
-                    groupsMap.set(m.user_id, {
-                      user_id: m.user_id,
-                      display_name: m.display_name,
-                      avatar_url: m.avatar_url,
-                      tasks: [t]
-                    });
-                  }
-                }
-              }
-              const groups = Array.from(groupsMap.values()).sort((a, b) => a.display_name.localeCompare(b.display_name));
-              if (unassigned.length > 0) {
-                groups.push({ user_id: "__unassigned__", display_name: "Sem responsável", avatar_url: null, tasks: unassigned });
-              }
-              const colCount = groups.length;
-              const gridColsClass = colCount <= 1
-                ? "grid-cols-1"
-                : colCount === 2
-                ? "grid-cols-1 md:grid-cols-2"
-                : colCount === 3
-                ? "grid-cols-1 md:grid-cols-3"
-                : colCount === 4
-                ? "grid-cols-2 md:grid-cols-4"
-                : colCount === 5
-                ? "grid-cols-2 md:grid-cols-5"
-                : "grid-cols-2 md:grid-cols-3 xl:grid-cols-6";
-              const dense = colCount >= 4;
-              const veryDense = colCount >= 6;
-              return <div className="space-y-2">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  {isCurrentMonth ? "Hoje" : "Pendentes"}
-                </p>
-                <div className={cn("grid gap-3", gridColsClass)}>
-                  {groups.map((g) => (
-                    <div key={g.user_id} className="rounded-xl border border-border bg-card/50 p-3 min-w-0 flex flex-col">
-                      {/* Header com foto ao lado do nome */}
-                      <div className="flex items-center gap-3 pb-3 mb-3 border-b border-border">
-                        <Avatar className={cn("shrink-0", veryDense ? "h-10 w-10" : dense ? "h-12 w-12" : "h-14 w-14")}>
-                          <AvatarImage src={g.avatar_url ?? undefined} />
-                          <AvatarFallback>{initials(g.display_name)}</AvatarFallback>
-                        </Avatar>
-                        <div className="min-w-0 flex-1">
-                          <p className={cn("font-bold truncate", veryDense ? "text-sm" : dense ? "text-base" : "text-lg")}>
-                            {g.display_name}
-                          </p>
-                          <span className="text-xs text-muted-foreground">{g.tasks.length} {g.tasks.length === 1 ? "tarefa" : "tarefas"}</span>
-                        </div>
-                      </div>
-                      {/* Tarefas da pessoa */}
-                      <div className="flex flex-col gap-2.5 flex-1">
-                        {g.tasks.map((t) => {
-                          // Compute gradient/abbr for revisão & alteração (same as agenda)
-                          const isAlteracaoWithOrigin = t.stage === "alteracoes" && !!t.post_type;
-                          const isRevisao = t.stage === "revisao";
-                          const childTypes = t.childPostTypes ?? new Set<string>();
-                          const isMixed = childTypes.has("video") && childTypes.has("design");
-                          const isRevisaoMixed = isRevisao && isMixed;
-                          const isRevisaoPlanejamento = isRevisao && !t.parent_task_id && (
-                            t.post_type === "planejamento" ||
-                            (childTypes.size > 0 && !childTypes.has("video") && !childTypes.has("design"))
-                          ) && t.post_type !== "video" && t.post_type !== "design";
-                          const isRevisaoVideo = isRevisao && !isRevisaoMixed && !isRevisaoPlanejamento && t.post_type === "video";
-                          const isRevisaoDesign = isRevisao && !isRevisaoMixed && !isRevisaoPlanejamento && !isRevisaoVideo;
-                          const gradientClass = isAlteracaoWithOrigin
-                            ? (t.post_type === "video"
-                              ? "bg-gradient-to-r from-stage-alteracoes to-stage-edicao_videos"
-                              : "bg-gradient-to-r from-stage-alteracoes to-stage-design")
-                            : isRevisaoPlanejamento
-                            ? "bg-gradient-to-r from-pink-400 to-stage-planejamento"
-                            : isRevisaoMixed
-                            ? "bg-gradient-to-r from-pink-400 via-stage-design to-stage-edicao_videos"
-                            : isRevisaoVideo
-                            ? "bg-gradient-to-r from-pink-400 to-stage-edicao_videos"
-                            : isRevisaoDesign
-                            ? "bg-gradient-to-r from-pink-400 to-stage-design"
-                            : undefined;
-                          const gradientAbbr = isAlteracaoWithOrigin
-                            ? (t.post_type === "video" ? "ALT/VDO" : "ALT/DSG")
-                            : isRevisaoPlanejamento
-                            ? "REV/PLAN"
-                            : isRevisaoMixed
-                            ? "REV/MIX"
-                            : isRevisaoVideo
-                            ? "REV/VDO"
-                            : isRevisaoDesign
-                            ? "REV/DSG"
-                            : undefined;
-                          const stageAbbr = gradientAbbr ?? STAGE_ABBR[t.stage] ?? t.stage.toUpperCase().slice(0, 4);
-                          const stageBg = gradientClass ?? STAGE_BADGE_BG[t.stage] ?? "bg-muted";
-                          return (
-                            <div
-                              key={t.id}
-                              onClick={() => handleTaskClick(t)}
-                              className={cn(
-                                "flex items-center gap-2 rounded-lg border border-border bg-card cursor-pointer hover:bg-accent/50 transition-colors min-w-0",
-                                veryDense ? "px-2.5 py-2" : dense ? "px-3 py-2.5" : "px-4 py-3"
-                              )}
-                            >
-                              <span
-                                className={cn(
-                                  "inline-flex items-center justify-center rounded-md font-bold tracking-wide text-white shrink-0",
-                                  stageBg,
-                                  veryDense ? "h-6 px-2 text-[10px]" : dense ? "h-7 px-2.5 text-xs" : "h-8 px-3 text-sm"
-                                )}
-                              >
-                                {stageAbbr}
-                              </span>
-                              <p className={cn("font-semibold leading-tight truncate flex-1 min-w-0", veryDense ? "text-sm" : dense ? "text-base" : "text-lg")}>
-                                {resolveClientName(t)}
-                              </p>
-                              {t.status === "em_andamento" && !veryDense && (
-                                <Badge variant="warning" className={cn("shrink-0", dense ? "text-[10px] px-1.5 py-0 h-4" : "text-xs px-2 py-0.5 h-5")}>
-                                  Em and.
-                                </Badge>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>;
-            })()}
+            {/* Tarefas Concluídas (por pessoa, verde) */}
+            {renderPersonGroupedTasks(todayCompletedTasks, "completed", "Concluídas")}
 
-            {/* Tarefas Concluídas - Widget Verde */}
-            {todayCompletedTasks.length > 0 && <div className="space-y-2">
-                <p className="text-xs font-medium text-green-600 dark:text-green-400 uppercase tracking-wide">Concluídas</p>
-                {todayCompletedTasks.map((t) => {
-            const members = allAssigneesByTaskId.get(t.id) ?? [];
-            const person = teamByUserId.get(t.assigned_user_id);
-            const client = clientsById.get(t.client_id);
-            const stageLabel = STAGES.find((s) => s.key === t.stage)?.label ?? t.stage;
-            const displayMembers = members.length > 0 ? members : person ? [{
-              user_id: person.user_id,
-              display_name: person.display_name,
-              avatar_url: person.avatar_url
-            }] : [];
-            const primaryDisplayMember = displayMembers[0];
-            return <div key={t.id} onClick={() => handleTaskClick(t)} className="flex items-center gap-3 rounded-lg bg-success px-3 py-2 cursor-pointer hover:opacity-90 transition-opacity">
-                      {displayMembers.length > 1 ? <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div className="flex -space-x-2 shrink-0">
-                              {displayMembers.slice(0, 3).map((m) => <Avatar key={m.user_id} className="h-8 w-8 border-2 border-success-foreground/30">
-                                  <AvatarImage src={m.avatar_url ?? undefined} />
-                                  <AvatarFallback className="text-[10px] bg-success-foreground/20 text-success-foreground">{initials(m.display_name)}</AvatarFallback>
-                                </Avatar>)}
-                              {displayMembers.length > 3 && <div className="h-8 w-8 flex items-center justify-center rounded-full border-2 border-success-foreground/30 bg-success-foreground/20 text-success-foreground text-xs">
-                                  +{displayMembers.length - 3}
-                                </div>}
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent side="top" className="max-w-[200px]">
-                            <div className="space-y-1">
-                              {displayMembers.map((m) => <div key={m.user_id} className="flex items-center gap-2">
-                                  <Avatar className="h-5 w-5">
-                                    <AvatarImage src={m.avatar_url ?? undefined} />
-                                    <AvatarFallback className="text-[8px]">{initials(m.display_name)}</AvatarFallback>
-                                  </Avatar>
-                                  <span className="text-xs">{m.display_name}</span>
-                                </div>)}
-                            </div>
-                          </TooltipContent>
-                        </Tooltip> : <Avatar className="h-8 w-8 border-2 border-success-foreground/30">
-                          <AvatarImage src={primaryDisplayMember?.avatar_url ?? undefined} />
-                          <AvatarFallback className="bg-success-foreground/20 text-success-foreground">{initials(primaryDisplayMember?.display_name ?? person?.display_name ?? "?")}</AvatarFallback>
-                        </Avatar>}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-success-foreground leading-5">
-                          <span className="block sm:inline truncate">{displayMembers.length > 1 ? displayMembers.map((m) => m.display_name).join(", ") : primaryDisplayMember?.display_name ?? person?.display_name}</span>
-                          <span className="hidden sm:inline">{" "}•{" "}</span>
-                          <span className="block sm:inline text-xs sm:text-sm opacity-90 truncate">({resolveClientName(t)}) • {stageLabel}</span>
-                        </p>
-                      </div>
-                      <span className="text-sm font-bold text-success-foreground shrink-0">
-                        ✓
-                      </span>
-                    </div>;
-          })}
-              </div>}
+            {/* Tarefas Atrasadas (por pessoa, vermelho) */}
+            {renderPersonGroupedTasks(overdueTasks as any, "overdue", "Atrasadas")}
 
             {/* Mensagem quando não há tarefas */}
             {todayPendingTasks.length === 0 && todayCompletedTasks.length === 0 && overdueTasks.length === 0 && todayCleaningTasks.length === 0 && <p className="text-muted-foreground text-center py-4">
