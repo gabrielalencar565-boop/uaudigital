@@ -838,80 +838,109 @@ export function DayViewPanel() {
 
             {/* Tarefas de Hoje (Pendentes/Em Andamento) - Widget Branco */}
             {todayPendingTasks.length > 0 && (() => {
-              const count = todayPendingTasks.length;
-              const cols = count <= 2 ? 1 : count <= 6 ? 2 : count <= 12 ? 3 : count <= 20 ? 4 : 5;
-              const gridColsClass = cols === 1
+              // Agrupar tarefas por pessoa (cada tarefa pode aparecer em múltiplas colunas se tiver múltiplos responsáveis)
+              type PersonGroup = {
+                user_id: string;
+                display_name: string;
+                avatar_url: string | null;
+                tasks: typeof todayPendingTasks;
+              };
+              const groupsMap = new Map<string, PersonGroup>();
+              const unassigned: typeof todayPendingTasks = [];
+              for (const t of todayPendingTasks) {
+                const members = allAssigneesByTaskId.get(t.id) ?? [];
+                const person = teamByUserId.get(t.assigned_user_id);
+                const displayMembers = members.length > 0 ? members : person ? [{
+                  user_id: person.user_id,
+                  display_name: person.display_name,
+                  avatar_url: person.avatar_url
+                }] : [];
+                if (displayMembers.length === 0) {
+                  unassigned.push(t);
+                  continue;
+                }
+                for (const m of displayMembers) {
+                  const existing = groupsMap.get(m.user_id);
+                  if (existing) {
+                    existing.tasks.push(t);
+                  } else {
+                    groupsMap.set(m.user_id, {
+                      user_id: m.user_id,
+                      display_name: m.display_name,
+                      avatar_url: m.avatar_url,
+                      tasks: [t]
+                    });
+                  }
+                }
+              }
+              const groups = Array.from(groupsMap.values()).sort((a, b) => a.display_name.localeCompare(b.display_name));
+              if (unassigned.length > 0) {
+                groups.push({ user_id: "__unassigned__", display_name: "Sem responsável", avatar_url: null, tasks: unassigned });
+              }
+              const colCount = groups.length;
+              const gridColsClass = colCount <= 1
                 ? "grid-cols-1"
-                : cols === 2
+                : colCount === 2
                 ? "grid-cols-1 md:grid-cols-2"
-                : cols === 3
-                ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-3"
-                : cols === 4
-                ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-4"
-                : "grid-cols-1 md:grid-cols-2 xl:grid-cols-5";
-              const dense = cols >= 3;
-              const veryDense = cols >= 4;
-              const avatarSize = veryDense ? "h-6 w-6" : dense ? "h-7 w-7" : "h-8 w-8";
-              const padClass = veryDense ? "px-2 py-1" : dense ? "px-2 py-1.5" : "px-3 py-2";
-              const gapClass = veryDense ? "gap-1.5" : "gap-3";
-              const textClass = veryDense ? "text-xs" : "text-sm";
-              const subTextClass = veryDense ? "text-[10px]" : "text-xs sm:text-sm";
+                : colCount === 3
+                ? "grid-cols-1 md:grid-cols-3"
+                : colCount === 4
+                ? "grid-cols-2 md:grid-cols-4"
+                : colCount === 5
+                ? "grid-cols-2 md:grid-cols-5"
+                : "grid-cols-2 md:grid-cols-3 xl:grid-cols-6";
+              const dense = colCount >= 4;
+              const veryDense = colCount >= 6;
               return <div className="space-y-2">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                   {isCurrentMonth ? "Hoje" : "Pendentes"}
                 </p>
-                <div className={cn("grid gap-2", gridColsClass)}>
-                {todayPendingTasks.map((t) => {
-            const members = allAssigneesByTaskId.get(t.id) ?? [];
-            const person = teamByUserId.get(t.assigned_user_id);
-            const client = clientsById.get(t.client_id);
-            const stageLabel = STAGES.find((s) => s.key === t.stage)?.label ?? t.stage;
-            const displayMembers = members.length > 0 ? members : person ? [{
-              user_id: person.user_id,
-              display_name: person.display_name,
-              avatar_url: person.avatar_url
-            }] : [];
-            const primaryDisplayMember = displayMembers[0];
-            return <div key={t.id} onClick={() => handleTaskClick(t)} className={cn("flex items-center rounded-lg border border-border bg-card cursor-pointer hover:bg-accent/50 transition-colors min-w-0", padClass, gapClass)}>
-                      {displayMembers.length > 1 ? <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div className="flex -space-x-2 shrink-0">
-                              {displayMembers.slice(0, 3).map((m) => <Avatar key={m.user_id} className={cn(avatarSize, "border-2 border-background")}>
-                                  <AvatarImage src={m.avatar_url ?? undefined} />
-                                  <AvatarFallback className="text-[10px]">{initials(m.display_name)}</AvatarFallback>
-                                </Avatar>)}
-                              {displayMembers.length > 3 && <div className={cn(avatarSize, "flex items-center justify-center rounded-full border-2 border-background bg-muted text-muted-foreground text-xs")}>
-                                  +{displayMembers.length - 3}
-                                </div>}
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent side="top" className="max-w-[200px]">
-                            <div className="space-y-1">
-                              {displayMembers.map((m) => <div key={m.user_id} className="flex items-center gap-2">
-                                  <Avatar className="h-5 w-5">
-                                    <AvatarImage src={m.avatar_url ?? undefined} />
-                                    <AvatarFallback className="text-[8px]">{initials(m.display_name)}</AvatarFallback>
-                                  </Avatar>
-                                  <span className="text-xs">{m.display_name}</span>
-                                </div>)}
-                            </div>
-                          </TooltipContent>
-                        </Tooltip> : <Avatar className={avatarSize}>
-                          <AvatarImage src={primaryDisplayMember?.avatar_url ?? undefined} />
-                          <AvatarFallback>{initials(primaryDisplayMember?.display_name ?? person?.display_name ?? "?")}</AvatarFallback>
-                        </Avatar>}
-                      <div className="flex-1 min-w-0">
-                        <p className={cn("font-semibold leading-5", textClass)}>
-                          <span className="block sm:inline truncate">{displayMembers.length > 1 ? displayMembers.map((m) => m.display_name).join(", ") : primaryDisplayMember?.display_name ?? person?.display_name}</span>
-                          <span className="hidden sm:inline">{" "}•{" "}</span>
-                          <span className={cn("block sm:inline text-muted-foreground truncate", subTextClass)}>({resolveClientName(t)}) • {stageLabel}</span>
+                <div className={cn("grid gap-3", gridColsClass)}>
+                  {groups.map((g) => (
+                    <div key={g.user_id} className="rounded-lg border border-border bg-card/50 p-2 min-w-0 flex flex-col">
+                      {/* Header com foto e nome */}
+                      <div className="flex flex-col items-center gap-1 pb-2 mb-2 border-b border-border">
+                        <Avatar className={dense ? "h-10 w-10" : "h-12 w-12"}>
+                          <AvatarImage src={g.avatar_url ?? undefined} />
+                          <AvatarFallback>{initials(g.display_name)}</AvatarFallback>
+                        </Avatar>
+                        <p className={cn("font-semibold text-center truncate w-full", veryDense ? "text-[10px]" : dense ? "text-xs" : "text-sm")}>
+                          {g.display_name}
                         </p>
+                        <span className="text-[10px] text-muted-foreground">{g.tasks.length} {g.tasks.length === 1 ? "tarefa" : "tarefas"}</span>
                       </div>
-                      {!veryDense && <Badge variant={t.status === "em_andamento" ? "warning" : "secondary"} className="text-xs shrink-0">
-                        {t.status === "em_andamento" ? "Em andamento" : "Pendente"}
-                      </Badge>}
-                    </div>;
-          })}
+                      {/* Tarefas da pessoa */}
+                      <div className="flex flex-col gap-1.5 flex-1">
+                        {g.tasks.map((t) => {
+                          const stageLabel = STAGES.find((s) => s.key === t.stage)?.label ?? t.stage;
+                          return (
+                            <div
+                              key={t.id}
+                              onClick={() => handleTaskClick(t)}
+                              className={cn(
+                                "rounded-md border border-border bg-card cursor-pointer hover:bg-accent/50 transition-colors min-w-0",
+                                veryDense ? "px-1.5 py-1" : dense ? "px-2 py-1" : "px-2 py-1.5"
+                              )}
+                            >
+                              <p className={cn("font-medium leading-tight truncate", veryDense ? "text-[10px]" : "text-xs")}>
+                                {resolveClientName(t)}
+                              </p>
+                              <div className="flex items-center justify-between gap-1 mt-0.5">
+                                <span className={cn("text-muted-foreground truncate", veryDense ? "text-[9px]" : "text-[10px]")}>
+                                  {stageLabel}
+                                </span>
+                                {!dense && (
+                                  <Badge variant={t.status === "em_andamento" ? "warning" : "secondary"} className="text-[9px] shrink-0 px-1 py-0 h-4">
+                                    {t.status === "em_andamento" ? "Em and." : "Pend."}
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>;
             })()}
