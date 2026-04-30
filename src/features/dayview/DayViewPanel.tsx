@@ -34,6 +34,17 @@ function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join("");
 }
 
+const STAGE_ABBR: Record<string, string> = {
+  captacao: "CAP", planejamento: "PLAN", design: "DSG", edicao_videos: "VDO",
+  revisao: "REV", alteracoes: "ALT", pdf: "PDF", agendamento: "AGN", entrega: "ENT"
+};
+
+const STAGE_BADGE_BG: Record<string, string> = {
+  captacao: "bg-red-500", planejamento: "bg-blue-500", design: "bg-stage-design",
+  edicao_videos: "bg-purple-500", revisao: "bg-pink-500", alteracoes: "bg-stage-alteracoes",
+  pdf: "bg-indigo-500", agendamento: "bg-lime-500", entrega: "bg-emerald-500"
+};
+
 function getCleaningEmoji(categoryName: string) {
   const name = categoryName.toLowerCase();
   if (name.includes("varrer") || name.includes("vassoura") || name.includes("chão")) return "🧹";
