@@ -811,16 +811,31 @@ export function DayViewPanel() {
         >
           <span
             className={cn(
-              "inline-flex items-center justify-center rounded-md font-bold tracking-wide text-white shrink-0",
+              "inline-flex items-center justify-center rounded font-bold tracking-wide text-white shrink-0 self-start",
               stageBg,
-              veryDense ? "h-6 px-2 text-[10px]" : dense ? "h-7 px-2.5 text-xs" : "h-8 px-3 text-sm"
+              veryDense ? "h-5 px-1.5 text-[9px]" : dense ? "h-5 px-2 text-[10px]" : "h-6 px-2 text-[11px]"
             )}
           >
             {stageAbbr}
           </span>
-          <p className={cn("font-semibold leading-tight flex-1 min-w-0 whitespace-nowrap overflow-hidden text-ellipsis", veryDense ? "text-xs" : dense ? "text-sm" : "text-base", variant === "completed" && "text-success-foreground", variant === "overdue" && "text-destructive-foreground")} style={{ fontSize: "clamp(0.65rem, 1.1cqw, 1rem)" }}>
-            {resolveClientName(t)}
-          </p>
+          {(() => {
+            const clientName = resolveClientName(t);
+            const isSingleWord = !clientName.trim().includes(" ");
+            return (
+              <p
+                className={cn(
+                  "font-semibold leading-tight flex-1 min-w-0",
+                  isSingleWord ? "whitespace-nowrap overflow-hidden text-ellipsis" : "break-words [hyphens:none]",
+                  veryDense ? "text-xs" : dense ? "text-sm" : "text-base",
+                  variant === "completed" && "text-success-foreground",
+                  variant === "overdue" && "text-destructive-foreground"
+                )}
+                style={!isSingleWord ? { display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", wordBreak: "normal", overflowWrap: "normal" } : undefined}
+              >
+                {clientName}
+              </p>
+            );
+          })()}
           {variant === "overdue" && (
             <span className={cn("font-bold text-destructive-foreground shrink-0", veryDense ? "text-xs" : "text-sm")}>
               {daysLate}d
