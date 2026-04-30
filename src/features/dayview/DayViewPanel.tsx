@@ -895,9 +895,69 @@ export function DayViewPanel() {
                   </div>
                 </div>
                 <div className="flex flex-col gap-2.5 flex-1">
+                  {isCurrentMonth && todayCleaningTasks
+                    .filter((s) => s.user_id === g.user_id)
+                    .map((schedule) => {
+                      const cat = cleaningCategoryById.get(schedule.category_id);
+                      const isDone = completedScheduleIds.has(schedule.id);
+                      const dueTimeStr = schedule.due_time?.slice(0, 5) ?? "18:00";
+                      const [dueH, dueM] = dueTimeStr.split(":").map(Number);
+                      const isOverdueCleaning = !isDone && (now.getHours() > dueH || (now.getHours() === dueH && now.getMinutes() >= dueM));
+                      const emoji = getCleaningEmoji(cat?.name ?? "");
+                      return (
+                        <button
+                          key={`cleaning-${schedule.id}`}
+                          type="button"
+                          disabled={toggleCleaning.isPending}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!sessionUser) return;
+                            toggleCleaning.mutate({
+                              scheduleId: schedule.id,
+                              date: todayKey,
+                              userId: sessionUser.id,
+                              isCompleted: isDone,
+                            });
+                          }}
+                          className={cn(
+                            "flex flex-col items-start gap-1 rounded-lg border transition-colors min-w-0 text-left",
+                            veryDense ? "px-2.5 py-2" : dense ? "px-3 py-2.5" : "px-4 py-3",
+                            isDone && "border-success bg-success hover:bg-success/90",
+                            isOverdueCleaning && "border-destructive bg-destructive hover:bg-destructive/90",
+                            !isDone && !isOverdueCleaning && "border-border bg-card hover:bg-accent/50"
+                          )}
+                        >
+                          <div className="flex items-center gap-1.5 w-full min-w-0">
+                            <span
+                              className={cn(
+                                "inline-flex items-center justify-center rounded-full font-bold tracking-wide text-white shrink-0 leading-none bg-black",
+                                veryDense ? "h-4 text-[8px] px-[5px]" : dense ? "h-[18px] px-[7px] text-[9px]" : "h-5 px-2 text-[10px]"
+                              )}
+                            >
+                              LIMP
+                            </span>
+                            <span className="text-base leading-none ml-auto">{emoji}</span>
+                            {isDone && (
+                              <span className={cn("font-bold text-success-foreground shrink-0", veryDense ? "text-xs" : "text-sm")}>✓</span>
+                            )}
+                          </div>
+                          <p
+                            className={cn(
+                              "font-semibold leading-tight w-full min-w-0 whitespace-nowrap overflow-hidden text-ellipsis",
+                              veryDense ? "text-xs" : dense ? "text-sm" : "text-base",
+                              isDone && "text-success-foreground",
+                              isOverdueCleaning && "text-destructive-foreground"
+                            )}
+                            title={`${cat?.name ?? "Limpeza"} • até ${dueTimeStr}`}
+                          >
+                            {cat?.name ?? "Limpeza"} • {dueTimeStr}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  {g.overdue.map((t) => renderTaskItem(t, "overdue", g))}
                   {g.pending.map((t) => renderTaskItem(t, "pending", g))}
                   {g.completed.map((t) => renderTaskItem(t, "completed", g))}
-                  {g.overdue.map((t) => renderTaskItem(t, "overdue", g))}
                 </div>
               </div>
             );
@@ -988,53 +1048,7 @@ export function DayViewPanel() {
             </CardDescription>
           </CardHeader>
           <CardContent className={cn("space-y-4", isFullscreen && "flex-1 overflow-auto")}>
-            {/* ─── Limpeza – Widget compacto horizontal (TOPO) ─── */}
-            {isCurrentMonth && todayCleaningTasks.length > 0 &&
-        <div className="flex flex-wrap items-center gap-2">
-                {todayCleaningTasks.map((schedule) => {
-            const cat = cleaningCategoryById.get(schedule.category_id);
-            const member = teamByUserId.get(schedule.user_id);
-            const isDone = completedScheduleIds.has(schedule.id);
-            const dueTimeStr = schedule.due_time?.slice(0, 5) ?? "18:00";
-            const [dueH, dueM] = dueTimeStr.split(":").map(Number);
-            const isOverdue = !isDone && (now.getHours() > dueH || now.getHours() === dueH && now.getMinutes() >= dueM);
-            const emoji = getCleaningEmoji(cat?.name ?? "");
-            return (
-              <Tooltip key={schedule.id}>
-                      <TooltipTrigger asChild>
-                        <button
-                    type="button"
-                    disabled={toggleCleaning.isPending}
-                    onClick={() => {
-                      if (!sessionUser) return;
-                      toggleCleaning.mutate({
-                        scheduleId: schedule.id,
-                        date: todayKey,
-                        userId: sessionUser.id,
-                        isCompleted: isDone
-                      });
-                    }}
-                    className={cn("flex items-center gap-1.5 rounded-full px-2.5 py-1.5 transition border-4",
-
-                    isDone && "border-success bg-success/10",
-                    isOverdue && "border-destructive bg-destructive/10",
-                    !isDone && !isOverdue && "border-border bg-card"
-                    )}>
-
-                          <Avatar className="h-6 w-6">
-                            <AvatarImage src={member?.avatar_url ?? undefined} />
-                            <AvatarFallback className="text-[8px]">{initials(member?.display_name ?? "?")}</AvatarFallback>
-                          </Avatar>
-                          <span className="text-xs font-medium leading-none">{member?.display_name?.split(" ")[0]}</span>
-                          <span className="text-base leading-none">{emoji}</span>
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent>{member?.display_name} • {cat?.name} • até {dueTimeStr}</TooltipContent>
-                    </Tooltip>);
-
-          })}
-              </div>
-        }
+            {/* Limpeza agora aparece dentro da coluna de cada pessoa, junto às tarefas */}
 
             {/* Tarefas agrupadas por pessoa (pendentes, concluídas e atrasadas na mesma coluna) */}
             {renderPersonColumns(todayPendingTasks, todayCompletedTasks, overdueTasks as any, isCurrentMonth ? "Hoje" : "Pendentes")}
