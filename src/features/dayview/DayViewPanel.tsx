@@ -817,7 +817,7 @@ export function DayViewPanel() {
           >
             {stageAbbr}
           </span>
-          <p className={cn("font-semibold leading-tight flex-1 min-w-0 break-words", veryDense ? "text-sm" : dense ? "text-base" : "text-lg", variant === "completed" && "text-success-foreground", variant === "overdue" && "text-destructive-foreground")}>
+          <p className={cn("font-semibold leading-tight flex-1 min-w-0 whitespace-nowrap overflow-hidden text-ellipsis", veryDense ? "text-xs" : dense ? "text-sm" : "text-base", variant === "completed" && "text-success-foreground", variant === "overdue" && "text-destructive-foreground")} style={{ fontSize: "clamp(0.65rem, 1.1cqw, 1rem)" }}>
             {resolveClientName(t)}
           </p>
           {variant === "overdue" && (
