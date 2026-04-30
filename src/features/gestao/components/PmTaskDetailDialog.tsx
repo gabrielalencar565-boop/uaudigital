@@ -561,6 +561,10 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   const findExistingAgendaTaskForStage = async (nextStage: string, referenceDueDate?: string) => {
     if (nextStage === "entrega") return null;
 
+    // Revisão (Planejamento) é sempre uma etapa isolada por pauta — nunca reaproveita
+    // uma Revisão existente (que pode ser de materiais Design/Vídeo).
+    if (nextStage === "revisao" && task.stage_current === "planejamento") return null;
+
     const sb = supabase as any;
     const referenceDate = referenceDueDate ?? task.due_date ?? format(new Date(), "yyyy-MM-dd");
     const base = new Date(`${referenceDate}T12:00:00`);
@@ -583,10 +587,11 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       .order("due_date", { ascending: true })
       .limit(1);
 
-    // When advancing to revisão, only link with the same post_type origin
+    // When advancing to revisão (materiais), only link with the same post_type origin (video|design).
+    // Nunca casa com Revisão (Planejamento) que tem post_type='planejamento'.
     const inferredNextStagePostType = task.post_type
       ?? (task.stage_current === "edicao_videos" ? "video" : task.stage_current === "design" ? "design" : undefined);
-    if (nextStage === "revisao" && inferredNextStagePostType) {
+    if (nextStage === "revisao" && inferredNextStagePostType && inferredNextStagePostType !== "planejamento") {
       query = query.eq("post_type", inferredNextStagePostType);
     }
 
