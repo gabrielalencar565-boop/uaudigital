@@ -837,11 +837,30 @@ export function DayViewPanel() {
               </div>}
 
             {/* Tarefas de Hoje (Pendentes/Em Andamento) - Widget Branco */}
-            {todayPendingTasks.length > 0 && <div className="space-y-2">
+            {todayPendingTasks.length > 0 && (() => {
+              const count = todayPendingTasks.length;
+              const cols = count <= 2 ? 1 : count <= 6 ? 2 : count <= 12 ? 3 : count <= 20 ? 4 : 5;
+              const gridColsClass = cols === 1
+                ? "grid-cols-1"
+                : cols === 2
+                ? "grid-cols-1 md:grid-cols-2"
+                : cols === 3
+                ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-3"
+                : cols === 4
+                ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-4"
+                : "grid-cols-1 md:grid-cols-2 xl:grid-cols-5";
+              const dense = cols >= 3;
+              const veryDense = cols >= 4;
+              const avatarSize = veryDense ? "h-6 w-6" : dense ? "h-7 w-7" : "h-8 w-8";
+              const padClass = veryDense ? "px-2 py-1" : dense ? "px-2 py-1.5" : "px-3 py-2";
+              const gapClass = veryDense ? "gap-1.5" : "gap-3";
+              const textClass = veryDense ? "text-xs" : "text-sm";
+              const subTextClass = veryDense ? "text-[10px]" : "text-xs sm:text-sm";
+              return <div className="space-y-2">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                   {isCurrentMonth ? "Hoje" : "Pendentes"}
                 </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div className={cn("grid gap-2", gridColsClass)}>
                 {todayPendingTasks.map((t) => {
             const members = allAssigneesByTaskId.get(t.id) ?? [];
             const person = teamByUserId.get(t.assigned_user_id);
@@ -853,15 +872,15 @@ export function DayViewPanel() {
               avatar_url: person.avatar_url
             }] : [];
             const primaryDisplayMember = displayMembers[0];
-            return <div key={t.id} onClick={() => handleTaskClick(t)} className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 cursor-pointer hover:bg-accent/50 transition-colors">
+            return <div key={t.id} onClick={() => handleTaskClick(t)} className={cn("flex items-center rounded-lg border border-border bg-card cursor-pointer hover:bg-accent/50 transition-colors min-w-0", padClass, gapClass)}>
                       {displayMembers.length > 1 ? <Tooltip>
                           <TooltipTrigger asChild>
                             <div className="flex -space-x-2 shrink-0">
-                              {displayMembers.slice(0, 3).map((m) => <Avatar key={m.user_id} className="h-8 w-8 border-2 border-background">
+                              {displayMembers.slice(0, 3).map((m) => <Avatar key={m.user_id} className={cn(avatarSize, "border-2 border-background")}>
                                   <AvatarImage src={m.avatar_url ?? undefined} />
                                   <AvatarFallback className="text-[10px]">{initials(m.display_name)}</AvatarFallback>
                                 </Avatar>)}
-                              {displayMembers.length > 3 && <div className="h-8 w-8 flex items-center justify-center rounded-full border-2 border-background bg-muted text-muted-foreground text-xs">
+                              {displayMembers.length > 3 && <div className={cn(avatarSize, "flex items-center justify-center rounded-full border-2 border-background bg-muted text-muted-foreground text-xs")}>
                                   +{displayMembers.length - 3}
                                 </div>}
                             </div>
@@ -877,24 +896,25 @@ export function DayViewPanel() {
                                 </div>)}
                             </div>
                           </TooltipContent>
-                        </Tooltip> : <Avatar className="h-8 w-8">
+                        </Tooltip> : <Avatar className={avatarSize}>
                           <AvatarImage src={primaryDisplayMember?.avatar_url ?? undefined} />
                           <AvatarFallback>{initials(primaryDisplayMember?.display_name ?? person?.display_name ?? "?")}</AvatarFallback>
                         </Avatar>}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold leading-5">
+                        <p className={cn("font-semibold leading-5", textClass)}>
                           <span className="block sm:inline truncate">{displayMembers.length > 1 ? displayMembers.map((m) => m.display_name).join(", ") : primaryDisplayMember?.display_name ?? person?.display_name}</span>
                           <span className="hidden sm:inline">{" "}•{" "}</span>
-                          <span className="block sm:inline text-xs sm:text-sm text-muted-foreground truncate">({resolveClientName(t)}) • {stageLabel}</span>
+                          <span className={cn("block sm:inline text-muted-foreground truncate", subTextClass)}>({resolveClientName(t)}) • {stageLabel}</span>
                         </p>
                       </div>
-                      <Badge variant={t.status === "em_andamento" ? "warning" : "secondary"} className="text-xs shrink-0">
+                      {!veryDense && <Badge variant={t.status === "em_andamento" ? "warning" : "secondary"} className="text-xs shrink-0">
                         {t.status === "em_andamento" ? "Em andamento" : "Pendente"}
-                      </Badge>
+                      </Badge>}
                     </div>;
           })}
                 </div>
-              </div>}
+              </div>;
+            })()}
 
             {/* Tarefas Concluídas - Widget Verde */}
             {todayCompletedTasks.length > 0 && <div className="space-y-2">
