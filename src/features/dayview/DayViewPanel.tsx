@@ -29,6 +29,11 @@ import {
   DAYS_PT } from
 "@/features/cleaning/hooks/use-cleaning";
 import { useRealtimeSync } from "@/hooks/use-realtime-sync";
+import { usePeriodicStages } from "@/features/gestao/hooks/use-periodic-stages";
+
+function getPeriodicStageFallbackLabel(key: string) {
+  return key.replace(/^custom_/, "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
 
 function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join("");
@@ -97,6 +102,7 @@ export function DayViewPanel() {
   const freelancerClientId = freelancerClientQ.data?.id ?? null;
   const clientsQ = useClients();
   const teamQ = useTeamMembers();
+  const periodicStagesQ = usePeriodicStages();
   const tasksQ = useTasks({
     month: monthKey
   });
@@ -114,7 +120,7 @@ export function DayViewPanel() {
       const endDate = `${monthKey}-${String(lastDay).padStart(2, "0")}`;
       const { data, error } = await supabase
         .from("pm_tasks")
-        .select("id, title, client_id, assignee_id, watchers, due_date, stage_current, status_global, is_extra_demand, parent_task_id, updated_at, post_type")
+        .select("id, title, client_id, assignee_id, watchers, due_date, stage_current, status_global, is_extra_demand, parent_task_id, updated_at, post_type, periodic_stage_key")
         .is("parent_task_id", null)
         .is("deleted_at", null)
         .gte("due_date", startDate)
@@ -462,6 +468,7 @@ export function DayViewPanel() {
     post_type?: string | null;
     parent_task_id?: string | null;
     childPostTypes?: Set<string>;
+    periodic_stage_key?: string | null;
   };
 
   const unifiedTasks = useMemo(() => {
@@ -541,6 +548,7 @@ export function DayViewPanel() {
         post_type: t.post_type ?? null,
         parent_task_id: t.parent_task_id ?? null,
         childPostTypes: childPostTypes.get(t.id),
+        periodic_stage_key: (t as any).periodic_stage_key ?? null,
       }));
 
     return { tasks: [...agendaTasks, ...pmTasks], pmSnapshotGroups };
@@ -783,8 +791,16 @@ export function DayViewPanel() {
         : isRevisaoDesign
         ? "REV/DSG"
         : undefined;
-      const stageAbbr = gradientAbbr ?? STAGE_ABBR[t.stage] ?? t.stage.toUpperCase().slice(0, 4);
-      const stageBg = gradientClass ?? STAGE_BADGE_BG[t.stage] ?? "bg-muted";
+      const periodicKey = t.periodic_stage_key;
+      const periodicLabel = periodicKey
+        ? ((periodicStagesQ.data ?? []).find((p) => p.key === periodicKey)?.label ?? getPeriodicStageFallbackLabel(periodicKey))
+        : null;
+      const stageAbbr = periodicLabel
+        ? periodicLabel.slice(0, 3).toUpperCase()
+        : (gradientAbbr ?? STAGE_ABBR[t.stage] ?? t.stage.toUpperCase().slice(0, 4));
+      const stageBg = periodicKey
+        ? "bg-black"
+        : (gradientClass ?? STAGE_BADGE_BG[t.stage] ?? "bg-muted");
       const daysLate = variant === "overdue" ? differenceInCalendarDays(today, new Date(`${t.due_date}T00:00:00`)) : 0;
       return (
         <div
