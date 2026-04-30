@@ -754,9 +754,9 @@ export function DayViewPanel() {
     const veryDense = colCount >= 6;
     const renderTaskItem = (t: TaskItem, variant: "pending" | "completed" | "overdue", g: PersonGroup) => {
       const taskItemClass = variant === "completed"
-        ? "flex items-center gap-2 rounded-lg border border-success/30 bg-success/15 cursor-pointer hover:bg-success/25 transition-colors min-w-0"
+        ? "flex items-center gap-2 rounded-lg border border-success bg-success cursor-pointer hover:bg-success/90 transition-colors min-w-0"
         : variant === "overdue"
-        ? "flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/15 cursor-pointer hover:bg-destructive/25 transition-colors min-w-0"
+        ? "flex items-center gap-2 rounded-lg border border-destructive bg-destructive cursor-pointer hover:bg-destructive/90 transition-colors min-w-0"
         : "flex items-center gap-2 rounded-lg border border-border bg-card cursor-pointer hover:bg-accent/50 transition-colors min-w-0";
       const isAlteracaoWithOrigin = t.stage === "alteracoes" && !!t.post_type;
       const isRevisao = t.stage === "revisao";
