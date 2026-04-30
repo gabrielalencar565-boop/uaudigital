@@ -682,20 +682,24 @@ export function DayViewPanel() {
 
   // Helper: render tasks grouped by person in columns (used for pendentes / concluídas / atrasadas)
   type TaskItem = typeof unifiedTasks.tasks[number];
-  const renderPersonGroupedTasks = (
-    tasks: TaskItem[],
-    variant: "pending" | "completed" | "overdue",
+  const renderPersonColumns = (
+    pendingTasks: TaskItem[],
+    completedTasks: TaskItem[],
+    overdueTasksList: TaskItem[],
     title: string
   ) => {
-    if (tasks.length === 0) return null;
+    if (pendingTasks.length === 0 && completedTasks.length === 0 && overdueTasksList.length === 0) return null;
     type PersonGroup = {
       user_id: string;
       display_name: string;
       avatar_url: string | null;
-      tasks: TaskItem[];
+      pending: TaskItem[];
+      completed: TaskItem[];
+      overdue: TaskItem[];
     };
     const groupsMap = new Map<string, PersonGroup>();
-    const unassigned: TaskItem[] = [];
+    const unassigned: { pending: TaskItem[]; completed: TaskItem[]; overdue: TaskItem[] } = { pending: [], completed: [], overdue: [] };
+    const distribute = (tasks: TaskItem[], bucket: "pending" | "completed" | "overdue") => {
     for (const t of tasks) {
       const members = allAssigneesByTaskId.get(t.id) ?? [];
       const person = teamByUserId.get(t.assigned_user_id);
@@ -705,26 +709,34 @@ export function DayViewPanel() {
         avatar_url: person.avatar_url
       }] : [];
       if (displayMembers.length === 0) {
-        unassigned.push(t);
+        unassigned[bucket].push(t);
         continue;
       }
       for (const m of displayMembers) {
         const existing = groupsMap.get(m.user_id);
         if (existing) {
-          existing.tasks.push(t);
+          existing[bucket].push(t);
         } else {
           groupsMap.set(m.user_id, {
             user_id: m.user_id,
             display_name: m.display_name,
             avatar_url: m.avatar_url,
-            tasks: [t]
-          });
+            pending: [],
+            completed: [],
+            overdue: [],
+            [bucket]: [t],
+          } as PersonGroup);
         }
       }
     }
+    };
+    distribute(pendingTasks, "pending");
+    distribute(completedTasks, "completed");
+    distribute(overdueTasksList, "overdue");
     const groups = Array.from(groupsMap.values()).sort((a, b) => a.display_name.localeCompare(b.display_name));
-    if (unassigned.length > 0) {
-      groups.push({ user_id: "__unassigned__", display_name: "Sem responsável", avatar_url: null, tasks: unassigned });
+    const hasUnassigned = unassigned.pending.length + unassigned.completed.length + unassigned.overdue.length > 0;
+    if (hasUnassigned) {
+      groups.push({ user_id: "__unassigned__", display_name: "Sem responsável", avatar_url: null, ...unassigned });
     }
     const colCount = groups.length;
     const gridColsClass = colCount <= 1
@@ -740,116 +752,112 @@ export function DayViewPanel() {
       : "grid-cols-2 md:grid-cols-3 xl:grid-cols-6";
     const dense = colCount >= 4;
     const veryDense = colCount >= 6;
-    const titleColor = variant === "completed"
-      ? "text-green-600 dark:text-green-400"
-      : variant === "overdue"
-      ? "text-destructive"
-      : "text-muted-foreground";
-    const containerClass = variant === "completed"
-      ? "rounded-xl border border-success/40 bg-success/10 p-3 min-w-0 flex flex-col"
-      : variant === "overdue"
-      ? "rounded-xl border border-destructive/40 bg-destructive/10 p-3 min-w-0 flex flex-col"
-      : "rounded-xl border border-border bg-card/50 p-3 min-w-0 flex flex-col";
-    const taskItemClass = variant === "completed"
-      ? "flex items-center gap-2 rounded-lg border border-success/30 bg-success/15 cursor-pointer hover:bg-success/25 transition-colors min-w-0"
-      : variant === "overdue"
-      ? "flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/15 cursor-pointer hover:bg-destructive/25 transition-colors min-w-0"
-      : "flex items-center gap-2 rounded-lg border border-border bg-card cursor-pointer hover:bg-accent/50 transition-colors min-w-0";
+    const renderTaskItem = (t: TaskItem, variant: "pending" | "completed" | "overdue", g: PersonGroup) => {
+      const taskItemClass = variant === "completed"
+        ? "flex items-center gap-2 rounded-lg border border-success/30 bg-success/15 cursor-pointer hover:bg-success/25 transition-colors min-w-0"
+        : variant === "overdue"
+        ? "flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/15 cursor-pointer hover:bg-destructive/25 transition-colors min-w-0"
+        : "flex items-center gap-2 rounded-lg border border-border bg-card cursor-pointer hover:bg-accent/50 transition-colors min-w-0";
+      const isAlteracaoWithOrigin = t.stage === "alteracoes" && !!t.post_type;
+      const isRevisao = t.stage === "revisao";
+      const childTypes = t.childPostTypes ?? new Set<string>();
+      const isMixed = childTypes.has("video") && childTypes.has("design");
+      const isRevisaoMixed = isRevisao && isMixed;
+      const isRevisaoPlanejamento = isRevisao && !t.parent_task_id && (
+        t.post_type === "planejamento" ||
+        (childTypes.size > 0 && !childTypes.has("video") && !childTypes.has("design"))
+      ) && t.post_type !== "video" && t.post_type !== "design";
+      const isRevisaoVideo = isRevisao && !isRevisaoMixed && !isRevisaoPlanejamento && t.post_type === "video";
+      const isRevisaoDesign = isRevisao && !isRevisaoMixed && !isRevisaoPlanejamento && !isRevisaoVideo;
+      const gradientClass = isAlteracaoWithOrigin
+        ? (t.post_type === "video"
+          ? "bg-gradient-to-r from-stage-alteracoes to-stage-edicao_videos"
+          : "bg-gradient-to-r from-stage-alteracoes to-stage-design")
+        : isRevisaoPlanejamento
+        ? "bg-gradient-to-r from-pink-400 to-stage-planejamento"
+        : isRevisaoMixed
+        ? "bg-gradient-to-r from-pink-400 via-stage-design to-stage-edicao_videos"
+        : isRevisaoVideo
+        ? "bg-gradient-to-r from-pink-400 to-stage-edicao_videos"
+        : isRevisaoDesign
+        ? "bg-gradient-to-r from-pink-400 to-stage-design"
+        : undefined;
+      const gradientAbbr = isAlteracaoWithOrigin
+        ? (t.post_type === "video" ? "ALT/VDO" : "ALT/DSG")
+        : isRevisaoPlanejamento
+        ? "REV/PLAN"
+        : isRevisaoMixed
+        ? "REV/MIX"
+        : isRevisaoVideo
+        ? "REV/VDO"
+        : isRevisaoDesign
+        ? "REV/DSG"
+        : undefined;
+      const stageAbbr = gradientAbbr ?? STAGE_ABBR[t.stage] ?? t.stage.toUpperCase().slice(0, 4);
+      const stageBg = gradientClass ?? STAGE_BADGE_BG[t.stage] ?? "bg-muted";
+      const daysLate = variant === "overdue" ? differenceInCalendarDays(today, new Date(`${t.due_date}T00:00:00`)) : 0;
+      return (
+        <div
+          key={`${variant}-${g.user_id}-${t.id}`}
+          onClick={() => handleTaskClick(t)}
+          className={cn(taskItemClass, veryDense ? "px-2.5 py-2" : dense ? "px-3 py-2.5" : "px-4 py-3")}
+        >
+          <span
+            className={cn(
+              "inline-flex items-center justify-center rounded-md font-bold tracking-wide text-white shrink-0",
+              stageBg,
+              veryDense ? "h-6 px-2 text-[10px]" : dense ? "h-7 px-2.5 text-xs" : "h-8 px-3 text-sm"
+            )}
+          >
+            {stageAbbr}
+          </span>
+          <p className={cn("font-semibold leading-tight truncate flex-1 min-w-0", veryDense ? "text-sm" : dense ? "text-base" : "text-lg")}>
+            {resolveClientName(t)}
+          </p>
+          {variant === "overdue" && (
+            <span className={cn("font-bold text-destructive shrink-0", veryDense ? "text-xs" : "text-sm")}>
+              {daysLate}d
+            </span>
+          )}
+          {variant === "completed" && (
+            <span className={cn("font-bold text-success shrink-0", veryDense ? "text-xs" : "text-sm")}>✓</span>
+          )}
+          {variant === "pending" && t.status === "em_andamento" && !veryDense && (
+            <Badge variant="warning" className={cn("shrink-0", dense ? "text-[10px] px-1.5 py-0 h-4" : "text-xs px-2 py-0.5 h-5")}>
+              Em and.
+            </Badge>
+          )}
+        </div>
+      );
+    };
     return (
       <div className="space-y-2">
-        <p className={cn("text-xs font-medium uppercase tracking-wide", titleColor)}>{title}</p>
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{title}</p>
         <div className={cn("grid gap-3", gridColsClass)}>
-          {groups.map((g) => (
-            <div key={`${variant}-${g.user_id}`} className={containerClass}>
-              <div className="flex items-center gap-3 pb-3 mb-3 border-b border-border/50">
-                <Avatar className={cn("shrink-0", veryDense ? "h-10 w-10" : dense ? "h-12 w-12" : "h-14 w-14")}>
-                  <AvatarImage src={g.avatar_url ?? undefined} />
-                  <AvatarFallback>{initials(g.display_name)}</AvatarFallback>
-                </Avatar>
-                <div className="min-w-0 flex-1">
-                  <p className={cn("font-bold truncate", veryDense ? "text-sm" : dense ? "text-base" : "text-lg")}>
-                    {g.display_name}
-                  </p>
-                  <span className="text-xs text-muted-foreground">{g.tasks.length} {g.tasks.length === 1 ? "tarefa" : "tarefas"}</span>
+          {groups.map((g) => {
+            const totalCount = g.pending.length + g.completed.length + g.overdue.length;
+            return (
+              <div key={`col-${g.user_id}`} className="rounded-xl border border-border bg-card/50 p-3 min-w-0 flex flex-col">
+                <div className="flex items-center gap-3 pb-3 mb-3 border-b border-border/50">
+                  <Avatar className={cn("shrink-0", veryDense ? "h-10 w-10" : dense ? "h-12 w-12" : "h-14 w-14")}>
+                    <AvatarImage src={g.avatar_url ?? undefined} />
+                    <AvatarFallback>{initials(g.display_name)}</AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <p className={cn("font-bold truncate", veryDense ? "text-sm" : dense ? "text-base" : "text-lg")}>
+                      {g.display_name}
+                    </p>
+                    <span className="text-xs text-muted-foreground">{totalCount} {totalCount === 1 ? "tarefa" : "tarefas"}</span>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2.5 flex-1">
+                  {g.pending.map((t) => renderTaskItem(t, "pending", g))}
+                  {g.completed.map((t) => renderTaskItem(t, "completed", g))}
+                  {g.overdue.map((t) => renderTaskItem(t, "overdue", g))}
                 </div>
               </div>
-              <div className="flex flex-col gap-2.5 flex-1">
-                {g.tasks.map((t) => {
-                  const isAlteracaoWithOrigin = t.stage === "alteracoes" && !!t.post_type;
-                  const isRevisao = t.stage === "revisao";
-                  const childTypes = t.childPostTypes ?? new Set<string>();
-                  const isMixed = childTypes.has("video") && childTypes.has("design");
-                  const isRevisaoMixed = isRevisao && isMixed;
-                  const isRevisaoPlanejamento = isRevisao && !t.parent_task_id && (
-                    t.post_type === "planejamento" ||
-                    (childTypes.size > 0 && !childTypes.has("video") && !childTypes.has("design"))
-                  ) && t.post_type !== "video" && t.post_type !== "design";
-                  const isRevisaoVideo = isRevisao && !isRevisaoMixed && !isRevisaoPlanejamento && t.post_type === "video";
-                  const isRevisaoDesign = isRevisao && !isRevisaoMixed && !isRevisaoPlanejamento && !isRevisaoVideo;
-                  const gradientClass = isAlteracaoWithOrigin
-                    ? (t.post_type === "video"
-                      ? "bg-gradient-to-r from-stage-alteracoes to-stage-edicao_videos"
-                      : "bg-gradient-to-r from-stage-alteracoes to-stage-design")
-                    : isRevisaoPlanejamento
-                    ? "bg-gradient-to-r from-pink-400 to-stage-planejamento"
-                    : isRevisaoMixed
-                    ? "bg-gradient-to-r from-pink-400 via-stage-design to-stage-edicao_videos"
-                    : isRevisaoVideo
-                    ? "bg-gradient-to-r from-pink-400 to-stage-edicao_videos"
-                    : isRevisaoDesign
-                    ? "bg-gradient-to-r from-pink-400 to-stage-design"
-                    : undefined;
-                  const gradientAbbr = isAlteracaoWithOrigin
-                    ? (t.post_type === "video" ? "ALT/VDO" : "ALT/DSG")
-                    : isRevisaoPlanejamento
-                    ? "REV/PLAN"
-                    : isRevisaoMixed
-                    ? "REV/MIX"
-                    : isRevisaoVideo
-                    ? "REV/VDO"
-                    : isRevisaoDesign
-                    ? "REV/DSG"
-                    : undefined;
-                  const stageAbbr = gradientAbbr ?? STAGE_ABBR[t.stage] ?? t.stage.toUpperCase().slice(0, 4);
-                  const stageBg = gradientClass ?? STAGE_BADGE_BG[t.stage] ?? "bg-muted";
-                  const daysLate = variant === "overdue" ? differenceInCalendarDays(today, new Date(`${t.due_date}T00:00:00`)) : 0;
-                  return (
-                    <div
-                      key={`${variant}-${g.user_id}-${t.id}`}
-                      onClick={() => handleTaskClick(t)}
-                      className={cn(taskItemClass, veryDense ? "px-2.5 py-2" : dense ? "px-3 py-2.5" : "px-4 py-3")}
-                    >
-                      <span
-                        className={cn(
-                          "inline-flex items-center justify-center rounded-md font-bold tracking-wide text-white shrink-0",
-                          stageBg,
-                          veryDense ? "h-6 px-2 text-[10px]" : dense ? "h-7 px-2.5 text-xs" : "h-8 px-3 text-sm"
-                        )}
-                      >
-                        {stageAbbr}
-                      </span>
-                      <p className={cn("font-semibold leading-tight truncate flex-1 min-w-0", veryDense ? "text-sm" : dense ? "text-base" : "text-lg")}>
-                        {resolveClientName(t)}
-                      </p>
-                      {variant === "overdue" && (
-                        <span className={cn("font-bold text-destructive shrink-0", veryDense ? "text-xs" : "text-sm")}>
-                          {daysLate}d
-                        </span>
-                      )}
-                      {variant === "completed" && (
-                        <span className={cn("font-bold text-success shrink-0", veryDense ? "text-xs" : "text-sm")}>✓</span>
-                      )}
-                      {variant === "pending" && t.status === "em_andamento" && !veryDense && (
-                        <Badge variant="warning" className={cn("shrink-0", dense ? "text-[10px] px-1.5 py-0 h-4" : "text-xs px-2 py-0.5 h-5")}>
-                          Em and.
-                        </Badge>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     );
@@ -984,14 +992,9 @@ export function DayViewPanel() {
               </div>
         }
 
-            {/* Tarefas Pendentes / Em andamento (por pessoa) */}
-            {renderPersonGroupedTasks(todayPendingTasks, "pending", isCurrentMonth ? "Hoje" : "Pendentes")}
+            {/* Tarefas agrupadas por pessoa (pendentes, concluídas e atrasadas na mesma coluna) */}
+            {renderPersonColumns(todayPendingTasks, todayCompletedTasks, overdueTasks as any, isCurrentMonth ? "Hoje" : "Pendentes")}
 
-            {/* Tarefas Concluídas (por pessoa, verde) */}
-            {renderPersonGroupedTasks(todayCompletedTasks, "completed", "Concluídas")}
-
-            {/* Tarefas Atrasadas (por pessoa, vermelho) */}
-            {renderPersonGroupedTasks(overdueTasks as any, "overdue", "Atrasadas")}
 
             {/* Mensagem quando não há tarefas */}
             {todayPendingTasks.length === 0 && todayCompletedTasks.length === 0 && overdueTasks.length === 0 && todayCleaningTasks.length === 0 && <p className="text-muted-foreground text-center py-4">
