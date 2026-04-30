@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DatePicker } from "@/components/ui/date-picker";
 import { PM_ACTIVE_STAGES } from "../pm-constants";
 import { useCreatePmTask } from "../hooks/use-pm-data";
+import { usePeriodicStages, isPeriodicStageKey } from "../hooks/use-periodic-stages";
 import { useDefaultFlowWithDates, getFixedAssignee, getFixedWatchers } from "./PmStageFlowConfig";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -39,6 +40,7 @@ interface Props {
 export function AgendaQuickCreateDialog({ open, onClose, clients, members, defaultDate }: Props) {
   const createTask = useCreatePmTask();
   const { stageAssignees } = useDefaultFlowWithDates();
+  const { data: periodicStages = [] } = usePeriodicStages();
   const [clientId, setClientId] = useState("");
   const [stage, setStage] = useState("");
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
@@ -67,6 +69,7 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
   // Auto-assign when stage + client change
   useEffect(() => {
     if (!stage || !clientId) return;
+    if (isPeriodicStageKey(stage)) return;
     const fixedAssignee = getFixedAssignee(stageAssignees, stage, clientId);
     const fixedWatchers = getFixedWatchers(stageAssignees, stage, clientId);
     const autoIds: string[] = [];
@@ -91,7 +94,11 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
     if (!clientId) { toast.error("Selecione um cliente"); return; }
     if (!stage) { toast.error("Selecione uma etapa"); return; }
     const clientName = clients.find(c => c.id === clientId)?.name ?? "";
-    const stageLabel = PM_ACTIVE_STAGES.find(s => s.key === stage)?.label ?? stage;
+    const isPeriodic = isPeriodicStageKey(stage);
+    const periodicLabel = periodicStages.find(p => p.key === stage)?.label ?? stage;
+    const stageLabel = isPeriodic
+      ? periodicLabel
+      : (PM_ACTIVE_STAGES.find(s => s.key === stage)?.label ?? stage);
     const mainAssignee = selectedMemberIds[0] ?? undefined;
 
     // Build title
@@ -104,17 +111,19 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
       title = `[${clientName}] - ${stageLabel} - ${monthLabel}`;
     }
 
+    const stageForDb = isPeriodic ? "entrega" : stage;
     const watchers = selectedMemberIds.slice(1);
     createTask.mutate({
       client_id: clientId,
       title,
-      stage_current: stage,
+      stage_current: stageForDb as any,
+      periodic_stage_key: isPeriodic ? stage : null,
       due_date: dueDate,
       assignee_id: mainAssignee,
       watchers: watchers.length > 0 ? watchers : undefined,
       is_extra_demand: isExtra,
       status_global: "backlog",
-    }, {
+    } as any, {
       onSuccess: () => {
         toast.success("Tarefa criada!");
         onClose();
@@ -150,6 +159,16 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
               <SelectTrigger className="rounded-xl"><SelectValue placeholder="Selecionar etapa" /></SelectTrigger>
               <SelectContent>
                 {PM_ACTIVE_STAGES.map(s => <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>)}
+                {periodicStages.length > 0 && (
+                  <>
+                    <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground border-t mt-1 pt-2">
+                      Periódicas
+                    </div>
+                    {periodicStages.map(p => (
+                      <SelectItem key={p.key} value={p.key}>{p.label}</SelectItem>
+                    ))}
+                  </>
+                )}
               </SelectContent>
             </Select>
           </div>
