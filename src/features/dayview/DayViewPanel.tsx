@@ -15,6 +15,7 @@ import { Magic2Dashboard } from "@/features/magic2/components/Magic2Dashboard";
 import { useMagic2Dashboard } from "@/features/magic2/hooks/use-magic2-dashboard";
 import { MonthYearNav } from "@/features/magic2/components/MonthYearNav";
 import { STAGES } from "@/lib/uau";
+import { stageColorClass } from "@/features/gestao/pm-constants";
 import { cn } from "@/lib/utils";
 import { RefreshCw, Calendar, Target, RotateCcw, Trophy, ArrowUp, ArrowDown, SprayCan, CheckCircle2, Zap, Maximize, Minimize } from "lucide-react";
 import { useNow } from "@/hooks/use-now";
