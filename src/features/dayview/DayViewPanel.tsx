@@ -841,6 +841,7 @@ export function DayViewPanel() {
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                   {isCurrentMonth ? "Hoje" : "Pendentes"}
                 </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {todayPendingTasks.map((t) => {
             const members = allAssigneesByTaskId.get(t.id) ?? [];
             const person = teamByUserId.get(t.assigned_user_id);
@@ -892,6 +893,7 @@ export function DayViewPanel() {
                       </Badge>
                     </div>;
           })}
+                </div>
               </div>}
 
             {/* Tarefas Concluídas - Widget Verde */}
