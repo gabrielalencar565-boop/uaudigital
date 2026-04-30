@@ -807,6 +807,7 @@ export function DayViewPanel() {
           key={`${variant}-${g.user_id}-${t.id}`}
           onClick={() => handleTaskClick(t)}
           className={cn(taskItemClass, veryDense ? "px-2.5 py-2" : dense ? "px-3 py-2.5" : "px-4 py-3")}
+          style={{ containerType: "inline-size" }}
         >
           <span
             className={cn(
