@@ -47,6 +47,11 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
   const [dueDate, setDueDate] = useState(defaultDate ?? format(new Date(), "yyyy-MM-dd"));
   const [isExtra, setIsExtra] = useState(false);
   const [customTitle, setCustomTitle] = useState("");
+  // Periodic-only fields
+  const [periodicClientName, setPeriodicClientName] = useState("");
+  const [periodicTime, setPeriodicTime] = useState("");
+
+  const isPeriodic = isPeriodicStageKey(stage);
 
   // Reference month defaults from the due date (month only, no year)
   const dueDateObj = dueDate ? new Date(`${dueDate}T12:00:00`) : new Date();
@@ -64,6 +69,8 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
     setClientId("");
     setStage("");
     setSelectedMemberIds([]);
+    setPeriodicClientName("");
+    setPeriodicTime("");
   }, [open, defaultDate]);
 
   // Auto-assign when stage + client change
@@ -91,37 +98,60 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
   );
 
   const handleCreate = async () => {
-    if (!clientId) { toast.error("Selecione um cliente"); return; }
     if (!stage) { toast.error("Selecione uma etapa"); return; }
-    const clientName = clients.find(c => c.id === clientId)?.name ?? "";
-    const isPeriodic = isPeriodicStageKey(stage);
+    if (!isPeriodic && !clientId) { toast.error("Selecione um cliente"); return; }
+
     const periodicLabel = periodicStages.find(p => p.key === stage)?.label ?? stage;
     const stageLabel = isPeriodic
       ? periodicLabel
       : (PM_ACTIVE_STAGES.find(s => s.key === stage)?.label ?? stage);
     const mainAssignee = selectedMemberIds[0] ?? undefined;
 
+    // Resolve client + name
+    let resolvedClientId = clientId;
+    let displayClientName = clients.find(c => c.id === clientId)?.name ?? "";
+
+    if (isPeriodic) {
+      // If user picked a registered client, use it; else fallback to Freelancer sentinel
+      if (!resolvedClientId) {
+        const sentinel = clients.find(c => /freelancer/i.test(c.name));
+        if (!sentinel) { toast.error("Cliente 'Freelancer' não encontrado"); return; }
+        resolvedClientId = sentinel.id;
+      }
+      // Free-text name (when client not registered) wins for display
+      if (periodicClientName.trim()) {
+        displayClientName = periodicClientName.trim();
+      } else if (!clients.find(c => c.id === resolvedClientId && !/freelancer/i.test(c.name))) {
+        // No name typed and using sentinel — generic
+        displayClientName = "";
+      }
+    }
+
     // Build title
     let title: string;
-    if (isExtra) {
-      title = customTitle.trim() || `[${clientName}] - ${stageLabel} - Extra`;
+    if (isPeriodic) {
+      const namePart = displayClientName ? `[${displayClientName}] - ` : "";
+      const timePart = periodicTime ? ` - ${periodicTime}` : "";
+      title = `${namePart}${stageLabel}${timePart}`;
+    } else if (isExtra) {
+      title = customTitle.trim() || `[${displayClientName}] - ${stageLabel} - Extra`;
     } else {
       const m = parseInt(monthRef, 10);
       const monthLabel = MONTH_LABELS[m - 1] ?? "";
-      title = `[${clientName}] - ${stageLabel} - ${monthLabel}`;
+      title = `[${displayClientName}] - ${stageLabel} - ${monthLabel}`;
     }
 
     const stageForDb = isPeriodic ? "entrega" : stage;
     const watchers = selectedMemberIds.slice(1);
     createTask.mutate({
-      client_id: clientId,
+      client_id: resolvedClientId,
       title,
       stage_current: stageForDb as any,
       periodic_stage_key: isPeriodic ? stage : null,
       due_date: dueDate,
       assignee_id: mainAssignee,
       watchers: watchers.length > 0 ? watchers : undefined,
-      is_extra_demand: isExtra,
+      is_extra_demand: isPeriodic ? true : isExtra,
       status_global: "backlog",
     } as any, {
       onSuccess: () => {
@@ -144,9 +174,13 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
         <DialogTitle className="text-lg font-bold">Nova tarefa rápida</DialogTitle>
         <div className="space-y-4 mt-2">
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-muted-foreground">Cliente *</Label>
+            <Label className="text-xs font-semibold text-muted-foreground">
+              Cliente {isPeriodic ? "(opcional)" : "*"}
+            </Label>
             <Select value={clientId} onValueChange={setClientId}>
-              <SelectTrigger className="rounded-xl"><SelectValue placeholder="Selecionar cliente" /></SelectTrigger>
+              <SelectTrigger className="rounded-xl">
+                <SelectValue placeholder={isPeriodic ? "Selecionar cliente cadastrado (opcional)" : "Selecionar cliente"} />
+              </SelectTrigger>
               <SelectContent>
                 {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
               </SelectContent>
@@ -173,7 +207,36 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
             </Select>
           </div>
 
-          {!isExtra && (
+          {isPeriodic && (
+            <>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-muted-foreground">
+                  Nome do cliente (livre)
+                </Label>
+                <Input
+                  value={periodicClientName}
+                  onChange={(e) => setPeriodicClientName(e.target.value)}
+                  placeholder="Ex: João da Silva (cliente não cadastrado)"
+                  className="rounded-xl"
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  Use quando o cliente não está cadastrado. Aparecerá no título da tarefa.
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-muted-foreground">Horário</Label>
+                <Input
+                  type="time"
+                  value={periodicTime}
+                  onChange={(e) => setPeriodicTime(e.target.value)}
+                  className="rounded-xl"
+                />
+              </div>
+            </>
+          )}
+
+          {!isExtra && !isPeriodic && (
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-muted-foreground">Mês referente</Label>
               <Select value={monthRef} onValueChange={setMonthRef}>
@@ -225,12 +288,14 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
             <DatePicker value={dueDate} onChange={(v) => setDueDate(v ?? format(new Date(), "yyyy-MM-dd"))} />
           </div>
 
-          <div className="flex items-center gap-2">
-            <Checkbox id="is_extra" checked={isExtra} onCheckedChange={(v) => setIsExtra(!!v)} />
-            <Label htmlFor="is_extra" className="text-sm cursor-pointer">Demanda extra</Label>
-          </div>
+          {!isPeriodic && (
+            <div className="flex items-center gap-2">
+              <Checkbox id="is_extra" checked={isExtra} onCheckedChange={(v) => setIsExtra(!!v)} />
+              <Label htmlFor="is_extra" className="text-sm cursor-pointer">Demanda extra</Label>
+            </div>
+          )}
 
-          {isExtra && (
+          {isExtra && !isPeriodic && (
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-muted-foreground">Título personalizado</Label>
               <Input
