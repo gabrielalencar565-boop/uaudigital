@@ -145,22 +145,42 @@ export const TAG_COLORS = [
 ];
 
 // Tags are stored as "name:colorKey" in the tags array
+// colorKey can be a TAG_COLORS key OR a hex color (e.g. "#a3b1ff")
 export function parseTag(raw: string): { name: string; colorKey: string } {
   const idx = raw.lastIndexOf(":");
   if (idx > 0) {
     const colorKey = raw.slice(idx + 1);
-    if (TAG_COLORS.find(c => c.key === colorKey)) {
+    if (TAG_COLORS.find(c => c.key === colorKey) || /^#[0-9a-fA-F]{6}$/.test(colorKey)) {
       return { name: raw.slice(0, idx), colorKey };
     }
   }
   return { name: raw, colorKey: "blue" };
 }
 
+export function isHexColor(value: string) {
+  return /^#[0-9a-fA-F]{6}$/.test(value);
+}
+
 export function tagColor(raw: string) {
   const { colorKey } = parseTag(raw);
-  return TAG_COLORS.find(c => c.key === colorKey) ?? TAG_COLORS[0];
+  if (isHexColor(colorKey)) {
+    // Custom hex → build inline-style equivalents
+    return {
+      key: colorKey,
+      label: colorKey,
+      bg: "",
+      text: "",
+      dot: "",
+      hex: colorKey,
+      style: { backgroundColor: `${colorKey}33`, color: colorKey },
+      dotStyle: { backgroundColor: colorKey },
+    };
+  }
+  const found = TAG_COLORS.find(c => c.key === colorKey) ?? TAG_COLORS[0];
+  return { ...found, hex: undefined, style: undefined, dotStyle: undefined };
 }
 
 export function tagDisplay(raw: string) {
   return parseTag(raw).name;
 }
+
