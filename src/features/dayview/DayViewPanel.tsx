@@ -829,17 +829,27 @@ export function DayViewPanel() {
             return (
               <p
                 title={clientName}
+                lang="pt-BR"
                 className={cn(
                   "font-semibold leading-tight flex-1 min-w-0 [hyphens:none]",
-                  isSingleWord ? "whitespace-nowrap" : "break-words",
+                  isSingleWord ? "whitespace-nowrap overflow-hidden text-ellipsis" : "",
                   sizeClass,
                   variant === "completed" && "text-success-foreground",
                   variant === "overdue" && "text-destructive-foreground"
                 )}
                 style={
                   !isSingleWord
-                    ? { display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", wordBreak: "normal", overflowWrap: "normal" }
-                    : undefined
+                    ? {
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        wordBreak: "keep-all",
+                        overflowWrap: "break-word",
+                        hyphens: "none",
+                      }
+                    : { wordBreak: "keep-all", overflowWrap: "normal", hyphens: "none" }
                 }
               >
                 {clientName}
