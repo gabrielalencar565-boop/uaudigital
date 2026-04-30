@@ -823,7 +823,7 @@ export function DayViewPanel() {
     return (
       <div className="space-y-2">
         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{title}</p>
-        <div className={cn("grid gap-3", gridColsClass)}>
+        <div className="grid gap-3" style={gridStyle}>
           {groups.map((g) => {
             const totalCount = g.pending.length + g.completed.length + g.overdue.length;
             return (
