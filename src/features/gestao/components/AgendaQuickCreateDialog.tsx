@@ -69,6 +69,7 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
   // Auto-assign when stage + client change
   useEffect(() => {
     if (!stage || !clientId) return;
+    if (isPeriodicStageKey(stage)) return;
     const fixedAssignee = getFixedAssignee(stageAssignees, stage, clientId);
     const fixedWatchers = getFixedWatchers(stageAssignees, stage, clientId);
     const autoIds: string[] = [];
