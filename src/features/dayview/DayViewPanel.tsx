@@ -547,6 +547,7 @@ export function DayViewPanel() {
         post_type: t.post_type ?? null,
         parent_task_id: t.parent_task_id ?? null,
         childPostTypes: childPostTypes.get(t.id),
+        periodic_stage_key: (t as any).periodic_stage_key ?? null,
       }));
 
     return { tasks: [...agendaTasks, ...pmTasks], pmSnapshotGroups };
