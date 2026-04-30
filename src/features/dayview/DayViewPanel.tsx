@@ -140,24 +140,30 @@ export function DayViewPanel() {
     enabled: (pmTasksQ.data ?? []).length > 0,
   });
 
-  // ─── PM child tasks count per parent ───
+  // ─── PM child tasks per parent (count + post_types for gradient detection) ───
   const pmChildCountQ = useQuery({
     queryKey: ["pm_child_count_for_dayview", monthKey],
     queryFn: async () => {
       const parentIds = (pmTasksQ.data ?? []).map(t => t.id);
-      if (!parentIds.length) return new Map<string, number>();
+      if (!parentIds.length) return { counts: new Map<string, number>(), postTypes: new Map<string, Set<string>>() };
       const { data, error } = await supabase
         .from("pm_tasks")
-        .select("parent_task_id")
+        .select("parent_task_id, post_type")
         .in("parent_task_id", parentIds);
       if (error) throw error;
       const counts = new Map<string, number>();
+      const postTypes = new Map<string, Set<string>>();
       for (const row of data ?? []) {
         if (row.parent_task_id) {
           counts.set(row.parent_task_id, (counts.get(row.parent_task_id) ?? 0) + 1);
+          if (row.post_type) {
+            const set = postTypes.get(row.parent_task_id) ?? new Set<string>();
+            set.add(row.post_type);
+            postTypes.set(row.parent_task_id, set);
+          }
         }
       }
-      return counts;
+      return { counts, postTypes };
     },
     enabled: (pmTasksQ.data ?? []).length > 0,
   });
