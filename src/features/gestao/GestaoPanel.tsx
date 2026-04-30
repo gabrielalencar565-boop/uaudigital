@@ -34,6 +34,7 @@ import { cn } from "@/lib/utils";
 import type { PmTask } from "./pm-types";
 import { toast } from "sonner";
 import { AgendaQuickCreateDialog } from "./components/AgendaQuickCreateDialog";
+import { usePeriodicStages, isPeriodicStageKey } from "./hooks/use-periodic-stages";
 import { useAgendaSpecialDates } from "@/features/agenda/hooks/use-agenda-dates";
 import { getIconById } from "@/features/agenda/components/IconPicker";
 import { AgendaReportsPanel } from "@/features/agenda/components/AgendaReportsPanel";
@@ -76,6 +77,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
   const initialFilter = (forcedView ?? "kanban") === "agenda" ? "__all__" : (user?.id ?? "__all__");
   const [filterAssignee, setFilterAssignee] = useState(initialFilter);
   const [filterStage, setFilterStage] = useState("__all__");
+  const { data: periodicStages = [] } = usePeriodicStages();
 
   useEffect(() => {
     if (effectiveView === "kanban" && user?.id) {
@@ -225,6 +227,16 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
               <SelectItem value="__all__">Todas as etapas</SelectItem>
               {PM_STAGES.filter(s => !["roteiro", "edicao"].includes(s.key)).map((s) =>
                 <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>
+              )}
+              {periodicStages.length > 0 && (
+                <>
+                  <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground border-t mt-1 pt-2">
+                    Periódicas
+                  </div>
+                  {periodicStages.map(p => (
+                    <SelectItem key={p.key} value={p.key}>{p.label}</SelectItem>
+                  ))}
+                </>
               )}
             </SelectContent>
           </Select>
@@ -522,7 +534,10 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
       list = list.filter((t) => t.title.toLowerCase().includes(q) || (clientsMap[t.client_id] ?? "").toLowerCase().includes(q));
     }
     if (filterStage && filterStage !== "__all__") {
-      list = list.filter((t) => t.stage_current === filterStage);
+      const isPeriodic = isPeriodicStageKey(filterStage);
+      list = list.filter((t: any) =>
+        isPeriodic ? t.periodic_stage_key === filterStage : (t.stage_current === filterStage && !t.periodic_stage_key)
+      );
     }
     return list;
   }, [tasks, filterClient, filterAssignee, search, clientsMap, fixedAssigneeClientIds, filterStage]);
@@ -581,7 +596,10 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
 
       if (filterClient !== "__all__" && lt.client_id !== filterClient) continue;
       if (filterAssignee !== "__all__" && !allAssignees.includes(filterAssignee)) continue;
-      if (filterStage !== "__all__" && lt.stage !== filterStage) continue;
+      if (filterStage !== "__all__") {
+        if (isPeriodicStageKey(filterStage)) continue; // legacy tasks never have periodic stages
+        if (lt.stage !== filterStage) continue;
+      }
       if (search) {
         const s = search.toLowerCase();
         const clientName = clientsMap[lt.client_id] ?? "";

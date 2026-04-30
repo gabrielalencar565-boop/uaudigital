@@ -119,7 +119,11 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, av
       list = list.filter((t) => t.title.toLowerCase().includes(q) || (t.description ?? "").toLowerCase().includes(q));
     }
     if (filters.stage) {
-      list = list.filter((t) => t.stage_current === filters.stage);
+      const stageKey = filters.stage;
+      const isPeriodic = stageKey.startsWith("custom_");
+      list = list.filter((t: any) =>
+        isPeriodic ? t.periodic_stage_key === stageKey : (t.stage_current === stageKey && !t.periodic_stage_key)
+      );
     }
     return list;
   }, [tasks, filters]);
