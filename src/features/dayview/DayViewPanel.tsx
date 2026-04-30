@@ -511,7 +511,9 @@ export function DayViewPanel() {
     }
 
     // pm_tasks that DON'T have a snapshot in the agenda tasks (avoid duplicates)
-    const childCounts = pmChildCountQ.data ?? new Map<string, number>();
+    const childData = pmChildCountQ.data ?? { counts: new Map<string, number>(), postTypes: new Map<string, Set<string>>() };
+    const childCounts = childData.counts;
+    const childPostTypes = childData.postTypes;
     // Collect all pm task IDs that already have snapshots
     const snapshotPmIds = new Set<string>();
     for (const key of pmSnapshotGroups.keys()) {
@@ -536,6 +538,9 @@ export function DayViewPanel() {
         completed_at: (t.status_global === "concluido" || t.stage_current === "entrega" || t.stage_current === "agendamento") ? (t.updated_at ?? null) : null,
         source: "pm" as const,
         subtaskCount: childCounts.get(t.id) ?? 0,
+        post_type: t.post_type ?? null,
+        parent_task_id: t.parent_task_id ?? null,
+        childPostTypes: childPostTypes.get(t.id),
       }));
 
     return { tasks: [...agendaTasks, ...pmTasks], pmSnapshotGroups };
