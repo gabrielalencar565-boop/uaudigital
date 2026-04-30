@@ -503,10 +503,14 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
           const originId = task.origin_task_id ?? task.id;
           // PDF and Agendamento are unified (no post_type); other stages inherit from origin
+          // Revisão (Planejamento): when planejamento → revisão, mark with sentinel "planejamento"
+          // so the agenda/cards render REV/PLAN instead of REV/DSG or REV/VDO
           const resolvedPostType = (nextStage === "pdf" || nextStage === "agendamento")
             ? null
-            : (task.post_type
-              ?? (completedStage === "edicao_videos" ? "video" : completedStage === "design" ? "design" : undefined));
+            : (completedStage === "planejamento" && nextStage === "revisao")
+              ? "planejamento"
+              : (task.post_type
+                ?? (completedStage === "edicao_videos" ? "video" : completedStage === "design" ? "design" : undefined));
 
           const { data: { user } } = await supabase.auth.getUser();
           const { data: newTask } = await sb.from("pm_tasks").insert({
