@@ -288,12 +288,14 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
             <DatePicker value={dueDate} onChange={(v) => setDueDate(v ?? format(new Date(), "yyyy-MM-dd"))} />
           </div>
 
-          <div className="flex items-center gap-2">
-            <Checkbox id="is_extra" checked={isExtra} onCheckedChange={(v) => setIsExtra(!!v)} />
-            <Label htmlFor="is_extra" className="text-sm cursor-pointer">Demanda extra</Label>
-          </div>
+          {!isPeriodic && (
+            <div className="flex items-center gap-2">
+              <Checkbox id="is_extra" checked={isExtra} onCheckedChange={(v) => setIsExtra(!!v)} />
+              <Label htmlFor="is_extra" className="text-sm cursor-pointer">Demanda extra</Label>
+            </div>
+          )}
 
-          {isExtra && (
+          {isExtra && !isPeriodic && (
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-muted-foreground">Título personalizado</Label>
               <Input
