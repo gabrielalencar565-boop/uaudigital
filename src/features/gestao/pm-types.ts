@@ -20,6 +20,8 @@ export interface PmTask {
   cover_url: string | null;
   is_extra_demand: boolean;
   is_draft?: boolean;
+  /** Custom periodic stage key (e.g. "custom_reuniao_semanal") — set only when the task uses a periodic stage from Admin > Pontuação. Isolated from standard workflow. */
+  periodic_stage_key?: string | null;
   // Cronograma (posting schedule) fields
   post_type: string | null;
   posting_date: string | null;

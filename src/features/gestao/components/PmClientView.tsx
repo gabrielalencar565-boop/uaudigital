@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { ChevronRight, ChevronDown, FolderOpen, CheckCircle2, Circle, AlertOctagon, Hash } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { statusLabel, stageLabel } from "../pm-constants";
+import { statusLabel, stageLabel, taskStageLabel } from "../pm-constants";
+import { usePeriodicStages } from "../hooks/use-periodic-stages";
 import type { PmTask } from "../pm-types";
 
 function statusDot(key: string) {
@@ -37,6 +38,7 @@ interface Props {
 export function PmClientView({ tasks, childTasksMap, clientsMap, membersMap, onTaskClick }: Props) {
   const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set());
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
+  const { data: periodicStages = [] } = usePeriodicStages();
 
   const grouped = useMemo(() => {
     const map: Record<string, PmTask[]> = {};
@@ -141,7 +143,7 @@ export function PmClientView({ tasks, childTasksMap, clientsMap, membersMap, onT
                           <span className="text-[10px] font-semibold text-muted-foreground/60 bg-foreground/5 rounded-full px-2 py-0.5">{childDone}/{children.length}</span>
                         )}
                         <span className="text-[10px] px-2 py-0.5 rounded-md bg-accent/60 text-accent-foreground font-medium shrink-0">
-                          {stageLabel(task.stage_current)}
+                          {taskStageLabel(task, periodicStages)}
                         </span>
                       </div>
 
@@ -161,7 +163,7 @@ export function PmClientView({ tasks, childTasksMap, clientsMap, membersMap, onT
                                 {child.title}
                               </span>
                               <span className="text-[10px] text-muted-foreground/60 font-medium">
-                                {stageLabel(child.stage_current)}
+                                {taskStageLabel(child, periodicStages)}
                               </span>
                             </div>
                           ))}

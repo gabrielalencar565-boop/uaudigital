@@ -1527,6 +1527,7 @@ export type Database = {
           is_extra_demand: boolean
           origin_task_id: string | null
           parent_task_id: string | null
+          periodic_stage_key: string | null
           post_type: string | null
           posting_date: string | null
           posting_time: string | null
@@ -1556,6 +1557,7 @@ export type Database = {
           is_extra_demand?: boolean
           origin_task_id?: string | null
           parent_task_id?: string | null
+          periodic_stage_key?: string | null
           post_type?: string | null
           posting_date?: string | null
           posting_time?: string | null
@@ -1585,6 +1587,7 @@ export type Database = {
           is_extra_demand?: boolean
           origin_task_id?: string | null
           parent_task_id?: string | null
+          periodic_stage_key?: string | null
           post_type?: string | null
           posting_date?: string | null
           posting_time?: string | null
