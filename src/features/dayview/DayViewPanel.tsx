@@ -809,15 +809,30 @@ export function DayViewPanel() {
           className={cn(taskItemClass, veryDense ? "px-2.5 py-2" : dense ? "px-3 py-2.5" : "px-4 py-3")}
           style={{ containerType: "inline-size" }}
         >
-          <span
-            className={cn(
-              "inline-flex items-center justify-center rounded-full font-bold tracking-wide text-white shrink-0 self-start leading-none",
-              stageBg,
-              veryDense ? "h-4 text-[8px] px-[5px]" : dense ? "h-[18px] px-[7px] text-[9px]" : "h-5 px-2 text-[10px]"
+          <div className="flex items-center gap-1.5 w-full min-w-0">
+            <span
+              className={cn(
+                "inline-flex items-center justify-center rounded-full font-bold tracking-wide text-white shrink-0 leading-none",
+                stageBg,
+                veryDense ? "h-4 text-[8px] px-[5px]" : dense ? "h-[18px] px-[7px] text-[9px]" : "h-5 px-2 text-[10px]"
+              )}
+            >
+              {stageAbbr}
+            </span>
+            {variant === "overdue" && (
+              <span className={cn("font-bold text-destructive-foreground shrink-0 ml-auto", veryDense ? "text-xs" : "text-sm")}>
+                {daysLate}d
+              </span>
             )}
-          >
-            {stageAbbr}
-          </span>
+            {variant === "completed" && (
+              <span className={cn("font-bold text-success-foreground shrink-0 ml-auto", veryDense ? "text-xs" : "text-sm")}>✓</span>
+            )}
+            {variant === "pending" && t.status === "em_andamento" && !veryDense && (
+              <Badge variant="warning" className={cn("shrink-0 ml-auto", dense ? "text-[10px] px-1.5 py-0 h-4" : "text-xs px-2 py-0.5 h-5")}>
+                Em and.
+              </Badge>
+            )}
+          </div>
           {(() => {
             const clientName = resolveClientName(t);
             const trimmed = clientName.trim();
@@ -831,7 +846,7 @@ export function DayViewPanel() {
                 title={clientName}
                 lang="pt-BR"
                 className={cn(
-                  "font-semibold leading-tight flex-1 min-w-0 [hyphens:none]",
+                  "font-semibold leading-tight w-full min-w-0 [hyphens:none]",
                   isSingleWord ? "whitespace-nowrap overflow-hidden text-ellipsis" : "",
                   sizeClass,
                   variant === "completed" && "text-success-foreground",
@@ -856,19 +871,6 @@ export function DayViewPanel() {
               </p>
             );
           })()}
-          {variant === "overdue" && (
-            <span className={cn("font-bold text-destructive-foreground shrink-0", veryDense ? "text-xs" : "text-sm")}>
-              {daysLate}d
-            </span>
-          )}
-          {variant === "completed" && (
-            <span className={cn("font-bold text-success-foreground shrink-0", veryDense ? "text-xs" : "text-sm")}>✓</span>
-          )}
-          {variant === "pending" && t.status === "em_andamento" && !veryDense && (
-            <Badge variant="warning" className={cn("shrink-0", dense ? "text-[10px] px-1.5 py-0 h-4" : "text-xs px-2 py-0.5 h-5")}>
-              Em and.
-            </Badge>
-          )}
         </div>
       );
     };
