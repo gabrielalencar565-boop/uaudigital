@@ -63,6 +63,13 @@ function getPeriodicTime(task: PmTask) {
   return task.posting_time ?? task.title.match(PERIODIC_TIME_RE)?.[1] ?? null;
 }
 
+function getPeriodicStageFallbackLabel(key: string) {
+  return key
+    .replace(/^custom_/, "")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 const VIEW_TITLES: Record<string, string> = {
   kanban: "Kanban de tarefas",
   agenda: "Agenda de tarefas",
