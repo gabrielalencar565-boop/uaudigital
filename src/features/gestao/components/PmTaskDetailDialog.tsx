@@ -20,8 +20,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import {
   PM_ACTIVE_STAGES, stageLabel, getStageCircleColor,
-  parseTag, tagColor, tagDisplay
+  parseTag, tagColor, tagDisplay, isHexColor, TAG_COLORS
 } from "../pm-constants";
+import { usePeriodicStages } from "../hooks/use-periodic-stages";
 import {
   useUpdatePmTask, useCreatePmTask, usePmTasks, usePmChildTasks,
   usePmComments, usePmAttachments, usePmSyncStageCompletion,
