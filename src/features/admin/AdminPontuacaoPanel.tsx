@@ -27,6 +27,7 @@ type ScoringRow = {
   late_penalty: number;
   uses_quantity: boolean;
   extra_demand_multiplier: number;
+  color_key: string | null;
 };
 
 type EditState = Record<string, Partial<ScoringRow>>;
@@ -37,6 +38,7 @@ export function AdminPontuacaoPanel() {
   const [newTagName, setNewTagName] = useState("");
   const [newTagColor, setNewTagColor] = useState("blue");
   const [newStageName, setNewStageName] = useState("");
+  const [newStageColor, setNewStageColor] = useState("blue");
 
   // Normalize a stage label to "custom_<slug>"
   function makeCustomStageKey(name: string) {
@@ -54,7 +56,7 @@ export function AdminPontuacaoPanel() {
     queryFn: async (): Promise<ScoringRow[]> => {
       const { data, error } = await supabase
         .from("scoring_config")
-        .select("id, stage, label, base_points, late_penalty, uses_quantity, extra_demand_multiplier")
+        .select("id, stage, label, base_points, late_penalty, uses_quantity, extra_demand_multiplier, color_key")
         .order("stage");
       if (error) throw error;
       return (data ?? []) as ScoringRow[];
@@ -167,7 +169,7 @@ export function AdminPontuacaoPanel() {
   });
 
   const createCustomStageMut = useMutation({
-    mutationFn: async (name: string) => {
+    mutationFn: async ({ name, color_key }: { name: string; color_key: string }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Não autenticado");
       const stageKey = makeCustomStageKey(name);
@@ -188,12 +190,14 @@ export function AdminPontuacaoPanel() {
         late_penalty: -1,
         uses_quantity: false,
         extra_demand_multiplier: 1.5,
+        color_key,
         updated_by: user.id,
       });
       if (error) throw error;
     },
     onSuccess: () => {
       setNewStageName("");
+      setNewStageColor("blue");
       qc.invalidateQueries({ queryKey: ["scoring_config"] });
       toast.success("Etapa periódica criada!");
     },
