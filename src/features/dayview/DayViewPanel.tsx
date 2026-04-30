@@ -897,20 +897,22 @@ export function DayViewPanel() {
                 </p>
                 <div className={cn("grid gap-3", gridColsClass)}>
                   {groups.map((g) => (
-                    <div key={g.user_id} className="rounded-lg border border-border bg-card/50 p-2 min-w-0 flex flex-col">
-                      {/* Header com foto e nome */}
-                      <div className="flex flex-col items-center gap-1 pb-2 mb-2 border-b border-border">
-                        <Avatar className={dense ? "h-10 w-10" : "h-12 w-12"}>
+                    <div key={g.user_id} className="rounded-xl border border-border bg-card/50 p-3 min-w-0 flex flex-col">
+                      {/* Header com foto ao lado do nome */}
+                      <div className="flex items-center gap-3 pb-3 mb-3 border-b border-border">
+                        <Avatar className={cn("shrink-0", veryDense ? "h-10 w-10" : dense ? "h-12 w-12" : "h-14 w-14")}>
                           <AvatarImage src={g.avatar_url ?? undefined} />
                           <AvatarFallback>{initials(g.display_name)}</AvatarFallback>
                         </Avatar>
-                        <p className={cn("font-semibold text-center truncate w-full", veryDense ? "text-[10px]" : dense ? "text-xs" : "text-sm")}>
-                          {g.display_name}
-                        </p>
-                        <span className="text-[10px] text-muted-foreground">{g.tasks.length} {g.tasks.length === 1 ? "tarefa" : "tarefas"}</span>
+                        <div className="min-w-0 flex-1">
+                          <p className={cn("font-bold truncate", veryDense ? "text-sm" : dense ? "text-base" : "text-lg")}>
+                            {g.display_name}
+                          </p>
+                          <span className="text-xs text-muted-foreground">{g.tasks.length} {g.tasks.length === 1 ? "tarefa" : "tarefas"}</span>
+                        </div>
                       </div>
                       {/* Tarefas da pessoa */}
-                      <div className="flex flex-col gap-2 flex-1">
+                      <div className="flex flex-col gap-2.5 flex-1">
                         {g.tasks.map((t) => {
                           const stageLabel = STAGES.find((s) => s.key === t.stage)?.label ?? t.stage;
                           return (
@@ -918,19 +920,19 @@ export function DayViewPanel() {
                               key={t.id}
                               onClick={() => handleTaskClick(t)}
                               className={cn(
-                                "rounded-md border border-border bg-card cursor-pointer hover:bg-accent/50 transition-colors min-w-0",
-                                veryDense ? "px-2 py-1.5" : dense ? "px-2.5 py-2" : "px-3 py-2.5"
+                                "rounded-lg border border-border bg-card cursor-pointer hover:bg-accent/50 transition-colors min-w-0",
+                                veryDense ? "px-2.5 py-2" : dense ? "px-3 py-2.5" : "px-4 py-3"
                               )}
                             >
-                              <p className={cn("font-semibold leading-tight truncate", veryDense ? "text-xs" : dense ? "text-sm" : "text-base")}>
+                              <p className={cn("font-semibold leading-tight truncate", veryDense ? "text-sm" : dense ? "text-base" : "text-lg")}>
                                 {resolveClientName(t)}
                               </p>
-                              <div className="flex items-center justify-between gap-1 mt-1">
-                                <span className={cn("text-muted-foreground truncate", veryDense ? "text-[11px]" : dense ? "text-xs" : "text-sm")}>
+                              <div className="flex items-center justify-between gap-2 mt-1.5">
+                                <span className={cn("text-muted-foreground truncate", veryDense ? "text-xs" : dense ? "text-sm" : "text-base")}>
                                   {stageLabel}
                                 </span>
                                 {!veryDense && (
-                                  <Badge variant={t.status === "em_andamento" ? "warning" : "secondary"} className={cn("shrink-0", dense ? "text-[10px] px-1.5 py-0 h-4" : "text-xs px-2 py-0.5 h-5")}>
+                                  <Badge variant={t.status === "em_andamento" ? "warning" : "secondary"} className={cn("shrink-0", dense ? "text-xs px-2 py-0.5 h-5" : "text-sm px-2.5 py-0.5 h-6")}>
                                     {t.status === "em_andamento" ? "Em and." : "Pend."}
                                   </Badge>
                                 )}
