@@ -811,9 +811,9 @@ export function DayViewPanel() {
         >
           <span
             className={cn(
-              "inline-flex items-center justify-center rounded font-bold tracking-wide text-white shrink-0 self-start",
+              "inline-flex items-center justify-center rounded-full font-bold tracking-wide text-white shrink-0 self-start leading-none",
               stageBg,
-              veryDense ? "h-5 text-[9px] px-[6px]" : dense ? "h-5 px-2 text-[10px]" : "h-6 px-2 text-[11px]"
+              veryDense ? "h-4 text-[8px] px-[5px]" : dense ? "h-[18px] px-[7px] text-[9px]" : "h-5 px-2 text-[10px]"
             )}
           >
             {stageAbbr}
