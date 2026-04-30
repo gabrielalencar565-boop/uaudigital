@@ -763,7 +763,7 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
               : undefined;
     const stageBg = gradientClass ?? (STAGE_BADGE_BG[t.stage_current] ?? "bg-muted");
     const abbr = t.periodic_stage_key
-      ? (periodic?.label ?? getPeriodicStageFallbackLabel(t.periodic_stage_key))
+      ? (periodic?.label ?? getPeriodicStageFallbackLabel(t.periodic_stage_key)).slice(0, 3).toUpperCase()
       : gradientAbbr ?? (STAGE_ABBR[t.stage_current] ?? t.stage_current.toUpperCase().slice(0, 4));
     const assignees = getTaskAssignees(t);
     const visibleAssignees = assignees.slice(0, 2);
@@ -789,8 +789,8 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
         onClick={isLegacy ? undefined : () => onTaskClick(t)}>
         <div className="flex items-center justify-between gap-1">
           <div
-            className={cn("inline-flex h-5 items-center rounded-md px-2 text-[9px] font-bold tracking-wide", periodic ? (periodicSwatch ? `${periodicSwatch.bg} ${periodicSwatch.text}` : "bg-primary/10 text-primary") : `text-white ${stageBg}`)}
-            style={periodicColor && isHexColor(periodicColor) ? { backgroundColor: `${periodicColor}26`, color: periodicColor } : undefined}
+            className={cn("inline-flex h-5 items-center rounded-md px-2 text-[9px] font-bold tracking-wide", periodic ? "bg-black text-white" : `text-white ${stageBg}`)}
+            style={undefined}
           >
             {abbr}
           </div>
