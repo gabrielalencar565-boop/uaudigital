@@ -134,6 +134,14 @@ export const TAG_COLORS = [
   { key: "pink", label: "Rosa", bg: "bg-pink-500/20", text: "text-pink-400", dot: "bg-pink-500" },
   { key: "teal", label: "Teal", bg: "bg-teal-500/20", text: "text-teal-400", dot: "bg-teal-500" },
   { key: "indigo", label: "Índigo", bg: "bg-indigo-500/20", text: "text-indigo-400", dot: "bg-indigo-500" },
+  { key: "lime", label: "Lima", bg: "bg-lime-500/20", text: "text-lime-400", dot: "bg-lime-500" },
+  { key: "fuchsia", label: "Fúcsia", bg: "bg-fuchsia-500/20", text: "text-fuchsia-400", dot: "bg-fuchsia-500" },
+  { key: "sky", label: "Céu", bg: "bg-sky-500/20", text: "text-sky-400", dot: "bg-sky-500" },
+  { key: "rose", label: "Rosa Escuro", bg: "bg-rose-600/20", text: "text-rose-300", dot: "bg-rose-600" },
+  { key: "amber", label: "Âmbar", bg: "bg-amber-500/20", text: "text-amber-300", dot: "bg-amber-500" },
+  { key: "emerald", label: "Esmeralda", bg: "bg-emerald-600/20", text: "text-emerald-300", dot: "bg-emerald-600" },
+  { key: "slate", label: "Ardósia", bg: "bg-slate-500/20", text: "text-slate-300", dot: "bg-slate-500" },
+  { key: "zinc", label: "Zinco", bg: "bg-zinc-500/20", text: "text-zinc-300", dot: "bg-zinc-500" },
 ];
 
 // Tags are stored as "name:colorKey" in the tags array
