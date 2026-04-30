@@ -77,6 +77,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
   const initialFilter = (forcedView ?? "kanban") === "agenda" ? "__all__" : (user?.id ?? "__all__");
   const [filterAssignee, setFilterAssignee] = useState(initialFilter);
   const [filterStage, setFilterStage] = useState("__all__");
+  const { data: periodicStages = [] } = usePeriodicStages();
 
   useEffect(() => {
     if (effectiveView === "kanban" && user?.id) {
