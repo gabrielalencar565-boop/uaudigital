@@ -1,61 +1,60 @@
-## Problema
+## Objetivo
 
-A multi-seleção de subtarefas (com checkboxes, atalhos `Delete`/`Esc` e barra de ações em massa) só foi implementada em `PmSubtaskList.tsx`, usado nas etapas que renderizam a lista padrão. Porém as etapas **PDF, Agendamento e Entrega** (junto com Planejamento) usam o componente `PmPlanningSubtasks.tsx`, que tem layout dividido em seções **Vídeo / Design** — e esse componente **não possui** a funcionalidade de multi-seleção.
+Permitir criar novas "etapas" no painel **Admin → Pontuação**, junto da tabela "Critérios por etapa" (Planejamento, Captação, PDF, Alterações, Agendamento). Essas novas etapas são **periódicas/avulsas** — só servem para configurar pontuação manualmente, **não aparecem** no Kanban, na Agenda, no Magic Number nem no fluxo de tarefas.
 
-Resultado: ao abrir uma tarefa de PDF, não aparece checkbox para selecionar várias subtarefas e excluí-las em massa.
+## Como funciona hoje
+
+- A tabela "Critérios por etapa" lê de `scoring_config`, filtrando por uma lista fixa: `["planejamento", "captacao", "pdf", "alteracoes", "agendamento"]`.
+- As "etiquetas" (já criáveis) usam `stage` com prefixo `tag_...` e aparecem em outra tabela.
+- O fluxo do Kanban/Magic/Agenda usa `PM_STAGES` em `pm-constants.ts` (hardcoded) e o enum `stage_type` no banco. Não vamos mexer em nada disso.
 
 ## Solução
 
-Replicar a mesma lógica de multi-seleção já existente em `PmSubtaskList.tsx` dentro de `PmPlanningSubtasks.tsx`, **compartilhando o estado entre as duas seções (Vídeo e Design)** para que o usuário possa selecionar subtarefas de qualquer seção e excluir todas de uma vez.
+Usar um novo prefixo `custom_` em `scoring_config.stage` para identificar etapas periódicas. Isso isola completamente do fluxo (que valida via enum `stage_type`) e do sistema de etiquetas (`tag_`).
 
-## Mudanças em `src/features/gestao/components/PmPlanningSubtasks.tsx`
+### 1. UI — `AdminPontuacaoPanel.tsx`
 
-### 1. Estado compartilhado no componente pai `PmPlanningSubtasks`
-- Adicionar `selectedIds: Set<string>` e `bulkConfirmOpen: boolean` no componente raiz (não dentro de `PlanningSection`), para que a seleção seja global entre as duas seções.
-- Adicionar helpers: `toggleSelect(id)`, `selectAll()` (todas as childTasks), `clearSelection()`, `handleBulkDelete()`.
-- Adicionar `useEffect` com listener de teclado:
-  - `Escape` → `clearSelection()`
-  - `Delete` / `Backspace` → abre `bulkConfirmOpen` (se houver seleção)
-- Passar `selectedIds`, `toggleSelect`, e callbacks como props para cada `PlanningSection`.
+No card "Critérios por etapa", adicionar:
 
-### 2. Barra flutuante de seleção (no topo do componente)
-Renderizar acima das duas seções quando `selectedIds.size > 0`:
-- Texto "X selecionada(s)"
-- Botão "Selecionar todas" (se ainda houver não selecionadas)
-- Botão "Limpar"
-- Botão destrutivo "Excluir" → abre `bulkConfirmOpen`
-- Mesma estética do que existe em `PmSubtaskList.tsx`
+- Um bloco "Nova etapa periódica" (similar ao de etiquetas) com:
+  - Input para nome (ex: "Reunião semanal", "Relatório mensal")
+  - Botão "Criar"
+- Cada etapa periódica criada aparece na mesma tabela, ao final, com:
+  - Mesmas colunas: Pontos base, Penalidade atraso, Usa quantidade, Multiplicador extra
+  - Botão de **remover** (lixeira) — só aparece em etapas `custom_*`, não nas fixas
+- Badge visual "Periódica" para diferenciar das fixas
 
-### 3. AlertDialog de exclusão em massa (compartilhado, no topo)
-- Texto: "Excluir N subtarefa(s)?"
-- Action chama `handleBulkDelete` que faz `updateTask.mutate({ id, deleted_at, deleted_by })` para cada id selecionado, depois `clearSelection()`.
-- Mesmas proteções de propagação de evento já aplicadas (`onPointerDown stopPropagation`, `z-[200]`).
+A lista `magicStages` passa a incluir também todas as linhas cujo `stage` começa com `custom_`.
 
-### 4. Atualizações em `PlanningSection` (cada seção Vídeo/Design)
-- Receber `selectedIds`, `toggleSelect`, `bulkConfirmOpen` via props.
-- No header da seção (ou fora, ao lado), adicionar checkbox "Selecionar todas desta seção" — opcional; o principal é o do componente pai.
-- Em cada linha de subtarefa:
-  - Adicionar um `<Checkbox>` à esquerda (antes do círculo de etapa), seguindo o mesmo padrão do `PmSubtaskList`:
-    - Visível quando há seleção ativa, ou no hover (`opacity-0 group-hover:opacity-100`); sempre visível se a linha está selecionada.
-    - `onCheckedChange={() => toggleSelect(sub.id)}` com `onClick stopPropagation` para não abrir a subtarefa.
-  - No `onClick` da linha, manter o guard existente e adicionar `bulkConfirmOpen` na condição de bloqueio:
-    ```tsx
-    if (deletingId || bulkConfirmOpen) { e.preventDefault(); e.stopPropagation(); return; }
-    ```
-  - Quando `isSelected`, aplicar destaque visual leve na linha (ex: `bg-primary/5`).
+### 2. Criação
 
-### 5. Manter intactos
-- O AlertDialog de exclusão **individual** (`deletingId`) permanece como está em cada seção, sem alteração.
-- Toda a lógica existente de adicionar subtarefa, mudar etapa, atribuir responsável, lixeira, etc.
+```text
+Nome digitado → normalizado (lowercase, sem acento, _ no lugar de espaço) → "custom_<slug>"
+INSERT em scoring_config:
+  stage = "custom_reuniao_semanal"
+  label = "Reunião semanal"
+  base_points = 1, late_penalty = -1, uses_quantity = false, extra_demand_multiplier = 1.5
+```
 
-## Resultado esperado
+Validação: bloquear duplicatas pelo `stage` gerado.
 
-Ao abrir uma tarefa de **PDF** (ou Agendamento, Entrega, Planejamento):
-- Hover em qualquer subtarefa (de Vídeo ou Design) mostra um checkbox.
-- Ao selecionar uma ou mais, aparece a barra flutuante com contador e botões de ação em massa.
-- `Delete`/`Backspace` abre o diálogo de confirmação para excluir todas as selecionadas.
-- `Esc` limpa a seleção.
-- Funciona igual ao já implementado em `PmSubtaskList.tsx`, com a diferença de que a seleção é compartilhada entre as seções Vídeo e Design.
+### 3. Remoção
 
-## Arquivos afetados
-- `src/features/gestao/components/PmPlanningSubtasks.tsx` (única alteração)
+DELETE da linha em `scoring_config` onde `stage = 'custom_xxx'`. Como o prefixo `custom_` nunca é usado em `pm_tasks.stage` nem em `tasks.stage` (que é enum), não há risco de quebrar tarefas existentes.
+
+### 4. O que NÃO muda
+
+- `pm-constants.ts` (`PM_STAGES`, `STAGE_FLOW_NEXT`) — intacto.
+- Enum `stage_type` no banco — intacto.
+- Kanban, Agenda, Magic Number, criação de tarefas — não veem essas etapas.
+- Triggers de pontuação (`recompute_metas_prazos`, `pm_sync_stage_completion`) — continuam funcionando; etapas `custom_*` simplesmente não terão tarefas vinculadas, então não geram pontuação automática.
+
+### 5. Como serão usadas (esclarecimento)
+
+Como essas etapas não entram no fluxo, a pontuação delas **não será aplicada automaticamente**. Elas servirão como **referência de configuração** — caso futuramente seja preciso lançar pontos manualmente para um colaborador (ex: "fez a reunião semanal"), os valores ficam definidos aqui. Se você quiser também um botão para **lançar manualmente** essa pontuação para um usuário/mês, me avise — seria um próximo passo (criar uma tela de "lançamento manual" que insere em `tasks` usando o `base_points` configurado).
+
+## Arquivos alterados
+
+- `src/features/admin/AdminPontuacaoPanel.tsx` — adicionar bloco de criação, remoção e listagem das etapas periódicas na tabela existente.
+
+Sem migrações de schema. Sem mudanças no fluxo.

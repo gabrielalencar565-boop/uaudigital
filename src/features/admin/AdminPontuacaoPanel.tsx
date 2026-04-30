@@ -36,6 +36,18 @@ export function AdminPontuacaoPanel() {
   const [edits, setEdits] = useState<EditState>({});
   const [newTagName, setNewTagName] = useState("");
   const [newTagColor, setNewTagColor] = useState("blue");
+  const [newStageName, setNewStageName] = useState("");
+
+  // Normalize a stage label to "custom_<slug>"
+  function makeCustomStageKey(name: string) {
+    const slug = name
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "");
+    return `custom_${slug}`;
+  }
 
   const configQ = useQuery({
     queryKey: ["scoring_config"],
@@ -154,6 +166,53 @@ export function AdminPontuacaoPanel() {
     onError: (e: any) => toast.error(e?.message ?? "Erro ao remover etiqueta"),
   });
 
+  const createCustomStageMut = useMutation({
+    mutationFn: async (name: string) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Não autenticado");
+      const stageKey = makeCustomStageKey(name);
+      if (!stageKey.replace("custom_", "")) throw new Error("Nome inválido");
+
+      // Check duplicate
+      const { data: existing } = await sb
+        .from("scoring_config")
+        .select("id")
+        .eq("stage", stageKey)
+        .maybeSingle();
+      if (existing) throw new Error("Etapa já existe");
+
+      const { error } = await sb.from("scoring_config").insert({
+        stage: stageKey,
+        label: name.trim(),
+        base_points: 1,
+        late_penalty: -1,
+        uses_quantity: false,
+        extra_demand_multiplier: 1.5,
+        updated_by: user.id,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setNewStageName("");
+      qc.invalidateQueries({ queryKey: ["scoring_config"] });
+      toast.success("Etapa periódica criada!");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao criar etapa"),
+  });
+
+  const deleteCustomStageMut = useMutation({
+    mutationFn: async (stage: string) => {
+      if (!stage.startsWith("custom_")) throw new Error("Apenas etapas periódicas podem ser removidas");
+      const { error } = await sb.from("scoring_config").delete().eq("stage", stage);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["scoring_config"] });
+      toast.success("Etapa removida!");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao remover etapa"),
+  });
+
   const rows = configQ.data ?? [];
   const hasEdits = Object.keys(edits).length > 0;
 
@@ -170,9 +229,13 @@ export function AdminPontuacaoPanel() {
 
   // Order stages nicely — design and edicao_videos are excluded (scoring defined by tags only)
   const magicStages = ["planejamento", "captacao", "pdf", "alteracoes", "agendamento"];
-  const sorted = [...rows]
+  const fixedRows = [...rows]
     .filter((r) => magicStages.includes(r.stage))
     .sort((a, b) => magicStages.indexOf(a.stage) - magicStages.indexOf(b.stage));
+  const customRows = [...rows]
+    .filter((r) => r.stage.startsWith("custom_"))
+    .sort((a, b) => (a.label ?? "").localeCompare(b.label ?? ""));
+  const sorted = [...fixedRows, ...customRows];
 
   // Tag-based scoring entries
   const tagRows = [...rows]
@@ -217,15 +280,22 @@ export function AdminPontuacaoPanel() {
                       <TableHead className="text-center w-[100px]">Penalidade atraso</TableHead>
                       <TableHead className="text-center w-[90px]">Usa quantidade</TableHead>
                       <TableHead className="text-center w-[120px]">Multiplicador extra</TableHead>
+                      <TableHead className="text-center w-[60px]"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {sorted.map((row) => (
+                    {sorted.map((row) => {
+                      const isCustom = row.stage.startsWith("custom_");
+                      return (
                       <TableRow key={row.id}>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <span className="font-medium">{getVal(row, "label")}</span>
-                            <Badge variant="outline" className="text-[10px]">{row.stage}</Badge>
+                            {isCustom ? (
+                              <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">Periódica</Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-[10px]">{row.stage}</Badge>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell className="text-center">
@@ -261,11 +331,60 @@ export function AdminPontuacaoPanel() {
                             onChange={(e) => setVal(row, "extra_demand_multiplier", Number(e.target.value))}
                           />
                         </TableCell>
+                        <TableCell className="text-center">
+                          {isCustom && (
+                            <button
+                              type="button"
+                              className="h-7 w-7 mx-auto flex items-center justify-center rounded-md hover:bg-destructive/20 transition-colors"
+                              title="Remover etapa periódica"
+                              disabled={deleteCustomStageMut.isPending}
+                              onClick={() => {
+                                if (confirm(`Remover a etapa "${row.label}"?`)) {
+                                  deleteCustomStageMut.mutate(row.stage);
+                                }
+                              }}
+                            >
+                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                            </button>
+                          )}
+                        </TableCell>
                       </TableRow>
-                    ))}
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
+
+              {/* Create new periodic stage */}
+              <div className="mt-3 flex items-end gap-2 p-3 rounded-lg border border-dashed border-border/60 bg-muted/20">
+                <div className="flex-1 space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Nova etapa periódica</label>
+                  <Input
+                    value={newStageName}
+                    onChange={(e) => setNewStageName(e.target.value)}
+                    placeholder="Ex: Reunião semanal, Relatório mensal..."
+                    className="h-8 text-sm"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && newStageName.trim()) {
+                        e.preventDefault();
+                        createCustomStageMut.mutate(newStageName.trim());
+                      }
+                    }}
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  className="h-8 gap-1.5"
+                  disabled={!newStageName.trim() || createCustomStageMut.isPending}
+                  onClick={() => createCustomStageMut.mutate(newStageName.trim())}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Criar etapa
+                </Button>
+              </div>
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                Etapas periódicas são avulsas — não entram no fluxo do Kanban, Agenda ou Magic Number. Servem como referência de pontuação.
+              </p>
 
               <div className="mt-4 flex justify-end">
                 <Button
