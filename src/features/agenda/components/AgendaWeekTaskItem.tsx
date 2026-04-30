@@ -101,19 +101,24 @@ export function AgendaWeekTaskItem({
   const isAssigneeLoading = assigneeName === PENDING_MEMBER_NAME;
 
   // For revisão or alteração tasks with a post_type origin, show gradient badge
-  const isRevisaoWithOrigin = stage === "revisao" && !!postType;
+  const isRevisaoPlanejamento = stage === "revisao" && postType === "planejamento";
+  const isRevisaoWithOrigin = stage === "revisao" && !!postType && postType !== "planejamento";
   const isAlteracaoWithOrigin = stage === "alteracoes" && !!postType;
-  const hasGradientPill = isRevisaoWithOrigin || isAlteracaoWithOrigin;
-  const gradientShort = isAlteracaoWithOrigin
-    ? (postType === "video" ? "ALT/VDO" : "ALT/DSG")
-    : (postType === "video" ? "REV/VDO" : "REV/DSG");
-  const gradientClass = isAlteracaoWithOrigin
-    ? (postType === "video"
-      ? "bg-gradient-to-r from-stage-alteracoes to-stage-edicao_videos text-white"
-      : "bg-gradient-to-r from-stage-alteracoes to-stage-design text-white")
-    : (postType === "video"
-      ? "bg-gradient-to-r from-pink-400 to-stage-edicao_videos text-white"
-      : "bg-gradient-to-r from-pink-400 to-stage-design text-white");
+  const hasGradientPill = isRevisaoWithOrigin || isAlteracaoWithOrigin || isRevisaoPlanejamento;
+  const gradientShort = isRevisaoPlanejamento
+    ? "REV/PLAN"
+    : isAlteracaoWithOrigin
+      ? (postType === "video" ? "ALT/VDO" : "ALT/DSG")
+      : (postType === "video" ? "REV/VDO" : "REV/DSG");
+  const gradientClass = isRevisaoPlanejamento
+    ? "bg-gradient-to-r from-pink-400 to-stage-planejamento text-white"
+    : isAlteracaoWithOrigin
+      ? (postType === "video"
+        ? "bg-gradient-to-r from-stage-alteracoes to-stage-edicao_videos text-white"
+        : "bg-gradient-to-r from-stage-alteracoes to-stage-design text-white")
+      : (postType === "video"
+        ? "bg-gradient-to-r from-pink-400 to-stage-edicao_videos text-white"
+        : "bg-gradient-to-r from-pink-400 to-stage-design text-white");
 
   return (
     <div

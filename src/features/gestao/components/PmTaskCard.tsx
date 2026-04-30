@@ -92,13 +92,19 @@ export function PmTaskCard({ task, clientName, assignees = [], childTasks = [], 
               ? (task.post_type === "video"
                 ? "bg-gradient-to-r from-stage-alteracoes to-stage-edicao_videos"
                 : "bg-gradient-to-r from-stage-alteracoes to-stage-design")
-              : (task.post_type === "video"
-                ? "bg-gradient-to-r from-pink-400 to-stage-edicao_videos"
-                : "bg-gradient-to-r from-pink-400 to-stage-design")
+              : (task.post_type === "planejamento"
+                ? "bg-gradient-to-r from-pink-400 to-stage-planejamento"
+                : task.post_type === "video"
+                  ? "bg-gradient-to-r from-pink-400 to-stage-edicao_videos"
+                  : "bg-gradient-to-r from-pink-400 to-stage-design")
           )}>
             {task.stage_current === "alteracoes"
               ? (task.post_type === "video" ? <><Clapperboard className="h-3 w-3" /> ALT/VDO</> : <><Palette className="h-3 w-3" /> ALT/DSG</>)
-              : (task.post_type === "video" ? <><Clapperboard className="h-3 w-3" /> REV/Vídeo</> : <><Palette className="h-3 w-3" /> REV/DSG</>)
+              : (task.post_type === "planejamento"
+                ? <>REV/PLAN</>
+                : task.post_type === "video"
+                  ? <><Clapperboard className="h-3 w-3" /> REV/Vídeo</>
+                  : <><Palette className="h-3 w-3" /> REV/DSG</>)
             }
           </span>
         )}
