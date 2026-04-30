@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { useCreatePmTask } from "../hooks/use-pm-data";
 import { useDefaultFlowWithDates, getFixedAssignee, getFixedWatchers } from "./PmStageFlowConfig";
 import { PM_ACTIVE_STAGES } from "../pm-constants";
+import { usePeriodicStages, isPeriodicStageKey } from "../hooks/use-periodic-stages";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -35,6 +36,7 @@ interface Props {
 export function PmCreateTaskDialog({ open, onClose, clients, members, membersMap, defaultStatus, onCreated }: Props) {
   const createTask = useCreatePmTask();
   const { stageAssignees } = useDefaultFlowWithDates();
+  const { data: periodicStages = [] } = usePeriodicStages();
   const [saving, setSaving] = useState(false);
   const now = new Date();
   const [monthRef, setMonthRef] = useState(String(now.getMonth() + 1).padStart(2, "0"));
@@ -56,9 +58,10 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, membersMap
     }
   }, [open, defaultStatus]);
 
-  // Auto-assign when stage + client change
+  // Auto-assign when stage + client change (skip for periodic stages)
   useEffect(() => {
     if (!stage || !clientId) return;
+    if (isPeriodicStageKey(stage)) return;
     const fixedAssignee = getFixedAssignee(stageAssignees, stage, clientId);
     const fixedWatchers = getFixedWatchers(stageAssignees, stage, clientId);
     const autoIds: string[] = [];
@@ -87,11 +90,17 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, membersMap
 
     const m = parseInt(monthRef, 10);
     const monthLabel = MONTH_LABELS[m - 1] ?? "";
-    const stageLabel = PM_ACTIVE_STAGES.find(s => s.key === stage)?.label ?? stage;
+    const isPeriodic = isPeriodicStageKey(stage);
+    const periodicLabel = periodicStages.find(p => p.key === stage)?.label ?? stage;
+    const stageLabel = isPeriodic
+      ? periodicLabel
+      : (PM_ACTIVE_STAGES.find(s => s.key === stage)?.label ?? stage);
 
     let title: string;
     if (isExtra) {
       title = customTitle.trim() || `[${client.name}] - ${stageLabel} - Extra`;
+    } else if (isPeriodic) {
+      title = customTitle.trim() || `[${client.name}] - ${stageLabel} - ${monthLabel}`;
     } else {
       title = `[${client.name}] - ${stageLabel} - ${monthLabel}`;
     }
@@ -101,14 +110,19 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, membersMap
 
     setSaving(true);
     try {
+      // Periodic stages don't enter the workflow → store stage_current as 'entrega'
+      // (terminal status) and keep the real periodic key in periodic_stage_key.
+      const stageForDb = isPeriodic ? "entrega" : stage;
+
       const task = await createTask.mutateAsync({
         title,
         client_id: clientId,
-        stage_current: stage as any,
+        stage_current: stageForDb as any,
         assignee_id: mainAssignee,
         watchers: watchers.length > 0 ? watchers : undefined,
         is_extra_demand: isExtra,
         status_global: "backlog",
+        periodic_stage_key: isPeriodic ? stage : null,
       });
 
       onClose();
@@ -163,6 +177,19 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, membersMap
                 {PM_ACTIVE_STAGES.map(s => (
                   <SelectItem key={s.key} value={s.key} className="text-sm">{s.label}</SelectItem>
                 ))}
+                {periodicStages.length > 0 && (
+                  <>
+                    <div className="my-1 h-px bg-border" />
+                    <div className="px-2 py-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                      Periódicas
+                    </div>
+                    {periodicStages.map(s => (
+                      <SelectItem key={s.key} value={s.key} className="text-sm">
+                        {s.label}
+                      </SelectItem>
+                    ))}
+                  </>
+                )}
               </SelectContent>
             </Select>
           </div>
