@@ -1460,7 +1460,9 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
             <Popover>
               <PopoverTrigger asChild>
                 <button className="text-xs min-h-[28px] hover:opacity-80 transition">
-                  {clientsMap[task.client_id] ?? "—"}
+                  {task.periodic_stage_key
+                    ? (task.title.replace(/\s*\b\d{1,2}:\d{2}\b\s*$/, "").trim() || clientsMap[task.client_id] || "—")
+                    : (clientsMap[task.client_id] ?? "—")}
                 </button>
               </PopoverTrigger>
               <PopoverContent className="w-56 p-1 max-h-64 overflow-y-auto z-[150]" align="start">
