@@ -29,6 +29,11 @@ import {
   DAYS_PT } from
 "@/features/cleaning/hooks/use-cleaning";
 import { useRealtimeSync } from "@/hooks/use-realtime-sync";
+import { usePeriodicStages } from "@/features/gestao/hooks/use-periodic-stages";
+
+function getPeriodicStageFallbackLabel(key: string) {
+  return key.replace(/^custom_/, "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
 
 function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join("");
