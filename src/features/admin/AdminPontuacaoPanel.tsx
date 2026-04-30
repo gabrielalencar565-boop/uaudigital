@@ -36,6 +36,18 @@ export function AdminPontuacaoPanel() {
   const [edits, setEdits] = useState<EditState>({});
   const [newTagName, setNewTagName] = useState("");
   const [newTagColor, setNewTagColor] = useState("blue");
+  const [newStageName, setNewStageName] = useState("");
+
+  // Normalize a stage label to "custom_<slug>"
+  function makeCustomStageKey(name: string) {
+    const slug = name
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "");
+    return `custom_${slug}`;
+  }
 
   const configQ = useQuery({
     queryKey: ["scoring_config"],
