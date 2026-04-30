@@ -34,6 +34,17 @@ function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join("");
 }
 
+const STAGE_ABBR: Record<string, string> = {
+  captacao: "CAP", planejamento: "PLAN", design: "DSG", edicao_videos: "VDO",
+  revisao: "REV", alteracoes: "ALT", pdf: "PDF", agendamento: "AGN", entrega: "ENT"
+};
+
+const STAGE_BADGE_BG: Record<string, string> = {
+  captacao: "bg-red-500", planejamento: "bg-blue-500", design: "bg-stage-design",
+  edicao_videos: "bg-purple-500", revisao: "bg-pink-500", alteracoes: "bg-stage-alteracoes",
+  pdf: "bg-indigo-500", agendamento: "bg-lime-500", entrega: "bg-emerald-500"
+};
+
 function getCleaningEmoji(categoryName: string) {
   const name = categoryName.toLowerCase();
   if (name.includes("varrer") || name.includes("vassoura") || name.includes("chão")) return "🧹";
@@ -914,29 +925,34 @@ export function DayViewPanel() {
                       {/* Tarefas da pessoa */}
                       <div className="flex flex-col gap-2.5 flex-1">
                         {g.tasks.map((t) => {
-                          const stageLabel = STAGES.find((s) => s.key === t.stage)?.label ?? t.stage;
+                          const stageAbbr = STAGE_ABBR[t.stage] ?? t.stage.toUpperCase().slice(0, 4);
+                          const stageBg = STAGE_BADGE_BG[t.stage] ?? "bg-muted";
                           return (
                             <div
                               key={t.id}
                               onClick={() => handleTaskClick(t)}
                               className={cn(
-                                "rounded-lg border border-border bg-card cursor-pointer hover:bg-accent/50 transition-colors min-w-0",
+                                "flex items-center gap-2 rounded-lg border border-border bg-card cursor-pointer hover:bg-accent/50 transition-colors min-w-0",
                                 veryDense ? "px-2.5 py-2" : dense ? "px-3 py-2.5" : "px-4 py-3"
                               )}
                             >
-                              <p className={cn("font-semibold leading-tight truncate", veryDense ? "text-sm" : dense ? "text-base" : "text-lg")}>
+                              <span
+                                className={cn(
+                                  "inline-flex items-center justify-center rounded-md font-bold tracking-wide text-white shrink-0",
+                                  stageBg,
+                                  veryDense ? "h-6 px-2 text-[10px]" : dense ? "h-7 px-2.5 text-xs" : "h-8 px-3 text-sm"
+                                )}
+                              >
+                                {stageAbbr}
+                              </span>
+                              <p className={cn("font-semibold leading-tight truncate flex-1 min-w-0", veryDense ? "text-sm" : dense ? "text-base" : "text-lg")}>
                                 {resolveClientName(t)}
                               </p>
-                              <div className="flex items-center justify-between gap-2 mt-1.5">
-                                <span className={cn("text-muted-foreground truncate", veryDense ? "text-xs" : dense ? "text-sm" : "text-base")}>
-                                  {stageLabel}
-                                </span>
-                                {!veryDense && (
-                                  <Badge variant={t.status === "em_andamento" ? "warning" : "secondary"} className={cn("shrink-0", dense ? "text-xs px-2 py-0.5 h-5" : "text-sm px-2.5 py-0.5 h-6")}>
-                                    {t.status === "em_andamento" ? "Em and." : "Pend."}
-                                  </Badge>
-                                )}
-                              </div>
+                              {t.status === "em_andamento" && !veryDense && (
+                                <Badge variant="warning" className={cn("shrink-0", dense ? "text-[10px] px-1.5 py-0 h-4" : "text-xs px-2 py-0.5 h-5")}>
+                                  Em and.
+                                </Badge>
+                              )}
                             </div>
                           );
                         })}
