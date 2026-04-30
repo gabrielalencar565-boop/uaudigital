@@ -939,8 +939,44 @@ export function DayViewPanel() {
                       {/* Tarefas da pessoa */}
                       <div className="flex flex-col gap-2.5 flex-1">
                         {g.tasks.map((t) => {
-                          const stageAbbr = STAGE_ABBR[t.stage] ?? t.stage.toUpperCase().slice(0, 4);
-                          const stageBg = STAGE_BADGE_BG[t.stage] ?? "bg-muted";
+                          // Compute gradient/abbr for revisão & alteração (same as agenda)
+                          const isAlteracaoWithOrigin = t.stage === "alteracoes" && !!t.post_type;
+                          const isRevisao = t.stage === "revisao";
+                          const childTypes = t.childPostTypes ?? new Set<string>();
+                          const isMixed = childTypes.has("video") && childTypes.has("design");
+                          const isRevisaoMixed = isRevisao && isMixed;
+                          const isRevisaoPlanejamento = isRevisao && !t.parent_task_id && (
+                            t.post_type === "planejamento" ||
+                            (childTypes.size > 0 && !childTypes.has("video") && !childTypes.has("design"))
+                          ) && t.post_type !== "video" && t.post_type !== "design";
+                          const isRevisaoVideo = isRevisao && !isRevisaoMixed && !isRevisaoPlanejamento && t.post_type === "video";
+                          const isRevisaoDesign = isRevisao && !isRevisaoMixed && !isRevisaoPlanejamento && !isRevisaoVideo;
+                          const gradientClass = isAlteracaoWithOrigin
+                            ? (t.post_type === "video"
+                              ? "bg-gradient-to-r from-stage-alteracoes to-stage-edicao_videos"
+                              : "bg-gradient-to-r from-stage-alteracoes to-stage-design")
+                            : isRevisaoPlanejamento
+                            ? "bg-gradient-to-r from-pink-400 to-stage-planejamento"
+                            : isRevisaoMixed
+                            ? "bg-gradient-to-r from-pink-400 via-stage-design to-stage-edicao_videos"
+                            : isRevisaoVideo
+                            ? "bg-gradient-to-r from-pink-400 to-stage-edicao_videos"
+                            : isRevisaoDesign
+                            ? "bg-gradient-to-r from-pink-400 to-stage-design"
+                            : undefined;
+                          const gradientAbbr = isAlteracaoWithOrigin
+                            ? (t.post_type === "video" ? "ALT/VDO" : "ALT/DSG")
+                            : isRevisaoPlanejamento
+                            ? "REV/PLAN"
+                            : isRevisaoMixed
+                            ? "REV/MIX"
+                            : isRevisaoVideo
+                            ? "REV/VDO"
+                            : isRevisaoDesign
+                            ? "REV/DSG"
+                            : undefined;
+                          const stageAbbr = gradientAbbr ?? STAGE_ABBR[t.stage] ?? t.stage.toUpperCase().slice(0, 4);
+                          const stageBg = gradientClass ?? STAGE_BADGE_BG[t.stage] ?? "bg-muted";
                           return (
                             <div
                               key={t.id}
