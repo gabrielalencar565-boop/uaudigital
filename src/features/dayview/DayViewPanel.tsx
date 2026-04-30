@@ -931,16 +931,39 @@ export function DayViewPanel() {
                           <span className={cn("leading-none shrink-0", veryDense ? "text-base" : dense ? "text-lg" : "text-xl")}>
                             {emoji}
                           </span>
-                          <p
-                            className={cn(
-                              "font-semibold leading-tight flex-1 min-w-0 whitespace-nowrap overflow-hidden text-ellipsis",
-                              veryDense ? "text-xs" : dense ? "text-sm" : "text-base",
-                              isDone && "text-success-foreground",
-                              isOverdueCleaning && "text-destructive-foreground"
-                            )}
-                          >
-                            {cat?.name ?? "Limpeza"}
-                          </p>
+                          {(() => {
+                            const cleaningName = (cat?.name ?? "Limpeza").trim();
+                            const isSingleWord = !cleaningName.includes(" ");
+                            return (
+                              <p
+                                lang="pt-BR"
+                                title={cleaningName}
+                                className={cn(
+                                  "font-semibold leading-tight flex-1 min-w-0 [hyphens:none]",
+                                  isSingleWord ? "whitespace-nowrap overflow-hidden text-ellipsis" : "",
+                                  veryDense ? "text-xs" : dense ? "text-sm" : "text-base",
+                                  isDone && "text-success-foreground",
+                                  isOverdueCleaning && "text-destructive-foreground"
+                                )}
+                                style={
+                                  !isSingleWord
+                                    ? {
+                                        display: "-webkit-box",
+                                        WebkitLineClamp: 2,
+                                        WebkitBoxOrient: "vertical",
+                                        overflow: "hidden",
+                                        textOverflow: "ellipsis",
+                                        wordBreak: "keep-all",
+                                        overflowWrap: "break-word",
+                                        hyphens: "none",
+                                      }
+                                    : { wordBreak: "keep-all", overflowWrap: "normal", hyphens: "none" }
+                                }
+                              >
+                                {cleaningName}
+                              </p>
+                            );
+                          })()}
                           {isDone && (
                             <span className={cn("font-bold text-success-foreground shrink-0", veryDense ? "text-xs" : "text-sm")}>✓</span>
                           )}
