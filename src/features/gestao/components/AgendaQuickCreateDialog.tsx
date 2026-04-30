@@ -47,6 +47,11 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
   const [dueDate, setDueDate] = useState(defaultDate ?? format(new Date(), "yyyy-MM-dd"));
   const [isExtra, setIsExtra] = useState(false);
   const [customTitle, setCustomTitle] = useState("");
+  // Periodic-only fields
+  const [periodicClientName, setPeriodicClientName] = useState("");
+  const [periodicTime, setPeriodicTime] = useState("");
+
+  const isPeriodic = isPeriodicStageKey(stage);
 
   // Reference month defaults from the due date (month only, no year)
   const dueDateObj = dueDate ? new Date(`${dueDate}T12:00:00`) : new Date();
@@ -64,6 +69,8 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
     setClientId("");
     setStage("");
     setSelectedMemberIds([]);
+    setPeriodicClientName("");
+    setPeriodicTime("");
   }, [open, defaultDate]);
 
   // Auto-assign when stage + client change
