@@ -1048,53 +1048,7 @@ export function DayViewPanel() {
             </CardDescription>
           </CardHeader>
           <CardContent className={cn("space-y-4", isFullscreen && "flex-1 overflow-auto")}>
-            {/* ─── Limpeza – Widget compacto horizontal (TOPO) ─── */}
-            {isCurrentMonth && todayCleaningTasks.length > 0 &&
-        <div className="flex flex-wrap items-center gap-2">
-                {todayCleaningTasks.map((schedule) => {
-            const cat = cleaningCategoryById.get(schedule.category_id);
-            const member = teamByUserId.get(schedule.user_id);
-            const isDone = completedScheduleIds.has(schedule.id);
-            const dueTimeStr = schedule.due_time?.slice(0, 5) ?? "18:00";
-            const [dueH, dueM] = dueTimeStr.split(":").map(Number);
-            const isOverdue = !isDone && (now.getHours() > dueH || now.getHours() === dueH && now.getMinutes() >= dueM);
-            const emoji = getCleaningEmoji(cat?.name ?? "");
-            return (
-              <Tooltip key={schedule.id}>
-                      <TooltipTrigger asChild>
-                        <button
-                    type="button"
-                    disabled={toggleCleaning.isPending}
-                    onClick={() => {
-                      if (!sessionUser) return;
-                      toggleCleaning.mutate({
-                        scheduleId: schedule.id,
-                        date: todayKey,
-                        userId: sessionUser.id,
-                        isCompleted: isDone
-                      });
-                    }}
-                    className={cn("flex items-center gap-1.5 rounded-full px-2.5 py-1.5 transition border-4",
-
-                    isDone && "border-success bg-success/10",
-                    isOverdue && "border-destructive bg-destructive/10",
-                    !isDone && !isOverdue && "border-border bg-card"
-                    )}>
-
-                          <Avatar className="h-6 w-6">
-                            <AvatarImage src={member?.avatar_url ?? undefined} />
-                            <AvatarFallback className="text-[8px]">{initials(member?.display_name ?? "?")}</AvatarFallback>
-                          </Avatar>
-                          <span className="text-xs font-medium leading-none">{member?.display_name?.split(" ")[0]}</span>
-                          <span className="text-base leading-none">{emoji}</span>
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent>{member?.display_name} • {cat?.name} • até {dueTimeStr}</TooltipContent>
-                    </Tooltip>);
-
-          })}
-              </div>
-        }
+            {/* Limpeza agora aparece dentro da coluna de cada pessoa, junto às tarefas */}
 
             {/* Tarefas agrupadas por pessoa (pendentes, concluídas e atrasadas na mesma coluna) */}
             {renderPersonColumns(todayPendingTasks, todayCompletedTasks, overdueTasks as any, isCurrentMonth ? "Hoje" : "Pendentes")}
