@@ -38,6 +38,7 @@ interface Props {
 export function PmClientView({ tasks, childTasksMap, clientsMap, membersMap, onTaskClick }: Props) {
   const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set());
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
+  const { data: periodicStages = [] } = usePeriodicStages();
 
   const grouped = useMemo(() => {
     const map: Record<string, PmTask[]> = {};
