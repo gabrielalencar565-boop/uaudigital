@@ -762,7 +762,9 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
               ? "REV/DSG"
               : undefined;
     const stageBg = gradientClass ?? (STAGE_BADGE_BG[t.stage_current] ?? "bg-muted");
-    const abbr = periodic?.label ?? gradientAbbr ?? (STAGE_ABBR[t.stage_current] ?? t.stage_current.toUpperCase().slice(0, 4));
+    const abbr = t.periodic_stage_key
+      ? (periodic?.label ?? getPeriodicStageFallbackLabel(t.periodic_stage_key))
+      : gradientAbbr ?? (STAGE_ABBR[t.stage_current] ?? t.stage_current.toUpperCase().slice(0, 4));
     const assignees = getTaskAssignees(t);
     const visibleAssignees = assignees.slice(0, 2);
     const extraAssignees = Math.max(assignees.length - 2, 0);
