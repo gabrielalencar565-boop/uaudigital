@@ -102,6 +102,7 @@ export function DayViewPanel() {
   const freelancerClientId = freelancerClientQ.data?.id ?? null;
   const clientsQ = useClients();
   const teamQ = useTeamMembers();
+  const periodicStagesQ = usePeriodicStages();
   const tasksQ = useTasks({
     month: monthKey
   });
