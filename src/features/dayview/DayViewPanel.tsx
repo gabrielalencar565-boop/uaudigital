@@ -1072,7 +1072,7 @@ export function DayViewPanel() {
 
 
             {/* Mensagem quando não há tarefas */}
-            {todayPendingTasks.length === 0 && todayCompletedTasks.length === 0 && overdueTasks.length === 0 && todayCleaningTasks.length === 0 && <p className="text-muted-foreground text-center py-4">
+            {todayPendingTasks.length === 0 && todayCompletedTasks.length === 0 && todayCleaningTasks.length === 0 && <p className="text-muted-foreground text-center py-4">
                 {isCurrentMonth ? "Nenhuma tarefa para hoje 🎉" : "Nenhuma tarefa neste mês"}
               </p>}
            </CardContent>
