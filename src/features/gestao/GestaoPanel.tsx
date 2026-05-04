@@ -753,13 +753,13 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
       ? "bg-gradient-to-r from-pink-400 to-stage-design"
       : undefined;
     const gradientAbbr = isAlteracaoMixed
-      ? "ALT/MIX"
+      ? "ALT/PLAN"
       : isAlteracaoWithOrigin
       ? (t.post_type === "video" ? "ALT/VDO" : "ALT/DSG")
       : isRevisaoPlanejamento
         ? "REV/PLAN"
         : isRevisaoMixed
-          ? "REV/MIX"
+          ? "REV/PLAN"
           : isRevisaoVideo
             ? "REV/VDO"
             : isRevisaoDesign
