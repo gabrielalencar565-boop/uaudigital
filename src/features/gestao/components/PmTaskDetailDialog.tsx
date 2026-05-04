@@ -1917,10 +1917,15 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
 
 
-        {/* Subtasks — use planning layout for parent tasks at planejamento, pdf, agendamento or entrega.
+        {/* Subtasks — use planning layout for parent tasks at planejamento, pdf, agendamento, entrega,
+            or alteracoes with mixed children (both design + video).
             Periodic tasks (custom_*) are simple standalone tasks → always use the regular subtask list. */}
         <div className="border-t border-border/20 pt-4">
-          {!task.parent_task_id && !task.periodic_stage_key && (["planejamento", "pdf", "agendamento", "entrega"].includes(task.stage_current) || isPlanejamentoReview) ? (
+          {!task.parent_task_id && !task.periodic_stage_key && (
+            ["planejamento", "pdf", "agendamento", "entrega"].includes(task.stage_current) ||
+            isPlanejamentoReview ||
+            (task.stage_current === "alteracoes" && childTasks.some(c => c.post_type === "video") && childTasks.some(c => c.post_type === "design"))
+          ) ? (
             <PmPlanningSubtasks
               parentTask={task}
               childTasks={childTasks}
