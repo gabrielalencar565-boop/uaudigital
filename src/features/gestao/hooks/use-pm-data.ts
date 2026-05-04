@@ -344,7 +344,7 @@ export function useUpdatePmTask() {
       qc.setQueriesData<PmTask[]>({ queryKey: ["pm_child_tasks_all"] }, updateInList);
     },
     onSuccess: (_data, variables) => {
-      if (Object.prototype.hasOwnProperty.call(variables, "tags")) {
+      if (Object.prototype.hasOwnProperty.call(variables, "tags") || Object.prototype.hasOwnProperty.call(variables, "due_date")) {
         invalidatePerformanceQueries();
       }
     },
