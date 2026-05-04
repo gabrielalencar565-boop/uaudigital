@@ -313,7 +313,9 @@ export function DayViewPanel() {
     }
 
     // PM main tasks (count once here; snapshots were skipped above)
+    // Exclude revisão tasks — they don't count towards totals in The Best
     for (const t of pmTasks) {
+      if (t.stage_current === "revisao") continue;
       addItem(t.assignee_id, t.status_global === "concluido");
     }
 
