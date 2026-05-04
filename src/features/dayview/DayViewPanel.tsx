@@ -106,9 +106,40 @@ export function DayViewPanel() {
   const tasksQ = useTasks({
     month: monthKey
   });
+  const overdueAgendaTasksQ = useQuery({
+    enabled: isCurrentMonth,
+    queryKey: ["overdue_tasks_for_dayview", todayKey],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tasks")
+        .select("id, client_id, stage, assigned_user_id, due_date, due_at, status, title, description, created_by, completed_at, deleted_at, deleted_by, is_extra_demand, quantity, point_value, late_penalty_value")
+        .is("deleted_at", null)
+        .neq("status", "concluido")
+        .lt("due_date", todayKey)
+        .order("due_date", { ascending: true })
+        .limit(5000);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
   const magic2 = useMagic2Dashboard(selectedYear, selectedMonth);
   const assigneesQ = useTaskAssigneesByMonth(monthKey);
   const { user: sessionUser } = useSession();
+
+  const overdueTaskAssigneesQ = useQuery({
+    enabled: isCurrentMonth && (overdueAgendaTasksQ.data ?? []).length > 0,
+    queryKey: ["overdue_task_assignees_for_dayview", todayKey, (overdueAgendaTasksQ.data ?? []).map((t) => t.id).join(",")],
+    queryFn: async () => {
+      const taskIds = (overdueAgendaTasksQ.data ?? []).map((t) => t.id);
+      if (!taskIds.length) return [];
+      const { data, error } = await supabase
+        .from("task_assignees")
+        .select("id, task_id, user_id, added_by, created_at")
+        .in("task_id", taskIds);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
 
   // ─── PM tasks (Gestão) for agenda sync ───
   const pmTasksQ = useQuery({
@@ -125,6 +156,25 @@ export function DayViewPanel() {
         .is("deleted_at", null)
         .gte("due_date", startDate)
         .lte("due_date", endDate);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const overduePmTasksQ = useQuery({
+    enabled: isCurrentMonth,
+    queryKey: ["overdue_pm_tasks_for_dayview", todayKey],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pm_tasks")
+        .select("id, title, client_id, assignee_id, watchers, due_date, stage_current, status_global, is_extra_demand, parent_task_id, updated_at, post_type, periodic_stage_key")
+        .is("parent_task_id", null)
+        .is("deleted_at", null)
+        .lt("due_date", todayKey)
+        .neq("status_global", "concluido")
+        .neq("status_global", "cancelado")
+        .order("due_date", { ascending: true })
+        .limit(5000);
       if (error) throw error;
       return data ?? [];
     },
