@@ -439,6 +439,14 @@ export function DayViewPanel() {
 
   const clientsById = useMemo(() => new Map((clientsQ.data ?? []).map((c) => [c.id, c] as const)), [clientsQ.data]);
   const teamByUserId = useMemo(() => new Map((teamQ.data ?? []).map((m) => [m.user_id, m] as const)), [teamQ.data]);
+  const allPmTasksForDayView = useMemo(() => {
+    const map = new Map<string, NonNullable<typeof pmTasksQ.data>[number]>();
+    for (const t of pmTasksQ.data ?? []) map.set(t.id, t);
+    if (isCurrentMonth) {
+      for (const t of overduePmTasksQ.data ?? []) map.set(t.id, t as NonNullable<typeof pmTasksQ.data>[number]);
+    }
+    return Array.from(map.values());
+  }, [pmTasksQ.data, overduePmTasksQ.data, isCurrentMonth]);
 
   /** Resolve client name: freelancer tasks show title instead */
   const resolveClientName = (t: {client_id: string;title: string | null;}) => {
@@ -456,7 +464,7 @@ export function DayViewPanel() {
       avatar_url?: string | null;
     }[]>();
     // Legacy task_assignees
-    for (const a of assigneesQ.data ?? []) {
+    for (const a of [...(assigneesQ.data ?? []), ...(isCurrentMonth ? (overdueTaskAssigneesQ.data ?? []) : [])]) {
       const member = teamByUserId.get(a.user_id);
       if (!member) continue;
       const prev = map.get(a.task_id) ?? [];
@@ -468,7 +476,7 @@ export function DayViewPanel() {
       map.set(a.task_id, prev);
     }
     // PM tasks: assignee + watchers
-    for (const t of pmTasksQ.data ?? []) {
+    for (const t of allPmTasksForDayView) {
       const key = `pm_${t.id}`;
       const members: { user_id: string; display_name: string; avatar_url?: string | null }[] = [];
       const seen = new Set<string>();
@@ -484,7 +492,7 @@ export function DayViewPanel() {
       if (members.length > 0) map.set(key, members);
     }
     return map;
-  }, [assigneesQ.data, teamByUserId, pmTasksQ.data]);
+  }, [assigneesQ.data, overdueTaskAssigneesQ.data, isCurrentMonth, teamByUserId, allPmTasksForDayView]);
 
   // ─── Cleaning memos ───
   const todayCleaningTasks = useMemo(() => {
