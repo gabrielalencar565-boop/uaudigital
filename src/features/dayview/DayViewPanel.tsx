@@ -535,7 +535,10 @@ export function DayViewPanel() {
 
   const unifiedTasks = useMemo(() => {
     // Group pm scoring snapshots (pm:taskId:stage:userId) into a single entry
-    const rawAgenda = tasksQ.data ?? [];
+    const rawAgenda = [
+      ...(tasksQ.data ?? []),
+      ...(isCurrentMonth ? (overdueAgendaTasksQ.data ?? []) : []),
+    ];
     const pmSnapshotGroups = new Map<string, typeof rawAgenda>();
     const nonSnapshotTasks: typeof rawAgenda = [];
 
@@ -590,7 +593,7 @@ export function DayViewPanel() {
       if (parts[1]) snapshotPmIds.add(parts[1]);
     }
     
-    const pmTasks: UnifiedTask[] = (pmTasksQ.data ?? [])
+    const pmTasks: UnifiedTask[] = allPmTasksForDayView
       .filter(t => {
         // Skip if there's already an agenda snapshot for this pm_task
         return !snapshotPmIds.has(t.id);
@@ -613,8 +616,10 @@ export function DayViewPanel() {
         periodic_stage_key: (t as any).periodic_stage_key ?? null,
       }));
 
-    return { tasks: [...agendaTasks, ...pmTasks], pmSnapshotGroups };
-  }, [tasksQ.data, pmTasksQ.data, pmChildCountQ.data]);
+    const tasksById = new Map<string, UnifiedTask>();
+    for (const task of [...agendaTasks, ...pmTasks]) tasksById.set(task.id, task);
+    return { tasks: Array.from(tasksById.values()), pmSnapshotGroups };
+  }, [tasksQ.data, overdueAgendaTasksQ.data, isCurrentMonth, allPmTasksForDayView, pmChildCountQ.data]);
 
   // Build merged assignees for pm snapshot groups
   const mergedSnapshotAssignees = useMemo(() => {
