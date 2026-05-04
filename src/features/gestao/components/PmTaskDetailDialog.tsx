@@ -907,6 +907,20 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       return;
     }
 
+    // ═══ PERIODIC / CUSTOM STAGES (e.g. Reunião): standalone — just mark as done, no flow ═══
+    if (task.periodic_stage_key) {
+      const sb = supabase as any;
+      const allIds = [task.id, ...childTasks.map(c => c.id)];
+      await sb.from("pm_tasks")
+        .update({ status_global: "concluido" })
+        .in("id", allIds);
+      queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
+      toast.success("Tarefa concluída!");
+      return;
+    }
+
     const dateConfig = transitionDates[task.stage_current];
 
     // Calculate new due date
