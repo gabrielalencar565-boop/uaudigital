@@ -1068,11 +1068,11 @@ export function DayViewPanel() {
             {/* Limpeza agora aparece dentro da coluna de cada pessoa, junto às tarefas */}
 
             {/* Tarefas agrupadas por pessoa (pendentes, concluídas e atrasadas na mesma coluna) */}
-            {renderPersonColumns(todayPendingTasks, todayCompletedTasks, overdueTasks as any, isCurrentMonth ? "Hoje" : "Pendentes")}
+            {renderPersonColumns(todayPendingTasks, todayCompletedTasks, [] as any, isCurrentMonth ? "Hoje" : "Pendentes")}
 
 
             {/* Mensagem quando não há tarefas */}
-            {todayPendingTasks.length === 0 && todayCompletedTasks.length === 0 && overdueTasks.length === 0 && todayCleaningTasks.length === 0 && <p className="text-muted-foreground text-center py-4">
+            {todayPendingTasks.length === 0 && todayCompletedTasks.length === 0 && todayCleaningTasks.length === 0 && <p className="text-muted-foreground text-center py-4">
                 {isCurrentMonth ? "Nenhuma tarefa para hoje 🎉" : "Nenhuma tarefa neste mês"}
               </p>}
            </CardContent>
