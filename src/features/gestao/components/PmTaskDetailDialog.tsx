@@ -307,7 +307,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   const { user: sessionUser } = useSession();
   const { isAdmin: isRoleAdmin, isPlanner } = useRole(sessionUser?.id);
   const canCorrect = isRoleAdmin || isPlanner;
-  const isCompletedSnapshot = task.status_global === "concluido" && task.stage_current !== "entrega" && !task.parent_task_id;
+  const isCompletedSnapshot = task.status_global === "concluido" && task.stage_current !== "entrega" && !task.parent_task_id && !task.is_extra_demand;
   const [correctionMode, setCorrectionMode] = useState(false);
   const periodicStagesQ = usePeriodicStages();
   const periodicStages = periodicStagesQ.data ?? [];
@@ -333,6 +333,8 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     ? ["revisao"]
     : rawNextStages;
   const isDone = task.parent_task_id
+    ? task.status_global === "concluido"
+    : task.is_extra_demand
     ? task.status_global === "concluido"
     : task.stage_current === "entrega";
 
