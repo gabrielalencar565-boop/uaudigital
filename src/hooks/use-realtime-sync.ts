@@ -69,7 +69,7 @@ const TABLE_TO_QUERY_KEYS: Record<RealtimeTable, string[][]> = {
   ],
   clients: [["clients"], ["clients_all"], ["clients_admin_all"]],
   client_cycles: [["client_cycles"]],
-  task_assignees: [["task_assignees"], ["task_assignees_month"], ["tasks"], ["performance_scores"]],
+  task_assignees: [["task_assignees"], ["task_assignees_month"], ["overdue_task_assignees_for_dayview"], ["tasks"], ["performance_scores"]],
   magic2_cycles: [["magic2"], ["client_contract_months"]],
   magic2_cycle_stages: [["magic2"]],
   magic2_clients: [["magic2"]],
