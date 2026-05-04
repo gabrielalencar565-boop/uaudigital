@@ -723,8 +723,10 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
     const periodicTitle = t.periodic_stage_key ? stripPeriodicTime(t.title) : null;
     const isMixed = childPostTypes.has("video") && childPostTypes.has("design");
     const isAlteracaoParent = isAlteracao && childrenOfThis.length > 0;
-    const isAlteracaoMixed = isAlteracaoParent; // parent in alteracoes always treated as "plan"
-    const isAlteracaoWithOrigin = isAlteracao && (!!t.post_type || isAlteracaoParent);
+    // A task is "plan" if it's a parent OR if it has an origin (was split from planning)
+    const isAlteracaoPlan = isAlteracao && (isAlteracaoParent || !!t.origin_task_id);
+    const isAlteracaoMixed = isAlteracaoPlan;
+    const isAlteracaoWithOrigin = isAlteracao && (!!t.post_type || isAlteracaoPlan);
     const isRevisaoMixed = isRevisao && isMixed;
     // Revisão (Planejamento): parent task on revisão stage with post_type='planejamento'
     // OR parent task on revisão without any design/video children yet (initial pauta review)
