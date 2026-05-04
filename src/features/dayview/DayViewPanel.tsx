@@ -1068,7 +1068,7 @@ export function DayViewPanel() {
             {/* Limpeza agora aparece dentro da coluna de cada pessoa, junto às tarefas */}
 
             {/* Tarefas agrupadas por pessoa (pendentes, concluídas e atrasadas na mesma coluna) */}
-            {renderPersonColumns(todayPendingTasks, todayCompletedTasks, overdueTasks as any, isCurrentMonth ? "Hoje" : "Pendentes")}
+            {renderPersonColumns(todayPendingTasks, todayCompletedTasks, [] as any, isCurrentMonth ? "Hoje" : "Pendentes")}
 
 
             {/* Mensagem quando não há tarefas */}
