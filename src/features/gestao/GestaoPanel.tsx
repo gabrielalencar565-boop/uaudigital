@@ -713,7 +713,7 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
   const renderTaskCard = (t: PmTask) => {
     const isLegacy = t.id.startsWith("legacy_");
     const isDone = t.parent_task_id ? t.status_global === "concluido" : (t.status_global === "concluido" || t.stage_current === "entrega");
-    const isAlteracaoWithOrigin = t.stage_current === "alteracoes" && !!t.post_type;
+    const isAlteracao = t.stage_current === "alteracoes";
     const isRevisao = t.stage_current === "revisao";
     // Detect mixed children (parent has both video and design subtasks)
     const childrenOfThis = childTasksMap[t.id] ?? [];
@@ -722,6 +722,8 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
     const periodicTime = t.periodic_stage_key ? getPeriodicTime(t) : null;
     const periodicTitle = t.periodic_stage_key ? stripPeriodicTime(t.title) : null;
     const isMixed = childPostTypes.has("video") && childPostTypes.has("design");
+    const isAlteracaoMixed = isAlteracao && isMixed;
+    const isAlteracaoWithOrigin = isAlteracao && (!!t.post_type || isAlteracaoMixed);
     const isRevisaoMixed = isRevisao && isMixed;
     // Revisão (Planejamento): parent task on revisão stage with post_type='planejamento'
     // OR parent task on revisão without any design/video children yet (initial pauta review)
@@ -735,7 +737,9 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
     const isPdfVideo = false;
     const isPdfDesign = false;
     const hasGradient = isAlteracaoWithOrigin || isRevisao;
-    const gradientClass = isAlteracaoWithOrigin
+    const gradientClass = isAlteracaoMixed
+      ? "bg-gradient-to-r from-stage-alteracoes via-stage-design to-stage-edicao_videos"
+      : isAlteracaoWithOrigin
       ? (t.post_type === "video"
         ? "bg-gradient-to-r from-stage-alteracoes to-stage-edicao_videos"
         : "bg-gradient-to-r from-stage-alteracoes to-stage-design")
@@ -748,7 +752,9 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
       : isRevisaoDesign
       ? "bg-gradient-to-r from-pink-400 to-stage-design"
       : undefined;
-    const gradientAbbr = isAlteracaoWithOrigin
+    const gradientAbbr = isAlteracaoMixed
+      ? "ALT/MIX"
+      : isAlteracaoWithOrigin
       ? (t.post_type === "video" ? "ALT/VDO" : "ALT/DSG")
       : isRevisaoPlanejamento
         ? "REV/PLAN"
