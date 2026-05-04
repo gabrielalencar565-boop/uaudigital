@@ -921,6 +921,21 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       return;
     }
 
+    // ═══ EXTRA DEMAND: standalone — just mark as done, no next stage ═══
+    if (task.is_extra_demand) {
+      const sb = supabase as any;
+      const allIds = [task.id, ...childTasks.map(c => c.id)];
+      await sb.from("pm_tasks")
+        .update({ status_global: "concluido" })
+        .in("id", allIds);
+      syncCompletedStage(completedStage);
+      queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
+      toast.success("Demanda extra concluída!");
+      return;
+    }
+
     const dateConfig = transitionDates[task.stage_current];
 
     // Calculate new due date
