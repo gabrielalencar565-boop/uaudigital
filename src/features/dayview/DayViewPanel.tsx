@@ -98,6 +98,8 @@ export function DayViewPanel() {
   const today = now;
   const todayKey = format(today, "yyyy-MM-dd");
   const monthKey = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}`;
+  // Se estamos visualizando o mês atual, mostrar tarefas de hoje + atrasadas de qualquer mês anterior
+  const isCurrentMonth = selectedYear === now.getFullYear() && selectedMonth === now.getMonth() + 1;
   const freelancerClientQ = useFreelancerClient();
   const freelancerClientId = freelancerClientQ.data?.id ?? null;
   const clientsQ = useClients();
@@ -106,9 +108,40 @@ export function DayViewPanel() {
   const tasksQ = useTasks({
     month: monthKey
   });
+  const overdueAgendaTasksQ = useQuery({
+    enabled: isCurrentMonth,
+    queryKey: ["overdue_tasks_for_dayview", todayKey],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tasks")
+        .select("id, client_id, stage, assigned_user_id, due_date, due_at, status, title, description, created_by, completed_at, deleted_at, deleted_by, is_extra_demand, quantity, point_value, late_penalty_value")
+        .is("deleted_at", null)
+        .neq("status", "concluido")
+        .lt("due_date", todayKey)
+        .order("due_date", { ascending: true })
+        .limit(5000);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
   const magic2 = useMagic2Dashboard(selectedYear, selectedMonth);
   const assigneesQ = useTaskAssigneesByMonth(monthKey);
   const { user: sessionUser } = useSession();
+
+  const overdueTaskAssigneesQ = useQuery({
+    enabled: isCurrentMonth && (overdueAgendaTasksQ.data ?? []).length > 0,
+    queryKey: ["overdue_task_assignees_for_dayview", todayKey, (overdueAgendaTasksQ.data ?? []).map((t) => t.id).join(",")],
+    queryFn: async () => {
+      const taskIds = (overdueAgendaTasksQ.data ?? []).map((t) => t.id);
+      if (!taskIds.length) return [];
+      const { data, error } = await supabase
+        .from("task_assignees")
+        .select("id, task_id, user_id, added_by, created_at")
+        .in("task_id", taskIds);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
 
   // ─── PM tasks (Gestão) for agenda sync ───
   const pmTasksQ = useQuery({
@@ -125,6 +158,25 @@ export function DayViewPanel() {
         .is("deleted_at", null)
         .gte("due_date", startDate)
         .lte("due_date", endDate);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const overduePmTasksQ = useQuery({
+    enabled: isCurrentMonth,
+    queryKey: ["overdue_pm_tasks_for_dayview", todayKey],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pm_tasks")
+        .select("id, title, client_id, assignee_id, watchers, due_date, stage_current, status_global, is_extra_demand, parent_task_id, updated_at, post_type, periodic_stage_key")
+        .is("parent_task_id", null)
+        .is("deleted_at", null)
+        .lt("due_date", todayKey)
+        .neq("status_global", "concluido")
+        .neq("status_global", "cancelado")
+        .order("due_date", { ascending: true })
+        .limit(5000);
       if (error) throw error;
       return data ?? [];
     },
@@ -148,9 +200,12 @@ export function DayViewPanel() {
 
   // ─── PM child tasks per parent (count + post_types for gradient detection) ───
   const pmChildCountQ = useQuery({
-    queryKey: ["pm_child_count_for_dayview_v2", monthKey],
+    queryKey: ["pm_child_count_for_dayview_v2", monthKey, overduePmTasksQ.data],
     queryFn: async () => {
-      const parentIds = (pmTasksQ.data ?? []).map(t => t.id);
+      const parentIds = Array.from(new Set([
+        ...(pmTasksQ.data ?? []).map(t => t.id),
+        ...(isCurrentMonth ? (overduePmTasksQ.data ?? []).map(t => t.id) : []),
+      ]));
       if (!parentIds.length) return { counts: new Map<string, number>(), postTypes: new Map<string, Set<string>>() };
       const { data, error } = await supabase
         .from("pm_tasks")
@@ -171,7 +226,7 @@ export function DayViewPanel() {
       }
       return { counts, postTypes };
     },
-    enabled: (pmTasksQ.data ?? []).length > 0,
+    enabled: (pmTasksQ.data ?? []).length > 0 || (isCurrentMonth && (overduePmTasksQ.data ?? []).length > 0),
   });
 
   // ─── All pending tasks per user (across all months) for "Pend." column ───
@@ -387,6 +442,14 @@ export function DayViewPanel() {
 
   const clientsById = useMemo(() => new Map((clientsQ.data ?? []).map((c) => [c.id, c] as const)), [clientsQ.data]);
   const teamByUserId = useMemo(() => new Map((teamQ.data ?? []).map((m) => [m.user_id, m] as const)), [teamQ.data]);
+  const allPmTasksForDayView = useMemo(() => {
+    const map = new Map<string, NonNullable<typeof pmTasksQ.data>[number]>();
+    for (const t of pmTasksQ.data ?? []) map.set(t.id, t);
+    if (isCurrentMonth) {
+      for (const t of overduePmTasksQ.data ?? []) map.set(t.id, t as NonNullable<typeof pmTasksQ.data>[number]);
+    }
+    return Array.from(map.values());
+  }, [pmTasksQ.data, overduePmTasksQ.data, isCurrentMonth]);
 
   /** Resolve client name: freelancer tasks show title instead */
   const resolveClientName = (t: {client_id: string;title: string | null;}) => {
@@ -404,10 +467,11 @@ export function DayViewPanel() {
       avatar_url?: string | null;
     }[]>();
     // Legacy task_assignees
-    for (const a of assigneesQ.data ?? []) {
+    for (const a of [...(assigneesQ.data ?? []), ...(isCurrentMonth ? (overdueTaskAssigneesQ.data ?? []) : [])]) {
       const member = teamByUserId.get(a.user_id);
       if (!member) continue;
       const prev = map.get(a.task_id) ?? [];
+      if (prev.some((item) => item.user_id === a.user_id)) continue;
       prev.push({
         user_id: a.user_id,
         display_name: member.display_name,
@@ -416,7 +480,7 @@ export function DayViewPanel() {
       map.set(a.task_id, prev);
     }
     // PM tasks: assignee + watchers
-    for (const t of pmTasksQ.data ?? []) {
+    for (const t of allPmTasksForDayView) {
       const key = `pm_${t.id}`;
       const members: { user_id: string; display_name: string; avatar_url?: string | null }[] = [];
       const seen = new Set<string>();
@@ -432,10 +496,7 @@ export function DayViewPanel() {
       if (members.length > 0) map.set(key, members);
     }
     return map;
-  }, [assigneesQ.data, teamByUserId, pmTasksQ.data]);
-
-  // Se estamos visualizando o mês atual, mostrar tarefas de hoje
-  const isCurrentMonth = selectedYear === now.getFullYear() && selectedMonth === now.getMonth() + 1;
+  }, [assigneesQ.data, overdueTaskAssigneesQ.data, isCurrentMonth, teamByUserId, allPmTasksForDayView]);
 
   // ─── Cleaning memos ───
   const todayCleaningTasks = useMemo(() => {
@@ -475,7 +536,10 @@ export function DayViewPanel() {
 
   const unifiedTasks = useMemo(() => {
     // Group pm scoring snapshots (pm:taskId:stage:userId) into a single entry
-    const rawAgenda = tasksQ.data ?? [];
+    const rawAgenda = [
+      ...(tasksQ.data ?? []),
+      ...(isCurrentMonth ? (overdueAgendaTasksQ.data ?? []) : []),
+    ];
     const pmSnapshotGroups = new Map<string, typeof rawAgenda>();
     const nonSnapshotTasks: typeof rawAgenda = [];
 
@@ -530,7 +594,7 @@ export function DayViewPanel() {
       if (parts[1]) snapshotPmIds.add(parts[1]);
     }
     
-    const pmTasks: UnifiedTask[] = (pmTasksQ.data ?? [])
+    const pmTasks: UnifiedTask[] = allPmTasksForDayView
       .filter(t => {
         // Skip if there's already an agenda snapshot for this pm_task
         return !snapshotPmIds.has(t.id);
@@ -553,8 +617,10 @@ export function DayViewPanel() {
         periodic_stage_key: (t as any).periodic_stage_key ?? null,
       }));
 
-    return { tasks: [...agendaTasks, ...pmTasks], pmSnapshotGroups };
-  }, [tasksQ.data, pmTasksQ.data, pmChildCountQ.data]);
+    const tasksById = new Map<string, UnifiedTask>();
+    for (const task of [...agendaTasks, ...pmTasks]) tasksById.set(task.id, task);
+    return { tasks: Array.from(tasksById.values()), pmSnapshotGroups };
+  }, [tasksQ.data, overdueAgendaTasksQ.data, isCurrentMonth, allPmTasksForDayView, pmChildCountQ.data]);
 
   // Build merged assignees for pm snapshot groups
   const mergedSnapshotAssignees = useMemo(() => {
@@ -658,6 +724,12 @@ export function DayViewPanel() {
       queryKey: ["magic2"]
     }), queryClient.invalidateQueries({
       queryKey: ["tasks"]
+    }), queryClient.invalidateQueries({
+      queryKey: ["overdue_tasks_for_dayview"]
+    }), queryClient.invalidateQueries({
+      queryKey: ["overdue_pm_tasks_for_dayview"]
+    }), queryClient.invalidateQueries({
+      queryKey: ["overdue_task_assignees_for_dayview"]
     }), queryClient.invalidateQueries({
       queryKey: ["clients"]
     }), queryClient.invalidateQueries({
