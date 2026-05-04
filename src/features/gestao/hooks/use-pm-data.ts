@@ -252,6 +252,63 @@ export function useUpdatePmTask() {
           }
         }
 
+        // ── Sync due_date to scoring snapshots & recompute ──
+        if (Object.prototype.hasOwnProperty.call(updates, "due_date")) {
+          try {
+            const newDueDate = updates.due_date as string | null;
+            // Find all snapshot rows for this PM task (and its children)
+            const pmIds = [id];
+            const { data: children } = await sb.from("pm_tasks").select("id").eq("parent_task_id", id).is("deleted_at", null);
+            if (children?.length) pmIds.push(...children.map((c: any) => c.id));
+
+            // Collect affected users from old snapshots before updating
+            const oldSnapshots: { assigned_user_id: string; due_date: string }[] = [];
+            for (const pid of pmIds) {
+              const { data: snaps } = await sb.from("tasks")
+                .select("assigned_user_id, due_date")
+                .like("description", `pm:${pid}:%`)
+                .is("deleted_at", null);
+              if (snaps) oldSnapshots.push(...snaps);
+            }
+
+            // Update snapshot due_dates
+            if (newDueDate) {
+              for (const pid of pmIds) {
+                await sb.from("tasks")
+                  .update({ due_date: newDueDate })
+                  .like("description", `pm:${pid}:%`)
+                  .is("deleted_at", null);
+              }
+            }
+
+            // Collect all affected periods (old + new) and user ids
+            const periods = new Map<string, { year: number; month: number }>();
+            const userIds = new Set<string>();
+            for (const snap of oldSnapshots) {
+              if (snap.assigned_user_id && snap.due_date) {
+                userIds.add(snap.assigned_user_id);
+                const d = new Date(`${snap.due_date}T00:00:00`);
+                const k = `${d.getFullYear()}-${d.getMonth() + 1}`;
+                periods.set(k, { year: d.getFullYear(), month: d.getMonth() + 1 });
+              }
+            }
+            if (newDueDate) {
+              const nd = new Date(`${newDueDate}T00:00:00`);
+              const k = `${nd.getFullYear()}-${nd.getMonth() + 1}`;
+              periods.set(k, { year: nd.getFullYear(), month: nd.getMonth() + 1 });
+            }
+
+            // Recompute scores for all affected users in all affected months
+            await Promise.all(
+              Array.from(userIds).flatMap(uid =>
+                Array.from(periods.values()).map(({ year, month }) =>
+                  supabase.rpc("recompute_metas_prazos", { _user_id: uid, _year: year, _month: month }).then(null, console.error)
+                )
+              )
+            );
+          } catch (e) { console.error("Error syncing due_date to snapshots:", e); }
+        }
+
         // Activity log (fire-and-forget)
         try {
           const { data: { user } } = await supabase.auth.getUser();
