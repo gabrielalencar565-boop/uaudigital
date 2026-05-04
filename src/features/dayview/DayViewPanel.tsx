@@ -98,6 +98,8 @@ export function DayViewPanel() {
   const today = now;
   const todayKey = format(today, "yyyy-MM-dd");
   const monthKey = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}`;
+  // Se estamos visualizando o mês atual, mostrar tarefas de hoje + atrasadas de qualquer mês anterior
+  const isCurrentMonth = selectedYear === now.getFullYear() && selectedMonth === now.getMonth() + 1;
   const freelancerClientQ = useFreelancerClient();
   const freelancerClientId = freelancerClientQ.data?.id ?? null;
   const clientsQ = useClients();
@@ -483,9 +485,6 @@ export function DayViewPanel() {
     }
     return map;
   }, [assigneesQ.data, teamByUserId, pmTasksQ.data]);
-
-  // Se estamos visualizando o mês atual, mostrar tarefas de hoje
-  const isCurrentMonth = selectedYear === now.getFullYear() && selectedMonth === now.getMonth() + 1;
 
   // ─── Cleaning memos ───
   const todayCleaningTasks = useMemo(() => {
