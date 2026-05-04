@@ -327,10 +327,10 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   // Planejamento sempre vai completo para Revisão (Planejamento), mesmo se o fluxo salvo estiver legado.
   // Extra demands go straight to entrega after revisão
   const rawNextStages = getNextStages(flowConfig, task.stage_current);
-  const nextStages = task.stage_current === "planejamento"
+  const nextStages = task.is_extra_demand
+    ? []
+    : task.stage_current === "planejamento"
     ? ["revisao"]
-    : (task.is_extra_demand && task.stage_current === "revisao")
-    ? ["entrega"]
     : rawNextStages;
   const isDone = task.parent_task_id
     ? task.status_global === "concluido"
@@ -918,6 +918,21 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
       queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
       toast.success("Tarefa concluída!");
+      return;
+    }
+
+    // ═══ EXTRA DEMAND: standalone — just mark as done, no next stage ═══
+    if (task.is_extra_demand) {
+      const sb = supabase as any;
+      const allIds = [task.id, ...childTasks.map(c => c.id)];
+      await sb.from("pm_tasks")
+        .update({ status_global: "concluido" })
+        .in("id", allIds);
+      syncCompletedStage(completedStage);
+      queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
+      toast.success("Demanda extra concluída!");
       return;
     }
 
