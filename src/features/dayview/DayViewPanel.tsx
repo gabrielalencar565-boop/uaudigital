@@ -724,6 +724,12 @@ export function DayViewPanel() {
     }), queryClient.invalidateQueries({
       queryKey: ["tasks"]
     }), queryClient.invalidateQueries({
+      queryKey: ["overdue_tasks_for_dayview"]
+    }), queryClient.invalidateQueries({
+      queryKey: ["overdue_pm_tasks_for_dayview"]
+    }), queryClient.invalidateQueries({
+      queryKey: ["overdue_task_assignees_for_dayview"]
+    }), queryClient.invalidateQueries({
       queryKey: ["clients"]
     }), queryClient.invalidateQueries({
       queryKey: ["team_members"]
