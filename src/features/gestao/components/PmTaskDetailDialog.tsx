@@ -1044,7 +1044,12 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     if (!user) return;
 
     const originId = task.origin_task_id ?? task.id;
-    let previousSnapshot: any = null;
+
+    // Detect if children have mixed post_types (both video and design)
+    const childPostTypes = new Set(
+      childTasks.map((c) => c.post_type).filter(Boolean) as string[],
+    );
+    const hasMixedChildren = childPostTypes.has("video") && childPostTypes.has("design");
 
     const taskTags = task.tags ?? [];
     const normalizedTitle = task.title.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -1058,9 +1063,55 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     const previousWorkStage = isVideoByPostType || isVideoByTag || isVideoByTitle
       ? "edicao_videos"
       : "design";
-    const resolvedAlteracaoPostType = task.post_type ?? (previousWorkStage === "edicao_videos" ? "video" : "design");
+    const resolvedAlteracaoPostType = hasMixedChildren
+      ? null
+      : (task.post_type ?? (previousWorkStage === "edicao_videos" ? "video" : "design"));
+
+    // Helper to get assignee/watchers per post_type
+    const getAssigneeForPostType = (pt: string | null) => {
+      const stage = pt === "video" ? "edicao_videos" : "design";
+      return getFixedAssignee(stageAssignees, stage, task.client_id);
+    };
+    const getWatchersForPostType = (pt: string | null) => {
+      const stage = pt === "video" ? "edicao_videos" : "design";
+      return getFixedWatchers(stageAssignees, stage, task.client_id);
+    };
+
     const previousStageAssignee = getFixedAssignee(stageAssignees, previousWorkStage, task.client_id);
     const previousStageWatchers = getFixedWatchers(stageAssignees, previousWorkStage, task.client_id);
+
+    // For mixed children, skip snapshot-based routing — just move to alteração with per-child assignees
+    if (hasMixedChildren) {
+      const updates: any = {
+        id: task.id,
+        stage_current: "alteracoes" as any,
+        assignee_id: previousStageAssignee ?? null,
+        watchers: previousStageWatchers,
+        post_type: null, // mixed — no single post_type
+      };
+      updateTask.mutate(updates);
+
+      for (const child of childTasks) {
+        const childPt = child.post_type ?? "design";
+        updateTask.mutate({
+          id: child.id,
+          stage_current: "alteracoes" as any,
+          assignee_id: getAssigneeForPostType(childPt) ?? previousStageAssignee ?? null,
+          watchers: getWatchersForPostType(childPt) ?? previousStageWatchers,
+          post_type: childPt,
+        } as any);
+      }
+
+      await sb
+        .from("pm_subtasks")
+        .update({ status: "nao_iniciado" })
+        .eq("task_id", task.id);
+
+      toast.success("Tarefa enviada para Alteração (Design + Vídeo)");
+      return;
+    }
+
+    let previousSnapshot: any = null;
 
     const { data: snapshots } = await sb
       .from("pm_tasks")
