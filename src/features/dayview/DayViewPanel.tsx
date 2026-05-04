@@ -200,9 +200,12 @@ export function DayViewPanel() {
 
   // ─── PM child tasks per parent (count + post_types for gradient detection) ───
   const pmChildCountQ = useQuery({
-    queryKey: ["pm_child_count_for_dayview_v2", monthKey],
+    queryKey: ["pm_child_count_for_dayview_v2", monthKey, overduePmTasksQ.data],
     queryFn: async () => {
-      const parentIds = (pmTasksQ.data ?? []).map(t => t.id);
+      const parentIds = Array.from(new Set([
+        ...(pmTasksQ.data ?? []).map(t => t.id),
+        ...(isCurrentMonth ? (overduePmTasksQ.data ?? []).map(t => t.id) : []),
+      ]));
       if (!parentIds.length) return { counts: new Map<string, number>(), postTypes: new Map<string, Set<string>>() };
       const { data, error } = await supabase
         .from("pm_tasks")
@@ -223,7 +226,7 @@ export function DayViewPanel() {
       }
       return { counts, postTypes };
     },
-    enabled: (pmTasksQ.data ?? []).length > 0,
+    enabled: (pmTasksQ.data ?? []).length > 0 || (isCurrentMonth && (overduePmTasksQ.data ?? []).length > 0),
   });
 
   // ─── All pending tasks per user (across all months) for "Pend." column ───
