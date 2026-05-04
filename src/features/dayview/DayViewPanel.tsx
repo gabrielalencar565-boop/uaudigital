@@ -471,6 +471,7 @@ export function DayViewPanel() {
       const member = teamByUserId.get(a.user_id);
       if (!member) continue;
       const prev = map.get(a.task_id) ?? [];
+      if (prev.some((item) => item.user_id === a.user_id)) continue;
       prev.push({
         user_id: a.user_id,
         display_name: member.display_name,
