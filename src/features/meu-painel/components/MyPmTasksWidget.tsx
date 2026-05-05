@@ -147,6 +147,7 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
     const upcoming: PmTask[] = [];
     const noDue: PmTask[] = [];
     const completed: PmTask[] = [];
+    const todayDate = new Date(todayKey + "T00:00:00");
 
     myTasks.forEach(t => {
       if (t.status_global === "concluido") {
@@ -154,7 +155,7 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
         return;
       }
       if (!t.due_date) { noDue.push(t); return; }
-      const diff = differenceInCalendarDays(new Date(t.due_date + "T00:00:00"), today);
+      const diff = differenceInCalendarDays(new Date(t.due_date + "T00:00:00"), todayDate);
       if (diff < 0) overdue.push(t);
       else if (diff === 0) todayGroup.push(t);
       else upcoming.push(t);
