@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { Plus, Trash2, SprayCan } from "lucide-react";
+import { useState, useMemo, useCallback } from "react";
+import { Plus, Trash2, SprayCan, Pencil, Check, X } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import {
   useCleaningSchedules,
   useCreateCleaningSchedule,
   useDeleteCleaningSchedule,
+  useUpdateCleaningSchedule,
   DAYS_PT,
 } from "@/features/cleaning/hooks/use-cleaning";
 
