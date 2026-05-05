@@ -71,7 +71,8 @@ export function PmTaskCard({ task, clientName, assignees = [], childTasks = [], 
   const [renameDraft, setRenameDraft] = useState("");
   const handleRename = () => { if (renameDraft.trim() && renameDraft.trim() !== task.title) updateTask.mutate({ id: task.id, title: renameDraft.trim() }); setRenaming(false); };
 
-  const dueDateOverdue = task.due_date && task.status_global !== "concluido" && isPast(new Date(task.due_date + "T23:59:59")) && !isToday(new Date(task.due_date + "T12:00:00"));
+  const isCompleted = task.status_global === "concluido";
+  const dueDateOverdue = task.due_date && !isCompleted && isPast(new Date(task.due_date + "T23:59:59")) && !isToday(new Date(task.due_date + "T12:00:00"));
   const visibleAssignees = assignees.slice(0, 2);
   const extraAssignees = Math.max(assignees.length - visibleAssignees.length, 0);
 
@@ -195,6 +196,7 @@ export function PmTaskCard({ task, clientName, assignees = [], childTasks = [], 
           {task.due_date && (
             <span className={cn(
               "flex items-center gap-1 text-[10px] font-semibold rounded-md px-2 py-0.5",
+              isCompleted ? "bg-emerald-500/15 text-emerald-500" :
               dueDateOverdue ? "bg-destructive/15 text-destructive" : "bg-muted text-muted-foreground"
             )}>
               <Calendar className="h-3 w-3" />
