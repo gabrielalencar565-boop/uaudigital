@@ -48,6 +48,7 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
   const { user } = useSession();
   const today = new Date();
   const todayKey = format(today, "yyyy-MM-dd");
+  const currentMonthKey = format(today, "yyyy-MM");
 
   const pmTasksQ = usePmTasks();
   const allChildQ = usePmAllChildTasks();
@@ -146,11 +147,15 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
     const upcoming: PmTask[] = [];
     const noDue: PmTask[] = [];
     const completed: PmTask[] = [];
+    const todayDate = new Date(todayKey + "T00:00:00");
 
     myTasks.forEach(t => {
-      if (t.status_global === "concluido") { completed.push(t); return; }
+      if (t.status_global === "concluido") {
+        if ((t.due_date ?? "").startsWith(currentMonthKey)) completed.push(t);
+        return;
+      }
       if (!t.due_date) { noDue.push(t); return; }
-      const diff = differenceInCalendarDays(new Date(t.due_date + "T00:00:00"), today);
+      const diff = differenceInCalendarDays(new Date(t.due_date + "T00:00:00"), todayDate);
       if (diff < 0) overdue.push(t);
       else if (diff === 0) todayGroup.push(t);
       else upcoming.push(t);
@@ -171,7 +176,7 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
     completed.sort(sortByDue);
 
     return { overdue, today: todayGroup, upcoming, noDue, completed };
-  }, [myTasks, todayKey]);
+  }, [myTasks, todayKey, currentMonthKey]);
 
   const [openOverdue, setOpenOverdue] = useState(true);
   const [openToday, setOpenToday] = useState(true);
