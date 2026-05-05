@@ -1176,7 +1176,7 @@ export function DayViewPanel() {
               {filteredRank.map((row, idx) => {
           const member = teamByUserId.get(row.user_id);
           const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx + 1}º`;
-          const pending = allPendingByUser.get(row.user_id) ?? 0;
+          const pending = row.taskTotal - row.taskCompleted;
           const posChange = rankVariation.get(row.user_id) ?? 0;
           const hasChange = rankVariation.has(row.user_id);
           return (
