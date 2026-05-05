@@ -116,6 +116,21 @@ export function useDeleteCleaningSchedule() {
   });
 }
 
+export function useUpdateCleaningSchedule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: { id: string; user_id?: string; category_id?: string; due_time?: string }) => {
+      const { id, ...updates } = params;
+      const { error } = await supabase
+        .from("cleaning_schedules")
+        .update(updates as any)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["cleaning_schedules"] }),
+  });
+}
+
 // ─── Completions ───
 export function useCleaningCompletions(date: string) {
   return useQuery({
