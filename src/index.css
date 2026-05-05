@@ -126,7 +126,7 @@ All colors MUST be HSL.
   .dark {
     /* ── Premium SaaS Dark Theme ── */
     /* Deep charcoal, never pure black */
-    --background: 225 20% 7%;
+    --background: 0 0% 9.4%;
     --foreground: 220 20% 93%;
 
     /* Cards: lighter layer for depth */
