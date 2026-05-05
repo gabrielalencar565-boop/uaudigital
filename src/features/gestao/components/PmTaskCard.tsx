@@ -71,7 +71,7 @@ export function PmTaskCard({ task, clientName, assignees = [], childTasks = [], 
   const [renameDraft, setRenameDraft] = useState("");
   const handleRename = () => { if (renameDraft.trim() && renameDraft.trim() !== task.title) updateTask.mutate({ id: task.id, title: renameDraft.trim() }); setRenaming(false); };
 
-  const dueDateOverdue = task.due_date && isPast(new Date(task.due_date + "T23:59:59")) && !isToday(new Date(task.due_date + "T12:00:00"));
+  const dueDateOverdue = task.due_date && task.status_global !== "concluido" && isPast(new Date(task.due_date + "T23:59:59")) && !isToday(new Date(task.due_date + "T12:00:00"));
   const visibleAssignees = assignees.slice(0, 2);
   const extraAssignees = Math.max(assignees.length - visibleAssignees.length, 0);
 
