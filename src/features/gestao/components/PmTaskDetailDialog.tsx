@@ -271,6 +271,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     ...(task.assignee_id ? [task.assignee_id] : []),
     ...(task.watchers ?? []).filter(w => w !== task.assignee_id),
   ];
+  const visibleAssigneeIds = allAssigneeIds.filter(id => membersMap[id]);
 
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
@@ -1415,8 +1416,12 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
   const toggleAssignee = (memberId: string) => {
     const currentWatchers = task.watchers ?? [];
+    const hasHiddenPrimaryAssignee = !!task.assignee_id && !membersMap[task.assignee_id];
     let newAssigneeId: string | null | undefined;
-    if (task.assignee_id === memberId) {
+    if (hasHiddenPrimaryAssignee) {
+      newAssigneeId = memberId;
+      updateTask.mutate({ id: task.id, assignee_id: memberId, watchers: currentWatchers.filter(w => w !== memberId) } as any);
+    } else if (task.assignee_id === memberId) {
       const remaining = currentWatchers.filter(w => w !== memberId);
       newAssigneeId = remaining[0] ?? null;
       updateTask.mutate({ id: task.id, assignee_id: newAssigneeId, watchers: remaining.slice(1) } as any);
@@ -1539,10 +1544,9 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
               members={members}
               onToggle={toggleAssignee}
             >
-              <button className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 transition min-h-[28px] flex-wrap">
-                {allAssigneeIds.length > 0 ? allAssigneeIds.map(id => {
+              <button type="button" className="flex min-w-24 items-center gap-1.5 cursor-pointer hover:opacity-80 transition min-h-[28px] flex-wrap">
+                {visibleAssigneeIds.length > 0 ? visibleAssigneeIds.map(id => {
                   const m = membersMap[id];
-                  if (!m) return null;
                   return (
                     <span key={id} className="flex items-center gap-1.5 bg-primary/10 rounded-full pl-0.5 pr-2.5 py-0.5">
                       <Avatar className="h-5 w-5 border border-background">
