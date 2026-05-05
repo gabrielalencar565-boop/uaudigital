@@ -318,7 +318,7 @@ export function useUpdatePmTask() {
               entity_type: "task",
               entity_id: logEntityId,
               action: "updated",
-              metadata: { ...updates, task_id: id, title: data.title },
+              metadata: { ...updates, task_id: id, _ref_title: data.title },
               created_by: user.id,
             });
           }
