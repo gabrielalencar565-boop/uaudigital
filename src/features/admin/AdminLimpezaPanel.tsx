@@ -243,23 +243,60 @@ export function AdminLimpezaPanel() {
                     {daySchedules.map((s) => {
                       const member = teamById.get(s.user_id);
                       const cat = categoryById.get(s.category_id);
+                      const isEditing = editingId === s.id;
                       return (
                         <div key={s.id} className="flex items-center justify-between gap-2 text-sm">
-                          <span>
-                            <span className="font-medium">{member?.display_name ?? "—"}</span>
-                            {" → "}
-                            <span className="text-muted-foreground">{cat?.name ?? "—"}</span>
-                            {" • "}
-                            <span className="text-muted-foreground">{s.due_time?.slice(0, 5) ?? "18:00"}</span>
-                          </span>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-                            onClick={() => deleteSchedule.mutate(s.id)}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
+                          {isEditing ? (
+                            <div className="flex items-center gap-2 flex-1">
+                              <Select value={editUserId} onValueChange={setEditUserId}>
+                                <SelectTrigger className="w-40 h-7 text-xs">
+                                  <SelectValue placeholder="Selecione" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-popover z-50">
+                                  {activeMembers.map((m) => (
+                                    <SelectItem key={m.user_id} value={m.user_id}>
+                                      {m.display_name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <span className="text-muted-foreground">→ {cat?.name ?? "—"}</span>
+                              <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-green-500 hover:text-green-400" onClick={saveEdit} disabled={updateSchedule.isPending}>
+                                <Check className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={cancelEdit}>
+                                <X className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <>
+                              <span>
+                                <span className="font-medium">{member?.display_name ?? "—"}</span>
+                                {" → "}
+                                <span className="text-muted-foreground">{cat?.name ?? "—"}</span>
+                                {" • "}
+                                <span className="text-muted-foreground">{s.due_time?.slice(0, 5) ?? "18:00"}</span>
+                              </span>
+                              <div className="flex items-center gap-0.5">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 w-7 p-0"
+                                  onClick={() => startEdit(s.id, s.user_id)}
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                                  onClick={() => deleteSchedule.mutate(s.id)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            </>
+                          )}
                         </div>
                       );
                     })}
