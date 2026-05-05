@@ -196,6 +196,7 @@ export function PmTaskCard({ task, clientName, assignees = [], childTasks = [], 
           {task.due_date && (
             <span className={cn(
               "flex items-center gap-1 text-[10px] font-semibold rounded-md px-2 py-0.5",
+              isCompleted ? "bg-emerald-500/15 text-emerald-500" :
               dueDateOverdue ? "bg-destructive/15 text-destructive" : "bg-muted text-muted-foreground"
             )}>
               <Calendar className="h-3 w-3" />
