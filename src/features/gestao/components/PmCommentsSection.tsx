@@ -74,7 +74,7 @@ function formatActionText(action: string, metadata: any, membersMap: Record<stri
       if (metadata?.due_date !== undefined) parts.push(`data de entrega alterada: ${metadata.due_date ?? "removida"}`);
       if (metadata?.tags) parts.push(`etiquetas atualizadas`);
       if (metadata?.watchers) parts.push(`observadores atualizados`);
-      if (metadata?.description !== undefined) parts.push(`descrição atualizada`);
+      // description updates are hidden from activity feed
       if (metadata?.cover_url !== undefined) parts.push(metadata.cover_url ? "capa definida" : "capa removida");
       return parts.length > 0 ? parts.join(", ") : "atualizou a tarefa";
     }
@@ -414,6 +414,11 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
     const seen = new Set<string>();
     activityLog.forEach(a => {
       if (a.action === "comment_added") return;
+      // Skip description-only updates from activity feed
+      if (a.action === "updated" && a.metadata) {
+        const keys = Object.keys(a.metadata);
+        if (keys.length === 1 && keys[0] === "description") return;
+      }
       const ts = Math.floor(new Date(a.created_at).getTime() / 2000);
       const key = `${a.action}:${a.created_by}:${JSON.stringify(a.metadata)}:${ts}`;
       if (seen.has(key)) return;
