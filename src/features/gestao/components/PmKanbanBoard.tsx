@@ -132,7 +132,10 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, av
     return KANBAN_COLUMNS.map((col) => ({
       ...col,
       tasks: filtered
-        .filter((t) => t.stage_current === col.key)
+        .filter((t) => {
+          const effectiveStage = t.status_global === "concluido" ? "entrega" : t.stage_current;
+          return effectiveStage === col.key;
+        })
         .sort((a, b) => {
           const da = a.due_date ?? "";
           const db = b.due_date ?? "";
