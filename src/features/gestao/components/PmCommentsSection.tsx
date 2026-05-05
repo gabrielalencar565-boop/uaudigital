@@ -74,7 +74,7 @@ function formatActionText(action: string, metadata: any, membersMap: Record<stri
       if (metadata?.due_date !== undefined) parts.push(`data de entrega alterada: ${metadata.due_date ?? "removida"}`);
       if (metadata?.tags) parts.push(`etiquetas atualizadas`);
       if (metadata?.watchers) parts.push(`observadores atualizados`);
-      if (metadata?.description !== undefined) parts.push(`descrição atualizada`);
+      // description updates are hidden from activity feed
       if (metadata?.cover_url !== undefined) parts.push(metadata.cover_url ? "capa definida" : "capa removida");
       return parts.length > 0 ? parts.join(", ") : "atualizou a tarefa";
     }
