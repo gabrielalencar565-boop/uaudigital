@@ -33,6 +33,32 @@ export function AdminLimpezaPanel() {
   const schedulesQ = useCleaningSchedules();
   const createSchedule = useCreateCleaningSchedule();
   const deleteSchedule = useDeleteCleaningSchedule();
+  const updateSchedule = useUpdateCleaningSchedule();
+
+  // Editing state: schedule id -> new user_id
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editUserId, setEditUserId] = useState("");
+
+  const startEdit = useCallback((scheduleId: string, currentUserId: string) => {
+    setEditingId(scheduleId);
+    setEditUserId(currentUserId);
+  }, []);
+
+  const cancelEdit = useCallback(() => {
+    setEditingId(null);
+    setEditUserId("");
+  }, []);
+
+  const saveEdit = useCallback(async () => {
+    if (!editingId || !editUserId) return;
+    try {
+      await updateSchedule.mutateAsync({ id: editingId, user_id: editUserId });
+      toast.success("Responsável atualizado!");
+      cancelEdit();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao atualizar");
+    }
+  }, [editingId, editUserId, updateSchedule, cancelEdit]);
 
   const teamQ = useTeamMembers();
   const activeMembers = useMemo(
