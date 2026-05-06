@@ -793,11 +793,11 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
         }}
         onDragEnd={isLegacy ? undefined : () => setDraggedTask(null)}
         className={cn("w-full rounded-xl border backdrop-blur-sm p-2 text-left transition-all hover:shadow-sm hover:-translate-y-0.5 group/card shadow-[0_1px_3px_0_hsl(var(--foreground)/0.06)]",
-          isAlteracaoWithOrigin ? "border-[#f5b800]/40" : "bg-card/60 hover:bg-card border-border/30",
+          (isAlteracaoWithOrigin || isAlteracaoPlanejamento) ? "border-[#f5b800]/40" : "bg-card/60 hover:bg-card border-border/30",
           isLegacy ? "cursor-default border-border/40 border-dashed" : "cursor-grab active:cursor-grabbing",
           highlightOverdue && isOverdue(t) && "ring-1 ring-red-400 text-white [&_p]:text-white"
         )}
-        style={isAlteracaoWithOrigin && !(highlightOverdue && isOverdue(t)) ? { background: 'linear-gradient(135deg, #FED404 0%, #FF9A02 100%)' } : (highlightOverdue && isOverdue(t) ? { background: '#ff2c2c', borderColor: '#ff2c2c' } : undefined)}
+        style={(isAlteracaoWithOrigin || isAlteracaoPlanejamento) && !(highlightOverdue && isOverdue(t)) ? { background: 'linear-gradient(135deg, #FED404 0%, #FF9A02 100%)' } : (highlightOverdue && isOverdue(t) ? { background: '#ff2c2c', borderColor: '#ff2c2c' } : undefined)}
         onClick={isLegacy ? undefined : () => onTaskClick(t)}>
         <div className="flex items-center justify-between gap-1">
           <div
