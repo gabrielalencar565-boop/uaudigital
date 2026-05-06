@@ -1145,7 +1145,9 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         stage_current: "alteracoes" as any,
         assignee_id: previousStageAssignee ?? null,
         watchers: previousStageWatchers,
-        post_type: null, // mixed — no single post_type
+        // Planejamento has mixed Design/Vídeo children, but the parent must stay PLAN
+        // so returning from Alteração reopens REV/PLAN instead of falling back to REV/DSG.
+        post_type: isPautaReview ? "planejamento" : null,
       };
       updateTask.mutate(updates);
 
@@ -1277,7 +1279,9 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     const originId = task.origin_task_id ?? task.id;
 
     // Detect original stage: check post_type first, then tags, then title as legacy fallback
-    const isPautaReview = task.post_type === "planejamento";
+    const childPostTypes = new Set(childTasks.map((c) => c.post_type).filter(Boolean) as string[]);
+    const hasMixedPlanningChildren = childPostTypes.has("video") && childPostTypes.has("design");
+    const isPautaReview = task.post_type === "planejamento" || (task.stage_current === "alteracoes" && hasMixedPlanningChildren);
     const isVideoByPostType = task.post_type === "video";
     const taskTags = task.tags ?? [];
     const isVideoByTag = taskTags.some(t => {
@@ -1301,7 +1305,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       .order("updated_at", { ascending: false })
       .limit(1);
 
-    revisaoQuery = revisaoQuery.eq("post_type", task.post_type ?? resolvedReturnPostType);
+    revisaoQuery = revisaoQuery.eq("post_type", resolvedReturnPostType);
 
     const { data: pausedRevisao } = await revisaoQuery;
 
