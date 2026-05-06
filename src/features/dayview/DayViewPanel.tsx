@@ -958,14 +958,13 @@ export function DayViewPanel() {
                           }}
                           title={`${cat?.name ?? "Limpeza"} • até ${dueTimeStr}`}
                           className={cn(
-                            "flex items-center gap-2 rounded-lg border cursor-pointer transition-colors min-w-0 text-left w-full",
-                            veryDense ? "px-2.5 py-2" : dense ? "px-3 py-2.5" : "px-4 py-3",
+                            "flex items-center gap-1.5 rounded-md border cursor-pointer transition-colors min-w-0 text-left w-full px-2 py-1",
                             isDone && "border-success bg-success hover:bg-success/90",
                             isOverdueCleaning && "border-destructive bg-destructive hover:bg-destructive/90",
                             !isDone && !isOverdueCleaning && "border-border bg-card hover:bg-accent/50"
                           )}
                         >
-                          <span className={cn("leading-none shrink-0", veryDense ? "text-base" : dense ? "text-lg" : "text-xl")}>
+                          <span className="leading-none shrink-0 text-xs">
                             {emoji}
                           </span>
                           {(() => {
@@ -976,9 +975,8 @@ export function DayViewPanel() {
                                 lang="pt-BR"
                                 title={cleaningName}
                                 className={cn(
-                                  "font-semibold leading-tight flex-1 min-w-0 [hyphens:none]",
+                                  "font-semibold leading-tight flex-1 min-w-0 [hyphens:none] text-xs",
                                   isSingleWord ? "whitespace-nowrap overflow-hidden text-ellipsis" : "",
-                                  veryDense ? "text-xs" : dense ? "text-sm" : "text-base",
                                   isDone && "text-success-foreground",
                                   isOverdueCleaning && "text-destructive-foreground"
                                 )}
