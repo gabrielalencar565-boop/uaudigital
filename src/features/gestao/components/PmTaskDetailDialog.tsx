@@ -1320,12 +1320,18 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     const sb = supabase as any;
     const originId = task.origin_task_id ?? task.id;
 
-    // Detect original stage: check post_type first, then tags, then title as legacy fallback
+    // Detect original stage: use children post_type as definitive signal, then tags/title as fallback
     const childPostTypes = new Set(childTasks.map((c) => c.post_type).filter(Boolean) as string[]);
     const hasMixedPlanningChildren = childPostTypes.has("video") && childPostTypes.has("design");
     const isPautaReview = task.post_type === "planejamento" || (task.stage_current === "alteracoes" && hasMixedPlanningChildren);
-    const inferredTaskPostType = inferPmPostType(task);
-    const isVideoByPostType = inferredTaskPostType === "video";
+    // Prefer child-derived type (most reliable for corrupted parent post_type)
+    const childDerivedPt = hasMixedPlanningChildren
+      ? null
+      : childPostTypes.has("design") ? "design"
+      : childPostTypes.has("video") ? "video"
+      : null;
+    const effectivePt = childDerivedPt ?? inferPmPostType(task);
+    const isVideoByPostType = effectivePt === "video";
     const taskTags = task.tags ?? [];
     const isVideoByTag = taskTags.some(t => {
       const parsed = parseTag(t);
@@ -1333,7 +1339,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     });
     const normalizedTitle = task.title.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
     const isVideoByTitle = normalizedTitle.includes("video");
-    const isVideoTask = isVideoByPostType || isVideoByTag || isVideoByTitle;
+    const isVideoTask = childDerivedPt === "video" || (!childDerivedPt && (isVideoByPostType || isVideoByTag || isVideoByTitle));
     const originalStage = isPautaReview ? "planejamento" : isVideoTask ? "edicao_videos" : "design";
     const resolvedReturnPostType = isPautaReview ? "planejamento" : isVideoTask ? "video" : "design";
 
