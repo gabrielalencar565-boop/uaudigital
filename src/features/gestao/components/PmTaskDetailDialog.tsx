@@ -1303,7 +1303,8 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     const childPostTypes = new Set(childTasks.map((c) => c.post_type).filter(Boolean) as string[]);
     const hasMixedPlanningChildren = childPostTypes.has("video") && childPostTypes.has("design");
     const isPautaReview = task.post_type === "planejamento" || (task.stage_current === "alteracoes" && hasMixedPlanningChildren);
-    const isVideoByPostType = task.post_type === "video";
+    const inferredTaskPostType = inferPmPostType(task);
+    const isVideoByPostType = inferredTaskPostType === "video";
     const taskTags = task.tags ?? [];
     const isVideoByTag = taskTags.some(t => {
       const parsed = parseTag(t);
