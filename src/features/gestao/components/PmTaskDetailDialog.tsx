@@ -2014,9 +2014,10 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
             Periodic tasks (custom_*) are simple standalone tasks → always use the regular subtask list. */}
         <div className="border-t border-border/20 pt-4">
           {(() => {
-            // ALT/DSG or ALT/VDO — single post_type alteration, show only relevant subtasks
-            const isAlteracaoSingleType = task.stage_current === "alteracoes" && (task.post_type === "video" || task.post_type === "design");
-            const usePlanningLayout = !task.parent_task_id && !task.periodic_stage_key && !isAlteracaoSingleType && (
+            // ALT/DSG, ALT/VDO, REV/DSG, REV/VDO — single post_type, show only relevant subtasks
+            const isSinglePostType = (task.post_type === "video" || task.post_type === "design") &&
+              (task.stage_current === "alteracoes" || task.stage_current === "revisao");
+            const usePlanningLayout = !task.parent_task_id && !task.periodic_stage_key && !isSinglePostType && (
               ["planejamento", "pdf", "agendamento", "entrega", "revisao", "alteracoes"].includes(task.stage_current) ||
               isPlanejamentoReview
             );
@@ -2040,7 +2041,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
               );
             }
             // For ALT/DSG or ALT/VDO, filter childTasks to only the matching post_type
-            const filteredChildren = isAlteracaoSingleType
+            const filteredChildren = isSinglePostType
               ? childTasks.filter(c => c.post_type === task.post_type)
               : childTasks;
             return (
