@@ -958,8 +958,7 @@ export function DayViewPanel() {
                           }}
                           title={`${cat?.name ?? "Limpeza"} • até ${dueTimeStr}`}
                           className={cn(
-                            "flex items-center gap-2 rounded-lg border cursor-pointer transition-colors min-w-0 text-left w-full",
-                            veryDense ? "px-2.5 py-2" : dense ? "px-3 py-2.5" : "px-4 py-3",
+                            "flex items-center gap-1.5 rounded-md border cursor-pointer transition-colors min-w-0 text-left w-full px-2 py-1",
                             isDone && "border-success bg-success hover:bg-success/90",
                             isOverdueCleaning && "border-destructive bg-destructive hover:bg-destructive/90",
                             !isDone && !isOverdueCleaning && "border-border bg-card hover:bg-accent/50"
