@@ -1763,8 +1763,19 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                   <RotateCcw className="h-3.5 w-3.5" /> Desmarcar concluído
                 </Button>
                 <Button size="sm" variant="outline" className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => {
-                  updateTask.mutate({ id: task.id, stage_current: "alteracoes", status_global: "backlog" });
-                  toast.success("Enviado para Alteração");
+                  const pt = task.post_type ?? inferPmPostType(task);
+                  const altStage = pt === "video" ? "edicao_videos" : pt === "design" ? "design" : "planejamento";
+                  const altAssignee = getFixedAssignee(stageAssignees, altStage, task.client_id);
+                  const altWatchers = getFixedWatchers(stageAssignees, altStage, task.client_id);
+                  updateTask.mutate({
+                    id: task.id,
+                    stage_current: "alteracoes",
+                    status_global: "backlog",
+                    post_type: pt ?? task.post_type,
+                    ...(altAssignee ? { assignee_id: altAssignee } : {}),
+                    ...(altWatchers?.length ? { watchers: altWatchers } : {}),
+                  } as any);
+                  toast.success(`Enviado para ${pt === "video" ? "ALT/VDO" : pt === "design" ? "ALT/DSG" : pt === "planejamento" ? "ALT/PLAN" : "Alteração"}`);
                 }}>
                   <RotateCcw className="h-3.5 w-3.5" /> Enviar para Alteração
                 </Button>
@@ -1772,7 +1783,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
             ) : task.stage_current === "alteracoes" ? (
               <>
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-destructive/10 border border-destructive/30 text-destructive text-xs font-semibold">
-                  <RotateCcw className="h-3.5 w-3.5" /> Em Alteração
+                  <RotateCcw className="h-3.5 w-3.5" /> {task.post_type === "video" ? "ALT/VDO" : task.post_type === "design" ? "ALT/DSG" : task.post_type === "planejamento" ? "ALT/PLAN" : "Em Alteração"}
                 </div>
                 <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={async () => {
                   updateTask.mutate({ id: task.id, status_global: "concluido" });
@@ -1794,8 +1805,19 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                   <CheckCircle2 className="h-4 w-4" /> Concluído
                 </Button>
                 <Button size="sm" variant="outline" className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => {
-                  updateTask.mutate({ id: task.id, stage_current: "alteracoes", status_global: "backlog" });
-                  toast.success("Enviado para Alteração");
+                  const pt = task.post_type ?? inferPmPostType(task);
+                  const altStage = pt === "video" ? "edicao_videos" : pt === "design" ? "design" : "planejamento";
+                  const altAssignee = getFixedAssignee(stageAssignees, altStage, task.client_id);
+                  const altWatchers = getFixedWatchers(stageAssignees, altStage, task.client_id);
+                  updateTask.mutate({
+                    id: task.id,
+                    stage_current: "alteracoes",
+                    status_global: "backlog",
+                    post_type: pt ?? task.post_type,
+                    ...(altAssignee ? { assignee_id: altAssignee } : {}),
+                    ...(altWatchers?.length ? { watchers: altWatchers } : {}),
+                  } as any);
+                  toast.success(`Enviado para ${pt === "video" ? "ALT/VDO" : pt === "design" ? "ALT/DSG" : pt === "planejamento" ? "ALT/PLAN" : "Alteração"}`);
                 }}>
                   <RotateCcw className="h-3.5 w-3.5" /> Enviar para Alteração
                 </Button>
@@ -1808,7 +1830,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         {task.stage_current === "alteracoes" && (
           <div className="flex flex-wrap items-center gap-2 pt-2">
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-destructive/10 border border-destructive/30 text-destructive text-xs font-semibold">
-              <RotateCcw className="h-3.5 w-3.5" /> Em Alteração
+              <RotateCcw className="h-3.5 w-3.5" /> {task.post_type === "video" ? "ALT/VDO" : task.post_type === "design" ? "ALT/DSG" : task.post_type === "planejamento" ? "ALT/PLAN" : "Em Alteração"}
             </div>
             <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={handleReturnFromAlteracao}>
               <CheckCircle2 className="h-4 w-4" /> Ajuste Concluído

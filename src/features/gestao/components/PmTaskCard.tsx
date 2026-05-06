@@ -123,9 +123,11 @@ export function PmTaskCard({ task, clientName, assignees = [], childTasks = [], 
           <span className={cn(
             "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold text-white tracking-wide",
             task.stage_current === "alteracoes"
-              ? (task.post_type === "video"
-                ? "bg-gradient-to-r from-stage-alteracoes to-stage-edicao_videos"
-                : "bg-gradient-to-r from-stage-alteracoes to-stage-design")
+              ? (task.post_type === "planejamento"
+                ? "bg-gradient-to-r from-stage-alteracoes to-stage-planejamento"
+                : task.post_type === "video"
+                  ? "bg-gradient-to-r from-stage-alteracoes to-stage-edicao_videos"
+                  : "bg-gradient-to-r from-stage-alteracoes to-stage-design")
               : (task.post_type === "planejamento"
                 ? "bg-gradient-to-r from-pink-400 to-stage-planejamento"
                 : task.post_type === "video"
@@ -133,7 +135,7 @@ export function PmTaskCard({ task, clientName, assignees = [], childTasks = [], 
                   : "bg-gradient-to-r from-pink-400 to-stage-design")
           )}>
             {task.stage_current === "alteracoes"
-              ? (task.post_type === "video" ? <><Clapperboard className="h-3 w-3" /> ALT/VDO</> : <><Palette className="h-3 w-3" /> ALT/DSG</>)
+              ? (task.post_type === "planejamento" ? <>ALT/PLAN</> : task.post_type === "video" ? <><Clapperboard className="h-3 w-3" /> ALT/VDO</> : <><Palette className="h-3 w-3" /> ALT/DSG</>)
               : (task.post_type === "planejamento"
                 ? <>REV/PLAN</>
                 : task.post_type === "video"
