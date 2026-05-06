@@ -955,7 +955,7 @@ export function DayViewPanel() {
                     <AvatarFallback>{initials(g.display_name)}</AvatarFallback>
                   </Avatar>
                   <div className="min-w-0 flex-1">
-                    <p className={cn("font-bold break-words leading-tight", veryDense ? "text-sm" : dense ? "text-base" : "text-lg")}>
+                    <p className={cn("font-bold break-words leading-tight", veryDense ? "text-xs" : dense ? "text-sm" : "text-base")}>
                       {g.display_name}
                     </p>
                     <span className="text-xs text-muted-foreground">{totalCount} {totalCount === 1 ? "tarefa" : "tarefas"}</span>
