@@ -496,8 +496,8 @@ function PlanningSection({
                       className={cn(
                         "h-6 w-6 rounded-full flex items-center justify-center transition-all border-2",
                         review?.status === "alteracao"
-                          ? "bg-amber-500 border-amber-500 text-white scale-105"
-                          : "border-amber-500/30 hover:border-amber-500/60 text-amber-500/40 hover:text-amber-500/70",
+                          ? "bg-white border-white text-amber-700 scale-105 shadow-md"
+                          : "border-white/50 hover:border-white/80 text-white/60 hover:text-white/90",
                         !isReviewEditable && "opacity-60 cursor-default"
                       )}
                       title="Precisa de alteração"
