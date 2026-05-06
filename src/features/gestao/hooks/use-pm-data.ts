@@ -52,14 +52,25 @@ export function usePmAllChildTasks() {
   return useQuery<PmTask[]>({
     queryKey: ["pm_child_tasks_all"],
     queryFn: async () => {
-      const { data, error } = await sb
-        .from("pm_tasks")
-        .select(PM_TASK_LIST_COLUMNS)
-        .not("parent_task_id", "is", null)
-        .is("deleted_at", null)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-      return data ?? [];
+      const pageSize = 1000;
+      const allRows: PmTask[] = [];
+
+      for (let from = 0; ; from += pageSize) {
+        const { data, error } = await sb
+          .from("pm_tasks")
+          .select(PM_TASK_LIST_COLUMNS)
+          .not("parent_task_id", "is", null)
+          .is("deleted_at", null)
+          .order("created_at", { ascending: true })
+          .range(from, from + pageSize - 1);
+
+        if (error) throw error;
+        const rows = (data ?? []) as PmTask[];
+        allRows.push(...rows);
+        if (rows.length < pageSize) break;
+      }
+
+      return allRows;
     },
   });
 }
