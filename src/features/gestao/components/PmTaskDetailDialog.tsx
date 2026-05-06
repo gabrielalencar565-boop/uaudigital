@@ -1127,7 +1127,8 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     const isPautaReview = task.post_type === "planejamento" || (
       task.post_type == null && task.stage_current === "revisao" && !childTasks.some(c => c.post_type === "video" || c.post_type === "design")
     );
-    const isVideoByPostType = task.post_type === "video";
+    const inferredTaskPostType = inferPmPostType(task);
+    const isVideoByPostType = inferredTaskPostType === "video";
     const isVideoByTag = taskTags.some((t) => {
       const parsed = parseTag(t);
       const tagName = parsed.name.toLowerCase();
@@ -1143,7 +1144,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       ? null
       : isPautaReview
         ? "planejamento"
-        : (task.post_type ?? (previousWorkStage === "edicao_videos" ? "video" : "design"));
+        : (inferredTaskPostType ?? (previousWorkStage === "edicao_videos" ? "video" : "design"));
 
     // Helper to get assignee/watchers per post_type
     const getAssigneeForPostType = (pt: string | null) => {
@@ -1783,7 +1784,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                   <RotateCcw className="h-3.5 w-3.5" /> Desmarcar concluído
                 </Button>
                 <Button size="sm" variant="outline" className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => {
-                  const pt = task.post_type ?? inferPmPostType(task);
+                  const pt = inferPmPostType(task) ?? task.post_type;
                   const altStage = pt === "video" ? "edicao_videos" : pt === "design" ? "design" : "planejamento";
                   const altAssignee = getFixedAssignee(stageAssignees, altStage, task.client_id);
                   const altWatchers = getFixedWatchers(stageAssignees, altStage, task.client_id);
@@ -1825,7 +1826,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                   <CheckCircle2 className="h-4 w-4" /> Concluído
                 </Button>
                 <Button size="sm" variant="outline" className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => {
-                  const pt = task.post_type ?? inferPmPostType(task);
+                  const pt = inferPmPostType(task) ?? task.post_type;
                   const altStage = pt === "video" ? "edicao_videos" : pt === "design" ? "design" : "planejamento";
                   const altAssignee = getFixedAssignee(stageAssignees, altStage, task.client_id);
                   const altWatchers = getFixedWatchers(stageAssignees, altStage, task.client_id);
