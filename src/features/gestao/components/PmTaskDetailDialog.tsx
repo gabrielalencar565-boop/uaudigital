@@ -314,6 +314,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   const periodicStagesQ = usePeriodicStages();
   const periodicStages = periodicStagesQ.data ?? [];
   const currentPeriodic = task.periodic_stage_key ? periodicStages.find(p => p.key === task.periodic_stage_key) : null;
+  const resolvedTaskPostType = inferPmPostType(task) ?? task.post_type;
 
   const isPlanejamentoReview = task.stage_current === "revisao" && !task.parent_task_id && (
     task.post_type === "planejamento" || (
@@ -1127,7 +1128,8 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     const isPautaReview = task.post_type === "planejamento" || (
       task.post_type == null && task.stage_current === "revisao" && !childTasks.some(c => c.post_type === "video" || c.post_type === "design")
     );
-    const isVideoByPostType = task.post_type === "video";
+    const inferredTaskPostType = inferPmPostType(task);
+    const isVideoByPostType = inferredTaskPostType === "video";
     const isVideoByTag = taskTags.some((t) => {
       const parsed = parseTag(t);
       const tagName = parsed.name.toLowerCase();
@@ -1143,7 +1145,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       ? null
       : isPautaReview
         ? "planejamento"
-        : (task.post_type ?? (previousWorkStage === "edicao_videos" ? "video" : "design"));
+        : (inferredTaskPostType ?? (previousWorkStage === "edicao_videos" ? "video" : "design"));
 
     // Helper to get assignee/watchers per post_type
     const getAssigneeForPostType = (pt: string | null) => {
@@ -1302,7 +1304,8 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     const childPostTypes = new Set(childTasks.map((c) => c.post_type).filter(Boolean) as string[]);
     const hasMixedPlanningChildren = childPostTypes.has("video") && childPostTypes.has("design");
     const isPautaReview = task.post_type === "planejamento" || (task.stage_current === "alteracoes" && hasMixedPlanningChildren);
-    const isVideoByPostType = task.post_type === "video";
+    const inferredTaskPostType = inferPmPostType(task);
+    const isVideoByPostType = inferredTaskPostType === "video";
     const taskTags = task.tags ?? [];
     const isVideoByTag = taskTags.some(t => {
       const parsed = parseTag(t);
@@ -1783,7 +1786,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                   <RotateCcw className="h-3.5 w-3.5" /> Desmarcar concluído
                 </Button>
                 <Button size="sm" variant="outline" className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => {
-                  const pt = task.post_type ?? inferPmPostType(task);
+                  const pt = inferPmPostType(task) ?? task.post_type;
                   const altStage = pt === "video" ? "edicao_videos" : pt === "design" ? "design" : "planejamento";
                   const altAssignee = getFixedAssignee(stageAssignees, altStage, task.client_id);
                   const altWatchers = getFixedWatchers(stageAssignees, altStage, task.client_id);
@@ -1803,7 +1806,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
             ) : task.stage_current === "alteracoes" ? (
               <>
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-destructive/10 border border-destructive/30 text-destructive text-xs font-semibold">
-                  <RotateCcw className="h-3.5 w-3.5" /> {task.post_type === "video" ? "ALT/VDO" : task.post_type === "design" ? "ALT/DSG" : task.post_type === "planejamento" ? "ALT/PLAN" : "Em Alteração"}
+                  <RotateCcw className="h-3.5 w-3.5" /> {resolvedTaskPostType === "video" ? "ALT/VDO" : resolvedTaskPostType === "design" ? "ALT/DSG" : resolvedTaskPostType === "planejamento" ? "ALT/PLAN" : "Em Alteração"}
                 </div>
                 <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={async () => {
                   updateTask.mutate({ id: task.id, status_global: "concluido" });
@@ -1825,7 +1828,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                   <CheckCircle2 className="h-4 w-4" /> Concluído
                 </Button>
                 <Button size="sm" variant="outline" className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => {
-                  const pt = task.post_type ?? inferPmPostType(task);
+                  const pt = inferPmPostType(task) ?? task.post_type;
                   const altStage = pt === "video" ? "edicao_videos" : pt === "design" ? "design" : "planejamento";
                   const altAssignee = getFixedAssignee(stageAssignees, altStage, task.client_id);
                   const altWatchers = getFixedWatchers(stageAssignees, altStage, task.client_id);
@@ -1850,7 +1853,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         {task.stage_current === "alteracoes" && (
           <div className="flex flex-wrap items-center gap-2 pt-2">
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-destructive/10 border border-destructive/30 text-destructive text-xs font-semibold">
-              <RotateCcw className="h-3.5 w-3.5" /> {task.post_type === "video" ? "ALT/VDO" : task.post_type === "design" ? "ALT/DSG" : task.post_type === "planejamento" ? "ALT/PLAN" : "Em Alteração"}
+              <RotateCcw className="h-3.5 w-3.5" /> {resolvedTaskPostType === "video" ? "ALT/VDO" : resolvedTaskPostType === "design" ? "ALT/DSG" : resolvedTaskPostType === "planejamento" ? "ALT/PLAN" : "Em Alteração"}
             </div>
             <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={handleReturnFromAlteracao}>
               <CheckCircle2 className="h-4 w-4" /> Ajuste Concluído
