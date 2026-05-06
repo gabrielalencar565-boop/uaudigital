@@ -1533,6 +1533,7 @@ export type Database = {
           posting_time: string | null
           priority: Database["public"]["Enums"]["pm_priority"]
           project_id: string | null
+          revision_notes: Json | null
           stage_current: Database["public"]["Enums"]["pm_stage"]
           start_date: string | null
           status_global: Database["public"]["Enums"]["pm_status"]
@@ -1563,6 +1564,7 @@ export type Database = {
           posting_time?: string | null
           priority?: Database["public"]["Enums"]["pm_priority"]
           project_id?: string | null
+          revision_notes?: Json | null
           stage_current?: Database["public"]["Enums"]["pm_stage"]
           start_date?: string | null
           status_global?: Database["public"]["Enums"]["pm_status"]
@@ -1593,6 +1595,7 @@ export type Database = {
           posting_time?: string | null
           priority?: Database["public"]["Enums"]["pm_priority"]
           project_id?: string | null
+          revision_notes?: Json | null
           stage_current?: Database["public"]["Enums"]["pm_stage"]
           start_date?: string | null
           status_global?: Database["public"]["Enums"]["pm_status"]

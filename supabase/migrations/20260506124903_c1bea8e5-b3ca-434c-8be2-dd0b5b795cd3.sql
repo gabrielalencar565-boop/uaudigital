@@ -1,0 +1,1 @@
+ALTER TABLE public.pm_tasks ADD COLUMN IF NOT EXISTS revision_notes jsonb DEFAULT NULL;
