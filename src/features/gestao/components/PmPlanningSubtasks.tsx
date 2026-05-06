@@ -313,6 +313,27 @@ function PlanningSection({
 
   const total = tasks.length;
   const hasSelection = selectedIds.size > 0;
+  const [expandedNoteId, setExpandedNoteId] = useState<string | null>(null);
+
+  const toggleReviewStatus = (childId: string, targetStatus: ReviewStatus) => {
+    if (!isReviewEditable) return;
+    const current = reviews[childId]?.status;
+    const newStatus = current === targetStatus ? "pendente" : targetStatus;
+    const updated = {
+      ...reviews,
+      [childId]: { ...reviews[childId], status: newStatus, note: reviews[childId]?.note ?? "" },
+    };
+    setReviews(updated);
+    saveReviewToDb(updated);
+    if (newStatus === "alteracao") setExpandedNoteId(childId);
+  };
+
+  const setReviewNote = (childId: string, note: string) => {
+    if (!isReviewEditable) return;
+    setReviews(prev => ({ ...prev, [childId]: { ...prev[childId], note } }));
+  };
+
+  const saveNote = () => saveReviewToDb(reviews);
 
   useEffect(() => {
     if (isAdding && addInputRef.current) {
