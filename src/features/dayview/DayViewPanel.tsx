@@ -248,7 +248,7 @@ export function DayViewPanel() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pm_tasks")
-        .select("id, assignee_id, status_global")
+        .select("id, assignee_id, watchers, status_global")
         .is("parent_task_id", null)
         .is("deleted_at", null)
         .neq("status_global", "concluido")
@@ -266,7 +266,10 @@ export function DayViewPanel() {
       add(t.assigned_user_id);
     }
     for (const t of allPendingPmTasksQ.data ?? []) {
-      if (t.assignee_id) add(t.assignee_id);
+      const users = new Set<string>();
+      if (t.assignee_id) users.add(t.assignee_id);
+      for (const userId of t.watchers ?? []) users.add(userId);
+      for (const userId of users) add(userId);
     }
     return map;
   }, [allPendingTasksQ.data, allPendingPmTasksQ.data]);
@@ -381,12 +384,17 @@ export function DayViewPanel() {
       }
     }
 
-    // PM main tasks — skip if already counted via snapshot for this user
+    // PM main tasks — count main assignee + watchers; skip users already counted via snapshot
     // Exclude revisão tasks — they don't count towards totals in The Best
     for (const t of pmTasks) {
       if (t.stage_current === "revisao") continue;
-      if (snapshotCounted.has(`${t.id}:${t.assignee_id}`)) continue;
-      addItem(t.assignee_id, t.status_global === "concluido");
+      const userIds = new Set<string>();
+      if (t.assignee_id) userIds.add(t.assignee_id);
+      for (const userId of t.watchers ?? []) userIds.add(userId);
+      for (const userId of userIds) {
+        if (snapshotCounted.has(`${t.id}:${userId}`)) continue;
+        addItem(userId, t.status_global === "concluido");
+      }
     }
 
     // PM subtasks
