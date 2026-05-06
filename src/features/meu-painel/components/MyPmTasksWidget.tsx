@@ -109,7 +109,7 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
   const myTasks = useMemo(() => {
     if (!user?.id) return [];
     return (pmTasksQ.data ?? []).filter(t =>
-      t.assignee_id === user.id &&
+      (t.assignee_id === user.id || (t.watchers ?? []).includes(user.id)) &&
       !["cancelado"].includes(t.status_global) &&
       !(t as any).is_draft
     );
