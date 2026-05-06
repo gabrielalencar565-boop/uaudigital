@@ -724,9 +724,10 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
     const isMixed = childPostTypes.has("video") && childPostTypes.has("design");
     const isAlteracaoParent = isAlteracao && childrenOfThis.length > 0;
     // A task is "plan" if it's a parent OR if it has an origin (was split from planning)
-    const isAlteracaoPlan = isAlteracao && (isAlteracaoParent || !!t.origin_task_id);
-    const isAlteracaoMixed = isAlteracaoPlan;
-    const isAlteracaoWithOrigin = isAlteracao && (!!t.post_type || isAlteracaoPlan);
+    const isAlteracaoPlan = isAlteracao && (isAlteracaoParent || !!t.origin_task_id || t.post_type === "planejamento");
+    const isAlteracaoMixed = isAlteracaoPlan && t.post_type !== "planejamento";
+    const isAlteracaoPlanejamento = isAlteracao && t.post_type === "planejamento";
+    const isAlteracaoWithOrigin = isAlteracao && (!!t.post_type || isAlteracaoPlan) && !isAlteracaoPlanejamento;
     const isRevisaoMixed = isRevisao && isMixed;
     // Revisão (Planejamento): parent task on revisão stage with post_type='planejamento'
     // OR parent task on revisão without any design/video children yet (initial pauta review)
@@ -740,7 +741,9 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
     const isPdfVideo = false;
     const isPdfDesign = false;
     const hasGradient = isAlteracaoWithOrigin || isRevisao;
-    const gradientClass = isAlteracaoMixed
+    const gradientClass = isAlteracaoPlanejamento
+      ? "bg-gradient-to-r from-stage-alteracoes to-stage-planejamento"
+      : isAlteracaoMixed
       ? "bg-gradient-to-r from-stage-alteracoes via-stage-design to-stage-edicao_videos"
       : isAlteracaoWithOrigin
       ? (t.post_type === "video"
@@ -755,7 +758,9 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
       : isRevisaoDesign
       ? "bg-gradient-to-r from-pink-400 to-stage-design"
       : undefined;
-    const gradientAbbr = isAlteracaoMixed
+    const gradientAbbr = isAlteracaoPlanejamento
+      ? "ALT/PLAN"
+      : isAlteracaoMixed
       ? "ALT/PLAN"
       : isAlteracaoWithOrigin
       ? (t.post_type === "video" ? "ALT/VDO" : "ALT/DSG")
@@ -788,11 +793,11 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
         }}
         onDragEnd={isLegacy ? undefined : () => setDraggedTask(null)}
         className={cn("w-full rounded-xl border backdrop-blur-sm p-2 text-left transition-all hover:shadow-sm hover:-translate-y-0.5 group/card shadow-[0_1px_3px_0_hsl(var(--foreground)/0.06)]",
-          isAlteracaoWithOrigin ? "border-[#f5b800]/40" : "bg-card/60 hover:bg-card border-border/30",
+          (isAlteracaoWithOrigin || isAlteracaoPlanejamento) ? "border-[#f5b800]/40" : "bg-card/60 hover:bg-card border-border/30",
           isLegacy ? "cursor-default border-border/40 border-dashed" : "cursor-grab active:cursor-grabbing",
           highlightOverdue && isOverdue(t) && "ring-1 ring-red-400 text-white [&_p]:text-white"
         )}
-        style={isAlteracaoWithOrigin && !(highlightOverdue && isOverdue(t)) ? { background: 'linear-gradient(135deg, #FED404 0%, #FF9A02 100%)' } : (highlightOverdue && isOverdue(t) ? { background: '#ff2c2c', borderColor: '#ff2c2c' } : undefined)}
+        style={(isAlteracaoWithOrigin || isAlteracaoPlanejamento) && !(highlightOverdue && isOverdue(t)) ? { background: 'linear-gradient(135deg, #FED404 0%, #FF9A02 100%)' } : (highlightOverdue && isOverdue(t) ? { background: '#ff2c2c', borderColor: '#ff2c2c' } : undefined)}
         onClick={isLegacy ? undefined : () => onTaskClick(t)}>
         <div className="flex items-center justify-between gap-1">
           <div
