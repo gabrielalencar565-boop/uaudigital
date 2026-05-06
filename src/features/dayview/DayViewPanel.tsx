@@ -950,7 +950,7 @@ export function DayViewPanel() {
             return (
               <div key={`col-${g.user_id}`} className="rounded-xl border border-border bg-card/50 p-2 min-w-0 flex flex-col overflow-hidden">
                 <div className="flex items-center gap-2 pb-2 mb-2 border-b border-border/50">
-                  <Avatar className={cn("shrink-0", veryDense ? "h-10 w-10" : dense ? "h-12 w-12" : "h-14 w-14")}>
+                  <Avatar className={cn("shrink-0", veryDense ? "h-8 w-8" : dense ? "h-9 w-9" : "h-11 w-11")}>
                     <AvatarImage src={g.avatar_url ?? undefined} />
                     <AvatarFallback>{initials(g.display_name)}</AvatarFallback>
                   </Avatar>
