@@ -278,6 +278,7 @@ function PlanningSection({
   parentTask, tasks, doneCount,
   membersMap, members, onSelectSubtask, activeSubtaskId,
   selectedIds, toggleSelect, bulkConfirmOpen,
+  reviewMode, reviews, setReviews, saveReviewToDb, isReviewEditable,
 }: {
   type: "video" | "design";
   icon: React.ReactNode;
@@ -295,6 +296,11 @@ function PlanningSection({
   selectedIds: Set<string>;
   toggleSelect: (id: string) => void;
   bulkConfirmOpen: boolean;
+  reviewMode?: "revisao" | "alteracao" | null;
+  reviews: RevisionNotes;
+  setReviews: React.Dispatch<React.SetStateAction<RevisionNotes>>;
+  saveReviewToDb: (data: RevisionNotes) => void;
+  isReviewEditable: boolean;
 }) {
   const updateTask = useUpdatePmTask();
   const createTask = useCreatePmTask();
