@@ -687,21 +687,14 @@ export function DayViewPanel() {
   const todayCompletedTasks = useMemo(() => {
     const tasks = unifiedTasks.tasks.filter((t) => {
       if (t.status !== "concluido") return false;
-      if (!isCurrentMonth) return true;
-      // For today view, only show tasks actually completed today (by completed_at date in Brazil TZ)
-      if (t.completed_at) {
-        const completedBR = new Date(t.completed_at).toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
-        return completedBR === todayKey;
-      }
-      // Fallback: if no completed_at, use due_date
-      return t.due_date === todayKey;
+      return true;
     });
     return tasks.sort((a, b) => {
       const na = teamByUserId.get(a.assigned_user_id)?.display_name ?? "";
       const nb = teamByUserId.get(b.assigned_user_id)?.display_name ?? "";
       return na.localeCompare(nb);
     });
-  }, [unifiedTasks, todayKey, teamByUserId, isCurrentMonth]);
+  }, [unifiedTasks, teamByUserId]);
   const overdueTasks = useMemo(() => {
     return unifiedTasks.tasks.filter((t) => t.status !== "concluido" && t.due_date && t.due_date < todayKey).sort((a, b) => a.due_date.localeCompare(b.due_date));
   }, [unifiedTasks.tasks, todayKey]);
