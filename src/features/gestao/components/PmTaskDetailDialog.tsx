@@ -1195,19 +1195,28 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
     let previousSnapshot: any = null;
 
-    const { data: snapshots } = await sb
+    // Filter snapshots strictly by post_type to avoid cross-contamination between
+    // design and video branches that share the same origin_task_id.
+    let snapshotQuery = sb
       .from("pm_tasks")
       .select("id, assignee_id, watchers, stage_current, post_type, tags")
       .or(`id.eq.${originId},origin_task_id.eq.${originId}`)
       .eq("stage_current", previousWorkStage)
       .eq("status_global", "concluido")
       .is("parent_task_id", null)
+      .is("deleted_at", null)
       .order("updated_at", { ascending: false })
-      .limit(10);
+      .limit(5);
+
+    // Add strict post_type filter so we never pick a snapshot from the other branch
+    if (resolvedAlteracaoPostType && resolvedAlteracaoPostType !== "planejamento") {
+      snapshotQuery = snapshotQuery.eq("post_type", resolvedAlteracaoPostType);
+    }
+
+    const { data: snapshots } = await snapshotQuery;
 
     if (snapshots?.length) {
-      previousSnapshot = snapshots.find((snapshot: any) => snapshot.post_type === resolvedAlteracaoPostType)
-        ?? snapshots[0];
+      previousSnapshot = snapshots[0];
     }
 
     if (previousSnapshot) {
