@@ -225,7 +225,7 @@ export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members
         </AlertDialogContent>
       </AlertDialog>
 
-      {videoTasks.length > 0 && (
+      {(videoTasks.length > 0 || alwaysShowBothSections) && (
         <PlanningSection
           type="video"
           icon={<Clapperboard className="h-4 w-4" />}
