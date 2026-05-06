@@ -874,7 +874,7 @@ export function DayViewPanel() {
       const stageBg = periodicKey
         ? "bg-black"
         : (gradientClass ?? STAGE_BADGE_BG[t.stage] ?? "bg-muted");
-      const daysLate = variant === "overdue" ? differenceInCalendarDays(today, new Date(`${t.due_date}T00:00:00`)) : 0;
+      
       const clientName = resolveClientName(t);
       return (
         <div
