@@ -1103,6 +1103,9 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
     const taskTags = task.tags ?? [];
     const normalizedTitle = task.title.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const isPautaReview = task.post_type === "planejamento" || (
+      task.post_type == null && task.stage_current === "revisao" && !childTasks.some(c => c.post_type === "video" || c.post_type === "design")
+    );
     const isVideoByPostType = task.post_type === "video";
     const isVideoByTag = taskTags.some((t) => {
       const parsed = parseTag(t);
@@ -1110,12 +1113,16 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       return tagName === "vídeo" || tagName === "video";
     });
     const isVideoByTitle = normalizedTitle.includes("video");
-    const previousWorkStage = isVideoByPostType || isVideoByTag || isVideoByTitle
-      ? "edicao_videos"
-      : "design";
+    const previousWorkStage = isPautaReview
+      ? "planejamento"
+      : isVideoByPostType || isVideoByTag || isVideoByTitle
+        ? "edicao_videos"
+        : "design";
     const resolvedAlteracaoPostType = hasMixedChildren
       ? null
-      : (task.post_type ?? (previousWorkStage === "edicao_videos" ? "video" : "design"));
+      : isPautaReview
+        ? "planejamento"
+        : (task.post_type ?? (previousWorkStage === "edicao_videos" ? "video" : "design"));
 
     // Helper to get assignee/watchers per post_type
     const getAssigneeForPostType = (pt: string | null) => {
