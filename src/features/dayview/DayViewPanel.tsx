@@ -964,7 +964,7 @@ export function DayViewPanel() {
                             !isDone && !isOverdueCleaning && "border-border bg-card hover:bg-accent/50"
                           )}
                         >
-                          <span className={cn("leading-none shrink-0", veryDense ? "text-base" : dense ? "text-lg" : "text-xl")}>
+                          <span className="leading-none shrink-0 text-xs">
                             {emoji}
                           </span>
                           {(() => {
