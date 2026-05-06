@@ -1984,14 +1984,15 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         {/* Subtasks — use planning layout for parent tasks at planejamento, pdf, agendamento, entrega,
             or alteracoes with mixed children (both design + video).
             Periodic tasks (custom_*) are simple standalone tasks → always use the regular subtask list. */}
-          {/* Alteração review panel — shows per-subtask approval/change status */}
-          {task.stage_current === "alteracoes" && !task.parent_task_id && childTasks.length > 0 && (
+          {/* Review panel — revisão (interactive) or alteração (read-only) */}
+          {(task.stage_current === "revisao" || task.stage_current === "alteracoes") && !task.parent_task_id && childTasks.length > 0 && (
             <div className="border-t border-border/20 pt-4 pb-2">
               <AlteracaoReviewPanel
                 parentTask={task}
                 childTasks={childTasks}
                 membersMap={membersMap}
                 readOnly={isCompletedSnapshot && !correctionMode}
+                mode={task.stage_current === "revisao" ? "revisao" : "alteracao"}
               />
             </div>
           )}
