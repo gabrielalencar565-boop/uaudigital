@@ -887,8 +887,11 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       return;
     }
 
-    void executeSplitTask(current.stage, current.stageLabel, current.children, current.postType, nextDueDate, clientName, monthLabel)
-      .catch((err) => console.error("bg split error:", err));
+    try {
+      await executeSplitTask(current.stage, current.stageLabel, current.children, current.postType, nextDueDate, clientName, monthLabel);
+    } catch (err) {
+      console.error("bg split error:", err);
+    }
     await processSplitQueue(remaining, snapshotDueDate, nextDueDate, clientName, monthLabel, deferredCompletion);
   };
 
