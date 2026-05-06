@@ -1103,6 +1103,9 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
     const taskTags = task.tags ?? [];
     const normalizedTitle = task.title.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const isPautaReview = task.post_type === "planejamento" || (
+      task.post_type == null && task.stage_current === "revisao" && !childTasks.some(c => c.post_type === "video" || c.post_type === "design")
+    );
     const isVideoByPostType = task.post_type === "video";
     const isVideoByTag = taskTags.some((t) => {
       const parsed = parseTag(t);
@@ -1110,12 +1113,16 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       return tagName === "vídeo" || tagName === "video";
     });
     const isVideoByTitle = normalizedTitle.includes("video");
-    const previousWorkStage = isVideoByPostType || isVideoByTag || isVideoByTitle
-      ? "edicao_videos"
-      : "design";
+    const previousWorkStage = isPautaReview
+      ? "planejamento"
+      : isVideoByPostType || isVideoByTag || isVideoByTitle
+        ? "edicao_videos"
+        : "design";
     const resolvedAlteracaoPostType = hasMixedChildren
       ? null
-      : (task.post_type ?? (previousWorkStage === "edicao_videos" ? "video" : "design"));
+      : isPautaReview
+        ? "planejamento"
+        : (task.post_type ?? (previousWorkStage === "edicao_videos" ? "video" : "design"));
 
     // Helper to get assignee/watchers per post_type
     const getAssigneeForPostType = (pt: string | null) => {
@@ -1269,6 +1276,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     const originId = task.origin_task_id ?? task.id;
 
     // Detect original stage: check post_type first, then tags, then title as legacy fallback
+    const isPautaReview = task.post_type === "planejamento";
     const isVideoByPostType = task.post_type === "video";
     const taskTags = task.tags ?? [];
     const isVideoByTag = taskTags.some(t => {
@@ -1278,8 +1286,8 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     const normalizedTitle = task.title.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
     const isVideoByTitle = normalizedTitle.includes("video");
     const isVideoTask = isVideoByPostType || isVideoByTag || isVideoByTitle;
-    const originalStage = isVideoTask ? "edicao_videos" : "design";
-    const resolvedReturnPostType = isVideoTask ? "video" : "design";
+    const originalStage = isPautaReview ? "planejamento" : isVideoTask ? "edicao_videos" : "design";
+    const resolvedReturnPostType = isPautaReview ? "planejamento" : isVideoTask ? "video" : "design";
 
     // Find the paused revisão task in the same lineage to reactivate
     let revisaoQuery = sb
@@ -1323,9 +1331,10 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         .update({ task_id: revisaoTask.id })
         .eq("task_id", task.id);
 
-      // Reactivate the revisão task
-      const fixedAssignee = getFixedAssignee(stageAssignees, "revisao", task.client_id);
-      const fixedWatchers = getFixedWatchers(stageAssignees, "revisao", task.client_id);
+      // Reactivate the revisão task — use revisao_pauta key for planejamento returns
+      const revisaoAssigneeKey = isPautaReview ? "revisao_pauta" : "revisao";
+      const fixedAssignee = getFixedAssignee(stageAssignees, revisaoAssigneeKey, task.client_id);
+      const fixedWatchers = getFixedWatchers(stageAssignees, revisaoAssigneeKey, task.client_id);
       const revisaoUpdates: any = {
         id: revisaoTask.id,
         status_global: "backlog" as any,
@@ -1351,8 +1360,9 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       toast.success("Ajuste concluído — retornou para Revisão");
     } else {
       // Fallback: no paused revisão found, just change stage on current task
-      const fixedAssignee = getFixedAssignee(stageAssignees, "revisao", task.client_id);
-      const fixedWatchers = getFixedWatchers(stageAssignees, "revisao", task.client_id);
+      const fallbackAssigneeKey = isPautaReview ? "revisao_pauta" : "revisao";
+      const fixedAssignee = getFixedAssignee(stageAssignees, fallbackAssigneeKey, task.client_id);
+      const fixedWatchers = getFixedWatchers(stageAssignees, fallbackAssigneeKey, task.client_id);
 
       const updates: any = {
         id: task.id,

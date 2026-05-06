@@ -10,7 +10,7 @@ import { getStageCircleColor } from "../pm-constants";
 import type { PmTask } from "../pm-types";
 import { PmTaskCard } from "./PmTaskCard";
 import { useUpdatePmTask } from "../hooks/use-pm-data";
-import { useDefaultFlowWithDates, getFixedAssignee, getFixedWatchers } from "./PmStageFlowConfig";
+import { useDefaultFlowWithDates, getFixedAssignee, getFixedWatchers, resolveAssigneeStageKey } from "./PmStageFlowConfig";
 import { LinkOrDateDialog } from "./LinkOrDateDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -182,8 +182,9 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, av
   };
 
   const applyMove = (droppedTask: PmTask, newStage: string, overrideDueDate?: string) => {
-    const fixedAssignee = getFixedAssignee(stageAssignees, newStage, droppedTask.client_id);
-    const fixedWatchers = getFixedWatchers(stageAssignees, newStage, droppedTask.client_id);
+    const assigneeKey = resolveAssigneeStageKey(droppedTask.stage_current, newStage);
+    const fixedAssignee = getFixedAssignee(stageAssignees, assigneeKey, droppedTask.client_id);
+    const fixedWatchers = getFixedWatchers(stageAssignees, assigneeKey, droppedTask.client_id);
 
     const parentUpdates: any = { id: droppedTask.id, stage_current: newStage };
     if (fixedAssignee !== undefined) {
