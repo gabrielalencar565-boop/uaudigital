@@ -222,53 +222,57 @@ export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members
         </AlertDialogContent>
       </AlertDialog>
 
-      <PlanningSection
-        type="video"
-        icon={<Clapperboard className="h-4 w-4" />}
-        label="Vídeo"
-        headerBg="bg-blue-500"
-        headerText="text-white"
-        borderColor="border-blue-500/30"
-        parentTask={parentTask}
-        tasks={videoTasks}
-        doneCount={videoDone}
-        membersMap={membersMap}
-        members={members}
-        onSelectSubtask={onSelectSubtask}
-        activeSubtaskId={activeSubtaskId}
-        selectedIds={selectedIds}
-        toggleSelect={toggleSelect}
-        bulkConfirmOpen={bulkConfirmOpen}
-        reviewMode={reviewMode}
-        reviews={reviews}
-        setReviews={setReviews}
-        saveReviewToDb={saveReviewToDb}
-        isReviewEditable={isReviewEditable}
-      />
+      {videoTasks.length > 0 && (
+        <PlanningSection
+          type="video"
+          icon={<Clapperboard className="h-4 w-4" />}
+          label="Vídeo"
+          headerBg="bg-blue-500"
+          headerText="text-white"
+          borderColor="border-blue-500/30"
+          parentTask={parentTask}
+          tasks={videoTasks}
+          doneCount={videoDone}
+          membersMap={membersMap}
+          members={members}
+          onSelectSubtask={onSelectSubtask}
+          activeSubtaskId={activeSubtaskId}
+          selectedIds={selectedIds}
+          toggleSelect={toggleSelect}
+          bulkConfirmOpen={bulkConfirmOpen}
+          reviewMode={reviewMode}
+          reviews={reviews}
+          setReviews={setReviews}
+          saveReviewToDb={saveReviewToDb}
+          isReviewEditable={isReviewEditable}
+        />
+      )}
 
-      <PlanningSection
-        type="design"
-        icon={<Palette className="h-4 w-4" />}
-        label="Design"
-        headerBg="bg-teal-500"
-        headerText="text-white"
-        borderColor="border-teal-500/30"
-        parentTask={parentTask}
-        tasks={designTasks}
-        doneCount={designDone}
-        membersMap={membersMap}
-        members={members}
-        onSelectSubtask={onSelectSubtask}
-        activeSubtaskId={activeSubtaskId}
-        selectedIds={selectedIds}
-        toggleSelect={toggleSelect}
-        bulkConfirmOpen={bulkConfirmOpen}
-        reviewMode={reviewMode}
-        reviews={reviews}
-        setReviews={setReviews}
-        saveReviewToDb={saveReviewToDb}
-        isReviewEditable={isReviewEditable}
-      />
+      {designTasks.length > 0 && (
+        <PlanningSection
+          type="design"
+          icon={<Palette className="h-4 w-4" />}
+          label="Design"
+          headerBg="bg-teal-500"
+          headerText="text-white"
+          borderColor="border-teal-500/30"
+          parentTask={parentTask}
+          tasks={designTasks}
+          doneCount={designDone}
+          membersMap={membersMap}
+          members={members}
+          onSelectSubtask={onSelectSubtask}
+          activeSubtaskId={activeSubtaskId}
+          selectedIds={selectedIds}
+          toggleSelect={toggleSelect}
+          bulkConfirmOpen={bulkConfirmOpen}
+          reviewMode={reviewMode}
+          reviews={reviews}
+          setReviews={setReviews}
+          saveReviewToDb={saveReviewToDb}
+          isReviewEditable={isReviewEditable}
+        />
+      )}
     </div>
   );
 }
