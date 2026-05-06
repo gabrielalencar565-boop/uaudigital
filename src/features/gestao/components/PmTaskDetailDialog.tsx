@@ -1360,8 +1360,9 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       toast.success("Ajuste concluído — retornou para Revisão");
     } else {
       // Fallback: no paused revisão found, just change stage on current task
-      const fixedAssignee = getFixedAssignee(stageAssignees, "revisao", task.client_id);
-      const fixedWatchers = getFixedWatchers(stageAssignees, "revisao", task.client_id);
+      const fallbackAssigneeKey = isPautaReview ? "revisao_pauta" : "revisao";
+      const fixedAssignee = getFixedAssignee(stageAssignees, fallbackAssigneeKey, task.client_id);
+      const fixedWatchers = getFixedWatchers(stageAssignees, fallbackAssigneeKey, task.client_id);
 
       const updates: any = {
         id: task.id,
