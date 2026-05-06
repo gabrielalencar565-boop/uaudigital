@@ -526,12 +526,20 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           // PDF and Agendamento are unified (no post_type); other stages inherit from origin
           // Revisão (Planejamento): when planejamento → revisão, mark with sentinel "planejamento"
           // so the agenda/cards render REV/PLAN instead of REV/DSG or REV/VDO
+          // Determine post_type for the next task:
+          // - PDF/Agendamento: null (unified)
+          // - Planejamento → Revisão: "planejamento" sentinel
+          // - Design/Vídeo stages: always use stage-based type (not task.post_type which may be stale)
+          // - Other stages: inherit task.post_type
           const resolvedPostType = (nextStage === "pdf" || nextStage === "agendamento")
             ? null
             : (completedStage === "planejamento" && nextStage === "revisao")
               ? "planejamento"
-              : (task.post_type
-                ?? (completedStage === "edicao_videos" ? "video" : completedStage === "design" ? "design" : undefined));
+              : completedStage === "edicao_videos"
+                ? "video"
+                : completedStage === "design"
+                  ? "design"
+                  : (task.post_type ?? undefined);
 
           const { data: { user } } = await supabase.auth.getUser();
           const { data: newTask } = await sb.from("pm_tasks").insert({
