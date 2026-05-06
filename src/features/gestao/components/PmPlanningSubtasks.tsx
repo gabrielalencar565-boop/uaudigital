@@ -423,15 +423,20 @@ function PlanningSection({
             const isSelected = selectedIds.has(sub.id);
             const subAssignees = allAssigneeIds(sub);
             const circleColor = getStageCircleColor(sub.stage_current);
+            const review = reviews[sub.id];
+            const hasReview = !!reviewMode;
+            const isNoteExpanded = expandedNoteId === sub.id || (reviewMode === "alteracao" && !!review?.note);
 
             return (
+              <div key={sub.id}>
               <div
-                key={sub.id}
                 className={cn(
                   "group flex items-center gap-2 px-2 py-2 transition border-b border-border/10 cursor-pointer",
                   isActive ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-card/40",
                   isSelected && "bg-primary/5",
-                  isDone && "opacity-60"
+                  isDone && "opacity-60",
+                  hasReview && review?.status === "aprovado" && "bg-emerald-500/5",
+                  hasReview && review?.status === "alteracao" && "bg-amber-500/5",
                 )}
                 onClick={(e) => {
                   if (deletingId || bulkConfirmOpen) {
@@ -439,7 +444,6 @@ function PlanningSection({
                     e.stopPropagation();
                     return;
                   }
-                  // If user already has a selection active, clicking the row toggles selection instead of opening
                   if (hasSelection) {
                     e.preventDefault();
                     e.stopPropagation();
@@ -449,22 +453,55 @@ function PlanningSection({
                   onSelectSubtask?.(sub);
                 }}
               >
-                {/* Selection checkbox */}
-                <div
-                  className="flex items-center justify-center"
-                  onClick={(e) => e.stopPropagation()}
-                  onPointerDown={(e) => e.stopPropagation()}
-                >
-                  <Checkbox
-                    checked={isSelected}
-                    onCheckedChange={() => toggleSelect(sub.id)}
-                    aria-label="Selecionar subtarefa"
-                    className={cn(
-                      "h-3.5 w-3.5 transition-opacity",
-                      hasSelection ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-                    )}
-                  />
-                </div>
+                {/* Review buttons (replace checkbox when in review mode) */}
+                {hasReview ? (
+                  <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      disabled={!isReviewEditable}
+                      onClick={() => toggleReviewStatus(sub.id, "aprovado")}
+                      className={cn(
+                        "h-6 w-6 rounded-full flex items-center justify-center transition-all border-2",
+                        review?.status === "aprovado"
+                          ? "bg-emerald-500 border-emerald-500 text-white scale-105"
+                          : "border-emerald-500/30 hover:border-emerald-500/60 text-emerald-500/40 hover:text-emerald-500/70",
+                        !isReviewEditable && "opacity-60 cursor-default"
+                      )}
+                      title="Aprovado"
+                    >
+                      <Check className="h-3 w-3" />
+                    </button>
+                    <button
+                      disabled={!isReviewEditable}
+                      onClick={() => toggleReviewStatus(sub.id, "alteracao")}
+                      className={cn(
+                        "h-6 w-6 rounded-full flex items-center justify-center transition-all border-2",
+                        review?.status === "alteracao"
+                          ? "bg-amber-500 border-amber-500 text-white scale-105"
+                          : "border-amber-500/30 hover:border-amber-500/60 text-amber-500/40 hover:text-amber-500/70",
+                        !isReviewEditable && "opacity-60 cursor-default"
+                      )}
+                      title="Precisa de alteração"
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <div
+                    className="flex items-center justify-center"
+                    onClick={(e) => e.stopPropagation()}
+                    onPointerDown={(e) => e.stopPropagation()}
+                  >
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={() => toggleSelect(sub.id)}
+                      aria-label="Selecionar subtarefa"
+                      className={cn(
+                        "h-3.5 w-3.5 transition-opacity",
+                        hasSelection ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                      )}
+                    />
+                  </div>
+                )}
 
                 {/* Stage circle */}
                 <div className="w-8 flex justify-center" onClick={(e) => e.stopPropagation()}>
@@ -508,8 +545,30 @@ function PlanningSection({
                     const name = tagDisplay(rawTag);
                     return <Badge key={rawTag} className={cn("text-[8px] h-4 px-1 gap-0.5 border-0 shrink-0", tc.bg, tc.text)}>{name}</Badge>;
                   })}
-                  <span className={cn("truncate text-sm hover:text-primary transition-colors", isDone && "line-through text-muted-foreground")}>{sub.title}</span>
+                  <span className={cn(
+                    "truncate text-sm hover:text-primary transition-colors",
+                    isDone && "line-through text-muted-foreground",
+                    hasReview && review?.status === "aprovado" && "line-through text-muted-foreground"
+                  )}>{sub.title}</span>
                 </div>
+
+                {/* Review note toggle */}
+                {hasReview && review?.status === "alteracao" && (
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => setExpandedNoteId(expandedNoteId === sub.id ? null : sub.id)}
+                      className={cn(
+                        "flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-medium transition-all",
+                        review.note
+                          ? "bg-amber-500/10 text-amber-500"
+                          : "bg-muted/50 text-muted-foreground hover:bg-amber-500/10 hover:text-amber-500"
+                      )}
+                    >
+                      <MessageSquare className="h-3 w-3" />
+                      {expandedNoteId === sub.id ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                    </button>
+                  </div>
+                )}
 
                 {/* Assignee */}
                 <div className="w-20 flex justify-center" onClick={(e) => e.stopPropagation()}>
