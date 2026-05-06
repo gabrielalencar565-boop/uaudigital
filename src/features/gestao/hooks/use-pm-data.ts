@@ -193,7 +193,7 @@ export function useUpdatePmTask() {
       const { data, error } = await sb.from("pm_tasks").update(updates).eq("id", id).select().single();
       if (error) throw error;
 
-      // ── Fire-and-forget background work (non-blocking) ──
+        // ── Fire-and-forget background work (non-blocking) ──
       const bgWork = async () => {
         const shouldRecalcTagPoints = Object.prototype.hasOwnProperty.call(updates, "tags") && !data.parent_task_id;
         if (shouldRecalcTagPoints) {
@@ -202,8 +202,10 @@ export function useUpdatePmTask() {
           } catch (e) { console.error("Error recalculating tag points:", e); }
         }
 
-        // Forward-sync: propagate certain fields to downstream tasks
-        const SYNCED_FIELDS = ["description", "tags", "project_id", "is_extra_demand", "caption", "cover_url", "post_type", "priority"] as const;
+        // Forward-sync: propagate shared content fields to downstream tasks.
+        // post_type is branch identity (DSG/VDO/PLAN), not shared content; syncing it by
+        // origin_task_id makes parallel Design/Vídeo flows overwrite each other.
+        const SYNCED_FIELDS = ["description", "tags", "project_id", "is_extra_demand", "caption", "cover_url", "priority"] as const;
         const hasSyncedField = SYNCED_FIELDS.some(f => Object.prototype.hasOwnProperty.call(updates, f));
 
         if (hasSyncedField && !data.parent_task_id) {
@@ -228,7 +230,7 @@ export function useUpdatePmTask() {
             const downstreamIds = downstream.map((d: any) => d.id);
             // Build child sync payload once
             const childSyncPayload: Record<string, any> = {};
-            for (const f of ["tags", "is_extra_demand", "post_type"] as const) {
+            for (const f of ["tags", "is_extra_demand"] as const) {
               if (Object.prototype.hasOwnProperty.call(updates, f)) {
                 childSyncPayload[f] = (updates as any)[f];
               }
