@@ -482,7 +482,7 @@ function PlanningSection({
                       className={cn(
                         "h-6 w-6 rounded-full flex items-center justify-center transition-all border-2",
                         review?.status === "aprovado"
-                          ? "bg-white border-white text-emerald-700 scale-105 shadow-md"
+                          ? "bg-emerald-500 border-white text-white scale-105 shadow-md ring-2 ring-white"
                           : "border-white/50 hover:border-white/80 text-white/60 hover:text-white/90",
                         !isReviewEditable && "opacity-60 cursor-default"
                       )}
