@@ -687,21 +687,14 @@ export function DayViewPanel() {
   const todayCompletedTasks = useMemo(() => {
     const tasks = unifiedTasks.tasks.filter((t) => {
       if (t.status !== "concluido") return false;
-      if (!isCurrentMonth) return true;
-      // For today view, only show tasks actually completed today (by completed_at date in Brazil TZ)
-      if (t.completed_at) {
-        const completedBR = new Date(t.completed_at).toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
-        return completedBR === todayKey;
-      }
-      // Fallback: if no completed_at, use due_date
-      return t.due_date === todayKey;
+      return true;
     });
     return tasks.sort((a, b) => {
       const na = teamByUserId.get(a.assigned_user_id)?.display_name ?? "";
       const nb = teamByUserId.get(b.assigned_user_id)?.display_name ?? "";
       return na.localeCompare(nb);
     });
-  }, [unifiedTasks, todayKey, teamByUserId, isCurrentMonth]);
+  }, [unifiedTasks, teamByUserId]);
   const overdueTasks = useMemo(() => {
     return unifiedTasks.tasks.filter((t) => t.status !== "concluido" && t.due_date && t.due_date < todayKey).sort((a, b) => a.due_date.localeCompare(b.due_date));
   }, [unifiedTasks.tasks, todayKey]);
@@ -821,10 +814,9 @@ export function DayViewPanel() {
       groups.push({ user_id: "__unassigned__", display_name: "Sem responsável", avatar_url: null, ...unassigned });
     }
     const colCount = groups.length;
-    const cols = Math.min(colCount, Math.ceil(colCount / 2) > 5 ? Math.ceil(colCount / 2) : Math.max(Math.ceil(colCount / 2), 4));
-    const gridStyle = { gridTemplateColumns: `repeat(${Math.max(cols, 1)}, minmax(0, 1fr))` };
-    const dense = cols >= 4;
-    const veryDense = cols >= 6;
+    const gridStyle = { gridTemplateColumns: `repeat(${Math.max(colCount, 1)}, minmax(0, 1fr))` };
+    const dense = colCount >= 4;
+    const veryDense = colCount >= 6;
     const renderTaskItem = (t: TaskItem, variant: "pending" | "completed" | "overdue", g: PersonGroup) => {
       const taskItemClass = variant === "completed"
         ? "flex flex-col items-start gap-1 rounded-lg border border-success bg-success cursor-pointer hover:bg-success/90 transition-colors min-w-0"
@@ -952,24 +944,24 @@ export function DayViewPanel() {
     return (
       <div className="space-y-2">
         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{title}</p>
-        <div className="grid gap-3" style={gridStyle}>
+        <div className="grid gap-2" style={gridStyle}>
           {groups.map((g) => {
             const totalCount = g.pending.length + g.completed.length + g.overdue.length;
             return (
-              <div key={`col-${g.user_id}`} className="rounded-xl border border-border bg-card/50 p-3 min-w-0 flex flex-col">
-                <div className="flex items-center gap-3 pb-3 mb-3 border-b border-border/50">
-                  <Avatar className={cn("shrink-0", veryDense ? "h-10 w-10" : dense ? "h-12 w-12" : "h-14 w-14")}>
+              <div key={`col-${g.user_id}`} className="rounded-xl border border-border bg-card/50 p-2 min-w-0 flex flex-col overflow-hidden">
+                <div className="flex items-center gap-2 pb-2 mb-2 border-b border-border/50">
+                  <Avatar className={cn("shrink-0", veryDense ? "h-8 w-8" : dense ? "h-9 w-9" : "h-11 w-11")}>
                     <AvatarImage src={g.avatar_url ?? undefined} />
                     <AvatarFallback>{initials(g.display_name)}</AvatarFallback>
                   </Avatar>
                   <div className="min-w-0 flex-1">
-                    <p className={cn("font-bold break-words leading-tight", veryDense ? "text-sm" : dense ? "text-base" : "text-lg")}>
+                    <p className={cn("font-bold break-words leading-tight", veryDense ? "text-xs" : dense ? "text-sm" : "text-base")}>
                       {g.display_name}
                     </p>
                     <span className="text-xs text-muted-foreground">{totalCount} {totalCount === 1 ? "tarefa" : "tarefas"}</span>
                   </div>
                 </div>
-                <div className="flex flex-col gap-2.5 flex-1">
+                <div className="flex flex-col gap-1.5 flex-1 overflow-y-auto max-h-[60vh]">
                   {isCurrentMonth && todayCleaningTasks
                     .filter((s) => s.user_id === g.user_id)
                     .map((schedule) => {
