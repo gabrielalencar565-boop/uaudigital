@@ -825,10 +825,10 @@ export function DayViewPanel() {
     const veryDense = cols >= 6;
     const renderTaskItem = (t: TaskItem, variant: "pending" | "completed" | "overdue", g: PersonGroup) => {
       const taskItemClass = variant === "completed"
-        ? "flex flex-col items-start gap-1 rounded-lg border border-success bg-success cursor-pointer hover:bg-success/90 transition-colors min-w-0"
+        ? "flex items-center gap-1.5 rounded-md border border-success bg-success cursor-pointer hover:bg-success/90 transition-colors min-w-0 px-2 py-1"
         : variant === "overdue"
-        ? "flex flex-col items-start gap-1 rounded-lg border border-destructive bg-destructive cursor-pointer hover:bg-destructive/90 transition-colors min-w-0"
-        : "flex flex-col items-start gap-1 rounded-lg border border-border bg-card cursor-pointer hover:bg-accent/50 transition-colors min-w-0";
+        ? "flex items-center gap-1.5 rounded-md border border-destructive bg-destructive cursor-pointer hover:bg-destructive/90 transition-colors min-w-0 px-2 py-1"
+        : "flex items-center gap-1.5 rounded-md border border-border bg-card cursor-pointer hover:bg-accent/50 transition-colors min-w-0 px-2 py-1";
       const isAlteracaoWithOrigin = t.stage === "alteracoes" && !!t.post_type;
       const isRevisao = t.stage === "revisao";
       const childTypes = t.childPostTypes ?? new Set<string>();
@@ -874,76 +874,40 @@ export function DayViewPanel() {
       const stageBg = periodicKey
         ? "bg-black"
         : (gradientClass ?? STAGE_BADGE_BG[t.stage] ?? "bg-muted");
-      const daysLate = variant === "overdue" ? differenceInCalendarDays(today, new Date(`${t.due_date}T00:00:00`)) : 0;
+      
+      const clientName = resolveClientName(t);
       return (
         <div
           key={`${variant}-${g.user_id}-${t.id}`}
           onClick={() => handleTaskClick(t)}
-          className={cn(taskItemClass, veryDense ? "px-2.5 py-2" : dense ? "px-3 py-2.5" : "px-4 py-3")}
-          style={{ containerType: "inline-size" }}
+          className={taskItemClass}
         >
-          <div className="flex items-center gap-1.5 w-full min-w-0">
-            <span
-              className={cn(
-                "inline-flex items-center justify-center rounded-full font-bold tracking-wide text-white shrink-0 leading-none",
-                stageBg,
-                veryDense ? "h-4 text-[8px] px-[5px]" : dense ? "h-[18px] px-[7px] text-[9px]" : "h-5 px-2 text-[10px]"
-              )}
-            >
-              {stageAbbr}
+          <span
+            className={cn(
+              "inline-flex items-center justify-center rounded-full font-bold tracking-wide text-white shrink-0 leading-none h-4 px-1 text-[8px]",
+              stageBg
+            )}
+          >
+            {stageAbbr}
+          </span>
+          {variant === "overdue" && (
+            <span className="font-bold text-destructive-foreground shrink-0 text-[10px]">
+              {differenceInCalendarDays(today, new Date(`${t.due_date}T00:00:00`))}d
             </span>
-            {variant === "overdue" && (
-              <span className={cn("font-bold text-destructive-foreground shrink-0 ml-auto", veryDense ? "text-xs" : "text-sm")}>
-                {daysLate}d
-              </span>
+          )}
+          {variant === "completed" && (
+            <span className="font-bold text-success-foreground shrink-0 text-[10px]">✓</span>
+          )}
+          <span
+            className={cn(
+              "text-[11px] font-medium leading-tight truncate min-w-0 flex-1",
+              variant === "completed" && "text-success-foreground",
+              variant === "overdue" && "text-destructive-foreground"
             )}
-            {variant === "completed" && (
-              <span className={cn("font-bold text-success-foreground shrink-0 ml-auto", veryDense ? "text-xs" : "text-sm")}>✓</span>
-            )}
-            {variant === "pending" && t.status === "em_andamento" && !veryDense && (
-              <Badge variant="warning" className={cn("shrink-0 ml-auto", dense ? "text-[10px] px-1.5 py-0 h-4" : "text-xs px-2 py-0.5 h-5")}>
-                Em and.
-              </Badge>
-            )}
-          </div>
-          {(() => {
-            const clientName = resolveClientName(t);
-            const trimmed = clientName.trim();
-            const isSingleWord = !trimmed.includes(" ");
-            const isLong = trimmed.length > 18;
-            const sizeClass = isLong
-              ? (veryDense ? "text-[10px]" : dense ? "text-xs" : "text-sm")
-              : (veryDense ? "text-xs" : dense ? "text-sm" : "text-base");
-            return (
-              <p
-                title={clientName}
-                lang="pt-BR"
-                className={cn(
-                  "font-semibold leading-tight w-full min-w-0 [hyphens:none]",
-                  isSingleWord ? "whitespace-nowrap overflow-hidden text-ellipsis" : "",
-                  sizeClass,
-                  variant === "completed" && "text-success-foreground",
-                  variant === "overdue" && "text-destructive-foreground"
-                )}
-                style={
-                  !isSingleWord
-                    ? {
-                        display: "-webkit-box",
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: "vertical",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        wordBreak: "keep-all",
-                        overflowWrap: "break-word",
-                        hyphens: "none",
-                      }
-                    : { wordBreak: "keep-all", overflowWrap: "normal", hyphens: "none" }
-                }
-              >
-                {clientName}
-              </p>
-            );
-          })()}
+            title={clientName}
+          >
+            {clientName}
+          </span>
         </div>
       );
     };
@@ -967,7 +931,7 @@ export function DayViewPanel() {
                     <span className="text-xs text-muted-foreground">{totalCount} {totalCount === 1 ? "tarefa" : "tarefas"}</span>
                   </div>
                 </div>
-                <div className="flex flex-col gap-1.5 flex-1 overflow-y-auto max-h-[30vh]">
+                <div className="flex flex-col gap-1 flex-1 overflow-y-auto max-h-[28vh]">
                   {isCurrentMonth && todayCleaningTasks
                     .filter((s) => s.user_id === g.user_id)
                     .map((schedule) => {
