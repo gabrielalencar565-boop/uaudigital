@@ -251,7 +251,7 @@ export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members
         />
       )}
 
-      {designTasks.length > 0 && (
+      {(designTasks.length > 0 || alwaysShowBothSections) && (
         <PlanningSection
           type="design"
           icon={<Palette className="h-4 w-4" />}
