@@ -239,6 +239,11 @@ export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members
         selectedIds={selectedIds}
         toggleSelect={toggleSelect}
         bulkConfirmOpen={bulkConfirmOpen}
+        reviewMode={reviewMode}
+        reviews={reviews}
+        setReviews={setReviews}
+        saveReviewToDb={saveReviewToDb}
+        isReviewEditable={isReviewEditable}
       />
 
       <PlanningSection
@@ -258,6 +263,11 @@ export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members
         selectedIds={selectedIds}
         toggleSelect={toggleSelect}
         bulkConfirmOpen={bulkConfirmOpen}
+        reviewMode={reviewMode}
+        reviews={reviews}
+        setReviews={setReviews}
+        saveReviewToDb={saveReviewToDb}
+        isReviewEditable={isReviewEditable}
       />
     </div>
   );
