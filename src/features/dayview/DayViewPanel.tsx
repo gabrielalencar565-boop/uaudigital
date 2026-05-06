@@ -961,7 +961,7 @@ export function DayViewPanel() {
                     <span className="text-xs text-muted-foreground">{totalCount} {totalCount === 1 ? "tarefa" : "tarefas"}</span>
                   </div>
                 </div>
-                <div className="flex flex-col gap-2.5 flex-1">
+                <div className="flex flex-col gap-1.5 flex-1 overflow-y-auto max-h-[60vh]">
                   {isCurrentMonth && todayCleaningTasks
                     .filter((s) => s.user_id === g.user_id)
                     .map((schedule) => {
