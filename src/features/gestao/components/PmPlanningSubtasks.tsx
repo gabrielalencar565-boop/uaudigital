@@ -25,6 +25,10 @@ function initials(n: string) {
   return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
 }
 
+type ReviewStatus = "aprovado" | "alteracao" | "pendente";
+interface ReviewEntry { status: ReviewStatus; note: string; }
+type RevisionNotes = Record<string, ReviewEntry>;
+
 interface Props {
   parentTask: PmTask;
   childTasks: PmTask[];
@@ -32,8 +36,10 @@ interface Props {
   members?: { id: string; name: string }[];
   onSelectSubtask?: (task: PmTask) => void;
   activeSubtaskId?: string | null;
-  /** Section title (defaults to "Planejamento") */
   sectionTitle?: string;
+  /** When set, shows review controls inline per subtask */
+  reviewMode?: "revisao" | "alteracao" | null;
+  readOnly?: boolean;
 }
 
 export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members, onSelectSubtask, activeSubtaskId, sectionTitle = "Planejamento" }: Props) {
