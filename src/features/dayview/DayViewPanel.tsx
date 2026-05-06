@@ -814,10 +814,9 @@ export function DayViewPanel() {
       groups.push({ user_id: "__unassigned__", display_name: "Sem responsável", avatar_url: null, ...unassigned });
     }
     const colCount = groups.length;
-    const cols = Math.min(colCount, Math.ceil(colCount / 2) > 5 ? Math.ceil(colCount / 2) : Math.max(Math.ceil(colCount / 2), 4));
-    const gridStyle = { gridTemplateColumns: `repeat(${Math.max(cols, 1)}, minmax(0, 1fr))` };
-    const dense = cols >= 4;
-    const veryDense = cols >= 6;
+    const gridStyle = { gridTemplateColumns: `repeat(${Math.max(colCount, 1)}, minmax(0, 1fr))` };
+    const dense = colCount >= 4;
+    const veryDense = colCount >= 6;
     const renderTaskItem = (t: TaskItem, variant: "pending" | "completed" | "overdue", g: PersonGroup) => {
       const taskItemClass = variant === "completed"
         ? "flex flex-col items-start gap-1 rounded-lg border border-success bg-success cursor-pointer hover:bg-success/90 transition-colors min-w-0"
