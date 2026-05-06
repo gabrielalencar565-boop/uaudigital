@@ -1123,13 +1123,24 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     );
     const hasMixedChildren = childPostTypes.has("video") && childPostTypes.has("design");
 
+    // Use children as the DEFINITIVE signal for post_type when available
+    // (the parent task.post_type may be corrupted from legacy bugs)
+    const childDerivedPostType: string | null = hasMixedChildren
+      ? null
+      : childPostTypes.has("design")
+        ? "design"
+        : childPostTypes.has("video")
+          ? "video"
+          : null;
+
     const taskTags = task.tags ?? [];
     const normalizedTitle = task.title.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
     const isPautaReview = task.post_type === "planejamento" || (
       task.post_type == null && task.stage_current === "revisao" && !childTasks.some(c => c.post_type === "video" || c.post_type === "design")
     );
-    const inferredTaskPostType = inferPmPostType(task);
-    const isVideoByPostType = inferredTaskPostType === "video";
+    // Prefer child-derived type over inferPmPostType (which may use corrupted task.post_type)
+    const effectivePostType = childDerivedPostType ?? inferPmPostType(task);
+    const isVideoByPostType = effectivePostType === "video";
     const isVideoByTag = taskTags.some((t) => {
       const parsed = parseTag(t);
       const tagName = parsed.name.toLowerCase();
@@ -1145,7 +1156,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       ? null
       : isPautaReview
         ? "planejamento"
-        : (inferredTaskPostType ?? (previousWorkStage === "edicao_videos" ? "video" : "design"));
+        : (childDerivedPostType ?? effectivePostType ?? (previousWorkStage === "edicao_videos" ? "video" : "design"));
 
     // Helper to get assignee/watchers per post_type
     const getAssigneeForPostType = (pt: string | null) => {
