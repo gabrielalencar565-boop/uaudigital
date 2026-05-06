@@ -2017,28 +2017,35 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
 
         {/* Subtasks — use planning layout for parent tasks at planejamento, pdf, agendamento, entrega,
-            or alteracoes with mixed children (both design + video).
-            For alteracoes with single post_type (video or design), use regular subtask list.
+            revisao, or alteracoes (including single post_type like REV/DSG, REV/VDO, ALT/DSG, ALT/VDO).
             Periodic tasks (custom_*) are simple standalone tasks → always use the regular subtask list. */}
         <div className="border-t border-border/20 pt-4">
           {(() => {
-            // ALT/DSG, ALT/VDO, REV/DSG, REV/VDO — single post_type, show only relevant subtasks
+            // ALT/DSG, ALT/VDO, REV/DSG, REV/VDO — single post_type, filter subtasks
             const isSinglePostType = (task.post_type === "video" || task.post_type === "design") &&
               (task.stage_current === "alteracoes" || task.stage_current === "revisao");
-            const usePlanningLayout = !task.parent_task_id && !task.periodic_stage_key && !isSinglePostType && (
+            const filteredChildren = isSinglePostType
+              ? childTasks.filter(c => c.post_type === task.post_type)
+              : childTasks;
+            const usePlanningLayout = !task.parent_task_id && !task.periodic_stage_key && (
               ["planejamento", "pdf", "agendamento", "entrega", "revisao", "alteracoes"].includes(task.stage_current) ||
               isPlanejamentoReview
             );
             if (usePlanningLayout) {
+              const sectionTitle = isSinglePostType
+                ? (task.stage_current === "revisao"
+                  ? (task.post_type === "video" ? "Revisão (Vídeo)" : "Revisão (Design)")
+                  : (task.post_type === "video" ? "Alterações (Vídeo)" : "Alterações (Design)"))
+                : isPlanejamentoReview ? "Revisão (Planejamento)" : stageLabel(task.stage_current);
               return (
                 <PmPlanningSubtasks
                   parentTask={task}
-                  childTasks={childTasks}
+                  childTasks={filteredChildren}
                   membersMap={membersMap}
                   members={members}
                   onSelectSubtask={onSelectSubtask}
                   activeSubtaskId={activeSubtaskId}
-                  sectionTitle={isPlanejamentoReview ? "Revisão (Planejamento)" : stageLabel(task.stage_current)}
+                  sectionTitle={sectionTitle}
                   reviewMode={
                     (task.stage_current === "revisao") ? "revisao" :
                     (task.stage_current === "alteracoes") ? "alteracao" :
@@ -2048,10 +2055,6 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                 />
               );
             }
-            // For ALT/DSG or ALT/VDO, filter childTasks to only the matching post_type
-            const filteredChildren = isSinglePostType
-              ? childTasks.filter(c => c.post_type === task.post_type)
-              : childTasks;
             return (
               <PmSubtaskList parentTask={task} childTasks={filteredChildren} membersMap={membersMap} members={members} onSelectSubtask={onSelectSubtask} activeSubtaskId={activeSubtaskId} readOnly={isCompletedSnapshot && !correctionMode} correctionMode={correctionMode && isCompletedSnapshot} />
             );
