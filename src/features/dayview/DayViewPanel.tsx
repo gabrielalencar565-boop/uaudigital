@@ -975,9 +975,8 @@ export function DayViewPanel() {
                                 lang="pt-BR"
                                 title={cleaningName}
                                 className={cn(
-                                  "font-semibold leading-tight flex-1 min-w-0 [hyphens:none]",
+                                  "font-semibold leading-tight flex-1 min-w-0 [hyphens:none] text-xs",
                                   isSingleWord ? "whitespace-nowrap overflow-hidden text-ellipsis" : "",
-                                  veryDense ? "text-xs" : dense ? "text-sm" : "text-base",
                                   isDone && "text-success-foreground",
                                   isOverdueCleaning && "text-destructive-foreground"
                                 )}
