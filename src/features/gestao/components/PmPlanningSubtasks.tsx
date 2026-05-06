@@ -454,8 +454,8 @@ function PlanningSection({
                   isActive ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-card/40",
                   isSelected && "bg-primary/5",
                   isDone && "opacity-60",
-                  hasReview && review?.status === "aprovado" && "bg-emerald-500/5",
-                  hasReview && review?.status === "alteracao" && "bg-amber-500/5",
+                  hasReview && review?.status === "aprovado" && "bg-emerald-500/20",
+                  hasReview && review?.status === "alteracao" && "bg-amber-500/20",
                 )}
                 onClick={(e) => {
                   if (deletingId || bulkConfirmOpen) {
