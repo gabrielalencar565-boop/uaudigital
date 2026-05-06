@@ -948,8 +948,8 @@ export function DayViewPanel() {
           {groups.map((g) => {
             const totalCount = g.pending.length + g.completed.length + g.overdue.length;
             return (
-              <div key={`col-${g.user_id}`} className="rounded-xl border border-border bg-card/50 p-3 min-w-0 flex flex-col">
-                <div className="flex items-center gap-3 pb-3 mb-3 border-b border-border/50">
+              <div key={`col-${g.user_id}`} className="rounded-xl border border-border bg-card/50 p-2 min-w-0 flex flex-col overflow-hidden">
+                <div className="flex items-center gap-2 pb-2 mb-2 border-b border-border/50">
                   <Avatar className={cn("shrink-0", veryDense ? "h-10 w-10" : dense ? "h-12 w-12" : "h-14 w-14")}>
                     <AvatarImage src={g.avatar_url ?? undefined} />
                     <AvatarFallback>{initials(g.display_name)}</AvatarFallback>
