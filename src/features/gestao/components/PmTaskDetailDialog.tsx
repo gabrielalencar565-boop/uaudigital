@@ -34,6 +34,7 @@ import { PmPlanningSubtasks } from "./PmPlanningSubtasks";
 import { PmCommentsSection } from "./PmCommentsSection";
 import { PmAttachmentsSection } from "./PmAttachmentsSection";
 import { PmAssigneeSelector } from "./PmAssigneeSelector";
+import { AlteracaoReviewPanel } from "./AlteracaoReviewPanel";
 import type { PmTask } from "../pm-types";
 import { toast } from "sonner";
 import { SmartCaptionEditor } from "./SmartCaptionEditor";
@@ -1983,6 +1984,17 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         {/* Subtasks — use planning layout for parent tasks at planejamento, pdf, agendamento, entrega,
             or alteracoes with mixed children (both design + video).
             Periodic tasks (custom_*) are simple standalone tasks → always use the regular subtask list. */}
+          {/* Alteração review panel — shows per-subtask approval/change status */}
+          {task.stage_current === "alteracoes" && !task.parent_task_id && childTasks.length > 0 && (
+            <div className="border-t border-border/20 pt-4 pb-2">
+              <AlteracaoReviewPanel
+                parentTask={task}
+                childTasks={childTasks}
+                membersMap={membersMap}
+                readOnly={isCompletedSnapshot && !correctionMode}
+              />
+            </div>
+          )}
         <div className="border-t border-border/20 pt-4">
           {!task.parent_task_id && !task.periodic_stage_key && (
             ["planejamento", "pdf", "agendamento", "entrega"].includes(task.stage_current) ||
