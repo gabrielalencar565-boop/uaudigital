@@ -75,6 +75,9 @@ export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members
   const videoTasks = childTasks.filter(c => c.post_type === "video");
   const designTasks = childTasks.filter(c => c.post_type === "design");
 
+  // Always show both sections for planning-type parents (so user can add subtasks even when empty)
+  const alwaysShowBothSections = ["planejamento", "pdf", "agendamento", "entrega"].includes(parentTask.stage_current);
+
   const videoDone = videoTasks.filter(t => t.stage_current === "entrega").length;
   const designDone = designTasks.filter(t => t.stage_current === "entrega").length;
 
