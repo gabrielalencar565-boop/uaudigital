@@ -411,6 +411,25 @@ function PlanningSection({
           {icon}
           <span className="font-semibold text-sm">{label}</span>
           <span className="text-xs opacity-80">{total}</span>
+          {/* Review summary badges */}
+          {reviewMode && (() => {
+            const sectionApproved = tasks.filter(t => reviews[t.id]?.status === "aprovado").length;
+            const sectionAlteracao = tasks.filter(t => reviews[t.id]?.status === "alteracao").length;
+            return (
+              <div className="flex items-center gap-1 ml-1">
+                {sectionApproved > 0 && (
+                  <span className="inline-flex items-center gap-0.5 bg-white/20 rounded-full px-1.5 py-0.5 text-[10px] font-medium">
+                    <Check className="h-2.5 w-2.5" /> {sectionApproved}
+                  </span>
+                )}
+                {sectionAlteracao > 0 && (
+                  <span className="inline-flex items-center gap-0.5 bg-amber-400/30 rounded-full px-1.5 py-0.5 text-[10px] font-medium">
+                    <RotateCcw className="h-2.5 w-2.5" /> {sectionAlteracao}
+                  </span>
+                )}
+              </div>
+            );
+          })()}
           <ChevronDown className={cn("h-3.5 w-3.5 ml-auto transition-transform", isOpen && "rotate-180")} />
         </button>
       </CollapsibleTrigger>
