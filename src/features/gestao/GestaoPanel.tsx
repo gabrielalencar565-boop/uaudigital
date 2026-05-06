@@ -741,7 +741,9 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
     const isPdfVideo = false;
     const isPdfDesign = false;
     const hasGradient = isAlteracaoWithOrigin || isRevisao;
-    const gradientClass = isAlteracaoMixed
+    const gradientClass = isAlteracaoPlanejamento
+      ? "bg-gradient-to-r from-stage-alteracoes to-stage-planejamento"
+      : isAlteracaoMixed
       ? "bg-gradient-to-r from-stage-alteracoes via-stage-design to-stage-edicao_videos"
       : isAlteracaoWithOrigin
       ? (t.post_type === "video"
@@ -756,7 +758,9 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
       : isRevisaoDesign
       ? "bg-gradient-to-r from-pink-400 to-stage-design"
       : undefined;
-    const gradientAbbr = isAlteracaoMixed
+    const gradientAbbr = isAlteracaoPlanejamento
+      ? "ALT/PLAN"
+      : isAlteracaoMixed
       ? "ALT/PLAN"
       : isAlteracaoWithOrigin
       ? (t.post_type === "video" ? "ALT/VDO" : "ALT/DSG")
