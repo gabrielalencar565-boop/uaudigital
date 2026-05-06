@@ -450,12 +450,13 @@ function PlanningSection({
               <div key={sub.id}>
               <div
                 className={cn(
-                  "group flex items-center gap-2 px-2 py-2 transition border-b border-border/10 cursor-pointer",
-                  isActive ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-card/40",
+                  "group flex items-center gap-2 px-2 py-2 transition border-b border-border/10 cursor-pointer rounded-lg my-0.5",
+                  isActive ? "bg-primary/10 border-l-2 border-l-primary" : "",
                   isSelected && "bg-primary/5",
                   isDone && "opacity-60",
-                  hasReview && review?.status === "aprovado" && "bg-emerald-500",
-                  hasReview && review?.status === "alteracao" && "bg-amber-500",
+                  hasReview && review?.status === "aprovado" && "!bg-emerald-500 hover:!bg-emerald-500 text-white",
+                  hasReview && review?.status === "alteracao" && "!bg-amber-500 hover:!bg-amber-500 text-white",
+                  !(hasReview && review?.status) && !isActive && "hover:bg-card/40",
                 )}
                 onClick={(e) => {
                   if (deletingId || bulkConfirmOpen) {
