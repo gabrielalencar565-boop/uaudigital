@@ -743,7 +743,7 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
     const isPdfWithOrigin = false;
     const isPdfVideo = false;
     const isPdfDesign = false;
-    const hasGradient = isAlteracaoWithOrigin || isRevisao;
+    const hasGradient = isAlteracaoWithOrigin || isAlteracaoPlanejamento || isAlteracaoMixed || isRevisao;
     const gradientClass = isAlteracaoPlanejamento
       ? "bg-gradient-to-r from-stage-alteracoes to-stage-planejamento"
       : isAlteracaoMixed
