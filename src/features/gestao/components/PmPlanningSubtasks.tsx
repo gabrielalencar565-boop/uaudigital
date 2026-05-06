@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Clapperboard, Palette, ChevronDown, Plus, Check, ChevronRight, Trash2 } from "lucide-react";
+import { Clapperboard, Palette, ChevronDown, Plus, Check, ChevronRight, Trash2, RotateCcw, MessageSquare, ChevronUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -24,6 +25,10 @@ function initials(n: string) {
   return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
 }
 
+type ReviewStatus = "aprovado" | "alteracao" | "pendente";
+interface ReviewEntry { status: ReviewStatus; note: string; }
+type RevisionNotes = Record<string, ReviewEntry>;
+
 interface Props {
   parentTask: PmTask;
   childTasks: PmTask[];
@@ -31,13 +36,41 @@ interface Props {
   members?: { id: string; name: string }[];
   onSelectSubtask?: (task: PmTask) => void;
   activeSubtaskId?: string | null;
-  /** Section title (defaults to "Planejamento") */
   sectionTitle?: string;
+  /** When set, shows review controls inline per subtask */
+  reviewMode?: "revisao" | "alteracao" | null;
+  readOnly?: boolean;
 }
 
-export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members, onSelectSubtask, activeSubtaskId, sectionTitle = "Planejamento" }: Props) {
+export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members, onSelectSubtask, activeSubtaskId, sectionTitle = "Planejamento", reviewMode, readOnly }: Props) {
   const [showTrash, setShowTrash] = useState(false);
   const updateTask = useUpdatePmTask();
+
+  // Review state
+  const existing = (parentTask as any).revision_notes as RevisionNotes | null;
+  const [reviews, setReviews] = useState<RevisionNotes>(() => {
+    const base: RevisionNotes = {};
+    for (const child of childTasks) {
+      base[child.id] = existing?.[child.id] ?? { status: "pendente", note: "" };
+    }
+    return base;
+  });
+
+  useEffect(() => {
+    setReviews(prev => {
+      const next: RevisionNotes = {};
+      for (const child of childTasks) {
+        next[child.id] = prev[child.id] ?? existing?.[child.id] ?? { status: "pendente", note: "" };
+      }
+      return next;
+    });
+  }, [childTasks.length]);
+
+  const saveReviewToDb = useCallback((data: RevisionNotes) => {
+    updateTask.mutate({ id: parentTask.id, revision_notes: data } as any);
+  }, [parentTask.id, updateTask]);
+
+  const isReviewEditable = reviewMode === "revisao" && !readOnly;
 
   const videoTasks = childTasks.filter(c => c.post_type === "video");
   const designTasks = childTasks.filter(c => c.post_type === "design");
@@ -206,6 +239,11 @@ export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members
         selectedIds={selectedIds}
         toggleSelect={toggleSelect}
         bulkConfirmOpen={bulkConfirmOpen}
+        reviewMode={reviewMode}
+        reviews={reviews}
+        setReviews={setReviews}
+        saveReviewToDb={saveReviewToDb}
+        isReviewEditable={isReviewEditable}
       />
 
       <PlanningSection
@@ -225,6 +263,11 @@ export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members
         selectedIds={selectedIds}
         toggleSelect={toggleSelect}
         bulkConfirmOpen={bulkConfirmOpen}
+        reviewMode={reviewMode}
+        reviews={reviews}
+        setReviews={setReviews}
+        saveReviewToDb={saveReviewToDb}
+        isReviewEditable={isReviewEditable}
       />
     </div>
   );
@@ -235,6 +278,7 @@ function PlanningSection({
   parentTask, tasks, doneCount,
   membersMap, members, onSelectSubtask, activeSubtaskId,
   selectedIds, toggleSelect, bulkConfirmOpen,
+  reviewMode, reviews, setReviews, saveReviewToDb, isReviewEditable,
 }: {
   type: "video" | "design";
   icon: React.ReactNode;
@@ -252,6 +296,11 @@ function PlanningSection({
   selectedIds: Set<string>;
   toggleSelect: (id: string) => void;
   bulkConfirmOpen: boolean;
+  reviewMode?: "revisao" | "alteracao" | null;
+  reviews: RevisionNotes;
+  setReviews: React.Dispatch<React.SetStateAction<RevisionNotes>>;
+  saveReviewToDb: (data: RevisionNotes) => void;
+  isReviewEditable: boolean;
 }) {
   const updateTask = useUpdatePmTask();
   const createTask = useCreatePmTask();
@@ -264,6 +313,27 @@ function PlanningSection({
 
   const total = tasks.length;
   const hasSelection = selectedIds.size > 0;
+  const [expandedNoteId, setExpandedNoteId] = useState<string | null>(null);
+
+  const toggleReviewStatus = (childId: string, targetStatus: ReviewStatus) => {
+    if (!isReviewEditable) return;
+    const current = reviews[childId]?.status;
+    const newStatus = current === targetStatus ? "pendente" : targetStatus;
+    const updated = {
+      ...reviews,
+      [childId]: { ...reviews[childId], status: newStatus, note: reviews[childId]?.note ?? "" },
+    };
+    setReviews(updated);
+    saveReviewToDb(updated);
+    if (newStatus === "alteracao") setExpandedNoteId(childId);
+  };
+
+  const setReviewNote = (childId: string, note: string) => {
+    if (!isReviewEditable) return;
+    setReviews(prev => ({ ...prev, [childId]: { ...prev[childId], note } }));
+  };
+
+  const saveNote = () => saveReviewToDb(reviews);
 
   useEffect(() => {
     if (isAdding && addInputRef.current) {
@@ -341,6 +411,25 @@ function PlanningSection({
           {icon}
           <span className="font-semibold text-sm">{label}</span>
           <span className="text-xs opacity-80">{total}</span>
+          {/* Review summary badges */}
+          {reviewMode && (() => {
+            const sectionApproved = tasks.filter(t => reviews[t.id]?.status === "aprovado").length;
+            const sectionAlteracao = tasks.filter(t => reviews[t.id]?.status === "alteracao").length;
+            return (
+              <div className="flex items-center gap-1 ml-1">
+                {sectionApproved > 0 && (
+                  <span className="inline-flex items-center gap-0.5 bg-white/20 rounded-full px-1.5 py-0.5 text-[10px] font-medium">
+                    <Check className="h-2.5 w-2.5" /> {sectionApproved}
+                  </span>
+                )}
+                {sectionAlteracao > 0 && (
+                  <span className="inline-flex items-center gap-0.5 bg-amber-400/30 rounded-full px-1.5 py-0.5 text-[10px] font-medium">
+                    <RotateCcw className="h-2.5 w-2.5" /> {sectionAlteracao}
+                  </span>
+                )}
+              </div>
+            );
+          })()}
           <ChevronDown className={cn("h-3.5 w-3.5 ml-auto transition-transform", isOpen && "rotate-180")} />
         </button>
       </CollapsibleTrigger>
@@ -353,15 +442,20 @@ function PlanningSection({
             const isSelected = selectedIds.has(sub.id);
             const subAssignees = allAssigneeIds(sub);
             const circleColor = getStageCircleColor(sub.stage_current);
+            const review = reviews[sub.id];
+            const hasReview = !!reviewMode;
+            const isNoteExpanded = expandedNoteId === sub.id || (reviewMode === "alteracao" && !!review?.note);
 
             return (
+              <div key={sub.id}>
               <div
-                key={sub.id}
                 className={cn(
                   "group flex items-center gap-2 px-2 py-2 transition border-b border-border/10 cursor-pointer",
                   isActive ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-card/40",
                   isSelected && "bg-primary/5",
-                  isDone && "opacity-60"
+                  isDone && "opacity-60",
+                  hasReview && review?.status === "aprovado" && "bg-emerald-500/5",
+                  hasReview && review?.status === "alteracao" && "bg-amber-500/5",
                 )}
                 onClick={(e) => {
                   if (deletingId || bulkConfirmOpen) {
@@ -369,7 +463,6 @@ function PlanningSection({
                     e.stopPropagation();
                     return;
                   }
-                  // If user already has a selection active, clicking the row toggles selection instead of opening
                   if (hasSelection) {
                     e.preventDefault();
                     e.stopPropagation();
@@ -379,22 +472,55 @@ function PlanningSection({
                   onSelectSubtask?.(sub);
                 }}
               >
-                {/* Selection checkbox */}
-                <div
-                  className="flex items-center justify-center"
-                  onClick={(e) => e.stopPropagation()}
-                  onPointerDown={(e) => e.stopPropagation()}
-                >
-                  <Checkbox
-                    checked={isSelected}
-                    onCheckedChange={() => toggleSelect(sub.id)}
-                    aria-label="Selecionar subtarefa"
-                    className={cn(
-                      "h-3.5 w-3.5 transition-opacity",
-                      hasSelection ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-                    )}
-                  />
-                </div>
+                {/* Review buttons (replace checkbox when in review mode) */}
+                {hasReview ? (
+                  <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      disabled={!isReviewEditable}
+                      onClick={() => toggleReviewStatus(sub.id, "aprovado")}
+                      className={cn(
+                        "h-6 w-6 rounded-full flex items-center justify-center transition-all border-2",
+                        review?.status === "aprovado"
+                          ? "bg-emerald-500 border-emerald-500 text-white scale-105"
+                          : "border-emerald-500/30 hover:border-emerald-500/60 text-emerald-500/40 hover:text-emerald-500/70",
+                        !isReviewEditable && "opacity-60 cursor-default"
+                      )}
+                      title="Aprovado"
+                    >
+                      <Check className="h-3 w-3" />
+                    </button>
+                    <button
+                      disabled={!isReviewEditable}
+                      onClick={() => toggleReviewStatus(sub.id, "alteracao")}
+                      className={cn(
+                        "h-6 w-6 rounded-full flex items-center justify-center transition-all border-2",
+                        review?.status === "alteracao"
+                          ? "bg-amber-500 border-amber-500 text-white scale-105"
+                          : "border-amber-500/30 hover:border-amber-500/60 text-amber-500/40 hover:text-amber-500/70",
+                        !isReviewEditable && "opacity-60 cursor-default"
+                      )}
+                      title="Precisa de alteração"
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <div
+                    className="flex items-center justify-center"
+                    onClick={(e) => e.stopPropagation()}
+                    onPointerDown={(e) => e.stopPropagation()}
+                  >
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={() => toggleSelect(sub.id)}
+                      aria-label="Selecionar subtarefa"
+                      className={cn(
+                        "h-3.5 w-3.5 transition-opacity",
+                        hasSelection ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                      )}
+                    />
+                  </div>
+                )}
 
                 {/* Stage circle */}
                 <div className="w-8 flex justify-center" onClick={(e) => e.stopPropagation()}>
@@ -438,8 +564,30 @@ function PlanningSection({
                     const name = tagDisplay(rawTag);
                     return <Badge key={rawTag} className={cn("text-[8px] h-4 px-1 gap-0.5 border-0 shrink-0", tc.bg, tc.text)}>{name}</Badge>;
                   })}
-                  <span className={cn("truncate text-sm hover:text-primary transition-colors", isDone && "line-through text-muted-foreground")}>{sub.title}</span>
+                  <span className={cn(
+                    "truncate text-sm hover:text-primary transition-colors",
+                    isDone && "line-through text-muted-foreground",
+                    hasReview && review?.status === "aprovado" && "line-through text-muted-foreground"
+                  )}>{sub.title}</span>
                 </div>
+
+                {/* Review note toggle */}
+                {hasReview && review?.status === "alteracao" && (
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => setExpandedNoteId(expandedNoteId === sub.id ? null : sub.id)}
+                      className={cn(
+                        "flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-medium transition-all",
+                        review.note
+                          ? "bg-amber-500/10 text-amber-500"
+                          : "bg-muted/50 text-muted-foreground hover:bg-amber-500/10 hover:text-amber-500"
+                      )}
+                    >
+                      <MessageSquare className="h-3 w-3" />
+                      {expandedNoteId === sub.id ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                    </button>
+                  </div>
+                )}
 
                 {/* Assignee */}
                 <div className="w-20 flex justify-center" onClick={(e) => e.stopPropagation()}>
@@ -485,6 +633,26 @@ function PlanningSection({
                   </button>
                   <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 group-hover:text-primary transition" />
                 </div>
+              </div>
+
+              {/* Expandable note area for review */}
+              {hasReview && isNoteExpanded && review?.status === "alteracao" && (
+                <div className="px-3 pb-2 pt-0 bg-amber-500/5">
+                  {isReviewEditable ? (
+                    <Textarea
+                      value={review.note}
+                      onChange={(e) => setReviewNote(sub.id, e.target.value)}
+                      onBlur={saveNote}
+                      placeholder="Descreva o que precisa ser alterado..."
+                      className="min-h-[50px] text-xs bg-background/50 border-border/30 resize-none"
+                    />
+                  ) : (
+                    <div className="rounded-md bg-amber-500/5 border border-amber-500/15 px-3 py-2 text-xs text-foreground/80 whitespace-pre-wrap">
+                      {review.note || <span className="text-muted-foreground italic">Sem detalhes adicionais</span>}
+                    </div>
+                  )}
+                </div>
+              )}
               </div>
             );
           })}

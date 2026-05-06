@@ -1984,23 +1984,10 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         {/* Subtasks — use planning layout for parent tasks at planejamento, pdf, agendamento, entrega,
             or alteracoes with mixed children (both design + video).
             Periodic tasks (custom_*) are simple standalone tasks → always use the regular subtask list. */}
-          {/* Review panel — revisão (interactive) or alteração (read-only) */}
-          {(task.stage_current === "revisao" || task.stage_current === "alteracoes") && !task.parent_task_id && childTasks.length > 0 && (
-            <div className="border-t border-border/20 pt-4 pb-2">
-              <AlteracaoReviewPanel
-                parentTask={task}
-                childTasks={childTasks}
-                membersMap={membersMap}
-                readOnly={isCompletedSnapshot && !correctionMode}
-                mode={task.stage_current === "revisao" ? "revisao" : "alteracao"}
-              />
-            </div>
-          )}
         <div className="border-t border-border/20 pt-4">
           {!task.parent_task_id && !task.periodic_stage_key && (
-            ["planejamento", "pdf", "agendamento", "entrega"].includes(task.stage_current) ||
-            isPlanejamentoReview ||
-            (task.stage_current === "alteracoes" && childTasks.some(c => c.post_type === "video") && childTasks.some(c => c.post_type === "design"))
+            ["planejamento", "pdf", "agendamento", "entrega", "revisao", "alteracoes"].includes(task.stage_current) ||
+            isPlanejamentoReview
           ) ? (
             <PmPlanningSubtasks
               parentTask={task}
@@ -2010,6 +1997,12 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
               onSelectSubtask={onSelectSubtask}
               activeSubtaskId={activeSubtaskId}
               sectionTitle={isPlanejamentoReview ? "Revisão (Planejamento)" : stageLabel(task.stage_current)}
+              reviewMode={
+                (task.stage_current === "revisao") ? "revisao" :
+                (task.stage_current === "alteracoes") ? "alteracao" :
+                null
+              }
+              readOnly={isCompletedSnapshot && !correctionMode}
             />
           ) : (
             <PmSubtaskList parentTask={task} childTasks={childTasks} membersMap={membersMap} members={members} onSelectSubtask={onSelectSubtask} activeSubtaskId={activeSubtaskId} readOnly={isCompletedSnapshot && !correctionMode} correctionMode={correctionMode && isCompletedSnapshot} />
