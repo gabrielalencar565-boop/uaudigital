@@ -615,6 +615,26 @@ function PlanningSection({
                   <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 group-hover:text-primary transition" />
                 </div>
               </div>
+
+              {/* Expandable note area for review */}
+              {hasReview && isNoteExpanded && review?.status === "alteracao" && (
+                <div className="px-3 pb-2 pt-0 bg-amber-500/5">
+                  {isReviewEditable ? (
+                    <Textarea
+                      value={review.note}
+                      onChange={(e) => setReviewNote(sub.id, e.target.value)}
+                      onBlur={saveNote}
+                      placeholder="Descreva o que precisa ser alterado..."
+                      className="min-h-[50px] text-xs bg-background/50 border-border/30 resize-none"
+                    />
+                  ) : (
+                    <div className="rounded-md bg-amber-500/5 border border-amber-500/15 px-3 py-2 text-xs text-foreground/80 whitespace-pre-wrap">
+                      {review.note || <span className="text-muted-foreground italic">Sem detalhes adicionais</span>}
+                    </div>
+                  )}
+                </div>
+              )}
+              </div>
             );
           })}
           {/* Delete confirmation (shared, outside rows) */}
