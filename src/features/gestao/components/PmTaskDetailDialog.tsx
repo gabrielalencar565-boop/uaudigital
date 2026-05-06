@@ -2041,7 +2041,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
               );
             }
             // For ALT/DSG or ALT/VDO, filter childTasks to only the matching post_type
-            const filteredChildren = isAlteracaoSingleType
+            const filteredChildren = isSinglePostType
               ? childTasks.filter(c => c.post_type === task.post_type)
               : childTasks;
             return (
