@@ -75,6 +75,9 @@ export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members
   const videoTasks = childTasks.filter(c => c.post_type === "video");
   const designTasks = childTasks.filter(c => c.post_type === "design");
 
+  // Always show both sections for planning-type parents (so user can add subtasks even when empty)
+  const alwaysShowBothSections = ["planejamento", "pdf", "agendamento", "entrega"].includes(parentTask.stage_current);
+
   const videoDone = videoTasks.filter(t => t.stage_current === "entrega").length;
   const designDone = designTasks.filter(t => t.stage_current === "entrega").length;
 
@@ -222,7 +225,7 @@ export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members
         </AlertDialogContent>
       </AlertDialog>
 
-      {videoTasks.length > 0 && (
+      {(videoTasks.length > 0 || alwaysShowBothSections) && (
         <PlanningSection
           type="video"
           icon={<Clapperboard className="h-4 w-4" />}
@@ -248,7 +251,7 @@ export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members
         />
       )}
 
-      {designTasks.length > 0 && (
+      {(designTasks.length > 0 || alwaysShowBothSections) && (
         <PlanningSection
           type="design"
           icon={<Palette className="h-4 w-4" />}
