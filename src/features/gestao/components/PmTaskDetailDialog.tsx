@@ -1331,9 +1331,10 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
         .update({ task_id: revisaoTask.id })
         .eq("task_id", task.id);
 
-      // Reactivate the revisão task
-      const fixedAssignee = getFixedAssignee(stageAssignees, "revisao", task.client_id);
-      const fixedWatchers = getFixedWatchers(stageAssignees, "revisao", task.client_id);
+      // Reactivate the revisão task — use revisao_pauta key for planejamento returns
+      const revisaoAssigneeKey = isPautaReview ? "revisao_pauta" : "revisao";
+      const fixedAssignee = getFixedAssignee(stageAssignees, revisaoAssigneeKey, task.client_id);
+      const fixedWatchers = getFixedWatchers(stageAssignees, revisaoAssigneeKey, task.client_id);
       const revisaoUpdates: any = {
         id: revisaoTask.id,
         status_global: "backlog" as any,
