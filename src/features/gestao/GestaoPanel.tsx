@@ -733,7 +733,8 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
     // OR parent task on revisão without any design/video children yet (initial pauta review)
     const isRevisaoPlanejamento = isRevisao && !t.parent_task_id && (
       t.post_type === "planejamento" ||
-      (childrenOfThis.length === 0 ? false : !childPostTypes.has("video") && !childPostTypes.has("design"))
+      (!t.post_type && childrenOfThis.length === 0) ||
+      (childrenOfThis.length > 0 && !childPostTypes.has("video") && !childPostTypes.has("design"))
     ) && t.post_type !== "video" && t.post_type !== "design";
     const isRevisaoVideo = isRevisao && !isRevisaoMixed && !isRevisaoPlanejamento && t.post_type === "video";
     const isRevisaoDesign = isRevisao && !isRevisaoMixed && !isRevisaoPlanejamento && !isRevisaoVideo;
