@@ -353,9 +353,23 @@ export function DayViewPanel() {
       return description.split(":").length >= 4;
     };
 
-    // Legacy agenda tasks only (exclude PM snapshots to avoid double counting)
+    // Track which pm_task + user combos are already counted via snapshots
+    const snapshotCounted = new Set<string>();
+
     for (const t of tasks) {
-      if (isPmSnapshotTask(t.description)) continue;
+      if (isPmSnapshotTask(t.description)) {
+        // Snapshot format: pm:<task_id>:<stage>:<user_id>
+        // Count for the user who completed this stage (assigned_user_id)
+        addItem(t.assigned_user_id, t.status === "concluido");
+        // Mark so we don't double-count in pm_tasks loop
+        const parts = t.description!.split(":");
+        const pmTaskId = parts[1];
+        const snapshotUserId = parts[3] || t.assigned_user_id;
+        if (pmTaskId && snapshotUserId) {
+          snapshotCounted.add(`${pmTaskId}:${snapshotUserId}`);
+        }
+        continue;
+      }
 
       const taskAssignees = assigneesByTaskId.get(t.id) ?? [];
       if (taskAssignees.length > 0) {
@@ -367,10 +381,11 @@ export function DayViewPanel() {
       }
     }
 
-    // PM main tasks (count once here; snapshots were skipped above)
+    // PM main tasks — skip if already counted via snapshot for this user
     // Exclude revisão tasks — they don't count towards totals in The Best
     for (const t of pmTasks) {
       if (t.stage_current === "revisao") continue;
+      if (snapshotCounted.has(`${t.id}:${t.assignee_id}`)) continue;
       addItem(t.assignee_id, t.status_global === "concluido");
     }
 
