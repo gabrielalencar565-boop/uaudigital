@@ -42,9 +42,35 @@ interface Props {
   readOnly?: boolean;
 }
 
-export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members, onSelectSubtask, activeSubtaskId, sectionTitle = "Planejamento" }: Props) {
+export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members, onSelectSubtask, activeSubtaskId, sectionTitle = "Planejamento", reviewMode, readOnly }: Props) {
   const [showTrash, setShowTrash] = useState(false);
   const updateTask = useUpdatePmTask();
+
+  // Review state
+  const existing = (parentTask as any).revision_notes as RevisionNotes | null;
+  const [reviews, setReviews] = useState<RevisionNotes>(() => {
+    const base: RevisionNotes = {};
+    for (const child of childTasks) {
+      base[child.id] = existing?.[child.id] ?? { status: "pendente", note: "" };
+    }
+    return base;
+  });
+
+  useEffect(() => {
+    setReviews(prev => {
+      const next: RevisionNotes = {};
+      for (const child of childTasks) {
+        next[child.id] = prev[child.id] ?? existing?.[child.id] ?? { status: "pendente", note: "" };
+      }
+      return next;
+    });
+  }, [childTasks.length]);
+
+  const saveReviewToDb = useCallback((data: RevisionNotes) => {
+    updateTask.mutate({ id: parentTask.id, revision_notes: data } as any);
+  }, [parentTask.id, updateTask]);
+
+  const isReviewEditable = reviewMode === "revisao" && !readOnly;
 
   const videoTasks = childTasks.filter(c => c.post_type === "video");
   const designTasks = childTasks.filter(c => c.post_type === "design");
