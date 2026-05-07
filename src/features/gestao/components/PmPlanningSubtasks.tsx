@@ -454,7 +454,7 @@ function PlanningSection({
             const review = reviews[sub.id];
             const hasReview = !!reviewMode;
             const hasAlteracao = review?.status === "alteracao";
-            const isNoteExpanded = expandedNoteId === sub.id || (reviewMode === "alteracao" && !!review?.note);
+            const isNoteExpanded = expandedNoteId === sub.id || (reviewMode === "alteracao" && !!review?.note && !explicitlyClosedIds.has(sub.id));
 
             return (
               <div key={sub.id}>
