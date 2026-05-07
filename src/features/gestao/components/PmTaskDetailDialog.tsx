@@ -2060,7 +2060,32 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
           />
         </div>
 
-
+        {/* Alteration notes summary — show between description and subtasks when any child has alteração */}
+        {(() => {
+          const revNotes = (task as any).revision_notes as Record<string, { status: string; note: string }> | null;
+          if (!revNotes) return null;
+          const alteracoes = Object.entries(revNotes).filter(([, v]) => v.status === "alteracao" && v.note);
+          if (alteracoes.length === 0) return null;
+          return (
+            <div className="border-t border-amber-500/20 pt-3 pb-1">
+              <div className="flex items-center gap-2 mb-2">
+                <RotateCcw className="h-4 w-4 text-amber-500" />
+                <h3 className="text-sm font-bold text-amber-500">Alterações solicitadas</h3>
+              </div>
+              <div className="space-y-1.5">
+                {alteracoes.map(([childId, entry]) => {
+                  const child = childTasks.find(c => c.id === childId);
+                  return (
+                    <div key={childId} className="rounded-md bg-amber-500/5 border border-amber-500/15 px-3 py-2">
+                      <p className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 mb-0.5">{child?.title ?? "Subtarefa"}</p>
+                      <p className="text-xs text-foreground/80 whitespace-pre-wrap">{entry.note}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Subtasks — use planning layout for parent tasks at planejamento, pdf, agendamento, entrega,
             revisao, or alteracoes (including single post_type like REV/DSG, REV/VDO, ALT/DSG, ALT/VDO).
