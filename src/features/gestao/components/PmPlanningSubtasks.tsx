@@ -48,6 +48,7 @@ export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members
 
   // Review state
   const existing = (parentTask as any).revision_notes as RevisionNotes | null;
+  const revisionNotesSignature = JSON.stringify(existing ?? {});
   const [reviews, setReviews] = useState<RevisionNotes>(() => {
     const base: RevisionNotes = {};
     for (const child of childTasks) {
@@ -60,11 +61,11 @@ export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members
     setReviews(prev => {
       const next: RevisionNotes = {};
       for (const child of childTasks) {
-        next[child.id] = prev[child.id] ?? existing?.[child.id] ?? { status: "pendente", note: "" };
+        next[child.id] = existing?.[child.id] ?? prev[child.id] ?? { status: "pendente", note: "" };
       }
       return next;
     });
-  }, [childTasks.length]);
+  }, [childTasks.length, revisionNotesSignature]);
 
   const saveReviewToDb = useCallback((data: RevisionNotes, change?: { childTitle: string; newStatus: string }) => {
     updateTask.mutate({ id: parentTask.id, revision_notes: data, _revision_change: change ?? null } as any);
@@ -452,7 +453,7 @@ function PlanningSection({
             const circleColor = getStageCircleColor(sub.stage_current);
             const review = reviews[sub.id];
             const hasReview = !!reviewMode;
-            const hasAlteracao = review?.status === "alteracao";
+            const hasAlteracao = review?.status === "alteracao" && !!review?.note?.trim();
             const isNoteExpanded = expandedNoteId === sub.id || (reviewMode === "alteracao" && !!review?.note);
 
             return (
@@ -464,8 +465,8 @@ function PlanningSection({
                   isSelected && "bg-primary/5",
                   isDone && "opacity-60",
                   hasReview && review?.status === "aprovado" && "!bg-emerald-500 hover:!bg-emerald-500 text-white",
-                  hasReview && hasAlteracao && "!bg-amber-500 hover:!bg-amber-500 text-white",
-                  !hasReview && hasAlteracao && "border-l-2 border-l-amber-500 bg-amber-500/5",
+                  hasReview && hasAlteracao && "!bg-stage-alteracoes hover:!bg-stage-alteracoes/90 !text-stage-foreground-alteracoes",
+                  !hasReview && hasAlteracao && "border-l-2 border-l-stage-alteracoes bg-stage-alteracoes/10",
                   !(hasReview && review?.status) && !isActive && !(!hasReview && hasAlteracao) && "hover:bg-card/40",
                 )}
                 onClick={(e) => {
