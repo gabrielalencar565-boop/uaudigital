@@ -68,7 +68,7 @@ function extractPmTaskId(description: string | null): string | null {
 }
 
 /** Default badge style for periodic/custom stages that have no STAGE_BADGE_CLASS entry */
-const PERIODIC_BADGE_STYLE = { bg: "bg-violet-500/30 dark:bg-violet-500/40", fg: "text-violet-600 dark:text-violet-300" };
+const PERIODIC_BADGE_STYLE = { bg: "bg-stage-edicao_videos", fg: "text-stage-foreground-edicao_videos" };
 
 function getStageBadgeStyle(task: Pick<TaskForReport, "description" | "stage">) {
   const stageKey = getReportStageKey(task);
