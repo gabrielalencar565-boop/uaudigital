@@ -609,6 +609,7 @@ export function DayViewPanel() {
         is_extra_demand: first.is_extra_demand,
         completed_at: first.completed_at,
         source: "agenda" as const,
+        periodic_stage_key: extractPeriodicKey(first.description),
       });
     }
 
