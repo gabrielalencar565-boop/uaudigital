@@ -67,6 +67,15 @@ function extractPmTaskId(description: string | null): string | null {
   return null;
 }
 
+/** Default badge style for periodic/custom stages that have no STAGE_BADGE_CLASS entry */
+const PERIODIC_BADGE_STYLE = { bg: "bg-violet-500/20", fg: "text-violet-400" };
+
+function getStageBadgeStyle(task: Pick<TaskForReport, "description" | "stage">) {
+  const stageKey = getReportStageKey(task);
+  if (stageKey.startsWith("custom_")) return PERIODIC_BADGE_STYLE;
+  return STAGE_BADGE_CLASS[task.stage] ?? PERIODIC_BADGE_STYLE;
+}
+
 function getReportStageKey(task: Pick<TaskForReport, "description" | "stage">): string {
   if (!task.description?.startsWith("pm:")) return task.stage;
   const parts = task.description.split(":");
