@@ -452,6 +452,7 @@ function PlanningSection({
             const circleColor = getStageCircleColor(sub.stage_current);
             const review = reviews[sub.id];
             const hasReview = !!reviewMode;
+            const hasAlteracao = review?.status === "alteracao";
             const isNoteExpanded = expandedNoteId === sub.id || (reviewMode === "alteracao" && !!review?.note);
 
             return (
