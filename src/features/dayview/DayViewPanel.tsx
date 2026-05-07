@@ -881,10 +881,13 @@ export function DayViewPanel() {
     const dense = cols >= 4;
     const veryDense = cols >= 6;
     const renderTaskItem = (t: TaskItem, variant: "pending" | "completed" | "overdue", g: PersonGroup) => {
+      const isAlteracoesPending = variant === "pending" && t.stage === "alteracoes";
       const taskItemClass = variant === "completed"
         ? "flex items-center gap-1.5 rounded-md border border-success bg-success cursor-pointer hover:bg-success/90 transition-colors min-w-0 px-2 py-1"
         : variant === "overdue"
         ? "flex items-center gap-1.5 rounded-md border border-destructive bg-destructive cursor-pointer hover:bg-destructive/90 transition-colors min-w-0 px-2 py-1"
+        : isAlteracoesPending
+        ? "flex items-center gap-1.5 rounded-md border border-amber-500/60 bg-amber-500/20 cursor-pointer hover:bg-amber-500/30 transition-colors min-w-0 px-2 py-1"
         : "flex items-center gap-1.5 rounded-md border border-border bg-card cursor-pointer hover:bg-accent/50 transition-colors min-w-0 px-2 py-1";
       const isAlteracaoWithOrigin = t.stage === "alteracoes" && !!t.post_type;
       const isRevisao = t.stage === "revisao";
@@ -989,14 +992,14 @@ export function DayViewPanel() {
                   </div>
                 </div>
                 <div className="flex flex-col gap-1 flex-1 overflow-y-auto max-h-[28vh]">
+                  {/* Pending cleaning tasks */}
                   {isCurrentMonth && todayCleaningTasks
-                    .filter((s) => s.user_id === g.user_id)
+                    .filter((s) => s.user_id === g.user_id && !completedScheduleIds.has(s.id))
                     .map((schedule) => {
                       const cat = cleaningCategoryById.get(schedule.category_id);
-                      const isDone = completedScheduleIds.has(schedule.id);
                       const dueTimeStr = schedule.due_time?.slice(0, 5) ?? "18:00";
                       const [dueH, dueM] = dueTimeStr.split(":").map(Number);
-                      const isOverdueCleaning = !isDone && (now.getHours() > dueH || (now.getHours() === dueH && now.getMinutes() >= dueM));
+                      const isOverdueCleaning = now.getHours() > dueH || (now.getHours() === dueH && now.getMinutes() >= dueM);
                       const emoji = getCleaningEmoji(cat?.name ?? "");
                       return (
                         <button
@@ -1010,20 +1013,17 @@ export function DayViewPanel() {
                               scheduleId: schedule.id,
                               date: todayKey,
                               userId: sessionUser.id,
-                              isCompleted: isDone,
+                              isCompleted: false,
                             });
                           }}
                           title={`${cat?.name ?? "Limpeza"} • até ${dueTimeStr}`}
                           className={cn(
                             "flex items-center gap-1.5 rounded-md border cursor-pointer transition-colors min-w-0 text-left w-full px-2 py-1",
-                            isDone && "border-success bg-success hover:bg-success/90",
                             isOverdueCleaning && "border-destructive bg-destructive hover:bg-destructive/90",
-                            !isDone && !isOverdueCleaning && "border-border bg-card hover:bg-accent/50"
+                            !isOverdueCleaning && "border-border bg-card hover:bg-accent/50"
                           )}
                         >
-                          <span className="leading-none shrink-0 text-xs">
-                            {emoji}
-                          </span>
+                          <span className="leading-none shrink-0 text-xs">{emoji}</span>
                           {(() => {
                             const cleaningName = (cat?.name ?? "Limpeza").trim();
                             const isSingleWord = !cleaningName.includes(" ");
@@ -1034,21 +1034,11 @@ export function DayViewPanel() {
                                 className={cn(
                                   "font-semibold leading-tight flex-1 min-w-0 [hyphens:none] text-xs",
                                   isSingleWord ? "whitespace-nowrap overflow-hidden text-ellipsis" : "",
-                                  isDone && "text-success-foreground",
                                   isOverdueCleaning && "text-destructive-foreground"
                                 )}
                                 style={
                                   !isSingleWord
-                                    ? {
-                                        display: "-webkit-box",
-                                        WebkitLineClamp: 2,
-                                        WebkitBoxOrient: "vertical",
-                                        overflow: "hidden",
-                                        textOverflow: "ellipsis",
-                                        wordBreak: "keep-all",
-                                        overflowWrap: "break-word",
-                                        hyphens: "none",
-                                      }
+                                    ? { display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", textOverflow: "ellipsis", wordBreak: "keep-all", overflowWrap: "break-word", hyphens: "none" }
                                     : { wordBreak: "keep-all", overflowWrap: "normal", hyphens: "none" }
                                 }
                               >
@@ -1056,15 +1046,63 @@ export function DayViewPanel() {
                               </p>
                             );
                           })()}
-                          {isDone && (
-                            <span className={cn("font-bold text-success-foreground shrink-0", veryDense ? "text-xs" : "text-sm")}>✓</span>
-                          )}
                         </button>
                       );
                     })}
                   {g.overdue.map((t) => renderTaskItem(t, "overdue", g))}
                   {g.pending.map((t) => renderTaskItem(t, "pending", g))}
                   {g.completed.map((t) => renderTaskItem(t, "completed", g))}
+                  {/* Completed cleaning tasks — below completed work tasks */}
+                  {isCurrentMonth && todayCleaningTasks
+                    .filter((s) => s.user_id === g.user_id && completedScheduleIds.has(s.id))
+                    .map((schedule) => {
+                      const cat = cleaningCategoryById.get(schedule.category_id);
+                      const emoji = getCleaningEmoji(cat?.name ?? "");
+                      const dueTimeStr = schedule.due_time?.slice(0, 5) ?? "18:00";
+                      return (
+                        <button
+                          key={`cleaning-done-${schedule.id}`}
+                          type="button"
+                          disabled={toggleCleaning.isPending}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!sessionUser) return;
+                            toggleCleaning.mutate({
+                              scheduleId: schedule.id,
+                              date: todayKey,
+                              userId: sessionUser.id,
+                              isCompleted: true,
+                            });
+                          }}
+                          title={`${cat?.name ?? "Limpeza"} • até ${dueTimeStr}`}
+                          className="flex items-center gap-1.5 rounded-md border border-success bg-success hover:bg-success/90 cursor-pointer transition-colors min-w-0 text-left w-full px-2 py-1"
+                        >
+                          <span className="leading-none shrink-0 text-xs">{emoji}</span>
+                          {(() => {
+                            const cleaningName = (cat?.name ?? "Limpeza").trim();
+                            const isSingleWord = !cleaningName.includes(" ");
+                            return (
+                              <p
+                                lang="pt-BR"
+                                title={cleaningName}
+                                className={cn(
+                                  "font-semibold leading-tight flex-1 min-w-0 [hyphens:none] text-xs text-success-foreground",
+                                  isSingleWord ? "whitespace-nowrap overflow-hidden text-ellipsis" : ""
+                                )}
+                                style={
+                                  !isSingleWord
+                                    ? { display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", textOverflow: "ellipsis", wordBreak: "keep-all", overflowWrap: "break-word", hyphens: "none" }
+                                    : { wordBreak: "keep-all", overflowWrap: "normal", hyphens: "none" }
+                                }
+                              >
+                                {cleaningName}
+                              </p>
+                            );
+                          })()}
+                          <span className={cn("font-bold text-success-foreground shrink-0", veryDense ? "text-xs" : "text-sm")}>✓</span>
+                        </button>
+                      );
+                    })}
                 </div>
               </div>
             );
