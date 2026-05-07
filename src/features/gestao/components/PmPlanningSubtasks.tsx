@@ -589,8 +589,8 @@ function PlanningSection({
                     <button
                       onClick={() => setExpandedNoteId(expandedNoteId === sub.id ? null : sub.id)}
                       className={cn(
-                        "flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-medium transition-all",
-                        "bg-amber-500/10 text-amber-500 hover:bg-amber-500/20"
+                        "flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-bold transition-all shadow-sm ring-1 ring-stage-alteracoes/40",
+                        "bg-stage-alteracoes text-stage-foreground-alteracoes hover:bg-stage-alteracoes/90"
                       )}
                     >
                       <RotateCcw className="h-3 w-3" />
@@ -648,17 +648,17 @@ function PlanningSection({
 
               {/* Expandable note area for alteração */}
               {isNoteExpanded && hasAlteracao && (
-                <div className="px-3 pb-2 pt-0 bg-amber-500/5">
+                <div className="px-3 pb-2 pt-0 bg-stage-alteracoes/10">
                   {isReviewEditable ? (
                     <Textarea
                       value={review.note}
                       onChange={(e) => setReviewNote(sub.id, e.target.value)}
                       onBlur={saveNote}
                       placeholder="Descreva o que precisa ser alterado..."
-                      className="min-h-[50px] text-xs bg-background/50 border-border/30 resize-none"
+                      className="min-h-[50px] text-xs bg-background border-stage-alteracoes/50 resize-none"
                     />
                   ) : (
-                    <div className="rounded-md bg-amber-500/5 border border-amber-500/15 px-3 py-2 text-xs text-foreground/80 whitespace-pre-wrap">
+                    <div className="rounded-md bg-background border border-stage-alteracoes/40 px-3 py-2 text-xs font-medium text-foreground whitespace-pre-wrap shadow-sm">
                       {review.note || <span className="text-muted-foreground italic">Sem detalhes adicionais</span>}
                     </div>
                   )}
