@@ -321,6 +321,7 @@ function PlanningSection({
   const total = tasks.length;
   const hasSelection = selectedIds.size > 0;
   const [expandedNoteId, setExpandedNoteId] = useState<string | null>(null);
+  const [explicitlyClosedIds, setExplicitlyClosedIds] = useState<Set<string>>(new Set());
 
   const toggleReviewStatus = (childId: string, targetStatus: ReviewStatus) => {
     if (!isReviewEditable) return;
