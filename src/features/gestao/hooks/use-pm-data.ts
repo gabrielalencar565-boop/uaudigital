@@ -327,8 +327,8 @@ export function useUpdatePmTask() {
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
             const logEntityId = data.parent_task_id ?? id;
-            // Build clean metadata: strip internal hints and large blobs
-            const { _revision_change, revision_notes: _rn, ...cleanUpdates } = updates as any;
+            // Build clean metadata: strip large blobs
+            const { revision_notes: _rn, ...cleanUpdates } = updates as any;
             const logMeta: Record<string, any> = { ...cleanUpdates, task_id: id, _ref_title: data.title };
             // If we have a revision change hint, log it descriptively instead of dumping the full object
             if (_revision_change && _revision_change.childTitle) {
