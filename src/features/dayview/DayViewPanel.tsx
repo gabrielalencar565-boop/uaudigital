@@ -887,7 +887,7 @@ export function DayViewPanel() {
         : isRevisaoDesign
         ? "REV/DSG"
         : undefined;
-      const periodicKey = t.periodic_stage_key;
+      const periodicKey = t.periodic_stage_key ?? (t.description?.startsWith("pm:") ? (() => { const p = t.description!.split(":")[2]; return p?.startsWith("custom_") ? p : null; })() : null);
       const periodicLabel = periodicKey
         ? ((periodicStagesQ.data ?? []).find((p) => p.key === periodicKey)?.label ?? getPeriodicStageFallbackLabel(periodicKey))
         : null;
