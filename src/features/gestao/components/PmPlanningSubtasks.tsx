@@ -605,7 +605,7 @@ function PlanningSection({
                     >
                       <RotateCcw className="h-3 w-3" />
                       <span>ver alteração</span>
-                      {expandedNoteId === sub.id ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                      {isNoteExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                     </button>
                   </div>
                 )}
