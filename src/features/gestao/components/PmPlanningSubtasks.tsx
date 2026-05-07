@@ -583,7 +583,22 @@ function PlanningSection({
                 </div>
 
                 {/* Review note toggle — show whenever subtask has alteração status */}
-                {hasAlteracao && (
+                {hasAlteracao && !reviewMode && (
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => setExpandedNoteId(expandedNoteId === sub.id ? null : sub.id)}
+                      className={cn(
+                        "flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-medium transition-all",
+                        "bg-amber-500/10 text-amber-500 hover:bg-amber-500/20"
+                      )}
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                      <span>ver alteração</span>
+                      {expandedNoteId === sub.id ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                    </button>
+                  </div>
+                )}
+                {hasAlteracao && reviewMode && (
                   <div onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() => setExpandedNoteId(expandedNoteId === sub.id ? null : sub.id)}
