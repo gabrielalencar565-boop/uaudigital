@@ -1704,7 +1704,13 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                     <button
                       key={s.key}
                       className={cn("flex items-center gap-3 w-full px-3 py-2 rounded text-sm hover:bg-accent transition", isSelected && "bg-accent")}
-                      onClick={() => updateTask.mutate({ id: task.id, stage_current: s.key as any, periodic_stage_key: null as any })}
+                      onClick={() => {
+                        updateTask.mutate({ id: task.id, stage_current: s.key as any, periodic_stage_key: null as any });
+                        // Propagate stage change to children
+                        for (const child of childTasks) {
+                          updateTask.mutate({ id: child.id, stage_current: s.key as any });
+                        }
+                      }}
                     >
                       <span className={cn("h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0", color.border, isDoneS && `${color.bg}`)}>
                         {isDoneS && <Check className="h-3 w-3 text-white" />}
