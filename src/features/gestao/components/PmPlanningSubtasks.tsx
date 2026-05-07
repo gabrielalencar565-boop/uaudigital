@@ -587,7 +587,15 @@ function PlanningSection({
                 {hasAlteracao && (
                   <div onClick={(e) => e.stopPropagation()}>
                     <button
-                      onClick={() => setExpandedNoteId(expandedNoteId === sub.id ? null : sub.id)}
+                      onClick={() => {
+                        if (isNoteExpanded) {
+                          setExpandedNoteId(prev => prev === sub.id ? null : prev);
+                          setExplicitlyClosedIds(prev => new Set(prev).add(sub.id));
+                        } else {
+                          setExpandedNoteId(sub.id);
+                          setExplicitlyClosedIds(prev => { const n = new Set(prev); n.delete(sub.id); return n; });
+                        }
+                      }}
                       className={cn(
                         "flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition-all",
                         hasReview && hasAlteracao
