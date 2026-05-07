@@ -321,6 +321,7 @@ function PlanningSection({
   const total = tasks.length;
   const hasSelection = selectedIds.size > 0;
   const [expandedNoteId, setExpandedNoteId] = useState<string | null>(null);
+  const [explicitlyClosedIds, setExplicitlyClosedIds] = useState<Set<string>>(new Set());
 
   const toggleReviewStatus = (childId: string, targetStatus: ReviewStatus) => {
     if (!isReviewEditable) return;
@@ -453,7 +454,7 @@ function PlanningSection({
             const review = reviews[sub.id];
             const hasReview = !!reviewMode;
             const hasAlteracao = review?.status === "alteracao";
-            const isNoteExpanded = expandedNoteId === sub.id || (reviewMode === "alteracao" && !!review?.note);
+            const isNoteExpanded = expandedNoteId === sub.id || (reviewMode === "alteracao" && !!review?.note && !explicitlyClosedIds.has(sub.id));
 
             return (
               <div key={sub.id}>
@@ -586,7 +587,15 @@ function PlanningSection({
                 {hasAlteracao && (
                   <div onClick={(e) => e.stopPropagation()}>
                     <button
-                      onClick={() => setExpandedNoteId(expandedNoteId === sub.id ? null : sub.id)}
+                      onClick={() => {
+                        if (isNoteExpanded) {
+                          setExpandedNoteId(prev => prev === sub.id ? null : prev);
+                          setExplicitlyClosedIds(prev => new Set(prev).add(sub.id));
+                        } else {
+                          setExpandedNoteId(sub.id);
+                          setExplicitlyClosedIds(prev => { const n = new Set(prev); n.delete(sub.id); return n; });
+                        }
+                      }}
                       className={cn(
                         "flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition-all",
                         hasReview && hasAlteracao
@@ -596,7 +605,7 @@ function PlanningSection({
                     >
                       <RotateCcw className="h-3 w-3" />
                       <span>ver alteração</span>
-                      {expandedNoteId === sub.id ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                      {isNoteExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                     </button>
                   </div>
                 )}
