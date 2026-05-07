@@ -40,9 +40,14 @@ type TaskInfo = {
   id: string;
   client_id: string;
   stage: string;
+  stage_label?: string | null;
   assigned_user_id: string;
   title: string | null;
 };
+
+function periodicStageLabel(key: string | null | undefined) {
+  return key ? key.replace(/^custom_/, "").replace(/_/g, " ") : null;
+}
 
 function formatDateBR(dateStr: string) {
   try {
@@ -99,13 +104,14 @@ export function TaskActivityReport({ onClose, filterAction: externalFilter }: { 
       // Query both tasks and pm_tasks tables
       const [agendaRes, pmRes] = await Promise.all([
         supabase.from("tasks").select("id, client_id, stage, assigned_user_id, title").in("id", taskIds),
-        sb.from("pm_tasks").select("id, client_id, stage_current, assignee_id, title").in("id", taskIds),
+        sb.from("pm_tasks").select("id, client_id, stage_current, periodic_stage_key, assignee_id, title").in("id", taskIds),
       ]);
       const agendaTasks = (agendaRes.data ?? []) as TaskInfo[];
       const pmTasks = ((pmRes.data ?? []) as any[]).map((t: any) => ({
         id: t.id,
         client_id: t.client_id,
-        stage: t.stage_current,
+        stage: t.periodic_stage_key ?? t.stage_current,
+        stage_label: periodicStageLabel(t.periodic_stage_key),
         assigned_user_id: t.assignee_id,
         title: t.title,
       }));
@@ -292,7 +298,7 @@ export function TaskActivityReport({ onClose, filterAction: externalFilter }: { 
                         const member = teamByUserId.get(log.user_id);
                         const stageKey = task?.stage as StageKey | undefined;
                         const stageInfo = stageKey ? STAGES.find((s) => s.key === stageKey) : null;
-                        const stageTone = stageKey ? STAGE_BADGE_CLASS[stageKey] : null;
+                        const stageTone = stageKey ? STAGE_BADGE_CLASS[stageKey] ?? STAGE_BADGE_CLASS.agendamento : null;
                         const timeStr = format(new Date(log.created_at), "HH:mm", { locale: ptBR });
 
                         return (
@@ -310,7 +316,7 @@ export function TaskActivityReport({ onClose, filterAction: externalFilter }: { 
                                 <span className="text-sm font-medium">
                                   {actionLabel(log.action)}
                                 </span>
-                                {stageTone && stageInfo && (
+                                {stageTone && (stageInfo || task?.stage_label) && (
                                   <span
                                     className={cn(
                                       "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold",
@@ -318,7 +324,7 @@ export function TaskActivityReport({ onClose, filterAction: externalFilter }: { 
                                       stageTone.fg,
                                     )}
                                   >
-                                    {stageInfo.label}
+                                    {task?.stage_label ?? stageInfo?.label}
                                   </span>
                                 )}
                                 <span className="text-xs text-muted-foreground tabular-nums">

@@ -52,6 +52,7 @@ type OverrideRow = {
 
 type ScoringConfigRow = {
   stage: string;
+  label: string | null;
   base_points: number;
   late_penalty: number;
   uses_quantity: boolean;
@@ -64,6 +65,16 @@ function extractPmTaskId(description: string | null): string | null {
   const parts = description.split(":");
   if (parts.length >= 3) return parts[1];
   return null;
+}
+
+function getReportStageKey(task: Pick<TaskForReport, "description" | "stage">): string {
+  if (!task.description?.startsWith("pm:")) return task.stage;
+  const parts = task.description.split(":");
+  return parts[2] || task.stage;
+}
+
+function getReportStageLabel(stageKey: string, configMap: Map<string, ScoringConfigRow>) {
+  return configMap.get(stageKey)?.label ?? STAGES.find((s) => s.key === stageKey)?.label ?? stageKey.replace(/^custom_/, "").replace(/_/g, " ");
 }
 
 function yyyymm(year: number, month: number) {
@@ -92,7 +103,7 @@ function calcPoints(task: TaskForReport, configMap: Map<string, ScoringConfigRow
     return onTime ? 1 : -1;
   }
 
-  const cfg = configMap.get(task.stage);
+  const cfg = configMap.get(getReportStageKey(task));
   if (!onTime) {
     if (task.late_penalty_value != null) return task.late_penalty_value;
 
@@ -129,7 +140,7 @@ function calcExpectedPoints(task: TaskForReport, configMap: Map<string, ScoringC
   // If there's a snapshot, use it (reflects tag-based scoring already computed)
   if (task.point_value != null && task.point_value > 0) return task.point_value;
 
-  const cfg = configMap.get(task.stage);
+  const cfg = configMap.get(getReportStageKey(task));
   if (!cfg) return 1;
 
   let pts = cfg.base_points;
@@ -279,7 +290,7 @@ export function AdminDeadlineReport({
     queryFn: async (): Promise<ScoringConfigRow[]> => {
       const { data, error } = await supabase
         .from("scoring_config")
-        .select("stage, base_points, late_penalty, uses_quantity, extra_demand_multiplier");
+        .select("stage, label, base_points, late_penalty, uses_quantity, extra_demand_multiplier");
       if (error) throw error;
       return (data ?? []) as ScoringConfigRow[];
     },
@@ -671,6 +682,7 @@ export function AdminDeadlineReport({
                         </TableCell>
                         <TableCell className="text-center">
                           {(() => {
+                            const stageKey = getReportStageKey(t);
                             const stageTone = STAGE_BADGE_CLASS[t.stage];
                             return (
                               <span
@@ -680,7 +692,7 @@ export function AdminDeadlineReport({
                                   stageTone.fg,
                                 )}
                               >
-                                {STAGES.find((s) => s.key === t.stage)?.label ?? t.stage}
+                                {getReportStageLabel(stageKey, scoringConfigMap)}
                               </span>
                             );
                           })()}
