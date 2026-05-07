@@ -854,7 +854,7 @@ export function AdminDeadlineReport({
                   <div>
                     <p className="text-muted-foreground text-xs mb-0.5">Etapa</p>
                     <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold", stageTone.bg, stageTone.fg)}>
-                      {stageDef?.label ?? detailTask.stage}
+                      {getReportStageLabel(getReportStageKey(detailTask), scoringConfigMap)}
                     </span>
                   </div>
                   <div>
