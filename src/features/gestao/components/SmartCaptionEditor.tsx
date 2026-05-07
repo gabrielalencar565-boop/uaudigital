@@ -272,8 +272,8 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
     const range = sel.getRangeAt(0);
     const rect = range.getBoundingClientRect();
     const editorRect = editorRef.current.getBoundingClientRect();
-    const val = document.queryCommandValue("formatBlock");
-    setCurrentBlock(val || "p");
+    const val = (document.queryCommandValue("formatBlock") || "").toLowerCase().replace(/[<>"]/g, "") || "p";
+    setCurrentBlock(val);
     setToolbarPos({
       top: rect.top - editorRect.top - 48,
       left: Math.max(0, Math.min(rect.left - editorRect.left + rect.width / 2 - 160, editorRect.width - 340)),
