@@ -1,18 +1,17 @@
-Vou ajustar a aparência da opção **“ver alteração”** dentro da lista de subtarefas.
+## Problema
 
-O problema encontrado é que o botão está usando `bg-amber-500/10 text-amber-500`, mas quando a linha da subtarefa está em alteração ela também recebe fundo amber forte (`!bg-amber-500`) e texto branco. Nesse contexto, o botão fica com pouco contraste e parece invisível.
+O dropdown "TRANSFORMAR EM" no editor de legendas (SmartCaptionEditor) não funciona ao selecionar "Texto", "Cabeçalho 1", etc. O texto selecionado não muda de formato.
 
-Plano de ajuste:
+## Causa
 
-1. Alterar a cor do botão **“ver alteração”** para ter contraste alto quando estiver dentro de uma linha em alteração:
-   - fundo branco/semitransparente ou escuro com borda clara;
-   - texto branco ou amber escuro dependendo do fundo;
-   - ícone e seta com a mesma cor visível.
+A função `applyHeading` usa `document.execCommand("formatBlock", false, "h1")`, mas no Chrome/navegadores modernos o comando `formatBlock` exige o tag com angle brackets: `"<h1>"` em vez de `"h1"`.
 
-2. Garantir que o botão continue aparecendo em todas as subtarefas com status `alteracao` e com descrição vinculada.
+## Correção
 
-3. Manter o comportamento atual de clique:
-   - clicar em **“ver alteração”** expande/fecha o campo abaixo da subtarefa;
-   - a descrição continua aparecendo embaixo da própria subtarefa, não na tarefa pai.
+No arquivo `src/features/gestao/components/SmartCaptionEditor.tsx`:
 
-4. Revisar visualmente no componente `PmPlanningSubtasks.tsx` para evitar que o botão fique escondido pelo fundo amber da linha ou pelo texto branco herdado.
+1. **Na função `applyHeading` (linha 361-373)**: Envolver o tag em angle brackets ao chamar `formatBlock` — usar `<${tag}>` em vez de `tag` diretamente.
+
+2. **Na detecção do bloco atual (linha 275)**: O `queryCommandValue("formatBlock")` retorna valores inconsistentes entre navegadores (às vezes com aspas, às vezes sem). Normalizar o valor retornado para comparar corretamente com os tags dos `HEADING_OPTIONS`.
+
+Ambas as mudanças são no mesmo arquivo, apenas 2-3 linhas alteradas.

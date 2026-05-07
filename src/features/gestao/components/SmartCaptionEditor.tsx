@@ -359,12 +359,12 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
   }, [handleInput]);
 
   const applyHeading = useCallback((tag: string) => {
-    const current = document.queryCommandValue("formatBlock");
+    const current = (document.queryCommandValue("formatBlock") || "").toLowerCase().replace(/[<>"]/g, "") || "p";
     if (current === tag) {
-      document.execCommand("formatBlock", false, "p");
+      document.execCommand("formatBlock", false, "<p>");
       setCurrentBlock("p");
     } else {
-      document.execCommand("formatBlock", false, tag);
+      document.execCommand("formatBlock", false, `<${tag}>`);
       setCurrentBlock(tag);
     }
     editorRef.current?.focus();
