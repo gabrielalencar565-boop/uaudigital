@@ -582,8 +582,8 @@ function PlanningSection({
                   )}>{sub.title}</span>
                 </div>
 
-                {/* Review note toggle — show when in review mode OR when subtask has alteração status */}
-                {((hasReview && review?.status === "alteracao") || (!hasReview && review?.status === "alteracao")) && (
+                {/* Review note toggle — show whenever subtask has alteração status */}
+                {hasAlteracao && (
                   <div onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() => setExpandedNoteId(expandedNoteId === sub.id ? null : sub.id)}
