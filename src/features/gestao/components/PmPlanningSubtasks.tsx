@@ -452,6 +452,7 @@ function PlanningSection({
             const circleColor = getStageCircleColor(sub.stage_current);
             const review = reviews[sub.id];
             const hasReview = !!reviewMode;
+            const hasAlteracao = review?.status === "alteracao";
             const isNoteExpanded = expandedNoteId === sub.id || (reviewMode === "alteracao" && !!review?.note);
 
             return (
@@ -463,8 +464,9 @@ function PlanningSection({
                   isSelected && "bg-primary/5",
                   isDone && "opacity-60",
                   hasReview && review?.status === "aprovado" && "!bg-emerald-500 hover:!bg-emerald-500 text-white",
-                  hasReview && review?.status === "alteracao" && "!bg-amber-500 hover:!bg-amber-500 text-white",
-                  !(hasReview && review?.status) && !isActive && "hover:bg-card/40",
+                  hasReview && hasAlteracao && "!bg-amber-500 hover:!bg-amber-500 text-white",
+                  !hasReview && hasAlteracao && "border-l-2 border-l-amber-500 bg-amber-500/5",
+                  !(hasReview && review?.status) && !isActive && !(!hasReview && hasAlteracao) && "hover:bg-card/40",
                 )}
                 onClick={(e) => {
                   if (deletingId || bulkConfirmOpen) {
@@ -580,8 +582,8 @@ function PlanningSection({
                   )}>{sub.title}</span>
                 </div>
 
-                {/* Review note toggle */}
-                {hasReview && review?.status === "alteracao" && (
+                {/* Review note toggle — show when in review mode OR when subtask has alteração status */}
+                {((hasReview && review?.status === "alteracao") || (!hasReview && review?.status === "alteracao")) && (
                   <div onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() => setExpandedNoteId(expandedNoteId === sub.id ? null : sub.id)}
@@ -644,8 +646,8 @@ function PlanningSection({
                 </div>
               </div>
 
-              {/* Expandable note area for review */}
-              {hasReview && isNoteExpanded && review?.status === "alteracao" && (
+              {/* Expandable note area for alteração */}
+              {isNoteExpanded && hasAlteracao && (
                 <div className="px-3 pb-2 pt-0 bg-amber-500/5">
                   {isReviewEditable ? (
                     <Textarea
