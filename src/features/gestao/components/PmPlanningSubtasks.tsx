@@ -646,8 +646,8 @@ function PlanningSection({
                 </div>
               </div>
 
-              {/* Expandable note area for review */}
-              {hasReview && isNoteExpanded && review?.status === "alteracao" && (
+              {/* Expandable note area for alteração */}
+              {isNoteExpanded && hasAlteracao && (
                 <div className="px-3 pb-2 pt-0 bg-amber-500/5">
                   {isReviewEditable ? (
                     <Textarea
