@@ -67,6 +67,15 @@ function extractPmTaskId(description: string | null): string | null {
   return null;
 }
 
+/** Default badge style for periodic/custom stages that have no STAGE_BADGE_CLASS entry */
+const PERIODIC_BADGE_STYLE = { bg: "bg-violet-500/20", fg: "text-violet-400" };
+
+function getStageBadgeStyle(task: Pick<TaskForReport, "description" | "stage">) {
+  const stageKey = getReportStageKey(task);
+  if (stageKey.startsWith("custom_")) return PERIODIC_BADGE_STYLE;
+  return STAGE_BADGE_CLASS[task.stage] ?? PERIODIC_BADGE_STYLE;
+}
+
 function getReportStageKey(task: Pick<TaskForReport, "description" | "stage">): string {
   if (!task.description?.startsWith("pm:")) return task.stage;
   const parts = task.description.split(":");
@@ -683,7 +692,7 @@ export function AdminDeadlineReport({
                         <TableCell className="text-center">
                           {(() => {
                             const stageKey = getReportStageKey(t);
-                            const stageTone = STAGE_BADGE_CLASS[t.stage];
+                            const stageTone = getStageBadgeStyle(t);
                             return (
                               <span
                                 className={cn(
@@ -827,7 +836,7 @@ export function AdminDeadlineReport({
 
           {detailTask && (() => {
             const stageDef = STAGES.find((s) => s.key === detailTask.stage);
-            const stageTone = STAGE_BADGE_CLASS[detailTask.stage];
+            const stageTone = getStageBadgeStyle(detailTask);
             const assignees = assigneesByTask.get(detailTask.id);
             const assignedNames = (assignees && assignees.length > 0 ? assignees : [detailTask.assigned_user_id])
               .map((uid) => teamById.get(uid)?.display_name ?? "—");
@@ -845,7 +854,7 @@ export function AdminDeadlineReport({
                   <div>
                     <p className="text-muted-foreground text-xs mb-0.5">Etapa</p>
                     <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold", stageTone.bg, stageTone.fg)}>
-                      {stageDef?.label ?? detailTask.stage}
+                      {getReportStageLabel(getReportStageKey(detailTask), scoringConfigMap)}
                     </span>
                   </div>
                   <div>
