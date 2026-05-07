@@ -66,8 +66,8 @@ export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members
     });
   }, [childTasks.length]);
 
-  const saveReviewToDb = useCallback((data: RevisionNotes) => {
-    updateTask.mutate({ id: parentTask.id, revision_notes: data } as any);
+  const saveReviewToDb = useCallback((data: RevisionNotes, change?: { childTitle: string; newStatus: string }) => {
+    updateTask.mutate({ id: parentTask.id, revision_notes: data, _revision_change: change ?? null } as any);
   }, [parentTask.id, updateTask]);
 
   const isReviewEditable = reviewMode === "revisao" && !readOnly;
