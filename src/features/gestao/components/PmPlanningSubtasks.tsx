@@ -326,12 +326,13 @@ function PlanningSection({
     if (!isReviewEditable) return;
     const current = reviews[childId]?.status;
     const newStatus = current === targetStatus ? "pendente" : targetStatus;
+    const childTask = childTasks.find(c => c.id === childId);
     const updated = {
       ...reviews,
       [childId]: { ...reviews[childId], status: newStatus, note: reviews[childId]?.note ?? "" },
     };
     setReviews(updated);
-    saveReviewToDb(updated);
+    saveReviewToDb(updated, { childTitle: childTask?.title ?? "", newStatus });
     if (newStatus === "alteracao") setExpandedNoteId(childId);
   };
 
