@@ -887,7 +887,7 @@ export function DayViewPanel() {
         : variant === "overdue"
         ? "flex items-center gap-1.5 rounded-md border border-destructive bg-destructive cursor-pointer hover:bg-destructive/90 transition-colors min-w-0 px-2 py-1"
         : isAlteracoesPending
-        ? "flex items-center gap-1.5 rounded-md border border-amber-500/60 bg-amber-500/20 cursor-pointer hover:bg-amber-500/30 transition-colors min-w-0 px-2 py-1"
+        ? "flex items-center gap-1.5 rounded-md border border-amber-500 bg-amber-500 cursor-pointer hover:bg-amber-600 transition-colors min-w-0 px-2 py-1"
         : "flex items-center gap-1.5 rounded-md border border-border bg-card cursor-pointer hover:bg-accent/50 transition-colors min-w-0 px-2 py-1";
       const isAlteracaoWithOrigin = t.stage === "alteracoes" && !!t.post_type;
       const isRevisao = t.stage === "revisao";
