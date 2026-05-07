@@ -69,13 +69,24 @@ function formatActionText(action: string, metadata: any, membersMap: Record<stri
         const name = membersMap[metadata.assignee_id]?.name ?? "alguém";
         parts.push(`responsável alterado: ${name}`);
       }
-      if (metadata?.title) parts.push(`nome alterado: ${metadata.title}`);
+      if (metadata?.title) parts.push(`nome alterado: "${metadata.title}"`);
       if (metadata?.priority) parts.push(`prioridade alterada: ${metadata.priority}`);
       if (metadata?.due_date !== undefined) parts.push(`data de entrega alterada: ${metadata.due_date ?? "removida"}`);
       if (metadata?.tags) parts.push(`etiquetas atualizadas`);
-      if (metadata?.watchers) parts.push(`observadores atualizados`);
-      // description updates are hidden from activity feed
+      if (metadata?.watchers) {
+        const names = (metadata.watchers as string[])
+          .map((id: string) => membersMap[id]?.name?.split(" ")[0] ?? "alguém")
+          .join(", ");
+        parts.push(names ? `observadores: ${names}` : "observadores removidos");
+      }
+      if (metadata?.description !== undefined) parts.push("descrição/legenda editada");
+      if (metadata?.revision_notes) parts.push("notas de revisão atualizadas");
       if (metadata?.cover_url !== undefined) parts.push(metadata.cover_url ? "capa definida" : "capa removida");
+      if (metadata?.status_global) parts.push(`status alterado: ${metadata.status_global}`);
+      if (metadata?.post_type) parts.push(`tipo alterado: ${metadata.post_type}`);
+      if (metadata?.is_extra_demand !== undefined) parts.push(metadata.is_extra_demand ? "marcada como extra" : "desmarcada como extra");
+      if (metadata?.periodic_stage_key) parts.push(`etapa periódica: ${metadata.periodic_stage_key.replace(/^custom_/, "").replace(/_/g, " ")}`);
+      if (metadata?.client_id) parts.push("cliente alterado");
       return parts.length > 0 ? parts.join(", ") : "atualizou a tarefa";
     }
     case "comment_added": return `comentou`;
