@@ -582,9 +582,15 @@ export function DayViewPanel() {
     }
 
     // Build unified tasks from non-snapshot tasks
+    const extractPeriodicKey = (desc: string | null | undefined): string | null => {
+      if (!desc?.startsWith("pm:")) return null;
+      const p = desc.split(":")[2];
+      return p?.startsWith("custom_") ? p : null;
+    };
     const agendaTasks: UnifiedTask[] = nonSnapshotTasks.map(t => ({
       ...t,
       source: "agenda" as const,
+      periodic_stage_key: (t as any).periodic_stage_key ?? extractPeriodicKey(t.description),
     }));
 
     // Merge each pm snapshot group into a single unified task
@@ -603,6 +609,7 @@ export function DayViewPanel() {
         is_extra_demand: first.is_extra_demand,
         completed_at: first.completed_at,
         source: "agenda" as const,
+        periodic_stage_key: extractPeriodicKey(first.description),
       });
     }
 
