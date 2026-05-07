@@ -692,7 +692,7 @@ export function AdminDeadlineReport({
                         <TableCell className="text-center">
                           {(() => {
                             const stageKey = getReportStageKey(t);
-                            const stageTone = STAGE_BADGE_CLASS[t.stage];
+                            const stageTone = getStageBadgeStyle(t);
                             return (
                               <span
                                 className={cn(
