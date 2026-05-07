@@ -369,8 +369,11 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
     const cloneChildrenToNewTask = async (targetTaskId: string, targetStage: string) => {
       const assigneeKey = resolveAssigneeStageKey(completedStage, targetStage);
-      const fixedAssignee = getFixedAssignee(stageAssignees, assigneeKey, task.client_id);
-      const fixedWatchers = getFixedWatchers(stageAssignees, assigneeKey, task.client_id);
+      // When going planejamento → revisão, subtasks should keep their original assignees
+      // (they'll only get video/design assignees after the revisão split)
+      const isPlanejToRevisao = completedStage === "planejamento" && targetStage === "revisao";
+      const fixedAssignee = isPlanejToRevisao ? undefined : getFixedAssignee(stageAssignees, assigneeKey, task.client_id);
+      const fixedWatchers = isPlanejToRevisao ? [] : getFixedWatchers(stageAssignees, assigneeKey, task.client_id);
       const fallbackPostType = inferPmPostType(
         task,
         completedStage === "edicao_videos" ? "video" : completedStage === "design" ? "design" : null
