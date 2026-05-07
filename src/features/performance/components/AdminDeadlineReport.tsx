@@ -836,7 +836,7 @@ export function AdminDeadlineReport({
 
           {detailTask && (() => {
             const stageDef = STAGES.find((s) => s.key === detailTask.stage);
-            const stageTone = STAGE_BADGE_CLASS[detailTask.stage];
+            const stageTone = getStageBadgeStyle(detailTask);
             const assignees = assigneesByTask.get(detailTask.id);
             const assignedNames = (assignees && assignees.length > 0 ? assignees : [detailTask.assigned_user_id])
               .map((uid) => teamById.get(uid)?.display_name ?? "—");
