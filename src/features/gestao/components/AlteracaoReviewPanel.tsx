@@ -61,12 +61,13 @@ export function AlteracaoReviewPanel({ parentTask, childTasks, membersMap, readO
 
   const setStatus = (childId: string, status: ReviewStatus) => {
     if (!isEditable) return;
+    const childTask = childTasks.find(c => c.id === childId);
     const updated = {
       ...reviews,
       [childId]: { ...reviews[childId], status, note: reviews[childId]?.note ?? "" },
     };
     setReviews(updated);
-    saveToDb(updated);
+    saveToDb(updated, { childTitle: childTask?.title ?? "", newStatus: status });
     if (status === "alteracao") {
       setExpandedId(childId);
     }
