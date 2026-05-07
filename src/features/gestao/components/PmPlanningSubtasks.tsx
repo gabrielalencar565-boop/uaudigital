@@ -66,8 +66,8 @@ export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members
     });
   }, [childTasks.length]);
 
-  const saveReviewToDb = useCallback((data: RevisionNotes) => {
-    updateTask.mutate({ id: parentTask.id, revision_notes: data } as any);
+  const saveReviewToDb = useCallback((data: RevisionNotes, change?: { childTitle: string; newStatus: string }) => {
+    updateTask.mutate({ id: parentTask.id, revision_notes: data, _revision_change: change ?? null } as any);
   }, [parentTask.id, updateTask]);
 
   const isReviewEditable = reviewMode === "revisao" && !readOnly;
@@ -326,12 +326,13 @@ function PlanningSection({
     if (!isReviewEditable) return;
     const current = reviews[childId]?.status;
     const newStatus = current === targetStatus ? "pendente" : targetStatus;
+    const childTask = childTasks.find(c => c.id === childId);
     const updated = {
       ...reviews,
       [childId]: { ...reviews[childId], status: newStatus, note: reviews[childId]?.note ?? "" },
     };
     setReviews(updated);
-    saveReviewToDb(updated);
+    saveReviewToDb(updated, { childTitle: childTask?.title ?? "", newStatus });
     if (newStatus === "alteracao") setExpandedNoteId(childId);
   };
 

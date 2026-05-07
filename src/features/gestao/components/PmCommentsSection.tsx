@@ -80,7 +80,13 @@ function formatActionText(action: string, metadata: any, membersMap: Record<stri
         parts.push(names ? `observadores: ${names}` : "observadores removidos");
       }
       if (metadata?.description !== undefined) parts.push("descrição/legenda editada");
-      if (metadata?.revision_notes) parts.push("notas de revisão atualizadas");
+      if (metadata?._revision_change) {
+        const rc = metadata._revision_change;
+        const statusLabel = rc.newStatus === "aprovado" ? "aprovada" : rc.newStatus === "alteracao" ? "alteração" : "pendente";
+        parts.push(`"${rc.childTitle}" marcada como ${statusLabel}`);
+      } else if (metadata?.revision_notes) {
+        parts.push("notas de revisão atualizadas");
+      }
       if (metadata?.cover_url !== undefined) parts.push(metadata.cover_url ? "capa definida" : "capa removida");
       if (metadata?.status_global) parts.push(`status alterado: ${metadata.status_global}`);
       if (metadata?.post_type) parts.push(`tipo alterado: ${metadata.post_type}`);

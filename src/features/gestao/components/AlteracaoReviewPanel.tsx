@@ -53,20 +53,21 @@ export function AlteracaoReviewPanel({ parentTask, childTasks, membersMap, readO
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const saveToDb = useCallback((data: RevisionNotes) => {
-    updateTask.mutate({ id: parentTask.id, revision_notes: data } as any);
+  const saveToDb = useCallback((data: RevisionNotes, change?: { childTitle: string; newStatus: string }) => {
+    updateTask.mutate({ id: parentTask.id, revision_notes: data, _revision_change: change ?? null } as any);
   }, [parentTask.id, updateTask]);
 
   const isEditable = mode === "revisao" && !readOnly;
 
   const setStatus = (childId: string, status: ReviewStatus) => {
     if (!isEditable) return;
+    const childTask = childTasks.find(c => c.id === childId);
     const updated = {
       ...reviews,
       [childId]: { ...reviews[childId], status, note: reviews[childId]?.note ?? "" },
     };
     setReviews(updated);
-    saveToDb(updated);
+    saveToDb(updated, { childTitle: childTask?.title ?? "", newStatus: status });
     if (status === "alteracao") {
       setExpandedId(childId);
     }
