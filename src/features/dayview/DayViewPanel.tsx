@@ -593,21 +593,30 @@ export function DayViewPanel() {
       periodic_stage_key: (t as any).periodic_stage_key ?? extractPeriodicKey(t.description),
     }));
 
+    // Build a lookup from pm_task_id to actual pm_task for status cross-check
+    const pmTaskById = new Map(allPmTasksForDayView.map(t => [t.id, t]));
+
     // Merge each pm snapshot group into a single unified task
     for (const [groupKey, group] of pmSnapshotGroups) {
       const first = group[0];
-      // Use group key as ID to avoid duplicates
       const mergedId = `agenda_pm_${groupKey}`;
+      // Extract pm task id from groupKey (pm:<taskId>:<stage>)
+      const pmId = groupKey.split(":")[1];
+      const pmTask = pmId ? pmTaskById.get(pmId) : undefined;
+      // Use pm_task status_global as source of truth when available
+      const isActuallyDone = pmTask
+        ? (pmTask.status_global === "concluido" || pmTask.stage_current === "entrega" || pmTask.stage_current === "agendamento")
+        : first.status === "concluido";
       agendaTasks.push({
         id: mergedId,
         client_id: first.client_id,
         assigned_user_id: first.assigned_user_id,
         due_date: first.due_date,
-        status: first.status,
+        status: isActuallyDone ? "concluido" : "pendente",
         stage: first.stage,
         title: first.title,
         is_extra_demand: first.is_extra_demand,
-        completed_at: first.completed_at,
+        completed_at: isActuallyDone ? first.completed_at : null,
         source: "agenda" as const,
         periodic_stage_key: extractPeriodicKey(first.description),
       });
