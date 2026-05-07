@@ -588,8 +588,10 @@ function PlanningSection({
                     <button
                       onClick={() => setExpandedNoteId(expandedNoteId === sub.id ? null : sub.id)}
                       className={cn(
-                        "flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-medium transition-all",
-                        "bg-amber-500/10 text-amber-500 hover:bg-amber-500/20"
+                        "flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition-all",
+                        hasReview && hasAlteracao
+                          ? "bg-white/25 text-white hover:bg-white/40 border border-white/30"
+                          : "bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 border border-amber-500/30"
                       )}
                     >
                       <RotateCcw className="h-3 w-3" />

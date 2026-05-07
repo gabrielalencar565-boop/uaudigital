@@ -1,33 +1,18 @@
-## Problema
+Vou ajustar a aparência da opção **“ver alteração”** dentro da lista de subtarefas.
 
-Nas tarefas com `stage_current = "planejamento"`, as seções **Vídeo** e **Design** dentro do `PmPlanningSubtasks` só aparecem quando já existem subtarefas daquele tipo (`videoTasks.length > 0` / `designTasks.length > 0`). Quando não há nenhuma subtarefa, ambas as seções ficam ocultas e o usuário não consegue criar novas.
+O problema encontrado é que o botão está usando `bg-amber-500/10 text-amber-500`, mas quando a linha da subtarefa está em alteração ela também recebe fundo amber forte (`!bg-amber-500`) e texto branco. Nesse contexto, o botão fica com pouco contraste e parece invisível.
 
-A tarefa **[Mariana] - Planejamento - Maio** (`482849b4-...`) não tinha nenhuma subtarefa criada (nem ativas nem deletadas).
+Plano de ajuste:
 
-## Solução
+1. Alterar a cor do botão **“ver alteração”** para ter contraste alto quando estiver dentro de uma linha em alteração:
+   - fundo branco/semitransparente ou escuro com borda clara;
+   - texto branco ou amber escuro dependendo do fundo;
+   - ícone e seta com a mesma cor visível.
 
-**Arquivo: `src/features/gestao/components/PmPlanningSubtasks.tsx`**
+2. Garantir que o botão continue aparecendo em todas as subtarefas com status `alteracao` e com descrição vinculada.
 
-Alterar as condições nas linhas 225 e 251:
-- Quando a tarefa pai está na etapa `planejamento` (e não é `isSinglePostType` vindo de revisão/alteração), renderizar SEMPRE ambas as seções, independentemente de haver subtarefas.
-- Para tarefas REV/DSG, REV/VDO, ALT/DSG, ALT/VDO (single post type em revisão/alteração), manter a lógica atual de mostrar apenas a seção correspondente.
+3. Manter o comportamento atual de clique:
+   - clicar em **“ver alteração”** expande/fecha o campo abaixo da subtarefa;
+   - a descrição continua aparecendo embaixo da própria subtarefa, não na tarefa pai.
 
-Lógica concreta:
-```
-const isPlanningParent = parentTask.stage_current === "planejamento" 
-  || parentTask.stage_current === "pdf" 
-  || parentTask.stage_current === "agendamento" 
-  || parentTask.stage_current === "entrega";
-
-// Vídeo section: show if has video tasks OR is a planning-type parent
-{(videoTasks.length > 0 || isPlanningParent) && <PlanningSection type="video" ... />}
-
-// Design section: show if has design tasks OR is a planning-type parent  
-{(designTasks.length > 0 || isPlanningParent) && <PlanningSection type="design" ... />}
-```
-
-Isso garante que em tarefas de planejamento (e derivadas como PDF/Agendamento/Entrega) as duas seções sempre apareçam com o botão "+" para adicionar subtarefas, mesmo quando vazias.
-
-## Sobre a tarefa Mariana
-
-A tarefa nunca teve subtarefas criadas (nem deletadas). Não há dados para recuperar — bastará que, com a correção acima, as seções apareçam para que a Ana possa criar as subtarefas de Vídeo e Design normalmente.
+4. Revisar visualmente no componente `PmPlanningSubtasks.tsx` para evitar que o botão fique escondido pelo fundo amber da linha ou pelo texto branco herdado.
