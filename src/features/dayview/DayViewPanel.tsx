@@ -587,14 +587,32 @@ export function DayViewPanel() {
       const p = desc.split(":")[2];
       return p?.startsWith("custom_") ? p : null;
     };
-    const agendaTasks: UnifiedTask[] = nonSnapshotTasks.map(t => ({
-      ...t,
-      source: "agenda" as const,
-      periodic_stage_key: (t as any).periodic_stage_key ?? extractPeriodicKey(t.description),
-    }));
-
     // Build a lookup from pm_task_id to actual pm_task for status cross-check
     const pmTaskById = new Map(allPmTasksForDayView.map(t => [t.id, t]));
+
+    const agendaTasks: UnifiedTask[] = nonSnapshotTasks.map(t => {
+      const desc = t.description ?? "";
+      const pmId = desc.startsWith("pm:") ? desc.split(":")[1] : null;
+      const pmTask = pmId ? pmTaskById.get(pmId) : undefined;
+      // Cross-check with pm_task if available
+      if (pmTask) {
+        const isActuallyDone = pmTask.status_global === "concluido" || pmTask.stage_current === "entrega" || pmTask.stage_current === "agendamento";
+        return {
+          ...t,
+          status: isActuallyDone ? "concluido" : "pendente",
+          completed_at: isActuallyDone ? t.completed_at : null,
+          source: "agenda" as const,
+          periodic_stage_key: (t as any).periodic_stage_key ?? extractPeriodicKey(t.description),
+        };
+      }
+      return {
+        ...t,
+        source: "agenda" as const,
+        periodic_stage_key: (t as any).periodic_stage_key ?? extractPeriodicKey(t.description),
+      };
+    });
+
+    // Build merged snapshot tasks
 
     // Merge each pm snapshot group into a single unified task
     for (const [groupKey, group] of pmSnapshotGroups) {
