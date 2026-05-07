@@ -48,6 +48,7 @@ export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members
 
   // Review state
   const existing = (parentTask as any).revision_notes as RevisionNotes | null;
+  const revisionNotesSignature = JSON.stringify(existing ?? {});
   const [reviews, setReviews] = useState<RevisionNotes>(() => {
     const base: RevisionNotes = {};
     for (const child of childTasks) {
@@ -60,11 +61,11 @@ export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members
     setReviews(prev => {
       const next: RevisionNotes = {};
       for (const child of childTasks) {
-        next[child.id] = prev[child.id] ?? existing?.[child.id] ?? { status: "pendente", note: "" };
+        next[child.id] = existing?.[child.id] ?? prev[child.id] ?? { status: "pendente", note: "" };
       }
       return next;
     });
-  }, [childTasks.length]);
+  }, [childTasks.length, revisionNotesSignature]);
 
   const saveReviewToDb = useCallback((data: RevisionNotes, change?: { childTitle: string; newStatus: string }) => {
     updateTask.mutate({ id: parentTask.id, revision_notes: data, _revision_change: change ?? null } as any);
@@ -452,7 +453,7 @@ function PlanningSection({
             const circleColor = getStageCircleColor(sub.stage_current);
             const review = reviews[sub.id];
             const hasReview = !!reviewMode;
-            const hasAlteracao = review?.status === "alteracao";
+            const hasAlteracao = review?.status === "alteracao" && !!review?.note?.trim();
             const isNoteExpanded = expandedNoteId === sub.id || (reviewMode === "alteracao" && !!review?.note);
 
             return (
@@ -464,8 +465,8 @@ function PlanningSection({
                   isSelected && "bg-primary/5",
                   isDone && "opacity-60",
                   hasReview && review?.status === "aprovado" && "!bg-emerald-500 hover:!bg-emerald-500 text-white",
-                  hasReview && hasAlteracao && "!bg-amber-500 hover:!bg-amber-500 text-white",
-                  !hasReview && hasAlteracao && "border-l-2 border-l-amber-500 bg-amber-500/5",
+                  hasReview && hasAlteracao && "!bg-stage-alteracoes hover:!bg-stage-alteracoes/90 !text-stage-foreground-alteracoes",
+                  !hasReview && hasAlteracao && "border-l-2 border-l-stage-alteracoes bg-stage-alteracoes/10",
                   !(hasReview && review?.status) && !isActive && !(!hasReview && hasAlteracao) && "hover:bg-card/40",
                 )}
                 onClick={(e) => {
@@ -588,8 +589,8 @@ function PlanningSection({
                     <button
                       onClick={() => setExpandedNoteId(expandedNoteId === sub.id ? null : sub.id)}
                       className={cn(
-                        "flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-medium transition-all",
-                        "bg-amber-500/10 text-amber-500 hover:bg-amber-500/20"
+                        "flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-bold transition-all shadow-sm ring-1 ring-stage-alteracoes/40",
+                        "bg-stage-alteracoes text-stage-foreground-alteracoes hover:bg-stage-alteracoes/90"
                       )}
                     >
                       <RotateCcw className="h-3 w-3" />
@@ -647,17 +648,17 @@ function PlanningSection({
 
               {/* Expandable note area for alteração */}
               {isNoteExpanded && hasAlteracao && (
-                <div className="px-3 pb-2 pt-0 bg-amber-500/5">
+                <div className="px-3 pb-2 pt-0 bg-stage-alteracoes/10">
                   {isReviewEditable ? (
                     <Textarea
                       value={review.note}
                       onChange={(e) => setReviewNote(sub.id, e.target.value)}
                       onBlur={saveNote}
                       placeholder="Descreva o que precisa ser alterado..."
-                      className="min-h-[50px] text-xs bg-background/50 border-border/30 resize-none"
+                      className="min-h-[50px] text-xs bg-background border-stage-alteracoes/50 resize-none"
                     />
                   ) : (
-                    <div className="rounded-md bg-amber-500/5 border border-amber-500/15 px-3 py-2 text-xs text-foreground/80 whitespace-pre-wrap">
+                    <div className="rounded-md bg-background border border-stage-alteracoes/40 px-3 py-2 text-xs font-medium text-foreground whitespace-pre-wrap shadow-sm">
                       {review.note || <span className="text-muted-foreground italic">Sem detalhes adicionais</span>}
                     </div>
                   )}
