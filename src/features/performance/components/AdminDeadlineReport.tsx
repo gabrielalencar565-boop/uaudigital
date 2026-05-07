@@ -682,6 +682,7 @@ export function AdminDeadlineReport({
                         </TableCell>
                         <TableCell className="text-center">
                           {(() => {
+                            const stageKey = getReportStageKey(t);
                             const stageTone = STAGE_BADGE_CLASS[t.stage];
                             return (
                               <span
@@ -691,7 +692,7 @@ export function AdminDeadlineReport({
                                   stageTone.fg,
                                 )}
                               >
-                                {STAGES.find((s) => s.key === t.stage)?.label ?? t.stage}
+                                {getReportStageLabel(stageKey, scoringConfigMap)}
                               </span>
                             );
                           })()}
