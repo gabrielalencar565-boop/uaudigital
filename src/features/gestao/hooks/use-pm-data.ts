@@ -200,7 +200,7 @@ export function useUpdatePmTask() {
   };
 
   return useMutation({
-    mutationFn: async ({ id, ...updates }: Partial<PmTask> & { id: string }) => {
+    mutationFn: async ({ id, _revision_change, ...updates }: Partial<PmTask> & { id: string; _revision_change?: any }) => {
       const { data, error } = await sb.from("pm_tasks").update(updates).eq("id", id).select().single();
       if (error) throw error;
 
