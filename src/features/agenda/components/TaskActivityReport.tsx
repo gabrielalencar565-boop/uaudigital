@@ -298,7 +298,7 @@ export function TaskActivityReport({ onClose, filterAction: externalFilter }: { 
                         const member = teamByUserId.get(log.user_id);
                         const stageKey = task?.stage as StageKey | undefined;
                         const stageInfo = stageKey ? STAGES.find((s) => s.key === stageKey) : null;
-                        const stageTone = stageKey ? STAGE_BADGE_CLASS[stageKey] : null;
+                        const stageTone = stageKey ? STAGE_BADGE_CLASS[stageKey] ?? STAGE_BADGE_CLASS.agendamento : null;
                         const timeStr = format(new Date(log.created_at), "HH:mm", { locale: ptBR });
 
                         return (
@@ -316,7 +316,7 @@ export function TaskActivityReport({ onClose, filterAction: externalFilter }: { 
                                 <span className="text-sm font-medium">
                                   {actionLabel(log.action)}
                                 </span>
-                                {stageTone && stageInfo && (
+                                {stageTone && (stageInfo || task?.stage_label) && (
                                   <span
                                     className={cn(
                                       "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold",
@@ -324,7 +324,7 @@ export function TaskActivityReport({ onClose, filterAction: externalFilter }: { 
                                       stageTone.fg,
                                     )}
                                   >
-                                    {stageInfo.label}
+                                    {task?.stage_label ?? stageInfo?.label}
                                   </span>
                                 )}
                                 <span className="text-xs text-muted-foreground tabular-nums">
