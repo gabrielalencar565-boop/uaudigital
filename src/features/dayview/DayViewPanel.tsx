@@ -916,7 +916,7 @@ export function DayViewPanel() {
         ? "bg-gradient-to-r from-pink-400 to-stage-design"
         : undefined;
       const gradientAbbr = isAlteracaoWithOrigin
-        ? (t.post_type === "video" ? "ALT/VDO" : "ALT/DSG")
+        ? (t.post_type === "video" ? "ALT/VDO" : t.post_type === "design" ? "ALT/DSG" : "ALT/PLAN")
         : isRevisaoPlanejamento
         ? "REV/PLAN"
         : isRevisaoMixed
