@@ -903,7 +903,9 @@ export function DayViewPanel() {
       const gradientClass = isAlteracaoWithOrigin
         ? (t.post_type === "video"
           ? "bg-gradient-to-r from-stage-alteracoes to-stage-edicao_videos"
-          : "bg-gradient-to-r from-stage-alteracoes to-stage-design")
+          : t.post_type === "design"
+          ? "bg-gradient-to-r from-stage-alteracoes to-stage-design"
+          : "bg-gradient-to-r from-stage-alteracoes to-stage-planejamento")
         : isRevisaoPlanejamento
         ? "bg-gradient-to-r from-pink-400 to-stage-planejamento"
         : isRevisaoMixed
