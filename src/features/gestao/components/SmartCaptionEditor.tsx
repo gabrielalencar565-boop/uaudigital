@@ -213,11 +213,12 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
   }, []);
 
   const handleEditorMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    // Only intercept clicks when modifier keys are held (Ctrl/Cmd+click) to open the link.
+    // Plain clicks must allow normal cursor placement / text editing.
+    if (!(e.ctrlKey || e.metaKey)) return;
     const anchor = (e.target as HTMLElement).closest("a[href]");
     const href = anchor instanceof HTMLAnchorElement ? anchor.href : getUrlFromPointer(e.clientX, e.clientY);
-
     if (!href) return;
-
     e.preventDefault();
     e.stopPropagation();
     window.open(href, "_blank", "noopener,noreferrer");
