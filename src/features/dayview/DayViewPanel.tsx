@@ -30,6 +30,7 @@ import {
 "@/features/cleaning/hooks/use-cleaning";
 import { useRealtimeSync } from "@/hooks/use-realtime-sync";
 import { usePeriodicStages } from "@/features/gestao/hooks/use-periodic-stages";
+import { TAG_COLORS, isHexColor } from "@/features/gestao/pm-constants";
 
 function getPeriodicStageFallbackLabel(key: string) {
   return key.replace(/^custom_/, "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
