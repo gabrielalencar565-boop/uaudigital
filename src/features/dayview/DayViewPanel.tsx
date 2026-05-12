@@ -945,7 +945,7 @@ export function DayViewPanel() {
         ? periodicLabel.slice(0, 3).toUpperCase()
         : (gradientAbbr ?? STAGE_ABBR[t.stage] ?? t.stage.toUpperCase().slice(0, 4));
       const stageBg = periodicKey
-        ? (periodicBgClass ?? "bg-muted")
+        ? (periodicBgClass ?? "bg-black")
         : (gradientClass ?? STAGE_BADGE_BG[t.stage] ?? "bg-muted");
       
       const clientName = resolveClientName(t);
