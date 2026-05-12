@@ -928,14 +928,24 @@ export function DayViewPanel() {
         ? "REV/DSG"
         : undefined;
       const periodicKey = t.periodic_stage_key;
-      const periodicLabel = periodicKey
-        ? ((periodicStagesQ.data ?? []).find((p) => p.key === periodicKey)?.label ?? getPeriodicStageFallbackLabel(periodicKey))
+      const periodicStage = periodicKey
+        ? (periodicStagesQ.data ?? []).find((p) => p.key === periodicKey)
         : null;
+      const periodicLabel = periodicKey
+        ? (periodicStage?.label ?? getPeriodicStageFallbackLabel(periodicKey))
+        : null;
+      const periodicColorKey = periodicStage?.color_key ?? null;
+      const periodicBgClass = periodicColorKey && !isHexColor(periodicColorKey)
+        ? (TAG_COLORS.find((c) => c.key === periodicColorKey)?.dot ?? "bg-blue-500")
+        : null;
+      const periodicStyle = periodicColorKey && isHexColor(periodicColorKey)
+        ? { backgroundColor: periodicColorKey }
+        : undefined;
       const stageAbbr = periodicLabel
         ? periodicLabel.slice(0, 3).toUpperCase()
         : (gradientAbbr ?? STAGE_ABBR[t.stage] ?? t.stage.toUpperCase().slice(0, 4));
       const stageBg = periodicKey
-        ? "bg-black"
+        ? (periodicBgClass ?? "bg-muted")
         : (gradientClass ?? STAGE_BADGE_BG[t.stage] ?? "bg-muted");
       
       const clientName = resolveClientName(t);
@@ -950,6 +960,7 @@ export function DayViewPanel() {
               "inline-flex items-center justify-center rounded-full font-bold tracking-wide text-white shrink-0 leading-none h-4 px-1 text-[8px]",
               stageBg
             )}
+            style={periodicStyle}
           >
             {stageAbbr}
           </span>
