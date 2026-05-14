@@ -503,21 +503,16 @@ export function DayViewPanel() {
       });
       map.set(a.task_id, prev);
     }
-    // PM tasks: assignee + watchers
+    // PM tasks: SOMENTE o responsável principal (assignee_id).
+    // Watchers não devem fazer a tarefa aparecer na coluna deles no Day View,
+    // pois muitas vezes são herdados automaticamente de splits/etapas anteriores
+    // e não representam quem realmente é responsável por executar a etapa.
     for (const t of allPmTasksForDayView) {
       const key = `pm_${t.id}`;
-      const members: { user_id: string; display_name: string; avatar_url?: string | null }[] = [];
-      const seen = new Set<string>();
-      if (t.assignee_id) {
-        const m = teamByUserId.get(t.assignee_id);
-        if (m) { members.push({ user_id: m.user_id, display_name: m.display_name, avatar_url: m.avatar_url }); seen.add(m.user_id); }
-      }
-      for (const wId of t.watchers ?? []) {
-        if (seen.has(wId)) continue;
-        const m = teamByUserId.get(wId);
-        if (m) { members.push({ user_id: m.user_id, display_name: m.display_name, avatar_url: m.avatar_url }); seen.add(m.user_id); }
-      }
-      if (members.length > 0) map.set(key, members);
+      if (!t.assignee_id) continue;
+      const m = teamByUserId.get(t.assignee_id);
+      if (!m) continue;
+      map.set(key, [{ user_id: m.user_id, display_name: m.display_name, avatar_url: m.avatar_url }]);
     }
     return map;
   }, [assigneesQ.data, overdueTaskAssigneesQ.data, isCurrentMonth, teamByUserId, allPmTasksForDayView]);
