@@ -890,12 +890,13 @@ export function DayViewPanel() {
       const childTypes = t.childPostTypes ?? new Set<string>();
       const isMixed = childTypes.has("video") && childTypes.has("design");
       const isRevisaoMixed = isRevisao && isMixed;
-      const isRevisaoPlanejamento = isRevisao && !t.parent_task_id && (
-        t.post_type === "planejamento" ||
-        (childTypes.size > 0 && !childTypes.has("video") && !childTypes.has("design"))
-      ) && t.post_type !== "video" && t.post_type !== "design";
+      // REV/PLAN: revisão de pauta — sem parent, sem post_type específico de vídeo/design,
+      // e sem filhos vídeo/design (inclui caso de não ter filhos ainda).
+      const isRevisaoPlanejamento = isRevisao && !t.parent_task_id
+        && t.post_type !== "video" && t.post_type !== "design"
+        && !childTypes.has("video") && !childTypes.has("design");
       const isRevisaoVideo = isRevisao && !isRevisaoMixed && !isRevisaoPlanejamento && t.post_type === "video";
-      const isRevisaoDesign = isRevisao && !isRevisaoMixed && !isRevisaoPlanejamento && !isRevisaoVideo;
+      const isRevisaoDesign = isRevisao && !isRevisaoMixed && !isRevisaoPlanejamento && !isRevisaoVideo && (t.post_type === "design" || childTypes.has("design"));
       const gradientClass = isAlteracaoWithOrigin
         ? (t.post_type === "video"
           ? "bg-gradient-to-r from-stage-alteracoes to-stage-edicao_videos"
