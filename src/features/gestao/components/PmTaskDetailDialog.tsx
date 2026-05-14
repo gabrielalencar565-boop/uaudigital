@@ -953,8 +953,62 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       return;
     }
 
-    // ═══ EXTRA DEMAND: standalone — just mark as done, no next stage ═══
+    // ═══ EXTRA DEMAND ═══
     if (task.is_extra_demand) {
+      // Special case: planejamento extra demand with video/design children →
+      // distribute into Vídeo + Design (same split logic as revisão→split),
+      // skipping the revisão step.
+      if (completedStage === "planejamento") {
+        const alreadySplit = childTasks.some(
+          (c) => c.stage_current === "design" || c.stage_current === "edicao_videos"
+        );
+        if (!alreadySplit) {
+          const { inferPmPostType } = await import("../utils/infer-pm-post-type");
+          const videoChildren: PmTask[] = [];
+          const designChildren: PmTask[] = [];
+          for (const c of childTasks) {
+            const inferred = inferPmPostType(c);
+            if (inferred === "video") videoChildren.push(c);
+            else if (inferred === "design") designChildren.push(c);
+          }
+          const hasVideo = videoChildren.length > 0;
+          const hasDesign = designChildren.length > 0;
+
+          if (hasVideo || hasDesign) {
+            const dateConfigEd = transitionDates[task.stage_current];
+            let newDueDateEd: string | undefined;
+            if (typeof dateConfigEd === "number") {
+              const baseDate = task.due_date ? new Date(task.due_date + "T12:00:00") : new Date();
+              newDueDateEd = format(addDays(baseDate, dateConfigEd), "yyyy-MM-dd");
+            }
+            const snapshotDueDate = task.due_date ?? format(new Date(), "yyyy-MM-dd");
+            const allIds = [task.id, ...childTasks.map(c => c.id)];
+            const clientName = clientsMap[task.client_id] || task.title.split(" - ")[0];
+            let monthLabel: string | null = null;
+            if (task.due_date) {
+              const raw = format(parseISO(task.due_date), "MMMM", { locale: ptBR });
+              monthLabel = raw.charAt(0).toUpperCase() + raw.slice(1);
+            }
+            const nextDueDate = newDueDateEd ?? format(addDays(new Date(snapshotDueDate + "T12:00:00"), 1), "yyyy-MM-dd");
+
+            const splits: { stage: string; stageLabel: string; children: PmTask[]; postType: string }[] = [];
+            if (hasVideo) splits.push({ stage: "edicao_videos", stageLabel: "Vídeo", children: videoChildren, postType: "video" });
+            if (hasDesign) splits.push({ stage: "design", stageLabel: "Design", children: designChildren, postType: "design" });
+
+            const deferredCompletion = { allIds, completedStage, snapshotDueDate };
+            try {
+              await processSplitQueue(splits, snapshotDueDate, nextDueDate, clientName, monthLabel, deferredCompletion);
+            } catch (err) {
+              console.error("Error processing extra-demand planejamento splits:", err);
+              invalidatePmTaskQueries();
+              toast.error("Erro ao criar próximas tarefas. Tente novamente.");
+            }
+            return;
+          }
+        }
+      }
+
+      // Default extra-demand behavior: just mark as done, no next stage
       const sb = supabase as any;
       const allIds = [task.id, ...childTasks.map(c => c.id)];
       await sb.from("pm_tasks")
