@@ -675,26 +675,28 @@ export function DayViewPanel() {
     return { tasks: Array.from(tasksById.values()), pmSnapshotGroups };
   }, [tasksQ.data, overdueAgendaTasksQ.data, isCurrentMonth, allPmTasksForDayView, pmChildCountQ.data]);
 
-  // Build merged assignees for pm snapshot groups
+  // Build merged assignees for pm snapshot groups.
+  // SOMENTE o responsável principal (assignee_id) do pm_task subjacente — watchers
+  // não devem fazer a tarefa aparecer na coluna deles no Day View.
+  const pmTaskByIdForSnapshots = useMemo(
+    () => new Map(allPmTasksForDayView.map((t) => [t.id, t])),
+    [allPmTasksForDayView]
+  );
   const mergedSnapshotAssignees = useMemo(() => {
     const map = new Map<string, { user_id: string; display_name: string; avatar_url?: string | null }[]>();
     for (const [groupKey, group] of unifiedTasks.pmSnapshotGroups) {
       const mergedId = `agenda_pm_${groupKey}`;
-      const members: { user_id: string; display_name: string; avatar_url?: string | null }[] = [];
-      const seen = new Set<string>();
-      for (const t of group) {
-        if (!seen.has(t.assigned_user_id)) {
-          const m = teamByUserId.get(t.assigned_user_id);
-          if (m) {
-            members.push({ user_id: m.user_id, display_name: m.display_name, avatar_url: m.avatar_url });
-          }
-          seen.add(t.assigned_user_id);
-        }
-      }
-      if (members.length > 0) map.set(mergedId, members);
+      // groupKey = pm:<taskId>:<stage>
+      const pmId = groupKey.split(":")[1];
+      const pmTask = pmId ? pmTaskByIdForSnapshots.get(pmId) : undefined;
+      const principalId = pmTask?.assignee_id ?? group[0]?.assigned_user_id ?? null;
+      if (!principalId) continue;
+      const m = teamByUserId.get(principalId);
+      if (!m) continue;
+      map.set(mergedId, [{ user_id: m.user_id, display_name: m.display_name, avatar_url: m.avatar_url }]);
     }
     return map;
-  }, [unifiedTasks.pmSnapshotGroups, teamByUserId]);
+  }, [unifiedTasks.pmSnapshotGroups, teamByUserId, pmTaskByIdForSnapshots]);
 
   // Combined assignees map: base + merged snapshot assignees
   const allAssigneesByTaskId = useMemo(() => {
