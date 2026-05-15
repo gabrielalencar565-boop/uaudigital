@@ -889,14 +889,10 @@ export function DayViewPanel() {
         : "flex items-center gap-1.5 rounded-md border border-border bg-card cursor-pointer hover:bg-accent/50 transition-colors min-w-0 px-2 py-1";
       const isAlteracaoWithOrigin = t.stage === "alteracoes" && !!t.post_type;
       const isRevisao = t.stage === "revisao";
-      const childTypes = t.childPostTypes ?? new Set<string>();
-      // REV/PLAN: revisão de pauta — sem parent, sem post_type específico de vídeo/design,
-      // e sem filhos vídeo/design (inclui caso de não ter filhos ainda).
-      const isRevisaoPlanejamento = isRevisao && !t.parent_task_id
-        && t.post_type !== "video" && t.post_type !== "design"
-        && !childTypes.has("video") && !childTypes.has("design");
-      const isRevisaoVideo = isRevisao && !isRevisaoPlanejamento && (t.post_type === "video" || (!t.post_type && childTypes.has("video") && !childTypes.has("design")));
-      const isRevisaoDesign = isRevisao && !isRevisaoPlanejamento && !isRevisaoVideo && (t.post_type === "design" || childTypes.has("design"));
+      // Mirror agenda logic: based ONLY on t.post_type (not children).
+      const isRevisaoPlanejamento = isRevisao && t.post_type === "planejamento";
+      const isRevisaoVideo = isRevisao && t.post_type === "video";
+      const isRevisaoDesign = isRevisao && t.post_type === "design";
       const gradientClass = isAlteracaoWithOrigin
         ? (t.post_type === "video"
           ? "bg-gradient-to-r from-stage-alteracoes to-stage-edicao_videos"
