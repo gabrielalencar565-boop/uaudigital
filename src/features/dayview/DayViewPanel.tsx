@@ -890,15 +890,13 @@ export function DayViewPanel() {
       const isAlteracaoWithOrigin = t.stage === "alteracoes" && !!t.post_type;
       const isRevisao = t.stage === "revisao";
       const childTypes = t.childPostTypes ?? new Set<string>();
-      const isMixed = childTypes.has("video") && childTypes.has("design");
-      const isRevisaoMixed = isRevisao && isMixed;
       // REV/PLAN: revisão de pauta — sem parent, sem post_type específico de vídeo/design,
       // e sem filhos vídeo/design (inclui caso de não ter filhos ainda).
       const isRevisaoPlanejamento = isRevisao && !t.parent_task_id
         && t.post_type !== "video" && t.post_type !== "design"
         && !childTypes.has("video") && !childTypes.has("design");
-      const isRevisaoVideo = isRevisao && !isRevisaoMixed && !isRevisaoPlanejamento && t.post_type === "video";
-      const isRevisaoDesign = isRevisao && !isRevisaoMixed && !isRevisaoPlanejamento && !isRevisaoVideo && (t.post_type === "design" || childTypes.has("design"));
+      const isRevisaoVideo = isRevisao && !isRevisaoPlanejamento && (t.post_type === "video" || (!t.post_type && childTypes.has("video") && !childTypes.has("design")));
+      const isRevisaoDesign = isRevisao && !isRevisaoPlanejamento && !isRevisaoVideo && (t.post_type === "design" || childTypes.has("design"));
       const gradientClass = isAlteracaoWithOrigin
         ? (t.post_type === "video"
           ? "bg-gradient-to-r from-stage-alteracoes to-stage-edicao_videos"
@@ -907,8 +905,6 @@ export function DayViewPanel() {
           : "bg-gradient-to-r from-stage-alteracoes to-stage-planejamento")
         : isRevisaoPlanejamento
         ? "bg-gradient-to-r from-pink-400 to-stage-planejamento"
-        : isRevisaoMixed
-        ? "bg-gradient-to-r from-pink-400 via-stage-design to-stage-edicao_videos"
         : isRevisaoVideo
         ? "bg-gradient-to-r from-pink-400 to-stage-edicao_videos"
         : isRevisaoDesign
@@ -918,8 +914,6 @@ export function DayViewPanel() {
         ? (t.post_type === "video" ? "ALT/VDO" : t.post_type === "design" ? "ALT/DSG" : "ALT/PLAN")
         : isRevisaoPlanejamento
         ? "REV/PLAN"
-        : isRevisaoMixed
-        ? "REV/MIX"
         : isRevisaoVideo
         ? "REV/VDO"
         : isRevisaoDesign
