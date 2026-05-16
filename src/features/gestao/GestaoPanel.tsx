@@ -803,12 +803,22 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
         style={(isAlteracaoWithOrigin || isAlteracaoPlanejamento) && !(highlightOverdue && isOverdue(t)) ? { background: 'linear-gradient(135deg, #FED404 0%, #FF9A02 100%)' } : (highlightOverdue && isOverdue(t) ? { background: '#ff2c2c', borderColor: '#ff2c2c' } : undefined)}
         onClick={isLegacy ? undefined : () => onTaskClick(t)}>
         <div className="flex items-center justify-between gap-1">
-          <div
-            className={cn("inline-flex h-5 items-center rounded-md px-2 text-[9px] font-bold tracking-wide", periodic ? "bg-black text-white" : `text-white ${stageBg}`)}
-            style={undefined}
-          >
-            {abbr}
-          </div>
+          {(() => {
+            const ck = periodic?.color_key;
+            const isHex = ck ? isHexColor(ck) : false;
+            const periodicBgClass = periodic
+              ? (ck && !isHex ? (TAG_COLORS.find(c => c.key === ck)?.dot ?? "bg-black") : (isHex ? "" : "bg-black"))
+              : "";
+            const periodicStyle = periodic && isHex ? { backgroundColor: ck! } : undefined;
+            return (
+              <div
+                className={cn("inline-flex h-5 items-center rounded-md px-2 text-[9px] font-bold tracking-wide text-white", periodic ? periodicBgClass : stageBg)}
+                style={periodicStyle}
+              >
+                {abbr}
+              </div>
+            );
+          })()}
           <div className="flex items-center gap-0.5">
             <div
               className={cn("h-5 w-5 rounded-full flex items-center justify-center",
