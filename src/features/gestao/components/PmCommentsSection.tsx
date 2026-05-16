@@ -67,6 +67,7 @@ function isImportantActivity(action: string, metadata: any): boolean {
     if (metadata.assignee_id) return true;
     if (metadata._revision_change) return true;
     if (metadata.is_extra_demand !== undefined) return true;
+    if (metadata.due_date !== undefined) return true;
   }
   return false;
 }
