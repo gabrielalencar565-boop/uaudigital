@@ -315,6 +315,8 @@ function PlanningSection({
   const updateTask = useUpdatePmTask();
   const createTask = useCreatePmTask();
   const { stageAssignees } = useDefaultFlowWithDates();
+  const globalTagsQ = usePmTags();
+  const sectionGlobalTags = globalTagsQ.data ?? [];
   const [isOpen, setIsOpen] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
   const [newTitle, setNewTitle] = useState("");
