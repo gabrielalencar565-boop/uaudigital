@@ -56,46 +56,48 @@ function extractUrl(text: string): string | null {
   return match ? match[0] : null;
 }
 
-/* ── Format action text ── */
+/* ── Important actions kept in the activity feed ── */
+function isImportantActivity(action: string, metadata: any): boolean {
+  if (action === "created" || action === "file_added") return true;
+  if (action === "correction_tags" || action === "correction_assignee") return true;
+  if (action === "updated" && metadata) {
+    // Only show when one of these meaningful fields changed
+    if (metadata.status_global) return true;
+    if (metadata.stage_current) return true;
+    if (metadata.assignee_id) return true;
+    if (metadata._revision_change) return true;
+    if (metadata.is_extra_demand !== undefined) return true;
+  }
+  return false;
+}
+
+/* ── Format action text (only important ones reach here) ── */
 function formatActionText(action: string, metadata: any, membersMap: Record<string, { name: string; avatar?: string }>): string {
   switch (action) {
     case "created":
       if (metadata?.parent_task_id) return `criou a subtarefa: ${metadata.title ?? ""}`;
       return "criou esta tarefa";
     case "updated": {
+      // Completion takes priority — most important signal
+      if (metadata?.status_global === "concluido") return "marcou como concluída ✅";
+      if (metadata?.status_global === "cancelado") return "cancelou a tarefa";
       const parts: string[] = [];
-      if (metadata?.stage_current) parts.push(`etapa alterada: ${stageLabel(metadata.stage_current)}`);
+      if (metadata?.stage_current) parts.push(`avançou para ${stageLabel(metadata.stage_current)}`);
       if (metadata?.assignee_id) {
         const name = membersMap[metadata.assignee_id]?.name ?? "alguém";
-        parts.push(`responsável alterado: ${name}`);
+        parts.push(`responsável: ${name}`);
       }
-      if (metadata?.title) parts.push(`nome alterado: "${metadata.title}"`);
-      if (metadata?.priority) parts.push(`prioridade alterada: ${metadata.priority}`);
-      if (metadata?.due_date !== undefined) parts.push(`data de entrega alterada: ${metadata.due_date ?? "removida"}`);
-      if (metadata?.tags) parts.push(`etiquetas atualizadas`);
-      if (metadata?.watchers) {
-        const names = (metadata.watchers as string[])
-          .map((id: string) => membersMap[id]?.name?.split(" ")[0] ?? "alguém")
-          .join(", ");
-        parts.push(names ? `observadores: ${names}` : "observadores removidos");
-      }
-      if (metadata?.description !== undefined) parts.push("descrição/legenda editada");
       if (metadata?._revision_change) {
         const rc = metadata._revision_change;
-        const statusLabel = rc.newStatus === "aprovado" ? "aprovada" : rc.newStatus === "alteracao" ? "alteração" : "pendente";
-        parts.push(`"${rc.childTitle}" marcada como ${statusLabel}`);
-      } else if (metadata?.revision_notes) {
-        parts.push("notas de revisão atualizadas");
+        const statusLabel = rc.newStatus === "aprovado" ? "aprovada" : rc.newStatus === "alteracao" ? "pediu alteração" : "pendente";
+        parts.push(`"${rc.childTitle}" ${statusLabel}`);
       }
-      if (metadata?.cover_url !== undefined) parts.push(metadata.cover_url ? "capa definida" : "capa removida");
-      if (metadata?.status_global) parts.push(`status alterado: ${metadata.status_global}`);
-      if (metadata?.post_type) parts.push(`tipo alterado: ${metadata.post_type}`);
-      if (metadata?.is_extra_demand !== undefined) parts.push(metadata.is_extra_demand ? "marcada como extra" : "desmarcada como extra");
-      if (metadata?.periodic_stage_key) parts.push(`etapa periódica: ${metadata.periodic_stage_key.replace(/^custom_/, "").replace(/_/g, " ")}`);
-      if (metadata?.client_id) parts.push("cliente alterado");
-      return parts.length > 0 ? parts.join(", ") : "atualizou a tarefa";
+      if (metadata?.is_extra_demand !== undefined) parts.push(metadata.is_extra_demand ? "marcou como extra" : "removeu marca extra");
+      if (metadata?.status_global) parts.push(`status: ${metadata.status_global}`);
+      return parts.join(", ");
     }
-    case "comment_added": return `comentou`;
+    case "correction_tags": return "corrigiu etiquetas";
+    case "correction_assignee": return "corrigiu responsável";
     case "file_added": return `adicionou anexo: ${metadata?.file_name ?? "arquivo"}`;
     default: return action;
   }
@@ -431,11 +433,7 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
     const seen = new Set<string>();
     activityLog.forEach(a => {
       if (a.action === "comment_added") return;
-      // Skip description-only updates from activity feed
-      if (a.action === "updated" && a.metadata) {
-        const keys = Object.keys(a.metadata);
-        if (keys.length === 1 && keys[0] === "description") return;
-      }
+      if (!isImportantActivity(a.action, a.metadata)) return;
       const ts = Math.floor(new Date(a.created_at).getTime() / 2000);
       const key = `${a.action}:${a.created_by}:${JSON.stringify(a.metadata)}:${ts}`;
       if (seen.has(key)) return;
