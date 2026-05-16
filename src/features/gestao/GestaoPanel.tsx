@@ -865,12 +865,12 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
             {assignees.length === 1 && mainAssignee ? (
               <>
                 <p className="truncate text-xs font-semibold leading-4">{periodicTitle ?? mainAssignee.name.split(" ")[0]}</p>
-                <p className="truncate text-[11px] text-muted-foreground/60 leading-3">{periodicTime ?? clientName}</p>
+                <p className="truncate text-[11px] text-muted-foreground/60 leading-3">{clientName}</p>
               </>
             ) : (
               <>
                 <p className="truncate text-xs font-semibold leading-4">{periodicTitle ?? clientName}</p>
-                {periodicTime && <p className="truncate text-[11px] text-muted-foreground/60 leading-3">{periodicTime}</p>}
+                {periodicTitle && <p className="truncate text-[11px] text-muted-foreground/60 leading-3">{clientName}</p>}
               </>
             )}
           </div>
