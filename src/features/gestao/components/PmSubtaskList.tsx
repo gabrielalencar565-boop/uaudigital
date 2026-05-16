@@ -34,6 +34,8 @@ interface Props {
 export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onSelectSubtask, activeSubtaskId, readOnly, correctionMode }: Props) {
   const updateTask = useUpdatePmTask();
   const createTask = useCreatePmTask();
+  const globalTagsQ = usePmTags();
+  const globalTags = globalTagsQ.data ?? [];
   const { stageAssignees } = useDefaultFlowWithDates();
   const [newTitle, setNewTitle] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
