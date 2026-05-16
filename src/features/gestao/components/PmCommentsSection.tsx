@@ -590,10 +590,21 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
     }
   };
 
-  const firstItem = timeline.length > 0 ? timeline[0] : null;
-  const lastItem = timeline.length > 1 ? timeline[timeline.length - 1] : null;
-  const middleItems = timeline.length > 2 ? timeline.slice(1, -1) : [];
-  const hiddenCount = middleItems.length;
+  // Comentários escritos sempre aparecem. Apenas atividades do meio podem ficar recolhidas.
+  const commentItems = timeline.filter(i => i.type === "comment");
+  const activityItems = timeline.filter(i => i.type === "activity");
+  const firstActivity = activityItems[0] ?? null;
+  const lastActivity = activityItems.length > 1 ? activityItems[activityItems.length - 1] : null;
+  const middleActivities = activityItems.length > 2 ? activityItems.slice(1, -1) : [];
+  const hiddenCount = middleActivities.length;
+
+  // Ordena tudo cronologicamente para exibição (comentários + atividades visíveis)
+  const visibleActivities = expanded
+    ? activityItems
+    : [firstActivity, lastActivity].filter(Boolean) as typeof activityItems;
+  const visibleItems = [...commentItems, ...visibleActivities].sort(
+    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+  );
 
   return (
     <div className="flex flex-col gap-3 h-full">
@@ -601,21 +612,17 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
         {timeline.length === 0 && (
           <p className="text-xs text-muted-foreground text-center py-4">Nenhuma atividade ainda.</p>
         )}
-        {firstItem && renderTimelineItem(firstItem)}
+        {visibleItems.map(item => renderTimelineItem(item))}
         {hiddenCount > 0 && (
-          <>
-            <button
-              type="button"
-              onClick={() => setExpanded(prev => !prev)}
-              className="flex items-center gap-1.5 w-full text-xs text-primary/80 hover:text-primary transition py-1 px-2"
-            >
-              {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-              {expanded ? "Mostrar menos" : `Mostrar mais ${hiddenCount} atividade${hiddenCount > 1 ? "s" : ""}`}
-            </button>
-            {expanded && middleItems.map(item => renderTimelineItem(item))}
-          </>
+          <button
+            type="button"
+            onClick={() => setExpanded(prev => !prev)}
+            className="flex items-center gap-1.5 w-full text-xs text-primary/80 hover:text-primary transition py-1 px-2"
+          >
+            {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            {expanded ? "Mostrar menos" : `Mostrar mais ${hiddenCount} atividade${hiddenCount > 1 ? "s" : ""}`}
+          </button>
         )}
-        {lastItem && renderTimelineItem(lastItem)}
       </div>
 
       <div
