@@ -160,7 +160,7 @@ export const TAG_COLORS = [
   { key: "amber", label: "Âmbar", bg: "bg-amber-500/20", text: "text-amber-300", dot: "bg-amber-500" },
   { key: "emerald", label: "Esmeralda", bg: "bg-emerald-600/20", text: "text-emerald-300", dot: "bg-emerald-600" },
   { key: "slate", label: "Ardósia", bg: "bg-slate-500/20", text: "text-slate-300", dot: "bg-slate-500" },
-  { key: "zinc", label: "Zinco", bg: "bg-zinc-500/20", text: "text-zinc-300", dot: "bg-zinc-500" },
+  { key: "zinc", label: "Zinco", bg: "bg-zinc-500/20", text: "text-gray-950", dot: "bg-zinc-500" },
 ];
 
 // Tags are stored as "name:colorKey" in the tags array
