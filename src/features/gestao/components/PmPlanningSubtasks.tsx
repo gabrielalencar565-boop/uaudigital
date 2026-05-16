@@ -14,6 +14,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { cn } from "@/lib/utils";
 import { PM_ACTIVE_STAGES, getStageCircleColor, tagColor, tagDisplay } from "../pm-constants";
 import { useUpdatePmTask, useCreatePmTask } from "../hooks/use-pm-data";
+import { usePmTags } from "../hooks/use-pm-tags";
 import { PmAssigneeSelector } from "./PmAssigneeSelector";
 import { getFixedAssignee, getFixedWatchers, useDefaultFlowWithDates } from "./PmStageFlowConfig";
 import type { PmTask } from "../pm-types";
