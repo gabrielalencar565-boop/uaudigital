@@ -599,13 +599,13 @@ function PlanningSection({
                       </PopoverTrigger>
                       <PopoverContent className="w-56 p-2 z-[150]" align="start" onClick={(e) => e.stopPropagation()}>
                         <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold px-1 py-1">Etiquetas</p>
-                        {globalTags.length === 0 ? (
+                        {sectionGlobalTags.length === 0 ? (
                           <div className="px-2 py-3 text-center text-xs text-muted-foreground">
                             Nenhuma etiqueta criada.
                           </div>
                         ) : (
                           <div className="space-y-0.5 max-h-56 overflow-y-auto">
-                            {globalTags.map(gt => {
+                            {sectionGlobalTags.map(gt => {
                               const rawTag = `${gt.name}:${gt.color_key}`;
                               const tc = tagColor(rawTag);
                               const current = sub.tags ?? [];
