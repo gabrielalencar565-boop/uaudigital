@@ -574,11 +574,66 @@ function PlanningSection({
 
                 {/* Tags + Title */}
                 <div className="flex-1 min-w-0 flex items-center gap-1.5">
-                  {(sub.tags ?? []).map(rawTag => {
-                    const tc = tagColor(rawTag);
-                    const name = tagDisplay(rawTag);
-                    return <Badge key={rawTag} className={cn("text-[8px] h-4 px-1 gap-0.5 border-0 shrink-0", tc.bg, tc.text)}>{name}</Badge>;
-                  })}
+                  {!readOnly ? (
+                    <Popover>
+                      <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
+                        <button
+                          className="flex items-center gap-1 shrink-0 hover:opacity-80 transition"
+                          title="Editar etiquetas"
+                        >
+                          {(sub.tags ?? []).length > 0 ? (
+                            (sub.tags ?? []).map(rawTag => {
+                              const tc = tagColor(rawTag);
+                              const name = tagDisplay(rawTag);
+                              return <Badge key={rawTag} className={cn("text-[8px] h-4 px-1 gap-0.5 border-0 shrink-0", tc.bg, tc.text)}>{name}</Badge>;
+                            })
+                          ) : (
+                            <span className="inline-flex items-center gap-1 h-4 px-1.5 rounded border border-dashed border-muted-foreground/40 text-[8px] text-muted-foreground/70 hover:border-primary/60 hover:text-primary transition">
+                              <TagIcon className="h-2.5 w-2.5" />
+                              Etiqueta
+                            </span>
+                          )}
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-56 p-2 z-[150]" align="start" onClick={(e) => e.stopPropagation()}>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold px-1 py-1">Etiquetas</p>
+                        {globalTags.length === 0 ? (
+                          <div className="px-2 py-3 text-center text-xs text-muted-foreground">
+                            Nenhuma etiqueta criada.
+                          </div>
+                        ) : (
+                          <div className="space-y-0.5 max-h-56 overflow-y-auto">
+                            {globalTags.map(gt => {
+                              const rawTag = `${gt.name}:${gt.color_key}`;
+                              const tc = tagColor(rawTag);
+                              const current = sub.tags ?? [];
+                              const isActive = current.includes(rawTag);
+                              return (
+                                <button
+                                  key={gt.id}
+                                  className={cn("flex items-center gap-2 w-full px-2 py-1.5 rounded text-xs hover:bg-accent transition text-left", isActive && "bg-accent/40")}
+                                  onClick={() => {
+                                    const next = isActive ? current.filter(t => t !== rawTag) : [...current, rawTag];
+                                    updateTask.mutate({ id: sub.id, tags: next } as any);
+                                  }}
+                                >
+                                  <span className={cn("h-3 w-3 rounded shrink-0", tc.dot)} />
+                                  <span className="flex-1">{gt.name}</span>
+                                  {isActive && <Check className="h-3 w-3 text-primary shrink-0" />}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </PopoverContent>
+                    </Popover>
+                  ) : (
+                    (sub.tags ?? []).map(rawTag => {
+                      const tc = tagColor(rawTag);
+                      const name = tagDisplay(rawTag);
+                      return <Badge key={rawTag} className={cn("text-[8px] h-4 px-1 gap-0.5 border-0 shrink-0", tc.bg, tc.text)}>{name}</Badge>;
+                    })
+                  )}
                   <span className={cn(
                     "truncate text-sm hover:text-primary transition-colors",
                     isDone && "line-through text-muted-foreground",
