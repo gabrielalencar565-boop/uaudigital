@@ -433,11 +433,7 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
     const seen = new Set<string>();
     activityLog.forEach(a => {
       if (a.action === "comment_added") return;
-      // Skip description-only updates from activity feed
-      if (a.action === "updated" && a.metadata) {
-        const keys = Object.keys(a.metadata);
-        if (keys.length === 1 && keys[0] === "description") return;
-      }
+      if (!isImportantActivity(a.action, a.metadata)) return;
       const ts = Math.floor(new Date(a.created_at).getTime() / 2000);
       const key = `${a.action}:${a.created_by}:${JSON.stringify(a.metadata)}:${ts}`;
       if (seen.has(key)) return;
