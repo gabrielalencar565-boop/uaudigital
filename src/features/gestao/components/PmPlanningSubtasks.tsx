@@ -590,7 +590,7 @@ function PlanningSection({
                               return <Badge key={rawTag} className={cn("text-[8px] h-4 px-1 gap-0.5 border-0 shrink-0", tc.bg, tc.text)}>{name}</Badge>;
                             })
                           ) : (
-                            <span className="inline-flex items-center gap-1 h-4 px-1.5 rounded border border-dashed border-muted-foreground/40 text-[8px] text-muted-foreground/70 hover:border-primary/60 hover:text-primary transition">
+                            <span className="inline-flex items-center gap-1 h-4 px-1.5 rounded-full border border-dashed border-muted-foreground/40 text-[8px] text-muted-foreground/70 hover:border-primary/60 hover:text-primary transition">
                               <TagIcon className="h-2.5 w-2.5" />
                               Etiqueta
                             </span>
