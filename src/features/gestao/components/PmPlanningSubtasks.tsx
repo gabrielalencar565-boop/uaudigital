@@ -46,6 +46,8 @@ interface Props {
 export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members, onSelectSubtask, activeSubtaskId, sectionTitle = "Planejamento", reviewMode, readOnly }: Props) {
   const [showTrash, setShowTrash] = useState(false);
   const updateTask = useUpdatePmTask();
+  const globalTagsQ = usePmTags();
+  const globalTags = globalTagsQ.data ?? [];
 
   // Review state
   const existing = (parentTask as any).revision_notes as RevisionNotes | null;
