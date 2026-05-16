@@ -1263,9 +1263,16 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
                     const label = t.periodic_stage_key
                       ? (periodic?.label ?? getPeriodicStageFallbackLabel(t.periodic_stage_key)).slice(0, 3).toUpperCase()
                       : (STAGE_ABBR[t.stage_current] ?? t.stage_current.slice(0, 4).toUpperCase());
+                    const ck = periodic?.color_key;
+                    const isHex = ck ? isHexColor(ck) : false;
+                    const periodicBgClass = periodic
+                      ? (ck && !isHex ? (TAG_COLORS.find(c => c.key === ck)?.dot ?? "bg-black") : (isHex ? "" : "bg-black"))
+                      : "";
+                    const periodicStyle = periodic && isHex ? { backgroundColor: ck! } : undefined;
                     return (
                       <div
-                        className={cn("inline-flex h-6 items-center rounded-md px-2.5 text-[10px] font-bold shrink-0", t.periodic_stage_key ? "bg-black text-white" : `text-white ${STAGE_BADGE_BG[t.stage_current] ?? "bg-muted"}`)}
+                        className={cn("inline-flex h-6 items-center rounded-md px-2.5 text-[10px] font-bold shrink-0 text-white", t.periodic_stage_key ? periodicBgClass : (STAGE_BADGE_BG[t.stage_current] ?? "bg-muted"))}
+                        style={periodicStyle}
                       >
                         {label}
                       </div>
