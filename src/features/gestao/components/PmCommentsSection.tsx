@@ -94,6 +94,14 @@ function formatActionText(action: string, metadata: any, membersMap: Record<stri
         parts.push(`"${rc.childTitle}" ${statusLabel}`);
       }
       if (metadata?.is_extra_demand !== undefined) parts.push(metadata.is_extra_demand ? "marcou como extra" : "removeu marca extra");
+      if (metadata?.due_date !== undefined) {
+        if (metadata.due_date) {
+          const d = String(metadata.due_date).slice(0, 10).split("-");
+          parts.push(`alterou data para ${d[2]}/${d[1]}/${d[0]}`);
+        } else {
+          parts.push("removeu a data");
+        }
+      }
       if (metadata?.status_global) parts.push(`status: ${metadata.status_global}`);
       return parts.join(", ");
     }
