@@ -202,16 +202,18 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
 
   return (
     <div className="space-y-4">
-      {/* Header — dynamic title per view */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
-        <h2 className="font-bold tracking-tight text-2xl sm:text-4xl">{VIEW_TITLES[effectiveView] ?? "Tarefas"}</h2>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative flex-1 min-w-[140px] sm:flex-none">
+      {/* Header — título + filtros alinhados */}
+      <div className="flex flex-col gap-3 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-bold tracking-tight text-2xl sm:text-3xl">{VIEW_TITLES[effectiveView] ?? "Tarefas"}</h2>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border/30 bg-muted/20 p-2">
+          <div className="relative flex-1 min-w-[160px] sm:max-w-xs">
             <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Buscar tarefa..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 w-full sm:w-48 pl-9 rounded-xl text-sm" />
+            <Input placeholder="Buscar tarefa..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 w-full pl-9 rounded-full text-sm border-border/30 bg-background/60" />
           </div>
           <Select value={filterClient} onValueChange={setFilterClient}>
-            <SelectTrigger className="h-9 flex-1 min-w-[120px] sm:flex-none sm:w-52 rounded-xl text-sm border-primary/30 bg-background/80">
+            <SelectTrigger className="h-9 w-auto min-w-[140px] rounded-full text-sm border-border/30 bg-background/60">
               <SelectValue placeholder="Todos os clientes" />
             </SelectTrigger>
             <SelectContent>
@@ -222,7 +224,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
             </SelectContent>
           </Select>
           <Select value={filterAssignee} onValueChange={setFilterAssignee}>
-            <SelectTrigger className="h-9 flex-1 min-w-[120px] sm:flex-none sm:w-52 rounded-xl text-sm bg-background/80 border-border/30">
+            <SelectTrigger className="h-9 w-auto min-w-[140px] rounded-full text-sm border-border/30 bg-background/60">
               <SelectValue placeholder="Todos os responsáveis" />
             </SelectTrigger>
             <SelectContent>
@@ -238,7 +240,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
             </SelectContent>
           </Select>
           <Select value={filterStage} onValueChange={setFilterStage}>
-            <SelectTrigger className="h-9 flex-1 min-w-[120px] sm:flex-none sm:w-44 rounded-xl text-sm bg-background/80 border-border/30">
+            <SelectTrigger className="h-9 w-auto min-w-[130px] rounded-full text-sm border-border/30 bg-background/60">
               <SelectValue placeholder="Todas as etapas" />
             </SelectTrigger>
             <SelectContent>
