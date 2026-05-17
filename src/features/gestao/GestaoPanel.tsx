@@ -568,9 +568,11 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
       );
     }
     return list;
-  }, [tasks, filterClient, filterAssignee, search, clientsMap, fixedAssigneeClientIds, filterStage]);
+   }, [tasks, filterClient, filterAssignee, search, clientsMap, fixedAssigneeClientIds, filterStage]);
 
-  const days = useMemo(() => {
+  const hasActiveFilter = (filterClient !== "__all__") || (filterAssignee !== "__all__") || (filterStage !== "__all__") || !!search;
+
+   const days = useMemo(() => {
     const start = startOfWeek(startOfMonth(cursor), { weekStartsOn: 0 });
     const end = endOfMonth(cursor);
     const out: Date[] = [];
@@ -1031,7 +1033,7 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
               const dowTitle = dow.charAt(0).toUpperCase() + dow.slice(1);
                const isToday = key === todayKey;
                const doneCount = dayTasks.filter((t) => t.status_global === "concluido").length;
-               const allDone = dayTasks.length > 0 && doneCount === dayTasks.length;
+                const allDone = dayTasks.length > 0 && doneCount === dayTasks.length && !hasActiveFilter;
 
                return (
                  <div
@@ -1101,7 +1103,7 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
                 const dowTitle = dow.charAt(0).toUpperCase() + dow.slice(1);
                  const isToday = key === todayKey;
                  const doneCount = dayTasks.filter((t) => t.status_global === "concluido").length;
-                 const allDone = dayTasks.length > 0 && doneCount === dayTasks.length;
+                 const allDone = dayTasks.length > 0 && doneCount === dayTasks.length && !hasActiveFilter;
 
                  return (
                    <div
@@ -1226,7 +1228,7 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
               const dayTasks = tasksByDay.get(key) ?? [];
               const isToday = key === todayKey;
               const doneCountMonth = dayTasks.filter((t) => t.status_global === "concluido").length;
-              const allDoneMonth = dayTasks.length > 0 && doneCountMonth === dayTasks.length;
+              const allDoneMonth = dayTasks.length > 0 && doneCountMonth === dayTasks.length && !hasActiveFilter;
 
               return (
                 <div
