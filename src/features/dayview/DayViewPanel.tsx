@@ -1248,7 +1248,7 @@ export function DayViewPanel() {
                 <span className="w-14 text-center shrink-0">Pend.</span>
                 <div className="flex-1 min-w-0 text-center">% Conclusão</div>
                 <span className="w-14 text-center shrink-0">Pts</span>
-                <span className="w-14 text-center shrink-0" title="Pontos perdidos no mês">Perdidos</span>
+                <span className="w-14 text-center shrink-0" title="Pontos perdidos no mês">Perd.</span>
               </div>
               {filteredRank.map((row, idx) => {
           const member = teamByUserId.get(row.user_id);
@@ -1278,7 +1278,7 @@ export function DayViewPanel() {
                           </div>
                         </div>
                         <span className="w-14 text-center shrink-0 text-sm font-bold">{row.total}</span>
-                        <span className={cn("w-14 text-center shrink-0 text-sm font-semibold", row.lostPoints > 0 ? "text-destructive" : "text-muted-foreground")}>
+                        <span className={cn("w-14 text-center shrink-0 text-xs font-semibold", row.lostPoints > 0 ? "text-destructive" : "text-muted-foreground")}>
                           {row.lostPoints > 0 ? `-${row.lostPoints}` : "0"}
                         </span>
                       </div>
