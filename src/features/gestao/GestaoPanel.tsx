@@ -1126,17 +1126,24 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
                          )}
                        </div>
                      </div>
-                     {allDone ? (
-                       <button
-                         type="button"
-                         onClick={() => setDonePanelDayKey(key)}
-                         className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-success/20 bg-success/10 px-2 py-2 text-xs font-semibold text-success hover:bg-success/15 transition"
-                       >
-                         <CheckCircle2 className="h-3.5 w-3.5" />
-                         <span>Ver {dayTasks.length} {dayTasks.length === 1 ? "tarefa" : "tarefas"}</span>
-                         <PanelRightOpen className="h-3.5 w-3.5 opacity-70" />
-                       </button>
-                     ) : (
+                      {allDone ? (
+                        <div className="space-y-2.5">
+                          <button
+                            type="button"
+                            onClick={() => toggleDoneDay(key)}
+                            className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg bg-success px-2 py-2 text-xs font-semibold text-success-foreground hover:opacity-90 transition"
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            <span>Ver {dayTasks.length} {dayTasks.length === 1 ? "tarefa" : "tarefas"}</span>
+                            <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", expandedDoneDays.has(key) && "rotate-180")} />
+                          </button>
+                          {expandedDoneDays.has(key) && (
+                            <div className="space-y-2.5 max-h-[500px] overflow-y-auto">
+                              {dayTasks.map(renderTaskCard)}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
                        <div className="space-y-2.5 max-h-[500px] overflow-y-auto">
                          {renderSpecialDates(key)}
                          {dayTasks.length ? (
