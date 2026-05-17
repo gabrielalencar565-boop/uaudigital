@@ -503,16 +503,17 @@ export function DayViewPanel() {
       });
       map.set(a.task_id, prev);
     }
-    // PM tasks: SOMENTE o responsável principal (assignee_id).
-    // Watchers não devem fazer a tarefa aparecer na coluna deles no Day View,
-    // pois muitas vezes são herdados automaticamente de splits/etapas anteriores
-    // e não representam quem realmente é responsável por executar a etapa.
+    // PM tasks: responsável principal (assignee_id) + watchers, para que tarefas
+    // com múltiplos responsáveis apareçam na coluna de cada um na visão do dia.
     for (const t of allPmTasksForDayView) {
       const key = `pm_${t.id}`;
-      if (!t.assignee_id) continue;
-      const m = teamByUserId.get(t.assignee_id);
-      if (!m) continue;
-      map.set(key, [{ user_id: m.user_id, display_name: m.display_name, avatar_url: m.avatar_url }]);
+      const ids = Array.from(new Set([t.assignee_id, ...((t.watchers as string[] | null) ?? [])].filter((id): id is string => Boolean(id))));
+      const members = ids
+        .map((id) => teamByUserId.get(id))
+        .filter((m): m is NonNullable<typeof m> => Boolean(m))
+        .map((m) => ({ user_id: m.user_id, display_name: m.display_name, avatar_url: m.avatar_url }));
+      if (members.length === 0) continue;
+      map.set(key, members);
     }
     return map;
   }, [assigneesQ.data, overdueTaskAssigneesQ.data, isCurrentMonth, teamByUserId, allPmTasksForDayView]);
@@ -676,8 +677,8 @@ export function DayViewPanel() {
   }, [tasksQ.data, overdueAgendaTasksQ.data, isCurrentMonth, allPmTasksForDayView, pmChildCountQ.data]);
 
   // Build merged assignees for pm snapshot groups.
-  // SOMENTE o responsável principal (assignee_id) do pm_task subjacente — watchers
-  // não devem fazer a tarefa aparecer na coluna deles no Day View.
+  // Inclui responsável principal + watchers do pm_task, para que tarefas com
+  // múltiplos responsáveis apareçam na coluna de cada um na visão do dia.
   const pmTaskByIdForSnapshots = useMemo(
     () => new Map(allPmTasksForDayView.map((t) => [t.id, t])),
     [allPmTasksForDayView]
@@ -686,14 +687,19 @@ export function DayViewPanel() {
     const map = new Map<string, { user_id: string; display_name: string; avatar_url?: string | null }[]>();
     for (const [groupKey, group] of unifiedTasks.pmSnapshotGroups) {
       const mergedId = `agenda_pm_${groupKey}`;
-      // groupKey = pm:<taskId>:<stage>
       const pmId = groupKey.split(":")[1];
       const pmTask = pmId ? pmTaskByIdForSnapshots.get(pmId) : undefined;
-      const principalId = pmTask?.assignee_id ?? group[0]?.assigned_user_id ?? null;
-      if (!principalId) continue;
-      const m = teamByUserId.get(principalId);
-      if (!m) continue;
-      map.set(mergedId, [{ user_id: m.user_id, display_name: m.display_name, avatar_url: m.avatar_url }]);
+      const ids = new Set<string>();
+      if (pmTask?.assignee_id) ids.add(pmTask.assignee_id);
+      for (const w of (pmTask?.watchers as string[] | null) ?? []) if (w) ids.add(w);
+      // Fallback: usuários dos próprios snapshots da agenda
+      for (const snap of group) if (snap.assigned_user_id) ids.add(snap.assigned_user_id);
+      const members = Array.from(ids)
+        .map((id) => teamByUserId.get(id))
+        .filter((m): m is NonNullable<typeof m> => Boolean(m))
+        .map((m) => ({ user_id: m.user_id, display_name: m.display_name, avatar_url: m.avatar_url }));
+      if (members.length === 0) continue;
+      map.set(mergedId, members);
     }
     return map;
   }, [unifiedTasks.pmSnapshotGroups, teamByUserId, pmTaskByIdForSnapshots]);
