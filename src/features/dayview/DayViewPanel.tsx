@@ -406,6 +406,18 @@ export function DayViewPanel() {
     return stats;
   }, [tasksQ.data, assigneesQ.data, pmSubtasksQ.data, pmTasksQ.data]);
 
+  // Pontos perdidos por usuário no mês: soma do |late_penalty_value| das tasks da agenda
+  const lostPointsByUser = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const t of (tasksQ.data ?? [])) {
+      const uid = t.assigned_user_id;
+      const pv = (t as any).late_penalty_value as number | null | undefined;
+      if (!uid || pv == null || pv >= 0) continue;
+      map.set(uid, (map.get(uid) ?? 0) + Math.abs(pv));
+    }
+    return map;
+  }, [tasksQ.data]);
+
   const monthlyRank = useMemo(() => {
     const scores = scoresQ.data ?? [];
     const byUser = new Map(scores.map((s) => [s.user_id, s]));
@@ -420,11 +432,12 @@ export function DayViewPanel() {
       s?.comprometimento ?? 0);
       const taskStats = taskStatsByUser.get(m.user_id) ?? { total: 0, completed: 0 };
       const completionPct = taskStats.total > 0 ? Math.round(taskStats.completed / taskStats.total * 100) : 0;
-      return { user_id: m.user_id, total, taskTotal: taskStats.total, taskCompleted: taskStats.completed, completionPct };
+      const lostPoints = lostPointsByUser.get(m.user_id) ?? 0;
+      return { user_id: m.user_id, total, taskTotal: taskStats.total, taskCompleted: taskStats.completed, completionPct, lostPoints };
     });
     base.sort((a, b) => b.total - a.total);
     return base;
-  }, [scoresQ.data, teamQ.data, taskStatsByUser]);
+  }, [scoresQ.data, teamQ.data, taskStatsByUser, lostPointsByUser]);
 
   // Update previous rank ref after monthlyRank changes
   const currentRankMap = useMemo(() => {
@@ -1235,7 +1248,7 @@ export function DayViewPanel() {
                 <span className="w-14 text-center shrink-0">Pend.</span>
                 <div className="flex-1 min-w-0 text-center">% Conclusão</div>
                 <span className="w-14 text-center shrink-0">Pts</span>
-                
+                <span className="w-14 text-center shrink-0" title="Pontos perdidos no mês">Perdidos</span>
               </div>
               {filteredRank.map((row, idx) => {
           const member = teamByUserId.get(row.user_id);
@@ -1265,6 +1278,9 @@ export function DayViewPanel() {
                           </div>
                         </div>
                         <span className="w-14 text-center shrink-0 text-sm font-bold">{row.total}</span>
+                        <span className={cn("w-14 text-center shrink-0 text-sm font-semibold", row.lostPoints > 0 ? "text-destructive" : "text-muted-foreground")}>
+                          {row.lostPoints > 0 ? `-${row.lostPoints}` : "0"}
+                        </span>
                       </div>
                       {/* Mobile layout */}
                       <div className="flex sm:hidden items-center gap-2.5">
@@ -1281,6 +1297,7 @@ export function DayViewPanel() {
                             <span>{row.completionPct}%</span>
                             <span>•</span>
                             <span className="font-bold text-foreground">{row.total}pts</span>
+                            {row.lostPoints > 0 && (<><span>•</span><span className="font-semibold text-destructive">-{row.lostPoints}</span></>)}
                           </div>
                         </div>
                         <div className="relative w-10 h-10 shrink-0">
