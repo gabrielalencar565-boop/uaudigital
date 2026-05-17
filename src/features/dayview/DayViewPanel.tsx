@@ -327,6 +327,18 @@ export function DayViewPanel() {
     }
   });
 
+  // Overrides do relatório de desempenho — quando admin define pontuação manual, ela substitui a penalidade automática
+  const deadlineOverridesQ = useQuery({
+    queryKey: ["deadline_report_overrides", selectedYear, selectedMonth],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("task_deadline_overrides")
+        .select("task_id,override_points");
+      if (error) throw error;
+      return data ?? [];
+    }
+  });
+
   // Track previous ranking positions in real-time
   const prevRankRef = useRef<Map<string, number>>(new Map());
 
