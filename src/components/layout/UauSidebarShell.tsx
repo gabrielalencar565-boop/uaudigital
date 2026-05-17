@@ -71,8 +71,8 @@ const NAV: NavEntry[] = [
   icon: ClipboardList,
   landingTab: "tarefas",
   children: [
-  { key: "agenda_gestao", label: "Agenda", icon: CalendarDays },
-  { key: "fluxos", label: "Fluxos", icon: Workflow, adminOnly: true }]
+  { key: "tarefas", label: "Kanban", icon: LayoutGrid },
+  { key: "agenda_gestao", label: "Agenda", icon: CalendarDays }]
 },
 {
   key: "dashboard_group",
@@ -97,7 +97,17 @@ const NAV: NavEntry[] = [
   { key: "fin_lancamentos", label: "Lançamentos", icon: ArrowRightLeft },
   { key: "metas", label: "Metas", icon: TrendingUp }]
 },
-{ key: "configuracoes", label: "Configurações", icon: Settings, adminOnly: true }];
+{
+  key: "configuracoes_group",
+  label: "Configurações",
+  icon: Settings,
+  adminOnly: true,
+  landingTab: "configuracoes",
+  children: [
+  { key: "configuracoes", label: "Configurações", icon: Settings },
+  { key: "fluxos", label: "Fluxos", icon: Workflow, adminOnly: true }]
+}];
+
 
 
 export function UauSidebarShell({
