@@ -1077,45 +1077,46 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
                 const dayTasks = tasksByDay.get(key) ?? [];
                 const dow = format(d, "EEEE", { locale: ptBR });
                 const dowTitle = dow.charAt(0).toUpperCase() + dow.slice(1);
-                const isToday = key === todayKey;
-                const doneCount = dayTasks.filter((t) => t.status_global === "concluido").length;
+                 const isToday = key === todayKey;
+                 const doneCount = dayTasks.filter((t) => t.status_global === "concluido").length;
+                 const allDone = dayTasks.length > 0 && doneCount === dayTasks.length;
 
-                return (
-                  <div
-                    key={key}
-                    data-day-key={key}
-                    className={cn(
-                      "w-[280px] flex-shrink-0 rounded-xl border bg-card/10 p-4 transition",
-                      isToday ? "border-primary ring-2 ring-primary/40" : "border-border/60",
-                      !isToday && dayHasOverdue(key) && "border-destructive/50 border-2"
-                    )}>
-                    <div className="flex items-start justify-between gap-2 mb-4">
-                      <div className="min-w-0">
-                        <p className={cn("text-sm font-medium", isToday && "text-primary")}>{dowTitle}</p>
-                        <p className={cn("mt-1 text-3xl font-semibold leading-none tracking-tight", isToday && "text-primary")}>
-                          {format(d, "dd")}
-                        </p>
-                        {dayTasks.length > 0 && (
-                          <p className="mt-2 text-xs text-muted-foreground">
-                            {doneCount}/{dayTasks.length} concluída(s)
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="space-y-2.5 max-h-[500px] overflow-y-auto">
-                      {renderSpecialDates(key)}
-                      {dayTasks.length ? (
-                        <>
-                          {dayTasks.slice(0, 5).map(renderTaskCard)}
-                          {dayTasks.length > 5 && (
-                            <button
-                              type="button"
-                              className="w-full rounded-lg bg-foreground/5 px-2 py-1.5 text-[10px] font-medium text-muted-foreground/60 hover:bg-foreground/10 hover:text-muted-foreground transition"
-                              onClick={() => { setMoreDayKey(key); setMoreOpen(true); }}>
-                              +{dayTasks.length - 5} mais
-                            </button>
-                          )}
-                        </>
+                 return (
+                   <div
+                     key={key}
+                     data-day-key={key}
+                     className={cn(
+                       "w-[280px] flex-shrink-0 rounded-xl border bg-card/10 p-4 transition",
+                       isToday ? "border-primary ring-2 ring-primary/40" : "border-border/60",
+                       !isToday && dayHasOverdue(key) && "border-destructive/50 border-2"
+                     )}>
+                     <div className="flex items-start justify-between gap-2 mb-4">
+                       <div className="min-w-0">
+                         <p className={cn("text-sm font-medium", isToday && "text-primary")}>{dowTitle}</p>
+                         <p className={cn("mt-1 text-3xl font-semibold leading-none tracking-tight", isToday && "text-primary")}>
+                           {format(d, "dd")}
+                         </p>
+                         {dayTasks.length > 0 && (
+                           <p className="mt-2 text-xs text-muted-foreground">
+                             {doneCount}/{dayTasks.length} concluída(s)
+                           </p>
+                         )}
+                       </div>
+                     </div>
+                     <div className="space-y-2.5 max-h-[500px] overflow-y-auto">
+                       {renderSpecialDates(key)}
+                       {dayTasks.length ? (
+                         <>
+                           {(allDone ? dayTasks : dayTasks.slice(0, 5)).map(renderTaskCard)}
+                           {!allDone && dayTasks.length > 5 && (
+                             <button
+                               type="button"
+                               className="w-full rounded-lg bg-foreground/5 px-2 py-1.5 text-[10px] font-medium text-muted-foreground/60 hover:bg-foreground/10 hover:text-muted-foreground transition"
+                               onClick={() => { setMoreDayKey(key); setMoreOpen(true); }}>
+                               +{dayTasks.length - 5} mais
+                             </button>
+                           )}
+                         </>
                       ) : daySpecialDates(key).length === 0 ? (
                         <div className="grid min-h-[120px] place-items-center rounded-lg border border-dashed border-border/60 bg-card/5 p-4">
                           <p className="text-sm text-muted-foreground">Sem tarefas</p>
