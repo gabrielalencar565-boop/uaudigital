@@ -1278,7 +1278,7 @@ export function DayViewPanel() {
                           </div>
                         </div>
                         <span className="w-14 text-center shrink-0 text-sm font-bold">{row.total}</span>
-                        <span className={cn("w-14 text-center shrink-0 text-xs font-semibold", row.lostPoints > 0 ? "text-destructive" : "text-muted-foreground")}>
+                        <span className={cn("w-14 text-center shrink-0 text-[10px] font-semibold", row.lostPoints > 0 ? "text-destructive" : "text-muted-foreground")}>
                           {row.lostPoints > 0 ? `-${row.lostPoints}` : "0"}
                         </span>
                       </div>
