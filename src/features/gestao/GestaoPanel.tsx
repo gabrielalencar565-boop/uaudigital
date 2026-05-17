@@ -1286,6 +1286,21 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
         </>
       )}
 
+      {/* Done day sidebar */}
+      <Sheet open={!!donePanelDayKey} onOpenChange={(o) => !o && setDonePanelDayKey(null)}>
+        <SheetContent side="right" className="w-full sm:max-w-md flex flex-col">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-success" />
+              {donePanelDayKey ? format(new Date(`${donePanelDayKey}T12:00:00`), "dd/MM · EEEE", { locale: ptBR }) : "Tarefas"}
+            </SheetTitle>
+          </SheetHeader>
+          <div className="mt-4 flex-1 space-y-2 overflow-y-auto pr-1">
+            {(donePanelDayKey ? tasksByDay.get(donePanelDayKey) ?? [] : []).map(renderTaskCard)}
+          </div>
+        </SheetContent>
+      </Sheet>
+
       {/* More tasks dialog */}
       <Dialog open={moreOpen} onOpenChange={setMoreOpen}>
         <DialogContent className="max-w-lg rounded-2xl">
