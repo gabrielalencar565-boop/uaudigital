@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { PM_STAGES } from "./pm-constants";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Plus, Search, LayoutGrid, CalendarDays, FolderOpen, Settings2, CheckCircle2, FileSpreadsheet, Trash2, FileText, Users, ChevronLeft, ChevronRight, CalendarRange, Cake, Star, Calendar, TriangleAlert, PanelRightOpen } from "lucide-react";
+import { Plus, Search, LayoutGrid, CalendarDays, FolderOpen, Settings2, CheckCircle2, FileSpreadsheet, Trash2, FileText, Users, ChevronLeft, ChevronRight, ChevronDown, CalendarRange, Cake, Star, Calendar, TriangleAlert, PanelRightOpen } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { addDays, addMonths, subMonths, endOfMonth, format, startOfMonth, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -473,7 +473,12 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
   const updateTask = useUpdatePmTask();
   const [moreOpen, setMoreOpen] = useState(false);
   const [moreDayKey, setMoreDayKey] = useState<string | null>(null);
-  const [donePanelDayKey, setDonePanelDayKey] = useState<string | null>(null);
+  const [expandedDoneDays, setExpandedDoneDays] = useState<Set<string>>(new Set());
+  const toggleDoneDay = (k: string) => setExpandedDoneDays(prev => {
+    const next = new Set(prev);
+    if (next.has(k)) next.delete(k); else next.add(k);
+    return next;
+  });
   const [agendaView, setAgendaView] = useState<"month" | "week">("month");
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [quickCreateOpen, setQuickCreateOpen] = useState(false);
@@ -1050,17 +1055,20 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
                      )}
                    </div>
                    {renderSpecialDates(key, true)}
-                   {allDone ? (
-                     <button
-                       type="button"
-                       onClick={() => setDonePanelDayKey(key)}
-                       className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-success/20 bg-success/10 px-2 py-1.5 text-[11px] font-semibold text-success hover:bg-success/15 transition"
-                     >
-                       <CheckCircle2 className="h-3.5 w-3.5" />
-                       <span>{dayTasks.length} {dayTasks.length === 1 ? "tarefa" : "tarefas"}</span>
-                       <PanelRightOpen className="h-3 w-3 opacity-70" />
-                     </button>
-                   ) : (
+                    {allDone ? (
+                      <div className="space-y-1.5">
+                        <button
+                          type="button"
+                          onClick={() => toggleDoneDay(key)}
+                          className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg bg-success px-2 py-1.5 text-[11px] font-semibold text-success-foreground hover:opacity-90 transition"
+                        >
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          <span>{dayTasks.length} {dayTasks.length === 1 ? "tarefa" : "tarefas"}</span>
+                          <ChevronDown className={cn("h-3 w-3 transition-transform", expandedDoneDays.has(key) && "rotate-180")} />
+                        </button>
+                        {expandedDoneDays.has(key) && dayTasks.map(renderTaskCard)}
+                      </div>
+                    ) : (
                      <div className="space-y-1.5">
                        {dayTasks.length ? (
                          <>
@@ -1118,17 +1126,24 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
                          )}
                        </div>
                      </div>
-                     {allDone ? (
-                       <button
-                         type="button"
-                         onClick={() => setDonePanelDayKey(key)}
-                         className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-success/20 bg-success/10 px-2 py-2 text-xs font-semibold text-success hover:bg-success/15 transition"
-                       >
-                         <CheckCircle2 className="h-3.5 w-3.5" />
-                         <span>Ver {dayTasks.length} {dayTasks.length === 1 ? "tarefa" : "tarefas"}</span>
-                         <PanelRightOpen className="h-3.5 w-3.5 opacity-70" />
-                       </button>
-                     ) : (
+                      {allDone ? (
+                        <div className="space-y-2.5">
+                          <button
+                            type="button"
+                            onClick={() => toggleDoneDay(key)}
+                            className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg bg-success px-2 py-2 text-xs font-semibold text-success-foreground hover:opacity-90 transition"
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            <span>Ver {dayTasks.length} {dayTasks.length === 1 ? "tarefa" : "tarefas"}</span>
+                            <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", expandedDoneDays.has(key) && "rotate-180")} />
+                          </button>
+                          {expandedDoneDays.has(key) && (
+                            <div className="space-y-2.5 max-h-[500px] overflow-y-auto">
+                              {dayTasks.map(renderTaskCard)}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
                        <div className="space-y-2.5 max-h-[500px] overflow-y-auto">
                          {renderSpecialDates(key)}
                          {dayTasks.length ? (
@@ -1256,15 +1271,22 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
                     )}
                   </div>
                   {allDoneMonth ? (
-                    <button
-                      type="button"
-                      onClick={() => setDonePanelDayKey(key)}
-                      className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-success/20 bg-success/10 px-2 py-1.5 text-[11px] font-semibold text-success hover:bg-success/15 transition"
-                    >
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      <span>{dayTasks.length}</span>
-                      <PanelRightOpen className="h-3 w-3 opacity-70" />
-                    </button>
+                    <div className="space-y-1.5">
+                      <button
+                        type="button"
+                        onClick={() => toggleDoneDay(key)}
+                        className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg bg-success px-2 py-1.5 text-[11px] font-semibold text-success-foreground hover:opacity-90 transition"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        <span>{dayTasks.length}</span>
+                        <ChevronDown className={cn("h-3 w-3 transition-transform", expandedDoneDays.has(key) && "rotate-180")} />
+                      </button>
+                      {expandedDoneDays.has(key) && (
+                        <div className="space-y-1.5 max-h-[520px] overflow-y-auto">
+                          {dayTasks.map(renderTaskCard)}
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     <div className="space-y-1.5 max-h-[520px] overflow-y-auto">
                       {renderSpecialDates(key, true)}
@@ -1286,20 +1308,7 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
         </>
       )}
 
-      {/* Done day sidebar */}
-      <Sheet open={!!donePanelDayKey} onOpenChange={(o) => !o && setDonePanelDayKey(null)}>
-        <SheetContent side="right" className="w-full sm:max-w-md flex flex-col">
-          <SheetHeader>
-            <SheetTitle className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-success" />
-              {donePanelDayKey ? format(new Date(`${donePanelDayKey}T12:00:00`), "dd/MM · EEEE", { locale: ptBR }) : "Tarefas"}
-            </SheetTitle>
-          </SheetHeader>
-          <div className="mt-4 flex-1 space-y-2 overflow-y-auto pr-1">
-            {(donePanelDayKey ? tasksByDay.get(donePanelDayKey) ?? [] : []).map(renderTaskCard)}
-          </div>
-        </SheetContent>
-      </Sheet>
+
 
       {/* More tasks dialog */}
       <Dialog open={moreOpen} onOpenChange={setMoreOpen}>
