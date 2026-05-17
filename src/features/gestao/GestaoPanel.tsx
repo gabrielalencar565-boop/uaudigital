@@ -568,9 +568,11 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
       );
     }
     return list;
-  }, [tasks, filterClient, filterAssignee, search, clientsMap, fixedAssigneeClientIds, filterStage]);
+   }, [tasks, filterClient, filterAssignee, search, clientsMap, fixedAssigneeClientIds, filterStage]);
 
-  const days = useMemo(() => {
+  const hasActiveFilter = (filterClient !== "__all__") || (filterAssignee !== "__all__") || (filterStage !== "__all__") || !!search;
+
+   const days = useMemo(() => {
     const start = startOfWeek(startOfMonth(cursor), { weekStartsOn: 0 });
     const end = endOfMonth(cursor);
     const out: Date[] = [];
