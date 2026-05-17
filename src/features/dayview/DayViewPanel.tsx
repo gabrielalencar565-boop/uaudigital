@@ -406,6 +406,18 @@ export function DayViewPanel() {
     return stats;
   }, [tasksQ.data, assigneesQ.data, pmSubtasksQ.data, pmTasksQ.data]);
 
+  // Pontos perdidos por usuário no mês: soma do |late_penalty_value| das tasks da agenda
+  const lostPointsByUser = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const t of (tasksQ.data ?? [])) {
+      const uid = t.assigned_user_id;
+      const pv = (t as any).late_penalty_value as number | null | undefined;
+      if (!uid || pv == null || pv >= 0) continue;
+      map.set(uid, (map.get(uid) ?? 0) + Math.abs(pv));
+    }
+    return map;
+  }, [tasksQ.data]);
+
   const monthlyRank = useMemo(() => {
     const scores = scoresQ.data ?? [];
     const byUser = new Map(scores.map((s) => [s.user_id, s]));
@@ -420,11 +432,12 @@ export function DayViewPanel() {
       s?.comprometimento ?? 0);
       const taskStats = taskStatsByUser.get(m.user_id) ?? { total: 0, completed: 0 };
       const completionPct = taskStats.total > 0 ? Math.round(taskStats.completed / taskStats.total * 100) : 0;
-      return { user_id: m.user_id, total, taskTotal: taskStats.total, taskCompleted: taskStats.completed, completionPct };
+      const lostPoints = lostPointsByUser.get(m.user_id) ?? 0;
+      return { user_id: m.user_id, total, taskTotal: taskStats.total, taskCompleted: taskStats.completed, completionPct, lostPoints };
     });
     base.sort((a, b) => b.total - a.total);
     return base;
-  }, [scoresQ.data, teamQ.data, taskStatsByUser]);
+  }, [scoresQ.data, teamQ.data, taskStatsByUser, lostPointsByUser]);
 
   // Update previous rank ref after monthlyRank changes
   const currentRankMap = useMemo(() => {
