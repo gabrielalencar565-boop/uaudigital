@@ -1100,7 +1100,8 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
                      key={key}
                      data-day-key={key}
                      className={cn(
-                       "w-[280px] flex-shrink-0 rounded-xl border bg-card/10 p-4 transition",
+                       "flex-shrink-0 rounded-xl border bg-card/10 p-4 transition",
+                       allDone ? "w-[180px]" : "w-[280px]",
                        isToday ? "border-primary ring-2 ring-primary/40" : "border-border/60",
                        !isToday && dayHasOverdue(key) && "border-destructive/50 border-2"
                      )}>
@@ -1117,27 +1118,39 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
                          )}
                        </div>
                      </div>
-                     <div className="space-y-2.5 max-h-[500px] overflow-y-auto">
-                       {renderSpecialDates(key)}
-                       {dayTasks.length ? (
-                         <>
-                           {(allDone ? dayTasks : dayTasks.slice(0, 5)).map(renderTaskCard)}
-                           {!allDone && dayTasks.length > 5 && (
-                             <button
-                               type="button"
-                               className="w-full rounded-lg bg-foreground/5 px-2 py-1.5 text-[10px] font-medium text-muted-foreground/60 hover:bg-foreground/10 hover:text-muted-foreground transition"
-                               onClick={() => { setMoreDayKey(key); setMoreOpen(true); }}>
-                               +{dayTasks.length - 5} mais
-                             </button>
-                           )}
-                         </>
-                      ) : daySpecialDates(key).length === 0 ? (
-                        <div className="grid min-h-[120px] place-items-center rounded-lg border border-dashed border-border/60 bg-card/5 p-4">
-                          <p className="text-sm text-muted-foreground">Sem tarefas</p>
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
+                     {allDone ? (
+                       <button
+                         type="button"
+                         onClick={() => setDonePanelDayKey(key)}
+                         className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-success/20 bg-success/10 px-2 py-2 text-xs font-semibold text-success hover:bg-success/15 transition"
+                       >
+                         <CheckCircle2 className="h-3.5 w-3.5" />
+                         <span>Ver {dayTasks.length} {dayTasks.length === 1 ? "tarefa" : "tarefas"}</span>
+                         <PanelRightOpen className="h-3.5 w-3.5 opacity-70" />
+                       </button>
+                     ) : (
+                       <div className="space-y-2.5 max-h-[500px] overflow-y-auto">
+                         {renderSpecialDates(key)}
+                         {dayTasks.length ? (
+                           <>
+                             {dayTasks.slice(0, 5).map(renderTaskCard)}
+                             {dayTasks.length > 5 && (
+                               <button
+                                 type="button"
+                                 className="w-full rounded-lg bg-foreground/5 px-2 py-1.5 text-[10px] font-medium text-muted-foreground/60 hover:bg-foreground/10 hover:text-muted-foreground transition"
+                                 onClick={() => { setMoreDayKey(key); setMoreOpen(true); }}>
+                                 +{dayTasks.length - 5} mais
+                               </button>
+                             )}
+                           </>
+                         ) : daySpecialDates(key).length === 0 ? (
+                           <div className="grid min-h-[120px] place-items-center rounded-lg border border-dashed border-border/60 bg-card/5 p-4">
+                             <p className="text-sm text-muted-foreground">Sem tarefas</p>
+                           </div>
+                         ) : null}
+                       </div>
+                     )}
+                   </div>
                 );
               })}
             </div>
