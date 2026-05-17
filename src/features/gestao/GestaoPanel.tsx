@@ -473,6 +473,7 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
   const updateTask = useUpdatePmTask();
   const [moreOpen, setMoreOpen] = useState(false);
   const [moreDayKey, setMoreDayKey] = useState<string | null>(null);
+  const [donePanelDayKey, setDonePanelDayKey] = useState<string | null>(null);
   const [agendaView, setAgendaView] = useState<"month" | "week">("month");
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [quickCreateOpen, setQuickCreateOpen] = useState(false);
