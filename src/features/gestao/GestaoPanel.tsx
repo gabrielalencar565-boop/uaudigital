@@ -1183,6 +1183,8 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
               const inMonth = d.getMonth() === cursor.getMonth();
               const dayTasks = tasksByDay.get(key) ?? [];
               const isToday = key === todayKey;
+              const doneCountMonth = dayTasks.filter((t) => t.status_global === "concluido").length;
+              const allDoneMonth = dayTasks.length > 0 && doneCountMonth === dayTasks.length;
 
               return (
                 <div
@@ -1227,8 +1229,8 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
                   </div>
                   <div className="space-y-1.5 max-h-[520px] overflow-y-auto">
                     {renderSpecialDates(key, true)}
-                    {dayTasks.slice(0, 5).map(renderTaskCard)}
-                    {dayTasks.length > 5 &&
+                    {(allDoneMonth ? dayTasks : dayTasks.slice(0, 5)).map(renderTaskCard)}
+                    {!allDoneMonth && dayTasks.length > 5 &&
                       <button
                         type="button"
                         className="w-full rounded-lg bg-foreground/5 px-2 py-1 text-[10px] font-medium text-muted-foreground/60 hover:bg-foreground/10 hover:text-muted-foreground transition"
