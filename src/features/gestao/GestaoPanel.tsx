@@ -883,12 +883,12 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
 
   return (
     <div className="space-y-5 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards" }}>
-      {/* Header: pill toggle + month nav */}
-      <div className="flex flex-wrap items-center gap-4">
+      {/* Toolbar da Agenda: visualização + período + ações */}
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/30 bg-muted/20 px-3 py-2">
         <Tabs value={agendaView} onValueChange={(v) => setAgendaView(v as any)}>
-          <TabsList className="bg-muted/40 h-10 p-1 rounded-full gap-1">
-            <TabsTrigger value="month" className="h-8 rounded-full text-sm data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-md px-5 transition-all">Mês</TabsTrigger>
-            <TabsTrigger value="week" className="h-8 rounded-full text-sm data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-md px-5 transition-all">Semana</TabsTrigger>
+          <TabsList className="bg-background/60 h-9 p-1 rounded-full gap-1 border border-border/30">
+            <TabsTrigger value="month" className="h-7 rounded-full text-xs data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-sm px-4 transition-all">Mês</TabsTrigger>
+            <TabsTrigger value="week" className="h-7 rounded-full text-xs data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-sm px-4 transition-all">Semana</TabsTrigger>
           </TabsList>
         </Tabs>
 
@@ -900,7 +900,7 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
               setCursor(d => new Date(d.getFullYear(), newMonth, 1));
             }}
           >
-            <SelectTrigger className="h-9 w-[130px] rounded-xl text-sm font-semibold bg-muted/30 border-border/30 capitalize">
+            <SelectTrigger className="h-9 w-[120px] rounded-full text-sm font-medium bg-background/60 border-border/30 capitalize">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="bg-popover z-50">
@@ -918,7 +918,7 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
               setCursor(d => new Date(newYear, d.getMonth(), 1));
             }}
           >
-            <SelectTrigger className="h-9 w-[100px] rounded-xl text-sm font-semibold bg-muted/30 border-border/30">
+            <SelectTrigger className="h-9 w-[90px] rounded-full text-sm font-medium bg-background/60 border-border/30">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="bg-popover z-50">
@@ -930,7 +930,7 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
           </Select>
         </div>
 
-        <div className="flex items-center gap-2 ml-auto">
+        <div className="flex items-center gap-1.5 ml-auto">
           {(() => {
             const todayCount = Array.from(tasksByDay.entries())
               .filter(([k]) => k === todayKey)
@@ -943,7 +943,7 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
                   if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
                 }}
               >
-                <Badge variant="secondary" className="gap-1 rounded-xl px-2.5 py-1 text-xs font-semibold cursor-pointer hover:bg-secondary/80 transition-colors">
+                <Badge variant="secondary" className="gap-1 rounded-full px-2.5 py-1 text-xs font-semibold cursor-pointer hover:bg-secondary/80 transition-colors">
                   <Calendar className="h-3.5 w-3.5" />
                   {todayCount} hoje
                 </Badge>
@@ -961,7 +961,6 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
                   setHighlightOverdue((v) => {
                     const next = !v;
                     if (next) {
-                      // Scroll to the first overdue day
                       const overdueDays = Array.from(tasksByDay.entries())
                         .filter(([k]) => k < todayKey)
                         .filter(([, ts]) => ts.some(t => isOverdue(t)))
@@ -980,7 +979,7 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
                 }}
                 className="focus:outline-none"
               >
-                <Badge variant="destructive" className={cn("gap-1 rounded-xl px-2.5 py-1 text-xs font-semibold cursor-pointer transition-all", highlightOverdue && "ring-2 ring-destructive/60 ring-offset-2 ring-offset-background shadow-md")}>
+                <Badge variant="destructive" className={cn("gap-1 rounded-full px-2.5 py-1 text-xs font-semibold cursor-pointer transition-all", highlightOverdue && "ring-2 ring-destructive/60 ring-offset-2 ring-offset-background shadow-md")}>
                   <TriangleAlert className="h-3.5 w-3.5" />
                   {overdueCount} atrasada{overdueCount !== 1 ? "s" : ""}
                 </Badge>
@@ -988,11 +987,11 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
             ) : null;
           })()}
           {isAdmin && (
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => setReportOpen(true)} title="Relatório">
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setReportOpen(true)} title="Relatório">
               <FileText className="h-4 w-4" />
             </Button>
           )}
-          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => setTrashOpen(true)} title="Lixeira">
+          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setTrashOpen(true)} title="Lixeira">
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
