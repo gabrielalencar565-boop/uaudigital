@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { PM_STAGES } from "./pm-constants";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Plus, Search, LayoutGrid, CalendarDays, FolderOpen, Settings2, CheckCircle2, FileSpreadsheet, Trash2, FileText, Users, ChevronLeft, ChevronRight, CalendarRange, Cake, Star, Calendar, TriangleAlert, PanelRightOpen } from "lucide-react";
+import { Plus, Search, LayoutGrid, CalendarDays, FolderOpen, Settings2, CheckCircle2, FileSpreadsheet, Trash2, FileText, Users, ChevronLeft, ChevronRight, ChevronDown, CalendarRange, Cake, Star, Calendar, TriangleAlert, PanelRightOpen } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { addDays, addMonths, subMonths, endOfMonth, format, startOfMonth, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
