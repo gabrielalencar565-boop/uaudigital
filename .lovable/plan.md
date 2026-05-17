@@ -1,17 +1,22 @@
-## Problema
+## Objetivo
 
-O dropdown "TRANSFORMAR EM" no editor de legendas (SmartCaptionEditor) não funciona ao selecionar "Texto", "Cabeçalho 1", etc. O texto selecionado não muda de formato.
+Na Agenda, quando todas as tarefas de um dia estiverem concluídas, o card do dia deve manter o tamanho normal (igual aos demais) e NÃO exibir o botão "+N mais" embaixo. Hoje, o botão aparece sempre que há mais de 5 tarefas, mesmo quando todas já estão 100% concluídas, o que dá a aparência de "encolhido + botão de abrir".
 
-## Causa
+## Mudanças
 
-A função `applyHeading` usa `document.execCommand("formatBlock", false, "h1")`, mas no Chrome/navegadores modernos o comando `formatBlock` exige o tag com angle brackets: `"<h1>"` em vez de `"h1"`.
+Arquivo: `src/features/gestao/GestaoPanel.tsx`
 
-## Correção
+Adicionar uma flag `allDone = dayTasks.length > 0 && dayTasks.every(t => t.status_global === "concluido")` em cada um dos 3 renderizadores de célula de dia:
 
-No arquivo `src/features/gestao/components/SmartCaptionEditor.tsx`:
+1. **Semana (grid compacto)** — linhas ~1020-1069: quando `allDone`, renderizar todas as tarefas (`dayTasks.map(renderTaskCard)`) e não mostrar o botão "+N mais".
+2. **Semana (cards largos com scroll)** — linhas ~1074-1126: mesma lógica, listar todas e suprimir o botão "+N mais".
+3. **Mês (grade desktop 7 colunas)** — linhas ~1178-1240: idem. O `max-h-[520px] overflow-y-auto` já existente garante que o card não cresça além do limite — então o tamanho visual continua o mesmo dos outros dias.
 
-1. **Na função `applyHeading` (linha 361-373)**: Envolver o tag em angle brackets ao chamar `formatBlock` — usar `<${tag}>` em vez de `tag` diretamente.
+Para versão mobile (lista mensal, linhas ~1132-1168) nada muda — ela já lista tudo sem botão.
 
-2. **Na detecção do bloco atual (linha 275)**: O `queryCommandValue("formatBlock")` retorna valores inconsistentes entre navegadores (às vezes com aspas, às vezes sem). Normalizar o valor retornado para comparar corretamente com os tags dos `HEADING_OPTIONS`.
+## Resultado
 
-Ambas as mudanças são no mesmo arquivo, apenas 2-3 linhas alteradas.
+- Dia com 5/5 concluídas: mostra as 5 normalmente, sem botão.
+- Dia com 8/8 concluídas: mostra todas (scroll interno se passar da altura), sem botão "+3 mais".
+- Dia com tarefas pendentes (qualquer quantidade): comportamento atual mantido (limite de 5 visíveis + botão "+N mais").
+- Tamanho/altura visual do card permanece igual ao dos outros dias graças aos `max-h` já existentes.
