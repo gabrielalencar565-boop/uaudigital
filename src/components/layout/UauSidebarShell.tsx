@@ -72,7 +72,6 @@ const NAV: NavEntry[] = [
   landingTab: "tarefas",
   children: [
   { key: "agenda_gestao", label: "Agenda", icon: CalendarDays },
-  { key: "cronograma", label: "Cronograma", icon: CalendarRange },
   { key: "fluxos", label: "Fluxos", icon: Workflow, adminOnly: true }]
 },
 {
