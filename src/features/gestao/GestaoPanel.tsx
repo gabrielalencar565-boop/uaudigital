@@ -1050,23 +1050,35 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
                      )}
                    </div>
                    {renderSpecialDates(key, true)}
-                   <div className={cn("space-y-1.5", allDone && "max-h-[520px] overflow-y-auto")}>
-                     {dayTasks.length ? (
-                       <>
-                         {(allDone ? dayTasks : dayTasks.slice(0, 5)).map(renderTaskCard)}
-                         {!allDone && dayTasks.length > 5 && (
-                           <button
-                             type="button"
-                             className="w-full rounded-lg bg-foreground/5 px-2 py-1 text-[10px] font-medium text-muted-foreground/60 hover:bg-foreground/10 hover:text-muted-foreground transition"
-                             onClick={() => { setMoreDayKey(key); setMoreOpen(true); }}>
-                             +{dayTasks.length - 5} mais
-                           </button>
-                         )}
-                       </>
-                     ) : daySpecialDates(key).length === 0 ? (
-                      <p className="text-xs text-muted-foreground py-2">Sem tarefas</p>
-                    ) : null}
-                  </div>
+                   {allDone ? (
+                     <button
+                       type="button"
+                       onClick={() => setDonePanelDayKey(key)}
+                       className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-success/20 bg-success/10 px-2 py-1.5 text-[11px] font-semibold text-success hover:bg-success/15 transition"
+                     >
+                       <CheckCircle2 className="h-3.5 w-3.5" />
+                       <span>{dayTasks.length} {dayTasks.length === 1 ? "tarefa" : "tarefas"}</span>
+                       <PanelRightOpen className="h-3 w-3 opacity-70" />
+                     </button>
+                   ) : (
+                     <div className="space-y-1.5">
+                       {dayTasks.length ? (
+                         <>
+                           {dayTasks.slice(0, 5).map(renderTaskCard)}
+                           {dayTasks.length > 5 && (
+                             <button
+                               type="button"
+                               className="w-full rounded-lg bg-foreground/5 px-2 py-1 text-[10px] font-medium text-muted-foreground/60 hover:bg-foreground/10 hover:text-muted-foreground transition"
+                               onClick={() => { setMoreDayKey(key); setMoreOpen(true); }}>
+                               +{dayTasks.length - 5} mais
+                             </button>
+                           )}
+                         </>
+                       ) : daySpecialDates(key).length === 0 ? (
+                         <p className="text-xs text-muted-foreground py-2">Sem tarefas</p>
+                       ) : null}
+                     </div>
+                   )}
                 </div>
               );
             })}
