@@ -1248,7 +1248,7 @@ export function DayViewPanel() {
                 <span className="w-14 text-center shrink-0">Pend.</span>
                 <div className="flex-1 min-w-0 text-center">% Conclusão</div>
                 <span className="w-14 text-center shrink-0">Pts</span>
-                <span className="w-14 text-center shrink-0" title="Pontos perdidos no mês">Perdidos</span>
+                <span className="w-14 text-center shrink-0" title="Pontos perdidos no mês">Perd.</span>
               </div>
               {filteredRank.map((row, idx) => {
           const member = teamByUserId.get(row.user_id);
