@@ -65,15 +65,8 @@ function isGroup(e: NavEntry): e is NavGroup {return "children" in e;}
 
 const NAV: NavEntry[] = [
 { key: "meu_painel", label: "Meu Painel", icon: UserRound },
-{
-  key: "gestao_group",
-  label: "Tarefas",
-  icon: ClipboardList,
-  landingTab: "tarefas",
-  children: [
-  { key: "tarefas", label: "Kanban", icon: LayoutGrid },
-  { key: "agenda_gestao", label: "Agenda", icon: CalendarDays }]
-},
+{ key: "tarefas", label: "Kanban", icon: LayoutGrid },
+{ key: "agenda_gestao", label: "Agenda", icon: CalendarDays },
 {
   key: "dashboard_group",
   label: "Dashboard",
