@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { PM_STAGES } from "./pm-constants";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Plus, Search, LayoutGrid, CalendarDays, FolderOpen, Settings2, CheckCircle2, FileSpreadsheet, Trash2, FileText, Users, ChevronLeft, ChevronRight, CalendarRange, Cake, Star, Calendar, TriangleAlert } from "lucide-react";
+import { Plus, Search, LayoutGrid, CalendarDays, FolderOpen, Settings2, CheckCircle2, FileSpreadsheet, Trash2, FileText, Users, ChevronLeft, ChevronRight, CalendarRange, Cake, Star, Calendar, TriangleAlert, PanelRightOpen } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { addDays, addMonths, subMonths, endOfMonth, format, startOfMonth, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -472,6 +473,7 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
   const updateTask = useUpdatePmTask();
   const [moreOpen, setMoreOpen] = useState(false);
   const [moreDayKey, setMoreDayKey] = useState<string | null>(null);
+  const [donePanelDayKey, setDonePanelDayKey] = useState<string | null>(null);
   const [agendaView, setAgendaView] = useState<"month" | "week">("month");
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [quickCreateOpen, setQuickCreateOpen] = useState(false);
@@ -1048,23 +1050,35 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
                      )}
                    </div>
                    {renderSpecialDates(key, true)}
-                   <div className={cn("space-y-1.5", allDone && "max-h-[520px] overflow-y-auto")}>
-                     {dayTasks.length ? (
-                       <>
-                         {(allDone ? dayTasks : dayTasks.slice(0, 5)).map(renderTaskCard)}
-                         {!allDone && dayTasks.length > 5 && (
-                           <button
-                             type="button"
-                             className="w-full rounded-lg bg-foreground/5 px-2 py-1 text-[10px] font-medium text-muted-foreground/60 hover:bg-foreground/10 hover:text-muted-foreground transition"
-                             onClick={() => { setMoreDayKey(key); setMoreOpen(true); }}>
-                             +{dayTasks.length - 5} mais
-                           </button>
-                         )}
-                       </>
-                     ) : daySpecialDates(key).length === 0 ? (
-                      <p className="text-xs text-muted-foreground py-2">Sem tarefas</p>
-                    ) : null}
-                  </div>
+                   {allDone ? (
+                     <button
+                       type="button"
+                       onClick={() => setDonePanelDayKey(key)}
+                       className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-success/20 bg-success/10 px-2 py-1.5 text-[11px] font-semibold text-success hover:bg-success/15 transition"
+                     >
+                       <CheckCircle2 className="h-3.5 w-3.5" />
+                       <span>{dayTasks.length} {dayTasks.length === 1 ? "tarefa" : "tarefas"}</span>
+                       <PanelRightOpen className="h-3 w-3 opacity-70" />
+                     </button>
+                   ) : (
+                     <div className="space-y-1.5">
+                       {dayTasks.length ? (
+                         <>
+                           {dayTasks.slice(0, 5).map(renderTaskCard)}
+                           {dayTasks.length > 5 && (
+                             <button
+                               type="button"
+                               className="w-full rounded-lg bg-foreground/5 px-2 py-1 text-[10px] font-medium text-muted-foreground/60 hover:bg-foreground/10 hover:text-muted-foreground transition"
+                               onClick={() => { setMoreDayKey(key); setMoreOpen(true); }}>
+                               +{dayTasks.length - 5} mais
+                             </button>
+                           )}
+                         </>
+                       ) : daySpecialDates(key).length === 0 ? (
+                         <p className="text-xs text-muted-foreground py-2">Sem tarefas</p>
+                       ) : null}
+                     </div>
+                   )}
                 </div>
               );
             })}
@@ -1086,7 +1100,8 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
                      key={key}
                      data-day-key={key}
                      className={cn(
-                       "w-[280px] flex-shrink-0 rounded-xl border bg-card/10 p-4 transition",
+                       "flex-shrink-0 rounded-xl border bg-card/10 p-4 transition",
+                       allDone ? "w-[180px]" : "w-[280px]",
                        isToday ? "border-primary ring-2 ring-primary/40" : "border-border/60",
                        !isToday && dayHasOverdue(key) && "border-destructive/50 border-2"
                      )}>
@@ -1103,27 +1118,39 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
                          )}
                        </div>
                      </div>
-                     <div className="space-y-2.5 max-h-[500px] overflow-y-auto">
-                       {renderSpecialDates(key)}
-                       {dayTasks.length ? (
-                         <>
-                           {(allDone ? dayTasks : dayTasks.slice(0, 5)).map(renderTaskCard)}
-                           {!allDone && dayTasks.length > 5 && (
-                             <button
-                               type="button"
-                               className="w-full rounded-lg bg-foreground/5 px-2 py-1.5 text-[10px] font-medium text-muted-foreground/60 hover:bg-foreground/10 hover:text-muted-foreground transition"
-                               onClick={() => { setMoreDayKey(key); setMoreOpen(true); }}>
-                               +{dayTasks.length - 5} mais
-                             </button>
-                           )}
-                         </>
-                      ) : daySpecialDates(key).length === 0 ? (
-                        <div className="grid min-h-[120px] place-items-center rounded-lg border border-dashed border-border/60 bg-card/5 p-4">
-                          <p className="text-sm text-muted-foreground">Sem tarefas</p>
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
+                     {allDone ? (
+                       <button
+                         type="button"
+                         onClick={() => setDonePanelDayKey(key)}
+                         className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-success/20 bg-success/10 px-2 py-2 text-xs font-semibold text-success hover:bg-success/15 transition"
+                       >
+                         <CheckCircle2 className="h-3.5 w-3.5" />
+                         <span>Ver {dayTasks.length} {dayTasks.length === 1 ? "tarefa" : "tarefas"}</span>
+                         <PanelRightOpen className="h-3.5 w-3.5 opacity-70" />
+                       </button>
+                     ) : (
+                       <div className="space-y-2.5 max-h-[500px] overflow-y-auto">
+                         {renderSpecialDates(key)}
+                         {dayTasks.length ? (
+                           <>
+                             {dayTasks.slice(0, 5).map(renderTaskCard)}
+                             {dayTasks.length > 5 && (
+                               <button
+                                 type="button"
+                                 className="w-full rounded-lg bg-foreground/5 px-2 py-1.5 text-[10px] font-medium text-muted-foreground/60 hover:bg-foreground/10 hover:text-muted-foreground transition"
+                                 onClick={() => { setMoreDayKey(key); setMoreOpen(true); }}>
+                                 +{dayTasks.length - 5} mais
+                               </button>
+                             )}
+                           </>
+                         ) : daySpecialDates(key).length === 0 ? (
+                           <div className="grid min-h-[120px] place-items-center rounded-lg border border-dashed border-border/60 bg-card/5 p-4">
+                             <p className="text-sm text-muted-foreground">Sem tarefas</p>
+                           </div>
+                         ) : null}
+                       </div>
+                     )}
+                   </div>
                 );
               })}
             </div>
@@ -1205,7 +1232,8 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
                     }
                     setDraggedTask(null);
                   }}
-                  className={cn("group/cell relative min-h-28 rounded-2xl border border-[#d9d9d9] bg-card/30 backdrop-blur-sm p-2.5 transition-all calendar-card-hover",
+                  className={cn("group/cell relative rounded-2xl border border-[#d9d9d9] bg-card/30 backdrop-blur-sm p-2.5 transition-all calendar-card-hover",
+                    allDoneMonth ? "min-h-[64px]" : "min-h-28",
                     inMonth ? "opacity-100" : "opacity-30 border-transparent",
                     isToday && "border-primary/50 ring-2 ring-primary/15 bg-primary/5",
                     !isToday && inMonth && dayHasOverdue(key) && "border-destructive/50 border-2"
@@ -1217,7 +1245,7 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
                     )}>
                       {format(d, "d")}
                     </div>
-                    {inMonth && (
+                    {inMonth && !allDoneMonth && (
                       <button
                         type="button"
                         className="h-5 w-5 rounded-md flex items-center justify-center text-muted-foreground/40 hover:text-primary hover:bg-primary/10 transition opacity-0 group-hover/cell:opacity-100"
@@ -1227,24 +1255,51 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
                       </button>
                     )}
                   </div>
-                  <div className="space-y-1.5 max-h-[520px] overflow-y-auto">
-                    {renderSpecialDates(key, true)}
-                    {(allDoneMonth ? dayTasks : dayTasks.slice(0, 5)).map(renderTaskCard)}
-                    {!allDoneMonth && dayTasks.length > 5 &&
-                      <button
-                        type="button"
-                        className="w-full rounded-lg bg-foreground/5 px-2 py-1 text-[10px] font-medium text-muted-foreground/60 hover:bg-foreground/10 hover:text-muted-foreground transition"
-                        onClick={() => { setMoreDayKey(key); setMoreOpen(true); }}>
-                        +{dayTasks.length - 5} mais
-                      </button>
-                    }
-                  </div>
+                  {allDoneMonth ? (
+                    <button
+                      type="button"
+                      onClick={() => setDonePanelDayKey(key)}
+                      className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-success/20 bg-success/10 px-2 py-1.5 text-[11px] font-semibold text-success hover:bg-success/15 transition"
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      <span>{dayTasks.length}</span>
+                      <PanelRightOpen className="h-3 w-3 opacity-70" />
+                    </button>
+                  ) : (
+                    <div className="space-y-1.5 max-h-[520px] overflow-y-auto">
+                      {renderSpecialDates(key, true)}
+                      {dayTasks.slice(0, 5).map(renderTaskCard)}
+                      {dayTasks.length > 5 &&
+                        <button
+                          type="button"
+                          className="w-full rounded-lg bg-foreground/5 px-2 py-1 text-[10px] font-medium text-muted-foreground/60 hover:bg-foreground/10 hover:text-muted-foreground transition"
+                          onClick={() => { setMoreDayKey(key); setMoreOpen(true); }}>
+                          +{dayTasks.length - 5} mais
+                        </button>
+                      }
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
         </>
       )}
+
+      {/* Done day sidebar */}
+      <Sheet open={!!donePanelDayKey} onOpenChange={(o) => !o && setDonePanelDayKey(null)}>
+        <SheetContent side="right" className="w-full sm:max-w-md flex flex-col">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-success" />
+              {donePanelDayKey ? format(new Date(`${donePanelDayKey}T12:00:00`), "dd/MM · EEEE", { locale: ptBR }) : "Tarefas"}
+            </SheetTitle>
+          </SheetHeader>
+          <div className="mt-4 flex-1 space-y-2 overflow-y-auto pr-1">
+            {(donePanelDayKey ? tasksByDay.get(donePanelDayKey) ?? [] : []).map(renderTaskCard)}
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* More tasks dialog */}
       <Dialog open={moreOpen} onOpenChange={setMoreOpen}>
