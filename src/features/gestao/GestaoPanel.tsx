@@ -1022,45 +1022,46 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
               const dayTasks = tasksByDay.get(key) ?? [];
               const dow = format(d, "EEEE", { locale: ptBR });
               const dowTitle = dow.charAt(0).toUpperCase() + dow.slice(1);
-              const isToday = key === todayKey;
-              const doneCount = dayTasks.filter((t) => t.status_global === "concluido").length;
+               const isToday = key === todayKey;
+               const doneCount = dayTasks.filter((t) => t.status_global === "concluido").length;
+               const allDone = dayTasks.length > 0 && doneCount === dayTasks.length;
 
-              return (
-                <div
-                  key={key}
-                  data-day-key={key}
-                  className={cn(
-                    "rounded-xl border p-3 transition",
-                    isToday ? "border-primary/40 bg-primary/5" : "border-border/30 bg-card/20",
-                    !isToday && dayHasOverdue(key) && "border-destructive/50 border-2"
-                  )}>
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className={cn(
-                      "grid h-7 w-7 place-items-center rounded-lg text-xs font-bold",
-                      isToday ? "bg-sidebar text-sidebar-foreground shadow-sm" : "text-muted-foreground/70"
-                    )}>
-                      {format(d, "dd")}
-                    </div>
-                    <span className={cn("text-xs capitalize", isToday && "text-primary font-medium")}>{dowTitle}</span>
-                    {dayTasks.length > 0 && (
-                      <Badge variant="secondary" className="ml-auto text-[10px]">{doneCount}/{dayTasks.length}</Badge>
-                    )}
-                  </div>
-                  {renderSpecialDates(key, true)}
-                  <div className="space-y-1.5">
-                    {dayTasks.length ? (
-                      <>
-                        {dayTasks.slice(0, 5).map(renderTaskCard)}
-                        {dayTasks.length > 5 && (
-                          <button
-                            type="button"
-                            className="w-full rounded-lg bg-foreground/5 px-2 py-1 text-[10px] font-medium text-muted-foreground/60 hover:bg-foreground/10 hover:text-muted-foreground transition"
-                            onClick={() => { setMoreDayKey(key); setMoreOpen(true); }}>
-                            +{dayTasks.length - 5} mais
-                          </button>
-                        )}
-                      </>
-                    ) : daySpecialDates(key).length === 0 ? (
+               return (
+                 <div
+                   key={key}
+                   data-day-key={key}
+                   className={cn(
+                     "rounded-xl border p-3 transition",
+                     isToday ? "border-primary/40 bg-primary/5" : "border-border/30 bg-card/20",
+                     !isToday && dayHasOverdue(key) && "border-destructive/50 border-2"
+                   )}>
+                   <div className="flex items-center gap-2 mb-2">
+                     <div className={cn(
+                       "grid h-7 w-7 place-items-center rounded-lg text-xs font-bold",
+                       isToday ? "bg-sidebar text-sidebar-foreground shadow-sm" : "text-muted-foreground/70"
+                     )}>
+                       {format(d, "dd")}
+                     </div>
+                     <span className={cn("text-xs capitalize", isToday && "text-primary font-medium")}>{dowTitle}</span>
+                     {dayTasks.length > 0 && (
+                       <Badge variant="secondary" className="ml-auto text-[10px]">{doneCount}/{dayTasks.length}</Badge>
+                     )}
+                   </div>
+                   {renderSpecialDates(key, true)}
+                   <div className={cn("space-y-1.5", allDone && "max-h-[520px] overflow-y-auto")}>
+                     {dayTasks.length ? (
+                       <>
+                         {(allDone ? dayTasks : dayTasks.slice(0, 5)).map(renderTaskCard)}
+                         {!allDone && dayTasks.length > 5 && (
+                           <button
+                             type="button"
+                             className="w-full rounded-lg bg-foreground/5 px-2 py-1 text-[10px] font-medium text-muted-foreground/60 hover:bg-foreground/10 hover:text-muted-foreground transition"
+                             onClick={() => { setMoreDayKey(key); setMoreOpen(true); }}>
+                             +{dayTasks.length - 5} mais
+                           </button>
+                         )}
+                       </>
+                     ) : daySpecialDates(key).length === 0 ? (
                       <p className="text-xs text-muted-foreground py-2">Sem tarefas</p>
                     ) : null}
                   </div>
