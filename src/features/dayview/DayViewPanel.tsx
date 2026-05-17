@@ -327,6 +327,18 @@ export function DayViewPanel() {
     }
   });
 
+  // Overrides do relatório de desempenho — quando admin define pontuação manual, ela substitui a penalidade automática
+  const deadlineOverridesQ = useQuery({
+    queryKey: ["deadline_report_overrides", selectedYear, selectedMonth],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("task_deadline_overrides")
+        .select("task_id,override_points");
+      if (error) throw error;
+      return data ?? [];
+    }
+  });
+
   // Track previous ranking positions in real-time
   const prevRankRef = useRef<Map<string, number>>(new Map());
 
@@ -406,17 +418,20 @@ export function DayViewPanel() {
     return stats;
   }, [tasksQ.data, assigneesQ.data, pmSubtasksQ.data, pmTasksQ.data]);
 
-  // Pontos perdidos por usuário no mês: soma do |late_penalty_value| das tasks da agenda
+  // Pontos perdidos por usuário no mês: respeita overrides do relatório de desempenho
   const lostPointsByUser = useMemo(() => {
     const map = new Map<string, number>();
+    const overrideMap = new Map((deadlineOverridesQ.data ?? []).map((o: any) => [o.task_id, Number(o.override_points)]));
     for (const t of (tasksQ.data ?? [])) {
       const uid = t.assigned_user_id;
-      const pv = (t as any).late_penalty_value as number | null | undefined;
-      if (!uid || pv == null || pv >= 0) continue;
+      if (!uid) continue;
+      const override = overrideMap.get(t.id);
+      const pv = override != null ? override : ((t as any).late_penalty_value as number | null | undefined);
+      if (pv == null || pv >= 0) continue;
       map.set(uid, (map.get(uid) ?? 0) + Math.abs(pv));
     }
     return map;
-  }, [tasksQ.data]);
+  }, [tasksQ.data, deadlineOverridesQ.data]);
 
   const monthlyRank = useMemo(() => {
     const scores = scoresQ.data ?? [];
