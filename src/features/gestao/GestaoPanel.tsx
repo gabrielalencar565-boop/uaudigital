@@ -1271,15 +1271,22 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
                     )}
                   </div>
                   {allDoneMonth ? (
-                    <button
-                      type="button"
-                      onClick={() => setDonePanelDayKey(key)}
-                      className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-success/20 bg-success/10 px-2 py-1.5 text-[11px] font-semibold text-success hover:bg-success/15 transition"
-                    >
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      <span>{dayTasks.length}</span>
-                      <PanelRightOpen className="h-3 w-3 opacity-70" />
-                    </button>
+                    <div className="space-y-1.5">
+                      <button
+                        type="button"
+                        onClick={() => toggleDoneDay(key)}
+                        className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg bg-success px-2 py-1.5 text-[11px] font-semibold text-success-foreground hover:opacity-90 transition"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        <span>{dayTasks.length}</span>
+                        <ChevronDown className={cn("h-3 w-3 transition-transform", expandedDoneDays.has(key) && "rotate-180")} />
+                      </button>
+                      {expandedDoneDays.has(key) && (
+                        <div className="space-y-1.5 max-h-[520px] overflow-y-auto">
+                          {dayTasks.map(renderTaskCard)}
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     <div className="space-y-1.5 max-h-[520px] overflow-y-auto">
                       {renderSpecialDates(key, true)}
