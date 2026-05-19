@@ -115,12 +115,6 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
     return (globalTagsQ.data ?? []).map(t => `${t.name}:${t.color_key}`);
   }, [globalTagsQ.data]);
 
-  if (!task || !currentTask || !resolvedRootTask) return null;
-
-  const childTasks = childTasksQ.data ?? [];
-  const comments = commentsQ.data ?? [];
-  const attachments = attachmentsQ.data ?? [];
-
   const isSubtaskView = taskStack.length > 0;
 
   // Merge candidates: outras tarefas PDF do mesmo cliente/mês com post_type complementar.
@@ -147,6 +141,13 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
       return `${d.getFullYear()}-${d.getMonth()}` === ownKey;
     });
   }, [tasksQ.data, currentTask, isSubtaskView]);
+
+  if (!task || !currentTask || !resolvedRootTask) return null;
+
+  const childTasks = childTasksQ.data ?? [];
+  const comments = commentsQ.data ?? [];
+  const attachments = attachmentsQ.data ?? [];
+
 
   const stackTasks = taskStack.map(id => {
     const found = (rootChildTasksQ.data ?? []).find(t => t.id === id);
