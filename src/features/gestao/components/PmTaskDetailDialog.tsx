@@ -184,6 +184,21 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
             </span>
           ))}
           <div className="flex-1" />
+          {mergeCandidates.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1.5 rounded-lg text-xs text-primary hover:bg-primary/10"
+              title={`Unir esta tarefa PDF com a tarefa ${currentTask.post_type === "design" ? "Vídeo" : "Design"} divergente do mesmo cliente`}
+              onClick={() => {
+                setSelectedMergeId(mergeCandidates[0].id);
+                setShowMergeConfirm(true);
+              }}
+            >
+              <Combine className="h-3.5 w-3.5" />
+              Unir com {currentTask.post_type === "design" ? "Vídeo" : "Design"}
+            </Button>
+          )}
           <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-muted-foreground hover:text-destructive" title="Mover para lixeira" onClick={() => setShowDeleteConfirm(true)}><Trash2 className="h-4 w-4" /></Button>
           <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg" onClick={handleClose}><X className="h-4 w-4" /></Button>
         </div>
