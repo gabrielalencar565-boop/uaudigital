@@ -62,7 +62,10 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
   const [taskStack, setTaskStack] = useState<string[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showMergeConfirm, setShowMergeConfirm] = useState(false);
+  const [selectedMergeId, setSelectedMergeId] = useState<string | null>(null);
   const deleteTask = useUpdatePmTask();
+  const mergePdfTasks = useMergePdfTasks();
   const queryClientPrefetch = useQueryClient();
 
   const tasksQ = usePmTasks();
