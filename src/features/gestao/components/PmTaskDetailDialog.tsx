@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  Calendar, UserCircle, Flag, X, ChevronRight, ArrowLeft, Trash2,
+  Calendar, UserCircle, Flag, X, ChevronRight, ArrowLeft, Trash2, Combine,
   Layers, Tag, MessageSquare, Plus, Check, CheckCircle2, RotateCcw, Paperclip, ListTodo, FileText, Pencil, Lock
 } from "lucide-react";
 import { useSession } from "@/hooks/use-session";
@@ -25,7 +25,7 @@ import {
 import { usePeriodicStages } from "../hooks/use-periodic-stages";
 import {
   useUpdatePmTask, useCreatePmTask, usePmTasks, usePmChildTasks,
-  usePmComments, usePmAttachments, usePmSyncStageCompletion,
+  usePmComments, usePmAttachments, usePmSyncStageCompletion, useMergePdfTasks,
 } from "../hooks/use-pm-data";
 import { usePmTags } from "../hooks/use-pm-tags";
 import { useDefaultFlowWithDates, getNextStages, getFixedAssignee, getFixedWatchers, resolveAssigneeStageKey } from "./PmStageFlowConfig";
@@ -62,7 +62,10 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
   const [taskStack, setTaskStack] = useState<string[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showMergeConfirm, setShowMergeConfirm] = useState(false);
+  const [selectedMergeId, setSelectedMergeId] = useState<string | null>(null);
   const deleteTask = useUpdatePmTask();
+  const mergePdfTasks = useMergePdfTasks();
   const queryClientPrefetch = useQueryClient();
 
   const tasksQ = usePmTasks();
@@ -120,6 +123,31 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
 
   const isSubtaskView = taskStack.length > 0;
 
+  // Merge candidates: outras tarefas PDF do mesmo cliente/mês com post_type complementar.
+  // Só aparece quando a tarefa atual é raiz (não estamos em subtask view) e está no estágio PDF.
+  const mergeCandidates = useMemo(() => {
+    if (isSubtaskView) return [] as PmTask[];
+    if (!currentTask || currentTask.stage_current !== "pdf") return [] as PmTask[];
+    if (currentTask.status_global === "concluido") return [] as PmTask[];
+    if (!currentTask.due_date) return [] as PmTask[];
+    const ownType = currentTask.post_type;
+    if (ownType !== "design" && ownType !== "video") return [] as PmTask[];
+    const wantedType = ownType === "design" ? "video" : "design";
+    const ownDue = new Date(`${currentTask.due_date}T00:00:00`);
+    const ownKey = `${ownDue.getFullYear()}-${ownDue.getMonth()}`;
+    return (tasksQ.data ?? []).filter((t) => {
+      if (t.id === currentTask.id) return false;
+      if ((t as any).deleted_at) return false;
+      if (t.client_id !== currentTask.client_id) return false;
+      if (t.stage_current !== "pdf") return false;
+      if (t.status_global === "concluido") return false;
+      if (t.post_type !== wantedType) return false;
+      if (!t.due_date) return false;
+      const d = new Date(`${t.due_date}T00:00:00`);
+      return `${d.getFullYear()}-${d.getMonth()}` === ownKey;
+    });
+  }, [tasksQ.data, currentTask, isSubtaskView]);
+
   const stackTasks = taskStack.map(id => {
     const found = (rootChildTasksQ.data ?? []).find(t => t.id === id);
     return found ?? { id, title: "..." } as PmTask;
@@ -156,6 +184,21 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
             </span>
           ))}
           <div className="flex-1" />
+          {mergeCandidates.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1.5 rounded-lg text-xs text-primary hover:bg-primary/10"
+              title={`Unir esta tarefa PDF com a tarefa ${currentTask.post_type === "design" ? "Vídeo" : "Design"} divergente do mesmo cliente`}
+              onClick={() => {
+                setSelectedMergeId(mergeCandidates[0].id);
+                setShowMergeConfirm(true);
+              }}
+            >
+              <Combine className="h-3.5 w-3.5" />
+              Unir com {currentTask.post_type === "design" ? "Vídeo" : "Design"}
+            </Button>
+          )}
           <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-muted-foreground hover:text-destructive" title="Mover para lixeira" onClick={() => setShowDeleteConfirm(true)}><Trash2 className="h-4 w-4" /></Button>
           <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg" onClick={handleClose}><X className="h-4 w-4" /></Button>
         </div>
@@ -232,6 +275,59 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
             toast.success("Tarefa movida para a lixeira");
             handleClose();
           }}>Excluir</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    <AlertDialog open={showMergeConfirm} onOpenChange={setShowMergeConfirm}>
+      <AlertDialogContent className="z-[200]">
+        <AlertDialogHeader>
+          <AlertDialogTitle>Unir tarefas PDF?</AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div className="space-y-3">
+              <p>As duas tarefas PDF do mesmo cliente serão unidas em uma só. A mais antiga é mantida e a outra é movida para a lixeira.</p>
+              {mergeCandidates.length > 1 && (
+                <div className="space-y-1.5">
+                  <p className="text-xs font-medium text-muted-foreground">Escolha a tarefa para unir:</p>
+                  <div className="space-y-1 max-h-40 overflow-y-auto">
+                    {mergeCandidates.map((c) => (
+                      <label key={c.id} className="flex items-center gap-2 p-2 rounded-lg border border-border/40 cursor-pointer hover:bg-muted/40">
+                        <input
+                          type="radio"
+                          name="merge-target"
+                          checked={selectedMergeId === c.id}
+                          onChange={() => setSelectedMergeId(c.id)}
+                        />
+                        <span className="text-sm truncate">{c.title} ({c.post_type === "video" ? "Vídeo" : "Design"})</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">Subtarefas, anexos, comentários e responsáveis são preservados na tarefa principal. A pontuação é recalculada automaticamente.</p>
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={!selectedMergeId || mergePdfTasks.isPending}
+            onClick={async (e) => {
+              e.preventDefault();
+              if (!selectedMergeId || !currentTask) return;
+              try {
+                await mergePdfTasks.mutateAsync({ taskAId: currentTask.id, taskBId: selectedMergeId });
+                toast.success("Tarefas unidas em uma só");
+                setShowMergeConfirm(false);
+                handleClose();
+              } catch (err: any) {
+                console.error(err);
+                toast.error(err?.message ?? "Erro ao unir tarefas");
+              }
+            }}
+          >
+            {mergePdfTasks.isPending ? "Unindo..." : "Unir tarefas"}
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
