@@ -25,7 +25,7 @@ import {
 import { usePeriodicStages } from "../hooks/use-periodic-stages";
 import {
   useUpdatePmTask, useCreatePmTask, usePmTasks, usePmChildTasks,
-  usePmComments, usePmAttachments, usePmSyncStageCompletion,
+  usePmComments, usePmAttachments, usePmSyncStageCompletion, useMergePdfTasks,
 } from "../hooks/use-pm-data";
 import { usePmTags } from "../hooks/use-pm-tags";
 import { useDefaultFlowWithDates, getNextStages, getFixedAssignee, getFixedWatchers, resolveAssigneeStageKey } from "./PmStageFlowConfig";
