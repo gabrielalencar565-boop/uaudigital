@@ -1,0 +1,1 @@
+UPDATE public.pm_tasks SET deleted_at = NULL WHERE id IN ('6d9814b9-15d0-44d0-a9ff-efef3e3d1492','c2fda1a5-7d32-4ff1-83a1-fbaf3d5e953b','cd94090a-2963-455c-b7aa-97d86acd276d','d74d4a01-29e0-4f17-a693-36549051077f');
