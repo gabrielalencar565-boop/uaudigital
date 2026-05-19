@@ -712,6 +712,104 @@ export function usePmSyncStageCompletion() {
   });
 }
 
+// ── Merge two PDF tasks (Design + Vídeo divergentes) em uma só ──
+// Mantém a mais antiga (created_at). Reaponta filhos/subtarefas/anexos/comentários
+// da secundária para a principal, une responsáveis e tags, e soft-deleta a secundária.
+export function useMergePdfTasks() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ taskAId, taskBId }: { taskAId: string; taskBId: string }) => {
+      const { data: tasks, error: fetchErr } = await sb
+        .from("pm_tasks")
+        .select("*")
+        .in("id", [taskAId, taskBId])
+        .is("deleted_at", null);
+      if (fetchErr) throw fetchErr;
+      if (!tasks || tasks.length !== 2) throw new Error("Tarefas não encontradas");
+
+      const [first, second] = tasks as PmTask[];
+      const primary = new Date(first.created_at) <= new Date(second.created_at) ? first : second;
+      const secondary = primary.id === first.id ? second : first;
+
+      // 1) Reaponta tudo da secundária para a principal
+      await sb.from("pm_tasks").update({ parent_task_id: primary.id }).eq("parent_task_id", secondary.id);
+      await sb.from("pm_subtasks").update({ task_id: primary.id }).eq("task_id", secondary.id);
+      await sb.from("pm_attachments").update({ task_id: primary.id }).eq("task_id", secondary.id);
+      await sb.from("pm_comments").update({ task_id: primary.id }).eq("task_id", secondary.id);
+
+      // 2) Une responsáveis e tags na principal
+      const primaryAssignee = primary.assignee_id;
+      const allWatchers = new Set<string>([
+        ...(primary.watchers ?? []),
+        ...(secondary.watchers ?? []),
+      ]);
+      if (secondary.assignee_id && secondary.assignee_id !== primaryAssignee) {
+        allWatchers.add(secondary.assignee_id);
+      }
+      if (primaryAssignee) allWatchers.delete(primaryAssignee);
+
+      const mergedTags = Array.from(new Set([...(primary.tags ?? []), ...(secondary.tags ?? [])]));
+
+      const primaryDue = primary.due_date ? new Date(`${primary.due_date}T00:00:00`).getTime() : Infinity;
+      const secondaryDue = secondary.due_date ? new Date(`${secondary.due_date}T00:00:00`).getTime() : Infinity;
+      const earliestDue = primaryDue <= secondaryDue ? primary.due_date : secondary.due_date;
+
+      await sb.from("pm_tasks").update({
+        watchers: Array.from(allWatchers),
+        tags: mergedTags,
+        due_date: earliestDue,
+        post_type: null,
+      }).eq("id", primary.id);
+
+      // 3) Soft-delete a secundária
+      const { data: { user } } = await supabase.auth.getUser();
+      await sb.from("pm_tasks").update({
+        deleted_at: new Date().toISOString(),
+        deleted_by: user?.id ?? null,
+      }).eq("id", secondary.id);
+
+      // 4) Log de auditoria
+      if (user) {
+        await sb.from("pm_activity_log").insert({
+          entity_type: "pm_task",
+          entity_id: primary.id,
+          action: "merge_pdf_tasks",
+          created_by: user.id,
+          metadata: { kept_id: primary.id, removed_id: secondary.id },
+        }).then(null, console.error);
+      }
+
+      // 5) Recompute performance para todos os envolvidos no mês da due_date
+      const affectedUsers = new Set<string>();
+      if (primary.assignee_id) affectedUsers.add(primary.assignee_id);
+      if (secondary.assignee_id) affectedUsers.add(secondary.assignee_id);
+      (primary.watchers ?? []).forEach((u) => u && affectedUsers.add(u));
+      (secondary.watchers ?? []).forEach((u) => u && affectedUsers.add(u));
+
+      const dueDate = earliestDue ? new Date(`${earliestDue}T00:00:00`) : null;
+      if (dueDate) {
+        const year = dueDate.getFullYear();
+        const month = dueDate.getMonth() + 1;
+        await Promise.all(
+          Array.from(affectedUsers).map((uid) =>
+            supabase.rpc("recompute_metas_prazos", { _user_id: uid, _year: year, _month: month } as any).then(null, console.error)
+          )
+        );
+      }
+
+      return { primaryId: primary.id, secondaryId: secondary.id };
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["pm_tasks"] });
+      qc.invalidateQueries({ queryKey: ["pm_child_tasks"] });
+      qc.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
+      qc.invalidateQueries({ queryKey: ["pm_attachments"] });
+      qc.invalidateQueries({ queryKey: ["pm_comments"] });
+      qc.invalidateQueries({ queryKey: ["pm_attachments_batch"] });
+    },
+  });
+}
+
 // Keep backward compat exports
 export function useUpdatePmSubtask() { return useUpdatePmTask(); }
 export function useCreatePmSubtask() { return useCreatePmTask(); }
