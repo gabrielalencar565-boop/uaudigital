@@ -278,6 +278,59 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+
+    <AlertDialog open={showMergeConfirm} onOpenChange={setShowMergeConfirm}>
+      <AlertDialogContent className="z-[200]">
+        <AlertDialogHeader>
+          <AlertDialogTitle>Unir tarefas PDF?</AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div className="space-y-3">
+              <p>As duas tarefas PDF do mesmo cliente serão unidas em uma só. A mais antiga é mantida e a outra é movida para a lixeira.</p>
+              {mergeCandidates.length > 1 && (
+                <div className="space-y-1.5">
+                  <p className="text-xs font-medium text-muted-foreground">Escolha a tarefa para unir:</p>
+                  <div className="space-y-1 max-h-40 overflow-y-auto">
+                    {mergeCandidates.map((c) => (
+                      <label key={c.id} className="flex items-center gap-2 p-2 rounded-lg border border-border/40 cursor-pointer hover:bg-muted/40">
+                        <input
+                          type="radio"
+                          name="merge-target"
+                          checked={selectedMergeId === c.id}
+                          onChange={() => setSelectedMergeId(c.id)}
+                        />
+                        <span className="text-sm truncate">{c.title} ({c.post_type === "video" ? "Vídeo" : "Design"})</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">Subtarefas, anexos, comentários e responsáveis são preservados na tarefa principal. A pontuação é recalculada automaticamente.</p>
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={!selectedMergeId || mergePdfTasks.isPending}
+            onClick={async (e) => {
+              e.preventDefault();
+              if (!selectedMergeId || !currentTask) return;
+              try {
+                await mergePdfTasks.mutateAsync({ taskAId: currentTask.id, taskBId: selectedMergeId });
+                toast.success("Tarefas unidas em uma só");
+                setShowMergeConfirm(false);
+                handleClose();
+              } catch (err: any) {
+                console.error(err);
+                toast.error(err?.message ?? "Erro ao unir tarefas");
+              }
+            }}
+          >
+            {mergePdfTasks.isPending ? "Unindo..." : "Unir tarefas"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
     </>
   );
 }
