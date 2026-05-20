@@ -185,14 +185,14 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
               variant="ghost"
               size="sm"
               className="h-7 gap-1.5 rounded-lg text-xs text-primary hover:bg-primary/10"
-              title={`Unir esta tarefa PDF com a tarefa ${currentTask.post_type === "design" ? "Vídeo" : "Design"} divergente do mesmo cliente`}
+              title="Unir esta tarefa PDF com outra tarefa PDF do mesmo cliente/mês"
               onClick={() => {
                 setSelectedMergeId(mergeCandidates[0].id);
                 setShowMergeConfirm(true);
               }}
             >
               <Combine className="h-3.5 w-3.5" />
-              Unir com {currentTask.post_type === "design" ? "Vídeo" : "Design"}
+              Unir PDF{mergeCandidates.length > 1 ? ` (${mergeCandidates.length})` : ""}
             </Button>
           )}
           <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-muted-foreground hover:text-destructive" title="Mover para lixeira" onClick={() => setShowDeleteConfirm(true)}><Trash2 className="h-4 w-4" /></Button>
