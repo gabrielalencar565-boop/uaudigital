@@ -294,7 +294,7 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
                           checked={selectedMergeId === c.id}
                           onChange={() => setSelectedMergeId(c.id)}
                         />
-                        <span className="text-sm truncate">{c.title} ({c.post_type === "video" ? "Vídeo" : "Design"})</span>
+                        <span className="text-sm truncate">{c.title}{c.post_type ? ` (${c.post_type === "video" ? "Vídeo" : "Design"})` : ""}{c.status_global === "concluido" ? " — concluída" : ""}</span>
                       </label>
                     ))}
                   </div>
