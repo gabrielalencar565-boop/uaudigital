@@ -117,16 +117,13 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
 
   const isSubtaskView = taskStack.length > 0;
 
-  // Merge candidates: outras tarefas PDF do mesmo cliente/mês com post_type complementar.
-  // Só aparece quando a tarefa atual é raiz (não estamos em subtask view) e está no estágio PDF.
+  // Merge candidates: outras tarefas PDF do mesmo cliente/mês.
+  // Regras relaxadas: aceita qualquer post_type (inclusive vazio) e tarefas concluídas,
+  // para permitir unir PDFs antigos divergentes que já foram entregues.
   const mergeCandidates = useMemo(() => {
     if (isSubtaskView) return [] as PmTask[];
     if (!currentTask || currentTask.stage_current !== "pdf") return [] as PmTask[];
-    if (currentTask.status_global === "concluido") return [] as PmTask[];
     if (!currentTask.due_date) return [] as PmTask[];
-    const ownType = currentTask.post_type;
-    if (ownType !== "design" && ownType !== "video") return [] as PmTask[];
-    const wantedType = ownType === "design" ? "video" : "design";
     const ownDue = new Date(`${currentTask.due_date}T00:00:00`);
     const ownKey = `${ownDue.getFullYear()}-${ownDue.getMonth()}`;
     return (tasksQ.data ?? []).filter((t) => {
@@ -134,8 +131,6 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
       if ((t as any).deleted_at) return false;
       if (t.client_id !== currentTask.client_id) return false;
       if (t.stage_current !== "pdf") return false;
-      if (t.status_global === "concluido") return false;
-      if (t.post_type !== wantedType) return false;
       if (!t.due_date) return false;
       const d = new Date(`${t.due_date}T00:00:00`);
       return `${d.getFullYear()}-${d.getMonth()}` === ownKey;
