@@ -340,7 +340,7 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
         </div>
         <input ref={fileRef} type="file" multiple className="hidden" onChange={handleUpload} />
       </div>
-      </div>
+
 
       {/* Upload progress indicators */}
       {uploadingFiles.length > 0 && (
