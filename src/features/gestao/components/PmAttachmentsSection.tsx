@@ -326,11 +326,20 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
             </span>
           )}
         </span>
-        <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploadingFiles.length > 0}>
-          {uploadingFiles.length > 0 ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Upload className="mr-1 h-3 w-3" />}
-          Upload
-        </Button>
+        <div className="flex items-center gap-2">
+          {attachments.length > 0 && (
+            <Button size="sm" variant="outline" onClick={handleDownloadAll} disabled={downloadingAll}>
+              {downloadingAll ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Download className="mr-1 h-3 w-3" />}
+              Baixar todos
+            </Button>
+          )}
+          <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploadingFiles.length > 0}>
+            {uploadingFiles.length > 0 ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Upload className="mr-1 h-3 w-3" />}
+            Upload
+          </Button>
+        </div>
         <input ref={fileRef} type="file" multiple className="hidden" onChange={handleUpload} />
+      </div>
       </div>
 
       {/* Upload progress indicators */}
