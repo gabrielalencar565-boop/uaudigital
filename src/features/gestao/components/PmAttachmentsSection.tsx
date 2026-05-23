@@ -107,6 +107,7 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
   const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
+  const [downloadingAll, setDownloadingAll] = useState(false);
 
   const doUpload = useCallback(async (file: File) => {
     if (file.size > 1024 * 1024 * 1024) { toast.error("Arquivo muito grande (máx 1GB)"); return; }
@@ -273,6 +274,41 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
     }
   };
 
+  const handleDownloadAll = async () => {
+    const downloadable = attachments.filter(a => !!a.public_url);
+    if (downloadable.length === 0) {
+      toast.error("Nenhum anexo disponível para download");
+      return;
+    }
+    setDownloadingAll(true);
+    toast.info(`Baixando ${downloadable.length} anexo${downloadable.length > 1 ? 's' : ''}...`);
+    let failed = 0;
+    for (const att of downloadable) {
+      try {
+        const res = await fetch(att.public_url!);
+        const blob = await res.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = blobUrl;
+        a.download = att.file_name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(blobUrl);
+        await new Promise((r) => setTimeout(r, 150));
+      } catch {
+        failed++;
+      }
+    }
+    setDownloadingAll(false);
+    if (failed > 0) {
+      toast.warning(`Download concluído. ${failed} arquivo${failed > 1 ? 's' : ''} falhou.`);
+    } else {
+      toast.success("Download concluído!");
+    }
+  };
+
+
   return (
     <div
       className="space-y-3"
@@ -290,12 +326,21 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
             </span>
           )}
         </span>
-        <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploadingFiles.length > 0}>
-          {uploadingFiles.length > 0 ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Upload className="mr-1 h-3 w-3" />}
-          Upload
-        </Button>
+        <div className="flex items-center gap-2">
+          {attachments.length > 0 && (
+            <Button size="sm" variant="outline" onClick={handleDownloadAll} disabled={downloadingAll}>
+              {downloadingAll ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Download className="mr-1 h-3 w-3" />}
+              Baixar todos
+            </Button>
+          )}
+          <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploadingFiles.length > 0}>
+            {uploadingFiles.length > 0 ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Upload className="mr-1 h-3 w-3" />}
+            Upload
+          </Button>
+        </div>
         <input ref={fileRef} type="file" multiple className="hidden" onChange={handleUpload} />
       </div>
+
 
       {/* Upload progress indicators */}
       {uploadingFiles.length > 0 && (
