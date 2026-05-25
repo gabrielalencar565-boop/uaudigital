@@ -515,16 +515,28 @@ function UserCard({
 
       <Separator className="my-1" />
 
-      {/* Email button */}
-      <a
-        href={`mailto:${user.email}`}
-        className="inline-flex items-center gap-2 rounded-lg border border-border/60 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted/50 transition-colors"
-      >
-        <Mail className="h-3.5 w-3.5" />
-        Email
-      </a>
+      {/* Email + Reset password */}
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        <a
+          href={`mailto:${user.email}`}
+          className="inline-flex items-center gap-2 rounded-lg border border-border/60 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted/50 transition-colors"
+        >
+          <Mail className="h-3.5 w-3.5" />
+          Email
+        </a>
+        <button
+          type="button"
+          onClick={onGenerateResetLink}
+          className="inline-flex items-center gap-2 rounded-lg border border-border/60 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted/50 transition-colors"
+          title="Gerar link de redefinição de senha"
+        >
+          <KeyRound className="h-3.5 w-3.5" />
+          Resetar senha
+        </button>
+      </div>
 
       <Separator className="my-1" />
+
 
       {/* Actions */}
       <div className="flex items-center gap-2">
