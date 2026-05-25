@@ -475,6 +475,7 @@ function UserCard({
   onRevoke,
   onHide,
   onUnhide,
+  onGenerateResetLink,
   isBusy,
 }: {
   user: AdminUserRow;
@@ -483,6 +484,7 @@ function UserCard({
   onRevoke: () => void;
   onHide: () => void;
   onUnhide: () => void;
+  onGenerateResetLink: () => void;
   isBusy: boolean;
 }) {
   return (
