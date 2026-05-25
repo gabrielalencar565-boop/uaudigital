@@ -595,3 +595,126 @@ function UserCard({
     </div>
   );
 }
+
+/* ───────── Reset Link Dialog ───────── */
+
+function ResetLinkDialog({
+  user,
+  onClose,
+}: {
+  user: AdminUserRow | null;
+  onClose: () => void;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [link, setLink] = useState<string | null>(null);
+
+  // Reset state when user changes
+  const currentUserId = user?.user_id ?? null;
+  useMemo(() => {
+    setLink(null);
+    setLoading(false);
+  }, [currentUserId]);
+
+  const generate = async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-generate-recovery-link", {
+        body: {
+          email: user.email,
+          redirect_to: `${window.location.origin}/auth?mode=reset`,
+        },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const action = (data as any)?.action_link as string | undefined;
+      if (!action) throw new Error("Link não retornado");
+      setLink(action);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao gerar link");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const copy = async () => {
+    if (!link) return;
+    try {
+      await navigator.clipboard.writeText(link);
+      toast.success("Link copiado!");
+    } catch {
+      toast.error("Não foi possível copiar");
+    }
+  };
+
+  return (
+    <Dialog open={!!user} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <KeyRound className="h-4 w-4" />
+            Resetar senha
+          </DialogTitle>
+        </DialogHeader>
+
+        {user && (
+          <div className="space-y-4">
+            <div className="rounded-lg border border-border/60 bg-card/30 p-3">
+              <p className="text-sm font-medium">{user.display_name}</p>
+              <p className="text-xs text-muted-foreground">{user.email}</p>
+            </div>
+
+            {!link ? (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Vou gerar um link de redefinição de senha válido por <strong>1 hora</strong>.
+                  Você copia e envia pro usuário (WhatsApp, Slack, etc.). Ele abre o link, define
+                  a nova senha e entra normalmente.
+                </p>
+                <Button onClick={generate} disabled={loading} variant="brand" className="w-full">
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" /> Gerando...
+                    </>
+                  ) : (
+                    <>
+                      <KeyRound className="h-4 w-4" /> Gerar link de reset
+                    </>
+                  )}
+                </Button>
+              </>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">
+                    Link gerado (válido por 1h)
+                  </Label>
+                  <div className="rounded-lg border border-border/60 bg-muted/30 p-3 text-xs break-all font-mono">
+                    {link}
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={copy} variant="brand" className="flex-1 gap-2">
+                    <Copy className="h-4 w-4" /> Copiar link
+                  </Button>
+                  <Button onClick={generate} variant="outline" disabled={loading}>
+                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Gerar novo"}
+                  </Button>
+                </div>
+                <p className="text-[11px] text-muted-foreground text-center">
+                  É single-use: depois que o usuário usar, o link expira.
+                </p>
+              </>
+            )}
+          </div>
+        )}
+
+        <DialogFooter>
+          <Button variant="secondary" onClick={onClose}>
+            Fechar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
