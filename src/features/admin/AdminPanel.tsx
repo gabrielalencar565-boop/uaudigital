@@ -369,6 +369,7 @@ export function AdminPanel() {
             onRevoke={() => revoke.mutate(r)}
             onHide={() => hide.mutate(r)}
             onUnhide={() => unhide.mutate(r)}
+            onGenerateResetLink={() => setResetLinkUser(r)}
             isBusy={isBusy}
           />
         ))}
@@ -378,6 +379,10 @@ export function AdminPanel() {
           </p>
         )}
       </div>
+
+      {/* Dialog de link de reset */}
+      <ResetLinkDialog user={resetLinkUser} onClose={() => setResetLinkUser(null)} />
+
 
       {/* Dialog de edição */}
       <Dialog open={!!editRoleUser} onOpenChange={(open) => !open && setEditRoleUser(null)}>
