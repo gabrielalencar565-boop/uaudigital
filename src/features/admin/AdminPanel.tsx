@@ -64,6 +64,7 @@ export function AdminPanel() {
   const [editRoleUser, setEditRoleUser] = useState<AdminUserRow | null>(null);
   const [editRoles, setEditRoles] = useState<AppRole[]>([]);
   const [editSquadIds, setEditSquadIds] = useState<string[]>([]);
+  const [resetLinkUser, setResetLinkUser] = useState<AdminUserRow | null>(null);
 
   const usersQ = useAdminUsers();
   const squadsQ = useSquads();
