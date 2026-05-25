@@ -1,29 +1,21 @@
-## Objetivo
-Adicionar uma opção no header da seção de anexos para baixar todos os arquivos anexados de uma só vez.
+# Gerar link de recuperação para isacsbatista@icloud.com
 
-## Arquivo alvo
-`src/features/gestao/components/PmAttachmentsSection.tsx`
+## O que vou fazer
 
-## Implementação
+Chamar a API admin do backend (com a service role key, server-side via curl) no endpoint `/auth/v1/admin/generate_link` com:
 
-### 1. Adicionar botão no header
-No header existente (linha ~283-298), ao lado do botão "Upload", adicionar um segundo botão "Baixar todos" com ícone de download (variant outline, size sm). O botão deve:
-- Aparecer apenas quando `attachments.length > 0`
-- Ser desabilitado durante o download
+- `type: "recovery"`
+- `email: "isacsbatista@icloud.com"`
+- `redirect_to: "https://uaudigital.lovable.app/auth?mode=reset"`
 
-### 2. Implementar `handleDownloadAll`
-Criar função assíncrona `handleDownloadAll` que:
-- Filtra anexos que possuem `public_url`
-- Se nenhum anexo tiver URL pública, mostra toast "Nenhum anexo disponível para download"
-- Itera sobre os anexos filtrados
-- Para cada um, faz `fetch(url)` → `blob()` → cria blob URL → dispara download via anchor tag
-- Adiciona um pequeno `await new Promise(r => setTimeout(r, 150))` entre downloads para evitar bloqueio do navegador
-- Mostra toast "Baixando X anexos..." no início
-- Mostra toast "Download concluído!" ao final
-- Usa try/catch: se algum arquivo falhar, continua com os demais e avisa no final quantos falharam
+A resposta traz um `action_link` válido por ~1h. Vou colar esse link aqui no chat pra você mandar pro Izac (WhatsApp/Slack). Ele abre, define a nova senha em `/auth?mode=reset` e está resolvido.
 
-### 3. Estilo
-Manter consistência visual com o botão "Upload" existente — mesmo tamanho, variant outline, ícone `Download` do lucide-react.
+## Importante
 
-## Por que não ZIP?
-Não há biblioteca de compactação instalada. Download sequencial individual é mais leve, não requer instalação de dependências, e atende ao requisito do usuário de "baixar todos de uma vez".
+- O link é **single-use** e expira em 1 hora — quanto antes ele usar, melhor.
+- Não vou alterar nenhum arquivo do projeto, só executar a chamada HTTP.
+- Não modifica a senha atual até ele definir uma nova.
+
+## Próximo passo opcional
+
+Se quiser que isso vire um botão dentro do Admin ("Gerar link de reset" pra qualquer usuário), me avisa que eu monto numa próxima.
