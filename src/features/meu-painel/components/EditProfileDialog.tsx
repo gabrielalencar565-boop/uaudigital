@@ -384,6 +384,46 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
 
           <BirthDateSelects control={form.control} />
 
+          <div className="space-y-3 rounded-lg border border-border/50 p-3">
+            <div className="flex items-center gap-2">
+              <KeyRound className="h-4 w-4 text-muted-foreground" />
+              <h4 className="text-sm font-semibold">Segurança</h4>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new_password">Nova senha</Label>
+              <Input
+                id="new_password"
+                type="password"
+                placeholder="Mínimo 6 caracteres"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                autoComplete="new-password"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirm_password">Confirmar nova senha</Label>
+              <Input
+                id="confirm_password"
+                type="password"
+                placeholder="Repita a nova senha"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                autoComplete="new-password"
+              />
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              disabled={changingPassword || !newPassword || !confirmPassword}
+              onClick={handleChangePassword}
+            >
+              <KeyRound className="h-4 w-4" />
+              {changingPassword ? "Alterando..." : "Alterar senha"}
+            </Button>
+          </div>
+
           <DialogFooter>
             <DialogClose asChild>
               <Button variant="outline" type="button">Cancelar</Button>
