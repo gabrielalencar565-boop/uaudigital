@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, Controller } from "react-hook-form";
-import { Camera, Crop, ImagePlus, Save, UserRound } from "lucide-react";
+import { Camera, Crop, ImagePlus, KeyRound, Save, UserRound } from "lucide-react";
 import { AvatarCropDialog } from "./AvatarCropDialog";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
@@ -144,6 +144,32 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
+
+  const handleChangePassword = async () => {
+    if (newPassword.length < 6) {
+      toast.error("A senha deve ter pelo menos 6 caracteres");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("As senhas não coincidem");
+      return;
+    }
+    setChangingPassword(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      setNewPassword("");
+      setConfirmPassword("");
+      toast.success("Senha alterada com sucesso!");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao alterar senha");
+    } finally {
+      setChangingPassword(false);
+    }
+  };
 
   const form = useForm<ProfileValues>({
     resolver: zodResolver(profileSchema),
@@ -357,6 +383,46 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
           </div>
 
           <BirthDateSelects control={form.control} />
+
+          <div className="space-y-3 rounded-lg border border-border/50 p-3">
+            <div className="flex items-center gap-2">
+              <KeyRound className="h-4 w-4 text-muted-foreground" />
+              <h4 className="text-sm font-semibold">Segurança</h4>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new_password">Nova senha</Label>
+              <Input
+                id="new_password"
+                type="password"
+                placeholder="Mínimo 6 caracteres"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                autoComplete="new-password"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirm_password">Confirmar nova senha</Label>
+              <Input
+                id="confirm_password"
+                type="password"
+                placeholder="Repita a nova senha"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                autoComplete="new-password"
+              />
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              disabled={changingPassword || !newPassword || !confirmPassword}
+              onClick={handleChangePassword}
+            >
+              <KeyRound className="h-4 w-4" />
+              {changingPassword ? "Alterando..." : "Alterar senha"}
+            </Button>
+          </div>
 
           <DialogFooter>
             <DialogClose asChild>
