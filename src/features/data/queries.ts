@@ -366,10 +366,24 @@ export function usePerformance(year: number) {
   });
 }
 
+export type CreateClientInput = {
+  name: string;
+  magic_due_date: string;
+  notes?: string;
+  manager_id?: string | null;
+  plan_name?: string | null;
+  monthly_value?: number;
+  contract_start?: string;
+  services?: string[];
+  participates_magic?: boolean;
+  participates_ranking?: boolean;
+  has_goals?: boolean;
+};
+
 export function useCreateClient() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { name: string; magic_due_date: string; notes?: string }) => {
+    mutationFn: async (input: CreateClientInput) => {
       // Verificar se cliente já existe com nome similar
       const { data: exists, error: checkErr } = await supabase.rpc("check_client_exists", {
         _name: input.name,
@@ -379,9 +393,23 @@ export function useCreateClient() {
         throw new Error(`Já existe um cliente com o nome "${input.name.trim()}"`);
       }
 
+      const insertPayload: any = {
+        name: input.name.trim(),
+        magic_due_date: input.magic_due_date,
+        notes: input.notes ?? null,
+        manager_id: input.manager_id ?? null,
+        plan_name: input.plan_name ?? null,
+        monthly_value: input.monthly_value ?? 0,
+        contract_start: input.contract_start ?? new Date().toISOString().slice(0, 10),
+        services: input.services ?? [],
+        participates_magic: input.participates_magic ?? true,
+        participates_ranking: input.participates_ranking ?? true,
+        has_goals: input.has_goals ?? false,
+      };
+
       const { data, error } = await supabase
         .from("clients")
-        .insert({ name: input.name.trim(), magic_due_date: input.magic_due_date, notes: input.notes ?? null })
+        .insert(insertPayload)
         .select("id")
         .maybeSingle();
       if (error) {
