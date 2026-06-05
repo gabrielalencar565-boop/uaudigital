@@ -1009,6 +1009,23 @@ function ClientFormDialog({
 
           <Separator />
 
+          {/* Visibilidade */}
+          <section className="space-y-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Visibilidade</h3>
+            <label className="flex items-center justify-between gap-3 rounded-lg border border-border/60 px-3 py-2.5 cursor-pointer hover:bg-accent/40 transition-colors">
+              <div className="space-y-0.5">
+                <div className="text-sm font-medium">Aparecer no Financeiro</div>
+                <div className="text-[11px] text-muted-foreground">Desmarque para clientes internos (ex.: a própria agência) que não devem entrar nas receitas.</div>
+              </div>
+              <Switch
+                checked={form.watch("appears_in_financial")}
+                onCheckedChange={(v) => form.setValue("appears_in_financial", v, { shouldDirty: true })}
+              />
+            </label>
+          </section>
+
+          <Separator />
+
 
           {/* Observações */}
           <section className="space-y-2">
