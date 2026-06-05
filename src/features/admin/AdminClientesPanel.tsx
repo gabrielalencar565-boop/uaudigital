@@ -61,7 +61,6 @@ const SERVICE_OPTIONS = [
 const clientSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório").max(100),
   notes: z.string().max(500).optional().or(z.literal("")),
-  manager_id: z.string().optional().or(z.literal("")),
   plan_name: z.string().max(80).optional().or(z.literal("")),
   monthly_value: z.coerce.number().min(0).default(0),
   contract_start: z.string().optional().or(z.literal("")),
@@ -76,7 +75,6 @@ type ClientFormValues = z.infer<typeof clientSchema>;
 const emptyDefaults: ClientFormValues = {
   name: "",
   notes: "",
-  manager_id: "",
   plan_name: "",
   monthly_value: 0,
   contract_start: new Date().toISOString().slice(0, 10),
@@ -168,7 +166,6 @@ export function AdminClientesPanel() {
         name: values.name,
         magic_due_date: dueDate,
         notes: values.notes || undefined,
-        manager_id: values.manager_id || null,
         plan_name: values.plan_name || null,
         monthly_value: values.monthly_value || 0,
         contract_start: values.contract_start || new Date().toISOString().slice(0, 10),
@@ -193,7 +190,6 @@ export function AdminClientesPanel() {
         .update({
           name: values.name,
           notes: values.notes || null,
-          manager_id: values.manager_id || null,
           plan_name: values.plan_name || null,
           monthly_value: values.monthly_value || 0,
           contract_start: values.contract_start || null,
@@ -306,7 +302,6 @@ export function AdminClientesPanel() {
     editForm.reset({
       name: client.name,
       notes: client.notes ?? "",
-      manager_id: client.manager_id ?? "",
       plan_name: client.plan_name ?? "",
       monthly_value: Number(client.monthly_value ?? 0),
       contract_start: client.contract_start ?? new Date().toISOString().slice(0, 10),
@@ -376,7 +371,6 @@ export function AdminClientesPanel() {
                   <TableRow>
                     <TableHead>Status</TableHead>
                     <TableHead>Nome</TableHead>
-                    <TableHead>Gestor</TableHead>
                     <TableHead>Plano</TableHead>
                     <TableHead>Mensal</TableHead>
                     <TableHead>Squads</TableHead>
@@ -387,7 +381,6 @@ export function AdminClientesPanel() {
                 <TableBody>
                   {clients.map((client) => {
                     const squadIds = clientSquadMap.get(client.id) ?? [];
-                    const manager = client.manager_id ? memberMap.get(client.manager_id) : null;
                     return (
                       <TableRow key={client.id} className={!client.is_active ? "opacity-60" : ""}>
                         <TableCell>
@@ -396,9 +389,6 @@ export function AdminClientesPanel() {
                           </Badge>
                         </TableCell>
                         <TableCell className="font-medium">{client.name}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {manager?.display_name ?? "—"}
-                        </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {client.plan_name || "—"}
                         </TableCell>
@@ -581,41 +571,15 @@ function ClientFormDialog({
           {/* Identificação */}
           <section className="space-y-3">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Identificação</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Nome do Cliente *</Label>
-                <Input placeholder="Ex.: Empresa XYZ" {...form.register("name")} />
-                {form.formState.errors.name && (
-                  <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>
-                )}
-              </div>
-              <div className="space-y-1.5">
-                <Label>Gestor Responsável</Label>
-                <Controller
-                  control={form.control}
-                  name="manager_id"
-                  render={({ field }) => (
-                    <Select
-                      value={field.value || "__none__"}
-                      onValueChange={(v) => field.onChange(v === "__none__" ? "" : v)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione um gestor" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">— Sem gestor —</SelectItem>
-                        {teamMembers
-                          .filter((m: any) => m.is_active)
-                          .map((m: any) => (
-                            <SelectItem key={m.user_id} value={m.user_id}>
-                              {m.display_name}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </div>
+            <div className="space-y-1.5">
+              <Label>Nome do Cliente *</Label>
+              <Input placeholder="Ex.: Empresa XYZ" {...form.register("name")} />
+              {form.formState.errors.name && (
+                <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>
+              )}
+              <p className="text-[11px] text-muted-foreground">
+                O <strong>Squad responsável</strong> (definido em "Operação") determina automaticamente o fluxo de tarefas conforme a função de cada membro.
+              </p>
             </div>
           </section>
 
