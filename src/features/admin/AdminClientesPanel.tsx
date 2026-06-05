@@ -406,8 +406,19 @@ export function AdminClientesPanel() {
 
   const handleToggleActive = async (client: ClientRow) => {
     try {
-      await toggleActive.mutateAsync({ clientId: client.id, isActive: !client.is_active });
-      toast.success(client.is_active ? "Contrato pausado" : "Contrato reativado");
+      const now = new Date();
+      const currentMonthDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+      const willPause = client.is_active;
+      // Pausar: define paused_from = mês atual e limpa resumed_from.
+      // Reativar: define resumed_from = mês atual (preserva paused_from histórico).
+      const patch: any = willPause
+        ? { is_active: false, paused_from: currentMonthDate, resumed_from: null }
+        : { is_active: true, resumed_from: currentMonthDate };
+      const { error } = await supabase.from("clients").update(patch).eq("id", client.id);
+      if (error) throw error;
+      qc.invalidateQueries({ queryKey: ["clients_admin_all"] });
+      qc.invalidateQueries({ queryKey: ["fin-clients"] });
+      toast.success(willPause ? `Cliente pausado a partir de ${now.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}` : "Cliente reativado");
     } catch (e: any) {
       toast.error(e?.message ?? "Erro ao alterar status");
     }
