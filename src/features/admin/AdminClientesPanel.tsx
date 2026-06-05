@@ -227,7 +227,7 @@ export function AdminClientesPanel() {
     try {
       const now = new Date();
       const dueDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-27`;
-      await createClient.mutateAsync({
+      const created: any = await createClient.mutateAsync({
         name: values.name,
         magic_due_date: dueDate,
         notes: values.notes || undefined,
@@ -238,6 +238,14 @@ export function AdminClientesPanel() {
         participates_ranking: values.participates_ranking,
         has_goals: values.has_goals,
       });
+      const newId = created?.id ?? created;
+      if (newId && values.contract_months != null) {
+        await supabase
+          .from("financial_clients")
+          .update({ contract_months: values.contract_months } as any)
+          .eq("id", newId);
+      }
+      qc.invalidateQueries({ queryKey: ["financial_clients"] });
       toast.success("Cliente criado e sincronizado com os módulos!");
       setCreateOpen(false);
       createForm.reset(emptyDefaults);
