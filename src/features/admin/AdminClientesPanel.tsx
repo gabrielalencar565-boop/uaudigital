@@ -116,6 +116,65 @@ function useFinancialClientValues() {
   });
 }
 
+function useAllActiveContractMonths() {
+  return useQuery({
+    queryKey: ["client_contract_months", "all"],
+    queryFn: async () => {
+      const { data: links, error: linkErr } = await supabase
+        .from("magic2_client_links")
+        .select("agenda_client_id, magic2_client_id");
+      if (linkErr) throw linkErr;
+      const ids = (links ?? []).map((l: any) => l.magic2_client_id);
+      const result = new Map<string, Array<{ year: number; month: number }>>();
+      if (ids.length === 0) return result;
+      const { data: cycles, error: cyclesErr } = await supabase
+        .from("magic2_cycles")
+        .select("client_id, year, month, is_active")
+        .in("client_id", ids)
+        .eq("is_active", true);
+      if (cyclesErr) throw cyclesErr;
+      const m2agenda = new Map<string, string>(
+        (links ?? []).map((l: any) => [l.magic2_client_id, l.agenda_client_id])
+      );
+      for (const c of (cycles ?? []) as any[]) {
+        const aid = m2agenda.get(c.client_id);
+        if (!aid) continue;
+        const arr = result.get(aid) ?? [];
+        arr.push({ year: c.year, month: c.month });
+        result.set(aid, arr);
+      }
+      return result;
+    },
+  });
+}
+
+async function syncContractMonths(agendaClientId: string, startISO: string | null | undefined, months: number) {
+  if (!agendaClientId || !startISO || !months || months <= 0) return;
+  const { data: magic2ClientId, error: linkErr } = await supabase
+    .rpc("magic2_ensure_client_link", { _agenda_client_id: agendaClientId });
+  if (linkErr) throw linkErr;
+  if (!magic2ClientId) return;
+  const [y, m] = startISO.split("-").map(Number);
+  const rows: any[] = [];
+  for (let i = 0; i < months; i++) {
+    const date = new Date(y, (m - 1) + i, 1);
+    const yy = date.getFullYear();
+    const mm = date.getMonth() + 1;
+    rows.push({
+      client_id: magic2ClientId,
+      year: yy,
+      month: mm,
+      due_date: `${yy}-${String(mm).padStart(2, "0")}-27`,
+      is_active: true,
+    });
+  }
+  const { error: upErr } = await supabase
+    .from("magic2_cycles")
+    .upsert(rows, { onConflict: "client_id,year,month" });
+  if (upErr) throw upErr;
+}
+
+
 function normalizeClientName(s: string): string {
   return (s ?? "")
     .normalize("NFD")
