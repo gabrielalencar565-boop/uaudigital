@@ -786,9 +786,17 @@ export function AdminClientesPanel() {
                     .from("financial_clients")
                     .update({ ended_at: endedDate, end_reason: endReason.trim(), is_active: false } as any)
                     .eq("id", endContract.id);
+                  // Remove receitas futuras (após o mês de encerramento) do Financeiro
+                  const [ey, em] = endedDate.split("-").map(Number);
+                  await supabase
+                    .from("financial_revenues")
+                    .delete()
+                    .eq("client_id", endContract.id)
+                    .or(`year.gt.${ey},and(year.eq.${ey},month.gt.${em})`);
                   qc.invalidateQueries({ queryKey: ["clients_admin_all"] });
                   qc.invalidateQueries({ queryKey: ["financial_clients"] });
                   qc.invalidateQueries({ queryKey: ["fin-clients"] });
+                  qc.invalidateQueries({ queryKey: ["financial_revenues"] });
                   toast.success(`Contrato encerrado em ${new Date(endedDate + "T00:00:00").toLocaleDateString("pt-BR", { month: "2-digit", year: "numeric" })}`);
                   setEndContract(null);
                   setEndReason("");
