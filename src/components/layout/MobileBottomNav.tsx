@@ -21,7 +21,6 @@ const SUB_TABS: Record<string, { key: MainTab; label: string; icon: React.Compon
     { key: "desempenho", label: "Desempenho", icon: Trophy },
   ],
   financeiro: [
-    { key: "fin_clientes", label: "Clientes", icon: Users },
     { key: "fin_receitas_despesas", label: "Receitas", icon: Receipt },
     { key: "fin_despesas_detalhadas", label: "Despesas", icon: FileSpreadsheet },
     { key: "fin_lancamentos", label: "Lançamentos", icon: ArrowRightLeft },
