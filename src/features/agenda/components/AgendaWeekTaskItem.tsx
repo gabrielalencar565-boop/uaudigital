@@ -1,6 +1,7 @@
-import { CheckSquare2, Square, Trash2 } from "lucide-react";
-
+import { CheckSquare2, Eye, Square, Trash2 } from "lucide-react";
 import { UserAvatar } from "@/components/avatar/UserAvatar";
+import type { TaskViewer } from "@/hooks/use-task-viewers";
+
 import {
   Tooltip,
   TooltipContent,
