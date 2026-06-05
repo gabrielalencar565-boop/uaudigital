@@ -112,9 +112,9 @@ function useFinancialClientValues() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("financial_clients")
-        .select("id, name, monthly_value, contract_start, contract_months");
+        .select("id, name, monthly_value, contract_start, contract_months, due_day");
       if (error) throw error;
-      return (data ?? []) as { id: string; name: string; monthly_value: number; contract_start: string; contract_months: number }[];
+      return (data ?? []) as { id: string; name: string; monthly_value: number; contract_start: string; contract_months: number; due_day: number | null }[];
     },
   });
 }
