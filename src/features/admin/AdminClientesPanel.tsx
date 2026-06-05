@@ -101,11 +101,21 @@ function useFinancialClientValues() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("financial_clients")
-        .select("id, monthly_value, contract_start, contract_months");
+        .select("id, name, monthly_value, contract_start, contract_months");
       if (error) throw error;
-      return (data ?? []) as { id: string; monthly_value: number; contract_start: string; contract_months: number }[];
+      return (data ?? []) as { id: string; name: string; monthly_value: number; contract_start: string; contract_months: number }[];
     },
   });
+}
+
+function normalizeClientName(s: string): string {
+  return (s ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/^(dra?\.?|sr\.?|sra\.?)\s+/i, "")
+    .replace(/\s+/g, " ");
 }
 
 export function AdminClientesPanel() {
@@ -131,23 +141,35 @@ export function AdminClientesPanel() {
 
   const finValueMap = useMemo(() => {
     const m = new Map<string, number>();
-    for (const f of finValuesQ.data ?? []) m.set(f.id, Number(f.monthly_value ?? 0));
+    for (const f of finValuesQ.data ?? []) {
+      m.set(f.id, Number(f.monthly_value ?? 0));
+      m.set("name:" + normalizeClientName(f.name), Number(f.monthly_value ?? 0));
+    }
     return m;
   }, [finValuesQ.data]);
 
   const finContractMap = useMemo(() => {
     const m = new Map<string, { start: string; months: number }>();
     for (const f of finValuesQ.data ?? []) {
-      m.set(f.id, { start: f.contract_start, months: Number(f.contract_months ?? 0) });
+      const entry = { start: f.contract_start, months: Number(f.contract_months ?? 0) };
+      m.set(f.id, entry);
+      m.set("name:" + normalizeClientName(f.name), entry);
     }
     return m;
   }, [finValuesQ.data]);
 
-  const monthsRemaining = (clientId: string, fallbackStart?: string | null): number | null => {
-    const fc = finContractMap.get(clientId);
-    const start = fc?.start ?? fallbackStart ?? null;
+  const getFinValue = (client: { id: string; name: string }): number =>
+    finValueMap.get(client.id) ?? finValueMap.get("name:" + normalizeClientName(client.name)) ?? 0;
+
+  const getFinContract = (client: { id: string; name: string }) =>
+    finContractMap.get(client.id) ?? finContractMap.get("name:" + normalizeClientName(client.name));
+
+  const monthsRemaining = (client: { id: string; name: string; contract_start?: string | null }): number | null => {
+    const fc = getFinContract(client);
+    const start = fc?.start ?? client.contract_start ?? null;
     const months = fc?.months ?? 0;
     if (!start || !months) return null;
+
     const [y, m, d] = start.split("-").map(Number);
     const end = new Date(y, (m - 1) + months, d);
     const now = new Date();
@@ -341,7 +363,7 @@ export function AdminClientesPanel() {
     editForm.reset({
       name: client.name,
       notes: client.notes ?? "",
-      monthly_value: finValueMap.get(client.id) ?? Number(client.monthly_value ?? 0),
+      monthly_value: getFinValue(client) || Number(client.monthly_value ?? 0),
       contract_start: client.contract_start ?? new Date().toISOString().slice(0, 10),
       services: client.services ?? [],
       participates_magic: client.participates_magic ?? true,
@@ -418,8 +440,8 @@ export function AdminClientesPanel() {
                 <TableBody>
                   {clients.map((client) => {
                     const squadIds = clientSquadMap.get(client.id) ?? [];
-                    const finValue = finValueMap.get(client.id) ?? 0;
-                    const remaining = monthsRemaining(client.id, client.contract_start);
+                    const finValue = getFinValue(client);
+                    const remaining = monthsRemaining(client);
                     return (
                       <TableRow key={client.id} className={!client.is_active ? "opacity-60" : ""}>
                         <TableCell>
