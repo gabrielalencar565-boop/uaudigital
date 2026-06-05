@@ -135,6 +135,29 @@ export function AdminClientesPanel() {
     return m;
   }, [finValuesQ.data]);
 
+  const finContractMap = useMemo(() => {
+    const m = new Map<string, { start: string; months: number }>();
+    for (const f of finValuesQ.data ?? []) {
+      m.set(f.id, { start: f.contract_start, months: Number(f.contract_months ?? 0) });
+    }
+    return m;
+  }, [finValuesQ.data]);
+
+  const monthsRemaining = (clientId: string, fallbackStart?: string | null): number | null => {
+    const fc = finContractMap.get(clientId);
+    const start = fc?.start ?? fallbackStart ?? null;
+    const months = fc?.months ?? 0;
+    if (!start || !months) return null;
+    const [y, m, d] = start.split("-").map(Number);
+    const end = new Date(y, (m - 1) + months, d);
+    const now = new Date();
+    const diff =
+      (end.getFullYear() - now.getFullYear()) * 12 +
+      (end.getMonth() - now.getMonth()) +
+      (end.getDate() >= now.getDate() ? 0 : -1);
+    return diff;
+  };
+
   const clientSquadMap = useMemo(() => {
     const map = new Map<string, string[]>();
     for (const cs of clientSquads) {
