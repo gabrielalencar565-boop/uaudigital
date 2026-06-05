@@ -875,9 +875,6 @@ function ClientFormDialog({
               {form.formState.errors.name && (
                 <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>
               )}
-              <p className="text-[11px] text-muted-foreground">
-                O <strong>Squad responsável</strong> (definido em "Operação") determina automaticamente o fluxo de tarefas conforme a função de cada membro.
-              </p>
             </div>
           </section>
 
@@ -892,9 +889,6 @@ function ClientFormDialog({
               <div className="space-y-1.5">
                 <Label>Valor mensal (R$)</Label>
                 <Input type="number" step="0.01" min="0" {...form.register("monthly_value")} />
-                <p className="text-[11px] text-muted-foreground">
-                  Sincroniza com o <strong>Financeiro</strong>.
-                </p>
               </div>
               <div className="space-y-1.5">
                 <Label>Início do contrato</Label>
@@ -903,9 +897,6 @@ function ClientFormDialog({
               <div className="space-y-1.5">
                 <Label>Duração (meses)</Label>
                 <Input type="number" step="1" min="0" max="240" {...form.register("contract_months")} />
-                <p className="text-[11px] text-muted-foreground">
-                  Usado para calcular meses restantes.
-                </p>
               </div>
             </div>
           </section>
