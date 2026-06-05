@@ -65,15 +65,15 @@ const clientSchema = z.object({
   monthly_value: z.coerce.number().min(0).default(0),
   contract_start: z.string().optional().or(z.literal("")),
   contract_months: z.coerce.number().int().min(0).max(240).default(12),
-  due_day: z.coerce.number().int().min(1).max(31).default(10),
+  due_day: z.coerce.number().int().min(0).max(31).default(10),
   services: z.array(z.string()).default([]),
   participates_magic: z.boolean().default(true),
   participates_ranking: z.boolean().default(true),
   has_goals: z.boolean().default(false),
-  appears_in_financial: z.boolean().default(true),
   paused_from: z.string().optional().or(z.literal("")),
   resumed_from: z.string().optional().or(z.literal("")),
   ended_at: z.string().optional().or(z.literal("")),
+  end_reason: z.string().max(500).optional().or(z.literal("")),
 });
 
 type ClientFormValues = z.infer<typeof clientSchema>;
@@ -89,11 +89,12 @@ const emptyDefaults: ClientFormValues = {
   participates_magic: true,
   participates_ranking: true,
   has_goals: false,
-  appears_in_financial: true,
   paused_from: "",
   resumed_from: "",
   ended_at: "",
+  end_reason: "",
 };
+
 
 function useClientSquads() {
   return useQuery({
