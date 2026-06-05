@@ -63,6 +63,7 @@ const clientSchema = z.object({
   notes: z.string().max(500).optional().or(z.literal("")),
   monthly_value: z.coerce.number().min(0).default(0),
   contract_start: z.string().optional().or(z.literal("")),
+  contract_months: z.coerce.number().int().min(0).max(240).default(12),
   services: z.array(z.string()).default([]),
   participates_magic: z.boolean().default(true),
   participates_ranking: z.boolean().default(true),
@@ -76,6 +77,7 @@ const emptyDefaults: ClientFormValues = {
   notes: "",
   monthly_value: 0,
   contract_start: new Date().toISOString().slice(0, 10),
+  contract_months: 12,
   services: [],
   participates_magic: true,
   participates_ranking: true,
@@ -225,7 +227,7 @@ export function AdminClientesPanel() {
     try {
       const now = new Date();
       const dueDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-27`;
-      await createClient.mutateAsync({
+      const created: any = await createClient.mutateAsync({
         name: values.name,
         magic_due_date: dueDate,
         notes: values.notes || undefined,
@@ -236,6 +238,14 @@ export function AdminClientesPanel() {
         participates_ranking: values.participates_ranking,
         has_goals: values.has_goals,
       });
+      const newId = created?.id ?? created;
+      if (newId && values.contract_months != null) {
+        await supabase
+          .from("financial_clients")
+          .update({ contract_months: values.contract_months } as any)
+          .eq("id", newId);
+      }
+      qc.invalidateQueries({ queryKey: ["financial_clients"] });
       toast.success("Cliente criado e sincronizado com os módulos!");
       setCreateOpen(false);
       createForm.reset(emptyDefaults);
@@ -261,6 +271,31 @@ export function AdminClientesPanel() {
         } as any)
         .eq("id", editClient.id);
       if (error) throw error;
+
+      // Persist contract_months (and value/start) to financial_clients.
+      // Match by id, then by normalized name as fallback.
+      const normName = normalizeClientName(values.name);
+      const finRow =
+        finValuesQ.data?.find((f) => f.id === editClient.id) ??
+        finValuesQ.data?.find((f) => normalizeClientName(f.name) === normName);
+      if (finRow) {
+        await supabase
+          .from("financial_clients")
+          .update({
+            monthly_value: values.monthly_value || 0,
+            contract_start: values.contract_start || null,
+            contract_months: values.contract_months ?? 12,
+          } as any)
+          .eq("id", finRow.id);
+      } else {
+        await supabase.from("financial_clients").insert({
+          id: editClient.id,
+          name: values.name,
+          monthly_value: values.monthly_value || 0,
+          contract_start: values.contract_start || new Date().toISOString().slice(0, 10),
+          contract_months: values.contract_months ?? 12,
+        } as any);
+      }
 
       // Sync squads
       const currentSquadIds = clientSquadMap.get(editClient.id) ?? [];
@@ -359,12 +394,14 @@ export function AdminClientesPanel() {
   };
 
   const openEdit = (client: ClientRow) => {
+    const fc = getFinContract(client);
     setEditClient(client);
     editForm.reset({
       name: client.name,
       notes: client.notes ?? "",
       monthly_value: getFinValue(client) || Number(client.monthly_value ?? 0),
-      contract_start: client.contract_start ?? new Date().toISOString().slice(0, 10),
+      contract_start: fc?.start ?? client.contract_start ?? new Date().toISOString().slice(0, 10),
+      contract_months: fc?.months ?? 12,
       services: client.services ?? [],
       participates_magic: client.participates_magic ?? true,
       participates_ranking: client.participates_ranking ?? true,
@@ -477,12 +514,18 @@ export function AdminClientesPanel() {
                           {remaining === null ? (
                             <span className="text-xs text-muted-foreground">—</span>
                           ) : remaining < 0 ? (
-                            <Badge variant="destructive" className="text-xs">Encerrado há {Math.abs(remaining)} {Math.abs(remaining) === 1 ? "mês" : "meses"}</Badge>
+                            <Badge variant="destructive" className="text-xs">
+                              Encerrado há {Math.abs(remaining)} {Math.abs(remaining) === 1 ? "mês" : "meses"}
+                            </Badge>
                           ) : remaining === 0 ? (
-                            <Badge variant="warning" className="text-xs">Encerra este mês</Badge>
-                          ) : (
-                            <Badge variant={remaining <= 2 ? "warning" : "outline"} className="text-xs">
+                            <Badge variant="destructive" className="text-xs">Encerra este mês</Badge>
+                          ) : remaining <= 3 ? (
+                            <Badge variant="warning" className="text-xs">
                               {remaining} {remaining === 1 ? "mês" : "meses"} restantes
+                            </Badge>
+                          ) : (
+                            <Badge variant="success" className="text-xs">
+                              {remaining} meses restantes
                             </Badge>
                           )}
                         </TableCell>
@@ -642,17 +685,24 @@ function ClientFormDialog({
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
               <DollarSign className="h-3.5 w-3.5" /> Contrato
             </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="space-y-1.5">
                 <Label>Valor mensal (R$)</Label>
                 <Input type="number" step="0.01" min="0" {...form.register("monthly_value")} />
                 <p className="text-[11px] text-muted-foreground">
-                  Sincroniza automaticamente com o módulo <strong>Financeiro</strong>.
+                  Sincroniza com o <strong>Financeiro</strong>.
                 </p>
               </div>
               <div className="space-y-1.5">
                 <Label>Início do contrato</Label>
                 <Input type="date" {...form.register("contract_start")} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Duração (meses)</Label>
+                <Input type="number" step="1" min="0" max="240" {...form.register("contract_months")} />
+                <p className="text-[11px] text-muted-foreground">
+                  Usado para calcular meses restantes.
+                </p>
               </div>
             </div>
           </section>
