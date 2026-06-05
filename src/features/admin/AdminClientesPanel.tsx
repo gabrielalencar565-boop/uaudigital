@@ -4,7 +4,7 @@ import { buildAssigneesForClient, mergeClientAssignees } from "@/lib/role-stage-
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { format, isValid } from "date-fns";
-import { Plus, Pencil, Trash2, Users, Pause, Play, Filter, DollarSign, XCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, Filter, DollarSign, XCircle } from "lucide-react";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -44,7 +44,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useAllClients, useCreateClient, useDeleteClient, useToggleClientActive, useTeamMembers, type ClientRow } from "@/features/data/queries";
+import { useAllClients, useCreateClient, useDeleteClient, useTeamMembers, type ClientRow } from "@/features/data/queries";
 import { useSquads } from "@/features/projetos/hooks/use-squads";
 import { ContractMonthsSelector } from "@/features/admin/components/ContractMonthsSelector";
 
@@ -189,7 +189,7 @@ function normalizeClientName(s: string): string {
 export function AdminClientesPanel() {
   const clientsQ = useAllClients();
   const createClient = useCreateClient();
-  const toggleActive = useToggleClientActive();
+  
   const deleteClient = useDeleteClient();
   const squadsQ = useSquads();
   const clientSquadsQ = useClientSquads();
@@ -498,25 +498,8 @@ export function AdminClientesPanel() {
     }
   };
 
-  const handleToggleActive = async (client: ClientRow) => {
-    try {
-      const now = new Date();
-      const currentMonthDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
-      const willPause = client.is_active;
-      // Pausar: define paused_from = mês atual e limpa resumed_from.
-      // Reativar: define resumed_from = mês atual (preserva paused_from histórico).
-      const patch: any = willPause
-        ? { is_active: false, paused_from: currentMonthDate, resumed_from: null }
-        : { is_active: true, resumed_from: currentMonthDate };
-      const { error } = await supabase.from("clients").update(patch).eq("id", client.id);
-      if (error) throw error;
-      qc.invalidateQueries({ queryKey: ["clients_admin_all"] });
-      qc.invalidateQueries({ queryKey: ["fin-clients"] });
-      toast.success(willPause ? `Cliente pausado a partir de ${now.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}` : "Cliente reativado");
-    } catch (e: any) {
-      toast.error(e?.message ?? "Erro ao alterar status");
-    }
-  };
+
+
 
   const handleDelete = async () => {
     if (!deleteConfirm) return;
@@ -630,16 +613,11 @@ export function AdminClientesPanel() {
                             <Badge variant="destructive" className="text-[10px]">
                               Encerrado {new Date(client.ended_at + "T00:00:00").toLocaleDateString("pt-BR", { month: "2-digit", year: "2-digit" })}
                             </Badge>
-                          ) : client.paused_from && !client.is_active ? (
-                            <Badge variant="warning" className="text-[10px]">
-                              Pausado desde {new Date(client.paused_from + "T00:00:00").toLocaleDateString("pt-BR", { month: "2-digit", year: "2-digit" })}
-                            </Badge>
                           ) : (
-                            <Badge variant={client.is_active ? "success" : "secondary"}>
-                              {client.is_active ? "Ativo" : "Pausado"}
-                            </Badge>
+                            <Badge variant="success">Ativo</Badge>
                           )}
                         </TableCell>
+
 
                         <TableCell className="font-medium">{client.name}</TableCell>
                         <TableCell className="text-sm tabular-nums">
@@ -686,19 +664,8 @@ export function AdminClientesPanel() {
                             <Button variant="ghost" size="sm" onClick={() => openEdit(client)} title="Editar">
                               <Pencil className="h-4 w-4" />
                             </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleToggleActive(client)}
-                              title={client.is_active ? "Pausar" : "Reativar"}
-                              disabled={toggleActive.isPending}
-                            >
-                              {client.is_active ? (
-                                <Pause className="h-4 w-4 text-warning" />
-                              ) : (
-                                <Play className="h-4 w-4 text-success" />
-                              )}
-                            </Button>
+
+
                             {!client.ended_at && (
                               <Button
                                 variant="ghost"
