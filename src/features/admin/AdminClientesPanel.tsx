@@ -433,6 +433,9 @@ export function AdminClientesPanel() {
       participates_magic: client.participates_magic ?? true,
       participates_ranking: client.participates_ranking ?? true,
       has_goals: client.has_goals ?? false,
+      paused_from: client.paused_from ?? "",
+      resumed_from: client.resumed_from ?? "",
+      ended_at: client.ended_at ?? "",
     });
     setEditSquadIds(clientSquadMap.get(client.id) ?? []);
   };
