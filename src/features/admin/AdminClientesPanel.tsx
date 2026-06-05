@@ -244,17 +244,16 @@ export function AdminClientesPanel() {
   const getFinContract = (client: { id: string; name: string }) =>
     finContractMap.get(client.id) ?? finContractMap.get("name:" + normalizeClientName(client.name));
 
-  const monthsRemaining = (client: { id: string }): number | null => {
-    const list = activeMonthsQ.data?.get(client.id);
-    if (!list || list.length === 0) return null;
+  const monthsRemaining = (client: { id: string; name: string }): number | null => {
+    const fc = getFinContract(client);
+    if (!fc || !fc.start || !fc.months) return null;
+    const start = new Date(fc.start + "T00:00:00");
+    if (Number.isNaN(start.getTime())) return null;
     const now = new Date();
-    const cur = now.getFullYear() * 12 + now.getMonth();
-    let count = 0;
-    for (const c of list) {
-      const idx = c.year * 12 + (c.month - 1);
-      if (idx >= cur) count++;
-    }
-    return count;
+    const elapsed =
+      (now.getFullYear() - start.getFullYear()) * 12 +
+      (now.getMonth() - start.getMonth());
+    return fc.months - elapsed;
   };
 
 
