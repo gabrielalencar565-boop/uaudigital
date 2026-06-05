@@ -194,7 +194,9 @@ export function AdminClientesPanel() {
   const clientSquadsQ = useClientSquads();
   const teamMembersQ = useTeamMembers();
   const finValuesQ = useFinancialClientValues();
+  const activeMonthsQ = useAllActiveContractMonths();
   const qc = useQueryClient();
+
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editClient, setEditClient] = useState<ClientRow | null>(null);
