@@ -576,41 +576,15 @@ function ClientFormDialog({
           {/* Identificação */}
           <section className="space-y-3">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Identificação</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Nome do Cliente *</Label>
-                <Input placeholder="Ex.: Empresa XYZ" {...form.register("name")} />
-                {form.formState.errors.name && (
-                  <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>
-                )}
-              </div>
-              <div className="space-y-1.5">
-                <Label>Gestor Responsável</Label>
-                <Controller
-                  control={form.control}
-                  name="manager_id"
-                  render={({ field }) => (
-                    <Select
-                      value={field.value || "__none__"}
-                      onValueChange={(v) => field.onChange(v === "__none__" ? "" : v)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione um gestor" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">— Sem gestor —</SelectItem>
-                        {teamMembers
-                          .filter((m: any) => m.is_active)
-                          .map((m: any) => (
-                            <SelectItem key={m.user_id} value={m.user_id}>
-                              {m.display_name}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </div>
+            <div className="space-y-1.5">
+              <Label>Nome do Cliente *</Label>
+              <Input placeholder="Ex.: Empresa XYZ" {...form.register("name")} />
+              {form.formState.errors.name && (
+                <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>
+              )}
+              <p className="text-[11px] text-muted-foreground">
+                O <strong>Squad responsável</strong> (definido em "Operação") determina automaticamente o fluxo de tarefas conforme a função de cada membro.
+              </p>
             </div>
           </section>
 
