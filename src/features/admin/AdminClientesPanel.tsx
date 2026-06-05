@@ -101,11 +101,21 @@ function useFinancialClientValues() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("financial_clients")
-        .select("id, monthly_value, contract_start, contract_months");
+        .select("id, name, monthly_value, contract_start, contract_months");
       if (error) throw error;
-      return (data ?? []) as { id: string; monthly_value: number; contract_start: string; contract_months: number }[];
+      return (data ?? []) as { id: string; name: string; monthly_value: number; contract_start: string; contract_months: number }[];
     },
   });
+}
+
+function normalizeClientName(s: string): string {
+  return (s ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/^(dra?\.?|sr\.?|sra\.?)\s+/i, "")
+    .replace(/\s+/g, " ");
 }
 
 export function AdminClientesPanel() {
