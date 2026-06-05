@@ -302,7 +302,6 @@ export function AdminClientesPanel() {
     editForm.reset({
       name: client.name,
       notes: client.notes ?? "",
-      manager_id: client.manager_id ?? "",
       plan_name: client.plan_name ?? "",
       monthly_value: Number(client.monthly_value ?? 0),
       contract_start: client.contract_start ?? new Date().toISOString().slice(0, 10),
