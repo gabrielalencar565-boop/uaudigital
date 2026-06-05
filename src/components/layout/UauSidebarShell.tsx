@@ -273,28 +273,21 @@ export function UauSidebarShell({
             </SidebarContent>
 
             <SidebarFooter className="px-2 pb-3">
-              <div className={cn("flex items-end", collapsed ? "justify-center" : "justify-between")}>
-                {isAdmin && (
+              {isAdmin && (
+                <div className={cn("flex", collapsed ? "justify-center" : "justify-start")}>
                   <button
                     type="button"
                     onClick={() => onTabChange("configuracoes")}
                     className={cn(
-                      "inline-flex h-12 w-12 items-center justify-center rounded-xl text-sidebar-foreground/70 transition hover:bg-sidebar-accent hover:text-sidebar-foreground",
-                      tab === "configuracoes" && "bg-sidebar-accent text-sidebar-foreground"
+                      "inline-flex h-10 items-center gap-3 rounded-xl px-3 text-sidebar-foreground/70 transition hover:bg-sidebar-accent hover:text-sidebar-foreground",
+                      tab === "configuracoes" && "bg-sidebar-accent text-sidebar-foreground font-semibold"
                     )}
                     aria-label="Configurações"
                   >
-                    <Settings className="h-7 w-7" />
+                    <Settings className="h-[18px] w-[18px] shrink-0" />
                   </button>
-                )}
-                {logoUrl && !collapsed ?
-                  <div className="flex items-center gap-2">
-                    <img src={logoUrl} alt="Uau Digital" className={cn("h-6 w-6 object-cover", logoClass)} />
-                    <span className="text-[10px] text-sidebar-foreground/40">v1.0</span>
-                  </div> :
-                  <div />
-                }
-              </div>
+                </div>
+              )}
             </SidebarFooter>
           </Sidebar>
         )}
