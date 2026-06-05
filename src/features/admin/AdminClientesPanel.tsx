@@ -207,6 +207,7 @@ export function AdminClientesPanel() {
         .update({
           name: values.name,
           notes: values.notes || null,
+          monthly_value: values.monthly_value || 0,
           contract_start: values.contract_start || null,
           services: values.services ?? [],
           participates_magic: values.participates_magic,
