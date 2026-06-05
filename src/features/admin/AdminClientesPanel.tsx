@@ -189,7 +189,7 @@ function normalizeClientName(s: string): string {
 export function AdminClientesPanel() {
   const clientsQ = useAllClients();
   const createClient = useCreateClient();
-  const toggleActive = useToggleClientActive();
+  
   const deleteClient = useDeleteClient();
   const squadsQ = useSquads();
   const clientSquadsQ = useClientSquads();
