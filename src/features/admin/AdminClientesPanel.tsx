@@ -580,19 +580,12 @@ function ClientFormDialog({
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
               <DollarSign className="h-3.5 w-3.5" /> Contrato
             </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="space-y-1.5">
-                <Label>Plano</Label>
-                <Input placeholder="Ex.: Essencial / Pro" {...form.register("plan_name")} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Valor mensal (R$)</Label>
-                <Input type="number" step="0.01" min="0" {...form.register("monthly_value")} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Início do contrato</Label>
-                <Input type="date" {...form.register("contract_start")} />
-              </div>
+            <div className="space-y-1.5">
+              <Label>Início do contrato</Label>
+              <Input type="date" {...form.register("contract_start")} />
+              <p className="text-[11px] text-muted-foreground">
+                O <strong>valor mensal</strong> é gerenciado no módulo <strong>Financeiro</strong>.
+              </p>
             </div>
           </section>
 
