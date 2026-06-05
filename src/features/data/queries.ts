@@ -717,6 +717,19 @@ export function useDeleteClient() {
       const { error: delTasksErr } = await supabase.from("tasks").delete().eq("client_id", input.clientId);
       if (delTasksErr) throw delTasksErr;
 
+      // Sincroniza com Financeiro: remove receitas e o cliente financeiro vinculado
+      const { error: delFinRevErr } = await supabase
+        .from("financial_revenues")
+        .delete()
+        .eq("client_id", input.clientId);
+      if (delFinRevErr) throw delFinRevErr;
+
+      const { error: delFinClientErr } = await supabase
+        .from("financial_clients")
+        .delete()
+        .eq("id", input.clientId);
+      if (delFinClientErr) throw delFinClientErr;
+
       const { error: delClientErr } = await supabase.from("clients").delete().eq("id", input.clientId);
       if (delClientErr) throw delClientErr;
     },
@@ -727,6 +740,9 @@ export function useDeleteClient() {
         qc.invalidateQueries({ queryKey: ["client_stages"] }),
         qc.invalidateQueries({ queryKey: ["client_cycles"] }),
         qc.invalidateQueries({ queryKey: ["client_cycle_stages"] }),
+        qc.invalidateQueries({ queryKey: ["financial_clients"] }),
+        qc.invalidateQueries({ queryKey: ["fin-clients"] }),
+        qc.invalidateQueries({ queryKey: ["financial_revenues"] }),
       ]);
     },
   });
