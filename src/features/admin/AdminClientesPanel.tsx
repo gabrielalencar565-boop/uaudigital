@@ -482,7 +482,10 @@ export function AdminClientesPanel() {
       qc.invalidateQueries({ queryKey: ["client_squads"] });
       qc.invalidateQueries({ queryKey: ["pm_stage_flows"] });
       qc.invalidateQueries({ queryKey: ["financial_clients"] });
+      qc.invalidateQueries({ queryKey: ["client_contract_months"] });
+      qc.invalidateQueries({ queryKey: ["magic2"] });
       toast.success("Cliente atualizado e sincronizado!");
+
       setEditClient(null);
     } catch (e: any) {
       toast.error(e?.message ?? "Erro ao atualizar cliente");
