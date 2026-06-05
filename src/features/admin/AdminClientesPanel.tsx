@@ -70,6 +70,7 @@ const clientSchema = z.object({
   participates_magic: z.boolean().default(true),
   participates_ranking: z.boolean().default(true),
   has_goals: z.boolean().default(false),
+  appears_in_financial: z.boolean().default(true),
   paused_from: z.string().optional().or(z.literal("")),
   resumed_from: z.string().optional().or(z.literal("")),
   ended_at: z.string().optional().or(z.literal("")),
@@ -88,6 +89,7 @@ const emptyDefaults: ClientFormValues = {
   participates_magic: true,
   participates_ranking: true,
   has_goals: false,
+  appears_in_financial: true,
   paused_from: "",
   resumed_from: "",
   ended_at: "",
@@ -327,9 +329,14 @@ export function AdminClientesPanel() {
             paused_from: monthInputToDate(values.paused_from),
             resumed_from: monthInputToDate(values.resumed_from),
             ended_at: monthInputToDate(values.ended_at),
+            appears_in_financial: values.appears_in_financial,
           } as any)
           .eq("id", newId);
-        if (values.contract_months != null || values.due_day != null) {
+        if (values.appears_in_financial === false) {
+          // Cliente oculto do Financeiro: limpa registros espelhados
+          await supabase.from("financial_revenues").delete().eq("client_id", newId);
+          await supabase.from("financial_clients").delete().eq("id", newId);
+        } else if (values.contract_months != null || values.due_day != null) {
           await supabase
             .from("financial_clients")
             .update({
@@ -400,6 +407,7 @@ export function AdminClientesPanel() {
           participates_magic: values.participates_magic,
           participates_ranking: values.participates_ranking,
           has_goals: values.has_goals,
+          appears_in_financial: values.appears_in_financial,
           paused_from: pausedDate,
           resumed_from: resumedDate,
           ended_at: endedDate,
@@ -408,14 +416,25 @@ export function AdminClientesPanel() {
         .eq("id", editClient.id);
       if (error) throw error;
 
-      // contract_months e due_day vivem em financial_clients (trigger não espelha esses campos)
-      await supabase
-        .from("financial_clients")
-        .update({
-          contract_months: values.contract_months ?? 12,
-          due_day: values.due_day ?? 10,
-        } as any)
-        .eq("id", editClient.id);
+      if (values.appears_in_financial === false) {
+        // Oculto do Financeiro: remove cliente financeiro e suas receitas
+        await supabase.from("financial_revenues").delete().eq("client_id", editClient.id);
+        await supabase.from("financial_clients").delete().eq("id", editClient.id);
+      } else {
+        // Garante que o cliente financeiro exista (recria se foi removido anteriormente)
+        await supabase
+          .from("financial_clients")
+          .upsert({
+            id: editClient.id,
+            name: values.name,
+            monthly_value: values.monthly_value || 0,
+            contract_start: values.contract_start || new Date().toISOString().slice(0, 10),
+            contract_months: values.contract_months ?? 12,
+            due_day: values.due_day ?? 10,
+            ended_at: endedDate,
+            is_active: computedActive,
+          } as any, { onConflict: "id" });
+      }
 
       // Auto-marca os N meses contratados em magic2_cycles a partir de contract_start
       try {
@@ -539,6 +558,7 @@ export function AdminClientesPanel() {
       participates_magic: client.participates_magic ?? true,
       participates_ranking: client.participates_ranking ?? true,
       has_goals: client.has_goals ?? false,
+      appears_in_financial: (client as any).appears_in_financial ?? true,
       paused_from: client.paused_from ? client.paused_from.slice(0, 7) : "",
       resumed_from: client.resumed_from ? client.resumed_from.slice(0, 7) : "",
       ended_at: client.ended_at ? client.ended_at.slice(0, 7) : "",
@@ -985,6 +1005,23 @@ function ClientFormDialog({
                 })}
               </div>
             </div>
+          </section>
+
+          <Separator />
+
+          {/* Visibilidade */}
+          <section className="space-y-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Visibilidade</h3>
+            <label className="flex items-center justify-between gap-3 rounded-lg border border-border/60 px-3 py-2.5 cursor-pointer hover:bg-accent/40 transition-colors">
+              <div className="space-y-0.5">
+                <div className="text-sm font-medium">Aparecer no Financeiro</div>
+                <div className="text-[11px] text-muted-foreground">Desmarque para clientes internos (ex.: a própria agência) que não devem entrar nas receitas.</div>
+              </div>
+              <Switch
+                checked={form.watch("appears_in_financial")}
+                onCheckedChange={(v) => form.setValue("appears_in_financial", v, { shouldDirty: true })}
+              />
+            </label>
           </section>
 
           <Separator />

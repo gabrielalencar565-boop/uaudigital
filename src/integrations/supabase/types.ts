@@ -353,6 +353,7 @@ export type Database = {
       }
       clients: {
         Row: {
+          appears_in_financial: boolean
           contract_start: string
           created_at: string
           end_reason: string | null
@@ -375,6 +376,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          appears_in_financial?: boolean
           contract_start?: string
           created_at?: string
           end_reason?: string | null
@@ -397,6 +399,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          appears_in_financial?: boolean
           contract_start?: string
           created_at?: string
           end_reason?: string | null
