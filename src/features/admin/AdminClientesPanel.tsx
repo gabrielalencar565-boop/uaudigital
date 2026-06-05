@@ -65,6 +65,7 @@ const clientSchema = z.object({
   monthly_value: z.coerce.number().min(0).default(0),
   contract_start: z.string().optional().or(z.literal("")),
   contract_months: z.coerce.number().int().min(0).max(240).default(12),
+  due_day: z.coerce.number().int().min(1).max(31).default(10),
   services: z.array(z.string()).default([]),
   participates_magic: z.boolean().default(true),
   participates_ranking: z.boolean().default(true),
@@ -82,6 +83,7 @@ const emptyDefaults: ClientFormValues = {
   monthly_value: 0,
   contract_start: new Date().toISOString().slice(0, 10),
   contract_months: 12,
+  due_day: 10,
   services: [],
   participates_magic: true,
   participates_ranking: true,
@@ -110,9 +112,9 @@ function useFinancialClientValues() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("financial_clients")
-        .select("id, name, monthly_value, contract_start, contract_months");
+        .select("id, name, monthly_value, contract_start, contract_months, due_day");
       if (error) throw error;
-      return (data ?? []) as { id: string; name: string; monthly_value: number; contract_start: string; contract_months: number }[];
+      return (data ?? []) as { id: string; name: string; monthly_value: number; contract_start: string; contract_months: number; due_day: number | null }[];
     },
   });
 }
@@ -224,9 +226,9 @@ export function AdminClientesPanel() {
   }, [finValuesQ.data]);
 
   const finContractMap = useMemo(() => {
-    const m = new Map<string, { start: string; months: number }>();
+    const m = new Map<string, { start: string; months: number; due_day: number | null }>();
     for (const f of finValuesQ.data ?? []) {
-      const entry = { start: f.contract_start, months: Number(f.contract_months ?? 0) };
+      const entry = { start: f.contract_start, months: Number(f.contract_months ?? 0), due_day: f.due_day ?? null };
       m.set(f.id, entry);
       m.set("name:" + normalizeClientName(f.name), entry);
     }
@@ -327,10 +329,13 @@ export function AdminClientesPanel() {
             ended_at: monthInputToDate(values.ended_at),
           } as any)
           .eq("id", newId);
-        if (values.contract_months != null) {
+        if (values.contract_months != null || values.due_day != null) {
           await supabase
             .from("financial_clients")
-            .update({ contract_months: values.contract_months } as any)
+            .update({
+              contract_months: values.contract_months ?? 12,
+              due_day: values.due_day ?? 10,
+            } as any)
             .eq("id", newId);
         }
         // Auto-marca os N meses contratados em magic2_cycles
@@ -403,10 +408,13 @@ export function AdminClientesPanel() {
         .eq("id", editClient.id);
       if (error) throw error;
 
-      // contract_months vive em financial_clients (trigger não espelha esse campo)
+      // contract_months e due_day vivem em financial_clients (trigger não espelha esses campos)
       await supabase
         .from("financial_clients")
-        .update({ contract_months: values.contract_months ?? 12 } as any)
+        .update({
+          contract_months: values.contract_months ?? 12,
+          due_day: values.due_day ?? 10,
+        } as any)
         .eq("id", editClient.id);
 
       // Auto-marca os N meses contratados em magic2_cycles a partir de contract_start
@@ -526,6 +534,7 @@ export function AdminClientesPanel() {
       monthly_value: getFinValue(client) || Number(client.monthly_value ?? 0),
       contract_start: fc?.start ?? client.contract_start ?? new Date().toISOString().slice(0, 10),
       contract_months: fc?.months ?? 12,
+      due_day: fc?.due_day ?? 10,
       services: client.services ?? [],
       participates_magic: client.participates_magic ?? true,
       participates_ranking: client.participates_ranking ?? true,
@@ -885,7 +894,7 @@ function ClientFormDialog({
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
               <DollarSign className="h-3.5 w-3.5" /> Contrato
             </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Valor mensal (R$)</Label>
                 <Input type="number" step="0.01" min="0" {...form.register("monthly_value")} />
@@ -897,6 +906,10 @@ function ClientFormDialog({
               <div className="space-y-1.5">
                 <Label>Duração (meses)</Label>
                 <Input type="number" step="1" min="0" max="240" {...form.register("contract_months")} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Dia de pagamento</Label>
+                <Input type="number" step="1" min="1" max="31" {...form.register("due_day")} />
               </div>
             </div>
           </section>
