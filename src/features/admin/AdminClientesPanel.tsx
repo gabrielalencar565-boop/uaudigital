@@ -864,53 +864,6 @@ function ClientFormDialog({
 
           <Separator />
 
-          {/* Módulos */}
-          <section className="space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Módulos Ativos</h3>
-            <div className="space-y-2">
-              <Controller
-                control={form.control}
-                name="participates_magic"
-                render={({ field }) => (
-                  <label className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2.5 cursor-pointer hover:bg-accent/40">
-                    <span className="flex items-center gap-2 text-sm">
-                      <Sparkles className="h-4 w-4 text-primary" />
-                      Participa do Magic Number
-                    </span>
-                    <Switch checked={field.value} onCheckedChange={field.onChange} />
-                  </label>
-                )}
-              />
-              <Controller
-                control={form.control}
-                name="participates_ranking"
-                render={({ field }) => (
-                  <label className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2.5 cursor-pointer hover:bg-accent/40">
-                    <span className="flex items-center gap-2 text-sm">
-                      <Trophy className="h-4 w-4 text-primary" />
-                      Aparece no Ranking
-                    </span>
-                    <Switch checked={field.value} onCheckedChange={field.onChange} />
-                  </label>
-                )}
-              />
-              <Controller
-                control={form.control}
-                name="has_goals"
-                render={({ field }) => (
-                  <label className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2.5 cursor-pointer hover:bg-accent/40">
-                    <span className="flex items-center gap-2 text-sm">
-                      <Target className="h-4 w-4 text-primary" />
-                      Possui Metas próprias
-                    </span>
-                    <Switch checked={field.value} onCheckedChange={field.onChange} />
-                  </label>
-                )}
-              />
-            </div>
-          </section>
-
-          <Separator />
 
           {/* Observações */}
           <section className="space-y-2">
