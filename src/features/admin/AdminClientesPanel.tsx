@@ -534,6 +534,7 @@ export function AdminClientesPanel() {
       monthly_value: getFinValue(client) || Number(client.monthly_value ?? 0),
       contract_start: fc?.start ?? client.contract_start ?? new Date().toISOString().slice(0, 10),
       contract_months: fc?.months ?? 12,
+      due_day: fc?.due_day ?? 10,
       services: client.services ?? [],
       participates_magic: client.participates_magic ?? true,
       participates_ranking: client.participates_ranking ?? true,
