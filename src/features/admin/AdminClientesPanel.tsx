@@ -558,6 +558,7 @@ export function AdminClientesPanel() {
       participates_magic: client.participates_magic ?? true,
       participates_ranking: client.participates_ranking ?? true,
       has_goals: client.has_goals ?? false,
+      appears_in_financial: (client as any).appears_in_financial ?? true,
       paused_from: client.paused_from ? client.paused_from.slice(0, 7) : "",
       resumed_from: client.resumed_from ? client.resumed_from.slice(0, 7) : "",
       ended_at: client.ended_at ? client.ended_at.slice(0, 7) : "",
