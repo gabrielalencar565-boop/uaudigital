@@ -408,10 +408,13 @@ export function AdminClientesPanel() {
         .eq("id", editClient.id);
       if (error) throw error;
 
-      // contract_months vive em financial_clients (trigger não espelha esse campo)
+      // contract_months e due_day vivem em financial_clients (trigger não espelha esses campos)
       await supabase
         .from("financial_clients")
-        .update({ contract_months: values.contract_months ?? 12 } as any)
+        .update({
+          contract_months: values.contract_months ?? 12,
+          due_day: values.due_day ?? 10,
+        } as any)
         .eq("id", editClient.id);
 
       // Auto-marca os N meses contratados em magic2_cycles a partir de contract_start
