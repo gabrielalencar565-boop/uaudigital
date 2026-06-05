@@ -361,12 +361,14 @@ export function AdminClientesPanel() {
   };
 
   const openEdit = (client: ClientRow) => {
+    const fc = getFinContract(client);
     setEditClient(client);
     editForm.reset({
       name: client.name,
       notes: client.notes ?? "",
       monthly_value: getFinValue(client) || Number(client.monthly_value ?? 0),
-      contract_start: client.contract_start ?? new Date().toISOString().slice(0, 10),
+      contract_start: fc?.start ?? client.contract_start ?? new Date().toISOString().slice(0, 10),
+      contract_months: fc?.months ?? 12,
       services: client.services ?? [],
       participates_magic: client.participates_magic ?? true,
       participates_ranking: client.participates_ranking ?? true,
