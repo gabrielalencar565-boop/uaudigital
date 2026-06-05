@@ -12,7 +12,7 @@ import { MeuPainelPanel } from "@/features/meu-painel/MeuPainelPanel";
 import { AdminContainer } from "@/features/admin/AdminContainer";
 import { FinanceiroPanel } from "@/features/financeiro/FinanceiroPanel";
 import { FinMetasTab } from "@/features/financeiro/components/FinMetasTab";
-import { FinClientesTab } from "@/features/financeiro/components/FinClientesTab";
+
 import { FinReceitasDespesasTab } from "@/features/financeiro/components/FinReceitasDespesasTab";
 import { FinDespesasDetalhadasTab } from "@/features/financeiro/components/FinDespesasDetalhadasTab";
 import { FinLancamentosTab } from "@/features/financeiro/components/FinLancamentosTab";
@@ -279,7 +279,7 @@ const Index = () => {
     if (tab === "visao_geral_projetos") return <ProjetosPanel />;
     if (tab === "configuracoes" && isAdmin) return <AdminContainer onNavigate={(t) => setTab(t as any)} />;
     if (tab === "financeiro" && isAdmin) return <FinanceiroPanel />;
-    if (tab === "fin_clientes" && isAdmin) return <FinClientesTab />;
+    if (tab === "fin_clientes" && isAdmin) return <AdminContainer onNavigate={(t) => setTab(t as any)} />;
     if (tab === "fin_receitas_despesas" && isAdmin) return <FinReceitasDespesasTab />;
     if (tab === "fin_despesas_detalhadas" && isAdmin) return <FinDespesasDetalhadasTab />;
     if (tab === "fin_lancamentos" && isAdmin) return <FinLancamentosTab />;

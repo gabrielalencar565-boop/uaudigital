@@ -85,7 +85,6 @@ const NAV: NavEntry[] = [
   adminOnly: true,
   landingTab: "financeiro",
   children: [
-  { key: "fin_clientes", label: "Clientes", icon: Users },
   { key: "fin_receitas_despesas", label: "Receitas & Despesas", icon: Receipt },
   { key: "fin_despesas_detalhadas", label: "Despesas Detalhadas", icon: FileSpreadsheet },
   { key: "fin_lancamentos", label: "Lançamentos", icon: ArrowRightLeft },

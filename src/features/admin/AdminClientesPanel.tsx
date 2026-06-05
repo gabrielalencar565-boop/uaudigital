@@ -101,9 +101,9 @@ function useFinancialClientValues() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("financial_clients")
-        .select("id, monthly_value");
+        .select("id, monthly_value, contract_start, contract_months");
       if (error) throw error;
-      return (data ?? []) as { id: string; monthly_value: number }[];
+      return (data ?? []) as { id: string; monthly_value: number; contract_start: string; contract_months: number }[];
     },
   });
 }
@@ -134,6 +134,29 @@ export function AdminClientesPanel() {
     for (const f of finValuesQ.data ?? []) m.set(f.id, Number(f.monthly_value ?? 0));
     return m;
   }, [finValuesQ.data]);
+
+  const finContractMap = useMemo(() => {
+    const m = new Map<string, { start: string; months: number }>();
+    for (const f of finValuesQ.data ?? []) {
+      m.set(f.id, { start: f.contract_start, months: Number(f.contract_months ?? 0) });
+    }
+    return m;
+  }, [finValuesQ.data]);
+
+  const monthsRemaining = (clientId: string, fallbackStart?: string | null): number | null => {
+    const fc = finContractMap.get(clientId);
+    const start = fc?.start ?? fallbackStart ?? null;
+    const months = fc?.months ?? 0;
+    if (!start || !months) return null;
+    const [y, m, d] = start.split("-").map(Number);
+    const end = new Date(y, (m - 1) + months, d);
+    const now = new Date();
+    const diff =
+      (end.getFullYear() - now.getFullYear()) * 12 +
+      (end.getMonth() - now.getMonth()) +
+      (end.getDate() >= now.getDate() ? 0 : -1);
+    return diff;
+  };
 
   const clientSquadMap = useMemo(() => {
     const map = new Map<string, string[]>();
@@ -388,7 +411,7 @@ export function AdminClientesPanel() {
                     <TableHead>Nome</TableHead>
                     <TableHead>Mensal</TableHead>
                     <TableHead>Squads</TableHead>
-                    <TableHead>Módulos</TableHead>
+                    <TableHead>Contrato</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -396,11 +419,12 @@ export function AdminClientesPanel() {
                   {clients.map((client) => {
                     const squadIds = clientSquadMap.get(client.id) ?? [];
                     const finValue = finValueMap.get(client.id) ?? 0;
+                    const remaining = monthsRemaining(client.id, client.contract_start);
                     return (
                       <TableRow key={client.id} className={!client.is_active ? "opacity-60" : ""}>
                         <TableCell>
                           <Badge variant={client.is_active ? "success" : "secondary"}>
-                            {client.is_active ? "Ativo" : "Pausado"}
+                            {client.is_active ? "Ativo" : "Desativado"}
                           </Badge>
                         </TableCell>
                         <TableCell className="font-medium">{client.name}</TableCell>
@@ -427,24 +451,18 @@ export function AdminClientesPanel() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {client.participates_magic && (
-                              <Badge variant="outline" className="text-xs gap-1">
-                                <Sparkles className="h-3 w-3" /> Magic
-                              </Badge>
-                            )}
-                            {client.participates_ranking && (
-                              <Badge variant="outline" className="text-xs gap-1">
-                                <Trophy className="h-3 w-3" /> Ranking
-                              </Badge>
-                            )}
-                            {client.has_goals && (
-                              <Badge variant="outline" className="text-xs gap-1">
-                                <Target className="h-3 w-3" /> Metas
-                              </Badge>
-                            )}
-                          </div>
+                        <TableCell className="text-sm">
+                          {remaining === null ? (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          ) : remaining < 0 ? (
+                            <Badge variant="destructive" className="text-xs">Encerrado há {Math.abs(remaining)} {Math.abs(remaining) === 1 ? "mês" : "meses"}</Badge>
+                          ) : remaining === 0 ? (
+                            <Badge variant="warning" className="text-xs">Encerra este mês</Badge>
+                          ) : (
+                            <Badge variant={remaining <= 2 ? "warning" : "outline"} className="text-xs">
+                              {remaining} {remaining === 1 ? "mês" : "meses"} restantes
+                            </Badge>
+                          )}
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
