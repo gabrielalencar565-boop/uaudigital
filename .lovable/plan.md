@@ -1,30 +1,33 @@
-## Objetivo
+## Mudanças no AdminClientesPanel
 
-Permitir marcar clientes que **não devem aparecer no módulo Financeiro** (ex.: "Uau Digital", que é a própria agência). Eles continuam normais em Agenda, Magic Number, Tarefas, etc. — só ficam ocultos das receitas/dashboards financeiros.
+### 1. Remover toggle "Aparecer no Financeiro"
+- Remover a seção "Visibilidade" com o Switch do dialog de criar/editar.
+- Remover o campo `appears_in_financial` do `clientSchema` / `emptyDefaults`.
+- Remover o badge "Oculto do Financeiro" da listagem.
 
-## Mudanças
+### 2. Nova regra: `due_day = 0` significa oculto do Financeiro
+- No campo "Dia de pagamento" permitir valor `0` com helper text: "Use 0 para não aparecer no Financeiro (cliente interno)."
+- Nos handlers `handleCreate` / `handleEdit`:
+  - Se `due_day === 0` → DELETE de `financial_revenues` + `financial_clients` (mesma lógica que hoje usa o toggle off).
+  - Se `due_day > 0` → upsert normal em `financial_clients` propagando `due_day`, `contract_months`, `ended_at`, etc.
 
-### 1. Banco
-- Migration: adicionar coluna `appears_in_financial boolean NOT NULL DEFAULT true` em `public.clients`.
-- Marcar `Uau Digital` como `false` por padrão (já que o usuário citou esse caso).
+### 3. Trigger no banco
+- Atualizar `sync_client_to_modules()`: trocar a condição `appears_in_financial = false` por `due_day = 0 OR due_day IS NULL` para sincronizar (delete vs upsert).
+- Manter a coluna `appears_in_financial` no banco por compatibilidade, mas deixar de ler/escrever no app (ou dropar — confirmar). **Vou dropar a coluna** para evitar confusão.
+- Para clientes que hoje têm `appears_in_financial = false` (ex.: Uau Digital), setar `due_day = 0` antes de dropar a coluna.
 
-### 2. UI — Configurações do cliente (`AdminClientesPanel.tsx`)
-- Na seção "Operação" do dialog de criar/editar cliente, adicionar um switch:
-  **"Aparecer no Financeiro"** (default ligado).
-- Quando desligado:
-  - Ao salvar: remover o cliente de `financial_clients` e suas linhas em `financial_revenues` (igual ao fluxo de exclusão).
-- Quando religado:
-  - Recria o registro em `financial_clients` (mesmo id, nome, valor, contract_start, contract_months, due_day).
+### 4. Edição de cliente encerrado — UI simplificada
+Quando `ended_at IS NOT NULL` no dialog de edição, esconder todos os outros campos (plano, valor, serviços, squad, etc.) e mostrar apenas:
+- Nome (read-only)
+- **Data de encerramento** — três selects lado a lado: Dia / Mês / Ano (padrão do projeto, já usado em outras telas).
+- **Motivo do encerramento** (`end_reason`) — textarea.
+- Botão "Reativar contrato" que limpa `ended_at` + `end_reason` e volta a mostrar o form completo.
 
-### 3. Hooks de criação (`useCreateClient` / handleCreate)
-- Respeitar a flag: se `appears_in_financial = false`, **não** propagar para o Financeiro (hoje o trigger/lógica espelha automaticamente — precisa pular esse passo).
+Para clientes ativos, manter o form atual com todos os campos.
 
-### 4. Listagem em Configurações
-- Mostrar um badge discreto "Oculto do Financeiro" na linha dos clientes com a flag desligada (opcional, ajuda a identificar).
+### 5. Date picker dia/mês/ano
+Reusar o padrão de 3 selects (Dia, Mês, Ano) já usado em `Profile editing` para o campo `ended_at` no modo encerrado, com auto-clamp do dia conforme mês/ano.
 
-## Detalhes técnicos
-
-- Coluna: `clients.appears_in_financial boolean default true`.
-- O Financeiro já lê de `financial_clients` — basta garantir que clientes ocultos não tenham linha lá.
-- Não mexer em Agenda/Magic Number/Tarefas — eles continuam usando `clients` normalmente.
-- Para `Uau Digital`: além da flag, executar limpeza imediata em `financial_clients` e `financial_revenues` do seu id.
+## Arquivos afetados
+- `src/features/admin/AdminClientesPanel.tsx` (UI + handlers)
+- Migration: atualizar trigger `sync_client_to_modules` + UPDATE em clientes com `appears_in_financial=false` para `due_day=0` + DROP COLUMN `appears_in_financial`.
