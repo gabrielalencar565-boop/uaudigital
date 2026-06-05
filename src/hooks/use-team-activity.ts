@@ -88,6 +88,8 @@ export function useTeamActivity() {
         const p = payload as ActivityPayload | undefined;
         if (!p) return;
         if (p.user_id === user.id) return;
+        // Only show notifications for completion events
+        if (p.type !== "task_completed" && p.type !== "subtask_completed") return;
 
         // Dedupe: same user + same type + same title within 4s
         const key = p.user_id;
@@ -97,6 +99,8 @@ export function useTeamActivity() {
           return;
         }
         lastByUserRef.current.set(key, { type: p.type, title: p.task_title, at: now });
+
+
 
         const name = p.display_name?.trim() || "Alguém";
         const initials = name

@@ -44,6 +44,7 @@ import { EditableTitleWithSpellCheck } from "./EditableTitleWithSpellCheck";
 import { supabase } from "@/integrations/supabase/client";
 import { inferPmPostType, type PmPostType } from "../utils/infer-pm-post-type";
 import { broadcastTeamActivity } from "@/hooks/use-team-activity";
+import { setViewingTask } from "@/hooks/use-task-viewers";
 
 function initials(n: string) {
   return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
@@ -158,12 +159,14 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
     else setTaskStack(prev => prev.slice(0, index + 1));
   };
 
-  // Broadcast to teammates when this user opens a task / subtask
+  // Presence: tell teammates which task this user currently has open
   useEffect(() => {
-    if (open && task?.title) {
-      broadcastTeamActivity("task_opened", task.title);
+    if (open && currentTask?.id) {
+      setViewingTask(currentTask.id);
+      return () => setViewingTask(null);
     }
-  }, [open, task?.id, task?.title]);
+    setViewingTask(null);
+  }, [open, currentTask?.id]);
 
 
   return (
