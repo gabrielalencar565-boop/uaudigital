@@ -327,12 +327,25 @@ export function AdminClientesPanel() {
             .update({ contract_months: values.contract_months } as any)
             .eq("id", newId);
         }
+        // Auto-marca os N meses contratados em magic2_cycles
+        try {
+          await syncContractMonths(
+            newId,
+            values.contract_start || new Date().toISOString().slice(0, 10),
+            values.contract_months ?? 0,
+          );
+        } catch (syncErr) {
+          console.warn("syncContractMonths (create) failed:", syncErr);
+        }
       }
       qc.invalidateQueries({ queryKey: ["financial_clients"] });
       qc.invalidateQueries({ queryKey: ["fin-clients"] });
+      qc.invalidateQueries({ queryKey: ["client_contract_months"] });
+      qc.invalidateQueries({ queryKey: ["magic2"] });
       toast.success("Cliente criado e sincronizado com o Financeiro!");
       setCreateOpen(false);
       createForm.reset(emptyDefaults);
+
     } catch (e: any) {
       toast.error(e?.message ?? "Erro ao criar cliente");
     }
