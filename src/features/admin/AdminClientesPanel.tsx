@@ -61,6 +61,7 @@ const SERVICE_OPTIONS = [
 const clientSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório").max(100),
   notes: z.string().max(500).optional().or(z.literal("")),
+  monthly_value: z.coerce.number().min(0).default(0),
   contract_start: z.string().optional().or(z.literal("")),
   services: z.array(z.string()).default([]),
   participates_magic: z.boolean().default(true),
@@ -73,6 +74,7 @@ type ClientFormValues = z.infer<typeof clientSchema>;
 const emptyDefaults: ClientFormValues = {
   name: "",
   notes: "",
+  monthly_value: 0,
   contract_start: new Date().toISOString().slice(0, 10),
   services: [],
   participates_magic: true,
@@ -182,6 +184,7 @@ export function AdminClientesPanel() {
         name: values.name,
         magic_due_date: dueDate,
         notes: values.notes || undefined,
+        monthly_value: values.monthly_value || 0,
         contract_start: values.contract_start || new Date().toISOString().slice(0, 10),
         services: values.services ?? [],
         participates_magic: values.participates_magic,
@@ -204,6 +207,7 @@ export function AdminClientesPanel() {
         .update({
           name: values.name,
           notes: values.notes || null,
+          monthly_value: values.monthly_value || 0,
           contract_start: values.contract_start || null,
           services: values.services ?? [],
           participates_magic: values.participates_magic,
@@ -314,6 +318,7 @@ export function AdminClientesPanel() {
     editForm.reset({
       name: client.name,
       notes: client.notes ?? "",
+      monthly_value: finValueMap.get(client.id) ?? Number(client.monthly_value ?? 0),
       contract_start: client.contract_start ?? new Date().toISOString().slice(0, 10),
       services: client.services ?? [],
       participates_magic: client.participates_magic ?? true,
@@ -597,12 +602,18 @@ function ClientFormDialog({
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
               <DollarSign className="h-3.5 w-3.5" /> Contrato
             </h3>
-            <div className="space-y-1.5">
-              <Label>Início do contrato</Label>
-              <Input type="date" {...form.register("contract_start")} />
-              <p className="text-[11px] text-muted-foreground">
-                O <strong>valor mensal</strong> é gerenciado no módulo <strong>Financeiro</strong>.
-              </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Valor mensal (R$)</Label>
+                <Input type="number" step="0.01" min="0" {...form.register("monthly_value")} />
+                <p className="text-[11px] text-muted-foreground">
+                  Sincroniza automaticamente com o módulo <strong>Financeiro</strong>.
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Início do contrato</Label>
+                <Input type="date" {...form.register("contract_start")} />
+              </div>
             </div>
           </section>
 
