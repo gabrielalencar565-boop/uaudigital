@@ -175,7 +175,7 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
       updateTask.mutate({ id: sub.id, status_global: "concluido" as any });
       toast.success("Subtarefa concluída!");
       const { broadcastTeamActivity } = await import("@/hooks/use-team-activity");
-      broadcastTeamActivity("subtask_completed", sub.title);
+      broadcastTeamActivity("subtask_completed", sub.title, sub.id);
     }
   };
 
