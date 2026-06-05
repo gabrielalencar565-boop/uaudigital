@@ -407,6 +407,7 @@ export function AdminClientesPanel() {
           participates_magic: values.participates_magic,
           participates_ranking: values.participates_ranking,
           has_goals: values.has_goals,
+          appears_in_financial: values.appears_in_financial,
           paused_from: pausedDate,
           resumed_from: resumedDate,
           ended_at: endedDate,
@@ -415,14 +416,25 @@ export function AdminClientesPanel() {
         .eq("id", editClient.id);
       if (error) throw error;
 
-      // contract_months e due_day vivem em financial_clients (trigger não espelha esses campos)
-      await supabase
-        .from("financial_clients")
-        .update({
-          contract_months: values.contract_months ?? 12,
-          due_day: values.due_day ?? 10,
-        } as any)
-        .eq("id", editClient.id);
+      if (values.appears_in_financial === false) {
+        // Oculto do Financeiro: remove cliente financeiro e suas receitas
+        await supabase.from("financial_revenues").delete().eq("client_id", editClient.id);
+        await supabase.from("financial_clients").delete().eq("id", editClient.id);
+      } else {
+        // Garante que o cliente financeiro exista (recria se foi removido anteriormente)
+        await supabase
+          .from("financial_clients")
+          .upsert({
+            id: editClient.id,
+            name: values.name,
+            monthly_value: values.monthly_value || 0,
+            contract_start: values.contract_start || new Date().toISOString().slice(0, 10),
+            contract_months: values.contract_months ?? 12,
+            due_day: values.due_day ?? 10,
+            ended_at: endedDate,
+            is_active: computedActive,
+          } as any, { onConflict: "id" });
+      }
 
       // Auto-marca os N meses contratados em magic2_cycles a partir de contract_start
       try {
