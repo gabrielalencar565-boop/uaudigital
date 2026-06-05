@@ -371,7 +371,6 @@ export function AdminClientesPanel() {
                   <TableRow>
                     <TableHead>Status</TableHead>
                     <TableHead>Nome</TableHead>
-                    <TableHead>Gestor</TableHead>
                     <TableHead>Plano</TableHead>
                     <TableHead>Mensal</TableHead>
                     <TableHead>Squads</TableHead>
@@ -382,7 +381,6 @@ export function AdminClientesPanel() {
                 <TableBody>
                   {clients.map((client) => {
                     const squadIds = clientSquadMap.get(client.id) ?? [];
-                    const manager = client.manager_id ? memberMap.get(client.manager_id) : null;
                     return (
                       <TableRow key={client.id} className={!client.is_active ? "opacity-60" : ""}>
                         <TableCell>
@@ -391,9 +389,6 @@ export function AdminClientesPanel() {
                           </Badge>
                         </TableCell>
                         <TableCell className="font-medium">{client.name}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {manager?.display_name ?? "—"}
-                        </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {client.plan_name || "—"}
                         </TableCell>
