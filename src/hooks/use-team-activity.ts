@@ -144,7 +144,7 @@ function renderToast(
           ),
         ),
       ),
-    { position: "bottom-right", duration: 4500 },
+    { position: "bottom-right", duration: 4500, unstyled: true },
   );
 }
 
