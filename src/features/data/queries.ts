@@ -25,6 +25,9 @@ export type ClientRow = {
   participates_magic?: boolean;
   participates_ranking?: boolean;
   has_goals?: boolean;
+  paused_from?: string | null;
+  resumed_from?: string | null;
+  ended_at?: string | null;
 };
 
 /** Returns the freelancer sentinel client (if exists) */
