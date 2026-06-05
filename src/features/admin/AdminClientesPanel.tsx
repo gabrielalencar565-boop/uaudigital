@@ -61,8 +61,6 @@ const SERVICE_OPTIONS = [
 const clientSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório").max(100),
   notes: z.string().max(500).optional().or(z.literal("")),
-  plan_name: z.string().max(80).optional().or(z.literal("")),
-  monthly_value: z.coerce.number().min(0).default(0),
   contract_start: z.string().optional().or(z.literal("")),
   services: z.array(z.string()).default([]),
   participates_magic: z.boolean().default(true),
@@ -75,8 +73,6 @@ type ClientFormValues = z.infer<typeof clientSchema>;
 const emptyDefaults: ClientFormValues = {
   name: "",
   notes: "",
-  plan_name: "",
-  monthly_value: 0,
   contract_start: new Date().toISOString().slice(0, 10),
   services: [],
   participates_magic: true,
@@ -97,6 +93,19 @@ function useClientSquads() {
   });
 }
 
+function useFinancialClientValues() {
+  return useQuery({
+    queryKey: ["financial_clients", "values"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("financial_clients")
+        .select("id, monthly_value");
+      if (error) throw error;
+      return (data ?? []) as { id: string; monthly_value: number }[];
+    },
+  });
+}
+
 export function AdminClientesPanel() {
   const clientsQ = useAllClients();
   const createClient = useCreateClient();
@@ -105,6 +114,7 @@ export function AdminClientesPanel() {
   const squadsQ = useSquads();
   const clientSquadsQ = useClientSquads();
   const teamMembersQ = useTeamMembers();
+  const finValuesQ = useFinancialClientValues();
   const qc = useQueryClient();
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -116,6 +126,12 @@ export function AdminClientesPanel() {
   const squads = squadsQ.data ?? [];
   const teamMembers = teamMembersQ.data ?? [];
   const clientSquads = clientSquadsQ.data ?? [];
+
+  const finValueMap = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const f of finValuesQ.data ?? []) m.set(f.id, Number(f.monthly_value ?? 0));
+    return m;
+  }, [finValuesQ.data]);
 
   const clientSquadMap = useMemo(() => {
     const map = new Map<string, string[]>();
@@ -166,8 +182,6 @@ export function AdminClientesPanel() {
         name: values.name,
         magic_due_date: dueDate,
         notes: values.notes || undefined,
-        plan_name: values.plan_name || null,
-        monthly_value: values.monthly_value || 0,
         contract_start: values.contract_start || new Date().toISOString().slice(0, 10),
         services: values.services ?? [],
         participates_magic: values.participates_magic,
@@ -190,8 +204,6 @@ export function AdminClientesPanel() {
         .update({
           name: values.name,
           notes: values.notes || null,
-          plan_name: values.plan_name || null,
-          monthly_value: values.monthly_value || 0,
           contract_start: values.contract_start || null,
           services: values.services ?? [],
           participates_magic: values.participates_magic,
@@ -302,8 +314,6 @@ export function AdminClientesPanel() {
     editForm.reset({
       name: client.name,
       notes: client.notes ?? "",
-      plan_name: client.plan_name ?? "",
-      monthly_value: Number(client.monthly_value ?? 0),
       contract_start: client.contract_start ?? new Date().toISOString().slice(0, 10),
       services: client.services ?? [],
       participates_magic: client.participates_magic ?? true,
@@ -371,7 +381,6 @@ export function AdminClientesPanel() {
                   <TableRow>
                     <TableHead>Status</TableHead>
                     <TableHead>Nome</TableHead>
-                    <TableHead>Plano</TableHead>
                     <TableHead>Mensal</TableHead>
                     <TableHead>Squads</TableHead>
                     <TableHead>Módulos</TableHead>
@@ -381,6 +390,7 @@ export function AdminClientesPanel() {
                 <TableBody>
                   {clients.map((client) => {
                     const squadIds = clientSquadMap.get(client.id) ?? [];
+                    const finValue = finValueMap.get(client.id) ?? 0;
                     return (
                       <TableRow key={client.id} className={!client.is_active ? "opacity-60" : ""}>
                         <TableCell>
@@ -389,11 +399,8 @@ export function AdminClientesPanel() {
                           </Badge>
                         </TableCell>
                         <TableCell className="font-medium">{client.name}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {client.plan_name || "—"}
-                        </TableCell>
                         <TableCell className="text-sm tabular-nums">
-                          {Number(client.monthly_value ?? 0).toLocaleString("pt-BR", {
+                          {finValue.toLocaleString("pt-BR", {
                             style: "currency",
                             currency: "BRL",
                           })}
@@ -590,19 +597,12 @@ function ClientFormDialog({
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
               <DollarSign className="h-3.5 w-3.5" /> Contrato
             </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="space-y-1.5">
-                <Label>Plano</Label>
-                <Input placeholder="Ex.: Essencial / Pro" {...form.register("plan_name")} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Valor mensal (R$)</Label>
-                <Input type="number" step="0.01" min="0" {...form.register("monthly_value")} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Início do contrato</Label>
-                <Input type="date" {...form.register("contract_start")} />
-              </div>
+            <div className="space-y-1.5">
+              <Label>Início do contrato</Label>
+              <Input type="date" {...form.register("contract_start")} />
+              <p className="text-[11px] text-muted-foreground">
+                O <strong>valor mensal</strong> é gerenciado no módulo <strong>Financeiro</strong>.
+              </p>
             </div>
           </section>
 
