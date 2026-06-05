@@ -48,7 +48,7 @@ export function useOnlinePresence() {
         if (announcedRef.has(key)) return;
         announcedRef.add(key);
 
-        const meta = (newPresences?.[0] as PresenceMeta | undefined);
+        const meta = newPresences?.[0] as unknown as PresenceMeta | undefined;
         const name = meta?.display_name?.trim() || "Alguém";
 
         toast(`${name} entrou online`, {
