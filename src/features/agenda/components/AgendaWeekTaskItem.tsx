@@ -69,6 +69,7 @@ export function AgendaWeekTaskItem({
   stagePillWidth = "full",
   isExtraDemand,
   postType,
+  viewers,
   canInteract,
   canDelete,
   onToggle,
@@ -91,6 +92,8 @@ export function AgendaWeekTaskItem({
   isExtraDemand?: boolean;
   /** Post type origin for revisão tasks */
   postType?: string | null;
+  /** Co-workers currently viewing this task (presence) */
+  viewers?: TaskViewer[];
   canInteract: boolean;
   canDelete: boolean;
   onToggle: () => void;
@@ -158,6 +161,40 @@ export function AgendaWeekTaskItem({
         </div>
 
         <div className="shrink-0 flex items-center gap-1">
+          {viewers && viewers.length > 0 && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div
+                  className={cn(
+                    "grid place-items-center rounded-md border border-primary/40 bg-primary/10 text-primary",
+                    isCompact ? "h-6 w-6" : "h-7 w-7",
+                  )}
+                  aria-label="Tarefa aberta por outro usuário"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Eye className={cn(isCompact ? "h-3.5 w-3.5" : "h-4 w-4")} />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-[220px]">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Visualizando agora
+                  </p>
+                  {viewers.map((v) => (
+                    <div key={v.user_id} className="flex items-center gap-2">
+                      <UserAvatar
+                        avatarUrl={v.avatar_url ?? undefined}
+                        name={v.display_name}
+                        className="h-5 w-5"
+                        fallbackClassName="text-[8px]"
+                      />
+                      <span className="text-xs">{v.display_name}</span>
+                    </div>
+                  ))}
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          )}
           <button
             type="button"
             className={cn(
