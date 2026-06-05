@@ -4,7 +4,7 @@ import { buildAssigneesForClient, mergeClientAssignees } from "@/lib/role-stage-
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { format, isValid } from "date-fns";
-import { Plus, Pencil, Trash2, Users, Pause, Play, Filter, DollarSign, XCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, Filter, DollarSign, XCircle } from "lucide-react";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
