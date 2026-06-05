@@ -403,6 +403,19 @@ export function AdminClientesPanel() {
         .update({ contract_months: values.contract_months ?? 12 } as any)
         .eq("id", editClient.id);
 
+      // Auto-marca os N meses contratados em magic2_cycles a partir de contract_start
+      try {
+        await syncContractMonths(
+          editClient.id,
+          values.contract_start || editClient.contract_start || new Date().toISOString().slice(0, 10),
+          values.contract_months ?? 0,
+        );
+      } catch (syncErr) {
+        console.warn("syncContractMonths (edit) failed:", syncErr);
+      }
+
+
+
 
 
       // Sync squads
