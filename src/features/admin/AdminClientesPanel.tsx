@@ -329,9 +329,14 @@ export function AdminClientesPanel() {
             paused_from: monthInputToDate(values.paused_from),
             resumed_from: monthInputToDate(values.resumed_from),
             ended_at: monthInputToDate(values.ended_at),
+            appears_in_financial: values.appears_in_financial,
           } as any)
           .eq("id", newId);
-        if (values.contract_months != null || values.due_day != null) {
+        if (values.appears_in_financial === false) {
+          // Cliente oculto do Financeiro: limpa registros espelhados
+          await supabase.from("financial_revenues").delete().eq("client_id", newId);
+          await supabase.from("financial_clients").delete().eq("id", newId);
+        } else if (values.contract_months != null || values.due_day != null) {
           await supabase
             .from("financial_clients")
             .update({
