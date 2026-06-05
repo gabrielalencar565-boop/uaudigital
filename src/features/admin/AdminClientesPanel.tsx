@@ -329,10 +329,13 @@ export function AdminClientesPanel() {
             ended_at: monthInputToDate(values.ended_at),
           } as any)
           .eq("id", newId);
-        if (values.contract_months != null) {
+        if (values.contract_months != null || values.due_day != null) {
           await supabase
             .from("financial_clients")
-            .update({ contract_months: values.contract_months } as any)
+            .update({
+              contract_months: values.contract_months ?? 12,
+              due_day: values.due_day ?? 10,
+            } as any)
             .eq("id", newId);
         }
         // Auto-marca os N meses contratados em magic2_cycles
