@@ -506,12 +506,18 @@ export function AdminClientesPanel() {
                           {remaining === null ? (
                             <span className="text-xs text-muted-foreground">—</span>
                           ) : remaining < 0 ? (
-                            <Badge variant="destructive" className="text-xs">Encerrado há {Math.abs(remaining)} {Math.abs(remaining) === 1 ? "mês" : "meses"}</Badge>
+                            <Badge variant="destructive" className="text-xs">
+                              Encerrado há {Math.abs(remaining)} {Math.abs(remaining) === 1 ? "mês" : "meses"}
+                            </Badge>
                           ) : remaining === 0 ? (
-                            <Badge variant="warning" className="text-xs">Encerra este mês</Badge>
-                          ) : (
-                            <Badge variant={remaining <= 2 ? "warning" : "outline"} className="text-xs">
+                            <Badge variant="destructive" className="text-xs">Encerra este mês</Badge>
+                          ) : remaining <= 3 ? (
+                            <Badge variant="warning" className="text-xs">
                               {remaining} {remaining === 1 ? "mês" : "meses"} restantes
+                            </Badge>
+                          ) : (
+                            <Badge variant="success" className="text-xs">
+                              {remaining} meses restantes
                             </Badge>
                           )}
                         </TableCell>
