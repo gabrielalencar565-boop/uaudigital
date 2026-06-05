@@ -233,21 +233,19 @@ export function AdminClientesPanel() {
   const getFinContract = (client: { id: string; name: string }) =>
     finContractMap.get(client.id) ?? finContractMap.get("name:" + normalizeClientName(client.name));
 
-  const monthsRemaining = (client: { id: string; name: string; contract_start?: string | null }): number | null => {
-    const fc = getFinContract(client);
-    const start = fc?.start ?? client.contract_start ?? null;
-    const months = fc?.months ?? 0;
-    if (!start || !months) return null;
-
-    const [y, m, d] = start.split("-").map(Number);
-    const end = new Date(y, (m - 1) + months, d);
+  const monthsRemaining = (client: { id: string }): number | null => {
+    const list = activeMonthsQ.data?.get(client.id);
+    if (!list || list.length === 0) return null;
     const now = new Date();
-    const diff =
-      (end.getFullYear() - now.getFullYear()) * 12 +
-      (end.getMonth() - now.getMonth()) +
-      (end.getDate() >= now.getDate() ? 0 : -1);
-    return diff;
+    const cur = now.getFullYear() * 12 + now.getMonth();
+    let count = 0;
+    for (const c of list) {
+      const idx = c.year * 12 + (c.month - 1);
+      if (idx >= cur) count++;
+    }
+    return count;
   };
+
 
   const clientSquadMap = useMemo(() => {
     const map = new Map<string, string[]>();
