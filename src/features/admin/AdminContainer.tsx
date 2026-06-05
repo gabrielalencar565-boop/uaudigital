@@ -67,7 +67,13 @@ export function AdminContainer({ onNavigate }: { onNavigate?: (tab: string) => v
               <button
                 key={card.key}
                 type="button"
-                onClick={() => setSubTab(card.key)}
+                onClick={() => {
+                  if (card.external && card.key === "fluxos") {
+                    onNavigate?.("fluxos");
+                  } else {
+                    setSubTab(card.key as AdminSubTab);
+                  }
+                }}
                 className="group flex items-center gap-4 rounded-xl border border-border bg-card p-5 text-left transition-all hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
