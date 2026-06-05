@@ -324,17 +324,20 @@ export function AdminClientesPanel() {
       });
       const newId = created?.id ?? created;
       if (newId) {
+        const dueDay = Number(values.due_day ?? 0);
+        const hideFromFinancial = !dueDay || dueDay <= 0;
         await supabase
           .from("clients")
           .update({
             paused_from: monthInputToDate(values.paused_from),
             resumed_from: monthInputToDate(values.resumed_from),
-            ended_at: monthInputToDate(values.ended_at),
-            appears_in_financial: values.appears_in_financial,
+            ended_at: values.ended_at || null,
+            end_reason: values.end_reason?.trim() || null,
+            appears_in_financial: !hideFromFinancial,
           } as any)
           .eq("id", newId);
-        if (values.appears_in_financial === false) {
-          // Cliente oculto do Financeiro: limpa registros espelhados
+        if (hideFromFinancial) {
+          // Cliente oculto do Financeiro (dia de pagamento = 0)
           await supabase.from("financial_revenues").delete().eq("client_id", newId);
           await supabase.from("financial_clients").delete().eq("id", newId);
         } else if (values.contract_months != null || values.due_day != null) {
@@ -342,10 +345,11 @@ export function AdminClientesPanel() {
             .from("financial_clients")
             .update({
               contract_months: values.contract_months ?? 12,
-              due_day: values.due_day ?? 10,
+              due_day: dueDay,
             } as any)
             .eq("id", newId);
         }
+
         // Auto-marca os N meses contratados em magic2_cycles
         try {
           await syncContractMonths(
