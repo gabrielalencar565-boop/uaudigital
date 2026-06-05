@@ -101,6 +101,7 @@ export function useOnlinePresence() {
           {
             position: "bottom-right",
             duration: 4000,
+            unstyled: true,
           }
         );
       })
