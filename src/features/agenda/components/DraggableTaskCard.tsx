@@ -3,6 +3,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TaskRow } from "@/features/data/queries";
+import type { TaskViewer } from "@/hooks/use-task-viewers";
 import { AgendaWeekTaskItem } from "./AgendaWeekTaskItem";
 
 interface TaskMember {
@@ -21,6 +22,7 @@ interface DraggableTaskCardProps {
   clientName: string;
   dueTime?: string;
   postType?: string | null;
+  viewers?: TaskViewer[];
   canInteract: boolean;
   canDelete: boolean;
   canDrag: boolean;
@@ -39,6 +41,7 @@ export function DraggableTaskCard({
   clientName,
   dueTime,
   postType,
+  viewers,
   canInteract,
   canDelete,
   canDrag,
@@ -97,6 +100,7 @@ export function DraggableTaskCard({
         dueTime={dueTime}
         isExtraDemand={task.is_extra_demand}
         postType={postType}
+        viewers={viewers}
         canInteract={canInteract}
         canDelete={canDelete}
         onToggle={onToggle}

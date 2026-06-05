@@ -43,6 +43,7 @@ import { useRole } from "@/hooks/use-role";
 import { useSession } from "@/hooks/use-session";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAvatarDirectory } from "@/hooks/use-avatar-directory";
+import { useAllTaskViewers } from "@/hooks/use-task-viewers";
 function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]!.toUpperCase()).join("");
 }
@@ -112,6 +113,7 @@ export function AgendaPanel() {
   const profilesQ = useProfiles({ enabled: !!canManageTasks });
   const avatarDirectory = useAvatarDirectory({ includeProfiles: !!canManageTasks });
   const avatarsPrimed = avatarDirectory.isReady;
+  const taskViewersMap = useAllTaskViewers();
 
   const weekStart = useMemo(() => startOfWeek(cursor, {
     weekStartsOn: 0
@@ -811,7 +813,7 @@ export function AgendaPanel() {
               const canInteract = canUserInteractWithTask(user?.id);
               const members = getMembersForTask(t);
 
-              return <AgendaWeekTaskItem key={t.id} stageLabel={stageLabel} stage={t.stage} done={t.status === "concluido"} assigneeName={assigneeName} assigneeAvatarUrl={assignee?.avatar_url ?? undefined} members={members} clientName={clientName} dueTime={formatDueTime(t.due_at)} density="default" isExtraDemand={t.is_extra_demand} postType={getPostType(t)} canInteract={canInteract} canDelete={true} onToggle={() => {
+              return <AgendaWeekTaskItem key={t.id} stageLabel={stageLabel} stage={t.stage} done={t.status === "concluido"} assigneeName={assigneeName} assigneeAvatarUrl={assignee?.avatar_url ?? undefined} members={members} clientName={clientName} dueTime={formatDueTime(t.due_at)} density="default" isExtraDemand={t.is_extra_demand} postType={getPostType(t)} viewers={taskViewersMap.get(t.id)} canInteract={canInteract} canDelete={true} onToggle={() => {
                 const next = t.status === "concluido" ? "pendente" : "concluido";
                 toggleComplete(t.id, next);
               }} onDelete={() => onDeleteTask(t.id)} onClick={() => canManageTasks && openEditTask(t)} />;
@@ -994,7 +996,7 @@ export function AgendaPanel() {
                     const clientName = resolveClientName(t);
                     const canInteract = canUserInteractWithTask(user?.id);
                     const members = getMembersForTask(t);
-                    return <AgendaWeekTaskItem key={t.id} stageLabel={stageLabel} stage={t.stage} done={t.status === "concluido"} assigneeName={assigneeName} assigneeAvatarUrl={assignee?.avatar_url ?? undefined} members={members} clientName={clientName} dueTime={formatDueTime(t.due_at)} isExtraDemand={t.is_extra_demand} postType={getPostType(t)} canInteract={canInteract} canDelete={true} onToggle={() => {
+                    return <AgendaWeekTaskItem key={t.id} stageLabel={stageLabel} stage={t.stage} done={t.status === "concluido"} assigneeName={assigneeName} assigneeAvatarUrl={assignee?.avatar_url ?? undefined} members={members} clientName={clientName} dueTime={formatDueTime(t.due_at)} isExtraDemand={t.is_extra_demand} postType={getPostType(t)} viewers={taskViewersMap.get(t.id)} canInteract={canInteract} canDelete={true} onToggle={() => {
                       const next = t.status === "concluido" ? "pendente" : "concluido";
                       toggleComplete(t.id, next);
                     }} onDelete={() => {
@@ -1068,7 +1070,7 @@ export function AgendaPanel() {
                         const canInteract = canUserInteractWithTask(user?.id);
                         const members = getMembersForTask(t);
 
-                        return <AgendaWeekTaskItem key={t.id} stageLabel={stageLabel} stage={t.stage} done={t.status === "concluido"} assigneeName={assigneeName} assigneeAvatarUrl={assignee?.avatar_url ?? undefined} members={members} clientName={clientName} dueTime={formatDueTime(t.due_at)} density="default" isExtraDemand={t.is_extra_demand} postType={getPostType(t)} canInteract={canInteract} canDelete={true} onToggle={() => {
+                        return <AgendaWeekTaskItem key={t.id} stageLabel={stageLabel} stage={t.stage} done={t.status === "concluido"} assigneeName={assigneeName} assigneeAvatarUrl={assignee?.avatar_url ?? undefined} members={members} clientName={clientName} dueTime={formatDueTime(t.due_at)} density="default" isExtraDemand={t.is_extra_demand} postType={getPostType(t)} viewers={taskViewersMap.get(t.id)} canInteract={canInteract} canDelete={true} onToggle={() => {
                           const next = t.status === "concluido" ? "pendente" : "concluido";
                           toggleComplete(t.id, next);
                         }} onDelete={() => onDeleteTask(t.id)} onClick={() => canManageTasks && openEditTask(t)} />;
@@ -1302,7 +1304,7 @@ export function AgendaPanel() {
                     dueTime={formatDueTime(t.due_at)} 
                     density="default"
                     isExtraDemand={t.is_extra_demand}
-                    postType={getPostType(t)}
+                    postType={getPostType(t)} viewers={taskViewersMap.get(t.id)}
                     canInteract={canInteract} 
                     canDelete={true} 
                     onToggle={() => {
@@ -1434,7 +1436,7 @@ export function AgendaPanel() {
                                 members={members}
                                 clientName={clientName}
                                 dueTime={formatDueTime(t.due_at)}
-                                postType={getPostType(t)}
+                                postType={getPostType(t)} viewers={taskViewersMap.get(t.id)}
                                 canInteract={canInteract}
                                 canDelete={true}
                                 canDrag={!!canManageTasks}

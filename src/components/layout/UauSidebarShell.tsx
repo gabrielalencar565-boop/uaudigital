@@ -12,6 +12,7 @@ import { useRealtimeSyncAll } from "@/hooks/use-realtime-sync";
 import { useNotificationSound } from "@/hooks/use-notification-sound";
 import { useOnlinePresence } from "@/hooks/use-online-presence";
 import { useTeamActivity } from "@/hooks/use-team-activity";
+import { useTaskViewersPresence } from "@/hooks/use-task-viewers";
 import { TopBar } from "@/components/layout/TopBar";
 import { EditProfileDialog } from "@/features/meu-painel/components/EditProfileDialog";
 import { usePmTasks } from "@/features/gestao/hooks/use-pm-data";
@@ -117,6 +118,7 @@ export function UauSidebarShell({
   useNotificationSound();
   useOnlinePresence();
   useTeamActivity();
+  useTaskViewersPresence();
 
   // Which groups are open
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
