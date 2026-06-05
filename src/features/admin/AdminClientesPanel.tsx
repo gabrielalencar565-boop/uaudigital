@@ -856,35 +856,6 @@ function ClientFormDialog({
 
           <Separator />
 
-          {/* Status do contrato (timeline) */}
-          <section className="space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-              <Pause className="h-3.5 w-3.5" /> Status do contrato
-            </h3>
-            <p className="text-[11px] text-muted-foreground -mt-1">
-              Pausar ou encerrar afeta <strong>apenas a partir do mês informado</strong>. Meses anteriores
-              continuam intactos em Financeiro, Metas, Ranking e Magic Number.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="space-y-1.5">
-                <Label>Pausado a partir de</Label>
-                <Input type="month" {...form.register("paused_from")} />
-                <p className="text-[11px] text-muted-foreground">Mês em que a pausa começa.</p>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Retorno previsto</Label>
-                <Input type="month" {...form.register("resumed_from")} />
-                <p className="text-[11px] text-muted-foreground">Opcional — mês de retomada.</p>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Encerrado em</Label>
-                <Input type="month" {...form.register("ended_at")} />
-                <p className="text-[11px] text-muted-foreground">Contrato finalizado neste mês.</p>
-              </div>
-            </div>
-          </section>
-
-          <Separator />
 
 
           {/* Operação */}
