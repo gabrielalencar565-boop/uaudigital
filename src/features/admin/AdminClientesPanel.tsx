@@ -379,25 +379,31 @@ export function AdminClientesPanel() {
     try {
       const pausedDate = monthInputToDate(values.paused_from);
       const resumedDate = monthInputToDate(values.resumed_from);
-      const endedDate = monthInputToDate(values.ended_at);
+      // ended_at agora aceita data completa YYYY-MM-DD
+      const endedDate = values.ended_at && /^\d{4}-\d{2}-\d{2}$/.test(values.ended_at)
+        ? values.ended_at
+        : monthInputToDate(values.ended_at);
+      const dueDay = Number(values.due_day ?? 0);
+      const hideFromFinancial = !dueDay || dueDay <= 0;
 
       // is_active derivado da timeline (status no mês atual).
       const today = new Date();
       const todayY = today.getFullYear();
       const todayM = today.getMonth() + 1;
-      const todayTarget = todayY * 12 + (todayM - 1);
+      const todayD = today.getDate();
+      const todayKey = todayY * 10000 + todayM * 100 + todayD;
       const isPausedNow = (() => {
         if (!pausedDate) return false;
         const [py, pm] = pausedDate.split("-").map(Number);
-        if (py * 12 + (pm - 1) > todayTarget) return false;
+        if (py * 12 + (pm - 1) > todayY * 12 + (todayM - 1)) return false;
         if (!resumedDate) return true;
         const [ry, rm] = resumedDate.split("-").map(Number);
-        return ry * 12 + (rm - 1) > todayTarget;
+        return ry * 12 + (rm - 1) > todayY * 12 + (todayM - 1);
       })();
       const isEndedNow = (() => {
         if (!endedDate) return false;
-        const [ey, em] = endedDate.split("-").map(Number);
-        return ey * 12 + (em - 1) <= todayTarget;
+        const [ey, em, ed] = endedDate.split("-").map(Number);
+        return ey * 10000 + em * 100 + (ed ?? 1) <= todayKey;
       })();
       const computedActive = !isPausedNow && !isEndedNow;
 
@@ -412,17 +418,18 @@ export function AdminClientesPanel() {
           participates_magic: values.participates_magic,
           participates_ranking: values.participates_ranking,
           has_goals: values.has_goals,
-          appears_in_financial: values.appears_in_financial,
+          appears_in_financial: !hideFromFinancial,
           paused_from: pausedDate,
           resumed_from: resumedDate,
           ended_at: endedDate,
+          end_reason: values.end_reason?.trim() || null,
           is_active: computedActive,
         } as any)
         .eq("id", editClient.id);
       if (error) throw error;
 
-      if (values.appears_in_financial === false) {
-        // Oculto do Financeiro: remove cliente financeiro e suas receitas
+      if (hideFromFinancial) {
+        // Oculto do Financeiro (dia de pagamento = 0)
         await supabase.from("financial_revenues").delete().eq("client_id", editClient.id);
         await supabase.from("financial_clients").delete().eq("id", editClient.id);
       } else {
@@ -435,11 +442,13 @@ export function AdminClientesPanel() {
             monthly_value: values.monthly_value || 0,
             contract_start: values.contract_start || new Date().toISOString().slice(0, 10),
             contract_months: values.contract_months ?? 12,
-            due_day: values.due_day ?? 10,
+            due_day: dueDay,
             ended_at: endedDate,
             is_active: computedActive,
           } as any, { onConflict: "id" });
       }
+
+
 
       // Auto-marca os N meses contratados em magic2_cycles a partir de contract_start
       try {
