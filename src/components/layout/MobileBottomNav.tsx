@@ -43,7 +43,7 @@ function resolveActiveBottom(tab: MainTab): string {
   if (tarefasTabs.includes(tab)) return "tarefas";
   const dashTabs: MainTab[] = ["visao_do_dia", "magic2", "desempenho"];
   if (dashTabs.includes(tab)) return "dashboard";
-  const finTabs: MainTab[] = ["financeiro", "fin_clientes", "fin_receitas_despesas", "fin_despesas_detalhadas", "fin_lancamentos", "metas"];
+  const finTabs: MainTab[] = ["financeiro", "fin_receitas_despesas", "fin_despesas_detalhadas", "fin_lancamentos", "metas"];
   if (finTabs.includes(tab)) return "financeiro";
   if (tab === "meu_painel") return "home";
   if (tab === "configuracoes") return "configuracoes";
