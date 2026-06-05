@@ -93,6 +93,19 @@ function useClientSquads() {
   });
 }
 
+function useFinancialClientValues() {
+  return useQuery({
+    queryKey: ["financial_clients", "values"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("financial_clients")
+        .select("id, monthly_value");
+      if (error) throw error;
+      return (data ?? []) as { id: string; monthly_value: number }[];
+    },
+  });
+}
+
 export function AdminClientesPanel() {
   const clientsQ = useAllClients();
   const createClient = useCreateClient();
