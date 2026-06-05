@@ -762,7 +762,75 @@ export function AdminClientesPanel() {
         submitLabel="Salvar"
       />
 
+      <Dialog open={!!endContract} onOpenChange={(open) => { if (!open) { setEndContract(null); setEndReason(""); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Encerrar contrato</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Encerrar o contrato de <strong>{endContract?.name}</strong>. Meses anteriores ao encerramento permanecem intactos no Financeiro, Metas e Magic Number.
+            </p>
+            <div className="space-y-1.5">
+              <Label>Data de encerramento</Label>
+              <Input type="month" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Motivo do encerramento</Label>
+              <Textarea
+                rows={4}
+                placeholder="Descreva o motivo do encerramento do contrato..."
+                value={endReason}
+                onChange={(e) => setEndReason(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => { setEndContract(null); setEndReason(""); }}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={endSubmitting || !endDate || !endReason.trim()}
+              onClick={async () => {
+                if (!endContract) return;
+                setEndSubmitting(true);
+                try {
+                  const endedDate = /^\d{4}-\d{2}$/.test(endDate) ? `${endDate}-01` : endDate;
+                  const { error } = await supabase
+                    .from("clients")
+                    .update({
+                      ended_at: endedDate,
+                      end_reason: endReason.trim(),
+                      is_active: false,
+                    } as any)
+                    .eq("id", endContract.id);
+                  if (error) throw error;
+                  await supabase
+                    .from("financial_clients")
+                    .update({ ended_at: endedDate, end_reason: endReason.trim(), is_active: false } as any)
+                    .eq("id", endContract.id);
+                  qc.invalidateQueries({ queryKey: ["clients_admin_all"] });
+                  qc.invalidateQueries({ queryKey: ["financial_clients"] });
+                  qc.invalidateQueries({ queryKey: ["fin-clients"] });
+                  toast.success(`Contrato encerrado em ${new Date(endedDate + "T00:00:00").toLocaleDateString("pt-BR", { month: "2-digit", year: "numeric" })}`);
+                  setEndContract(null);
+                  setEndReason("");
+                } catch (e: any) {
+                  toast.error(e?.message ?? "Erro ao encerrar contrato");
+                } finally {
+                  setEndSubmitting(false);
+                }
+              }}
+            >
+              {endSubmitting ? "Encerrando..." : "Encerrar contrato"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <AlertDialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
+
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>⚠️ Excluir permanentemente</AlertDialogTitle>
