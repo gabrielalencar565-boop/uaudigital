@@ -3,6 +3,8 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
 import { useMyProfile } from "@/hooks/use-my-profile";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import React from "react";
 
 type PresenceMeta = {
   user_id: string;
