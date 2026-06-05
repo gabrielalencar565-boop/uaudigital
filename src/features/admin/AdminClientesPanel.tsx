@@ -184,6 +184,7 @@ export function AdminClientesPanel() {
         name: values.name,
         magic_due_date: dueDate,
         notes: values.notes || undefined,
+        monthly_value: values.monthly_value || 0,
         contract_start: values.contract_start || new Date().toISOString().slice(0, 10),
         services: values.services ?? [],
         participates_magic: values.participates_magic,
