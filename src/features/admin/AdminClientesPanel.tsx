@@ -613,16 +613,11 @@ export function AdminClientesPanel() {
                             <Badge variant="destructive" className="text-[10px]">
                               Encerrado {new Date(client.ended_at + "T00:00:00").toLocaleDateString("pt-BR", { month: "2-digit", year: "2-digit" })}
                             </Badge>
-                          ) : client.paused_from && !client.is_active ? (
-                            <Badge variant="warning" className="text-[10px]">
-                              Pausado desde {new Date(client.paused_from + "T00:00:00").toLocaleDateString("pt-BR", { month: "2-digit", year: "2-digit" })}
-                            </Badge>
                           ) : (
-                            <Badge variant={client.is_active ? "success" : "secondary"}>
-                              {client.is_active ? "Ativo" : "Pausado"}
-                            </Badge>
+                            <Badge variant="success">Ativo</Badge>
                           )}
                         </TableCell>
+
 
                         <TableCell className="font-medium">{client.name}</TableCell>
                         <TableCell className="text-sm tabular-nums">
