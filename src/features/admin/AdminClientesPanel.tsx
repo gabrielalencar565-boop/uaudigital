@@ -686,19 +686,8 @@ export function AdminClientesPanel() {
                             <Button variant="ghost" size="sm" onClick={() => openEdit(client)} title="Editar">
                               <Pencil className="h-4 w-4" />
                             </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleToggleActive(client)}
-                              title={client.is_active ? "Pausar" : "Reativar"}
-                              disabled={toggleActive.isPending}
-                            >
-                              {client.is_active ? (
-                                <Pause className="h-4 w-4 text-warning" />
-                              ) : (
-                                <Play className="h-4 w-4 text-success" />
-                              )}
-                            </Button>
+
+
                             {!client.ended_at && (
                               <Button
                                 variant="ghost"
