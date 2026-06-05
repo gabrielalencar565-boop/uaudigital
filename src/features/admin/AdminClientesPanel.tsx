@@ -68,6 +68,9 @@ const clientSchema = z.object({
   participates_magic: z.boolean().default(true),
   participates_ranking: z.boolean().default(true),
   has_goals: z.boolean().default(false),
+  paused_from: z.string().optional().or(z.literal("")),
+  resumed_from: z.string().optional().or(z.literal("")),
+  ended_at: z.string().optional().or(z.literal("")),
 });
 
 type ClientFormValues = z.infer<typeof clientSchema>;
@@ -82,6 +85,9 @@ const emptyDefaults: ClientFormValues = {
   participates_magic: true,
   participates_ranking: true,
   has_goals: false,
+  paused_from: "",
+  resumed_from: "",
+  ended_at: "",
 };
 
 function useClientSquads() {
@@ -223,6 +229,14 @@ export function AdminClientesPanel() {
     defaultValues: emptyDefaults,
   });
 
+  // Converte 'YYYY-MM' (input type=month) ou 'YYYY-MM-DD' para 'YYYY-MM-01' (date column).
+  const monthInputToDate = (s?: string | null): string | null => {
+    if (!s) return null;
+    if (/^\d{4}-\d{2}$/.test(s)) return `${s}-01`;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s.slice(0, 7) + "-01";
+    return null;
+  };
+
   const handleCreate = async (values: ClientFormValues) => {
     try {
       const now = new Date();
@@ -239,14 +253,25 @@ export function AdminClientesPanel() {
         has_goals: values.has_goals,
       });
       const newId = created?.id ?? created;
-      if (newId && values.contract_months != null) {
+      if (newId) {
         await supabase
-          .from("financial_clients")
-          .update({ contract_months: values.contract_months } as any)
+          .from("clients")
+          .update({
+            paused_from: monthInputToDate(values.paused_from),
+            resumed_from: monthInputToDate(values.resumed_from),
+            ended_at: monthInputToDate(values.ended_at),
+          } as any)
           .eq("id", newId);
+        if (values.contract_months != null) {
+          await supabase
+            .from("financial_clients")
+            .update({ contract_months: values.contract_months } as any)
+            .eq("id", newId);
+        }
       }
       qc.invalidateQueries({ queryKey: ["financial_clients"] });
-      toast.success("Cliente criado e sincronizado com os módulos!");
+      qc.invalidateQueries({ queryKey: ["fin-clients"] });
+      toast.success("Cliente criado e sincronizado com o Financeiro!");
       setCreateOpen(false);
       createForm.reset(emptyDefaults);
     } catch (e: any) {
@@ -257,6 +282,30 @@ export function AdminClientesPanel() {
   const handleEdit = async (values: ClientFormValues) => {
     if (!editClient) return;
     try {
+      const pausedDate = monthInputToDate(values.paused_from);
+      const resumedDate = monthInputToDate(values.resumed_from);
+      const endedDate = monthInputToDate(values.ended_at);
+
+      // is_active derivado da timeline (status no mês atual).
+      const today = new Date();
+      const todayY = today.getFullYear();
+      const todayM = today.getMonth() + 1;
+      const todayTarget = todayY * 12 + (todayM - 1);
+      const isPausedNow = (() => {
+        if (!pausedDate) return false;
+        const [py, pm] = pausedDate.split("-").map(Number);
+        if (py * 12 + (pm - 1) > todayTarget) return false;
+        if (!resumedDate) return true;
+        const [ry, rm] = resumedDate.split("-").map(Number);
+        return ry * 12 + (rm - 1) > todayTarget;
+      })();
+      const isEndedNow = (() => {
+        if (!endedDate) return false;
+        const [ey, em] = endedDate.split("-").map(Number);
+        return ey * 12 + (em - 1) <= todayTarget;
+      })();
+      const computedActive = !isPausedNow && !isEndedNow;
+
       const { error } = await supabase
         .from("clients")
         .update({
@@ -268,34 +317,21 @@ export function AdminClientesPanel() {
           participates_magic: values.participates_magic,
           participates_ranking: values.participates_ranking,
           has_goals: values.has_goals,
+          paused_from: pausedDate,
+          resumed_from: resumedDate,
+          ended_at: endedDate,
+          is_active: computedActive,
         } as any)
         .eq("id", editClient.id);
       if (error) throw error;
 
-      // Persist contract_months (and value/start) to financial_clients.
-      // Match by id, then by normalized name as fallback.
-      const normName = normalizeClientName(values.name);
-      const finRow =
-        finValuesQ.data?.find((f) => f.id === editClient.id) ??
-        finValuesQ.data?.find((f) => normalizeClientName(f.name) === normName);
-      if (finRow) {
-        await supabase
-          .from("financial_clients")
-          .update({
-            monthly_value: values.monthly_value || 0,
-            contract_start: values.contract_start || null,
-            contract_months: values.contract_months ?? 12,
-          } as any)
-          .eq("id", finRow.id);
-      } else {
-        await supabase.from("financial_clients").insert({
-          id: editClient.id,
-          name: values.name,
-          monthly_value: values.monthly_value || 0,
-          contract_start: values.contract_start || new Date().toISOString().slice(0, 10),
-          contract_months: values.contract_months ?? 12,
-        } as any);
-      }
+      // contract_months vive em financial_clients (trigger não espelha esse campo)
+      await supabase
+        .from("financial_clients")
+        .update({ contract_months: values.contract_months ?? 12 } as any)
+        .eq("id", editClient.id);
+
+
 
       // Sync squads
       const currentSquadIds = clientSquadMap.get(editClient.id) ?? [];
@@ -370,8 +406,19 @@ export function AdminClientesPanel() {
 
   const handleToggleActive = async (client: ClientRow) => {
     try {
-      await toggleActive.mutateAsync({ clientId: client.id, isActive: !client.is_active });
-      toast.success(client.is_active ? "Contrato pausado" : "Contrato reativado");
+      const now = new Date();
+      const currentMonthDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+      const willPause = client.is_active;
+      // Pausar: define paused_from = mês atual e limpa resumed_from.
+      // Reativar: define resumed_from = mês atual (preserva paused_from histórico).
+      const patch: any = willPause
+        ? { is_active: false, paused_from: currentMonthDate, resumed_from: null }
+        : { is_active: true, resumed_from: currentMonthDate };
+      const { error } = await supabase.from("clients").update(patch).eq("id", client.id);
+      if (error) throw error;
+      qc.invalidateQueries({ queryKey: ["clients_admin_all"] });
+      qc.invalidateQueries({ queryKey: ["fin-clients"] });
+      toast.success(willPause ? `Cliente pausado a partir de ${now.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}` : "Cliente reativado");
     } catch (e: any) {
       toast.error(e?.message ?? "Erro ao alterar status");
     }
@@ -406,6 +453,9 @@ export function AdminClientesPanel() {
       participates_magic: client.participates_magic ?? true,
       participates_ranking: client.participates_ranking ?? true,
       has_goals: client.has_goals ?? false,
+      paused_from: client.paused_from ? client.paused_from.slice(0, 7) : "",
+      resumed_from: client.resumed_from ? client.resumed_from.slice(0, 7) : "",
+      ended_at: client.ended_at ? client.ended_at.slice(0, 7) : "",
     });
     setEditSquadIds(clientSquadMap.get(client.id) ?? []);
   };
@@ -482,10 +532,21 @@ export function AdminClientesPanel() {
                     return (
                       <TableRow key={client.id} className={!client.is_active ? "opacity-60" : ""}>
                         <TableCell>
-                          <Badge variant={client.is_active ? "success" : "secondary"}>
-                            {client.is_active ? "Ativo" : "Desativado"}
-                          </Badge>
+                          {client.ended_at ? (
+                            <Badge variant="destructive" className="text-[10px]">
+                              Encerrado {new Date(client.ended_at + "T00:00:00").toLocaleDateString("pt-BR", { month: "2-digit", year: "2-digit" })}
+                            </Badge>
+                          ) : client.paused_from && !client.is_active ? (
+                            <Badge variant="warning" className="text-[10px]">
+                              Pausado desde {new Date(client.paused_from + "T00:00:00").toLocaleDateString("pt-BR", { month: "2-digit", year: "2-digit" })}
+                            </Badge>
+                          ) : (
+                            <Badge variant={client.is_active ? "success" : "secondary"}>
+                              {client.is_active ? "Ativo" : "Pausado"}
+                            </Badge>
+                          )}
                         </TableCell>
+
                         <TableCell className="font-medium">{client.name}</TableCell>
                         <TableCell className="text-sm tabular-nums">
                           {finValue.toLocaleString("pt-BR", {
@@ -708,6 +769,37 @@ function ClientFormDialog({
           </section>
 
           <Separator />
+
+          {/* Status do contrato (timeline) */}
+          <section className="space-y-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <Pause className="h-3.5 w-3.5" /> Status do contrato
+            </h3>
+            <p className="text-[11px] text-muted-foreground -mt-1">
+              Pausar ou encerrar afeta <strong>apenas a partir do mês informado</strong>. Meses anteriores
+              continuam intactos em Financeiro, Metas, Ranking e Magic Number.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label>Pausado a partir de</Label>
+                <Input type="month" {...form.register("paused_from")} />
+                <p className="text-[11px] text-muted-foreground">Mês em que a pausa começa.</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Retorno previsto</Label>
+                <Input type="month" {...form.register("resumed_from")} />
+                <p className="text-[11px] text-muted-foreground">Opcional — mês de retomada.</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Encerrado em</Label>
+                <Input type="month" {...form.register("ended_at")} />
+                <p className="text-[11px] text-muted-foreground">Contrato finalizado neste mês.</p>
+              </div>
+            </div>
+          </section>
+
+          <Separator />
+
 
           {/* Operação */}
           <section className="space-y-3">

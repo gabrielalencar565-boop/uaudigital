@@ -355,6 +355,7 @@ export type Database = {
         Row: {
           contract_start: string
           created_at: string
+          ended_at: string | null
           has_goals: boolean
           id: string
           is_active: boolean
@@ -366,13 +367,16 @@ export type Database = {
           notes: string | null
           participates_magic: boolean
           participates_ranking: boolean
+          paused_from: string | null
           plan_name: string | null
+          resumed_from: string | null
           services: string[]
           updated_at: string
         }
         Insert: {
           contract_start?: string
           created_at?: string
+          ended_at?: string | null
           has_goals?: boolean
           id?: string
           is_active?: boolean
@@ -384,13 +388,16 @@ export type Database = {
           notes?: string | null
           participates_magic?: boolean
           participates_ranking?: boolean
+          paused_from?: string | null
           plan_name?: string | null
+          resumed_from?: string | null
           services?: string[]
           updated_at?: string
         }
         Update: {
           contract_start?: string
           created_at?: string
+          ended_at?: string | null
           has_goals?: boolean
           id?: string
           is_active?: boolean
@@ -402,7 +409,9 @@ export type Database = {
           notes?: string | null
           participates_magic?: boolean
           participates_ranking?: boolean
+          paused_from?: string | null
           plan_name?: string | null
+          resumed_from?: string | null
           services?: string[]
           updated_at?: string
         }
@@ -415,11 +424,14 @@ export type Database = {
           contract_start: string
           created_at: string
           due_day: number | null
+          ended_at: string | null
           id: string
           is_active: boolean
           monthly_value: number
           name: string
           notes: string | null
+          paused_from: string | null
+          resumed_from: string | null
           updated_at: string
         }
         Insert: {
@@ -428,11 +440,14 @@ export type Database = {
           contract_start?: string
           created_at?: string
           due_day?: number | null
+          ended_at?: string | null
           id?: string
           is_active?: boolean
           monthly_value?: number
           name: string
           notes?: string | null
+          paused_from?: string | null
+          resumed_from?: string | null
           updated_at?: string
         }
         Update: {
@@ -441,11 +456,14 @@ export type Database = {
           contract_start?: string
           created_at?: string
           due_day?: number | null
+          ended_at?: string | null
           id?: string
           is_active?: boolean
           monthly_value?: number
           name?: string
           notes?: string | null
+          paused_from?: string | null
+          resumed_from?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -2017,6 +2035,10 @@ export type Database = {
     Functions: {
       admin_exists: { Args: never; Returns: boolean }
       check_client_exists: { Args: { _name: string }; Returns: boolean }
+      client_status_at: {
+        Args: { p_client: string; p_month: number; p_year: number }
+        Returns: string
+      }
       get_performance_month_totals: {
         Args: { _year: number }
         Returns: {

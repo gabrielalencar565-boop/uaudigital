@@ -14,6 +14,9 @@ export type FinClient = {
   is_active: boolean;
   notes: string | null;
   created_at: string;
+  paused_from: string | null;
+  resumed_from: string | null;
+  ended_at: string | null;
 };
 
 export type FinRevenue = {

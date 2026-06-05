@@ -9,6 +9,7 @@ import { useFinClients, useFinRevenues, useUpsertFinRevenue, useFinExpenses, use
 import { FinMonthYearSelector } from "./FinMonthYearSelector";
 import { FinMetricCard } from "./FinMetricCard";
 import { buildEffectiveExpenses } from "../utils/build-effective-expenses";
+import { isClientActiveAt } from "@/lib/client-status";
 
 export function FinReceitasDespesasTab() {
   const now = new Date();
@@ -23,7 +24,8 @@ export function FinReceitasDespesasTab() {
   const upsertRev = useUpsertFinRevenue();
   const upsertExp = useUpsertFinExpense();
 
-  const clients = (clientsQ.data?.filter((c) => c.is_active) ?? []).sort((a, b) => (a.due_day ?? 10) - (b.due_day ?? 10));
+  // Status timeline: cliente aparece neste mês apenas se estava 'ativo' naquele período.
+  const clients = (clientsQ.data?.filter((c) => isClientActiveAt(c, year, month)) ?? []).sort((a, b) => (a.due_day ?? 10) - (b.due_day ?? 10));
   const revenues = revenuesQ.data ?? [];
   const allExpenses = useMemo(
     () => buildEffectiveExpenses(expensesQ.data ?? [], allYearExpensesQ.data ?? [], month, year),
