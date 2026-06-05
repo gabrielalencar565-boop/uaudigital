@@ -114,6 +114,7 @@ export function AdminClientesPanel() {
   const squadsQ = useSquads();
   const clientSquadsQ = useClientSquads();
   const teamMembersQ = useTeamMembers();
+  const finValuesQ = useFinancialClientValues();
   const qc = useQueryClient();
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -125,6 +126,12 @@ export function AdminClientesPanel() {
   const squads = squadsQ.data ?? [];
   const teamMembers = teamMembersQ.data ?? [];
   const clientSquads = clientSquadsQ.data ?? [];
+
+  const finValueMap = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const f of finValuesQ.data ?? []) m.set(f.id, Number(f.monthly_value ?? 0));
+    return m;
+  }, [finValuesQ.data]);
 
   const clientSquadMap = useMemo(() => {
     const map = new Map<string, string[]>();
