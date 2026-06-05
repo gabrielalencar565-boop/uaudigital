@@ -353,33 +353,57 @@ export type Database = {
       }
       clients: {
         Row: {
+          contract_start: string
           created_at: string
+          has_goals: boolean
           id: string
           is_active: boolean
           is_freelancer_sentinel: boolean
           magic_due_date: string
+          manager_id: string | null
+          monthly_value: number
           name: string
           notes: string | null
+          participates_magic: boolean
+          participates_ranking: boolean
+          plan_name: string | null
+          services: string[]
           updated_at: string
         }
         Insert: {
+          contract_start?: string
           created_at?: string
+          has_goals?: boolean
           id?: string
           is_active?: boolean
           is_freelancer_sentinel?: boolean
           magic_due_date: string
+          manager_id?: string | null
+          monthly_value?: number
           name: string
           notes?: string | null
+          participates_magic?: boolean
+          participates_ranking?: boolean
+          plan_name?: string | null
+          services?: string[]
           updated_at?: string
         }
         Update: {
+          contract_start?: string
           created_at?: string
+          has_goals?: boolean
           id?: string
           is_active?: boolean
           is_freelancer_sentinel?: boolean
           magic_due_date?: string
+          manager_id?: string | null
+          monthly_value?: number
           name?: string
           notes?: string | null
+          participates_magic?: boolean
+          participates_ranking?: boolean
+          plan_name?: string | null
+          services?: string[]
           updated_at?: string
         }
         Relationships: []
