@@ -17,6 +17,14 @@ export type ClientRow = {
   notes: string | null;
   is_active: boolean;
   is_freelancer_sentinel?: boolean;
+  manager_id?: string | null;
+  plan_name?: string | null;
+  monthly_value?: number | null;
+  contract_start?: string | null;
+  services?: string[] | null;
+  participates_magic?: boolean;
+  participates_ranking?: boolean;
+  has_goals?: boolean;
 };
 
 /** Returns the freelancer sentinel client (if exists) */
