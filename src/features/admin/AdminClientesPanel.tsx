@@ -202,8 +202,13 @@ export function AdminClientesPanel() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editClient, setEditClient] = useState<ClientRow | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<ClientRow | null>(null);
+  const [endContract, setEndContract] = useState<ClientRow | null>(null);
+  const [endDate, setEndDate] = useState<string>("");
+  const [endReason, setEndReason] = useState<string>("");
+  const [endSubmitting, setEndSubmitting] = useState(false);
   const [showInactive, setShowInactive] = useState(false);
   const [editSquadIds, setEditSquadIds] = useState<string[]>([]);
+
 
   const squads = squadsQ.data ?? [];
   const teamMembers = teamMembersQ.data ?? [];
