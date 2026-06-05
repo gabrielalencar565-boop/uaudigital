@@ -381,7 +381,6 @@ export function AdminClientesPanel() {
                   <TableRow>
                     <TableHead>Status</TableHead>
                     <TableHead>Nome</TableHead>
-                    <TableHead>Plano</TableHead>
                     <TableHead>Mensal</TableHead>
                     <TableHead>Squads</TableHead>
                     <TableHead>Módulos</TableHead>
@@ -391,6 +390,7 @@ export function AdminClientesPanel() {
                 <TableBody>
                   {clients.map((client) => {
                     const squadIds = clientSquadMap.get(client.id) ?? [];
+                    const finValue = finValueMap.get(client.id) ?? 0;
                     return (
                       <TableRow key={client.id} className={!client.is_active ? "opacity-60" : ""}>
                         <TableCell>
@@ -399,11 +399,8 @@ export function AdminClientesPanel() {
                           </Badge>
                         </TableCell>
                         <TableCell className="font-medium">{client.name}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {client.plan_name || "—"}
-                        </TableCell>
                         <TableCell className="text-sm tabular-nums">
-                          {Number(client.monthly_value ?? 0).toLocaleString("pt-BR", {
+                          {finValue.toLocaleString("pt-BR", {
                             style: "currency",
                             currency: "BRL",
                           })}
