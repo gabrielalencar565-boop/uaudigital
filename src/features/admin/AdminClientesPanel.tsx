@@ -363,7 +363,7 @@ export function AdminClientesPanel() {
     editForm.reset({
       name: client.name,
       notes: client.notes ?? "",
-      monthly_value: finValueMap.get(client.id) ?? Number(client.monthly_value ?? 0),
+      monthly_value: getFinValue(client) || Number(client.monthly_value ?? 0),
       contract_start: client.contract_start ?? new Date().toISOString().slice(0, 10),
       services: client.services ?? [],
       participates_magic: client.participates_magic ?? true,
