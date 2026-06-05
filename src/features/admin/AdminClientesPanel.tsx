@@ -4,7 +4,7 @@ import { buildAssigneesForClient, mergeClientAssignees } from "@/lib/role-stage-
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { format, isValid } from "date-fns";
-import { Plus, Pencil, Trash2, Users, Pause, Play, Filter, DollarSign } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, Pause, Play, Filter, DollarSign, XCircle } from "lucide-react";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -202,8 +202,13 @@ export function AdminClientesPanel() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editClient, setEditClient] = useState<ClientRow | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<ClientRow | null>(null);
+  const [endContract, setEndContract] = useState<ClientRow | null>(null);
+  const [endDate, setEndDate] = useState<string>("");
+  const [endReason, setEndReason] = useState<string>("");
+  const [endSubmitting, setEndSubmitting] = useState(false);
   const [showInactive, setShowInactive] = useState(false);
   const [editSquadIds, setEditSquadIds] = useState<string[]>([]);
+
 
   const squads = squadsQ.data ?? [];
   const teamMembers = teamMembersQ.data ?? [];
@@ -694,6 +699,21 @@ export function AdminClientesPanel() {
                                 <Play className="h-4 w-4 text-success" />
                               )}
                             </Button>
+                            {!client.ended_at && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setEndContract(client);
+                                  const now = new Date();
+                                  setEndDate(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`);
+                                  setEndReason("");
+                                }}
+                                title="Encerrar contrato"
+                              >
+                                <XCircle className="h-4 w-4 text-destructive" />
+                              </Button>
+                            )}
                             <Button
                               variant="ghost"
                               size="sm"
@@ -702,6 +722,7 @@ export function AdminClientesPanel() {
                             >
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
+
                           </div>
                         </TableCell>
                       </TableRow>
@@ -741,7 +762,75 @@ export function AdminClientesPanel() {
         submitLabel="Salvar"
       />
 
+      <Dialog open={!!endContract} onOpenChange={(open) => { if (!open) { setEndContract(null); setEndReason(""); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Encerrar contrato</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Encerrar o contrato de <strong>{endContract?.name}</strong>. Meses anteriores ao encerramento permanecem intactos no Financeiro, Metas e Magic Number.
+            </p>
+            <div className="space-y-1.5">
+              <Label>Data de encerramento</Label>
+              <Input type="month" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Motivo do encerramento</Label>
+              <Textarea
+                rows={4}
+                placeholder="Descreva o motivo do encerramento do contrato..."
+                value={endReason}
+                onChange={(e) => setEndReason(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => { setEndContract(null); setEndReason(""); }}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={endSubmitting || !endDate || !endReason.trim()}
+              onClick={async () => {
+                if (!endContract) return;
+                setEndSubmitting(true);
+                try {
+                  const endedDate = /^\d{4}-\d{2}$/.test(endDate) ? `${endDate}-01` : endDate;
+                  const { error } = await supabase
+                    .from("clients")
+                    .update({
+                      ended_at: endedDate,
+                      end_reason: endReason.trim(),
+                      is_active: false,
+                    } as any)
+                    .eq("id", endContract.id);
+                  if (error) throw error;
+                  await supabase
+                    .from("financial_clients")
+                    .update({ ended_at: endedDate, end_reason: endReason.trim(), is_active: false } as any)
+                    .eq("id", endContract.id);
+                  qc.invalidateQueries({ queryKey: ["clients_admin_all"] });
+                  qc.invalidateQueries({ queryKey: ["financial_clients"] });
+                  qc.invalidateQueries({ queryKey: ["fin-clients"] });
+                  toast.success(`Contrato encerrado em ${new Date(endedDate + "T00:00:00").toLocaleDateString("pt-BR", { month: "2-digit", year: "numeric" })}`);
+                  setEndContract(null);
+                  setEndReason("");
+                } catch (e: any) {
+                  toast.error(e?.message ?? "Erro ao encerrar contrato");
+                } finally {
+                  setEndSubmitting(false);
+                }
+              }}
+            >
+              {endSubmitting ? "Encerrando..." : "Encerrar contrato"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <AlertDialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
+
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>⚠️ Excluir permanentemente</AlertDialogTitle>
@@ -856,35 +945,6 @@ function ClientFormDialog({
 
           <Separator />
 
-          {/* Status do contrato (timeline) */}
-          <section className="space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-              <Pause className="h-3.5 w-3.5" /> Status do contrato
-            </h3>
-            <p className="text-[11px] text-muted-foreground -mt-1">
-              Pausar ou encerrar afeta <strong>apenas a partir do mês informado</strong>. Meses anteriores
-              continuam intactos em Financeiro, Metas, Ranking e Magic Number.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="space-y-1.5">
-                <Label>Pausado a partir de</Label>
-                <Input type="month" {...form.register("paused_from")} />
-                <p className="text-[11px] text-muted-foreground">Mês em que a pausa começa.</p>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Retorno previsto</Label>
-                <Input type="month" {...form.register("resumed_from")} />
-                <p className="text-[11px] text-muted-foreground">Opcional — mês de retomada.</p>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Encerrado em</Label>
-                <Input type="month" {...form.register("ended_at")} />
-                <p className="text-[11px] text-muted-foreground">Contrato finalizado neste mês.</p>
-              </div>
-            </div>
-          </section>
-
-          <Separator />
 
 
           {/* Operação */}

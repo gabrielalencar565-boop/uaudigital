@@ -355,6 +355,7 @@ export type Database = {
         Row: {
           contract_start: string
           created_at: string
+          end_reason: string | null
           ended_at: string | null
           has_goals: boolean
           id: string
@@ -376,6 +377,7 @@ export type Database = {
         Insert: {
           contract_start?: string
           created_at?: string
+          end_reason?: string | null
           ended_at?: string | null
           has_goals?: boolean
           id?: string
@@ -397,6 +399,7 @@ export type Database = {
         Update: {
           contract_start?: string
           created_at?: string
+          end_reason?: string | null
           ended_at?: string | null
           has_goals?: boolean
           id?: string
@@ -424,6 +427,7 @@ export type Database = {
           contract_start: string
           created_at: string
           due_day: number | null
+          end_reason: string | null
           ended_at: string | null
           id: string
           is_active: boolean
@@ -440,6 +444,7 @@ export type Database = {
           contract_start?: string
           created_at?: string
           due_day?: number | null
+          end_reason?: string | null
           ended_at?: string | null
           id?: string
           is_active?: boolean
@@ -456,6 +461,7 @@ export type Database = {
           contract_start?: string
           created_at?: string
           due_day?: number | null
+          end_reason?: string | null
           ended_at?: string | null
           id?: string
           is_active?: boolean
