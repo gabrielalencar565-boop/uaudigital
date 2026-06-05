@@ -98,6 +98,9 @@ export function FinClientesTab() {
 
   return (
     <div className="space-y-6">
+      <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-xs text-muted-foreground">
+        💡 Novos clientes devem ser criados em <strong className="text-foreground">Configurações → Clientes</strong>. Esta lista exibe contratos financeiros legados e cadastros já sincronizados automaticamente.
+      </div>
       {/* KPIs */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0s" }}>
         <FinMetricCard

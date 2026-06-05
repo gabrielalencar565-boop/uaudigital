@@ -1,10 +1,10 @@
-import { useMemo, useRef, useState, useEffect, useCallback } from "react";
+import { useMemo, useState } from "react";
 import { z } from "zod";
 import { buildAssigneesForClient, mergeClientAssignees } from "@/lib/role-stage-mapping";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { format, isValid } from "date-fns";
-import { Plus, Pencil, Trash2, Users, Pause, Play, Filter } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, Pause, Play, Filter, DollarSign, Sparkles, Trophy, Target } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,6 +30,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import {
   Table,
   TableBody,
@@ -41,16 +43,48 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useAllClients, useCreateClient, useDeleteClient, useToggleClientActive, type ClientRow } from "@/features/data/queries";
+import { useAllClients, useCreateClient, useDeleteClient, useToggleClientActive, useTeamMembers, type ClientRow } from "@/features/data/queries";
 import { useSquads } from "@/features/projetos/hooks/use-squads";
 import { ContractMonthsSelector } from "@/features/admin/components/ContractMonthsSelector";
+
+const SERVICE_OPTIONS = [
+  "Social Media",
+  "Design",
+  "Vídeo",
+  "Tráfego Pago",
+  "Fotografia",
+  "Copywriting",
+  "Site / Landing Page",
+  "Consultoria",
+];
 
 const clientSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório").max(100),
   notes: z.string().max(500).optional().or(z.literal("")),
+  manager_id: z.string().optional().or(z.literal("")),
+  plan_name: z.string().max(80).optional().or(z.literal("")),
+  monthly_value: z.coerce.number().min(0).default(0),
+  contract_start: z.string().optional().or(z.literal("")),
+  services: z.array(z.string()).default([]),
+  participates_magic: z.boolean().default(true),
+  participates_ranking: z.boolean().default(true),
+  has_goals: z.boolean().default(false),
 });
 
 type ClientFormValues = z.infer<typeof clientSchema>;
+
+const emptyDefaults: ClientFormValues = {
+  name: "",
+  notes: "",
+  manager_id: "",
+  plan_name: "",
+  monthly_value: 0,
+  contract_start: new Date().toISOString().slice(0, 10),
+  services: [],
+  participates_magic: true,
+  participates_ranking: true,
+  has_goals: false,
+};
 
 function useClientSquads() {
   return useQuery({
@@ -72,6 +106,7 @@ export function AdminClientesPanel() {
   const deleteClient = useDeleteClient();
   const squadsQ = useSquads();
   const clientSquadsQ = useClientSquads();
+  const teamMembersQ = useTeamMembers();
   const qc = useQueryClient();
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -81,9 +116,9 @@ export function AdminClientesPanel() {
   const [editSquadIds, setEditSquadIds] = useState<string[]>([]);
 
   const squads = squadsQ.data ?? [];
+  const teamMembers = teamMembersQ.data ?? [];
   const clientSquads = clientSquadsQ.data ?? [];
 
-  // Map client_id -> squad_ids
   const clientSquadMap = useMemo(() => {
     const map = new Map<string, string[]>();
     for (const cs of clientSquads) {
@@ -94,12 +129,17 @@ export function AdminClientesPanel() {
     return map;
   }, [clientSquads]);
 
-  // Map squad_id -> squad
   const squadMap = useMemo(() => {
     const map = new Map<string, any>();
     for (const s of squads) map.set(s.id, s);
     return map;
   }, [squads]);
+
+  const memberMap = useMemo(() => {
+    const map = new Map<string, any>();
+    for (const m of teamMembers) map.set(m.user_id, m);
+    return map;
+  }, [teamMembers]);
 
   const clients = useMemo(() => {
     const all = clientsQ.data ?? [];
@@ -112,12 +152,12 @@ export function AdminClientesPanel() {
 
   const createForm = useForm<ClientFormValues>({
     resolver: zodResolver(clientSchema),
-    defaultValues: { name: "", notes: "" },
+    defaultValues: emptyDefaults,
   });
 
   const editForm = useForm<ClientFormValues>({
     resolver: zodResolver(clientSchema),
-    defaultValues: { name: "", notes: "" },
+    defaultValues: emptyDefaults,
   });
 
   const handleCreate = async (values: ClientFormValues) => {
@@ -128,10 +168,18 @@ export function AdminClientesPanel() {
         name: values.name,
         magic_due_date: dueDate,
         notes: values.notes || undefined,
+        manager_id: values.manager_id || null,
+        plan_name: values.plan_name || null,
+        monthly_value: values.monthly_value || 0,
+        contract_start: values.contract_start || new Date().toISOString().slice(0, 10),
+        services: values.services ?? [],
+        participates_magic: values.participates_magic,
+        participates_ranking: values.participates_ranking,
+        has_goals: values.has_goals,
       });
-      toast.success("Cliente criado com sucesso!");
+      toast.success("Cliente criado e sincronizado com os módulos!");
       setCreateOpen(false);
-      createForm.reset();
+      createForm.reset(emptyDefaults);
     } catch (e: any) {
       toast.error(e?.message ?? "Erro ao criar cliente");
     }
@@ -142,7 +190,18 @@ export function AdminClientesPanel() {
     try {
       const { error } = await supabase
         .from("clients")
-        .update({ name: values.name, notes: values.notes || null })
+        .update({
+          name: values.name,
+          notes: values.notes || null,
+          manager_id: values.manager_id || null,
+          plan_name: values.plan_name || null,
+          monthly_value: values.monthly_value || 0,
+          contract_start: values.contract_start || null,
+          services: values.services ?? [],
+          participates_magic: values.participates_magic,
+          participates_ranking: values.participates_ranking,
+          has_goals: values.has_goals,
+        } as any)
         .eq("id", editClient.id);
       if (error) throw error;
 
@@ -163,10 +222,9 @@ export function AdminClientesPanel() {
         await supabase.from("client_squads" as any).insert(rows as any);
       }
 
-      // ── Auto-generate stage assignees from squad members' roles ──
+      // Auto-generate stage assignees from squad members
       if (editSquadIds.length > 0) {
         try {
-          // Fetch members of the selected squads
           const { data: squadMembers } = await supabase
             .from("squad_members")
             .select("user_id")
@@ -174,41 +232,29 @@ export function AdminClientesPanel() {
 
           if (squadMembers && squadMembers.length > 0) {
             const memberUserIds = squadMembers.map((sm: any) => sm.user_id);
-
-            // Fetch their role_title from team_members
-            const { data: teamMembers } = await supabase
+            const { data: tms } = await supabase
               .from("team_members")
               .select("user_id, role_title")
               .in("user_id", memberUserIds)
               .eq("is_active", true);
 
-            if (teamMembers && teamMembers.length > 0) {
+            if (tms && tms.length > 0) {
               const perStage = buildAssigneesForClient(
-                teamMembers.map((tm: any) => ({
-                  user_id: tm.user_id,
-                  role_title: tm.role_title,
-                }))
+                tms.map((tm: any) => ({ user_id: tm.user_id, role_title: tm.role_title }))
               );
-
               if (Object.keys(perStage).length > 0) {
-                // Get default flow
                 const { data: flows } = await (supabase as any)
                   .from("pm_stage_flows")
                   .select("id, stage_assignees, is_default")
                   .order("is_default", { ascending: false })
                   .limit(1);
-
                 const defaultFlow = flows?.[0];
                 if (defaultFlow) {
-                  const existingAssignees = (defaultFlow.stage_assignees ?? {}) as Record<string, Record<string, any>>;
-                  const merged = mergeClientAssignees(existingAssignees, editClient.id, perStage);
-
+                  const existing = (defaultFlow.stage_assignees ?? {}) as Record<string, Record<string, any>>;
+                  const merged = mergeClientAssignees(existing, editClient.id, perStage);
                   await (supabase as any)
                     .from("pm_stage_flows")
-                    .update({
-                      stage_assignees: merged,
-                      updated_at: new Date().toISOString(),
-                    })
+                    .update({ stage_assignees: merged, updated_at: new Date().toISOString() })
                     .eq("id", defaultFlow.id);
                 }
               }
@@ -222,7 +268,8 @@ export function AdminClientesPanel() {
       clientsQ.refetch();
       qc.invalidateQueries({ queryKey: ["client_squads"] });
       qc.invalidateQueries({ queryKey: ["pm_stage_flows"] });
-      toast.success("Cliente atualizado!");
+      qc.invalidateQueries({ queryKey: ["financial_clients"] });
+      toast.success("Cliente atualizado e sincronizado!");
       setEditClient(null);
     } catch (e: any) {
       toast.error(e?.message ?? "Erro ao atualizar cliente");
@@ -231,10 +278,7 @@ export function AdminClientesPanel() {
 
   const handleToggleActive = async (client: ClientRow) => {
     try {
-      await toggleActive.mutateAsync({
-        clientId: client.id,
-        isActive: !client.is_active,
-      });
+      await toggleActive.mutateAsync({ clientId: client.id, isActive: !client.is_active });
       toast.success(client.is_active ? "Contrato pausado" : "Contrato reativado");
     } catch (e: any) {
       toast.error(e?.message ?? "Erro ao alterar status");
@@ -252,9 +296,25 @@ export function AdminClientesPanel() {
     }
   };
 
+  const openCreate = () => {
+    createForm.reset(emptyDefaults);
+    setCreateOpen(true);
+  };
+
   const openEdit = (client: ClientRow) => {
     setEditClient(client);
-    editForm.reset({ name: client.name, notes: client.notes ?? "" });
+    editForm.reset({
+      name: client.name,
+      notes: client.notes ?? "",
+      manager_id: client.manager_id ?? "",
+      plan_name: client.plan_name ?? "",
+      monthly_value: Number(client.monthly_value ?? 0),
+      contract_start: client.contract_start ?? new Date().toISOString().slice(0, 10),
+      services: client.services ?? [],
+      participates_magic: client.participates_magic ?? true,
+      participates_ranking: client.participates_ranking ?? true,
+      has_goals: client.has_goals ?? false,
+    });
     setEditSquadIds(clientSquadMap.get(client.id) ?? []);
   };
 
@@ -265,24 +325,20 @@ export function AdminClientesPanel() {
         style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}
       >
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Gerenciar Clientes</h2>
+          <h2 className="text-2xl font-semibold tracking-tight">Configurações do Cliente</h2>
           <p className="text-sm text-muted-foreground">
-            {activeCount} ativo(s) • {inactiveCount} pausado(s)
+            Cadastro único — sincroniza automaticamente com Financeiro e Magic Number. {activeCount} ativo(s) • {inactiveCount} pausado(s)
           </p>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <Switch
-              id="show-inactive"
-              checked={showInactive}
-              onCheckedChange={setShowInactive}
-            />
+            <Switch id="show-inactive" checked={showInactive} onCheckedChange={setShowInactive} />
             <Label htmlFor="show-inactive" className="text-sm text-muted-foreground cursor-pointer">
               <Filter className="inline h-3 w-3 mr-1" />
               Mostrar pausados
             </Label>
           </div>
-          <Button variant="brand" onClick={() => setCreateOpen(true)}>
+          <Button variant="brand" onClick={openCreate}>
             <Plus className="mr-2 h-4 w-4" />
             Novo Cliente
           </Button>
@@ -298,9 +354,7 @@ export function AdminClientesPanel() {
             <Users className="h-5 w-5" />
             Clientes Cadastrados
           </CardTitle>
-          <CardDescription>
-            {clients.length} cliente(s) exibido(s)
-          </CardDescription>
+          <CardDescription>{clients.length} cliente(s) exibido(s)</CardDescription>
         </CardHeader>
         <CardContent>
           {clientsQ.isLoading ? (
@@ -308,29 +362,12 @@ export function AdminClientesPanel() {
               <Users className="h-12 w-12 text-muted-foreground/50" />
               <p className="mt-4 text-sm text-muted-foreground">Carregando clientes...</p>
             </div>
-          ) : clientsQ.isError ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <Users className="h-12 w-12 text-muted-foreground/50" />
-              <p className="mt-4 text-sm text-muted-foreground">Erro ao carregar clientes.</p>
-              <Button variant="outline" className="mt-4" onClick={() => clientsQ.refetch()}>
-                Tentar novamente
-              </Button>
-            </div>
           ) : clients.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <Users className="h-12 w-12 text-muted-foreground/50" />
               <p className="mt-4 text-sm text-muted-foreground">
-                {showInactive ? "Nenhum cliente cadastrado ainda." : "Nenhum cliente ativo. Ative o filtro para ver pausados."}
+                {showInactive ? "Nenhum cliente cadastrado." : "Nenhum cliente ativo."}
               </p>
-              {!showInactive && inactiveCount > 0 && (
-                <Button
-                  variant="outline"
-                  className="mt-4"
-                  onClick={() => setShowInactive(true)}
-                >
-                  Ver {inactiveCount} pausado(s)
-                </Button>
-              )}
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -339,15 +376,18 @@ export function AdminClientesPanel() {
                   <TableRow>
                     <TableHead>Status</TableHead>
                     <TableHead>Nome</TableHead>
+                    <TableHead>Gestor</TableHead>
+                    <TableHead>Plano</TableHead>
+                    <TableHead>Mensal</TableHead>
                     <TableHead>Squads</TableHead>
-                    <TableHead>Observações</TableHead>
-                    <TableHead>Desde</TableHead>
+                    <TableHead>Módulos</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {clients.map((client) => {
                     const squadIds = clientSquadMap.get(client.id) ?? [];
+                    const manager = client.manager_id ? memberMap.get(client.manager_id) : null;
                     return (
                       <TableRow key={client.id} className={!client.is_active ? "opacity-60" : ""}>
                         <TableCell>
@@ -356,6 +396,18 @@ export function AdminClientesPanel() {
                           </Badge>
                         </TableCell>
                         <TableCell className="font-medium">{client.name}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {manager?.display_name ?? "—"}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {client.plan_name || "—"}
+                        </TableCell>
+                        <TableCell className="text-sm tabular-nums">
+                          {Number(client.monthly_value ?? 0).toLocaleString("pt-BR", {
+                            style: "currency",
+                            currency: "BRL",
+                          })}
+                        </TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1">
                             {squadIds.length === 0 ? (
@@ -365,11 +417,7 @@ export function AdminClientesPanel() {
                                 const squad = squadMap.get(sid);
                                 if (!squad) return null;
                                 return (
-                                  <Badge
-                                    key={sid}
-                                    variant="outline"
-                                    className="text-xs border-sidebar/40 text-sidebar"
-                                  >
+                                  <Badge key={sid} variant="outline" className="text-xs">
                                     {squad.name}
                                   </Badge>
                                 );
@@ -377,32 +425,35 @@ export function AdminClientesPanel() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="max-w-[200px] truncate text-muted-foreground">
-                          {client.notes || "—"}
-                        </TableCell>
                         <TableCell>
-                          <span className="text-sm text-muted-foreground">
-                            {(() => {
-                              const d = new Date(client.magic_due_date);
-                              return isValid(d) ? format(d, "MM/yyyy") : "—";
-                            })()}
-                          </span>
+                          <div className="flex flex-wrap gap-1">
+                            {client.participates_magic && (
+                              <Badge variant="outline" className="text-xs gap-1">
+                                <Sparkles className="h-3 w-3" /> Magic
+                              </Badge>
+                            )}
+                            {client.participates_ranking && (
+                              <Badge variant="outline" className="text-xs gap-1">
+                                <Trophy className="h-3 w-3" /> Ranking
+                              </Badge>
+                            )}
+                            {client.has_goals && (
+                              <Badge variant="outline" className="text-xs gap-1">
+                                <Target className="h-3 w-3" /> Metas
+                              </Badge>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => openEdit(client)}
-                              title="Editar"
-                            >
+                            <Button variant="ghost" size="sm" onClick={() => openEdit(client)} title="Editar">
                               <Pencil className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => handleToggleActive(client)}
-                              title={client.is_active ? "Pausar contrato" : "Reativar contrato"}
+                              title={client.is_active ? "Pausar" : "Reativar"}
                               disabled={toggleActive.isPending}
                             >
                               {client.is_active ? (
@@ -431,98 +482,186 @@ export function AdminClientesPanel() {
         </CardContent>
       </Card>
 
-      {/* Dialog de criar cliente */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Novo Cliente</DialogTitle>
-          </DialogHeader>
-          <form className="space-y-4" onSubmit={createForm.handleSubmit(handleCreate)}>
-            <div className="space-y-2">
-              <Label>Nome do Cliente</Label>
-              <Input
-                placeholder="Ex.: Empresa XYZ"
-                {...createForm.register("name")}
-              />
-              {createForm.formState.errors.name && (
-                <p className="text-sm text-destructive">
-                  {createForm.formState.errors.name.message}
-                </p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label>Observações (opcional)</Label>
-              <Textarea
-                placeholder="Informações adicionais sobre o cliente..."
-                {...createForm.register("notes")}
-                rows={3}
-              />
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => setCreateOpen(false)}
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                variant="brand"
-                disabled={createClient.isPending}
-              >
-                {createClient.isPending ? "Criando..." : "Criar"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {/* Dialog criar/editar — compartilha mesma estrutura */}
+      <ClientFormDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        title="Novo Cliente"
+        form={createForm}
+        onSubmit={handleCreate}
+        squads={squads}
+        teamMembers={teamMembers}
+        submitting={createClient.isPending}
+        submitLabel="Criar e sincronizar"
+      />
 
-      {/* Dialog de editar cliente */}
-      <Dialog open={!!editClient} onOpenChange={(open) => !open && setEditClient(null)}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Editar Cliente</DialogTitle>
-          </DialogHeader>
-          <form className="space-y-4" onSubmit={editForm.handleSubmit(handleEdit)}>
-            <div className="space-y-2">
-              <Label>Nome do Cliente</Label>
-              <Input
-                placeholder="Ex.: Empresa XYZ"
-                {...editForm.register("name")}
-              />
-              {editForm.formState.errors.name && (
-                <p className="text-sm text-destructive">
-                  {editForm.formState.errors.name.message}
-                </p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label>Observações (opcional)</Label>
-              <Textarea
-                placeholder="Informações adicionais sobre o cliente..."
-                {...editForm.register("notes")}
-                rows={3}
-              />
-            </div>
+      <ClientFormDialog
+        open={!!editClient}
+        onOpenChange={(open) => !open && setEditClient(null)}
+        title="Editar Cliente"
+        form={editForm}
+        onSubmit={handleEdit}
+        squads={squads}
+        teamMembers={teamMembers}
+        squadIds={editSquadIds}
+        setSquadIds={setEditSquadIds}
+        contractMonthsFor={editClient}
+        submitLabel="Salvar"
+      />
 
-            {/* Squads */}
-            {squads.length > 0 && (
+      <AlertDialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>⚠️ Excluir permanentemente</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja <strong>excluir permanentemente</strong> o cliente "{deleteConfirm?.name}"?
+              <br /><br />
+              <strong>Isso removerá todas as tarefas, ciclos e histórico associados.</strong>
+              <br /><br />
+              💡 Se o cliente apenas encerrou o contrato, prefira <strong>pausar</strong>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteClient.isPending ? "Removendo..." : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Dialog reutilizável (criar e editar)
+// ─────────────────────────────────────────────────────────────────
+
+type DialogProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: string;
+  form: ReturnType<typeof useForm<ClientFormValues>>;
+  onSubmit: (values: ClientFormValues) => void | Promise<void>;
+  squads: any[];
+  teamMembers: any[];
+  squadIds?: string[];
+  setSquadIds?: (ids: string[]) => void;
+  contractMonthsFor?: ClientRow | null;
+  submitting?: boolean;
+  submitLabel: string;
+};
+
+function ClientFormDialog({
+  open,
+  onOpenChange,
+  title,
+  form,
+  onSubmit,
+  squads,
+  teamMembers,
+  squadIds,
+  setSquadIds,
+  contractMonthsFor,
+  submitting,
+  submitLabel,
+}: DialogProps) {
+  const services = form.watch("services") ?? [];
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        <form className="space-y-5" onSubmit={form.handleSubmit(onSubmit)}>
+          {/* Identificação */}
+          <section className="space-y-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Identificação</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Nome do Cliente *</Label>
+                <Input placeholder="Ex.: Empresa XYZ" {...form.register("name")} />
+                {form.formState.errors.name && (
+                  <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <Label>Gestor Responsável</Label>
+                <Controller
+                  control={form.control}
+                  name="manager_id"
+                  render={({ field }) => (
+                    <Select
+                      value={field.value || "__none__"}
+                      onValueChange={(v) => field.onChange(v === "__none__" ? "" : v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um gestor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">— Sem gestor —</SelectItem>
+                        {teamMembers
+                          .filter((m: any) => m.is_active)
+                          .map((m: any) => (
+                            <SelectItem key={m.user_id} value={m.user_id}>
+                              {m.display_name}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+            </div>
+          </section>
+
+          <Separator />
+
+          {/* Contrato */}
+          <section className="space-y-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <DollarSign className="h-3.5 w-3.5" /> Contrato
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label>Plano</Label>
+                <Input placeholder="Ex.: Essencial / Pro" {...form.register("plan_name")} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Valor mensal (R$)</Label>
+                <Input type="number" step="0.01" min="0" {...form.register("monthly_value")} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Início do contrato</Label>
+                <Input type="date" {...form.register("contract_start")} />
+              </div>
+            </div>
+          </section>
+
+          <Separator />
+
+          {/* Operação */}
+          <section className="space-y-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Operação</h3>
+
+            {squads.length > 0 && setSquadIds && squadIds !== undefined && (
               <div className="space-y-2">
                 <Label>Squads Responsáveis</Label>
                 <div className="grid grid-cols-2 gap-2">
-                  {squads.map((squad) => (
+                  {squads.map((squad: any) => (
                     <label
                       key={squad.id}
                       className="flex items-center gap-2 rounded-lg border border-border/60 px-3 py-2 cursor-pointer hover:bg-accent/50 transition-colors"
                     >
                       <Checkbox
-                        checked={editSquadIds.includes(squad.id)}
+                        checked={squadIds.includes(squad.id)}
                         onCheckedChange={(checked) => {
-                          setEditSquadIds((prev) =>
-                            checked
-                              ? [...prev, squad.id]
-                              : prev.filter((id) => id !== squad.id)
+                          setSquadIds(
+                            checked ? [...squadIds, squad.id] : squadIds.filter((id) => id !== squad.id)
                           );
                         }}
                       />
@@ -537,57 +676,116 @@ export function AdminClientesPanel() {
               </div>
             )}
 
-            {/* Meses de contrato */}
-            {editClient && (
-              <ContractMonthsSelector
-                clientId={editClient.id}
-                clientName={editClient.name}
+            <div className="space-y-2">
+              <Label>Serviços Contratados</Label>
+              <div className="flex flex-wrap gap-2">
+                {SERVICE_OPTIONS.map((svc) => {
+                  const active = services.includes(svc);
+                  return (
+                    <button
+                      key={svc}
+                      type="button"
+                      onClick={() => {
+                        const next = active
+                          ? services.filter((s: string) => s !== svc)
+                          : [...services, svc];
+                        form.setValue("services", next, { shouldDirty: true });
+                      }}
+                      className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${
+                        active
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-transparent border-border hover:bg-accent"
+                      }`}
+                    >
+                      {svc}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+
+          <Separator />
+
+          {/* Módulos */}
+          <section className="space-y-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Módulos Ativos</h3>
+            <div className="space-y-2">
+              <Controller
+                control={form.control}
+                name="participates_magic"
+                render={({ field }) => (
+                  <label className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2.5 cursor-pointer hover:bg-accent/40">
+                    <span className="flex items-center gap-2 text-sm">
+                      <Sparkles className="h-4 w-4 text-primary" />
+                      Participa do Magic Number
+                    </span>
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  </label>
+                )}
               />
-            )}
+              <Controller
+                control={form.control}
+                name="participates_ranking"
+                render={({ field }) => (
+                  <label className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2.5 cursor-pointer hover:bg-accent/40">
+                    <span className="flex items-center gap-2 text-sm">
+                      <Trophy className="h-4 w-4 text-primary" />
+                      Aparece no Ranking
+                    </span>
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  </label>
+                )}
+              />
+              <Controller
+                control={form.control}
+                name="has_goals"
+                render={({ field }) => (
+                  <label className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2.5 cursor-pointer hover:bg-accent/40">
+                    <span className="flex items-center gap-2 text-sm">
+                      <Target className="h-4 w-4 text-primary" />
+                      Possui Metas próprias
+                    </span>
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  </label>
+                )}
+              />
+            </div>
+          </section>
 
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => setEditClient(null)}
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                variant="brand"
-              >
-                Salvar
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+          <Separator />
 
-      {/* Confirmação de exclusão */}
-      <AlertDialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>⚠️ Excluir permanentemente</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja <strong>excluir permanentemente</strong> o cliente "{deleteConfirm?.name}"?
-              <br /><br />
-              <strong>Isso removerá todas as tarefas, ciclos e histórico associados.</strong>
-              <br /><br />
-              💡 Dica: Se o cliente apenas encerrou o contrato, prefira <strong>pausar</strong> ao invés de excluir.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deleteClient.isPending ? "Removendo..." : "Excluir permanentemente"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+          {/* Observações */}
+          <section className="space-y-2">
+            <Label>Observações</Label>
+            <Textarea
+              placeholder="Informações adicionais sobre o cliente..."
+              {...form.register("notes")}
+              rows={2}
+            />
+          </section>
+
+          {/* Meses de contrato (apenas no editar) */}
+          {contractMonthsFor && (
+            <>
+              <Separator />
+              <ContractMonthsSelector
+                clientId={contractMonthsFor.id}
+                clientName={contractMonthsFor.name}
+              />
+            </>
+          )}
+
+          <DialogFooter>
+            <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit" variant="brand" disabled={submitting}>
+              {submitting ? "Salvando..." : submitLabel}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
