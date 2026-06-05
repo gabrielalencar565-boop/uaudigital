@@ -113,6 +113,7 @@ export function AgendaPanel() {
   const profilesQ = useProfiles({ enabled: !!canManageTasks });
   const avatarDirectory = useAvatarDirectory({ includeProfiles: !!canManageTasks });
   const avatarsPrimed = avatarDirectory.isReady;
+  const taskViewersMap = useAllTaskViewers();
 
   const weekStart = useMemo(() => startOfWeek(cursor, {
     weekStartsOn: 0
