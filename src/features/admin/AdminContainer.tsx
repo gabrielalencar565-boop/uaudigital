@@ -28,7 +28,7 @@ const CARDS: CardDef[] = [
   { key: "fluxos", title: "Fluxos", description: "Configure os fluxos operacionais, etapas e responsáveis por papel.", icon: Workflow, external: true },
 ];
 
-export function AdminContainer() {
+export function AdminContainer({ onNavigate }: { onNavigate?: (tab: string) => void } = {}) {
   const [subTab, setSubTab] = useState<AdminSubTab | null>(null);
 
   const activeCard = subTab ? CARDS.find((c) => c.key === subTab) : null;
