@@ -440,8 +440,8 @@ export function AdminClientesPanel() {
                 <TableBody>
                   {clients.map((client) => {
                     const squadIds = clientSquadMap.get(client.id) ?? [];
-                    const finValue = finValueMap.get(client.id) ?? 0;
-                    const remaining = monthsRemaining(client.id, client.contract_start);
+                    const finValue = getFinValue(client);
+                    const remaining = monthsRemaining(client);
                     return (
                       <TableRow key={client.id} className={!client.is_active ? "opacity-60" : ""}>
                         <TableCell>
