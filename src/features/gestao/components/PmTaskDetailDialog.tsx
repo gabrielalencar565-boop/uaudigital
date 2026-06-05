@@ -43,6 +43,7 @@ import { SpellCheckText } from "./SpellCheckText";
 import { EditableTitleWithSpellCheck } from "./EditableTitleWithSpellCheck";
 import { supabase } from "@/integrations/supabase/client";
 import { inferPmPostType, type PmPostType } from "../utils/infer-pm-post-type";
+import { broadcastTeamActivity } from "@/hooks/use-team-activity";
 
 function initials(n: string) {
   return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
@@ -156,6 +157,14 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
     if (index === -1) setTaskStack([]);
     else setTaskStack(prev => prev.slice(0, index + 1));
   };
+
+  // Broadcast to teammates when this user opens a task / subtask
+  useEffect(() => {
+    if (open && task?.title) {
+      broadcastTeamActivity("task_opened", task.title);
+    }
+  }, [open, task?.id, task?.title]);
+
 
   return (
     <>
@@ -1014,6 +1023,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   const handleConcluido = async () => {
     if (isDone) return;
     const completedStage = task.stage_current;
+    broadcastTeamActivity("task_completed", task.title);
 
     // ═══ CAPTAÇÃO: just mark as done, no stage advancement ═══
     if (completedStage === "captacao") {
