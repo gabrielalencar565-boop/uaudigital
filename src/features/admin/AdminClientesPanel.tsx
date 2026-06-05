@@ -226,9 +226,9 @@ export function AdminClientesPanel() {
   }, [finValuesQ.data]);
 
   const finContractMap = useMemo(() => {
-    const m = new Map<string, { start: string; months: number }>();
+    const m = new Map<string, { start: string; months: number; due_day: number | null }>();
     for (const f of finValuesQ.data ?? []) {
-      const entry = { start: f.contract_start, months: Number(f.contract_months ?? 0) };
+      const entry = { start: f.contract_start, months: Number(f.contract_months ?? 0), due_day: f.due_day ?? null };
       m.set(f.id, entry);
       m.set("name:" + normalizeClientName(f.name), entry);
     }
