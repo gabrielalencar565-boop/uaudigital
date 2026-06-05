@@ -277,7 +277,7 @@ const Index = () => {
     }
     if (isGestaoTab) return <GestaoPanel forcedView={gestaoView} />;
     if (tab === "visao_geral_projetos") return <ProjetosPanel />;
-    if (tab === "configuracoes" && isAdmin) return <AdminContainer />;
+    if (tab === "configuracoes" && isAdmin) return <AdminContainer onNavigate={(t) => setTab(t as any)} />;
     if (tab === "financeiro" && isAdmin) return <FinanceiroPanel />;
     if (tab === "fin_clientes" && isAdmin) return <FinClientesTab />;
     if (tab === "fin_receitas_despesas" && isAdmin) return <FinReceitasDespesasTab />;
