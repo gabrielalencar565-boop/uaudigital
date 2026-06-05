@@ -166,7 +166,6 @@ export function AdminClientesPanel() {
         name: values.name,
         magic_due_date: dueDate,
         notes: values.notes || undefined,
-        manager_id: values.manager_id || null,
         plan_name: values.plan_name || null,
         monthly_value: values.monthly_value || 0,
         contract_start: values.contract_start || new Date().toISOString().slice(0, 10),
