@@ -411,7 +411,7 @@ export function AdminClientesPanel() {
                     <TableHead>Nome</TableHead>
                     <TableHead>Mensal</TableHead>
                     <TableHead>Squads</TableHead>
-                    <TableHead>Módulos</TableHead>
+                    <TableHead>Contrato</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -419,11 +419,12 @@ export function AdminClientesPanel() {
                   {clients.map((client) => {
                     const squadIds = clientSquadMap.get(client.id) ?? [];
                     const finValue = finValueMap.get(client.id) ?? 0;
+                    const remaining = monthsRemaining(client.id, client.contract_start);
                     return (
                       <TableRow key={client.id} className={!client.is_active ? "opacity-60" : ""}>
                         <TableCell>
                           <Badge variant={client.is_active ? "success" : "secondary"}>
-                            {client.is_active ? "Ativo" : "Pausado"}
+                            {client.is_active ? "Ativo" : "Desativado"}
                           </Badge>
                         </TableCell>
                         <TableCell className="font-medium">{client.name}</TableCell>
@@ -450,24 +451,18 @@ export function AdminClientesPanel() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {client.participates_magic && (
-                              <Badge variant="outline" className="text-xs gap-1">
-                                <Sparkles className="h-3 w-3" /> Magic
-                              </Badge>
-                            )}
-                            {client.participates_ranking && (
-                              <Badge variant="outline" className="text-xs gap-1">
-                                <Trophy className="h-3 w-3" /> Ranking
-                              </Badge>
-                            )}
-                            {client.has_goals && (
-                              <Badge variant="outline" className="text-xs gap-1">
-                                <Target className="h-3 w-3" /> Metas
-                              </Badge>
-                            )}
-                          </div>
+                        <TableCell className="text-sm">
+                          {remaining === null ? (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          ) : remaining < 0 ? (
+                            <Badge variant="destructive" className="text-xs">Encerrado há {Math.abs(remaining)} {Math.abs(remaining) === 1 ? "mês" : "meses"}</Badge>
+                          ) : remaining === 0 ? (
+                            <Badge variant="warning" className="text-xs">Encerra este mês</Badge>
+                          ) : (
+                            <Badge variant={remaining <= 2 ? "warning" : "outline"} className="text-xs">
+                              {remaining} {remaining === 1 ? "mês" : "meses"} restantes
+                            </Badge>
+                          )}
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
