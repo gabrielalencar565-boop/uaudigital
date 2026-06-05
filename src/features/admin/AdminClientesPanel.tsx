@@ -2,9 +2,10 @@ import { useMemo, useState } from "react";
 import { z } from "zod";
 import { buildAssigneesForClient, mergeClientAssignees } from "@/lib/role-stage-mapping";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, Controller } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { format, isValid } from "date-fns";
-import { Plus, Pencil, Trash2, Users, Pause, Play, Filter, DollarSign, Sparkles, Trophy, Target } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, Pause, Play, Filter, DollarSign } from "lucide-react";
+
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -116,6 +117,65 @@ function useFinancialClientValues() {
   });
 }
 
+function useAllActiveContractMonths() {
+  return useQuery({
+    queryKey: ["client_contract_months", "all"],
+    queryFn: async () => {
+      const { data: links, error: linkErr } = await supabase
+        .from("magic2_client_links")
+        .select("agenda_client_id, magic2_client_id");
+      if (linkErr) throw linkErr;
+      const ids = (links ?? []).map((l: any) => l.magic2_client_id);
+      const result = new Map<string, Array<{ year: number; month: number }>>();
+      if (ids.length === 0) return result;
+      const { data: cycles, error: cyclesErr } = await supabase
+        .from("magic2_cycles")
+        .select("client_id, year, month, is_active")
+        .in("client_id", ids)
+        .eq("is_active", true);
+      if (cyclesErr) throw cyclesErr;
+      const m2agenda = new Map<string, string>(
+        (links ?? []).map((l: any) => [l.magic2_client_id, l.agenda_client_id])
+      );
+      for (const c of (cycles ?? []) as any[]) {
+        const aid = m2agenda.get(c.client_id);
+        if (!aid) continue;
+        const arr = result.get(aid) ?? [];
+        arr.push({ year: c.year, month: c.month });
+        result.set(aid, arr);
+      }
+      return result;
+    },
+  });
+}
+
+async function syncContractMonths(agendaClientId: string, startISO: string | null | undefined, months: number) {
+  if (!agendaClientId || !startISO || !months || months <= 0) return;
+  const { data: magic2ClientId, error: linkErr } = await supabase
+    .rpc("magic2_ensure_client_link", { _agenda_client_id: agendaClientId });
+  if (linkErr) throw linkErr;
+  if (!magic2ClientId) return;
+  const [y, m] = startISO.split("-").map(Number);
+  const rows: any[] = [];
+  for (let i = 0; i < months; i++) {
+    const date = new Date(y, (m - 1) + i, 1);
+    const yy = date.getFullYear();
+    const mm = date.getMonth() + 1;
+    rows.push({
+      client_id: magic2ClientId,
+      year: yy,
+      month: mm,
+      due_date: `${yy}-${String(mm).padStart(2, "0")}-27`,
+      is_active: true,
+    });
+  }
+  const { error: upErr } = await supabase
+    .from("magic2_cycles")
+    .upsert(rows, { onConflict: "client_id,year,month" });
+  if (upErr) throw upErr;
+}
+
+
 function normalizeClientName(s: string): string {
   return (s ?? "")
     .normalize("NFD")
@@ -135,7 +195,9 @@ export function AdminClientesPanel() {
   const clientSquadsQ = useClientSquads();
   const teamMembersQ = useTeamMembers();
   const finValuesQ = useFinancialClientValues();
+  const activeMonthsQ = useAllActiveContractMonths();
   const qc = useQueryClient();
+
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editClient, setEditClient] = useState<ClientRow | null>(null);
@@ -172,21 +234,19 @@ export function AdminClientesPanel() {
   const getFinContract = (client: { id: string; name: string }) =>
     finContractMap.get(client.id) ?? finContractMap.get("name:" + normalizeClientName(client.name));
 
-  const monthsRemaining = (client: { id: string; name: string; contract_start?: string | null }): number | null => {
-    const fc = getFinContract(client);
-    const start = fc?.start ?? client.contract_start ?? null;
-    const months = fc?.months ?? 0;
-    if (!start || !months) return null;
-
-    const [y, m, d] = start.split("-").map(Number);
-    const end = new Date(y, (m - 1) + months, d);
+  const monthsRemaining = (client: { id: string }): number | null => {
+    const list = activeMonthsQ.data?.get(client.id);
+    if (!list || list.length === 0) return null;
     const now = new Date();
-    const diff =
-      (end.getFullYear() - now.getFullYear()) * 12 +
-      (end.getMonth() - now.getMonth()) +
-      (end.getDate() >= now.getDate() ? 0 : -1);
-    return diff;
+    const cur = now.getFullYear() * 12 + now.getMonth();
+    let count = 0;
+    for (const c of list) {
+      const idx = c.year * 12 + (c.month - 1);
+      if (idx >= cur) count++;
+    }
+    return count;
   };
+
 
   const clientSquadMap = useMemo(() => {
     const map = new Map<string, string[]>();
@@ -268,12 +328,25 @@ export function AdminClientesPanel() {
             .update({ contract_months: values.contract_months } as any)
             .eq("id", newId);
         }
+        // Auto-marca os N meses contratados em magic2_cycles
+        try {
+          await syncContractMonths(
+            newId,
+            values.contract_start || new Date().toISOString().slice(0, 10),
+            values.contract_months ?? 0,
+          );
+        } catch (syncErr) {
+          console.warn("syncContractMonths (create) failed:", syncErr);
+        }
       }
       qc.invalidateQueries({ queryKey: ["financial_clients"] });
       qc.invalidateQueries({ queryKey: ["fin-clients"] });
+      qc.invalidateQueries({ queryKey: ["client_contract_months"] });
+      qc.invalidateQueries({ queryKey: ["magic2"] });
       toast.success("Cliente criado e sincronizado com o Financeiro!");
       setCreateOpen(false);
       createForm.reset(emptyDefaults);
+
     } catch (e: any) {
       toast.error(e?.message ?? "Erro ao criar cliente");
     }
@@ -330,6 +403,19 @@ export function AdminClientesPanel() {
         .from("financial_clients")
         .update({ contract_months: values.contract_months ?? 12 } as any)
         .eq("id", editClient.id);
+
+      // Auto-marca os N meses contratados em magic2_cycles a partir de contract_start
+      try {
+        await syncContractMonths(
+          editClient.id,
+          values.contract_start || editClient.contract_start || new Date().toISOString().slice(0, 10),
+          values.contract_months ?? 0,
+        );
+      } catch (syncErr) {
+        console.warn("syncContractMonths (edit) failed:", syncErr);
+      }
+
+
 
 
 
@@ -397,7 +483,10 @@ export function AdminClientesPanel() {
       qc.invalidateQueries({ queryKey: ["client_squads"] });
       qc.invalidateQueries({ queryKey: ["pm_stage_flows"] });
       qc.invalidateQueries({ queryKey: ["financial_clients"] });
+      qc.invalidateQueries({ queryKey: ["client_contract_months"] });
+      qc.invalidateQueries({ queryKey: ["magic2"] });
       toast.success("Cliente atualizado e sincronizado!");
+
       setEditClient(null);
     } catch (e: any) {
       toast.error(e?.message ?? "Erro ao atualizar cliente");
@@ -574,12 +663,8 @@ export function AdminClientesPanel() {
                         <TableCell className="text-sm">
                           {remaining === null ? (
                             <span className="text-xs text-muted-foreground">—</span>
-                          ) : remaining < 0 ? (
-                            <Badge variant="destructive" className="text-xs">
-                              Encerrado há {Math.abs(remaining)} {Math.abs(remaining) === 1 ? "mês" : "meses"}
-                            </Badge>
                           ) : remaining === 0 ? (
-                            <Badge variant="destructive" className="text-xs">Encerra este mês</Badge>
+                            <Badge variant="destructive" className="text-xs">Sem meses ativos</Badge>
                           ) : remaining <= 3 ? (
                             <Badge variant="warning" className="text-xs">
                               {remaining} {remaining === 1 ? "mês" : "meses"} restantes
@@ -590,6 +675,7 @@ export function AdminClientesPanel() {
                             </Badge>
                           )}
                         </TableCell>
+
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
                             <Button variant="ghost" size="sm" onClick={() => openEdit(client)} title="Editar">
@@ -864,53 +950,6 @@ function ClientFormDialog({
 
           <Separator />
 
-          {/* Módulos */}
-          <section className="space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Módulos Ativos</h3>
-            <div className="space-y-2">
-              <Controller
-                control={form.control}
-                name="participates_magic"
-                render={({ field }) => (
-                  <label className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2.5 cursor-pointer hover:bg-accent/40">
-                    <span className="flex items-center gap-2 text-sm">
-                      <Sparkles className="h-4 w-4 text-primary" />
-                      Participa do Magic Number
-                    </span>
-                    <Switch checked={field.value} onCheckedChange={field.onChange} />
-                  </label>
-                )}
-              />
-              <Controller
-                control={form.control}
-                name="participates_ranking"
-                render={({ field }) => (
-                  <label className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2.5 cursor-pointer hover:bg-accent/40">
-                    <span className="flex items-center gap-2 text-sm">
-                      <Trophy className="h-4 w-4 text-primary" />
-                      Aparece no Ranking
-                    </span>
-                    <Switch checked={field.value} onCheckedChange={field.onChange} />
-                  </label>
-                )}
-              />
-              <Controller
-                control={form.control}
-                name="has_goals"
-                render={({ field }) => (
-                  <label className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2.5 cursor-pointer hover:bg-accent/40">
-                    <span className="flex items-center gap-2 text-sm">
-                      <Target className="h-4 w-4 text-primary" />
-                      Possui Metas próprias
-                    </span>
-                    <Switch checked={field.value} onCheckedChange={field.onChange} />
-                  </label>
-                )}
-              />
-            </div>
-          </section>
-
-          <Separator />
 
           {/* Observações */}
           <section className="space-y-2">
