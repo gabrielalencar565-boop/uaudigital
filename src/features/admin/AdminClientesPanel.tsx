@@ -245,14 +245,26 @@ export function AdminClientesPanel() {
         has_goals: values.has_goals,
       });
       const newId = created?.id ?? created;
-      if (newId && values.contract_months != null) {
+      if (newId) {
+        // Atualiza pause/end e contract_months no clients (trigger espelha em financial_clients)
         await supabase
-          .from("financial_clients")
-          .update({ contract_months: values.contract_months } as any)
+          .from("clients")
+          .update({
+            paused_from: values.paused_from || null,
+            resumed_from: values.resumed_from || null,
+            ended_at: values.ended_at || null,
+          } as any)
           .eq("id", newId);
+        if (values.contract_months != null) {
+          await supabase
+            .from("financial_clients")
+            .update({ contract_months: values.contract_months } as any)
+            .eq("id", newId);
+        }
       }
       qc.invalidateQueries({ queryKey: ["financial_clients"] });
-      toast.success("Cliente criado e sincronizado com os módulos!");
+      qc.invalidateQueries({ queryKey: ["fin-clients"] });
+      toast.success("Cliente criado e sincronizado com o Financeiro!");
       setCreateOpen(false);
       createForm.reset(emptyDefaults);
     } catch (e: any) {
@@ -263,6 +275,29 @@ export function AdminClientesPanel() {
   const handleEdit = async (values: ClientFormValues) => {
     if (!editClient) return;
     try {
+      // Status booleano (is_active) derivado da timeline: ativo se não houver
+      // ended_at no passado e nenhuma pausa vigente sem retorno.
+      const today = new Date();
+      const todayY = today.getFullYear();
+      const todayM = today.getMonth() + 1;
+      const isPausedNow = (() => {
+        if (!values.paused_from) return false;
+        const [py, pm] = values.paused_from.split("-").map(Number);
+        const pausedTarget = py * 12 + (pm - 1);
+        const todayTarget = todayY * 12 + (todayM - 1);
+        if (pausedTarget > todayTarget) return false;
+        if (!values.resumed_from) return true;
+        const [ry, rm] = values.resumed_from.split("-").map(Number);
+        const resumedTarget = ry * 12 + (rm - 1);
+        return resumedTarget > todayTarget;
+      })();
+      const isEndedNow = (() => {
+        if (!values.ended_at) return false;
+        const [ey, em] = values.ended_at.split("-").map(Number);
+        return ey * 12 + (em - 1) <= todayY * 12 + (todayM - 1);
+      })();
+      const computedActive = !isPausedNow && !isEndedNow;
+
       const { error } = await supabase
         .from("clients")
         .update({
@@ -274,34 +309,20 @@ export function AdminClientesPanel() {
           participates_magic: values.participates_magic,
           participates_ranking: values.participates_ranking,
           has_goals: values.has_goals,
+          paused_from: values.paused_from || null,
+          resumed_from: values.resumed_from || null,
+          ended_at: values.ended_at || null,
+          is_active: computedActive,
         } as any)
         .eq("id", editClient.id);
       if (error) throw error;
 
-      // Persist contract_months (and value/start) to financial_clients.
-      // Match by id, then by normalized name as fallback.
-      const normName = normalizeClientName(values.name);
-      const finRow =
-        finValuesQ.data?.find((f) => f.id === editClient.id) ??
-        finValuesQ.data?.find((f) => normalizeClientName(f.name) === normName);
-      if (finRow) {
-        await supabase
-          .from("financial_clients")
-          .update({
-            monthly_value: values.monthly_value || 0,
-            contract_start: values.contract_start || null,
-            contract_months: values.contract_months ?? 12,
-          } as any)
-          .eq("id", finRow.id);
-      } else {
-        await supabase.from("financial_clients").insert({
-          id: editClient.id,
-          name: values.name,
-          monthly_value: values.monthly_value || 0,
-          contract_start: values.contract_start || new Date().toISOString().slice(0, 10),
-          contract_months: values.contract_months ?? 12,
-        } as any);
-      }
+      // contract_months vive em financial_clients (trigger não copia)
+      await supabase
+        .from("financial_clients")
+        .update({ contract_months: values.contract_months ?? 12 } as any)
+        .eq("id", editClient.id);
+
 
       // Sync squads
       const currentSquadIds = clientSquadMap.get(editClient.id) ?? [];
