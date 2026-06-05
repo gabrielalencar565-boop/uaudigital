@@ -633,12 +633,8 @@ export function AdminClientesPanel() {
                         <TableCell className="text-sm">
                           {remaining === null ? (
                             <span className="text-xs text-muted-foreground">—</span>
-                          ) : remaining < 0 ? (
-                            <Badge variant="destructive" className="text-xs">
-                              Encerrado há {Math.abs(remaining)} {Math.abs(remaining) === 1 ? "mês" : "meses"}
-                            </Badge>
                           ) : remaining === 0 ? (
-                            <Badge variant="destructive" className="text-xs">Encerra este mês</Badge>
+                            <Badge variant="destructive" className="text-xs">Sem meses ativos</Badge>
                           ) : remaining <= 3 ? (
                             <Badge variant="warning" className="text-xs">
                               {remaining} {remaining === 1 ? "mês" : "meses"} restantes
@@ -649,6 +645,7 @@ export function AdminClientesPanel() {
                             </Badge>
                           )}
                         </TableCell>
+
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
                             <Button variant="ghost" size="sm" onClick={() => openEdit(client)} title="Editar">
