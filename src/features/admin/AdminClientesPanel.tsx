@@ -190,7 +190,6 @@ export function AdminClientesPanel() {
         .update({
           name: values.name,
           notes: values.notes || null,
-          manager_id: values.manager_id || null,
           plan_name: values.plan_name || null,
           monthly_value: values.monthly_value || 0,
           contract_start: values.contract_start || null,
