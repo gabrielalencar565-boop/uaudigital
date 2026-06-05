@@ -141,23 +141,35 @@ export function AdminClientesPanel() {
 
   const finValueMap = useMemo(() => {
     const m = new Map<string, number>();
-    for (const f of finValuesQ.data ?? []) m.set(f.id, Number(f.monthly_value ?? 0));
+    for (const f of finValuesQ.data ?? []) {
+      m.set(f.id, Number(f.monthly_value ?? 0));
+      m.set("name:" + normalizeClientName(f.name), Number(f.monthly_value ?? 0));
+    }
     return m;
   }, [finValuesQ.data]);
 
   const finContractMap = useMemo(() => {
     const m = new Map<string, { start: string; months: number }>();
     for (const f of finValuesQ.data ?? []) {
-      m.set(f.id, { start: f.contract_start, months: Number(f.contract_months ?? 0) });
+      const entry = { start: f.contract_start, months: Number(f.contract_months ?? 0) };
+      m.set(f.id, entry);
+      m.set("name:" + normalizeClientName(f.name), entry);
     }
     return m;
   }, [finValuesQ.data]);
 
-  const monthsRemaining = (clientId: string, fallbackStart?: string | null): number | null => {
-    const fc = finContractMap.get(clientId);
-    const start = fc?.start ?? fallbackStart ?? null;
+  const getFinValue = (client: { id: string; name: string }): number =>
+    finValueMap.get(client.id) ?? finValueMap.get("name:" + normalizeClientName(client.name)) ?? 0;
+
+  const getFinContract = (client: { id: string; name: string }) =>
+    finContractMap.get(client.id) ?? finContractMap.get("name:" + normalizeClientName(client.name));
+
+  const monthsRemaining = (client: { id: string; name: string; contract_start?: string | null }): number | null => {
+    const fc = getFinContract(client);
+    const start = fc?.start ?? client.contract_start ?? null;
     const months = fc?.months ?? 0;
     if (!start || !months) return null;
+
     const [y, m, d] = start.split("-").map(Number);
     const end = new Date(y, (m - 1) + months, d);
     const now = new Date();
