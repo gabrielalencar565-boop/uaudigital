@@ -67,7 +67,7 @@ export function useOnlinePresence() {
               "div",
               {
                 className:
-                  "flex items-center gap-3 rounded-lg border bg-background shadow-lg px-3 py-2.5 min-w-[260px] border-l-4 border-l-emerald-500",
+                  "flex items-center gap-3 rounded-2xl overflow-hidden border bg-background shadow-lg px-3 py-2.5 min-w-[260px] border-l-4 border-l-emerald-500",
                 onClick: () => toast.dismiss(id),
                 role: "button",
               },
