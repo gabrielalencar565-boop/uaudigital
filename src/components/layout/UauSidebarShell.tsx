@@ -92,14 +92,10 @@ const NAV: NavEntry[] = [
   { key: "metas", label: "Metas", icon: TrendingUp }]
 },
 {
-  key: "configuracoes_group",
+  key: "configuracoes",
   label: "Configurações",
   icon: Settings,
-  adminOnly: true,
-  landingTab: "configuracoes",
-  children: [
-  { key: "configuracoes", label: "Configurações", icon: Settings },
-  { key: "fluxos", label: "Fluxos", icon: Workflow, adminOnly: true }]
+  adminOnly: true
 }];
 
 
