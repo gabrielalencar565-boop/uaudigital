@@ -68,6 +68,9 @@ const clientSchema = z.object({
   participates_magic: z.boolean().default(true),
   participates_ranking: z.boolean().default(true),
   has_goals: z.boolean().default(false),
+  paused_from: z.string().optional().or(z.literal("")),
+  resumed_from: z.string().optional().or(z.literal("")),
+  ended_at: z.string().optional().or(z.literal("")),
 });
 
 type ClientFormValues = z.infer<typeof clientSchema>;
@@ -82,6 +85,9 @@ const emptyDefaults: ClientFormValues = {
   participates_magic: true,
   participates_ranking: true,
   has_goals: false,
+  paused_from: "",
+  resumed_from: "",
+  ended_at: "",
 };
 
 function useClientSquads() {
