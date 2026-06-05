@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Users, Building2, SprayCan, Trophy, Palette, CalendarPlus, ChevronRight, ArrowLeft } from "lucide-react";
+import { Users, Building2, SprayCan, Trophy, Palette, CalendarPlus, Workflow, ChevronRight, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AdminPanel } from "./AdminPanel";
 import { AdminClientesPanel } from "./AdminClientesPanel";
@@ -11,11 +11,11 @@ import { AdminDatasInternasPanel } from "./AdminDatasInternasPanel";
 type AdminSubTab = "usuarios" | "clientes" | "limpeza" | "pontuacao" | "aparencia" | "datas";
 
 type CardDef = {
-  key: AdminSubTab;
+  key: AdminSubTab | "fluxos";
   title: string;
   description: string;
   icon: React.ComponentType<{ className?: string }>;
-  tone?: "default" | "danger";
+  external?: boolean;
 };
 
 const CARDS: CardDef[] = [
@@ -25,6 +25,7 @@ const CARDS: CardDef[] = [
   { key: "limpeza", title: "Limpeza", description: "Defina as tarefas recorrentes de limpeza, horários e responsáveis.", icon: SprayCan },
   { key: "pontuacao", title: "Pontuação", description: "Ajuste regras de pontos, pesos por etapa e penalidades de desempenho.", icon: Trophy },
   { key: "aparencia", title: "Aparência", description: "Personalize a identidade visual do sistema, tema, cores e logotipo.", icon: Palette },
+  { key: "fluxos", title: "Fluxos", description: "Configure os fluxos operacionais, etapas e responsáveis por papel.", icon: Workflow, external: true },
 ];
 
 export function AdminContainer() {
