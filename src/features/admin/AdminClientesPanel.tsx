@@ -909,6 +909,44 @@ function ClientFormDialog({
   submitLabel,
 }: DialogProps) {
   const services = form.watch("services") ?? [];
+  const endedAt = form.watch("ended_at") ?? "";
+  const isEnded = !!endedAt;
+
+  // Parse YYYY-MM-DD into parts
+  const [ey, em, ed] = (() => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(endedAt);
+    if (m) return [Number(m[1]), Number(m[2]), Number(m[3])];
+    const m2 = /^(\d{4})-(\d{2})$/.exec(endedAt);
+    if (m2) return [Number(m2[1]), Number(m2[2]), 1];
+    return [0, 0, 0];
+  })();
+
+  const daysInMonth = (y: number, mo: number) => new Date(y, mo, 0).getDate();
+  const now = new Date();
+  const currentY = now.getFullYear();
+  const years = Array.from({ length: 11 }, (_, i) => currentY - 5 + i);
+  const months = [
+    { v: 1, n: "Jan" }, { v: 2, n: "Fev" }, { v: 3, n: "Mar" },
+    { v: 4, n: "Abr" }, { v: 5, n: "Mai" }, { v: 6, n: "Jun" },
+    { v: 7, n: "Jul" }, { v: 8, n: "Ago" }, { v: 9, n: "Set" },
+    { v: 10, n: "Out" }, { v: 11, n: "Nov" }, { v: 12, n: "Dez" },
+  ];
+  const maxDay = ey && em ? daysInMonth(ey, em) : 31;
+
+  const setEndedPart = (part: "y" | "m" | "d", val: number) => {
+    const ny = part === "y" ? val : (ey || currentY);
+    const nm = part === "m" ? val : (em || now.getMonth() + 1);
+    let nd = part === "d" ? val : (ed || 1);
+    const dim = daysInMonth(ny, nm);
+    if (nd > dim) nd = dim;
+    const s = `${ny}-${String(nm).padStart(2, "0")}-${String(nd).padStart(2, "0")}`;
+    form.setValue("ended_at", s, { shouldDirty: true });
+  };
+
+  const reactivate = () => {
+    form.setValue("ended_at", "", { shouldDirty: true });
+    form.setValue("end_reason", "", { shouldDirty: true });
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -917,148 +955,193 @@ function ClientFormDialog({
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         <form className="space-y-5" onSubmit={form.handleSubmit(onSubmit)}>
-          {/* Identificação */}
-          <section className="space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Identificação</h3>
-            <div className="space-y-1.5">
-              <Label>Nome do Cliente *</Label>
-              <Input placeholder="Ex.: Empresa XYZ" {...form.register("name")} />
-              {form.formState.errors.name && (
-                <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>
-              )}
-            </div>
-          </section>
-
-          <Separator />
-
-          {/* Contrato */}
-          <section className="space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-              <DollarSign className="h-3.5 w-3.5" /> Contrato
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Valor mensal (R$)</Label>
-                <Input type="number" step="0.01" min="0" {...form.register("monthly_value")} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Início do contrato</Label>
-                <Input type="date" {...form.register("contract_start")} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Duração (meses)</Label>
-                <Input type="number" step="1" min="0" max="240" {...form.register("contract_months")} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Dia de pagamento</Label>
-                <Input type="number" step="1" min="1" max="31" {...form.register("due_day")} />
-              </div>
-            </div>
-          </section>
-
-          <Separator />
-
-
-
-          {/* Operação */}
-          <section className="space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Operação</h3>
-
-            {squads.length > 0 && setSquadIds && squadIds !== undefined && (
-              <div className="space-y-2">
-                <Label>Squads Responsáveis</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  {squads.map((squad: any) => (
-                    <label
-                      key={squad.id}
-                      className="flex items-center gap-2 rounded-lg border border-border/60 px-3 py-2 cursor-pointer hover:bg-accent/50 transition-colors"
-                    >
-                      <Checkbox
-                        checked={squadIds.includes(squad.id)}
-                        onCheckedChange={(checked) => {
-                          setSquadIds(
-                            checked ? [...squadIds, squad.id] : squadIds.filter((id) => id !== squad.id)
-                          );
-                        }}
-                      />
-                      <span
-                        className="h-2.5 w-2.5 rounded-full shrink-0"
-                        style={{ backgroundColor: squad.color || "hsl(var(--sidebar))" }}
-                      />
-                      <span className="text-sm">{squad.name}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Label>Serviços Contratados</Label>
-              <div className="flex flex-wrap gap-2">
-                {SERVICE_OPTIONS.map((svc) => {
-                  const active = services.includes(svc);
-                  return (
-                    <button
-                      key={svc}
-                      type="button"
-                      onClick={() => {
-                        const next = active
-                          ? services.filter((s: string) => s !== svc)
-                          : [...services, svc];
-                        form.setValue("services", next, { shouldDirty: true });
-                      }}
-                      className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${
-                        active
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-transparent border-border hover:bg-accent"
-                      }`}
-                    >
-                      {svc}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </section>
-
-          <Separator />
-
-          {/* Visibilidade */}
-          <section className="space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Visibilidade</h3>
-            <label className="flex items-center justify-between gap-3 rounded-lg border border-border/60 px-3 py-2.5 cursor-pointer hover:bg-accent/40 transition-colors">
-              <div className="space-y-0.5">
-                <div className="text-sm font-medium">Aparecer no Financeiro</div>
-                <div className="text-[11px] text-muted-foreground">Desmarque para clientes internos (ex.: a própria agência) que não devem entrar nas receitas.</div>
-              </div>
-              <Switch
-                checked={form.watch("appears_in_financial")}
-                onCheckedChange={(v) => form.setValue("appears_in_financial", v, { shouldDirty: true })}
-              />
-            </label>
-          </section>
-
-          <Separator />
-
-
-          {/* Observações */}
-          <section className="space-y-2">
-            <Label>Observações</Label>
-            <Textarea
-              placeholder="Informações adicionais sobre o cliente..."
-              {...form.register("notes")}
-              rows={2}
-            />
-          </section>
-
-          {/* Meses de contrato (apenas no editar) */}
-          {contractMonthsFor && (
+          {isEnded ? (
             <>
+              <section className="space-y-3">
+                <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                  Contrato encerrado. Edite a data e o motivo, ou reative para voltar a editar todos os campos.
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Nome</Label>
+                  <Input value={form.watch("name")} readOnly className="opacity-70" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Data de encerramento</Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <select
+                      value={ed || ""}
+                      onChange={(e) => setEndedPart("d", Number(e.target.value))}
+                      className="h-10 rounded-md border border-input bg-background px-2 text-sm"
+                    >
+                      <option value="">Dia</option>
+                      {Array.from({ length: maxDay }, (_, i) => i + 1).map((d) => (
+                        <option key={d} value={d}>{String(d).padStart(2, "0")}</option>
+                      ))}
+                    </select>
+                    <select
+                      value={em || ""}
+                      onChange={(e) => setEndedPart("m", Number(e.target.value))}
+                      className="h-10 rounded-md border border-input bg-background px-2 text-sm"
+                    >
+                      <option value="">Mês</option>
+                      {months.map((m) => (
+                        <option key={m.v} value={m.v}>{m.n}</option>
+                      ))}
+                    </select>
+                    <select
+                      value={ey || ""}
+                      onChange={(e) => setEndedPart("y", Number(e.target.value))}
+                      className="h-10 rounded-md border border-input bg-background px-2 text-sm"
+                    >
+                      <option value="">Ano</option>
+                      {years.map((y) => (
+                        <option key={y} value={y}>{y}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Motivo do encerramento</Label>
+                  <Textarea
+                    rows={4}
+                    placeholder="Descreva o motivo do encerramento do contrato..."
+                    {...form.register("end_reason")}
+                  />
+                </div>
+                <Button type="button" variant="ghost" onClick={reactivate} className="text-xs">
+                  Reativar contrato
+                </Button>
+              </section>
+            </>
+          ) : (
+            <>
+              {/* Identificação */}
+              <section className="space-y-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Identificação</h3>
+                <div className="space-y-1.5">
+                  <Label>Nome do Cliente *</Label>
+                  <Input placeholder="Ex.: Empresa XYZ" {...form.register("name")} />
+                  {form.formState.errors.name && (
+                    <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>
+                  )}
+                </div>
+              </section>
+
               <Separator />
-              <ContractMonthsSelector
-                clientId={contractMonthsFor.id}
-                clientName={contractMonthsFor.name}
-              />
+
+              {/* Contrato */}
+              <section className="space-y-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <DollarSign className="h-3.5 w-3.5" /> Contrato
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Valor mensal (R$)</Label>
+                    <Input type="number" step="0.01" min="0" {...form.register("monthly_value")} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Início do contrato</Label>
+                    <Input type="date" {...form.register("contract_start")} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Duração (meses)</Label>
+                    <Input type="number" step="1" min="0" max="240" {...form.register("contract_months")} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Dia de pagamento</Label>
+                    <Input type="number" step="1" min="0" max="31" {...form.register("due_day")} />
+                    <p className="text-[11px] text-muted-foreground">
+                      Use <strong>0</strong> para não aparecer no Financeiro (cliente interno).
+                    </p>
+                  </div>
+                </div>
+              </section>
+
+              <Separator />
+
+              {/* Operação */}
+              <section className="space-y-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Operação</h3>
+
+                {squads.length > 0 && setSquadIds && squadIds !== undefined && (
+                  <div className="space-y-2">
+                    <Label>Squads Responsáveis</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {squads.map((squad: any) => (
+                        <label
+                          key={squad.id}
+                          className="flex items-center gap-2 rounded-lg border border-border/60 px-3 py-2 cursor-pointer hover:bg-accent/50 transition-colors"
+                        >
+                          <Checkbox
+                            checked={squadIds.includes(squad.id)}
+                            onCheckedChange={(checked) => {
+                              setSquadIds(
+                                checked ? [...squadIds, squad.id] : squadIds.filter((id) => id !== squad.id)
+                              );
+                            }}
+                          />
+                          <span
+                            className="h-2.5 w-2.5 rounded-full shrink-0"
+                            style={{ backgroundColor: squad.color || "hsl(var(--sidebar))" }}
+                          />
+                          <span className="text-sm">{squad.name}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label>Serviços Contratados</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {SERVICE_OPTIONS.map((svc) => {
+                      const active = services.includes(svc);
+                      return (
+                        <button
+                          key={svc}
+                          type="button"
+                          onClick={() => {
+                            const next = active
+                              ? services.filter((s: string) => s !== svc)
+                              : [...services, svc];
+                            form.setValue("services", next, { shouldDirty: true });
+                          }}
+                          className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${
+                            active
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : "bg-transparent border-border hover:bg-accent"
+                          }`}
+                        >
+                          {svc}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </section>
+
+              <Separator />
+
+              {/* Observações */}
+              <section className="space-y-2">
+                <Label>Observações</Label>
+                <Textarea
+                  placeholder="Informações adicionais sobre o cliente..."
+                  {...form.register("notes")}
+                  rows={2}
+                />
+              </section>
+
+              {/* Meses de contrato (apenas no editar) */}
+              {contractMonthsFor && (
+                <>
+                  <Separator />
+                  <ContractMonthsSelector
+                    clientId={contractMonthsFor.id}
+                    clientName={contractMonthsFor.name}
+                  />
+                </>
+              )}
             </>
           )}
 
@@ -1075,3 +1158,4 @@ function ClientFormDialog({
     </Dialog>
   );
 }
+
