@@ -44,7 +44,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useAllClients, useCreateClient, useDeleteClient, useToggleClientActive, useTeamMembers, type ClientRow } from "@/features/data/queries";
+import { useAllClients, useCreateClient, useDeleteClient, useTeamMembers, type ClientRow } from "@/features/data/queries";
 import { useSquads } from "@/features/projetos/hooks/use-squads";
 import { ContractMonthsSelector } from "@/features/admin/components/ContractMonthsSelector";
 
