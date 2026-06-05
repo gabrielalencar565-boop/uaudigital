@@ -116,7 +116,7 @@ export function useTeamActivity() {
             React.createElement(
               "div",
               {
-                className: `flex items-start gap-3 rounded-lg border bg-background shadow-lg px-3 py-2.5 min-w-[280px] max-w-[360px] border-l-4 ${accentFor[p.type]}`,
+                className: `flex items-start gap-3 rounded-2xl overflow-hidden border bg-background shadow-lg px-3 py-2.5 min-w-[280px] max-w-[360px] border-l-4 ${accentFor[p.type]}`,
                 onClick: () => toast.dismiss(id),
                 role: "button",
               },
