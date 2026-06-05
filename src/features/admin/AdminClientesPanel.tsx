@@ -894,7 +894,7 @@ function ClientFormDialog({
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
               <DollarSign className="h-3.5 w-3.5" /> Contrato
             </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Valor mensal (R$)</Label>
                 <Input type="number" step="0.01" min="0" {...form.register("monthly_value")} />
@@ -906,6 +906,10 @@ function ClientFormDialog({
               <div className="space-y-1.5">
                 <Label>Duração (meses)</Label>
                 <Input type="number" step="1" min="0" max="240" {...form.register("contract_months")} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Dia de pagamento</Label>
+                <Input type="number" step="1" min="1" max="31" {...form.register("due_day")} />
               </div>
             </div>
           </section>
