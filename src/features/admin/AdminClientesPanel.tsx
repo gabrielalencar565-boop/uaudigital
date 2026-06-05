@@ -699,6 +699,21 @@ export function AdminClientesPanel() {
                                 <Play className="h-4 w-4 text-success" />
                               )}
                             </Button>
+                            {!client.ended_at && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setEndContract(client);
+                                  const now = new Date();
+                                  setEndDate(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`);
+                                  setEndReason("");
+                                }}
+                                title="Encerrar contrato"
+                              >
+                                <XCircle className="h-4 w-4 text-destructive" />
+                              </Button>
+                            )}
                             <Button
                               variant="ghost"
                               size="sm"
@@ -707,6 +722,7 @@ export function AdminClientesPanel() {
                             >
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
+
                           </div>
                         </TableCell>
                       </TableRow>
