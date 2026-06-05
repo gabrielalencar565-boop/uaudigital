@@ -90,12 +90,6 @@ const NAV: NavEntry[] = [
   { key: "fin_despesas_detalhadas", label: "Despesas Detalhadas", icon: FileSpreadsheet },
   { key: "fin_lancamentos", label: "Lançamentos", icon: ArrowRightLeft },
   { key: "metas", label: "Metas", icon: TrendingUp }]
-},
-{
-  key: "configuracoes",
-  label: "Configurações",
-  icon: Settings,
-  adminOnly: true
 }];
 
 
