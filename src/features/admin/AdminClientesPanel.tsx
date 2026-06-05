@@ -264,6 +264,31 @@ export function AdminClientesPanel() {
         .eq("id", editClient.id);
       if (error) throw error;
 
+      // Persist contract_months (and value/start) to financial_clients.
+      // Match by id, then by normalized name as fallback.
+      const normName = normalizeClientName(values.name);
+      const finRow =
+        finValuesQ.data?.find((f) => f.id === editClient.id) ??
+        finValuesQ.data?.find((f) => normalizeClientName(f.name) === normName);
+      if (finRow) {
+        await supabase
+          .from("financial_clients")
+          .update({
+            monthly_value: values.monthly_value || 0,
+            contract_start: values.contract_start || null,
+            contract_months: values.contract_months ?? 12,
+          } as any)
+          .eq("id", finRow.id);
+      } else {
+        await supabase.from("financial_clients").insert({
+          id: editClient.id,
+          name: values.name,
+          monthly_value: values.monthly_value || 0,
+          contract_start: values.contract_start || new Date().toISOString().slice(0, 10),
+          contract_months: values.contract_months ?? 12,
+        } as any);
+      }
+
       // Sync squads
       const currentSquadIds = clientSquadMap.get(editClient.id) ?? [];
       const toRemove = currentSquadIds.filter((id) => !editSquadIds.includes(id));
