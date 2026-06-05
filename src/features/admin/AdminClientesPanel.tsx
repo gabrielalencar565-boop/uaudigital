@@ -61,6 +61,7 @@ const SERVICE_OPTIONS = [
 const clientSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório").max(100),
   notes: z.string().max(500).optional().or(z.literal("")),
+  monthly_value: z.coerce.number().min(0).default(0),
   contract_start: z.string().optional().or(z.literal("")),
   services: z.array(z.string()).default([]),
   participates_magic: z.boolean().default(true),
@@ -73,6 +74,7 @@ type ClientFormValues = z.infer<typeof clientSchema>;
 const emptyDefaults: ClientFormValues = {
   name: "",
   notes: "",
+  monthly_value: 0,
   contract_start: new Date().toISOString().slice(0, 10),
   services: [],
   participates_magic: true,
