@@ -51,8 +51,10 @@ export const REWARD_ICON_NAMES: string[] = [
   "Pin", "PinOff", "Eye", "EyeOff", "Search",
 ];
 
-// De-duplicate
-const UNIQUE_ICON_NAMES = Array.from(new Set(REWARD_ICON_NAMES));
+// De-duplicate and keep only icons that actually exist in lucide-react
+const UNIQUE_ICON_NAMES = Array.from(new Set(REWARD_ICON_NAMES)).filter(
+  (n) => (icons as Record<string, LucideIcon>)[n] !== undefined,
+);
 
 export function getLucideIcon(name?: string | null): LucideIcon {
   if (!name) return HelpCircle;
