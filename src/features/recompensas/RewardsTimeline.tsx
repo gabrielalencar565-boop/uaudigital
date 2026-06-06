@@ -147,7 +147,7 @@ export function RewardsTimeline({ userId }: { userId: string }) {
 
                 {/* Markers as evenly-spaced flex columns, centered on the bar */}
                 <TooltipProvider delayDuration={150}>
-                  <div className="absolute left-0 right-0" style={{ top: "-14px" }}>
+                  <div className="absolute left-0 right-0" style={{ top: "-22px" }}>
                     <div className="flex w-full">
                       {rewards.map((r) => {
                         const achieved = userXp >= r.xp_cost;
@@ -163,7 +163,7 @@ export function RewardsTimeline({ userId }: { userId: string }) {
                                 >
                                   <span
                                     className={cn(
-                                      "relative grid h-8 w-8 place-items-center rounded-full border-2 text-base transition-all duration-300",
+                                      "relative grid h-11 w-11 place-items-center rounded-full border-2 transition-all duration-300",
                                       achieved
                                         ? "border-white bg-white text-[hsl(263_70%_45%)] shadow-[0_0_14px_hsl(160_70%_55%/0.7)]"
                                         : isNext
@@ -174,8 +174,19 @@ export function RewardsTimeline({ userId }: { userId: string }) {
                                     {isNext && (
                                       <span className="absolute inset-0 animate-ping rounded-full bg-white/40" />
                                     )}
-                                    <DynamicLucideIcon name={r.icon} className="text-[16px]" />
+                                    <span
+                                      className="leading-none"
+                                      style={{
+                                        fontSize: "20px",
+                                        fontFamily:
+                                          '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Twemoji Mozilla","EmojiOne Color","Android Emoji",sans-serif',
+                                      }}
+                                      aria-hidden="true"
+                                    >
+                                      {r.icon && /\p{Extended_Pictographic}/u.test(r.icon) ? r.icon : "🎁"}
+                                    </span>
                                   </span>
+
 
                                   <span
                                     className={cn(
