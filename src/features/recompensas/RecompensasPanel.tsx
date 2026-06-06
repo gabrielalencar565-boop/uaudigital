@@ -348,54 +348,80 @@ function XPSummaryHeader({ userId }: { userId: string }) {
     },
   });
 
+  const redeemedQ = useQuery({
+    queryKey: ["rewards", "redeemed_count", userId],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("reward_redemptions")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .in("status", ["aprovado", "entregue"]);
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+
   if (!data) return null;
-  const progress = data.next_level_xp
-    ? Math.min(100, (data.total_earned / data.next_level_xp) * 100)
-    : 100;
+  const redeemed = redeemedQ.data ?? 0;
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-      <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
-        <CardContent className="p-5">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Coins className="h-4 w-4" />XP Disponível
-          </div>
-          <div className="mt-2 text-3xl font-bold text-primary">{data.available.toLocaleString("pt-BR")}</div>
-          <div className="mt-1 text-xs text-muted-foreground">de {data.total_earned.toLocaleString("pt-BR")} XP total</div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="p-5">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Trophy className="h-4 w-4" />Nível Atual
-          </div>
-          <div className="mt-2 text-3xl font-bold">Nível {data.current_level}</div>
-          <div className="mt-1 text-xs text-muted-foreground">{data.current_level_name ?? "—"}</div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="p-5">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <TrendingUp className="h-4 w-4" />Próximo Nível
-          </div>
-          {data.next_level ? (
-            <>
-              <div className="mt-2 text-base font-semibold">Nível {data.next_level} · {data.next_level_name}</div>
-              <Progress value={progress} className="mt-2 h-2" />
-              <div className="mt-1 text-xs text-muted-foreground">
-                Faltam {Math.max(0, (data.next_level_xp ?? 0) - data.total_earned).toLocaleString("pt-BR")} XP
-              </div>
-            </>
-          ) : (
-            <div className="mt-2 text-base font-semibold">🏆 Nível máximo!</div>
-          )}
-        </CardContent>
-      </Card>
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <StatCard
+        label="XP Total"
+        value={data.total_earned.toLocaleString("pt-BR")}
+        icon={<Trophy className="h-6 w-6" />}
+        iconClass="text-emerald-500"
+      />
+      <StatCard
+        label="Nível Atual"
+        value={String(data.current_level)}
+        hint={data.current_level_name ?? undefined}
+        icon={<Sparkles className="h-6 w-6" />}
+        iconClass="text-amber-400"
+      />
+      <StatCard
+        label="Prêmios Resgatados"
+        value={String(redeemed)}
+        icon={<Gift className="h-6 w-6" />}
+        iconClass="text-primary"
+      />
+      <StatCard
+        label="XP Disponível"
+        value={data.available.toLocaleString("pt-BR")}
+        icon={<Coins className="h-6 w-6" />}
+        iconClass="text-muted-foreground"
+      />
     </div>
   );
 }
+
+function StatCard({
+  label,
+  value,
+  hint,
+  icon,
+  iconClass,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  icon: React.ReactNode;
+  iconClass?: string;
+}) {
+  return (
+    <Card>
+      <CardContent className="flex items-center justify-between p-5">
+        <div className="min-w-0">
+          <div className="text-xs font-medium text-muted-foreground">{label}</div>
+          <div className="mt-1 text-2xl font-bold tabular-nums">{value}</div>
+          {hint && <div className="mt-0.5 truncate text-xs text-muted-foreground">{hint}</div>}
+        </div>
+        <div className={cn("shrink-0", iconClass)}>{icon}</div>
+      </CardContent>
+    </Card>
+  );
+}
+
 
 // ============ Reward Shop ============
 function RewardShop({ userId }: { userId: string }) {
