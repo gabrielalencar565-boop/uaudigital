@@ -384,7 +384,9 @@ function MyRedemptions({ userId }: { userId: string }) {
           <Card key={r.id}>
             <CardContent className="p-4 flex items-center justify-between gap-4">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-xl">🎁</div>
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <DynamicLucideIcon name={r.rewards?.icon} fallback={Gift} className="h-5 w-5" />
+                </div>
                 <div className="min-w-0">
                   <div className="font-medium truncate">{r.rewards?.name ?? "Recompensa"}</div>
                   <div className="text-xs text-muted-foreground">
