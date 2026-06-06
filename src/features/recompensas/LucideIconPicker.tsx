@@ -1,85 +1,273 @@
 import { useState, useMemo } from "react";
-import { icons, HelpCircle, type LucideIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
-// Curated set of Lucide icons (estilo iOS/SF Symbols — traços finos e arredondados).
-export const REWARD_ICON_NAMES: string[] = [
+/**
+ * Emoji-based icon picker (estilo Apple).
+ * Mantém os mesmos nomes exportados (LucideIconPicker / DynamicLucideIcon / getLucideIcon)
+ * para compatibilidade com chamadas existentes — agora `value` armazena um emoji.
+ */
+
+type EmojiEntry = { emoji: string; keywords: string };
+
+const EMOJIS: EmojiEntry[] = [
   // Recompensas & conquistas
-  "Gift", "Trophy", "Award", "Crown", "Medal", "Star", "Sparkles", "Gem", "Diamond",
-  "PartyPopper", "Cake", "Confetti", "Ribbon",
+  { emoji: "🎁", keywords: "presente gift recompensa" },
+  { emoji: "🏆", keywords: "trofeu trophy vitoria" },
+  { emoji: "🥇", keywords: "medalha ouro primeiro" },
+  { emoji: "🥈", keywords: "medalha prata" },
+  { emoji: "🥉", keywords: "medalha bronze" },
+  { emoji: "🎖️", keywords: "medalha militar" },
+  { emoji: "👑", keywords: "coroa rei realeza crown" },
+  { emoji: "💎", keywords: "diamante gem joia" },
+  { emoji: "⭐", keywords: "estrela star favorito" },
+  { emoji: "🌟", keywords: "estrela brilhante" },
+  { emoji: "✨", keywords: "brilho sparkles magia" },
+  { emoji: "🎉", keywords: "festa party confete" },
+  { emoji: "🎊", keywords: "confete celebracao" },
+  { emoji: "🎈", keywords: "balao festa" },
+  { emoji: "🎀", keywords: "laco ribbon presente" },
+  { emoji: "🏅", keywords: "medalha esportiva" },
+
   // Reações
-  "Heart", "HeartHandshake", "ThumbsUp", "ThumbsDown", "Smile", "Laugh", "Frown",
-  // Comidas & bebidas
-  "Coffee", "Pizza", "Beer", "Wine", "IceCream", "Cookie", "Apple", "Utensils",
+  { emoji: "❤️", keywords: "coracao heart amor" },
+  { emoji: "🧡", keywords: "coracao laranja" },
+  { emoji: "💛", keywords: "coracao amarelo" },
+  { emoji: "💚", keywords: "coracao verde" },
+  { emoji: "💙", keywords: "coracao azul" },
+  { emoji: "💜", keywords: "coracao roxo" },
+  { emoji: "🖤", keywords: "coracao preto" },
+  { emoji: "🤍", keywords: "coracao branco" },
+  { emoji: "💖", keywords: "coracao brilhante" },
+  { emoji: "💝", keywords: "coracao presente" },
+  { emoji: "👍", keywords: "joinha like thumbs up" },
+  { emoji: "👎", keywords: "thumbs down dislike" },
+  { emoji: "👏", keywords: "palmas aplausos" },
+  { emoji: "🙌", keywords: "maos celebracao" },
+  { emoji: "🤝", keywords: "aperto de maos handshake" },
+  { emoji: "🙏", keywords: "obrigado pray" },
+  { emoji: "😀", keywords: "feliz smile" },
+  { emoji: "😄", keywords: "feliz alegre" },
+  { emoji: "😍", keywords: "amor encantado" },
+  { emoji: "🤩", keywords: "estrelado uau wow" },
+  { emoji: "😎", keywords: "legal cool oculos" },
+  { emoji: "🥳", keywords: "festa party" },
+  { emoji: "🤔", keywords: "pensando think" },
+  { emoji: "😢", keywords: "triste choro" },
+  { emoji: "😡", keywords: "raiva angry" },
+
   // Energia & destaque
-  "Rocket", "Flame", "Zap", "Target", "Flag", "Bell", "BellRing", "Bookmark",
+  { emoji: "🚀", keywords: "foguete rocket lancamento" },
+  { emoji: "🔥", keywords: "fogo fire flame" },
+  { emoji: "⚡", keywords: "raio zap energia" },
+  { emoji: "💥", keywords: "explosao boom" },
+  { emoji: "🎯", keywords: "alvo target meta" },
+  { emoji: "🚩", keywords: "bandeira flag" },
+  { emoji: "🏁", keywords: "bandeira chegada" },
+  { emoji: "🔔", keywords: "sino bell notificacao" },
+  { emoji: "🔖", keywords: "marcador bookmark" },
+
   // Dinheiro & loja
-  "Coins", "DollarSign", "Banknote", "CreditCard", "Wallet", "PiggyBank",
-  "ShoppingBag", "ShoppingCart", "Tag", "Tags", "Ticket", "Receipt",
+  { emoji: "💰", keywords: "dinheiro saco money" },
+  { emoji: "💵", keywords: "dinheiro dolar" },
+  { emoji: "💴", keywords: "dinheiro iene" },
+  { emoji: "💶", keywords: "dinheiro euro" },
+  { emoji: "💷", keywords: "dinheiro libra" },
+  { emoji: "🪙", keywords: "moeda coin" },
+  { emoji: "💳", keywords: "cartao credito" },
+  { emoji: "🧾", keywords: "recibo receipt" },
+  { emoji: "🛒", keywords: "carrinho compras" },
+  { emoji: "🛍️", keywords: "sacola compras shopping" },
+  { emoji: "🏷️", keywords: "etiqueta tag preco" },
+  { emoji: "🎫", keywords: "ticket ingresso" },
+
+  // Comida & bebida
+  { emoji: "☕", keywords: "cafe coffee" },
+  { emoji: "🍕", keywords: "pizza" },
+  { emoji: "🍔", keywords: "hamburger burger" },
+  { emoji: "🍟", keywords: "batata frita" },
+  { emoji: "🌮", keywords: "taco" },
+  { emoji: "🍿", keywords: "pipoca popcorn" },
+  { emoji: "🍩", keywords: "donut rosquinha" },
+  { emoji: "🍪", keywords: "cookie biscoito" },
+  { emoji: "🍰", keywords: "bolo cake" },
+  { emoji: "🎂", keywords: "bolo aniversario" },
+  { emoji: "🍫", keywords: "chocolate" },
+  { emoji: "🍦", keywords: "sorvete ice cream" },
+  { emoji: "🍎", keywords: "maca apple" },
+  { emoji: "🍺", keywords: "cerveja beer" },
+  { emoji: "🍷", keywords: "vinho wine" },
+  { emoji: "🥂", keywords: "brinde tacas champagne" },
+  { emoji: "🍸", keywords: "drink coquetel" },
+
   // Viagem & lugares
-  "Plane", "Car", "Bike", "Bus", "Train", "Ship",
-  "Map", "MapPin", "Compass", "Globe", "Mountain", "TreePalm",
+  { emoji: "✈️", keywords: "aviao plane viagem" },
+  { emoji: "🚗", keywords: "carro car" },
+  { emoji: "🚙", keywords: "suv carro" },
+  { emoji: "🚕", keywords: "taxi" },
+  { emoji: "🚌", keywords: "onibus bus" },
+  { emoji: "🚆", keywords: "trem train" },
+  { emoji: "🚢", keywords: "navio ship" },
+  { emoji: "🚲", keywords: "bicicleta bike" },
+  { emoji: "🛵", keywords: "moto scooter" },
+  { emoji: "🗺️", keywords: "mapa map" },
+  { emoji: "📍", keywords: "localizacao pin" },
+  { emoji: "🧭", keywords: "bussola compass" },
+  { emoji: "🌍", keywords: "globo terra mundo" },
+  { emoji: "🏝️", keywords: "ilha praia" },
+  { emoji: "🏔️", keywords: "montanha mountain" },
+  { emoji: "🏖️", keywords: "praia beach" },
+  { emoji: "🏠", keywords: "casa home" },
+  { emoji: "🏢", keywords: "predio escritorio" },
+  { emoji: "🏪", keywords: "loja store" },
+
   // Estudo & criatividade
-  "BookOpen", "Book", "GraduationCap", "Brain", "Lightbulb",
-  "PenTool", "Pencil", "Palette", "Paintbrush", "Scissors", "Ruler",
+  { emoji: "📚", keywords: "livros books estudo" },
+  { emoji: "📖", keywords: "livro book leitura" },
+  { emoji: "🎓", keywords: "formatura graduacao" },
+  { emoji: "🧠", keywords: "cerebro brain mente" },
+  { emoji: "💡", keywords: "ideia lampada lightbulb" },
+  { emoji: "✏️", keywords: "lapis pencil" },
+  { emoji: "✒️", keywords: "caneta pen" },
+  { emoji: "📝", keywords: "anotacao nota" },
+  { emoji: "🎨", keywords: "paleta arte palette" },
+  { emoji: "🖌️", keywords: "pincel brush" },
+  { emoji: "✂️", keywords: "tesoura scissors" },
+  { emoji: "📐", keywords: "regua ruler" },
+
   // Mídia
-  "Camera", "Video", "Image", "Music", "Music2", "Headphones", "Mic", "Film", "Radio", "Tv",
+  { emoji: "📷", keywords: "camera foto" },
+  { emoji: "📸", keywords: "camera flash" },
+  { emoji: "🎥", keywords: "camera video filme" },
+  { emoji: "🎬", keywords: "claquete cinema" },
+  { emoji: "🎞️", keywords: "filme film" },
+  { emoji: "📺", keywords: "tv television" },
+  { emoji: "🎵", keywords: "musica nota" },
+  { emoji: "🎶", keywords: "musica notas" },
+  { emoji: "🎧", keywords: "fones headphones" },
+  { emoji: "🎤", keywords: "microfone mic" },
+  { emoji: "📻", keywords: "radio" },
+  { emoji: "🖼️", keywords: "imagem quadro picture" },
+
   // Tempo
-  "Calendar", "CalendarCheck", "CalendarHeart", "Clock", "Hourglass", "Timer", "AlarmClock",
+  { emoji: "📅", keywords: "calendario calendar" },
+  { emoji: "📆", keywords: "calendario data" },
+  { emoji: "🗓️", keywords: "agenda calendario" },
+  { emoji: "⏰", keywords: "despertador alarm clock" },
+  { emoji: "⏳", keywords: "ampulheta hourglass" },
+  { emoji: "⌛", keywords: "ampulheta tempo" },
+  { emoji: "⏱️", keywords: "cronometro timer" },
+  { emoji: "🕐", keywords: "relogio clock" },
+
   // Pessoas & trabalho
-  "Users", "User", "UserCheck", "UsersRound", "Handshake", "MessageCircle", "MessageSquare", "Mail",
-  "Briefcase", "Building2", "Home", "Store",
+  { emoji: "👥", keywords: "pessoas users equipe" },
+  { emoji: "👤", keywords: "pessoa user" },
+  { emoji: "💼", keywords: "maleta trabalho briefcase" },
+  { emoji: "📧", keywords: "email mail" },
+  { emoji: "💬", keywords: "balao mensagem chat" },
+  { emoji: "📞", keywords: "telefone call" },
+
   // Dispositivos
-  "Laptop", "Monitor", "Smartphone", "Tablet", "Watch", "Keyboard", "Mouse",
+  { emoji: "💻", keywords: "laptop notebook" },
+  { emoji: "🖥️", keywords: "computador desktop" },
+  { emoji: "📱", keywords: "celular smartphone" },
+  { emoji: "⌚", keywords: "relogio watch" },
+  { emoji: "⌨️", keywords: "teclado keyboard" },
+  { emoji: "🖱️", keywords: "mouse" },
+
   // Sucesso & segurança
-  "CheckCircle2", "CheckCheck", "Check", "BadgeCheck", "ShieldCheck", "Shield", "Lock", "KeyRound",
+  { emoji: "✅", keywords: "check ok feito done" },
+  { emoji: "☑️", keywords: "checkbox marcado" },
+  { emoji: "✔️", keywords: "check verificado" },
+  { emoji: "🛡️", keywords: "escudo shield seguranca" },
+  { emoji: "🔒", keywords: "cadeado lock" },
+  { emoji: "🔓", keywords: "cadeado aberto unlock" },
+  { emoji: "🔑", keywords: "chave key" },
+
   // Atenção & penalidades
-  "AlertTriangle", "AlertCircle", "XCircle", "X", "Ban", "Skull", "Bug", "TriangleAlert",
+  { emoji: "⚠️", keywords: "aviso warning atencao" },
+  { emoji: "❗", keywords: "exclamacao importante" },
+  { emoji: "❌", keywords: "x errado cancelar" },
+  { emoji: "🚫", keywords: "proibido ban" },
+  { emoji: "💀", keywords: "caveira skull" },
+  { emoji: "🐛", keywords: "bug inseto" },
+
   // Métricas
-  "TrendingUp", "TrendingDown", "BarChart3", "BarChart4", "PieChart", "Activity", "LineChart", "Gauge",
+  { emoji: "📈", keywords: "grafico crescimento up" },
+  { emoji: "📉", keywords: "grafico queda down" },
+  { emoji: "📊", keywords: "grafico barras chart" },
+  { emoji: "🎚️", keywords: "controle nivel" },
+
   // Organização
-  "FolderCheck", "Folder", "FileText", "FileCheck2", "Clipboard", "ClipboardCheck", "ListChecks", "ListTodo", "CheckSquare",
+  { emoji: "📁", keywords: "pasta folder" },
+  { emoji: "📂", keywords: "pasta aberta" },
+  { emoji: "📄", keywords: "documento arquivo file" },
+  { emoji: "📋", keywords: "prancheta clipboard" },
+  { emoji: "🗂️", keywords: "organizador divisor" },
+
   // Natureza & clima
-  "Sun", "Moon", "CloudSun", "Cloud", "Umbrella", "Rainbow", "Snowflake",
-  "Trees", "Leaf", "Flower2", "Sprout",
+  { emoji: "☀️", keywords: "sol sun" },
+  { emoji: "🌙", keywords: "lua moon" },
+  { emoji: "⛅", keywords: "nublado parcial" },
+  { emoji: "☁️", keywords: "nuvem cloud" },
+  { emoji: "🌧️", keywords: "chuva rain" },
+  { emoji: "❄️", keywords: "neve snow snowflake" },
+  { emoji: "🌈", keywords: "arco iris rainbow" },
+  { emoji: "🌱", keywords: "broto seedling crescimento" },
+  { emoji: "🌳", keywords: "arvore tree" },
+  { emoji: "🍀", keywords: "trevo sorte luck" },
+  { emoji: "🌸", keywords: "flor cherry blossom" },
+  { emoji: "🌺", keywords: "flor hibiscus" },
+
   // Esporte & saúde
-  "Dumbbell", "Bike as BikeIcon".replace(" as BikeIcon", ""), "HeartPulse", "Footprints", "Trophy as TrophyIcon".replace(" as TrophyIcon", ""),
-  // Estrelas / favoritos
-  "Pin", "PinOff", "Eye", "EyeOff", "Search",
+  { emoji: "🏋️", keywords: "academia dumbbell halter" },
+  { emoji: "🏃", keywords: "corrida runner" },
+  { emoji: "⚽", keywords: "futebol soccer" },
+  { emoji: "🏀", keywords: "basquete basketball" },
+  { emoji: "🎾", keywords: "tenis tennis" },
+  { emoji: "❤️‍🔥", keywords: "coracao em chamas" },
+  { emoji: "👀", keywords: "olhos eyes" },
 ];
 
-// De-duplicate and keep only icons that actually exist in lucide-react
-const UNIQUE_ICON_NAMES = Array.from(new Set(REWARD_ICON_NAMES)).filter(
-  (n) => (icons as Record<string, LucideIcon>)[n] !== undefined,
-);
+const DEFAULT_EMOJI = "🎁";
 
-export function getLucideIcon(name?: string | null): LucideIcon {
-  if (!name) return HelpCircle;
-  const Comp = (icons as Record<string, LucideIcon>)[name];
-  return Comp ?? HelpCircle;
+export function getLucideIcon(_name?: string | null): never {
+  // mantido apenas para compatibilidade de import; não usado.
+  return undefined as never;
 }
 
 export function DynamicLucideIcon({
   name,
   className,
-  fallback,
-  strokeWidth = 1.6,
+  fallback: _fallback,
+  strokeWidth: _strokeWidth,
 }: {
   name?: string | null;
   className?: string;
-  fallback?: LucideIcon;
+  fallback?: unknown;
   strokeWidth?: number;
 }) {
-  const Comp = name ? (icons as Record<string, LucideIcon>)[name] ?? fallback ?? HelpCircle : fallback ?? HelpCircle;
-  return <Comp className={className} strokeWidth={strokeWidth} absoluteStrokeWidth />;
+  const emoji = name && /\p{Extended_Pictographic}/u.test(name) ? name : DEFAULT_EMOJI;
+  return (
+    <span
+      className={cn("inline-flex items-center justify-center leading-none select-none", className)}
+      style={{
+        fontFamily:
+          '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Twemoji Mozilla","EmojiOne Color","Android Emoji",sans-serif',
+        fontSize: "1.1em",
+      }}
+      aria-hidden="true"
+    >
+      {emoji}
+    </span>
+  );
 }
 
 interface LucideIconPickerProps {
   value?: string | null;
-  onChange: (name: string) => void;
+  onChange: (emoji: string) => void;
   placeholder?: string;
 }
 
@@ -87,13 +275,18 @@ export function LucideIconPicker({ value, onChange, placeholder = "Escolher íco
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
 
-  const Selected = getLucideIcon(value);
+  const isEmoji = value && /\p{Extended_Pictographic}/u.test(value);
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return UNIQUE_ICON_NAMES;
+    if (!search.trim()) return EMOJIS;
     const q = search.toLowerCase().trim();
-    return UNIQUE_ICON_NAMES.filter((n) => n.toLowerCase().includes(q));
+    return EMOJIS.filter((e) => e.keywords.toLowerCase().includes(q) || e.emoji.includes(q));
   }, [search]);
+
+  const emojiFont = {
+    fontFamily:
+      '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Twemoji Mozilla","EmojiOne Color","Android Emoji",sans-serif',
+  } as const;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -102,50 +295,50 @@ export function LucideIconPicker({ value, onChange, placeholder = "Escolher íco
           type="button"
           className="h-10 px-3 rounded-md border border-input bg-background flex items-center gap-2 hover:bg-muted/50 transition-colors w-full"
         >
-          <Selected className="h-4 w-4 text-primary" strokeWidth={1.6} absoluteStrokeWidth />
+          <span className="text-xl leading-none" style={emojiFont}>
+            {isEmoji ? value : "🎁"}
+          </span>
           <span className="text-sm text-muted-foreground truncate">
-            {value || placeholder}
+            {isEmoji ? "Trocar ícone" : placeholder}
           </span>
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-72 p-0" align="start">
+      <PopoverContent className="w-80 p-0" align="start">
         <div className="p-3 border-b border-border">
           <Input
-            placeholder="Buscar ícone... ex: Trophy, Gift"
+            placeholder="Buscar emoji... ex: trofeu, foguete"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="h-8 text-sm"
             autoFocus
           />
         </div>
-        <ScrollArea className="h-[240px]">
-          <div className="grid grid-cols-6 gap-1 p-2">
-            {filtered.map((name) => {
-              const IconComp = getLucideIcon(name);
-              return (
-                <button
-                  key={name}
-                  type="button"
-                  onClick={() => {
-                    onChange(name);
-                    setOpen(false);
-                    setSearch("");
-                  }}
-                  className={cn(
-                    "h-9 w-9 rounded-lg flex items-center justify-center border transition-all",
-                    value === name
-                      ? "ring-2 ring-offset-1 ring-primary border-primary bg-primary/10"
-                      : "border-transparent hover:bg-muted/60"
-                  )}
-                  title={name}
-                >
-                  <IconComp className="h-4 w-4" strokeWidth={1.6} absoluteStrokeWidth />
-                </button>
-              );
-            })}
+        <ScrollArea className="h-[280px]">
+          <div className="grid grid-cols-8 gap-1 p-2">
+            {filtered.map((e) => (
+              <button
+                key={e.emoji}
+                type="button"
+                onClick={() => {
+                  onChange(e.emoji);
+                  setOpen(false);
+                  setSearch("");
+                }}
+                className={cn(
+                  "h-9 w-9 rounded-lg flex items-center justify-center text-xl transition-all",
+                  value === e.emoji
+                    ? "ring-2 ring-offset-1 ring-primary bg-primary/10"
+                    : "hover:bg-muted/60",
+                )}
+                title={e.keywords.split(" ")[0]}
+                style={emojiFont}
+              >
+                {e.emoji}
+              </button>
+            ))}
             {filtered.length === 0 && (
-              <p className="col-span-6 text-xs text-muted-foreground text-center py-4">
-                Nenhum ícone encontrado
+              <p className="col-span-8 text-xs text-muted-foreground text-center py-4">
+                Nenhum emoji encontrado
               </p>
             )}
           </div>
