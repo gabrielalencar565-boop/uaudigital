@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import confetti from "canvas-confetti";
-import { Gift, Lock, Sparkles, Trophy, Coins, TrendingUp, Plus, Pencil, Trash2, Check, X, Package } from "lucide-react";
+import { Gift, Lock, Sparkles, Trophy, Coins, TrendingUp, Plus, Pencil, Trash2, Check, X, Package, ListChecks, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
 import { useRole } from "@/hooks/use-role";
@@ -19,6 +19,18 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { LucideIconPicker, DynamicLucideIcon } from "./LucideIconPicker";
+
+type XPCriterion = {
+  id: string;
+  name: string;
+  description: string | null;
+  xp_value: number;
+  category: string;
+  icon: string | null;
+  is_active: boolean;
+  sort_order: number;
+};
 
 type XPSummary = {
   total_earned: number;
