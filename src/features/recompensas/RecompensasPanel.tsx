@@ -329,8 +329,8 @@ function RewardCard({ reward, available, currentLevel, exclusive, onRedeem }: {
     )}>
       <CardContent className="p-5 space-y-3">
         <div className="flex items-start justify-between">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary text-2xl">
-            🎁
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <DynamicLucideIcon name={reward.icon} fallback={Gift} className="h-6 w-6" />
           </div>
           {exclusive && <Badge variant="outline" className="border-amber-400/50 text-amber-600">Exclusivo</Badge>}
         </div>
