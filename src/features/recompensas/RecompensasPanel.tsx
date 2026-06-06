@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { LucideIconPicker, DynamicLucideIcon } from "./LucideIconPicker";
 import { XPAutomationPanel } from "./XPAutomationPanel";
+import { RewardsTimeline } from "./RewardsTimeline";
 
 type XPCriterion = {
   id: string;
@@ -111,6 +112,7 @@ export function RecompensasPanel() {
         </div>
       </div>
 
+      {user && <RewardsTimeline userId={user.id} />}
       {user && <XPSummaryHeader userId={user.id} />}
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>

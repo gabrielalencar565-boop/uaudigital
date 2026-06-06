@@ -1,90 +1,36 @@
-# Plano: Sincronização automática de XP
+## Timeline horizontal de recompensas
 
-Vou conectar o sistema de XP/Recompensas ao sistema de desempenho existente, criando lançamentos automáticos para ranking, squads, vídeo destaque e atrasos de tarefas.
+Substituir a barra "Progresso para o Próximo Nível" atual por uma timeline horizontal com marcos para cada recompensa cadastrada na loja.
 
-## 1. Estrutura no banco
+### Comportamento
 
-### Tabela `xp_monthly_processing`
-Controla quais meses já foram processados (evita pontuação duplicada).
-- `year`, `month`, `criterion` (rank_1, rank_2, squad_destaque), `processed_at`
-- Único por (year, month, criterion)
+- Linha horizontal atravessando o header roxo, com um marco (bolinha) por recompensa, ordenadas por XP crescente.
+- Trecho preenchido (verde/teal, mesma cor da barra atual) vai de 0 até a posição do XP atual do usuário.
+- Cada marco mostra abaixo: ícone (emoji da recompensa) + nome + custo em XP.
+- Estados do marco:
+  - **Conquistado** (XP do usuário ≥ custo): bolinha preenchida, ícone destacado, leve glow.
+  - **Próximo** (primeira recompensa ainda não conquistada): bolinha pulsante com anel, label em destaque.
+  - **Futuro**: bolinha vazia/translúcida, texto com opacidade reduzida.
+- Mantém o badge de XP atual à esquerda e "faltam X XP para [próximo prêmio]" à direita.
+- Scroll horizontal interno quando houver muitas recompensas (>8) para não estourar no mobile.
+- Hover/tap em cada marco mostra tooltip com nome completo + XP.
 
-### Tabela `xp_task_penalties`
-Registra penalidades de atraso já aplicadas (1x por tarefa).
-- `task_id`, `user_id`, `xp_deducted`, `applied_at`
-- Único por (task_id, user_id)
+### Posicionamento
 
-### Tabela `xp_video_destaque`
-Vídeo destaque do mês (1 por mês).
-- `year`, `month`, `pm_task_id`, `selected_by`, `selected_at`
-- Único por (year, month)
+Dentro do mesmo card roxo do header "Vitrine de Prêmios", substituindo o bloco atual com `Progress` + textos "100.0%" / "959.000 XP" / "-958.900 XP para próximo nível". Header (título + botões Infinito/Ver todos/Ranking) permanece igual.
 
-### Tabela `xp_settings`
-Configurações:
-- `rank_1_xp` (default 100)
-- `rank_2_xp` (default 70)
-- `squad_destaque_xp` (default 60)
-- `video_destaque_xp` (default 60)
-- `task_late_penalty` (default -10)
-- `video_destaque_roles` (text[]) — cargos elegíveis
-- `late_penalize_all_assignees` (bool) — todos ou só principal
+### Detalhes técnicos
 
-### Extensão de `xp_history`
-Adicionar coluna `auto_generated` (bool) e `source_ref` (text) para rastreamento.
+- Componente novo `RewardsTimeline.tsx` em `src/features/recompensas/`.
+- Consome a mesma query de `rewards` já usada no `RecompensasPanel` (lista de prêmios com `xp_cost`, `icon`, `name`) + XP atual do usuário.
+- Posição de cada marco = `(reward.xp_cost / maxXp) * 100%` onde `maxXp` = maior custo da loja.
+- Posição do preenchimento = `min(userXp, maxXp) / maxXp * 100%`.
+- Tokens do design system (purple HSL 263 70% 50%, `--success` para preenchido). Sem cores hardcoded.
+- Tooltip via `@/components/ui/tooltip`.
+- Animação suave do fill ao mudar XP (`transition-all duration-500`).
+- Responsivo: em telas <768px, scroll-x com snap nos marcos.
 
-## 2. Funções no banco
+### Arquivos
 
-### `xp_process_monthly_rankings(year, month)`
-- Busca `performance_scores` do mês
-- Em caso de empate: ordena por tarefas concluídas, depois por menos atrasos
-- Insere XP para 1º e 2º lugar
-- Marca em `xp_monthly_processing`
-
-### `xp_process_squad_destaque(year, month)`
-- Calcula média por squad (usa `squad_members`)
-- Identifica squad vencedor
-- Insere XP para todos os membros ativos
-
-### `xp_apply_task_late_penalty(task_id)`
-- Trigger ao detectar atraso (job diário + trigger em UPDATE de tasks/pm_tasks)
-- Verifica se já existe em `xp_task_penalties`
-- Aplica -10 XP conforme configuração (todos ou principal)
-
-### `xp_apply_video_destaque(pm_task_id, year, month)`
-- Identifica responsáveis (assignee + watchers) filtrados pelos cargos configurados
-- Distribui 60 XP para cada um
-
-## 3. Cron jobs (pg_cron)
-
-- **Fechamento mensal** (dia 1 às 00:05): chama `xp_process_monthly_rankings` e `xp_process_squad_destaque` para o mês anterior
-- **Verificação de atrasos** (diário às 06:00): varre tarefas vencidas não concluídas e aplica penalidades
-
-## 4. UI
-
-### Admin > Configurações de XP (`RecompensasPanel`)
-- Nova aba "Sincronização Automática" com:
-  - Valores de XP por critério (editáveis)
-  - Toggle "Penalizar todos os responsáveis" vs "Apenas principal"
-  - Multi-select de cargos elegíveis para Vídeo Destaque
-  - Botão "Processar mês manualmente" (admin)
-
-### Admin > Vídeo Destaque
-- Novo painel/seção: seletor de mês + lista de tarefas de vídeo concluídas
-- Botão "Marcar como destaque do mês"
-- Mostra responsáveis que receberão XP
-
-### Histórico de XP
-- Já existe, mostrar badge "Auto" para lançamentos automáticos
-
-## 5. Notificações
-
-- Após cada lançamento automático, inserir notificação para o usuário usando o sistema existente (`notifications` table)
-
-## Detalhes técnicos
-
-- Todas as funções `SECURITY DEFINER` com `search_path = public`
-- RLS: admin pode ver/editar tudo; usuários veem apenas seu próprio histórico
-- Cron via `pg_cron` + `pg_net` (já presentes no projeto)
-- Realtime já configurado em `xp_history` para atualização instantânea
-
-Posso prosseguir com a implementação?
+- **Criar:** `src/features/recompensas/RewardsTimeline.tsx`
+- **Editar:** `src/features/recompensas/RecompensasPanel.tsx` — substituir o bloco do progress atual pelo `<RewardsTimeline />`.
