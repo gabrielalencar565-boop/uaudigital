@@ -112,7 +112,7 @@ export function LucideIconPicker({ value, onChange, placeholder = "Escolher íco
                   )}
                   title={name}
                 >
-                  <IconComp className="h-4 w-4" />
+                  <IconComp className="h-4 w-4" strokeWidth={1.6} absoluteStrokeWidth />
                 </button>
               );
             })}
