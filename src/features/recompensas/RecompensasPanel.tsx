@@ -413,12 +413,14 @@ function AdminSection() {
         <TabsTrigger value="catalogo">Catálogo</TabsTrigger>
         <TabsTrigger value="niveis">Níveis</TabsTrigger>
         <TabsTrigger value="criterios">Critérios XP</TabsTrigger>
+        <TabsTrigger value="auto"><Sparkles className="h-4 w-4 mr-1" />Automação</TabsTrigger>
         <TabsTrigger value="xp">Lançar XP</TabsTrigger>
       </TabsList>
       <TabsContent value="aprovacoes" className="mt-4"><AdminApprovals /></TabsContent>
       <TabsContent value="catalogo" className="mt-4"><AdminCatalog /></TabsContent>
       <TabsContent value="niveis" className="mt-4"><AdminLevels /></TabsContent>
       <TabsContent value="criterios" className="mt-4"><AdminCriteria /></TabsContent>
+      <TabsContent value="auto" className="mt-4"><XPAutomationPanel /></TabsContent>
       <TabsContent value="xp" className="mt-4"><AdminGrantXP /></TabsContent>
     </Tabs>
   );
