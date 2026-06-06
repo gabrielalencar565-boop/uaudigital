@@ -974,9 +974,9 @@ function AdminCriteria() {
                   <span className="text-sm text-muted-foreground">Valor:</span>
                   <span className={cn(
                     "text-2xl font-bold",
-                    positive ? "text-primary" : "text-destructive"
+                    positive ? "text-emerald-500" : "text-destructive"
                   )}>
-                    {positive ? "" : ""}{c.xp_value} XP
+                    {c.xp_value} XP
                   </span>
                 </div>
 
