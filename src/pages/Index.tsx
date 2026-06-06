@@ -286,6 +286,7 @@ const Index = () => {
     if (tab === "fin_lancamentos" && isAdmin) return <FinLancamentosTab />;
     if (tab === "metas" && isAdmin) return <FinMetasTab />;
     if (tab === "visao_do_dia") return <DayViewPanel />;
+    if (tab === "recompensas") return <RecompensasPanel />;
     if (tab === "meu_painel") return <MeuPainelPanel />;
     if (tab === "desempenho") return <PerformancePanel />;
     if (tab === "magic2") return <Magic2Panel />;
