@@ -139,6 +139,16 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
     });
   }, [tasksQ.data, currentTask, isSubtaskView]);
 
+  // Presence: tell teammates which task this user currently has open
+  // IMPORTANT: must be declared before any early return to keep hook order stable
+  useEffect(() => {
+    if (open && currentTask?.id) {
+      setViewingTask(currentTask.id);
+      return () => setViewingTask(null);
+    }
+    setViewingTask(null);
+  }, [open, currentTask?.id]);
+
   if (!task || !currentTask || !resolvedRootTask) return null;
 
   const childTasks = childTasksQ.data ?? [];
@@ -159,14 +169,7 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
     else setTaskStack(prev => prev.slice(0, index + 1));
   };
 
-  // Presence: tell teammates which task this user currently has open
-  useEffect(() => {
-    if (open && currentTask?.id) {
-      setViewingTask(currentTask.id);
-      return () => setViewingTask(null);
-    }
-    setViewingTask(null);
-  }, [open, currentTask?.id]);
+
 
 
   return (
