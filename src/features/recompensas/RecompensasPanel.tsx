@@ -61,6 +61,7 @@ type Level = {
   name: string;
   xp_required: number;
   exclusive_reward: string | null;
+  icon: string | null;
 };
 
 type Redemption = {
