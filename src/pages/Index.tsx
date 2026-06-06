@@ -19,6 +19,7 @@ import { FinLancamentosTab } from "@/features/financeiro/components/FinLancament
 import { GestaoPanel } from "@/features/gestao/GestaoPanel";
 
 import { ProjetosPanel } from "@/features/projetos/ProjetosPanel";
+import { RecompensasPanel } from "@/features/recompensas/RecompensasPanel";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -285,6 +286,7 @@ const Index = () => {
     if (tab === "fin_lancamentos" && isAdmin) return <FinLancamentosTab />;
     if (tab === "metas" && isAdmin) return <FinMetasTab />;
     if (tab === "visao_do_dia") return <DayViewPanel />;
+    if (tab === "recompensas") return <RecompensasPanel />;
     if (tab === "meu_painel") return <MeuPainelPanel />;
     if (tab === "desempenho") return <PerformancePanel />;
     if (tab === "magic2") return <Magic2Panel />;

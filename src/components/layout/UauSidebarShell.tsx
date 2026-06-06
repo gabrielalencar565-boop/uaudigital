@@ -2,7 +2,7 @@ import { PropsWithChildren, useMemo, useState } from "react";
 import { normalizeAvatarUrl } from "@/lib/avatar-url";
 import {
   CalendarDays, ChevronDown, ClipboardList, DollarSign,
-  Eye, FileSpreadsheet, FolderOpen, LayoutGrid, Receipt, Settings, Target, TrendingUp, Trophy,
+  Eye, FileSpreadsheet, FolderOpen, Gift, LayoutGrid, Receipt, Settings, Target, TrendingUp, Trophy,
   UserRound, Users, Workflow, CalendarRange, PieChart, PanelLeftClose, ArrowRightLeft } from
 "lucide-react";
 import { useAppSettings } from "@/features/data/queries";
@@ -39,6 +39,7 @@ export type MainTab =
 "visao_do_dia" |
 "magic2" |
 "desempenho" |
+"recompensas" |
 "financeiro" |
 "metas" |
 "fin_clientes" |
@@ -70,6 +71,7 @@ const NAV: NavEntry[] = [
 { key: "meu_painel", label: "Meu Painel", icon: UserRound },
 { key: "tarefas", label: "Kanban", icon: LayoutGrid },
 { key: "agenda_gestao", label: "Agenda", icon: CalendarDays },
+{ key: "recompensas", label: "Recompensas", icon: Gift },
 {
   key: "dashboard_group",
   label: "Dashboard",

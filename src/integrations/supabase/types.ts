@@ -1716,6 +1716,128 @@ export type Database = {
         }
         Relationships: []
       }
+      reward_levels: {
+        Row: {
+          created_at: string
+          exclusive_reward: string | null
+          id: string
+          level_number: number
+          name: string
+          updated_at: string
+          xp_required: number
+        }
+        Insert: {
+          created_at?: string
+          exclusive_reward?: string | null
+          id?: string
+          level_number: number
+          name: string
+          updated_at?: string
+          xp_required: number
+        }
+        Update: {
+          created_at?: string
+          exclusive_reward?: string | null
+          id?: string
+          level_number?: number
+          name?: string
+          updated_at?: string
+          xp_required?: number
+        }
+        Relationships: []
+      }
+      reward_redemptions: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          delivered_at: string | null
+          id: string
+          notes: string | null
+          reward_id: string
+          status: Database["public"]["Enums"]["reward_redemption_status"]
+          updated_at: string
+          user_id: string
+          xp_spent: number
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          delivered_at?: string | null
+          id?: string
+          notes?: string | null
+          reward_id: string
+          status?: Database["public"]["Enums"]["reward_redemption_status"]
+          updated_at?: string
+          user_id: string
+          xp_spent: number
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          delivered_at?: string | null
+          id?: string
+          notes?: string | null
+          reward_id?: string
+          status?: Database["public"]["Enums"]["reward_redemption_status"]
+          updated_at?: string
+          user_id?: string
+          xp_spent?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reward_redemptions_reward_id_fkey"
+            columns: ["reward_id"]
+            isOneToOne: false
+            referencedRelation: "rewards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rewards: {
+        Row: {
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          is_active: boolean
+          is_exclusive: boolean
+          min_level: number
+          name: string
+          order_index: number
+          updated_at: string
+          xp_cost: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          is_exclusive?: boolean
+          min_level?: number
+          name: string
+          order_index?: number
+          updated_at?: string
+          xp_cost: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          is_exclusive?: boolean
+          min_level?: number
+          name?: string
+          order_index?: number
+          updated_at?: string
+          xp_cost?: number
+        }
+        Relationships: []
+      }
       scoring_config: {
         Row: {
           base_points: number
@@ -2037,6 +2159,39 @@ export type Database = {
         }
         Relationships: []
       }
+      user_xp_events: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          id: string
+          reason: string
+          source_id: string | null
+          source_type: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          reason: string
+          source_id?: string | null
+          source_type?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          reason?: string
+          source_id?: string | null
+          source_type?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -2063,6 +2218,19 @@ export type Database = {
           high_months: number
           total_year: number
           user_id: string
+        }[]
+      }
+      get_user_xp_summary: {
+        Args: { _user_id: string }
+        Returns: {
+          available: number
+          current_level: number
+          current_level_name: string
+          next_level: number
+          next_level_name: string
+          next_level_xp: number
+          total_earned: number
+          total_spent: number
         }[]
       }
       has_role: {
@@ -2187,6 +2355,11 @@ export type Database = {
         | "aprovado"
         | "concluido"
         | "bloqueado"
+      reward_redemption_status:
+        | "pendente"
+        | "aprovado"
+        | "recusado"
+        | "entregue"
       stage_type:
         | "captacao"
         | "edicao_videos"
@@ -2373,6 +2546,12 @@ export const Constants = {
         "aprovado",
         "concluido",
         "bloqueado",
+      ],
+      reward_redemption_status: [
+        "pendente",
+        "aprovado",
+        "recusado",
+        "entregue",
       ],
       stage_type: [
         "captacao",
