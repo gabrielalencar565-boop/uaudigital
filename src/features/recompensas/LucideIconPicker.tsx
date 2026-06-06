@@ -5,25 +5,50 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
-// Curated set of Lucide icons useful for rewards/levels/criteria.
-// Stored as PascalCase names (lucide-react's `icons` map keys).
+// Curated set of Lucide icons (estilo iOS/SF Symbols — traços finos e arredondados).
 export const REWARD_ICON_NAMES: string[] = [
-  "Gift", "Trophy", "Award", "Crown", "Medal", "Star", "Sparkles", "Gem",
-  "Heart", "ThumbsUp", "PartyPopper", "Cake", "Coffee", "Pizza", "Ticket",
-  "Rocket", "Flame", "Zap", "Target", "Flag", "Bell", "BellRing",
-  "Coins", "DollarSign", "Banknote", "CreditCard", "ShoppingBag", "ShoppingCart",
-  "Plane", "Car", "Bike", "Map", "MapPin", "Compass", "Globe",
-  "BookOpen", "GraduationCap", "Brain", "Lightbulb", "PenTool", "Palette",
-  "Camera", "Video", "Music", "Headphones", "Mic", "Film",
-  "Calendar", "CalendarCheck", "CalendarHeart", "Clock", "Hourglass",
-  "Users", "User", "UserCheck", "UsersRound", "HeartHandshake", "Handshake",
-  "Briefcase", "Building2", "Home", "Laptop", "Monitor", "Smartphone",
-  "CheckCircle2", "CheckCheck", "Check", "ShieldCheck", "Shield", "Lock",
-  "AlertTriangle", "AlertCircle", "XCircle", "Ban", "Skull",
-  "TrendingUp", "BarChart3", "PieChart", "Activity", "LineChart",
-  "FolderCheck", "Folder", "FileText", "Clipboard", "ListChecks",
-  "Smile", "Laugh", "Sun", "Moon", "CloudSun", "Umbrella",
-  "Dumbbell", "Trees", "Leaf", "Flower2", "Crown as CrownIcon".replace(" as CrownIcon", ""),
+  // Recompensas & conquistas
+  "Gift", "Trophy", "Award", "Crown", "Medal", "Star", "Sparkles", "Gem", "Diamond",
+  "PartyPopper", "Cake", "Confetti", "Ribbon",
+  // Reações
+  "Heart", "HeartHandshake", "ThumbsUp", "ThumbsDown", "Smile", "Laugh", "Frown",
+  // Comidas & bebidas
+  "Coffee", "Pizza", "Beer", "Wine", "IceCream", "Cookie", "Apple", "Utensils",
+  // Energia & destaque
+  "Rocket", "Flame", "Zap", "Target", "Flag", "Bell", "BellRing", "Bookmark",
+  // Dinheiro & loja
+  "Coins", "DollarSign", "Banknote", "CreditCard", "Wallet", "PiggyBank",
+  "ShoppingBag", "ShoppingCart", "Tag", "Tags", "Ticket", "Receipt",
+  // Viagem & lugares
+  "Plane", "Car", "Bike", "Bus", "Train", "Ship",
+  "Map", "MapPin", "Compass", "Globe", "Mountain", "TreePalm",
+  // Estudo & criatividade
+  "BookOpen", "Book", "GraduationCap", "Brain", "Lightbulb",
+  "PenTool", "Pencil", "Palette", "Paintbrush", "Scissors", "Ruler",
+  // Mídia
+  "Camera", "Video", "Image", "Music", "Music2", "Headphones", "Mic", "Film", "Radio", "Tv",
+  // Tempo
+  "Calendar", "CalendarCheck", "CalendarHeart", "Clock", "Hourglass", "Timer", "AlarmClock",
+  // Pessoas & trabalho
+  "Users", "User", "UserCheck", "UsersRound", "Handshake", "MessageCircle", "MessageSquare", "Mail",
+  "Briefcase", "Building2", "Home", "Store",
+  // Dispositivos
+  "Laptop", "Monitor", "Smartphone", "Tablet", "Watch", "Keyboard", "Mouse",
+  // Sucesso & segurança
+  "CheckCircle2", "CheckCheck", "Check", "BadgeCheck", "ShieldCheck", "Shield", "Lock", "KeyRound",
+  // Atenção & penalidades
+  "AlertTriangle", "AlertCircle", "XCircle", "X", "Ban", "Skull", "Bug", "TriangleAlert",
+  // Métricas
+  "TrendingUp", "TrendingDown", "BarChart3", "BarChart4", "PieChart", "Activity", "LineChart", "Gauge",
+  // Organização
+  "FolderCheck", "Folder", "FileText", "FileCheck2", "Clipboard", "ClipboardCheck", "ListChecks", "ListTodo", "CheckSquare",
+  // Natureza & clima
+  "Sun", "Moon", "CloudSun", "Cloud", "Umbrella", "Rainbow", "Snowflake",
+  "Trees", "Leaf", "Flower2", "Sprout",
+  // Esporte & saúde
+  "Dumbbell", "Bike as BikeIcon".replace(" as BikeIcon", ""), "HeartPulse", "Footprints", "Trophy as TrophyIcon".replace(" as TrophyIcon", ""),
+  // Estrelas / favoritos
+  "Pin", "PinOff", "Eye", "EyeOff", "Search",
 ];
 
 // De-duplicate
