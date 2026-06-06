@@ -1,47 +1,90 @@
-## Adições à aba Recompensas
+# Plano: Sincronização automática de XP
 
-### 1. Nova aba "Critérios para ganhar XP"
-Criar uma seção dedicada dentro do painel Recompensas explicando como o colaborador acumula XP.
+Vou conectar o sistema de XP/Recompensas ao sistema de desempenho existente, criando lançamentos automáticos para ranking, squads, vídeo destaque e atrasos de tarefas.
 
-**Visão do colaborador (read-only):**
-- Lista de critérios com ícone, título, descrição e valor em XP (ex.: "Tarefa entregue no prazo +10 XP", "Bônus de excelência +25 XP", "Atraso -5 XP").
-- Agrupamento por categoria (Produtividade, Qualidade, Penalidades, Bônus).
-- Histórico recente de XP ganho/perdido do próprio usuário (já existe `user_xp_events` — listar últimos eventos com motivo).
+## 1. Estrutura no banco
 
-**Visão do admin (mesma aba, modo edição):**
-- CRUD completo dos critérios: criar, editar, excluir, ativar/desativar.
-- Campos: nome, descrição, valor XP (positivo ou negativo), categoria, ícone, ativo.
+### Tabela `xp_monthly_processing`
+Controla quais meses já foram processados (evita pontuação duplicada).
+- `year`, `month`, `criterion` (rank_1, rank_2, squad_destaque), `processed_at`
+- Único por (year, month, criterion)
 
-**Backend:** nova tabela `xp_criteria` com RLS (todos autenticados leem ativos; admin gerencia).
+### Tabela `xp_task_penalties`
+Registra penalidades de atraso já aplicadas (1x por tarefa).
+- `task_id`, `user_id`, `xp_deducted`, `applied_at`
+- Único por (task_id, user_id)
 
-### 2. Seletor de ícone em Recompensas, Níveis e Critérios
-Adicionar campo "Ícone" nos formulários de:
-- Recompensa (tabela `rewards`)
-- Nível (tabela `reward_levels`)
-- Critério de XP (nova tabela `xp_criteria`)
+### Tabela `xp_video_destaque`
+Vídeo destaque do mês (1 por mês).
+- `year`, `month`, `pm_task_id`, `selected_by`, `selected_at`
+- Único por (year, month)
 
-**Componente:** picker visual com busca usando ícones do `lucide-react` (mesma abordagem do `IconPicker` já existente em `src/features/agenda/components/IconPicker.tsx` — reaproveitar).
+### Tabela `xp_settings`
+Configurações:
+- `rank_1_xp` (default 100)
+- `rank_2_xp` (default 70)
+- `squad_destaque_xp` (default 60)
+- `video_destaque_xp` (default 60)
+- `task_late_penalty` (default -10)
+- `video_destaque_roles` (text[]) — cargos elegíveis
+- `late_penalize_all_assignees` (bool) — todos ou só principal
 
-**Storage:** coluna `icon` TEXT armazenando o nome do ícone Lucide (ex.: `"Gift"`, `"Trophy"`, `"Star"`). Renderização dinâmica via `icons[name]` do lucide-react.
+### Extensão de `xp_history`
+Adicionar coluna `auto_generated` (bool) e `source_ref` (text) para rastreamento.
 
-**UI:**
-- Cards de recompensa exibem o ícone escolhido no lugar do 🎁 padrão.
-- Cards/badges de nível exibem o ícone escolhido.
-- Critérios exibem o ícone na listagem.
-- Fallback para ícone padrão se `icon` for nulo.
+## 2. Funções no banco
 
-### Detalhes técnicos
+### `xp_process_monthly_rankings(year, month)`
+- Busca `performance_scores` do mês
+- Em caso de empate: ordena por tarefas concluídas, depois por menos atrasos
+- Insere XP para 1º e 2º lugar
+- Marca em `xp_monthly_processing`
 
-**Migração SQL:**
-- `ALTER TABLE rewards ADD COLUMN icon TEXT;`
-- `ALTER TABLE reward_levels ADD COLUMN icon TEXT;`
-- `CREATE TABLE public.xp_criteria (id, name, description, xp_value INT, category TEXT, icon TEXT, is_active BOOL, sort_order INT, created_at, updated_at)` + GRANTs + RLS (SELECT para authenticated, ALL para admin via `has_role`) + trigger de `updated_at`.
-- Seed inicial de critérios padrão (entrega no prazo, atraso, excelência, etc.).
+### `xp_process_squad_destaque(year, month)`
+- Calcula média por squad (usa `squad_members`)
+- Identifica squad vencedor
+- Insere XP para todos os membros ativos
 
-**Frontend (`RecompensasPanel.tsx`):**
-- Nova aba interna "Critérios" via `Tabs` (Loja | Critérios | Admin se aplicável).
-- Componente `IconPickerPopover` reutilizável para escolher ícone Lucide em recompensas, níveis e critérios.
-- Componente `DynamicLucideIcon` para renderizar por nome.
+### `xp_apply_task_late_penalty(task_id)`
+- Trigger ao detectar atraso (job diário + trigger em UPDATE de tasks/pm_tasks)
+- Verifica se já existe em `xp_task_penalties`
+- Aplica -10 XP conforme configuração (todos ou principal)
 
-### Não incluso
-- Lógica automática de concessão de XP por critério (continua manual via admin); apenas catálogo informativo + admin pode debitar/creditar como já existe.
+### `xp_apply_video_destaque(pm_task_id, year, month)`
+- Identifica responsáveis (assignee + watchers) filtrados pelos cargos configurados
+- Distribui 60 XP para cada um
+
+## 3. Cron jobs (pg_cron)
+
+- **Fechamento mensal** (dia 1 às 00:05): chama `xp_process_monthly_rankings` e `xp_process_squad_destaque` para o mês anterior
+- **Verificação de atrasos** (diário às 06:00): varre tarefas vencidas não concluídas e aplica penalidades
+
+## 4. UI
+
+### Admin > Configurações de XP (`RecompensasPanel`)
+- Nova aba "Sincronização Automática" com:
+  - Valores de XP por critério (editáveis)
+  - Toggle "Penalizar todos os responsáveis" vs "Apenas principal"
+  - Multi-select de cargos elegíveis para Vídeo Destaque
+  - Botão "Processar mês manualmente" (admin)
+
+### Admin > Vídeo Destaque
+- Novo painel/seção: seletor de mês + lista de tarefas de vídeo concluídas
+- Botão "Marcar como destaque do mês"
+- Mostra responsáveis que receberão XP
+
+### Histórico de XP
+- Já existe, mostrar badge "Auto" para lançamentos automáticos
+
+## 5. Notificações
+
+- Após cada lançamento automático, inserir notificação para o usuário usando o sistema existente (`notifications` table)
+
+## Detalhes técnicos
+
+- Todas as funções `SECURITY DEFINER` com `search_path = public`
+- RLS: admin pode ver/editar tudo; usuários veem apenas seu próprio histórico
+- Cron via `pg_cron` + `pg_net` (já presentes no projeto)
+- Realtime já configurado em `xp_history` para atualização instantânea
+
+Posso prosseguir com a implementação?
