@@ -71,6 +71,7 @@ const NAV: NavEntry[] = [
 { key: "meu_painel", label: "Meu Painel", icon: UserRound },
 { key: "tarefas", label: "Kanban", icon: LayoutGrid },
 { key: "agenda_gestao", label: "Agenda", icon: CalendarDays },
+{ key: "recompensas", label: "Recompensas", icon: Gift },
 {
   key: "dashboard_group",
   label: "Dashboard",
