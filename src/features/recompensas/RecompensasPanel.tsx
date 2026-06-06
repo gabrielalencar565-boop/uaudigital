@@ -678,6 +678,7 @@ function AdminLevels() {
                 <div><Label>XP necessário</Label><Input type="number" value={editing.xp_required ?? 0} onChange={e => setEditing({ ...editing, xp_required: Number(e.target.value) })} /></div>
               </div>
               <div><Label>Nome</Label><Input value={editing.name ?? ""} onChange={e => setEditing({ ...editing, name: e.target.value })} /></div>
+              <div><Label>Ícone</Label><LucideIconPicker value={editing.icon} onChange={(name) => setEditing({ ...editing, icon: name })} /></div>
               <div><Label>Recompensa exclusiva (opcional)</Label><Input value={editing.exclusive_reward ?? ""} onChange={e => setEditing({ ...editing, exclusive_reward: e.target.value })} /></div>
             </div>
           )}
