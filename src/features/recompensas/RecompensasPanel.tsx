@@ -112,6 +112,7 @@ export function RecompensasPanel() {
         </div>
       </div>
 
+      {user && <RewardsTimeline userId={user.id} />}
       {user && <XPSummaryHeader userId={user.id} />}
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
