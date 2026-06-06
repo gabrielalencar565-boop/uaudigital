@@ -147,7 +147,7 @@ export function RewardsTimeline({ userId }: { userId: string }) {
 
                 {/* Markers as evenly-spaced flex columns, centered on the bar */}
                 <TooltipProvider delayDuration={150}>
-                  <div className="absolute left-0 right-0" style={{ top: "-14px" }}>
+                  <div className="absolute left-0 right-0" style={{ top: "-22px" }}>
                     <div className="flex w-full">
                       {rewards.map((r) => {
                         const achieved = userXp >= r.xp_cost;
