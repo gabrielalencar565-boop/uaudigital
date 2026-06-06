@@ -2234,6 +2234,120 @@ export type Database = {
         }
         Relationships: []
       }
+      xp_monthly_processing: {
+        Row: {
+          criterion: string
+          id: string
+          month: number
+          processed_at: string
+          processed_by: string | null
+          year: number
+        }
+        Insert: {
+          criterion: string
+          id?: string
+          month: number
+          processed_at?: string
+          processed_by?: string | null
+          year: number
+        }
+        Update: {
+          criterion?: string
+          id?: string
+          month?: number
+          processed_at?: string
+          processed_by?: string | null
+          year?: number
+        }
+        Relationships: []
+      }
+      xp_settings: {
+        Row: {
+          id: boolean
+          late_penalize_all_assignees: boolean
+          rank_1_xp: number
+          rank_2_xp: number
+          squad_destaque_xp: number
+          task_late_penalty: number
+          updated_at: string
+          video_destaque_roles: string[]
+          video_destaque_xp: number
+        }
+        Insert: {
+          id?: boolean
+          late_penalize_all_assignees?: boolean
+          rank_1_xp?: number
+          rank_2_xp?: number
+          squad_destaque_xp?: number
+          task_late_penalty?: number
+          updated_at?: string
+          video_destaque_roles?: string[]
+          video_destaque_xp?: number
+        }
+        Update: {
+          id?: boolean
+          late_penalize_all_assignees?: boolean
+          rank_1_xp?: number
+          rank_2_xp?: number
+          squad_destaque_xp?: number
+          task_late_penalty?: number
+          updated_at?: string
+          video_destaque_roles?: string[]
+          video_destaque_xp?: number
+        }
+        Relationships: []
+      }
+      xp_task_penalties: {
+        Row: {
+          applied_at: string
+          id: string
+          pm_task_id: string
+          user_id: string
+          xp_deducted: number
+        }
+        Insert: {
+          applied_at?: string
+          id?: string
+          pm_task_id: string
+          user_id: string
+          xp_deducted: number
+        }
+        Update: {
+          applied_at?: string
+          id?: string
+          pm_task_id?: string
+          user_id?: string
+          xp_deducted?: number
+        }
+        Relationships: []
+      }
+      xp_video_destaque: {
+        Row: {
+          id: string
+          month: number
+          pm_task_id: string
+          selected_at: string
+          selected_by: string | null
+          year: number
+        }
+        Insert: {
+          id?: string
+          month: number
+          pm_task_id: string
+          selected_at?: string
+          selected_by?: string | null
+          year: number
+        }
+        Update: {
+          id?: string
+          month?: number
+          pm_task_id?: string
+          selected_at?: string
+          selected_by?: string | null
+          year?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -2351,6 +2465,20 @@ export type Database = {
           stage_completed: boolean
         }[]
       }
+      xp_apply_monthly_rankings: {
+        Args: { _month: number; _year: number }
+        Returns: undefined
+      }
+      xp_apply_squad_destaque: {
+        Args: { _month: number; _year: number }
+        Returns: undefined
+      }
+      xp_apply_task_late_penalties: { Args: never; Returns: number }
+      xp_apply_video_destaque: {
+        Args: { _month: number; _pm_task_id: string; _year: number }
+        Returns: undefined
+      }
+      xp_process_previous_month: { Args: never; Returns: undefined }
     }
     Enums: {
       access_request_status: "pending" | "approved" | "rejected"
