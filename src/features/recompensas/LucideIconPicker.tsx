@@ -75,7 +75,7 @@ export function LucideIconPicker({ value, onChange, placeholder = "Escolher íco
           type="button"
           className="h-10 px-3 rounded-md border border-input bg-background flex items-center gap-2 hover:bg-muted/50 transition-colors w-full"
         >
-          <Selected className="h-4 w-4 text-primary" />
+          <Selected className="h-4 w-4 text-primary" strokeWidth={1.6} absoluteStrokeWidth />
           <span className="text-sm text-muted-foreground truncate">
             {value || placeholder}
           </span>
