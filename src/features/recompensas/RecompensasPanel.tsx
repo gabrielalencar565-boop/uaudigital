@@ -931,33 +931,64 @@ function AdminCriteria() {
   });
 
   return (
-    <div className="space-y-3">
-      <Button onClick={() => setEditing({ name: "", xp_value: 10, category: "Produtividade", is_active: true, sort_order: 0 })}>
-        <Plus className="h-4 w-4 mr-1" />Novo critério
-      </Button>
-      <div className="space-y-2">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex-1 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm text-primary flex items-center gap-2">
+          <Sparkles className="h-4 w-4 shrink-0" />
+          Configure os valores de XP para cada tipo de ação
+        </div>
+        <Button onClick={() => setEditing({ name: "", xp_value: 10, category: "Produtividade", is_active: true, sort_order: 0 })}>
+          <Plus className="h-4 w-4 mr-1" />Novo critério
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {(q.data ?? []).map((c) => {
           const positive = c.xp_value >= 0;
           return (
-            <Card key={c.id}>
-              <CardContent className="p-3 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className={cn(
-                    "flex h-9 w-9 items-center justify-center rounded-lg",
-                    positive ? "bg-primary/10 text-primary" : "bg-destructive/10 text-destructive"
-                  )}>
-                    <DynamicLucideIcon name={c.icon} className="h-5 w-5" />
+            <Card key={c.id} className="flex flex-col">
+              <CardContent className="p-5 flex flex-col h-full gap-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start gap-2 min-w-0">
+                    <DynamicLucideIcon name={c.icon} className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                    <h4 className="font-semibold leading-tight">{c.name}</h4>
                   </div>
-                  <div className="min-w-0">
-                    <div className="font-medium truncate">{c.name} {!c.is_active && <Badge variant="outline" className="ml-1">Inativo</Badge>}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {c.category} · <span className={positive ? "text-emerald-600" : "text-red-600"}>{positive ? "+" : ""}{c.xp_value} XP</span>
-                    </div>
-                  </div>
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "shrink-0 rounded-md font-medium",
+                      c.is_active
+                        ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600"
+                        : "border-muted-foreground/30 bg-muted text-muted-foreground"
+                    )}
+                  >
+                    {c.is_active ? "Ativo" : "Inativo"}
+                  </Badge>
                 </div>
-                <div className="flex gap-2 shrink-0">
-                  <Button size="sm" variant="ghost" onClick={() => setEditing(c)}><Pencil className="h-4 w-4" /></Button>
-                  <Button size="sm" variant="ghost" onClick={() => { if (confirm("Remover?")) del.mutate(c.id); }}>
+
+                <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem]">
+                  {c.description || "—"}
+                </p>
+
+                <div className="flex items-baseline justify-between mt-auto">
+                  <span className="text-sm text-muted-foreground">Valor:</span>
+                  <span className={cn(
+                    "text-2xl font-bold",
+                    positive ? "text-primary" : "text-destructive"
+                  )}>
+                    {positive ? "" : ""}{c.xp_value} XP
+                  </span>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button className="flex-1" onClick={() => setEditing(c)}>
+                    <Pencil className="h-4 w-4 mr-2" />Editar Configuração
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => { if (confirm("Remover?")) del.mutate(c.id); }}
+                  >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
@@ -966,7 +997,7 @@ function AdminCriteria() {
           );
         })}
         {(q.data ?? []).length === 0 && (
-          <div className="text-sm text-muted-foreground">Nenhum critério cadastrado.</div>
+          <div className="text-sm text-muted-foreground col-span-full">Nenhum critério cadastrado.</div>
         )}
       </div>
 
