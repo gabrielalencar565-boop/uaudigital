@@ -619,6 +619,7 @@ function AdminLevels() {
         name: l.name ?? "Nível",
         xp_required: Number(l.xp_required ?? 0),
         exclusive_reward: l.exclusive_reward || null,
+        icon: l.icon ?? null,
       };
       if (l.id) {
         const { error } = await supabase.from("reward_levels").update(payload).eq("id", l.id);
