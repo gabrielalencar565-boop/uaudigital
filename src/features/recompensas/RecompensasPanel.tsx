@@ -20,6 +20,7 @@ import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { LucideIconPicker, DynamicLucideIcon } from "./LucideIconPicker";
+import { XPAutomationPanel } from "./XPAutomationPanel";
 
 type XPCriterion = {
   id: string;
