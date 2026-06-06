@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import confetti from "canvas-confetti";
-import { Gift, Lock, Sparkles, Trophy, Coins, TrendingUp, Plus, Pencil, Trash2, Check, X, Package, ListChecks, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { Gift, Lock, Sparkles, Trophy, Coins, TrendingUp, Plus, Pencil, Trash2, Check, X, Package, ListChecks, ArrowUpRight, ArrowDownRight, History } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
 import { useRole } from "@/hooks/use-role";
@@ -97,7 +97,7 @@ function fireConfetti() {
 export function RecompensasPanel() {
   const { user } = useSession();
   const { isAdmin } = useRole(user?.id);
-  const [tab, setTab] = useState<"loja" | "criterios" | "meus" | "admin">("loja");
+  const [tab, setTab] = useState<"loja" | "criterios" | "meus" | "historico" | "admin">("loja");
 
   return (
     <div className="space-y-6">
@@ -114,10 +114,11 @@ export function RecompensasPanel() {
       {user && <XPSummaryHeader userId={user.id} />}
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
-        <TabsList>
+        <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="loja"><Gift className="h-4 w-4 mr-2" />Loja</TabsTrigger>
           <TabsTrigger value="criterios"><ListChecks className="h-4 w-4 mr-2" />Critérios de XP</TabsTrigger>
           <TabsTrigger value="meus"><Package className="h-4 w-4 mr-2" />Meus Resgates</TabsTrigger>
+          <TabsTrigger value="historico"><History className="h-4 w-4 mr-2" />Histórico XP</TabsTrigger>
           {isAdmin && <TabsTrigger value="admin"><Sparkles className="h-4 w-4 mr-2" />Administração</TabsTrigger>}
         </TabsList>
 
@@ -130,12 +131,206 @@ export function RecompensasPanel() {
         <TabsContent value="meus" className="mt-6">
           {user && <MyRedemptions userId={user.id} />}
         </TabsContent>
+        <TabsContent value="historico" className="mt-6">
+          {user && <XPHistoryPanel userId={user.id} />}
+        </TabsContent>
         {isAdmin && (
           <TabsContent value="admin" className="mt-6">
             <AdminSection />
           </TabsContent>
         )}
       </Tabs>
+    </div>
+  );
+}
+
+// ============ XP History Panel ============
+type XPEvent = {
+  id: string;
+  amount: number;
+  reason: string;
+  source_type: string | null;
+  created_at: string;
+};
+
+const SOURCE_LABELS: Record<string, { label: string; emoji: string }> = {
+  auto_rank_1: { label: "1º lugar do ranking", emoji: "🥇" },
+  auto_rank_2: { label: "2º lugar do ranking", emoji: "🥈" },
+  auto_squad_destaque: { label: "Squad destaque", emoji: "🏆" },
+  auto_video_destaque: { label: "Vídeo destaque", emoji: "🎬" },
+  auto_task_late: { label: "Tarefa atrasada", emoji: "⏰" },
+  redemption: { label: "Resgate de prêmio", emoji: "🎁" },
+  redemption_refund: { label: "Estorno de resgate", emoji: "↩️" },
+  manual: { label: "Lançamento manual", emoji: "✍️" },
+  criterion: { label: "Critério de XP", emoji: "⭐" },
+};
+
+function XPHistoryPanel({ userId }: { userId: string }) {
+  const [filter, setFilter] = useState<"all" | "positive" | "negative">("all");
+
+  const eventsQ = useQuery({
+    queryKey: ["xp_events", "history", userId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("user_xp_events")
+        .select("id, amount, reason, source_type, created_at")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(500);
+      if (error) throw error;
+      return (data ?? []) as XPEvent[];
+    },
+  });
+
+  const events = eventsQ.data ?? [];
+  const filtered = useMemo(() => {
+    if (filter === "positive") return events.filter((e) => e.amount > 0);
+    if (filter === "negative") return events.filter((e) => e.amount < 0);
+    return events;
+  }, [events, filter]);
+
+  const totals = useMemo(() => {
+    let gained = 0;
+    let lost = 0;
+    events.forEach((e) => {
+      if (e.amount > 0) gained += e.amount;
+      else lost += Math.abs(e.amount);
+    });
+    return { gained, lost, net: gained - lost, count: events.length };
+  }, [events]);
+
+  // Agrupa por mês (pt-BR)
+  const grouped = useMemo(() => {
+    const map = new Map<string, XPEvent[]>();
+    filtered.forEach((e) => {
+      const d = new Date(e.created_at);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(e);
+    });
+    return Array.from(map.entries());
+  }, [filtered]);
+
+  const formatMonth = (key: string) => {
+    const [y, m] = key.split("-").map(Number);
+    return new Date(y, m - 1, 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold flex items-center gap-2">
+          <History className="h-5 w-5" />Histórico de XP
+        </h3>
+        <p className="text-sm text-muted-foreground">Todos os lançamentos de XP da sua conta.</p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-xs text-muted-foreground">XP ganho</div>
+            <div className="mt-1 text-2xl font-semibold text-emerald-600 flex items-center gap-1">
+              <ArrowUpRight className="h-5 w-5" />+{totals.gained.toLocaleString("pt-BR")}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-xs text-muted-foreground">XP perdido / gasto</div>
+            <div className="mt-1 text-2xl font-semibold text-red-600 flex items-center gap-1">
+              <ArrowDownRight className="h-5 w-5" />-{totals.lost.toLocaleString("pt-BR")}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-xs text-muted-foreground">Saldo líquido ({totals.count} eventos)</div>
+            <div className={cn(
+              "mt-1 text-2xl font-semibold",
+              totals.net >= 0 ? "text-primary" : "text-red-600"
+            )}>
+              {totals.net >= 0 ? "+" : ""}{totals.net.toLocaleString("pt-BR")} XP
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="flex gap-2">
+        <Button size="sm" variant={filter === "all" ? "default" : "outline"} onClick={() => setFilter("all")}>
+          Todos
+        </Button>
+        <Button size="sm" variant={filter === "positive" ? "default" : "outline"} onClick={() => setFilter("positive")}>
+          <ArrowUpRight className="h-4 w-4 mr-1" />Ganhos
+        </Button>
+        <Button size="sm" variant={filter === "negative" ? "default" : "outline"} onClick={() => setFilter("negative")}>
+          <ArrowDownRight className="h-4 w-4 mr-1" />Perdas
+        </Button>
+      </div>
+
+      {eventsQ.isLoading ? (
+        <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">Carregando…</CardContent></Card>
+      ) : filtered.length === 0 ? (
+        <Card>
+          <CardContent className="p-8 text-center text-sm text-muted-foreground">
+            Nenhum lançamento de XP encontrado.
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-6">
+          {grouped.map(([month, list]) => {
+            const monthTotal = list.reduce((s, e) => s + e.amount, 0);
+            return (
+              <div key={month} className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {formatMonth(month)}
+                  </div>
+                  <Badge variant="outline" className={cn(
+                    monthTotal >= 0 ? "border-emerald-500/40 text-emerald-600" : "border-red-500/40 text-red-600"
+                  )}>
+                    {monthTotal >= 0 ? "+" : ""}{monthTotal.toLocaleString("pt-BR")} XP
+                  </Badge>
+                </div>
+                <Card>
+                  <CardContent className="p-0">
+                    <ul className="divide-y divide-border/40">
+                      {list.map((e) => {
+                        const positive = e.amount >= 0;
+                        const meta = e.source_type ? SOURCE_LABELS[e.source_type] : null;
+                        const d = new Date(e.created_at);
+                        return (
+                          <li key={e.id} className="flex items-center gap-3 p-3">
+                            <div className={cn(
+                              "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-lg",
+                              positive ? "bg-emerald-500/10" : "bg-red-500/10"
+                            )}>
+                              {meta?.emoji ?? (positive ? "➕" : "➖")}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="text-sm font-medium truncate">{e.reason}</div>
+                              <div className="text-xs text-muted-foreground flex items-center gap-2">
+                                {meta && <span>{meta.label}</span>}
+                                {meta && <span>·</span>}
+                                <span>{d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                              </div>
+                            </div>
+                            <Badge variant="outline" className={cn(
+                              "shrink-0 text-sm",
+                              positive ? "border-emerald-500/40 text-emerald-600" : "border-red-500/40 text-red-600"
+                            )}>
+                              {positive ? "+" : ""}{e.amount.toLocaleString("pt-BR")} XP
+                            </Badge>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </CardContent>
+                </Card>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
