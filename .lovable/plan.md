@@ -1,36 +1,47 @@
-## Sincronização automática do Magic Number com status do cliente
+## Adições à aba Recompensas
 
-### 1. Estender `sync_client_to_modules()` — desativar cycles por status
+### 1. Nova aba "Critérios para ganhar XP"
+Criar uma seção dedicada dentro do painel Recompensas explicando como o colaborador acumula XP.
 
-Após o bloco que garante o `magic2_clients`/`magic2_client_links`, adicionar lógica que recalcula `magic2_cycles.is_active` para o cliente:
+**Visão do colaborador (read-only):**
+- Lista de critérios com ícone, título, descrição e valor em XP (ex.: "Tarefa entregue no prazo +10 XP", "Bônus de excelência +25 XP", "Atraso -5 XP").
+- Agrupamento por categoria (Produtividade, Qualidade, Penalidades, Bônus).
+- Histórico recente de XP ganho/perdido do próprio usuário (já existe `user_xp_events` — listar últimos eventos com motivo).
 
-- Para cada cycle (year, month) ligado ao cliente via `magic2_client_links`:
-  - Calcular o "alvo" do mês: `target = year*12 + (month-1)`.
-  - Marcar `is_active = false` se:
-    - `ended_at` definido e `(ey*12 + em-1) <= target`, **ou**
-    - `paused_from` definido e `(py*12 + pm-1) <= target` e (`resumed_from` nulo ou `(ry*12 + rm-1) > target`).
-  - Caso contrário: `is_active = true` (reativar quando o cliente volta).
-- Implementar em SQL puro com um `UPDATE ... FROM` sobre `magic2_cycles c JOIN magic2_client_links l`.
+**Visão do admin (mesma aba, modo edição):**
+- CRUD completo dos critérios: criar, editar, excluir, ativar/desativar.
+- Campos: nome, descrição, valor XP (positivo ou negativo), categoria, ícone, ativo.
 
-### 2. Trigger: adicionar colunas faltantes ao `UPDATE OF`
+**Backend:** nova tabela `xp_criteria` com RLS (todos autenticados leem ativos; admin gerencia).
 
-Recriar o trigger `clients_sync_modules` incluindo `paused_from, resumed_from, ended_at` na cláusula `UPDATE OF`, para que mudanças nessas datas disparem a sincronização.
+### 2. Seletor de ícone em Recompensas, Níveis e Critérios
+Adicionar campo "Ícone" nos formulários de:
+- Recompensa (tabela `rewards`)
+- Nível (tabela `reward_levels`)
+- Critério de XP (nova tabela `xp_criteria`)
 
-### 3. Cascata na exclusão de cliente
+**Componente:** picker visual com busca usando ícones do `lucide-react` (mesma abordagem do `IconPicker` já existente em `src/features/agenda/components/IconPicker.tsx` — reaproveitar).
 
-Adicionar um trigger `BEFORE DELETE ON public.clients` que apaga:
-```sql
-DELETE FROM magic2_cycle_stages WHERE cycle_id IN (SELECT id FROM magic2_cycles WHERE client_id IN (SELECT magic2_client_id FROM magic2_client_links WHERE agenda_client_id = OLD.id));
-DELETE FROM magic2_cycles WHERE client_id IN (SELECT magic2_client_id FROM magic2_client_links WHERE agenda_client_id = OLD.id);
-DELETE FROM magic2_clients WHERE id IN (SELECT magic2_client_id FROM magic2_client_links WHERE agenda_client_id = OLD.id);
-DELETE FROM magic2_client_links WHERE agenda_client_id = OLD.id;
-```
-Isso garante que excluir um cliente o remove imediatamente do Magic Number.
+**Storage:** coluna `icon` TEXT armazenando o nome do ícone Lucide (ex.: `"Gift"`, `"Trophy"`, `"Star"`). Renderização dinâmica via `icons[name]` do lucide-react.
 
-### 4. Backfill imediato
+**UI:**
+- Cards de recompensa exibem o ícone escolhido no lugar do 🎁 padrão.
+- Cards/badges de nível exibem o ícone escolhido.
+- Critérios exibem o ícone na listagem.
+- Fallback para ícone padrão se `icon` for nulo.
 
-Na mesma migration, rodar um UPDATE que aplica a regra (item 1) a todos os clientes existentes — para limpar os clientes pausados/encerrados que hoje estão visíveis indevidamente. E rodar um DELETE-cascade dos órfãos (`magic2_client_links` apontando para `clients` inexistentes).
+### Detalhes técnicos
 
-### Arquivos afetados
-- Nova migration SQL: redefine `sync_client_to_modules()`, recria o trigger com novas colunas, adiciona trigger de delete-cascade, executa backfill.
-- Nenhuma mudança no frontend — o filtro `c.is_active` que já existe passa a refletir o status corretamente.
+**Migração SQL:**
+- `ALTER TABLE rewards ADD COLUMN icon TEXT;`
+- `ALTER TABLE reward_levels ADD COLUMN icon TEXT;`
+- `CREATE TABLE public.xp_criteria (id, name, description, xp_value INT, category TEXT, icon TEXT, is_active BOOL, sort_order INT, created_at, updated_at)` + GRANTs + RLS (SELECT para authenticated, ALL para admin via `has_role`) + trigger de `updated_at`.
+- Seed inicial de critérios padrão (entrega no prazo, atraso, excelência, etc.).
+
+**Frontend (`RecompensasPanel.tsx`):**
+- Nova aba interna "Critérios" via `Tabs` (Loja | Critérios | Admin se aplicável).
+- Componente `IconPickerPopover` reutilizável para escolher ícone Lucide em recompensas, níveis e critérios.
+- Componente `DynamicLucideIcon` para renderizar por nome.
+
+### Não incluso
+- Lógica automática de concessão de XP por critério (continua manual via admin); apenas catálogo informativo + admin pode debitar/creditar como já existe.
