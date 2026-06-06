@@ -39,6 +39,7 @@ export type MainTab =
 "visao_do_dia" |
 "magic2" |
 "desempenho" |
+"recompensas" |
 "financeiro" |
 "metas" |
 "fin_clientes" |
