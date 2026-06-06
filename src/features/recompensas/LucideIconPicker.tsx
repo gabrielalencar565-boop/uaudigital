@@ -5,29 +5,56 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
-// Curated set of Lucide icons useful for rewards/levels/criteria.
-// Stored as PascalCase names (lucide-react's `icons` map keys).
+// Curated set of Lucide icons (estilo iOS/SF Symbols — traços finos e arredondados).
 export const REWARD_ICON_NAMES: string[] = [
-  "Gift", "Trophy", "Award", "Crown", "Medal", "Star", "Sparkles", "Gem",
-  "Heart", "ThumbsUp", "PartyPopper", "Cake", "Coffee", "Pizza", "Ticket",
-  "Rocket", "Flame", "Zap", "Target", "Flag", "Bell", "BellRing",
-  "Coins", "DollarSign", "Banknote", "CreditCard", "ShoppingBag", "ShoppingCart",
-  "Plane", "Car", "Bike", "Map", "MapPin", "Compass", "Globe",
-  "BookOpen", "GraduationCap", "Brain", "Lightbulb", "PenTool", "Palette",
-  "Camera", "Video", "Music", "Headphones", "Mic", "Film",
-  "Calendar", "CalendarCheck", "CalendarHeart", "Clock", "Hourglass",
-  "Users", "User", "UserCheck", "UsersRound", "HeartHandshake", "Handshake",
-  "Briefcase", "Building2", "Home", "Laptop", "Monitor", "Smartphone",
-  "CheckCircle2", "CheckCheck", "Check", "ShieldCheck", "Shield", "Lock",
-  "AlertTriangle", "AlertCircle", "XCircle", "Ban", "Skull",
-  "TrendingUp", "BarChart3", "PieChart", "Activity", "LineChart",
-  "FolderCheck", "Folder", "FileText", "Clipboard", "ListChecks",
-  "Smile", "Laugh", "Sun", "Moon", "CloudSun", "Umbrella",
-  "Dumbbell", "Trees", "Leaf", "Flower2", "Crown as CrownIcon".replace(" as CrownIcon", ""),
+  // Recompensas & conquistas
+  "Gift", "Trophy", "Award", "Crown", "Medal", "Star", "Sparkles", "Gem", "Diamond",
+  "PartyPopper", "Cake", "Confetti", "Ribbon",
+  // Reações
+  "Heart", "HeartHandshake", "ThumbsUp", "ThumbsDown", "Smile", "Laugh", "Frown",
+  // Comidas & bebidas
+  "Coffee", "Pizza", "Beer", "Wine", "IceCream", "Cookie", "Apple", "Utensils",
+  // Energia & destaque
+  "Rocket", "Flame", "Zap", "Target", "Flag", "Bell", "BellRing", "Bookmark",
+  // Dinheiro & loja
+  "Coins", "DollarSign", "Banknote", "CreditCard", "Wallet", "PiggyBank",
+  "ShoppingBag", "ShoppingCart", "Tag", "Tags", "Ticket", "Receipt",
+  // Viagem & lugares
+  "Plane", "Car", "Bike", "Bus", "Train", "Ship",
+  "Map", "MapPin", "Compass", "Globe", "Mountain", "TreePalm",
+  // Estudo & criatividade
+  "BookOpen", "Book", "GraduationCap", "Brain", "Lightbulb",
+  "PenTool", "Pencil", "Palette", "Paintbrush", "Scissors", "Ruler",
+  // Mídia
+  "Camera", "Video", "Image", "Music", "Music2", "Headphones", "Mic", "Film", "Radio", "Tv",
+  // Tempo
+  "Calendar", "CalendarCheck", "CalendarHeart", "Clock", "Hourglass", "Timer", "AlarmClock",
+  // Pessoas & trabalho
+  "Users", "User", "UserCheck", "UsersRound", "Handshake", "MessageCircle", "MessageSquare", "Mail",
+  "Briefcase", "Building2", "Home", "Store",
+  // Dispositivos
+  "Laptop", "Monitor", "Smartphone", "Tablet", "Watch", "Keyboard", "Mouse",
+  // Sucesso & segurança
+  "CheckCircle2", "CheckCheck", "Check", "BadgeCheck", "ShieldCheck", "Shield", "Lock", "KeyRound",
+  // Atenção & penalidades
+  "AlertTriangle", "AlertCircle", "XCircle", "X", "Ban", "Skull", "Bug", "TriangleAlert",
+  // Métricas
+  "TrendingUp", "TrendingDown", "BarChart3", "BarChart4", "PieChart", "Activity", "LineChart", "Gauge",
+  // Organização
+  "FolderCheck", "Folder", "FileText", "FileCheck2", "Clipboard", "ClipboardCheck", "ListChecks", "ListTodo", "CheckSquare",
+  // Natureza & clima
+  "Sun", "Moon", "CloudSun", "Cloud", "Umbrella", "Rainbow", "Snowflake",
+  "Trees", "Leaf", "Flower2", "Sprout",
+  // Esporte & saúde
+  "Dumbbell", "Bike as BikeIcon".replace(" as BikeIcon", ""), "HeartPulse", "Footprints", "Trophy as TrophyIcon".replace(" as TrophyIcon", ""),
+  // Estrelas / favoritos
+  "Pin", "PinOff", "Eye", "EyeOff", "Search",
 ];
 
-// De-duplicate
-const UNIQUE_ICON_NAMES = Array.from(new Set(REWARD_ICON_NAMES));
+// De-duplicate and keep only icons that actually exist in lucide-react
+const UNIQUE_ICON_NAMES = Array.from(new Set(REWARD_ICON_NAMES)).filter(
+  (n) => (icons as Record<string, LucideIcon>)[n] !== undefined,
+);
 
 export function getLucideIcon(name?: string | null): LucideIcon {
   if (!name) return HelpCircle;
@@ -39,13 +66,15 @@ export function DynamicLucideIcon({
   name,
   className,
   fallback,
+  strokeWidth = 1.6,
 }: {
   name?: string | null;
   className?: string;
   fallback?: LucideIcon;
+  strokeWidth?: number;
 }) {
   const Comp = name ? (icons as Record<string, LucideIcon>)[name] ?? fallback ?? HelpCircle : fallback ?? HelpCircle;
-  return <Comp className={className} />;
+  return <Comp className={className} strokeWidth={strokeWidth} absoluteStrokeWidth />;
 }
 
 interface LucideIconPickerProps {
@@ -73,7 +102,7 @@ export function LucideIconPicker({ value, onChange, placeholder = "Escolher íco
           type="button"
           className="h-10 px-3 rounded-md border border-input bg-background flex items-center gap-2 hover:bg-muted/50 transition-colors w-full"
         >
-          <Selected className="h-4 w-4 text-primary" />
+          <Selected className="h-4 w-4 text-primary" strokeWidth={1.6} absoluteStrokeWidth />
           <span className="text-sm text-muted-foreground truncate">
             {value || placeholder}
           </span>
@@ -110,7 +139,7 @@ export function LucideIconPicker({ value, onChange, placeholder = "Escolher íco
                   )}
                   title={name}
                 >
-                  <IconComp className="h-4 w-4" />
+                  <IconComp className="h-4 w-4" strokeWidth={1.6} absoluteStrokeWidth />
                 </button>
               );
             })}
