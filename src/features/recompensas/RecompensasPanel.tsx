@@ -96,7 +96,7 @@ function fireConfetti() {
 export function RecompensasPanel() {
   const { user } = useSession();
   const { isAdmin } = useRole(user?.id);
-  const [tab, setTab] = useState<"loja" | "meus" | "admin">("loja");
+  const [tab, setTab] = useState<"loja" | "criterios" | "meus" | "admin">("loja");
 
   return (
     <div className="space-y-6">
@@ -115,12 +115,16 @@ export function RecompensasPanel() {
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
         <TabsList>
           <TabsTrigger value="loja"><Gift className="h-4 w-4 mr-2" />Loja</TabsTrigger>
+          <TabsTrigger value="criterios"><ListChecks className="h-4 w-4 mr-2" />Critérios de XP</TabsTrigger>
           <TabsTrigger value="meus"><Package className="h-4 w-4 mr-2" />Meus Resgates</TabsTrigger>
           {isAdmin && <TabsTrigger value="admin"><Sparkles className="h-4 w-4 mr-2" />Administração</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="loja" className="mt-6">
           {user && <RewardShop userId={user.id} />}
+        </TabsContent>
+        <TabsContent value="criterios" className="mt-6">
+          {user && <CriteriaPanel userId={user.id} />}
         </TabsContent>
         <TabsContent value="meus" className="mt-6">
           {user && <MyRedemptions userId={user.id} />}
