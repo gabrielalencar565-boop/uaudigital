@@ -39,13 +39,15 @@ export function DynamicLucideIcon({
   name,
   className,
   fallback,
+  strokeWidth = 1.6,
 }: {
   name?: string | null;
   className?: string;
   fallback?: LucideIcon;
+  strokeWidth?: number;
 }) {
   const Comp = name ? (icons as Record<string, LucideIcon>)[name] ?? fallback ?? HelpCircle : fallback ?? HelpCircle;
-  return <Comp className={className} />;
+  return <Comp className={className} strokeWidth={strokeWidth} absoluteStrokeWidth />;
 }
 
 interface LucideIconPickerProps {
