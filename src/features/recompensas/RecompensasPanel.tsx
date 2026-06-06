@@ -524,7 +524,7 @@ function AdminCatalog() {
   const save = useMutation({
     mutationFn: async (r: Partial<Reward>) => {
       const payload = {
-        name: r.name, description: r.description, icon: r.icon ?? "gift",
+        name: r.name, description: r.description, icon: r.icon ?? "Gift",
         xp_cost: Number(r.xp_cost ?? 0), min_level: Number(r.min_level ?? 1),
         is_exclusive: !!r.is_exclusive, is_active: r.is_active ?? true,
         order_index: Number(r.order_index ?? 0),
