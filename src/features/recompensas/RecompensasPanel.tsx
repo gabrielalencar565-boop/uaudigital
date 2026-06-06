@@ -581,6 +581,7 @@ function AdminCatalog() {
             <div className="space-y-3">
               <div><Label>Nome</Label><Input value={editing.name ?? ""} onChange={e => setEditing({ ...editing, name: e.target.value })} /></div>
               <div><Label>Descrição</Label><Textarea value={editing.description ?? ""} onChange={e => setEditing({ ...editing, description: e.target.value })} /></div>
+              <div><Label>Ícone</Label><LucideIconPicker value={editing.icon} onChange={(name) => setEditing({ ...editing, icon: name })} /></div>
               <div className="grid grid-cols-2 gap-3">
                 <div><Label>Custo XP</Label><Input type="number" value={editing.xp_cost ?? 0} onChange={e => setEditing({ ...editing, xp_cost: Number(e.target.value) })} /></div>
                 <div><Label>Nível mínimo</Label><Input type="number" value={editing.min_level ?? 1} onChange={e => setEditing({ ...editing, min_level: Number(e.target.value) })} /></div>
