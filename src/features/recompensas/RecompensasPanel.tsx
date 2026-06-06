@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import confetti from "canvas-confetti";
-import { Gift, Lock, Sparkles, Trophy, Coins, TrendingUp, Plus, Pencil, Trash2, Check, X, Package } from "lucide-react";
+import { Gift, Lock, Sparkles, Trophy, Coins, TrendingUp, Plus, Pencil, Trash2, Check, X, Package, ListChecks, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
 import { useRole } from "@/hooks/use-role";
@@ -19,6 +19,18 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { LucideIconPicker, DynamicLucideIcon } from "./LucideIconPicker";
+
+type XPCriterion = {
+  id: string;
+  name: string;
+  description: string | null;
+  xp_value: number;
+  category: string;
+  icon: string | null;
+  is_active: boolean;
+  sort_order: number;
+};
 
 type XPSummary = {
   total_earned: number;
@@ -49,6 +61,7 @@ type Level = {
   name: string;
   xp_required: number;
   exclusive_reward: string | null;
+  icon: string | null;
 };
 
 type Redemption = {
@@ -83,7 +96,7 @@ function fireConfetti() {
 export function RecompensasPanel() {
   const { user } = useSession();
   const { isAdmin } = useRole(user?.id);
-  const [tab, setTab] = useState<"loja" | "meus" | "admin">("loja");
+  const [tab, setTab] = useState<"loja" | "criterios" | "meus" | "admin">("loja");
 
   return (
     <div className="space-y-6">
@@ -102,12 +115,16 @@ export function RecompensasPanel() {
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
         <TabsList>
           <TabsTrigger value="loja"><Gift className="h-4 w-4 mr-2" />Loja</TabsTrigger>
+          <TabsTrigger value="criterios"><ListChecks className="h-4 w-4 mr-2" />Critérios de XP</TabsTrigger>
           <TabsTrigger value="meus"><Package className="h-4 w-4 mr-2" />Meus Resgates</TabsTrigger>
           {isAdmin && <TabsTrigger value="admin"><Sparkles className="h-4 w-4 mr-2" />Administração</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="loja" className="mt-6">
           {user && <RewardShop userId={user.id} />}
+        </TabsContent>
+        <TabsContent value="criterios" className="mt-6">
+          {user && <CriteriaPanel userId={user.id} />}
         </TabsContent>
         <TabsContent value="meus" className="mt-6">
           {user && <MyRedemptions userId={user.id} />}
@@ -312,8 +329,8 @@ function RewardCard({ reward, available, currentLevel, exclusive, onRedeem }: {
     )}>
       <CardContent className="p-5 space-y-3">
         <div className="flex items-start justify-between">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary text-2xl">
-            🎁
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <DynamicLucideIcon name={reward.icon} fallback={Gift} className="h-6 w-6" />
           </div>
           {exclusive && <Badge variant="outline" className="border-amber-400/50 text-amber-600">Exclusivo</Badge>}
         </div>
@@ -367,7 +384,9 @@ function MyRedemptions({ userId }: { userId: string }) {
           <Card key={r.id}>
             <CardContent className="p-4 flex items-center justify-between gap-4">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-xl">🎁</div>
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <DynamicLucideIcon name={r.rewards?.icon} fallback={Gift} className="h-5 w-5" />
+                </div>
                 <div className="min-w-0">
                   <div className="font-medium truncate">{r.rewards?.name ?? "Recompensa"}</div>
                   <div className="text-xs text-muted-foreground">
@@ -392,11 +411,13 @@ function AdminSection() {
         <TabsTrigger value="aprovacoes">Aprovações</TabsTrigger>
         <TabsTrigger value="catalogo">Catálogo</TabsTrigger>
         <TabsTrigger value="niveis">Níveis</TabsTrigger>
+        <TabsTrigger value="criterios">Critérios XP</TabsTrigger>
         <TabsTrigger value="xp">Lançar XP</TabsTrigger>
       </TabsList>
       <TabsContent value="aprovacoes" className="mt-4"><AdminApprovals /></TabsContent>
       <TabsContent value="catalogo" className="mt-4"><AdminCatalog /></TabsContent>
       <TabsContent value="niveis" className="mt-4"><AdminLevels /></TabsContent>
+      <TabsContent value="criterios" className="mt-4"><AdminCriteria /></TabsContent>
       <TabsContent value="xp" className="mt-4"><AdminGrantXP /></TabsContent>
     </Tabs>
   );
@@ -505,7 +526,7 @@ function AdminCatalog() {
   const save = useMutation({
     mutationFn: async (r: Partial<Reward>) => {
       const payload = {
-        name: r.name, description: r.description, icon: r.icon ?? "gift",
+        name: r.name, description: r.description, icon: r.icon ?? "Gift",
         xp_cost: Number(r.xp_cost ?? 0), min_level: Number(r.min_level ?? 1),
         is_exclusive: !!r.is_exclusive, is_active: r.is_active ?? true,
         order_index: Number(r.order_index ?? 0),
@@ -562,6 +583,7 @@ function AdminCatalog() {
             <div className="space-y-3">
               <div><Label>Nome</Label><Input value={editing.name ?? ""} onChange={e => setEditing({ ...editing, name: e.target.value })} /></div>
               <div><Label>Descrição</Label><Textarea value={editing.description ?? ""} onChange={e => setEditing({ ...editing, description: e.target.value })} /></div>
+              <div><Label>Ícone</Label><LucideIconPicker value={editing.icon} onChange={(name) => setEditing({ ...editing, icon: name })} /></div>
               <div className="grid grid-cols-2 gap-3">
                 <div><Label>Custo XP</Label><Input type="number" value={editing.xp_cost ?? 0} onChange={e => setEditing({ ...editing, xp_cost: Number(e.target.value) })} /></div>
                 <div><Label>Nível mínimo</Label><Input type="number" value={editing.min_level ?? 1} onChange={e => setEditing({ ...editing, min_level: Number(e.target.value) })} /></div>
@@ -599,6 +621,7 @@ function AdminLevels() {
         name: l.name ?? "Nível",
         xp_required: Number(l.xp_required ?? 0),
         exclusive_reward: l.exclusive_reward || null,
+        icon: l.icon ?? null,
       };
       if (l.id) {
         const { error } = await supabase.from("reward_levels").update(payload).eq("id", l.id);
@@ -629,9 +652,14 @@ function AdminLevels() {
         {(q.data ?? []).map(l => (
           <Card key={l.id}>
             <CardContent className="p-3 flex items-center justify-between gap-3">
-              <div>
-                <div className="font-medium">Nível {l.level_number} · {l.name}</div>
-                <div className="text-xs text-muted-foreground">{l.xp_required} XP {l.exclusive_reward && `· 🏆 ${l.exclusive_reward}`}</div>
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <DynamicLucideIcon name={l.icon} fallback={Trophy} className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="font-medium">Nível {l.level_number} · {l.name}</div>
+                  <div className="text-xs text-muted-foreground">{l.xp_required} XP {l.exclusive_reward && `· 🏆 ${l.exclusive_reward}`}</div>
+                </div>
               </div>
               <div className="flex gap-2">
                 <Button size="sm" variant="ghost" onClick={() => setEditing(l)}><Pencil className="h-4 w-4" /></Button>
@@ -652,6 +680,7 @@ function AdminLevels() {
                 <div><Label>XP necessário</Label><Input type="number" value={editing.xp_required ?? 0} onChange={e => setEditing({ ...editing, xp_required: Number(e.target.value) })} /></div>
               </div>
               <div><Label>Nome</Label><Input value={editing.name ?? ""} onChange={e => setEditing({ ...editing, name: e.target.value })} /></div>
+              <div><Label>Ícone</Label><LucideIconPicker value={editing.icon} onChange={(name) => setEditing({ ...editing, icon: name })} /></div>
               <div><Label>Recompensa exclusiva (opcional)</Label><Input value={editing.exclusive_reward ?? ""} onChange={e => setEditing({ ...editing, exclusive_reward: e.target.value })} /></div>
             </div>
           )}
@@ -712,5 +741,278 @@ function AdminGrantXP() {
         <Button onClick={() => grant.mutate()} disabled={grant.isPending}>Lançar XP</Button>
       </CardContent>
     </Card>
+  );
+}
+
+// ============ Criteria Panel (Collaborator view) ============
+function CriteriaPanel({ userId }: { userId: string }) {
+  const criteriaQ = useQuery({
+    queryKey: ["xp_criteria", "active"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("xp_criteria")
+        .select("*")
+        .eq("is_active", true)
+        .order("sort_order");
+      if (error) throw error;
+      return data as XPCriterion[];
+    },
+  });
+
+  const historyQ = useQuery({
+    queryKey: ["xp_events", "recent", userId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("user_xp_events")
+        .select("id, amount, reason, source_type, created_at")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const items = criteriaQ.data ?? [];
+  const grouped = useMemo(() => {
+    const m: Record<string, XPCriterion[]> = {};
+    items.forEach((c) => {
+      const k = c.category || "Outros";
+      (m[k] ??= []).push(c);
+    });
+    return m;
+  }, [items]);
+
+  return (
+    <div className="space-y-8">
+      <section className="space-y-4">
+        <div>
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <ListChecks className="h-5 w-5" />Como ganhar XP
+          </h3>
+          <p className="text-sm text-muted-foreground">Critérios oficiais para acumular pontos e subir de nível.</p>
+        </div>
+        {Object.entries(grouped).map(([cat, list]) => (
+          <div key={cat} className="space-y-2">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{cat}</div>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {list.map((c) => {
+                const positive = c.xp_value >= 0;
+                return (
+                  <Card key={c.id}>
+                    <CardContent className="p-4 flex items-start gap-3">
+                      <div className={cn(
+                        "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg",
+                        positive ? "bg-primary/10 text-primary" : "bg-destructive/10 text-destructive"
+                      )}>
+                        <DynamicLucideIcon name={c.icon} className="h-5 w-5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="font-medium text-sm leading-tight">{c.name}</div>
+                          <Badge variant="outline" className={cn(
+                            "shrink-0",
+                            positive ? "border-emerald-500/40 text-emerald-600" : "border-red-500/40 text-red-600"
+                          )}>
+                            {positive ? "+" : ""}{c.xp_value} XP
+                          </Badge>
+                        </div>
+                        {c.description && (
+                          <p className="mt-1 text-xs text-muted-foreground">{c.description}</p>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+        {items.length === 0 && (
+          <div className="text-sm text-muted-foreground">Nenhum critério cadastrado.</div>
+        )}
+      </section>
+
+      <section>
+        <h3 className="mb-3 text-lg font-semibold flex items-center gap-2">
+          <TrendingUp className="h-5 w-5" />Seu histórico recente
+        </h3>
+        <div className="space-y-2">
+          {(historyQ.data ?? []).length === 0 && (
+            <div className="text-sm text-muted-foreground">Sem movimentações de XP ainda.</div>
+          )}
+          {(historyQ.data ?? []).map((ev: any) => {
+            const positive = (ev.amount ?? 0) >= 0;
+            return (
+              <Card key={ev.id}>
+                <CardContent className="p-3 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    {positive ? (
+                      <ArrowUpRight className="h-4 w-4 text-emerald-500 shrink-0" />
+                    ) : (
+                      <ArrowDownRight className="h-4 w-4 text-red-500 shrink-0" />
+                    )}
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium truncate">{ev.reason ?? "—"}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {new Date(ev.created_at).toLocaleString("pt-BR")}
+                      </div>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className={cn(
+                    positive ? "border-emerald-500/40 text-emerald-600" : "border-red-500/40 text-red-600"
+                  )}>
+                    {positive ? "+" : ""}{ev.amount} XP
+                  </Badge>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+// ============ Admin: XP Criteria CRUD ============
+function AdminCriteria() {
+  const qc = useQueryClient();
+  const [editing, setEditing] = useState<Partial<XPCriterion> | null>(null);
+
+  const q = useQuery({
+    queryKey: ["xp_criteria", "admin"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("xp_criteria")
+        .select("*")
+        .order("sort_order");
+      if (error) throw error;
+      return data as XPCriterion[];
+    },
+  });
+
+  const save = useMutation({
+    mutationFn: async (c: Partial<XPCriterion>) => {
+      const payload = {
+        name: c.name ?? "",
+        description: c.description ?? null,
+        xp_value: Number(c.xp_value ?? 0),
+        category: c.category ?? "Produtividade",
+        icon: c.icon ?? null,
+        is_active: c.is_active ?? true,
+        sort_order: Number(c.sort_order ?? 0),
+      };
+      if (c.id) {
+        const { error } = await supabase.from("xp_criteria").update(payload).eq("id", c.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("xp_criteria").insert(payload);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      toast.success("Salvo");
+      qc.invalidateQueries({ queryKey: ["xp_criteria"] });
+      setEditing(null);
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const del = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("xp_criteria").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Removido");
+      qc.invalidateQueries({ queryKey: ["xp_criteria"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  return (
+    <div className="space-y-3">
+      <Button onClick={() => setEditing({ name: "", xp_value: 10, category: "Produtividade", is_active: true, sort_order: 0 })}>
+        <Plus className="h-4 w-4 mr-1" />Novo critério
+      </Button>
+      <div className="space-y-2">
+        {(q.data ?? []).map((c) => {
+          const positive = c.xp_value >= 0;
+          return (
+            <Card key={c.id}>
+              <CardContent className="p-3 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={cn(
+                    "flex h-9 w-9 items-center justify-center rounded-lg",
+                    positive ? "bg-primary/10 text-primary" : "bg-destructive/10 text-destructive"
+                  )}>
+                    <DynamicLucideIcon name={c.icon} className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="font-medium truncate">{c.name} {!c.is_active && <Badge variant="outline" className="ml-1">Inativo</Badge>}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {c.category} · <span className={positive ? "text-emerald-600" : "text-red-600"}>{positive ? "+" : ""}{c.xp_value} XP</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <Button size="sm" variant="ghost" onClick={() => setEditing(c)}><Pencil className="h-4 w-4" /></Button>
+                  <Button size="sm" variant="ghost" onClick={() => { if (confirm("Remover?")) del.mutate(c.id); }}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+        {(q.data ?? []).length === 0 && (
+          <div className="text-sm text-muted-foreground">Nenhum critério cadastrado.</div>
+        )}
+      </div>
+
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>{editing?.id ? "Editar" : "Novo"} critério</DialogTitle></DialogHeader>
+          {editing && (
+            <div className="space-y-3">
+              <div><Label>Nome</Label><Input value={editing.name ?? ""} onChange={e => setEditing({ ...editing, name: e.target.value })} /></div>
+              <div><Label>Descrição</Label><Textarea value={editing.description ?? ""} onChange={e => setEditing({ ...editing, description: e.target.value })} /></div>
+              <div><Label>Ícone</Label><LucideIconPicker value={editing.icon} onChange={(name) => setEditing({ ...editing, icon: name })} /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Valor XP (negativo para penalidade)</Label>
+                  <Input type="number" value={editing.xp_value ?? 0} onChange={e => setEditing({ ...editing, xp_value: Number(e.target.value) })} />
+                </div>
+                <div>
+                  <Label>Categoria</Label>
+                  <select
+                    className="w-full mt-1 rounded-md border border-input bg-background px-3 py-2 text-sm h-10"
+                    value={editing.category ?? "Produtividade"}
+                    onChange={(e) => setEditing({ ...editing, category: e.target.value })}
+                  >
+                    <option value="Produtividade">Produtividade</option>
+                    <option value="Qualidade">Qualidade</option>
+                    <option value="Bônus">Bônus</option>
+                    <option value="Penalidades">Penalidades</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <Label>Ordem</Label>
+                <Input type="number" value={editing.sort_order ?? 0} onChange={e => setEditing({ ...editing, sort_order: Number(e.target.value) })} />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label>Ativo</Label>
+                <Switch checked={editing.is_active ?? true} onCheckedChange={v => setEditing({ ...editing, is_active: v })} />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditing(null)}>Cancelar</Button>
+            <Button onClick={() => editing && save.mutate(editing)} disabled={save.isPending}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }

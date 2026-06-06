@@ -1720,6 +1720,7 @@ export type Database = {
         Row: {
           created_at: string
           exclusive_reward: string | null
+          icon: string | null
           id: string
           level_number: number
           name: string
@@ -1729,6 +1730,7 @@ export type Database = {
         Insert: {
           created_at?: string
           exclusive_reward?: string | null
+          icon?: string | null
           id?: string
           level_number: number
           name: string
@@ -1738,6 +1740,7 @@ export type Database = {
         Update: {
           created_at?: string
           exclusive_reward?: string | null
+          icon?: string | null
           id?: string
           level_number?: number
           name?: string
@@ -2189,6 +2192,45 @@ export type Database = {
           source_id?: string | null
           source_type?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      xp_criteria: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          is_active: boolean
+          name: string
+          sort_order: number
+          updated_at: string
+          xp_value: number
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          sort_order?: number
+          updated_at?: string
+          xp_value?: number
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+          updated_at?: string
+          xp_value?: number
         }
         Relationships: []
       }
