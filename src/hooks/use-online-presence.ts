@@ -62,13 +62,27 @@ export function useOnlinePresence() {
           .toUpperCase();
 
         const icon = React.createElement(
-          Avatar,
-          { className: "h-6 w-6" },
-          avatarUrl ? React.createElement(AvatarImage, { src: avatarUrl, alt: name }) : null,
-          React.createElement(AvatarFallback, { className: "text-[10px]" }, initials || "?"),
+          "div",
+          { className: "relative mr-3 inline-block" },
+          React.createElement(
+            Avatar,
+            { className: "h-6 w-6" },
+            avatarUrl ? React.createElement(AvatarImage, { src: avatarUrl, alt: name }) : null,
+            React.createElement(AvatarFallback, { className: "text-[10px]" }, initials || "?"),
+          ),
+          React.createElement("span", {
+            className: "absolute bottom-0 right-0 block h-2 w-2 rounded-full bg-green-500 ring-1 ring-white",
+          }),
         );
 
-        toast(`${name} entrou online`, {
+        const message = React.createElement(
+          "span",
+          {},
+          React.createElement("strong", { className: "font-semibold" }, name),
+          " tá on!",
+        );
+
+        toast(message, {
           duration: 4000,
           icon,
         });
