@@ -5,6 +5,7 @@ import { useSession } from "@/hooks/use-session";
 import { useMyProfile } from "@/hooks/use-my-profile";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import React from "react";
+import { getOrCreateDirect } from "@/features/chat/chat-api";
 
 type PresenceMeta = {
   user_id: string;
