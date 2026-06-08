@@ -171,6 +171,8 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
           </DropdownMenu>
         </div>
       </div>
+      <NotificationSoundsDialog open={soundsOpen} onOpenChange={setSoundsOpen} />
     </header>
+
   );
 }
