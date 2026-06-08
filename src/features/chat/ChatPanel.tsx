@@ -7,12 +7,13 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { useSession } from "@/hooks/use-session";
 import { useRole } from "@/hooks/use-role";
-import { ChatThread } from "./ChatThread";
-import { useTeamMembers } from "../hooks/useTeamMembers";
-import { useChatPresence } from "../hooks/useChatPresence";
-import { useGeneralConversation } from "../hooks/useGeneralConversation";
-import { useChatUnread } from "../hooks/useChatUnread";
-import { getOrCreateDirect } from "../chat-api";
+import { ChatThread } from "./components/ChatThread";
+import { useTeamMembers } from "./hooks/useTeamMembers";
+import { useChatPresence } from "./hooks/useChatPresence";
+import { useGeneralConversation } from "./hooks/useGeneralConversation";
+import { useChatUnread } from "./hooks/useChatUnread";
+import { getOrCreateDirect } from "./chat-api";
+
 
 interface Props {
   open: boolean;
