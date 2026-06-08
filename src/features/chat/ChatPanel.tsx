@@ -256,7 +256,7 @@ export function ChatPanel({ open, onOpenChange, initialConversationId }: Props) 
                               <div className="font-semibold leading-tight">{m?.display_name}</div>
                               <div className="text-[10px] text-muted-foreground flex items-center gap-1">
                                 <span className={cn("h-1.5 w-1.5 rounded-full", online ? "bg-green-500" : "bg-muted-foreground/40")} />
-                                {online ? "Online" : "Offline"}
+                                {online ? "Online" : formatLastSeen(presence?.[activeOther ?? ""]?.last_seen_at)}
                               </div>
                             </div>
                           </>
