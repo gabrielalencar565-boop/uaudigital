@@ -286,7 +286,32 @@ const Index = () => {
     if (tab === "fin_lancamentos" && isAdmin) return <FinLancamentosTab />;
     if (tab === "metas" && isAdmin) return <FinMetasTab />;
     if (tab === "visao_do_dia") return <DayViewPanel />;
-    if (tab === "recompensas") return <RecompensasPanel />;
+    if (tab === "recompensas") return (
+      <div className="relative">
+        <div className="pointer-events-none select-none blur-[6px] opacity-70">
+          <RecompensasPanel />
+        </div>
+        <div className="absolute inset-0 bg-background/40 backdrop-blur-[2px] flex items-start justify-center pt-32 z-10">
+          <div className="max-w-md mx-4 rounded-2xl border border-amber-400/30 bg-card/95 backdrop-blur-xl shadow-2xl p-8 text-center relative overflow-hidden">
+            <div className="absolute inset-0 opacity-[0.06] pointer-events-none" style={{
+              backgroundImage: "repeating-linear-gradient(45deg, transparent, transparent 8px, hsl(var(--foreground)) 8px, hsl(var(--foreground)) 16px)"
+            }} />
+            <div className="relative">
+              <div className="mx-auto mb-4 inline-flex h-14 w-14 items-center justify-center rounded-full bg-amber-400/15 ring-1 ring-amber-400/30">
+                <span className="text-2xl">🔒</span>
+              </div>
+              <h2 className="text-xl font-bold mb-2">Recompensas em construção</h2>
+              <p className="text-sm text-muted-foreground mb-1">
+                Estamos preparando algo incrível por aqui ✨
+              </p>
+              <p className="text-xs text-muted-foreground/80">
+                Em breve você poderá trocar XP por prêmios reais.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
     if (tab === "meu_painel") return <MeuPainelPanel />;
     if (tab === "desempenho") return <PerformancePanel />;
     if (tab === "magic2") return <Magic2Panel />;

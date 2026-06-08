@@ -72,7 +72,6 @@ const NAV: NavEntry[] = [
 { key: "meu_painel", label: "Meu Painel", icon: UserRound },
 { key: "tarefas", label: "Kanban", icon: LayoutGrid },
 { key: "agenda_gestao", label: "Agenda", icon: CalendarDays },
-{ key: "recompensas", label: "Recompensas", icon: Gift },
 {
   key: "dashboard_group",
   label: "Dashboard",
@@ -94,7 +93,8 @@ const NAV: NavEntry[] = [
   { key: "fin_despesas_detalhadas", label: "Despesas Detalhadas", icon: FileSpreadsheet },
   { key: "fin_lancamentos", label: "Lançamentos", icon: ArrowRightLeft },
   { key: "metas", label: "Metas", icon: TrendingUp }]
-}];
+},
+{ key: "recompensas", label: "Recompensas", icon: Gift }];
 
 
 
@@ -209,22 +209,14 @@ export function UauSidebarShell({
                     return (
                       <SidebarMenuItem key={entry.key}>
                         <SidebarMenuButton
-                          tooltip={isRecompensas ? "Em construção 🔒" : entry.label}
-                          isActive={active && !isRecompensas}
-                          onClick={() => {
-                            if (isRecompensas) {
-                              toast("Recompensas em construção...", {
-                                description: "Algo incrível está por vir. Fique de olho! 👀",
-                              });
-                              return;
-                            }
-                            onTabChange(entry.key);
-                          }}
+                          tooltip={isRecompensas ? "Em construção 🔒 (espiar)" : entry.label}
+                          isActive={active}
+                          onClick={() => onTabChange(entry.key)}
                           className={cn(
                             "h-10 gap-3 rounded-xl text-sidebar-foreground/80 transition-colors",
-                            !isRecompensas && "hover:bg-sidebar-accent hover:text-sidebar-foreground",
-                            active && !isRecompensas && "bg-sidebar-accent text-sidebar-foreground font-semibold",
-                            isRecompensas && "opacity-60 cursor-not-allowed relative overflow-hidden",
+                            "hover:bg-sidebar-accent hover:text-sidebar-foreground",
+                            active && "bg-sidebar-accent text-sidebar-foreground font-semibold",
+                            isRecompensas && "relative overflow-hidden",
                             collapsed && "justify-center"
                           )}>
                           {isRecompensas && (
@@ -232,9 +224,9 @@ export function UauSidebarShell({
                               backgroundImage: "repeating-linear-gradient(45deg, transparent, transparent 8px, rgba(255,255,255,0.15) 8px, rgba(255,255,255,0.15) 16px)"
                             }} />
                           )}
-                          <entry.icon className={cn("h-[18px] w-[18px] shrink-0", isRecompensas && "opacity-50")} />
+                          <entry.icon className={cn("h-[18px] w-[18px] shrink-0", isRecompensas && !active && "opacity-70")} />
                           {!collapsed && (
-                            <span className={cn("text-sm", isRecompensas && "opacity-70")}>
+                            <span className={cn("text-sm", isRecompensas && !active && "opacity-80")}>
                               {entry.label}
                             </span>
                           )}
