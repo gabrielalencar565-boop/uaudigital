@@ -67,45 +67,23 @@ export function useChatNotifier(onOpenConversation?: (conversationId: string) =>
 
           const sender = (membersRef.current ?? []).find((m) => m.user_id === msg.sender_id);
           const senderName = sender?.display_name ?? "Alguém";
-          const avatarUrl = sender?.avatar_url ?? null;
-          const initials = senderName
-            .split(" ")
-            .filter(Boolean)
-            .slice(0, 2)
-            .map((p: string) => p[0]?.toUpperCase() ?? "")
-            .join("");
           const preview = (msg.content ?? "").toString().slice(0, 80) || "📎 Anexo";
 
           playChatSound();
-          toast.custom(
-            (t) => (
-              <div
-                onClick={() => {
-                  toast.dismiss(t);
-                  onOpenConversation?.(msg.conversation_id);
-                }}
-                className="flex w-full max-w-sm cursor-pointer items-center gap-3 rounded-lg border-l-4 border-l-primary bg-popover p-3 text-popover-foreground shadow-lg ring-1 ring-border/40 hover:bg-accent/50"
-              >
-                <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-primary/10">
-                  {avatarUrl ? (
-                    <img src={avatarUrl} alt={senderName} className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-primary">
-                      {initials || "?"}
-                    </div>
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-semibold">{senderName}</div>
-                  <div className="truncate text-xs text-muted-foreground">{preview}</div>
-                </div>
-              </div>
-            ),
-            { duration: 6000, position: "top-right" }
-          );
+          toast(senderName, {
+            description: preview,
+            duration: 6000,
+            position: "top-right",
+            className: "border-l-4 !border-l-primary",
+            action: onOpenConversation
+              ? {
+                  label: "Abrir",
+                  onClick: () => onOpenConversation(msg.conversation_id),
+                }
+              : undefined,
+          });
 
           qc.invalidateQueries({ queryKey: ["chat", "unread"] });
-
         }
       )
       .subscribe();
