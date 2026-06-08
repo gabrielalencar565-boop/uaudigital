@@ -1,11 +1,22 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Pin, Reply, Trash2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { AttachmentView } from "./AttachmentView";
 import { deleteChatMessage, togglePin } from "../chat-api";
 import type { ChatMessage, TeamMemberLite } from "../types";
+
 
 interface Props {
   message: ChatMessage;
