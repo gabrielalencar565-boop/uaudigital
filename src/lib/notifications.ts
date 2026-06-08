@@ -209,7 +209,65 @@ export const NOTIFICATION_SOUNDS: SoundOption[] = [
     label: "Suave",
     play: () => tone({ freq: 440, duration: 0.35, type: "sine", volume: 0.16, decay: 0.32 }),
   },
+  {
+    id: "whistle",
+    label: "Assobio",
+    play: () =>
+      tone({ freq: 700, endFreq: 1200, duration: 0.28, type: "sine", volume: 0.22, decay: 0.26 }),
+  },
+  {
+    id: "blip",
+    label: "Blip retrô",
+    play: () => tone({ freq: 660, duration: 0.09, type: "square", volume: 0.18, decay: 0.08 }),
+  },
+  {
+    id: "knock",
+    label: "Batida",
+    play: () => {
+      tone({ freq: 180, duration: 0.1, type: "sine", volume: 0.35, decay: 0.08 });
+      setTimeout(
+        () => tone({ freq: 180, duration: 0.1, type: "sine", volume: 0.3, decay: 0.08 }),
+        110
+      );
+    },
+  },
+  {
+    id: "drop",
+    label: "Gota",
+    play: () =>
+      tone({ freq: 1500, endFreq: 600, duration: 0.22, type: "sine", volume: 0.22, decay: 0.2 }),
+  },
+  {
+    id: "coin",
+    label: "Moeda",
+    play: () => {
+      tone({ freq: 523.25, duration: 0.07, type: "square", volume: 0.18, decay: 0.06 });
+      setTimeout(
+        () => tone({ freq: 1318.51, duration: 0.18, type: "square", volume: 0.18, decay: 0.16 }),
+        70
+      );
+    },
+  },
+  {
+    id: "pulse",
+    label: "Pulso",
+    play: () =>
+      tone({ freq: 330, duration: 0.35, type: "triangle", volume: 0.22, attack: 0.05, decay: 0.3 }),
+  },
+  {
+    id: "tap",
+    label: "Toque",
+    play: () =>
+      noiseBurst({ duration: 0.08, volume: 0.35, filterType: "bandpass", filterFreq: 2500, filterQ: 1.5, decay: 0.07 }),
+  },
+  {
+    id: "swoosh",
+    label: "Swoosh",
+    play: () =>
+      noiseBurst({ duration: 0.3, volume: 0.18, filterType: "highpass", filterFreq: 1200, filterQ: 0.7, decay: 0.28 }),
+  },
 ];
+
 
 function findSound(id: string): SoundOption | undefined {
   return NOTIFICATION_SOUNDS.find((s) => s.id === id);
