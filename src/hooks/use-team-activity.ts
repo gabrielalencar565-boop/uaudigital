@@ -270,7 +270,8 @@ export function useTeamActivity() {
           const isSubtask = !!row.parent_task_id;
           const type: ActivityType = isSubtask ? "subtask_completed" : "task_completed";
           const dedupeKey = row.id ?? `${row.assignee_id}|${row.title}`;
-          maybeShow(dedupeKey, type, name, avatarUrl, row.title ?? "Tarefa");
+          const openTaskId = isSubtask ? row.parent_task_id : row.id;
+          maybeShow(dedupeKey, type, name, avatarUrl, row.title ?? "Tarefa", openTaskId);
         },
       )
       .subscribe();
