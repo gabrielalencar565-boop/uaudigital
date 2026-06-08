@@ -288,10 +288,10 @@ const Index = () => {
     if (tab === "visao_do_dia") return <DayViewPanel />;
     if (tab === "recompensas") return (
       <div className="relative">
-        <div className="pointer-events-none select-none blur-[3px] opacity-85">
+        <div className="pointer-events-none select-none blur-[1px] opacity-95">
           <RecompensasPanel />
         </div>
-        <div className="absolute inset-0 bg-background/25 backdrop-blur-[1px] flex items-start justify-center pt-32 z-10">
+        <div className="absolute inset-0 bg-background/15 flex items-start justify-center pt-32 z-10">
           <div className="max-w-md mx-4 rounded-2xl border border-amber-400/30 bg-card/95 backdrop-blur-xl shadow-2xl p-8 text-center relative overflow-hidden">
             <div className="absolute inset-0 opacity-[0.06] pointer-events-none" style={{
               backgroundImage: "repeating-linear-gradient(45deg, transparent, transparent 8px, hsl(var(--foreground)) 8px, hsl(var(--foreground)) 16px)"
