@@ -1,9 +1,9 @@
 /**
  * Core notification system — modular, scalable, Slack/ClickUp-style.
  *
+ * Sons configuráveis por categoria ("chat" / "task") via localStorage.
  * Usage:
- *   import { triggerNotification, playNotificationSound } from "@/lib/notifications";
- *   triggerNotification("mention", "Você foi mencionado em uma tarefa");
+ *   import { triggerNotification, playChatSound } from "@/lib/notifications";
  */
 
 import { toast } from "sonner";
@@ -15,12 +15,12 @@ export type NotificationType =
   | "task_overdue"
   | "task_due_soon";
 
+export type SoundCategory = "chat" | "task";
+
 export interface NotificationConfig {
   label: string;
-  icon: string; // emoji fallback for toast
-  /** Sonner class name for coloring */
+  icon: string;
   className: string;
-  /** Default duration in ms */
   duration: number;
 }
 
@@ -52,53 +52,156 @@ export const NOTIFICATION_CONFIG: Record<NotificationType, NotificationConfig> =
   },
 };
 
-// ─── Sound engine ─────────────────────────────────────────────────────
-const SOUND_DEBOUNCE_MS = 1000;
-let lastSoundAt = 0;
-let audioCtx: AudioContext | null = null;
-
-/** Check if user has sound enabled (localStorage preference) */
+// ─── Global on/off (legado, kill switch) ──────────────────────────────
 export function isSoundEnabled(): boolean {
   if (typeof window === "undefined") return true;
   return localStorage.getItem("uau:notif:sound") !== "false";
 }
-
-/** Toggle sound on/off */
 export function setSoundEnabled(enabled: boolean) {
   localStorage.setItem("uau:notif:sound", enabled ? "true" : "false");
 }
 
+// ─── Categoria de som (chat / task) ───────────────────────────────────
+const SOUND_STORAGE_PREFIX = "uau:notif:sound:";
+const DEFAULT_SOUND_BY_CATEGORY: Record<SoundCategory, string> = {
+  chat: "default",
+  task: "default",
+};
+
+export function getCategorySound(category: SoundCategory): string {
+  if (typeof window === "undefined") return DEFAULT_SOUND_BY_CATEGORY[category];
+  return (
+    localStorage.getItem(SOUND_STORAGE_PREFIX + category) ??
+    DEFAULT_SOUND_BY_CATEGORY[category]
+  );
+}
+export function setCategorySound(category: SoundCategory, soundId: string) {
+  localStorage.setItem(SOUND_STORAGE_PREFIX + category, soundId);
+}
+
+// ─── Engine: sons sintetizados (Web Audio) + arquivo ──────────────────
+let audioCtx: AudioContext | null = null;
+function getAudioCtx(): AudioContext | null {
+  try {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    if (audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
+    return audioCtx;
+  } catch {
+    return null;
+  }
+}
+
+function tone(opts: {
+  freq: number;
+  duration?: number;
+  type?: OscillatorType;
+  volume?: number;
+  attack?: number;
+  decay?: number;
+}) {
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  const { freq, duration = 0.18, type = "sine", volume = 0.25, attack = 0.005, decay = 0.12 } = opts;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  const now = ctx.currentTime;
+  gain.gain.setValueAtTime(0, now);
+  gain.gain.linearRampToValueAtTime(volume, now + attack);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + attack + decay);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(now);
+  osc.stop(now + duration);
+}
+
 let notifAudio: HTMLAudioElement | null = null;
-
-/**
- * Play notification sound with debounce & overlap protection.
- * Uses the custom notification.mp3 file.
- */
-export function playNotificationSound() {
-  if (!isSoundEnabled()) return;
-
-  const now = Date.now();
-  if (now - lastSoundAt < SOUND_DEBOUNCE_MS) return;
-  lastSoundAt = now;
-
+function playDefaultMp3() {
   try {
     if (!notifAudio) {
       notifAudio = new Audio("/sounds/notification.mp3");
       notifAudio.volume = 0.5;
     }
-    // Reset and replay if already playing
     notifAudio.currentTime = 0;
     notifAudio.play().catch(() => {});
-  } catch {
-    // Audio not available
-  }
+  } catch {}
 }
 
-// ─── Trash sound (macOS-style crumple) ────────────────────────────────
-/**
- * Synthesises a short "paper crumple" sound reminiscent of the macOS trash.
- * Uses Web Audio API — no external file needed.
- */
+// Catálogo de sons disponíveis
+export interface SoundOption {
+  id: string;
+  label: string;
+  play: () => void;
+}
+
+export const NOTIFICATION_SOUNDS: SoundOption[] = [
+  { id: "default", label: "Padrão", play: playDefaultMp3 },
+  {
+    id: "ping",
+    label: "Ping",
+    play: () => tone({ freq: 880, duration: 0.22, type: "sine", volume: 0.28, decay: 0.18 }),
+  },
+  {
+    id: "pop",
+    label: "Pop",
+    play: () => tone({ freq: 520, duration: 0.1, type: "triangle", volume: 0.3, decay: 0.08 }),
+  },
+  {
+    id: "chime",
+    label: "Sino duplo",
+    play: () => {
+      tone({ freq: 659.25, duration: 0.25, type: "sine", volume: 0.25, decay: 0.22 });
+      setTimeout(
+        () => tone({ freq: 783.99, duration: 0.35, type: "sine", volume: 0.25, decay: 0.3 }),
+        120
+      );
+    },
+  },
+  {
+    id: "bell",
+    label: "Sino",
+    play: () => {
+      tone({ freq: 1320, duration: 0.6, type: "sine", volume: 0.18, decay: 0.55 });
+      tone({ freq: 1980, duration: 0.6, type: "sine", volume: 0.08, decay: 0.5 });
+    },
+  },
+  {
+    id: "soft",
+    label: "Suave",
+    play: () => tone({ freq: 440, duration: 0.35, type: "sine", volume: 0.16, decay: 0.32 }),
+  },
+];
+
+function findSound(id: string): SoundOption | undefined {
+  return NOTIFICATION_SOUNDS.find((s) => s.id === id);
+}
+
+// Debounce por categoria
+const SOUND_DEBOUNCE_MS = 800;
+const lastPlayedAt: Record<SoundCategory, number> = { chat: 0, task: 0 };
+
+export function playCategorySound(category: SoundCategory) {
+  if (!isSoundEnabled()) return;
+  const id = getCategorySound(category);
+  if (id === "off") return;
+  const now = Date.now();
+  if (now - lastPlayedAt[category] < SOUND_DEBOUNCE_MS) return;
+  lastPlayedAt[category] = now;
+  const s = findSound(id) ?? findSound("default");
+  s?.play();
+}
+
+// Compat / atalhos
+export function playNotificationSound() {
+  playCategorySound("task");
+}
+export function playChatSound() {
+  playCategorySound("chat");
+}
+
+// ─── Trash sound (mantido) ────────────────────────────────────────────
 export function playTrashSound() {
   if (!isSoundEnabled()) return;
   try {
@@ -108,48 +211,33 @@ export function playTrashSound() {
     const length = Math.floor(sampleRate * duration);
     const buffer = ctx.createBuffer(1, length, sampleRate);
     const data = buffer.getChannelData(0);
-
-    // White-noise burst shaped by a fast-decay envelope
     for (let i = 0; i < length; i++) {
       const t = i / sampleRate;
       const envelope = Math.exp(-t * 12) * 0.6;
-      // Add a second softer "bounce" for the macOS feel
       const bounce = Math.exp(-(t - 0.12) * 18) * 0.25 * (t > 0.1 ? 1 : 0);
       data[i] = (Math.random() * 2 - 1) * (envelope + bounce);
     }
-
     const src = ctx.createBufferSource();
     src.buffer = buffer;
-
-    // Band-pass filter to sound less harsh
     const filter = ctx.createBiquadFilter();
     filter.type = "bandpass";
     filter.frequency.value = 1800;
     filter.Q.value = 0.7;
-
     const gain = ctx.createGain();
     gain.gain.value = 0.5;
-
     src.connect(filter).connect(gain).connect(ctx.destination);
     src.start();
     src.onended = () => ctx.close();
-  } catch {
-    // Audio not available
-  }
+  } catch {}
 }
 
-
 // ─── Toast trigger ────────────────────────────────────────────────────
-/**
- * Main entry point — triggers a visual toast notification + sound.
- */
 export function triggerNotification(
   type: NotificationType,
   message: string,
   options?: {
     description?: string;
     duration?: number;
-    /** Skip sound for this notification */
     silent?: boolean;
   }
 ) {
@@ -157,7 +245,7 @@ export function triggerNotification(
   const duration = options?.duration ?? cfg.duration;
 
   if (!options?.silent) {
-    playNotificationSound();
+    playCategorySound("task");
   }
 
   toast(message, {

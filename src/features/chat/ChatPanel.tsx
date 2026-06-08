@@ -64,11 +64,18 @@ export function ChatPanel({ open, onOpenChange, initialConversationId }: Props) 
       if (presence?.[m.user_id]?.is_online) online.push(m);
       else offline.push(m);
     });
-    const sortFn = (a: any, b: any) => a.display_name.localeCompare(b.display_name);
-    online.sort(sortFn);
-    offline.sort(sortFn);
+    online.sort((a, b) => a.display_name.localeCompare(b.display_name));
+    offline.sort((a, b) => {
+      const la = presence?.[a.user_id]?.last_seen_at;
+      const lb = presence?.[b.user_id]?.last_seen_at;
+      if (la && lb) return new Date(lb).getTime() - new Date(la).getTime();
+      if (la) return -1;
+      if (lb) return 1;
+      return a.display_name.localeCompare(b.display_name);
+    });
     return { onlineMembers: online, offlineMembers: offline };
   }, [filteredMembers, presence]);
+
 
   const unreadByOther = useMemo(() => {
     const m = new Map<string, number>();
@@ -234,10 +241,18 @@ export function ChatPanel({ open, onOpenChange, initialConversationId }: Props) 
                         const online = !!presence?.[activeOther]?.is_online;
                         return (
                           <>
-                            <Avatar className="h-7 w-7">
-                              <AvatarImage src={m?.avatar_url ?? undefined} />
-                              <AvatarFallback className="text-[10px]">{m?.display_name?.[0]}</AvatarFallback>
-                            </Avatar>
+                            <div className="relative">
+                              <Avatar className="h-7 w-7">
+                                <AvatarImage src={m?.avatar_url ?? undefined} />
+                                <AvatarFallback className="text-[10px]">{m?.display_name?.[0]}</AvatarFallback>
+                              </Avatar>
+                              <span
+                                className={cn(
+                                  "absolute bottom-0 right-0 h-2 w-2 rounded-full border-2 border-background",
+                                  online ? "bg-green-500" : "bg-muted-foreground/40"
+                                )}
+                              />
+                            </div>
                             <div>
                               <div className="font-semibold leading-tight">{m?.display_name}</div>
                               <div className="text-[10px] text-muted-foreground flex items-center gap-1">
@@ -247,6 +262,7 @@ export function ChatPanel({ open, onOpenChange, initialConversationId }: Props) 
                             </div>
                           </>
                         );
+
                       })()}
                     </div>
                   ) : undefined

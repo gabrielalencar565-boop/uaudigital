@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
-import { playNotificationSound } from "@/lib/notifications";
+import { playChatSound } from "@/lib/notifications";
 import { useTeamMembers } from "./useTeamMembers";
 import { getActiveConversation, isChatPanelOpen } from "../active-chat-state";
 
