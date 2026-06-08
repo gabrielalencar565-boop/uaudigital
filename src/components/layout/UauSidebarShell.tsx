@@ -72,16 +72,10 @@ const NAV: NavEntry[] = [
 { key: "meu_painel", label: "Meu Painel", icon: UserRound },
 { key: "tarefas", label: "Kanban", icon: LayoutGrid },
 { key: "agenda_gestao", label: "Agenda", icon: CalendarDays },
-{
-  key: "dashboard_group",
-  label: "Dashboard",
-  landingTab: "visao_do_dia",
-  icon: Eye,
-  children: [
-  { key: "magic2", label: "Magic Number", icon: Target },
-  { key: "desempenho", label: "Desempenho", icon: Trophy },
-  { key: "visao_geral_projetos", label: "Painel de Squads", icon: PieChart }]
-},
+{ key: "visao_do_dia", label: "Visão do Dia", icon: Eye },
+{ key: "magic2", label: "Magic Number", icon: Target },
+{ key: "desempenho", label: "The Best", icon: Trophy },
+{ key: "visao_geral_projetos", label: "Painel de Squads", icon: PieChart },
 {
   key: "financeiro_group",
   label: "Financeiro",
