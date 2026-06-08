@@ -126,6 +126,7 @@ export function ChatPanel({ open, onOpenChange, initialConversationId }: Props) 
 
   const renderMemberRow = (m: any) => {
     const online = !!presence?.[m.user_id]?.is_online;
+    const lastSeen = presence?.[m.user_id]?.last_seen_at ?? null;
     const unreadCount = unreadByOther.get(m.user_id) ?? 0;
     const active = activeOther === m.user_id;
     return (
@@ -134,12 +135,11 @@ export function ChatPanel({ open, onOpenChange, initialConversationId }: Props) 
         onClick={() => openDirect(m.user_id)}
         className={cn(
           "flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent/50",
-          active && "bg-accent",
-          !online && "opacity-70"
+          active && "bg-accent"
         )}
       >
         <div className="relative">
-          <Avatar className="h-8 w-8">
+          <Avatar className="h-9 w-9">
             <AvatarImage src={m.avatar_url ?? undefined} />
             <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
               {m.display_name.split(" ").slice(0, 2).map((p: string) => p[0]?.toUpperCase() ?? "").join("")}
@@ -153,8 +153,18 @@ export function ChatPanel({ open, onOpenChange, initialConversationId }: Props) 
           />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="truncate font-medium">{m.display_name}</div>
-          <div className="truncate text-[10px] text-muted-foreground">{m.role_title}</div>
+          <div className="flex items-center gap-1.5">
+            <span className="truncate font-medium">{m.display_name}</span>
+            {online && (
+              <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-green-500 px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide text-white">
+                <span className="h-1 w-1 rounded-full bg-white" />
+                Online
+              </span>
+            )}
+          </div>
+          <div className="truncate text-[10px] text-muted-foreground">
+            {online ? m.role_title : formatLastSeen(lastSeen)}
+          </div>
         </div>
         {unreadCount > 0 && (
           <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] text-primary-foreground">
@@ -164,6 +174,7 @@ export function ChatPanel({ open, onOpenChange, initialConversationId }: Props) 
       </button>
     );
   };
+
 
 
   return (
