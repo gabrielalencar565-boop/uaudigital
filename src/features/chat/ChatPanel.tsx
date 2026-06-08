@@ -55,16 +55,10 @@ export function ChatPanel({ open, onOpenChange }: Props) {
     if (id) setActiveConv(id);
   };
 
-  const openGeneral = () => {
-    setActiveOther(null);
-    setActiveConv(generalId);
-  };
-
-  // Default to general when panel opens
   const effectiveConv = tab === "general" ? generalId : activeConv;
-  const isGeneral = tab === "general";
 
   if (!user) return null;
+
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -198,6 +192,3 @@ export function ChatPanel({ open, onOpenChange }: Props) {
   );
 }
 
-// Suppress unused warning
-void openGeneral;
-function openGeneral() {}
