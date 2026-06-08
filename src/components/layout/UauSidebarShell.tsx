@@ -2,9 +2,10 @@ import { PropsWithChildren, useEffect, useMemo, useState } from "react";
 import { normalizeAvatarUrl } from "@/lib/avatar-url";
 import {
   CalendarDays, ChevronDown, ClipboardList, DollarSign,
-  Eye, FileSpreadsheet, FolderOpen, Gift, LayoutGrid, Receipt, Settings, Target, TrendingUp, Trophy,
+  Eye, FileSpreadsheet, FolderOpen, Gift, LayoutGrid, Lock, Receipt, Settings, Target, TrendingUp, Trophy,
   UserRound, Users, Workflow, CalendarRange, PieChart, PanelLeftClose, ArrowRightLeft } from
-"lucide-react";
+  "lucide-react";
+import { toast } from "sonner";
 import { useAppSettings } from "@/features/data/queries";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
