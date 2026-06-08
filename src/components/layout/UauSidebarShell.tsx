@@ -205,19 +205,42 @@ export function UauSidebarShell({
                 {filteredNav.map((entry) => {
                   if (!isGroup(entry)) {
                     const active = isActive(entry.key);
+                    const isRecompensas = entry.key === "recompensas";
                     return (
                       <SidebarMenuItem key={entry.key}>
                         <SidebarMenuButton
-                          tooltip={entry.label}
-                          isActive={active}
-                          onClick={() => onTabChange(entry.key)}
+                          tooltip={isRecompensas ? "Em construção 🔒" : entry.label}
+                          isActive={active && !isRecompensas}
+                          onClick={() => {
+                            if (isRecompensas) {
+                              toast("Recompensas em construção...", {
+                                description: "Algo incrível está por vir. Fique de olho! 👀",
+                              });
+                              return;
+                            }
+                            onTabChange(entry.key);
+                          }}
                           className={cn(
-                            "h-10 gap-3 rounded-xl text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors",
-                            active && "bg-sidebar-accent text-sidebar-foreground font-semibold",
+                            "h-10 gap-3 rounded-xl text-sidebar-foreground/80 transition-colors",
+                            !isRecompensas && "hover:bg-sidebar-accent hover:text-sidebar-foreground",
+                            active && !isRecompensas && "bg-sidebar-accent text-sidebar-foreground font-semibold",
+                            isRecompensas && "opacity-60 cursor-not-allowed relative overflow-hidden",
                             collapsed && "justify-center"
                           )}>
-                          <entry.icon className="h-[18px] w-[18px] shrink-0" />
-                          {!collapsed && <span className="text-sm">{entry.label}</span>}
+                          {isRecompensas && (
+                            <div className="absolute inset-0 opacity-[0.08] pointer-events-none" style={{
+                              backgroundImage: "repeating-linear-gradient(45deg, transparent, transparent 8px, rgba(255,255,255,0.15) 8px, rgba(255,255,255,0.15) 16px)"
+                            }} />
+                          )}
+                          <entry.icon className={cn("h-[18px] w-[18px] shrink-0", isRecompensas && "opacity-50")} />
+                          {!collapsed && (
+                            <span className={cn("text-sm", isRecompensas && "opacity-70")}>
+                              {entry.label}
+                            </span>
+                          )}
+                          {!collapsed && isRecompensas && (
+                            <Lock className="ml-auto h-3 w-3 text-amber-400/80 shrink-0" />
+                          )}
                         </SidebarMenuButton>
                       </SidebarMenuItem>);
                   }
