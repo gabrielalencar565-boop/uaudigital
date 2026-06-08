@@ -111,18 +111,41 @@ function renderToast(
     .join("")
     .toUpperCase();
 
-  const icon = React.createElement(
-    Avatar,
-    { className: "h-6 w-6" },
-    avatarUrl ? React.createElement(AvatarImage, { src: avatarUrl, alt: name }) : null,
-    React.createElement(AvatarFallback, { className: "text-[10px]" }, initials || "?"),
+  const avatarNode = React.createElement(
+    "div",
+    { className: "relative shrink-0" },
+    React.createElement(
+      Avatar,
+      { className: "h-8 w-8" },
+      avatarUrl ? React.createElement(AvatarImage, { src: avatarUrl, alt: name }) : null,
+      React.createElement(AvatarFallback, { className: "text-[10px]" }, initials || "?"),
+    ),
   );
 
-  const message = `${name} ${labelFor[type]}`;
+  const message = React.createElement(
+    "div",
+    { className: "flex items-center gap-3" },
+    avatarNode,
+    React.createElement(
+      "div",
+      { className: "flex flex-col gap-0 leading-tight" },
+      React.createElement(
+        "span",
+        { className: "text-sm font-medium" },
+        `${name} ${labelFor[type]}`,
+      ),
+      taskTitle
+        ? React.createElement(
+            "span",
+            { className: "text-xs text-muted-foreground" },
+            taskTitle,
+          )
+        : null,
+    ),
+  );
+
   toast(message, {
-    description: taskTitle || undefined,
     duration: 4500,
-    icon,
     action: taskId
       ? {
           label: "Abrir",
