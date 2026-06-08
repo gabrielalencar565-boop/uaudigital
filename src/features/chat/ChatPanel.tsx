@@ -15,6 +15,19 @@ import { useChatUnread } from "./hooks/useChatUnread";
 import { getOrCreateDirect } from "./chat-api";
 import { setActiveConversation, setChatPanelOpen } from "./active-chat-state";
 
+function formatLastSeen(iso: string | null | undefined) {
+  if (!iso) return "visto por último há algum tempo";
+  const now = new Date();
+  const d = new Date(iso);
+  const time = d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  const nowDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const dDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const diffDays = Math.round((nowDate.getTime() - dDate.getTime()) / 86_400_000);
+  if (diffDays === 0) return `visto por último hoje às ${time}`;
+  if (diffDays === 1) return `visto por último ontem às ${time}`;
+  const dateStr = d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+  return `visto por último ${dateStr} às ${time}`;
+}
 
 interface Props {
   open: boolean;
@@ -132,7 +145,9 @@ export function ChatPanel({ open, onOpenChange, initialConversationId }: Props) 
         </div>
         <div className="flex-1 min-w-0">
           <div className="truncate font-medium">{m.display_name}</div>
-          <div className="truncate text-[10px] text-muted-foreground">{m.role_title}</div>
+          <div className="truncate text-[10px] text-muted-foreground">
+            {online ? m.role_title : formatLastSeen(presence?.[m.user_id]?.last_seen_at)}
+          </div>
         </div>
         {unreadCount > 0 && (
           <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] text-primary-foreground">
@@ -241,7 +256,7 @@ export function ChatPanel({ open, onOpenChange, initialConversationId }: Props) 
                               <div className="font-semibold leading-tight">{m?.display_name}</div>
                               <div className="text-[10px] text-muted-foreground flex items-center gap-1">
                                 <span className={cn("h-1.5 w-1.5 rounded-full", online ? "bg-green-500" : "bg-muted-foreground/40")} />
-                                {online ? "Online" : "Offline"}
+                                {online ? "Online" : formatLastSeen(presence?.[activeOther ?? ""]?.last_seen_at)}
                               </div>
                             </div>
                           </>
