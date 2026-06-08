@@ -122,6 +122,15 @@ export function UauSidebarShell({
   useTeamActivity();
   useTaskViewersPresence();
 
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { taskId?: string } | undefined;
+      if (detail?.taskId) setNotifTaskId(detail.taskId);
+    };
+    window.addEventListener("uau:open-task", handler);
+    return () => window.removeEventListener("uau:open-task", handler);
+  }, []);
+
   // Which groups are open
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     // Open the group that contains the current tab by default
