@@ -166,19 +166,19 @@ export function ChatPanel({ open, onOpenChange, initialConversationId }: Props) 
           <div className="border-b border-border/40 px-4 pt-4 pb-2">
             <h2 className="text-lg font-bold mb-3">Chat UAU</h2>
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="general" className="gap-2">
-                <Hash className="h-4 w-4" /> Geral
-                {generalUnread > 0 && (
-                  <span className="ml-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] text-primary-foreground">
-                    {generalUnread}
-                  </span>
-                )}
-              </TabsTrigger>
               <TabsTrigger value="direct" className="gap-2">
                 <Users className="h-4 w-4" /> Privado
                 {onlineMembers.length > 0 && (
                   <span className="ml-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-green-500/20 px-1 text-[10px] font-semibold text-green-600 dark:text-green-400">
                     {onlineMembers.length}
+                  </span>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="general" className="gap-2">
+                <Hash className="h-4 w-4" /> Geral
+                {generalUnread > 0 && (
+                  <span className="ml-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] text-primary-foreground">
+                    {generalUnread}
                   </span>
                 )}
               </TabsTrigger>
