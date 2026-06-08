@@ -11,7 +11,6 @@ import type { MainTab } from "@/components/layout/UauSidebarShell";
 /* ── Sub-tab definitions per bottom tab ── */
 const SUB_TABS: Record<string, { key: MainTab; label: string; icon: React.ComponentType<any> }[]> = {
   tarefas: [
-    { key: "agenda_gestao", label: "Agenda", icon: CalendarDays },
     { key: "cronograma", label: "Cronograma", icon: CalendarRange },
     { key: "visao_geral_projetos", label: "Squads", icon: PieChart },
     { key: "fluxos", label: "Fluxos", icon: Workflow },
@@ -31,7 +30,7 @@ const SUB_TABS: Record<string, { key: MainTab; label: string; icon: React.Compon
 /* ── Bottom bar items ── */
 const BOTTOM_TABS: { key: string; label: string; icon: React.ComponentType<any>; tab?: MainTab; adminOnly?: boolean }[] = [
   { key: "home", label: "Home", icon: Home, tab: "meu_painel" },
-  { key: "tarefas", label: "Tarefas", icon: ClipboardList, tab: "tarefas" },
+  { key: "tarefas", label: "Agenda", icon: CalendarDays, tab: "agenda_gestao" },
   { key: "dashboard", label: "Dashboard", icon: Eye, tab: "visao_do_dia" },
   { key: "financeiro", label: "Financeiro", icon: DollarSign, tab: "financeiro", adminOnly: true },
   { key: "configuracoes", label: "Config", icon: Settings, tab: "configuracoes", adminOnly: true },
