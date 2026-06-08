@@ -72,7 +72,7 @@ export function useOnlinePresence() {
           ),
           React.createElement("span", {
             className:
-              "absolute -bottom-0.5 -right-0.5 block h-2.5 w-2.5 rounded-full bg-green-500 ring-2 ring-background",
+              "absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-green-500 ring-2 ring-background translate-x-[2px] translate-y-[2px]",
           }),
         );
 
