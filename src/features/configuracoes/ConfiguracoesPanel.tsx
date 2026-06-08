@@ -4,7 +4,15 @@ import { normalizeAvatarUrl } from "@/lib/avatar-url";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { UserRound, Save, ImageIcon, Circle, Square, Trash2, Plus, Images } from "lucide-react";
+import { UserRound, Save, ImageIcon, Circle, Square, Trash2, Plus, Images, Bell, Play, VolumeX } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  NOTIFICATION_SOUNDS,
+  getCategorySound,
+  setCategorySound,
+  type SoundCategory,
+} from "@/lib/notifications";
+
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -438,9 +446,12 @@ export function ConfiguracoesPanel() {
         </Card>
       ) : null}
 
+      <NotificationSoundsCard />
+
       {isAdmin ? (
         <LoginBgImagesCard />
       ) : null}
+
     </div>
   );
 }
