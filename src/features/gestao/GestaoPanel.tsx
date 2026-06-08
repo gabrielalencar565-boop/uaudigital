@@ -89,7 +89,14 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
   const [view, setView] = useState<"kanban" | "agenda" | "clientes" | "pauta" | "cronograma" | "fluxo" | "responsaveis">(
     forcedView as any ?? "kanban"
   );
-  const effectiveView = forcedView ? forcedView === "fluxo" ? "fluxo" : forcedView as any : view;
+  // Allow user to toggle between agenda <-> kanban from the title dropdown even when forcedView is set
+  const isAgendaKanbanEntry = forcedView === "agenda" || forcedView === "kanban";
+  const [agendaKanbanMode, setAgendaKanbanMode] = useState<"agenda" | "kanban">(
+    (forcedView === "kanban" ? "kanban" : "agenda")
+  );
+  const effectiveView = isAgendaKanbanEntry
+    ? agendaKanbanMode
+    : (forcedView ? (forcedView === "fluxo" ? "fluxo" : forcedView as any) : view);
   const hideViewTabs = !!forcedView;
   const [search, setSearch] = useState("");
   const [filterClient, setFilterClient] = useState("__all__");
