@@ -249,6 +249,15 @@ export function ChatPanel({ open, onOpenChange, initialConversationId }: Props) 
                 </div>
               </div>
               <div className="flex-1 overflow-y-auto">
+                {recentMembers.length > 0 && (
+                  <>
+                    <div className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Recentes
+                    </div>
+                    {recentMembers.map(renderMemberRow)}
+                  </>
+                )}
+
                 <div className="px-3 pt-3 pb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
                   Online <span className="text-muted-foreground/60">({onlineMembers.length})</span>
@@ -264,6 +273,7 @@ export function ChatPanel({ open, onOpenChange, initialConversationId }: Props) 
                   Offline <span className="text-muted-foreground/60">({offlineMembers.length})</span>
                 </div>
                 {offlineMembers.map(renderMemberRow)}
+
 
                 {filteredMembers.length === 0 && (
                   <div className="p-4 text-center text-xs text-muted-foreground">Nenhum colaborador encontrado</div>
