@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from "react";
-import { LogOut, Moon, Pencil, Sun, Volume2, VolumeX } from "lucide-react";
+import { LogOut, Moon, Pencil, Sun, Volume2 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { WorkspaceDropdown } from "@/components/layout/WorkspaceDropdown";
 import { TaskSearchDropdown } from "@/components/layout/TaskSearchDropdown";
@@ -21,7 +21,7 @@ import { NotificationsDropdown } from "@/components/layout/NotificationsDropdown
 import { ChatBellButton } from "@/features/chat/ChatBellButton";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { isSoundEnabled, setSoundEnabled } from "@/lib/notifications";
+import { NotificationSoundsDialog } from "@/features/configuracoes/NotificationSoundsDialog";
 
 function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
@@ -38,7 +38,7 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
   const appSettingsQ = useAppSettings();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [soundOn, setSoundOn] = useState(() => isSoundEnabled());
+  const [soundsOpen, setSoundsOpen] = useState(false);
 
   const userName = myProfileQ.data?.full_name ?? "Usuário";
   const userRole = myProfileQ.data?.role_title ?? "Colaborador";
@@ -147,24 +147,16 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
               </DropdownMenuItem>
 
               <DropdownMenuItem
-                onClick={() => {
-                  const next = !soundOn;
-                  setSoundOn(next);
-                  setSoundEnabled(next);
-                  toast.message(next ? "Som de notificações ativado" : "Som de notificações desativado");
+                onSelect={(e) => {
+                  e.preventDefault();
+                  setSoundsOpen(true);
                 }}
                 className="gap-2.5 rounded-lg px-3 py-2.5 cursor-pointer"
               >
-                {soundOn ? (
-                  <Volume2 className="h-4 w-4 text-muted-foreground" />
-                ) : (
-                  <VolumeX className="h-4 w-4 text-muted-foreground" />
-                )}
+                <Volume2 className="h-4 w-4 text-muted-foreground" />
                 Som de notificações
-                <span className="ml-auto text-xs text-muted-foreground">
-                  {soundOn ? "Ligado" : "Desligado"}
-                </span>
               </DropdownMenuItem>
+
 
               <DropdownMenuSeparator />
 
@@ -179,6 +171,8 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
           </DropdownMenu>
         </div>
       </div>
+      <NotificationSoundsDialog open={soundsOpen} onOpenChange={setSoundsOpen} />
     </header>
+
   );
 }
