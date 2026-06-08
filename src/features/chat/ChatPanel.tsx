@@ -15,6 +15,24 @@ import { useChatUnread } from "./hooks/useChatUnread";
 import { getOrCreateDirect } from "./chat-api";
 import { setActiveConversation, setChatPanelOpen } from "./active-chat-state";
 
+function formatLastSeen(iso: string | null): string {
+  if (!iso) return "Offline";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "Offline";
+  const now = new Date();
+  const startOfDay = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diffDays = Math.floor((startOfDay(now) - startOfDay(d)) / 86_400_000);
+  const time = d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  if (diffDays <= 0) return `Visto por último hoje às ${time}`;
+  if (diffDays === 1) return `Visto por último ontem às ${time}`;
+  if (diffDays < 7) {
+    const dia = d.toLocaleDateString("pt-BR", { weekday: "long" });
+    return `Visto ${dia} às ${time}`;
+  }
+  const date = d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+  return `Visto em ${date}`;
+}
+
 
 interface Props {
   open: boolean;
@@ -29,7 +47,7 @@ export function ChatPanel({ open, onOpenChange, initialConversationId }: Props) 
   const { data: members } = useTeamMembers();
   const { data: presence } = useChatPresence();
   const { data: unread } = useChatUnread();
-  const [tab, setTab] = useState<"general" | "direct">("general");
+  const [tab, setTab] = useState<"general" | "direct">("direct");
   const [activeConv, setActiveConv] = useState<string | null>(null);
   const [activeOther, setActiveOther] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -44,18 +62,39 @@ export function ChatPanel({ open, onOpenChange, initialConversationId }: Props) 
     return otherMembers.filter((m) => !q || m.display_name.toLowerCase().includes(q));
   }, [otherMembers, search]);
 
+  // Map other_user_id -> last_message_at for direct conversations
+  const lastMsgByOther = useMemo(() => {
+    const m = new Map<string, string>();
+    (unread ?? []).forEach((u) => {
+      if (u.type === "direct" && u.other_user_id && u.last_message_at) {
+        m.set(u.other_user_id, u.last_message_at);
+      }
+    });
+    return m;
+  }, [unread]);
+
+  const recentMembers = useMemo(() => {
+    return filteredMembers
+      .filter((m) => lastMsgByOther.has(m.user_id))
+      .sort((a, b) => (lastMsgByOther.get(b.user_id) ?? "").localeCompare(lastMsgByOther.get(a.user_id) ?? ""));
+  }, [filteredMembers, lastMsgByOther]);
+
   const { onlineMembers, offlineMembers } = useMemo(() => {
+    const recentIds = new Set(recentMembers.map((m) => m.user_id));
     const online: typeof filteredMembers = [];
     const offline: typeof filteredMembers = [];
     filteredMembers.forEach((m) => {
+      if (recentIds.has(m.user_id)) return;
       if (presence?.[m.user_id]?.is_online) online.push(m);
       else offline.push(m);
     });
-    const sortFn = (a: any, b: any) => a.display_name.localeCompare(b.display_name);
-    online.sort(sortFn);
-    offline.sort(sortFn);
+    const byName = (a: any, b: any) => a.display_name.localeCompare(b.display_name);
+    const byLastSeen = (a: any, b: any) =>
+      (presence?.[b.user_id]?.last_seen_at ?? "").localeCompare(presence?.[a.user_id]?.last_seen_at ?? "");
+    online.sort(byName);
+    offline.sort(byLastSeen);
     return { onlineMembers: online, offlineMembers: offline };
-  }, [filteredMembers, presence]);
+  }, [filteredMembers, presence, recentMembers]);
 
   const unreadByOther = useMemo(() => {
     const m = new Map<string, number>();
@@ -64,6 +103,7 @@ export function ChatPanel({ open, onOpenChange, initialConversationId }: Props) 
     });
     return m;
   }, [unread]);
+
 
   const generalUnread = (unread ?? []).find((u) => u.type === "general")?.unread_count ?? 0;
 
@@ -104,6 +144,7 @@ export function ChatPanel({ open, onOpenChange, initialConversationId }: Props) 
 
   const renderMemberRow = (m: any) => {
     const online = !!presence?.[m.user_id]?.is_online;
+    const lastSeen = presence?.[m.user_id]?.last_seen_at ?? null;
     const unreadCount = unreadByOther.get(m.user_id) ?? 0;
     const active = activeOther === m.user_id;
     return (
@@ -112,12 +153,11 @@ export function ChatPanel({ open, onOpenChange, initialConversationId }: Props) 
         onClick={() => openDirect(m.user_id)}
         className={cn(
           "flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent/50",
-          active && "bg-accent",
-          !online && "opacity-70"
+          active && "bg-accent"
         )}
       >
         <div className="relative">
-          <Avatar className="h-8 w-8">
+          <Avatar className="h-9 w-9">
             <AvatarImage src={m.avatar_url ?? undefined} />
             <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
               {m.display_name.split(" ").slice(0, 2).map((p: string) => p[0]?.toUpperCase() ?? "").join("")}
@@ -131,8 +171,18 @@ export function ChatPanel({ open, onOpenChange, initialConversationId }: Props) 
           />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="truncate font-medium">{m.display_name}</div>
-          <div className="truncate text-[10px] text-muted-foreground">{m.role_title}</div>
+          <div className="flex items-center gap-1.5">
+            <span className="truncate font-medium">{m.display_name}</span>
+            {online && (
+              <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-green-500 px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide text-white">
+                <span className="h-1 w-1 rounded-full bg-white" />
+                Online
+              </span>
+            )}
+          </div>
+          <div className="truncate text-[10px] text-muted-foreground">
+            {online ? m.role_title : formatLastSeen(lastSeen)}
+          </div>
         </div>
         {unreadCount > 0 && (
           <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] text-primary-foreground">
@@ -142,6 +192,7 @@ export function ChatPanel({ open, onOpenChange, initialConversationId }: Props) 
       </button>
     );
   };
+
 
 
   return (
@@ -198,6 +249,15 @@ export function ChatPanel({ open, onOpenChange, initialConversationId }: Props) 
                 </div>
               </div>
               <div className="flex-1 overflow-y-auto">
+                {recentMembers.length > 0 && (
+                  <>
+                    <div className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Recentes
+                    </div>
+                    {recentMembers.map(renderMemberRow)}
+                  </>
+                )}
+
                 <div className="px-3 pt-3 pb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
                   Online <span className="text-muted-foreground/60">({onlineMembers.length})</span>
@@ -213,6 +273,7 @@ export function ChatPanel({ open, onOpenChange, initialConversationId }: Props) 
                   Offline <span className="text-muted-foreground/60">({offlineMembers.length})</span>
                 </div>
                 {offlineMembers.map(renderMemberRow)}
+
 
                 {filteredMembers.length === 0 && (
                   <div className="p-4 text-center text-xs text-muted-foreground">Nenhum colaborador encontrado</div>
