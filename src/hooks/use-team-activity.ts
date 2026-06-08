@@ -206,16 +206,27 @@ function renderToast(
         "div",
         { className: "min-w-0 flex flex-col leading-tight" },
         h(
-          "span",
-          {
-            className: "truncate text-sm font-semibold text-white drop-shadow-sm",
-          },
-          `${name} ${labelFor[type]}`,
+          "div",
+          { className: "flex items-center gap-1" },
+          h(
+            "span",
+            {
+              className: "truncate text-sm font-semibold text-white drop-shadow-sm",
+            },
+            name,
+          ),
+          h(
+            "span",
+            {
+              className: "truncate text-sm font-semibold text-emerald-400 drop-shadow-sm",
+            },
+            labelFor[type],
+          ),
         ),
         taskTitle
           ? h(
               "span",
-              { className: "truncate text-xs text-white/75" },
+              { className: "truncate text-xs text-white/75 mt-0.5" },
               taskTitle,
             )
           : null,
