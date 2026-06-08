@@ -101,6 +101,7 @@ function renderToast(
   name: string,
   avatarUrl: string | null,
   taskTitle: string,
+  taskId?: string,
 ) {
   const initials = name
     .split(/\s+/)
@@ -115,8 +116,13 @@ function renderToast(
       React.createElement(
         "div",
         {
-          className: `flex items-start gap-3 rounded-2xl overflow-hidden border bg-background shadow-lg px-3 py-2.5 min-w-[280px] max-w-[360px] border-l-4 ${accentFor[type]}`,
-          onClick: () => toast.dismiss(id),
+          className: `flex items-start gap-3 rounded-2xl overflow-hidden border bg-background shadow-lg px-3 py-2.5 min-w-[280px] max-w-[360px] border-l-4 cursor-pointer hover:bg-accent/40 transition ${accentFor[type]}`,
+          onClick: () => {
+            if (taskId) {
+              window.dispatchEvent(new CustomEvent("uau:open-task", { detail: { taskId } }));
+            }
+            toast.dismiss(id);
+          },
           role: "button",
         },
         React.createElement(
@@ -176,12 +182,13 @@ export function useTeamActivity() {
       name: string,
       avatarUrl: string | null,
       title: string,
+      taskId?: string,
     ) => {
       const prev = lastShownRef.current.get(dedupeKey);
       const now = Date.now();
       if (prev && now - prev < 6_000) return;
       lastShownRef.current.set(dedupeKey, now);
-      renderToast(type, name, avatarUrl, title);
+      renderToast(type, name, avatarUrl, title, taskId);
     };
 
     // ─── Broadcast channel ────────────────────────────────────────────
@@ -211,6 +218,7 @@ export function useTeamActivity() {
           p.display_name?.trim() || "Alguém",
           p.avatar_url,
           p.task_title,
+          p.task_id,
         );
       })
       .subscribe((status) => {
@@ -262,7 +270,8 @@ export function useTeamActivity() {
           const isSubtask = !!row.parent_task_id;
           const type: ActivityType = isSubtask ? "subtask_completed" : "task_completed";
           const dedupeKey = row.id ?? `${row.assignee_id}|${row.title}`;
-          maybeShow(dedupeKey, type, name, avatarUrl, row.title ?? "Tarefa");
+          const openTaskId = isSubtask ? row.parent_task_id : row.id;
+          maybeShow(dedupeKey, type, name, avatarUrl, row.title ?? "Tarefa", openTaskId);
         },
       )
       .subscribe();
