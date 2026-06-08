@@ -52,9 +52,25 @@ export function useOnlinePresence() {
 
         const meta = newPresences?.[0] as unknown as PresenceMeta | undefined;
         const name = meta?.display_name?.trim() || "Alguém";
+        const avatarUrl = meta?.avatar_url ?? null;
+        const initials = name
+          .split(/\s+/)
+          .map((p) => p[0])
+          .filter(Boolean)
+          .slice(0, 2)
+          .join("")
+          .toUpperCase();
+
+        const icon = React.createElement(
+          Avatar,
+          { className: "h-6 w-6" },
+          avatarUrl ? React.createElement(AvatarImage, { src: avatarUrl, alt: name }) : null,
+          React.createElement(AvatarFallback, { className: "text-[10px]" }, initials || "?"),
+        );
 
         toast(`${name} entrou online`, {
           duration: 4000,
+          icon,
         });
       })
       .on("presence", { event: "leave" }, ({ key }) => {
