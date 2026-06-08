@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
-import { playNotificationSound } from "@/lib/notifications";
+import { playChatSound } from "@/lib/notifications";
 import { useTeamMembers } from "./useTeamMembers";
 import { getActiveConversation, isChatPanelOpen } from "../active-chat-state";
 
@@ -69,7 +69,7 @@ export function useChatNotifier(onOpenConversation?: (conversationId: string) =>
           const senderName = sender?.display_name ?? "Alguém";
           const preview = (msg.content ?? "").toString().slice(0, 80) || "📎 Anexo";
 
-          playNotificationSound();
+          playChatSound();
           toast(senderName, {
             description: preview,
             duration: 6000,

@@ -4,7 +4,15 @@ import { normalizeAvatarUrl } from "@/lib/avatar-url";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { UserRound, Save, ImageIcon, Circle, Square, Trash2, Plus, Images } from "lucide-react";
+import { UserRound, Save, ImageIcon, Circle, Square, Trash2, Plus, Images, Bell, Play, VolumeX } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  NOTIFICATION_SOUNDS,
+  getCategorySound,
+  setCategorySound,
+  type SoundCategory,
+} from "@/lib/notifications";
+
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -438,9 +446,12 @@ export function ConfiguracoesPanel() {
         </Card>
       ) : null}
 
+      <NotificationSoundsCard />
+
       {isAdmin ? (
         <LoginBgImagesCard />
       ) : null}
+
     </div>
   );
 }
@@ -540,6 +551,105 @@ function LoginBgImagesCard() {
             {uploading ? "Enviando..." : "Adicionar imagens"}
           </Button>
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ── Notification Sounds Card ── */
+function SoundRow({
+  category,
+  title,
+  description,
+}: {
+  category: SoundCategory;
+  title: string;
+  description: string;
+}) {
+  const [value, setValue] = useState<string>(() => getCategorySound(category));
+
+  const handleChange = (next: string) => {
+    setValue(next);
+    setCategorySound(category, next);
+    if (next !== "off") {
+      const s = NOTIFICATION_SOUNDS.find((x) => x.id === next);
+      s?.play();
+    }
+    toast.success("Preferência salva");
+  };
+
+  const handlePreview = () => {
+    if (value === "off") return;
+    const s = NOTIFICATION_SOUNDS.find((x) => x.id === value);
+    s?.play();
+  };
+
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-border/60 p-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <div className="text-sm font-medium">{title}</div>
+        <div className="text-xs text-muted-foreground">{description}</div>
+      </div>
+      <div className="flex items-center gap-2">
+        <Select value={value} onValueChange={handleChange}>
+          <SelectTrigger className="h-9 w-44">
+            <SelectValue placeholder="Som" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="off">
+              <span className="flex items-center gap-2">
+                <VolumeX className="h-3.5 w-3.5" /> Desligado
+              </span>
+            </SelectItem>
+            {NOTIFICATION_SOUNDS.map((s) => (
+              <SelectItem key={s.id} value={s.id}>
+                {s.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="h-9 w-9 shrink-0"
+          disabled={value === "off"}
+          onClick={handlePreview}
+          title="Tocar"
+        >
+          <Play className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function NotificationSoundsCard() {
+  return (
+    <Card
+      className="opacity-0"
+      style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.4s" }}
+    >
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Bell className="h-5 w-5" />
+          Sons de notificação
+        </CardTitle>
+        <CardDescription>
+          Escolha um som diferente para cada tipo de notificação ou desligue por categoria.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <SoundRow
+          category="chat"
+          title="Mensagens do chat"
+          description="Tocado quando você recebe uma mensagem privada ou no chat geral."
+        />
+        <SoundRow
+          category="task"
+          title="Tarefas e menções"
+          description="Atribuição, prazos vencendo, tarefas atrasadas e menções em comentários."
+        />
       </CardContent>
     </Card>
   );
