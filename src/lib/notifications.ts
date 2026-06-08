@@ -64,9 +64,10 @@ export function setSoundEnabled(enabled: boolean) {
 // ─── Categoria de som (chat / task) ───────────────────────────────────
 const SOUND_STORAGE_PREFIX = "uau:notif:sound:";
 const DEFAULT_SOUND_BY_CATEGORY: Record<SoundCategory, string> = {
-  chat: "default",
-  task: "default",
+  chat: "pop",
+  task: "chime",
 };
+
 
 export function getCategorySound(category: SoundCategory): string {
   if (typeof window === "undefined") return DEFAULT_SOUND_BY_CATEGORY[category];
@@ -100,15 +101,19 @@ function tone(opts: {
   volume?: number;
   attack?: number;
   decay?: number;
+  endFreq?: number;
 }) {
   const ctx = getAudioCtx();
   if (!ctx) return;
-  const { freq, duration = 0.18, type = "sine", volume = 0.25, attack = 0.005, decay = 0.12 } = opts;
+  const { freq, duration = 0.18, type = "sine", volume = 0.25, attack = 0.005, decay = 0.12, endFreq } = opts;
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.type = type;
   osc.frequency.value = freq;
   const now = ctx.currentTime;
+  if (endFreq !== undefined) {
+    osc.frequency.exponentialRampToValueAtTime(Math.max(1, endFreq), now + duration);
+  }
   gain.gain.setValueAtTime(0, now);
   gain.gain.linearRampToValueAtTime(volume, now + attack);
   gain.gain.exponentialRampToValueAtTime(0.0001, now + attack + decay);
@@ -116,6 +121,38 @@ function tone(opts: {
   osc.start(now);
   osc.stop(now + duration);
 }
+
+function noiseBurst(opts: {
+  duration?: number;
+  volume?: number;
+  filterType?: BiquadFilterType;
+  filterFreq?: number;
+  filterQ?: number;
+  decay?: number;
+}) {
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  const { duration = 0.18, volume = 0.25, filterType = "bandpass", filterFreq = 2000, filterQ = 1, decay = 0.15 } = opts;
+  const length = Math.floor(ctx.sampleRate * duration);
+  const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < length; i++) data[i] = Math.random() * 2 - 1;
+  const src = ctx.createBufferSource();
+  src.buffer = buffer;
+  const filter = ctx.createBiquadFilter();
+  filter.type = filterType;
+  filter.frequency.value = filterFreq;
+  filter.Q.value = filterQ;
+  const gain = ctx.createGain();
+  const now = ctx.currentTime;
+  gain.gain.setValueAtTime(0, now);
+  gain.gain.linearRampToValueAtTime(volume, now + 0.005);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + decay);
+  src.connect(filter).connect(gain).connect(ctx.destination);
+  src.start(now);
+  src.stop(now + duration);
+}
+
 
 let notifAudio: HTMLAudioElement | null = null;
 function playDefaultMp3() {
