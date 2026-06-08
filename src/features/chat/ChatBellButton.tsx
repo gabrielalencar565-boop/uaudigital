@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { MessageCircle } from "lucide-react";
 import { useTotalUnread } from "./hooks/useChatUnread";
 import { useChatNotifier } from "./hooks/useChatNotifier";
+import { usePresenceNotifier } from "./hooks/usePresenceNotifier";
+import { getOrCreateDirect } from "./chat-api";
 import { ChatPanel } from "./ChatPanel";
 
 export function ChatBellButton() {
@@ -11,6 +13,12 @@ export function ChatBellButton() {
 
   useChatNotifier((conversationId) => {
     setInitialConv(conversationId);
+    setOpen(true);
+  });
+
+  usePresenceNotifier(async (userId) => {
+    const convId = await getOrCreateDirect(userId);
+    if (convId) setInitialConv(convId);
     setOpen(true);
   });
 
