@@ -72,7 +72,6 @@ const NAV: NavEntry[] = [
 { key: "meu_painel", label: "Meu Painel", icon: UserRound },
 { key: "tarefas", label: "Kanban", icon: LayoutGrid },
 { key: "agenda_gestao", label: "Agenda", icon: CalendarDays },
-{ key: "recompensas", label: "Recompensas", icon: Gift },
 {
   key: "dashboard_group",
   label: "Dashboard",
@@ -94,7 +93,8 @@ const NAV: NavEntry[] = [
   { key: "fin_despesas_detalhadas", label: "Despesas Detalhadas", icon: FileSpreadsheet },
   { key: "fin_lancamentos", label: "Lançamentos", icon: ArrowRightLeft },
   { key: "metas", label: "Metas", icon: TrendingUp }]
-}];
+},
+{ key: "recompensas", label: "Recompensas", icon: Gift }];
 
 
 
