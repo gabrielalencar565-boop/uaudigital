@@ -91,10 +91,23 @@ export function useOnlinePresence() {
           }),
         );
 
+        const openDirect = async () => {
+          try {
+            const convId = await getOrCreateDirect(key);
+            window.dispatchEvent(
+              new CustomEvent("uau:open-chat", { detail: { conversationId: convId } }),
+            );
+          } catch {
+            window.dispatchEvent(new CustomEvent("uau:open-chat"));
+          }
+        };
+
         const card = h(
           "div",
           {
-            className: "relative group overflow-hidden w-full",
+            onClick: openDirect,
+            role: "button",
+            className: "relative group overflow-hidden w-full cursor-pointer",
             style: {
               borderRadius: 20,
               boxShadow:
