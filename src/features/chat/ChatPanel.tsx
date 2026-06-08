@@ -42,7 +42,7 @@ export function ChatPanel({ open, onOpenChange, initialConversationId }: Props) 
   const { data: members } = useTeamMembers();
   const { data: presence } = useChatPresence();
   const { data: unread } = useChatUnread();
-  const [tab, setTab] = useState<"general" | "direct">("general");
+  const [tab, setTab] = useState<"general" | "direct">("direct");
   const [activeConv, setActiveConv] = useState<string | null>(null);
   const [activeOther, setActiveOther] = useState<string | null>(null);
   const [search, setSearch] = useState("");
