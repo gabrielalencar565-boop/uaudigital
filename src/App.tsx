@@ -75,7 +75,7 @@ const App = () => {
         <TooltipProvider>
           <AvatarBootstrap />
           <Toaster />
-          <Sonner />
+          <Sonner position="bottom-right" offset={24} />
           <BrowserRouter>
             <AppRoutes />
           </BrowserRouter>
