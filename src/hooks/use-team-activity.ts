@@ -103,12 +103,26 @@ function renderToast(
   taskTitle: string,
   taskId?: string,
 ) {
-  void avatarUrl;
+  const initials = name
+    .split(/\s+/)
+    .map((p) => p[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
+  const icon = React.createElement(
+    Avatar,
+    { className: "h-6 w-6" },
+    avatarUrl ? React.createElement(AvatarImage, { src: avatarUrl, alt: name }) : null,
+    React.createElement(AvatarFallback, { className: "text-[10px]" }, initials || "?"),
+  );
+
   const message = `${name} ${labelFor[type]}`;
   toast(message, {
     description: taskTitle || undefined,
     duration: 4500,
-    onAutoClose: () => {},
+    icon,
     action: taskId
       ? {
           label: "Abrir",
