@@ -29,7 +29,7 @@ export function ChatPanel({ open, onOpenChange, initialConversationId }: Props) 
   const { data: members } = useTeamMembers();
   const { data: presence } = useChatPresence();
   const { data: unread } = useChatUnread();
-  const [tab, setTab] = useState<"general" | "direct">("general");
+  const [tab, setTab] = useState<"general" | "direct">("direct");
   const [activeConv, setActiveConv] = useState<string | null>(null);
   const [activeOther, setActiveOther] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -44,18 +44,39 @@ export function ChatPanel({ open, onOpenChange, initialConversationId }: Props) 
     return otherMembers.filter((m) => !q || m.display_name.toLowerCase().includes(q));
   }, [otherMembers, search]);
 
+  // Map other_user_id -> last_message_at for direct conversations
+  const lastMsgByOther = useMemo(() => {
+    const m = new Map<string, string>();
+    (unread ?? []).forEach((u) => {
+      if (u.type === "direct" && u.other_user_id && u.last_message_at) {
+        m.set(u.other_user_id, u.last_message_at);
+      }
+    });
+    return m;
+  }, [unread]);
+
+  const recentMembers = useMemo(() => {
+    return filteredMembers
+      .filter((m) => lastMsgByOther.has(m.user_id))
+      .sort((a, b) => (lastMsgByOther.get(b.user_id) ?? "").localeCompare(lastMsgByOther.get(a.user_id) ?? ""));
+  }, [filteredMembers, lastMsgByOther]);
+
   const { onlineMembers, offlineMembers } = useMemo(() => {
+    const recentIds = new Set(recentMembers.map((m) => m.user_id));
     const online: typeof filteredMembers = [];
     const offline: typeof filteredMembers = [];
     filteredMembers.forEach((m) => {
+      if (recentIds.has(m.user_id)) return;
       if (presence?.[m.user_id]?.is_online) online.push(m);
       else offline.push(m);
     });
-    const sortFn = (a: any, b: any) => a.display_name.localeCompare(b.display_name);
-    online.sort(sortFn);
-    offline.sort(sortFn);
+    const byName = (a: any, b: any) => a.display_name.localeCompare(b.display_name);
+    const byLastSeen = (a: any, b: any) =>
+      (presence?.[b.user_id]?.last_seen_at ?? "").localeCompare(presence?.[a.user_id]?.last_seen_at ?? "");
+    online.sort(byName);
+    offline.sort(byLastSeen);
     return { onlineMembers: online, offlineMembers: offline };
-  }, [filteredMembers, presence]);
+  }, [filteredMembers, presence, recentMembers]);
 
   const unreadByOther = useMemo(() => {
     const m = new Map<string, number>();
@@ -64,6 +85,7 @@ export function ChatPanel({ open, onOpenChange, initialConversationId }: Props) 
     });
     return m;
   }, [unread]);
+
 
   const generalUnread = (unread ?? []).find((u) => u.type === "general")?.unread_count ?? 0;
 
