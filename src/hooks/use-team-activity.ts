@@ -182,12 +182,13 @@ export function useTeamActivity() {
       name: string,
       avatarUrl: string | null,
       title: string,
+      taskId?: string,
     ) => {
       const prev = lastShownRef.current.get(dedupeKey);
       const now = Date.now();
       if (prev && now - prev < 6_000) return;
       lastShownRef.current.set(dedupeKey, now);
-      renderToast(type, name, avatarUrl, title);
+      renderToast(type, name, avatarUrl, title, taskId);
     };
 
     // ─── Broadcast channel ────────────────────────────────────────────
