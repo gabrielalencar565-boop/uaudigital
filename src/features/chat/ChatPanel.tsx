@@ -15,6 +15,19 @@ import { useChatUnread } from "./hooks/useChatUnread";
 import { getOrCreateDirect } from "./chat-api";
 import { setActiveConversation, setChatPanelOpen } from "./active-chat-state";
 
+function formatLastSeen(iso: string | null | undefined) {
+  if (!iso) return "visto por último há algum tempo";
+  const now = new Date();
+  const d = new Date(iso);
+  const time = d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  const nowDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const dDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const diffDays = Math.round((nowDate.getTime() - dDate.getTime()) / 86_400_000);
+  if (diffDays === 0) return `visto por último hoje às ${time}`;
+  if (diffDays === 1) return `visto por último ontem às ${time}`;
+  const dateStr = d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+  return `visto por último ${dateStr} às ${time}`;
+}
 
 interface Props {
   open: boolean;
