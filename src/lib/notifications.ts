@@ -63,8 +63,9 @@ export function setSoundEnabled(enabled: boolean) {
 
 // ─── Categoria de som (chat / task) ───────────────────────────────────
 const SOUND_STORAGE_PREFIX = "uau:notif:sound:";
+const VOLUME_STORAGE_KEY = "uau:notif:volume";
 const DEFAULT_SOUND_BY_CATEGORY: Record<SoundCategory, string> = {
-  chat: "pop",
+  chat: "pulse",
   task: "chime",
 };
 
@@ -78,6 +79,20 @@ export function getCategorySound(category: SoundCategory): string {
 }
 export function setCategorySound(category: SoundCategory, soundId: string) {
   localStorage.setItem(SOUND_STORAGE_PREFIX + category, soundId);
+}
+
+// ─── Volume global (0..1) ─────────────────────────────────────────────
+export function getNotificationVolume(): number {
+  if (typeof window === "undefined") return 1;
+  const raw = localStorage.getItem(VOLUME_STORAGE_KEY);
+  if (raw === null) return 1;
+  const n = parseFloat(raw);
+  if (!Number.isFinite(n)) return 1;
+  return Math.max(0, Math.min(1, n));
+}
+export function setNotificationVolume(v: number) {
+  const clamped = Math.max(0, Math.min(1, v));
+  localStorage.setItem(VOLUME_STORAGE_KEY, String(clamped));
 }
 
 // ─── Engine: sons sintetizados (Web Audio) + arquivo ──────────────────
