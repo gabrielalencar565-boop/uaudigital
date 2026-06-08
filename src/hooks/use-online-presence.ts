@@ -61,34 +61,103 @@ export function useOnlinePresence() {
           .join("")
           .toUpperCase();
 
-        const avatarNode = React.createElement(
+        const h = React.createElement;
+
+        const avatarNode = h(
           "div",
           { className: "relative shrink-0" },
-          React.createElement(
+          h("div", {
+            className: "absolute -inset-[3px] rounded-full",
+            style: {
+              background: "linear-gradient(135deg, #A78BFA, #6366F1, #8B5CF6)",
+              opacity: 0.9,
+              animation: "spin 6s linear infinite",
+            },
+          }),
+          h(
             Avatar,
-            { className: "h-8 w-8" },
-            avatarUrl ? React.createElement(AvatarImage, { src: avatarUrl, alt: name }) : null,
-            React.createElement(AvatarFallback, { className: "text-[10px]" }, initials || "?"),
+            { className: "relative h-10 w-10 ring-2 ring-white/20" },
+            avatarUrl ? h(AvatarImage, { src: avatarUrl, alt: name }) : null,
+            h(
+              AvatarFallback,
+              { className: "bg-white/15 text-white font-bold text-xs" },
+              initials || "?",
+            ),
           ),
-          React.createElement("span", {
+          h("span", {
             className:
-              "absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-green-500 ring-2 ring-background translate-x-[2px] translate-y-[2px]",
+              "absolute bottom-0 right-0 z-10 block h-3 w-3 rounded-full bg-green-500 ring-2 ring-[#4C1D95] translate-x-[2px] translate-y-[2px]",
           }),
         );
 
-        const message = React.createElement(
+        const card = h(
           "div",
-          { className: "flex items-center gap-3" },
-          avatarNode,
-          React.createElement(
-            "span",
-            { className: "text-sm" },
-            React.createElement("strong", { className: "font-semibold" }, name),
-            " tá on!",
+          {
+            className: "relative group overflow-hidden w-full",
+            style: {
+              borderRadius: 20,
+              boxShadow:
+                "0 8px 32px -8px rgba(124,58,237,0.35), 0 0 0 1px rgba(139,92,246,0.20), inset 0 0 0 1px rgba(255,255,255,0.08)",
+            },
+          },
+          h("div", {
+            className: "absolute -inset-8 opacity-90",
+            style: {
+              background:
+                "linear-gradient(135deg, #4C1D95 0%, #6D28D9 25%, #7C3AED 50%, #5B21B6 75%, #4C1D95 100%)",
+              backgroundSize: "300% 300%",
+              animation: "gradientFlow 14s ease-in-out infinite",
+            },
+          }),
+          h("div", {
+            className: "absolute -inset-12 opacity-60",
+            style: {
+              background:
+                "radial-gradient(ellipse 70% 60% at 25% 35%, #8B5CF6 0%, transparent 70%), radial-gradient(ellipse 55% 65% at 75% 65%, #5B21B6 0%, transparent 65%)",
+              animation: "parallaxLayer2 12s ease-in-out infinite",
+            },
+          }),
+          h("div", {
+            className: "absolute -inset-16 opacity-50",
+            style: {
+              background:
+                "radial-gradient(circle 280px at 20% 70%, #7C3AED 0%, transparent 60%), radial-gradient(circle 220px at 80% 25%, #6D28D9 0%, transparent 55%)",
+              filter: "blur(30px)",
+              animation: "parallaxLayer3 9s ease-in-out infinite",
+            },
+          }),
+          h("div", {
+            className: "absolute inset-0 opacity-[0.07]",
+            style: {
+              backgroundImage:
+                "linear-gradient(rgba(255,255,255,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.4) 1px, transparent 1px)",
+              backgroundSize: "44px 44px",
+              animation: "gridDrift 22s linear infinite",
+            },
+          }),
+          h("div", {
+            className: "absolute inset-0 pointer-events-none",
+            style: {
+              borderRadius: 20,
+              boxShadow:
+                "inset 0 0 0 1.5px rgba(167,139,250,0.3), 0 0 20px 0 rgba(124,58,237,0.08)",
+            },
+          }),
+          h(
+            "div",
+            { className: "relative z-10 flex items-center gap-3 p-4" },
+            avatarNode,
+            h(
+              "span",
+              { className: "text-sm text-white drop-shadow-sm" },
+              h("strong", { className: "font-semibold" }, name),
+              h("span", { className: "text-white/80" }, " tá on!"),
+            ),
           ),
         );
 
-        toast(message, { duration: 4000 });
+        toast.custom(() => card, { duration: 4000 });
+
       })
       .on("presence", { event: "leave" }, ({ key }) => {
         announcedRef.delete(key);
