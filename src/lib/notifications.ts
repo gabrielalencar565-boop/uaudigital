@@ -149,6 +149,7 @@ function noiseBurst(opts: {
   const ctx = getAudioCtx();
   if (!ctx) return;
   const { duration = 0.18, volume = 0.25, filterType = "bandpass", filterFreq = 2000, filterQ = 1, decay = 0.15 } = opts;
+  const vol = volume * getNotificationVolume();
   const length = Math.floor(ctx.sampleRate * duration);
   const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
   const data = buffer.getChannelData(0);
@@ -162,7 +163,7 @@ function noiseBurst(opts: {
   const gain = ctx.createGain();
   const now = ctx.currentTime;
   gain.gain.setValueAtTime(0, now);
-  gain.gain.linearRampToValueAtTime(volume, now + 0.005);
+  gain.gain.linearRampToValueAtTime(vol, now + 0.005);
   gain.gain.exponentialRampToValueAtTime(0.0001, now + decay);
   src.connect(filter).connect(gain).connect(ctx.destination);
   src.start(now);
