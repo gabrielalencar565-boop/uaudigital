@@ -176,8 +176,8 @@ function playDefaultMp3() {
   try {
     if (!notifAudio) {
       notifAudio = new Audio("/sounds/notification.mp3");
-      notifAudio.volume = 0.5;
     }
+    notifAudio.volume = 0.5 * getNotificationVolume();
     notifAudio.currentTime = 0;
     notifAudio.play().catch(() => {});
   } catch {}
