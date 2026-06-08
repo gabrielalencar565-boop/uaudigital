@@ -101,6 +101,7 @@ function renderToast(
   name: string,
   avatarUrl: string | null,
   taskTitle: string,
+  taskId?: string,
 ) {
   const initials = name
     .split(/\s+/)
