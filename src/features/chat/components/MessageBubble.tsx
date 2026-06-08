@@ -104,7 +104,7 @@ export function MessageBubble({ message, isOwn, isAdmin, isGeneral, sender, repl
         {!message.is_deleted && (
           <div
             className={cn(
-              "mt-1 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition",
+              "mt-1 flex items-center gap-0.5 transition md:opacity-0 md:group-hover:opacity-100",
               isOwn ? "flex-row-reverse" : "flex-row"
             )}
           >
@@ -128,11 +128,7 @@ export function MessageBubble({ message, isOwn, isAdmin, isGeneral, sender, repl
                 size="icon"
                 className="h-6 w-6 text-destructive"
                 title="Remover"
-                onClick={() => {
-                  if (confirm("Remover esta mensagem?")) {
-                    deleteChatMessage(message.id).then(() => {}, () => {});
-                  }
-                }}
+                onClick={() => setConfirmDelete(true)}
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
@@ -140,6 +136,29 @@ export function MessageBubble({ message, isOwn, isAdmin, isGeneral, sender, repl
           </div>
         )}
       </div>
+
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover mensagem?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. A mensagem será marcada como removida para todos os participantes.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                deleteChatMessage(message.id).then(() => {}, () => {});
+                setConfirmDelete(false);
+              }}
+            >
+              Remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
