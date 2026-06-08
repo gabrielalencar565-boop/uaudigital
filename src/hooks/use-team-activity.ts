@@ -16,7 +16,11 @@ type ActivityPayload = {
   display_name: string;
   avatar_url: string | null;
   task_title: string;
+  /** Id used for navigation when the toast is clicked (parent task for subtasks). */
   task_id?: string;
+  /** Stable id used only for deduplication — defaults to task_id. For subtasks
+   *  pass the subtask id so different subtasks of the same parent don't collide. */
+  dedupe_id?: string;
 };
 
 // ── Module-scoped sender used by `broadcastTeamActivity` ────────────────
@@ -45,6 +49,7 @@ export async function broadcastTeamActivity(
   type: ActivityType,
   taskTitle: string,
   taskId?: string,
+  dedupeId?: string,
 ) {
   if (!sender || !sender.user_id) return;
   const payload: ActivityPayload = {
@@ -54,9 +59,12 @@ export async function broadcastTeamActivity(
     avatar_url: sender.avatar_url,
     task_title: taskTitle,
     task_id: taskId,
+    dedupe_id: dedupeId ?? taskId,
   };
-  // Also remember locally so the pg_changes fallback doesn't re-toast my own action
-  if (taskId) markLocalCompletion(taskId);
+  // Also remember locally so the pg_changes fallback doesn't re-toast my own action.
+  // Use the subtask/dedupe id when present so the pg event for the subtask row is suppressed.
+  const localKey = dedupeId ?? taskId;
+  if (localKey) markLocalCompletion(localKey);
   if (!sender.channel || !sender.subscribed) {
     sender.pending.push(payload);
     return;
