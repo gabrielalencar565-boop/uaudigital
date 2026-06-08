@@ -218,6 +218,7 @@ export function useTeamActivity() {
           p.display_name?.trim() || "Alguém",
           p.avatar_url,
           p.task_title,
+          p.task_id,
         );
       })
       .subscribe((status) => {
