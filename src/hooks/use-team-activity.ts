@@ -103,55 +103,21 @@ function renderToast(
   taskTitle: string,
   taskId?: string,
 ) {
-  const initials = name
-    .split(/\s+/)
-    .map((part) => part[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-
-  toast.custom(
-    (id) =>
-      React.createElement(
-        "div",
-        {
-          className: `flex items-start gap-3 rounded-2xl overflow-hidden border bg-background shadow-lg px-3 py-2.5 min-w-[280px] max-w-[360px] border-l-4 cursor-pointer hover:bg-accent/40 transition ${accentFor[type]}`,
+  void avatarUrl;
+  const message = `${name} ${labelFor[type]}`;
+  toast(message, {
+    description: taskTitle || undefined,
+    duration: 4500,
+    onAutoClose: () => {},
+    action: taskId
+      ? {
+          label: "Abrir",
           onClick: () => {
-            if (taskId) {
-              window.dispatchEvent(new CustomEvent("uau:open-task", { detail: { taskId } }));
-            }
-            toast.dismiss(id);
+            window.dispatchEvent(new CustomEvent("uau:open-task", { detail: { taskId } }));
           },
-          role: "button",
-        },
-        React.createElement(
-          Avatar,
-          { className: "h-9 w-9 shrink-0" },
-          avatarUrl
-            ? React.createElement(AvatarImage, { src: avatarUrl, alt: name })
-            : null,
-          React.createElement(AvatarFallback, { className: "text-xs" }, initials || "?"),
-        ),
-        React.createElement(
-          "div",
-          { className: "flex flex-col leading-tight min-w-0" },
-          React.createElement(
-            "span",
-            { className: "text-sm text-foreground" },
-            React.createElement("span", { className: "font-semibold" }, name),
-            " ",
-            labelFor[type],
-          ),
-          React.createElement(
-            "span",
-            { className: "text-xs text-muted-foreground truncate", title: taskTitle },
-            taskTitle || "—",
-          ),
-        ),
-      ),
-    { position: "bottom-right", duration: 4500, unstyled: true },
-  );
+        }
+      : undefined,
+  });
 }
 
 /**

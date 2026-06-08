@@ -52,58 +52,10 @@ export function useOnlinePresence() {
 
         const meta = newPresences?.[0] as unknown as PresenceMeta | undefined;
         const name = meta?.display_name?.trim() || "Alguém";
-        const avatarUrl = meta?.avatar_url ?? null;
-        const initials = name
-          .split(/\s+/)
-          .map((p) => p[0])
-          .filter(Boolean)
-          .slice(0, 2)
-          .join("")
-          .toUpperCase();
 
-        toast.custom(
-          (id) =>
-            React.createElement(
-              "div",
-              {
-                className:
-                  "flex items-center gap-3 rounded-2xl overflow-hidden border bg-background shadow-lg px-3 py-2.5 min-w-[260px] border-l-4 border-l-emerald-500",
-                onClick: () => toast.dismiss(id),
-                role: "button",
-              },
-              React.createElement(
-                "div",
-                { className: "relative" },
-                React.createElement(
-                  Avatar,
-                  { className: "h-9 w-9" },
-                  avatarUrl
-                    ? React.createElement(AvatarImage, { src: avatarUrl, alt: name })
-                    : null,
-                  React.createElement(AvatarFallback, { className: "text-xs" }, initials || "?")
-                ),
-                React.createElement("span", {
-                  className:
-                    "absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-background",
-                })
-              ),
-              React.createElement(
-                "div",
-                { className: "flex flex-col leading-tight" },
-                React.createElement("span", { className: "text-sm font-medium text-foreground" }, name),
-                React.createElement(
-                  "span",
-                  { className: "text-xs text-muted-foreground" },
-                  "entrou online"
-                )
-              )
-            ),
-          {
-            position: "bottom-right",
-            duration: 4000,
-            unstyled: true,
-          }
-        );
+        toast(`${name} entrou online`, {
+          duration: 4000,
+        });
       })
       .on("presence", { event: "leave" }, ({ key }) => {
         announcedRef.delete(key);
