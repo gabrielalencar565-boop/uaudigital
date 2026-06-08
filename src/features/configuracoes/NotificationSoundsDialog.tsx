@@ -1,13 +1,16 @@
 import { useState } from "react";
-import { Play, VolumeX, Bell } from "lucide-react";
+import { Play, VolumeX, Bell, Volume2, Volume1 } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
 import {
   NOTIFICATION_SOUNDS,
   getCategorySound,
   setCategorySound,
+  getNotificationVolume,
+  setNotificationVolume,
   type SoundCategory,
 } from "@/lib/notifications";
 
