@@ -223,7 +223,7 @@ function renderToast(
     ),
   );
 
-  toast.custom(() => card, { duration: 4500 });
+  toast.custom(() => card, { duration: 4500, unstyled: true, classNames: { toast: "!bg-transparent !border-0 !shadow-none !p-0 w-full" } });
 }
 
 /**

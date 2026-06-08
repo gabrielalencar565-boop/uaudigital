@@ -156,7 +156,7 @@ export function useOnlinePresence() {
           ),
         );
 
-        toast.custom(() => card, { duration: 4000 });
+        toast.custom(() => card, { duration: 4000, unstyled: true, classNames: { toast: "!bg-transparent !border-0 !shadow-none !p-0 w-full" } });
 
       })
       .on("presence", { event: "leave" }, ({ key }) => {
