@@ -121,6 +121,7 @@ function tone(opts: {
   const ctx = getAudioCtx();
   if (!ctx) return;
   const { freq, duration = 0.18, type = "sine", volume = 0.25, attack = 0.005, decay = 0.12, endFreq } = opts;
+  const vol = volume * getNotificationVolume();
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.type = type;
@@ -130,7 +131,7 @@ function tone(opts: {
     osc.frequency.exponentialRampToValueAtTime(Math.max(1, endFreq), now + duration);
   }
   gain.gain.setValueAtTime(0, now);
-  gain.gain.linearRampToValueAtTime(volume, now + attack);
+  gain.gain.linearRampToValueAtTime(vol, now + attack);
   gain.gain.exponentialRampToValueAtTime(0.0001, now + attack + decay);
   osc.connect(gain).connect(ctx.destination);
   osc.start(now);
