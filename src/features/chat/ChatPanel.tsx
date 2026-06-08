@@ -185,20 +185,6 @@ export function ChatPanel({ open, onOpenChange, initialConversationId }: Props) 
             </TabsList>
           </div>
 
-          <TabsContent value="general" className="flex-1 overflow-hidden m-0">
-            <ChatThread
-              conversationId={effectiveConv}
-              currentUserId={user.id}
-              isAdmin={isAdmin}
-              isGeneral
-              headerSlot={
-                <div className="border-b border-border/40 px-4 py-2 text-xs text-muted-foreground">
-                  Chat geral da empresa • {(members ?? []).length} colaboradores
-                </div>
-              }
-            />
-          </TabsContent>
-
           <TabsContent value="direct" className="flex-1 overflow-hidden m-0 flex">
             <aside className="w-64 border-r border-border/40 flex flex-col">
               <div className="p-2 border-b border-border/40">
@@ -267,6 +253,20 @@ export function ChatPanel({ open, onOpenChange, initialConversationId }: Props) 
                 }
               />
             </div>
+          </TabsContent>
+
+          <TabsContent value="general" className="flex-1 overflow-hidden m-0">
+            <ChatThread
+              conversationId={effectiveConv}
+              currentUserId={user.id}
+              isAdmin={isAdmin}
+              isGeneral
+              headerSlot={
+                <div className="border-b border-border/40 px-4 py-2 text-xs text-muted-foreground">
+                  Chat geral da empresa • {(members ?? []).length} colaboradores
+                </div>
+              }
+            />
           </TabsContent>
         </Tabs>
       </SheetContent>
