@@ -34,12 +34,14 @@ function formatTime(iso: string) {
 }
 
 export function MessageBubble({ message, isOwn, isAdmin, isGeneral, sender, replyTo, onReply, showAvatar }: Props) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const initials = useMemo(() => {
     const n = sender?.display_name ?? "?";
     return n.split(" ").slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("");
   }, [sender]);
 
   const canModerate = isOwn || (isAdmin && isGeneral);
+
 
   return (
     <div className={cn("group flex gap-2", isOwn ? "flex-row-reverse" : "flex-row")}>
