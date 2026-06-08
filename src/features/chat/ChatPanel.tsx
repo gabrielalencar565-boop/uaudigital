@@ -42,7 +42,7 @@ export function ChatPanel({ open, onOpenChange, initialConversationId }: Props) 
   const { data: members } = useTeamMembers();
   const { data: presence } = useChatPresence();
   const { data: unread } = useChatUnread();
-  const [tab, setTab] = useState<"general" | "direct">("general");
+  const [tab, setTab] = useState<"general" | "direct">("direct");
   const [activeConv, setActiveConv] = useState<string | null>(null);
   const [activeOther, setActiveOther] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -166,14 +166,6 @@ export function ChatPanel({ open, onOpenChange, initialConversationId }: Props) 
           <div className="border-b border-border/40 px-4 pt-4 pb-2">
             <h2 className="text-lg font-bold mb-3">Chat UAU</h2>
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="general" className="gap-2">
-                <Hash className="h-4 w-4" /> Geral
-                {generalUnread > 0 && (
-                  <span className="ml-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] text-primary-foreground">
-                    {generalUnread}
-                  </span>
-                )}
-              </TabsTrigger>
               <TabsTrigger value="direct" className="gap-2">
                 <Users className="h-4 w-4" /> Privado
                 {onlineMembers.length > 0 && (
@@ -182,22 +174,16 @@ export function ChatPanel({ open, onOpenChange, initialConversationId }: Props) 
                   </span>
                 )}
               </TabsTrigger>
+              <TabsTrigger value="general" className="gap-2">
+                <Hash className="h-4 w-4" /> Geral
+                {generalUnread > 0 && (
+                  <span className="ml-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] text-primary-foreground">
+                    {generalUnread}
+                  </span>
+                )}
+              </TabsTrigger>
             </TabsList>
           </div>
-
-          <TabsContent value="general" className="flex-1 overflow-hidden m-0">
-            <ChatThread
-              conversationId={effectiveConv}
-              currentUserId={user.id}
-              isAdmin={isAdmin}
-              isGeneral
-              headerSlot={
-                <div className="border-b border-border/40 px-4 py-2 text-xs text-muted-foreground">
-                  Chat geral da empresa • {(members ?? []).length} colaboradores
-                </div>
-              }
-            />
-          </TabsContent>
 
           <TabsContent value="direct" className="flex-1 overflow-hidden m-0 flex">
             <aside className="w-64 border-r border-border/40 flex flex-col">
@@ -267,6 +253,20 @@ export function ChatPanel({ open, onOpenChange, initialConversationId }: Props) 
                 }
               />
             </div>
+          </TabsContent>
+
+          <TabsContent value="general" className="flex-1 overflow-hidden m-0">
+            <ChatThread
+              conversationId={effectiveConv}
+              currentUserId={user.id}
+              isAdmin={isAdmin}
+              isGeneral
+              headerSlot={
+                <div className="border-b border-border/40 px-4 py-2 text-xs text-muted-foreground">
+                  Chat geral da empresa • {(members ?? []).length} colaboradores
+                </div>
+              }
+            />
           </TabsContent>
         </Tabs>
       </SheetContent>
