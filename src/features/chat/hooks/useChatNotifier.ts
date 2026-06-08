@@ -69,7 +69,7 @@ export function useChatNotifier(onOpenConversation?: (conversationId: string) =>
           const senderName = sender?.display_name ?? "Alguém";
           const preview = (msg.content ?? "").toString().slice(0, 80) || "📎 Anexo";
 
-          playNotificationSound();
+          playChatSound();
           toast(senderName, {
             description: preview,
             duration: 6000,
