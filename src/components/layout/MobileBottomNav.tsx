@@ -11,7 +11,6 @@ import type { MainTab } from "@/components/layout/UauSidebarShell";
 /* ── Sub-tab definitions per bottom tab ── */
 const SUB_TABS: Record<string, { key: MainTab; label: string; icon: React.ComponentType<any> }[]> = {
   tarefas: [
-    { key: "agenda_gestao", label: "Agenda", icon: CalendarDays },
     { key: "cronograma", label: "Cronograma", icon: CalendarRange },
     { key: "visao_geral_projetos", label: "Squads", icon: PieChart },
     { key: "fluxos", label: "Fluxos", icon: Workflow },
