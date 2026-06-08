@@ -61,31 +61,34 @@ export function useOnlinePresence() {
           .join("")
           .toUpperCase();
 
-        const icon = React.createElement(
+        const avatarNode = React.createElement(
           "div",
-          { className: "relative mr-3 inline-block" },
+          { className: "relative shrink-0" },
           React.createElement(
             Avatar,
-            { className: "h-6 w-6" },
+            { className: "h-8 w-8" },
             avatarUrl ? React.createElement(AvatarImage, { src: avatarUrl, alt: name }) : null,
             React.createElement(AvatarFallback, { className: "text-[10px]" }, initials || "?"),
           ),
           React.createElement("span", {
-            className: "absolute bottom-0 right-0 block h-2 w-2 rounded-full bg-green-500 ring-1 ring-white",
+            className:
+              "absolute -bottom-0.5 -right-0.5 block h-2.5 w-2.5 rounded-full bg-green-500 ring-2 ring-background",
           }),
         );
 
         const message = React.createElement(
-          "span",
-          {},
-          React.createElement("strong", { className: "font-semibold" }, name),
-          " tá on!",
+          "div",
+          { className: "flex items-center gap-3" },
+          avatarNode,
+          React.createElement(
+            "span",
+            { className: "text-sm" },
+            React.createElement("strong", { className: "font-semibold" }, name),
+            " tá on!",
+          ),
         );
 
-        toast(message, {
-          duration: 4000,
-          icon,
-        });
+        toast(message, { duration: 4000 });
       })
       .on("presence", { event: "leave" }, ({ key }) => {
         announcedRef.delete(key);
