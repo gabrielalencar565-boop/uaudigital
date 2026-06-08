@@ -95,6 +95,227 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_conversations: {
+        Row: {
+          created_at: string
+          id: string
+          type: Database["public"]["Enums"]["chat_conversation_type"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          type: Database["public"]["Enums"]["chat_conversation_type"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          type?: Database["public"]["Enums"]["chat_conversation_type"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      chat_mentions: {
+        Row: {
+          created_at: string
+          message_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          message_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          message_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_mentions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_message_attachments: {
+        Row: {
+          created_at: string
+          duration_ms: number | null
+          file_name: string
+          id: string
+          message_id: string
+          mime_type: string | null
+          size_bytes: number | null
+          storage_path: string
+        }
+        Insert: {
+          created_at?: string
+          duration_ms?: number | null
+          file_name: string
+          id?: string
+          message_id: string
+          mime_type?: string | null
+          size_bytes?: number | null
+          storage_path: string
+        }
+        Update: {
+          created_at?: string
+          duration_ms?: number | null
+          file_name?: string
+          id?: string
+          message_id?: string
+          mime_type?: string | null
+          size_bytes?: number | null
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_message_attachments_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_message_reads: {
+        Row: {
+          message_id: string
+          read_at: string
+          user_id: string
+        }
+        Insert: {
+          message_id: string
+          read_at?: string
+          user_id: string
+        }
+        Update: {
+          message_id?: string
+          read_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_message_reads_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_messages: {
+        Row: {
+          content: string | null
+          conversation_id: string
+          created_at: string
+          deleted_by: string | null
+          edited_at: string | null
+          id: string
+          is_deleted: boolean
+          is_pinned: boolean
+          reply_to_id: string | null
+          sender_id: string
+        }
+        Insert: {
+          content?: string | null
+          conversation_id: string
+          created_at?: string
+          deleted_by?: string | null
+          edited_at?: string | null
+          id?: string
+          is_deleted?: boolean
+          is_pinned?: boolean
+          reply_to_id?: string | null
+          sender_id: string
+        }
+        Update: {
+          content?: string | null
+          conversation_id?: string
+          created_at?: string
+          deleted_by?: string | null
+          edited_at?: string | null
+          id?: string
+          is_deleted?: boolean
+          is_pinned?: boolean
+          reply_to_id?: string | null
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "chat_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_messages_reply_to_id_fkey"
+            columns: ["reply_to_id"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_participants: {
+        Row: {
+          conversation_id: string
+          id: string
+          joined_at: string
+          last_read_at: string
+          user_id: string
+        }
+        Insert: {
+          conversation_id: string
+          id?: string
+          joined_at?: string
+          last_read_at?: string
+          user_id: string
+        }
+        Update: {
+          conversation_id?: string
+          id?: string
+          joined_at?: string
+          last_read_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_participants_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "chat_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_presence: {
+        Row: {
+          is_online: boolean
+          last_seen_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          is_online?: boolean
+          last_seen_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          is_online?: boolean
+          last_seen_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       cleaning_categories: {
         Row: {
           created_at: string
@@ -2354,6 +2575,22 @@ export type Database = {
     }
     Functions: {
       admin_exists: { Args: never; Returns: boolean }
+      chat_conversation_type: {
+        Args: { _conv: string }
+        Returns: Database["public"]["Enums"]["chat_conversation_type"]
+      }
+      chat_ensure_general_member: { Args: never; Returns: string }
+      chat_get_or_create_direct: {
+        Args: { _other_user: string }
+        Returns: string
+      }
+      chat_is_participant: {
+        Args: { _conv: string; _uid: string }
+        Returns: boolean
+      }
+      chat_mark_read: { Args: { _conv: string }; Returns: undefined }
+      chat_message_conversation: { Args: { _msg: string }; Returns: string }
+      chat_message_sender: { Args: { _msg: string }; Returns: string }
       check_client_exists: { Args: { _name: string }; Returns: boolean }
       client_status_at: {
         Args: { p_client: string; p_month: number; p_year: number }
@@ -2483,6 +2720,7 @@ export type Database = {
     Enums: {
       access_request_status: "pending" | "approved" | "rejected"
       app_role: "admin" | "collaborator" | "planner"
+      chat_conversation_type: "general" | "direct"
       expense_category:
         | "administrativa"
         | "operacional"
@@ -2670,6 +2908,7 @@ export const Constants = {
     Enums: {
       access_request_status: ["pending", "approved", "rejected"],
       app_role: ["admin", "collaborator", "planner"],
+      chat_conversation_type: ["general", "direct"],
       expense_category: [
         "administrativa",
         "operacional",

@@ -1,36 +1,103 @@
-## Timeline horizontal de recompensas
+# Chat Interno UAU Digital
 
-Substituir a barra "Progresso para o Próximo Nível" atual por uma timeline horizontal com marcos para cada recompensa cadastrada na loja.
+Sistema de mensagens em tempo real integrado à plataforma, com chat geral da empresa, conversas privadas 1‑a‑1, anexos, status de leitura, presença online, menções e moderação por admins.
 
-### Comportamento
+## Escopo
 
-- Linha horizontal atravessando o header roxo, com um marco (bolinha) por recompensa, ordenadas por XP crescente.
-- Trecho preenchido (verde/teal, mesma cor da barra atual) vai de 0 até a posição do XP atual do usuário.
-- Cada marco mostra abaixo: ícone (emoji da recompensa) + nome + custo em XP.
-- Estados do marco:
-  - **Conquistado** (XP do usuário ≥ custo): bolinha preenchida, ícone destacado, leve glow.
-  - **Próximo** (primeira recompensa ainda não conquistada): bolinha pulsante com anel, label em destaque.
-  - **Futuro**: bolinha vazia/translúcida, texto com opacidade reduzida.
-- Mantém o badge de XP atual à esquerda e "faltam X XP para [próximo prêmio]" à direita.
-- Scroll horizontal interno quando houver muitas recompensas (>8) para não estourar no mobile.
-- Hover/tap em cada marco mostra tooltip com nome completo + XP.
+### 1. Acesso
+- Novo ícone de chat (MessageCircle) ao lado do sino de notificações no header (`UauSidebarShell`).
+- Badge com contador de mensagens não lidas (total geral + privadas).
+- Clique abre um painel lateral (Sheet à direita no desktop, full‑screen no mobile) com layout em duas colunas: lista de conversas (esquerda) + área da conversa ativa (direita).
 
-### Posicionamento
+### 2. Abas dentro do painel
+- **Geral**: chat único da empresa, todos participam.
+- **Privado**: lista de colaboradores ativos + últimas conversas; clicar abre a thread privada.
+- Campo de busca no topo (filtra colaboradores e conversas pelo nome).
 
-Dentro do mesmo card roxo do header "Vitrine de Prêmios", substituindo o bloco atual com `Progress` + textos "100.0%" / "959.000 XP" / "-958.900 XP para próximo nível". Header (título + botões Infinito/Ver todos/Ranking) permanece igual.
+### 3. Mensagens (geral e privadas)
+- Texto, emojis (picker), imagens, vídeos, documentos, áudios (gravação via MediaRecorder).
+- Anexos até 50MB via Storage bucket `chat-attachments` (privado, URL assinada).
+- Responder a mensagem específica (reply‑to com preview).
+- Menções `@nome` com autocomplete (notifica o mencionado).
+- Mensagens fixadas no Chat Geral (pin/unpin, apenas admin).
+- Editar/apagar a própria mensagem; admin pode remover qualquer no Geral.
+- Carregamento paginado (50 por página, scroll infinito para cima).
 
-### Detalhes técnicos
+### 4. Status e presença
+- Tabela `chat_presence` atualizada a cada 30s via heartbeat; offline após 60s sem ping.
+- Online/offline ao lado do avatar.
+- Indicador de "digitando…" via canal Realtime broadcast (sem persistir em tabela).
+- Estados das mensagens privadas: enviada / entregue / visualizada (✓, ✓✓, ✓✓ azul) baseado em `chat_message_reads`.
+- `last_read_at` por participante para badges de não lidas.
 
-- Componente novo `RewardsTimeline.tsx` em `src/features/recompensas/`.
-- Consome a mesma query de `rewards` já usada no `RecompensasPanel` (lista de prêmios com `xp_cost`, `icon`, `name`) + XP atual do usuário.
-- Posição de cada marco = `(reward.xp_cost / maxXp) * 100%` onde `maxXp` = maior custo da loja.
-- Posição do preenchimento = `min(userXp, maxXp) / maxXp * 100%`.
-- Tokens do design system (purple HSL 263 70% 50%, `--success` para preenchido). Sem cores hardcoded.
-- Tooltip via `@/components/ui/tooltip`.
-- Animação suave do fill ao mudar XP (`transition-all duration-500`).
-- Responsivo: em telas <768px, scroll-x com snap nos marcos.
+### 5. Realtime
+- Supabase Realtime (`postgres_changes`) nas tabelas de mensagens e participantes.
+- Canal broadcast separado para "typing" e presença leve.
+- Invalidate React Query nas mudanças.
 
-### Arquivos
+### 6. Notificações
+- Toast quando chega nova mensagem com painel fechado.
+- Badge no ícone do header atualizada em tempo real.
+- Som curto opcional (preferência local).
 
-- **Criar:** `src/features/recompensas/RewardsTimeline.tsx`
-- **Editar:** `src/features/recompensas/RecompensasPanel.tsx` — substituir o bloco do progress atual pelo `<RewardsTimeline />`.
+### 7. Admin
+- Aba "Moderação" visível apenas para `isAdmin`: lista últimas mensagens do Geral com botão remover, e gerenciamento de fixadas.
+
+## Detalhes técnicos
+
+### Banco de dados (migration)
+Tabelas em `public` (todas com GRANT para `authenticated` + `service_role`, RLS habilitada):
+
+- `chat_conversations` — `id`, `type` (`general` | `direct`), `created_at`. Linha única `type='general'` criada no seed.
+- `chat_participants` — `conversation_id`, `user_id`, `last_read_at`, `joined_at`. Único `(conversation_id, user_id)`.
+- `chat_messages` — `id`, `conversation_id`, `sender_id`, `content`, `reply_to_id`, `is_pinned`, `is_deleted`, `deleted_by`, `created_at`, `edited_at`.
+- `chat_message_attachments` — `id`, `message_id`, `storage_path`, `mime_type`, `size_bytes`, `file_name`, `duration_ms` (áudio/vídeo).
+- `chat_message_reads` — `message_id`, `user_id`, `read_at` (PK composta).
+- `chat_presence` — `user_id` PK, `last_seen_at`, `is_online`.
+- `chat_mentions` — `message_id`, `user_id`.
+
+Funções `SECURITY DEFINER`:
+- `chat_is_participant(_conv uuid, _uid uuid)` para usar nas policies sem recursão.
+- `chat_get_or_create_direct(_other_user uuid)` retorna o id da conversa privada entre o usuário atual e o outro (cria se não existir).
+- `chat_mark_read(_conv uuid)` atualiza `last_read_at` e insere reads das mensagens não lidas.
+
+Realtime: `ALTER PUBLICATION supabase_realtime ADD TABLE` para mensagens, participantes, presença, reads.
+
+Storage: bucket `chat-attachments` privado, policies por participação.
+
+### Frontend
+Novos arquivos:
+- `src/features/chat/ChatPanel.tsx` — Sheet container com tabs Geral/Privado/Moderação.
+- `src/features/chat/components/ConversationList.tsx`
+- `src/features/chat/components/ChatThread.tsx`
+- `src/features/chat/components/MessageBubble.tsx`
+- `src/features/chat/components/MessageComposer.tsx` (texto, emoji, anexo, áudio)
+- `src/features/chat/components/PinnedBar.tsx`
+- `src/features/chat/components/MentionAutocomplete.tsx`
+- `src/features/chat/hooks/useChatConversations.ts`
+- `src/features/chat/hooks/useChatMessages.ts` (paginação, realtime)
+- `src/features/chat/hooks/useChatUnread.ts`
+- `src/features/chat/hooks/useChatPresence.ts` (heartbeat + assinatura)
+- `src/features/chat/hooks/useTypingIndicator.ts` (broadcast)
+
+Modificações:
+- `src/components/layout/UauSidebarShell.tsx` — adiciona `ChatBellButton` ao lado do sino, monta `<ChatPanel />`.
+
+### Performance / segurança
+- React Query com `staleTime` por conversa; cache invalidation seletiva.
+- Paginação `range()` 50 mensagens por vez.
+- RLS: só participantes leem/escrevem; admin pode soft‑delete e pin no Geral; ninguém vê conversa privada alheia.
+- Validação de tamanho e MIME no cliente antes do upload.
+- Sanitização de conteúdo renderizado (sem `dangerouslySetInnerHTML`).
+
+### Fora do escopo desta entrega
+- Chamadas de áudio/vídeo reais (a estrutura suporta anexo de áudio gravado; WebRTC fica para próxima fase). Estrutura de dados deixa espaço (`chat_calls` pode ser adicionado depois).
+- Grupos privados além do Geral (somente 1‑a‑1 e o Geral nesta versão).
+
+## Ordem de execução
+1. Migration: tabelas + grants + RLS + funções + storage bucket + realtime + seed da conversa Geral.
+2. Hooks (`useChatMessages`, presença, unread).
+3. UI do painel e composer.
+4. Integração no header + badge.
+5. Moderação/admin + pins + menções.
+6. QA manual: enviar mensagens entre dois usuários, anexos, presença, badges, mobile.
