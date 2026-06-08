@@ -145,7 +145,9 @@ export function ChatPanel({ open, onOpenChange, initialConversationId }: Props) 
         </div>
         <div className="flex-1 min-w-0">
           <div className="truncate font-medium">{m.display_name}</div>
-          <div className="truncate text-[10px] text-muted-foreground">{m.role_title}</div>
+          <div className="truncate text-[10px] text-muted-foreground">
+            {online ? m.role_title : formatLastSeen(presence?.[m.user_id]?.last_seen_at)}
+          </div>
         </div>
         {unreadCount > 0 && (
           <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] text-primary-foreground">
