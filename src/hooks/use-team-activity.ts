@@ -115,8 +115,13 @@ function renderToast(
       React.createElement(
         "div",
         {
-          className: `flex items-start gap-3 rounded-2xl overflow-hidden border bg-background shadow-lg px-3 py-2.5 min-w-[280px] max-w-[360px] border-l-4 ${accentFor[type]}`,
-          onClick: () => toast.dismiss(id),
+          className: `flex items-start gap-3 rounded-2xl overflow-hidden border bg-background shadow-lg px-3 py-2.5 min-w-[280px] max-w-[360px] border-l-4 cursor-pointer hover:bg-accent/40 transition ${accentFor[type]}`,
+          onClick: () => {
+            if (taskId) {
+              window.dispatchEvent(new CustomEvent("uau:open-task", { detail: { taskId } }));
+            }
+            toast.dismiss(id);
+          },
           role: "button",
         },
         React.createElement(
