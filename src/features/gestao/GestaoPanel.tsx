@@ -214,7 +214,40 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
       {/* Header — título + filtros alinhados */}
       <div className="flex flex-col gap-3 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
         <div className="flex items-center justify-between gap-3">
-          <h2 className="font-bold tracking-tight text-2xl sm:text-3xl">{VIEW_TITLES[effectiveView] ?? "Tarefas"}</h2>
+          {isAgendaKanbanEntry ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="group inline-flex items-center gap-2 rounded-xl px-1 -mx-1 outline-none transition-colors hover:bg-muted/30"
+                  aria-label="Trocar modo de visualização"
+                >
+                  <h2 className="font-bold tracking-tight text-2xl sm:text-3xl">
+                    {agendaKanbanMode === "agenda" ? "Agenda de tarefas" : "Kanban de tarefas"}
+                  </h2>
+                  <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="min-w-[200px]">
+                <DropdownMenuItem
+                  onClick={() => setAgendaKanbanMode("agenda")}
+                  className={cn("gap-2", agendaKanbanMode === "agenda" && "bg-accent font-semibold")}
+                >
+                  <CalendarDays className="h-4 w-4" />
+                  Agenda de tarefas
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setAgendaKanbanMode("kanban")}
+                  className={cn("gap-2", agendaKanbanMode === "kanban" && "bg-accent font-semibold")}
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                  Kanban de tarefas
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <h2 className="font-bold tracking-tight text-2xl sm:text-3xl">{VIEW_TITLES[effectiveView] ?? "Tarefas"}</h2>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border/30 bg-muted/20 p-2">
           <div className="relative flex-1 min-w-[160px] sm:max-w-xs">
