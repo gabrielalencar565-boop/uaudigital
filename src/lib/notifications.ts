@@ -63,8 +63,9 @@ export function setSoundEnabled(enabled: boolean) {
 
 // ─── Categoria de som (chat / task) ───────────────────────────────────
 const SOUND_STORAGE_PREFIX = "uau:notif:sound:";
+const VOLUME_STORAGE_KEY = "uau:notif:volume";
 const DEFAULT_SOUND_BY_CATEGORY: Record<SoundCategory, string> = {
-  chat: "pop",
+  chat: "pulse",
   task: "chime",
 };
 
@@ -78,6 +79,20 @@ export function getCategorySound(category: SoundCategory): string {
 }
 export function setCategorySound(category: SoundCategory, soundId: string) {
   localStorage.setItem(SOUND_STORAGE_PREFIX + category, soundId);
+}
+
+// ─── Volume global (0..1) ─────────────────────────────────────────────
+export function getNotificationVolume(): number {
+  if (typeof window === "undefined") return 1;
+  const raw = localStorage.getItem(VOLUME_STORAGE_KEY);
+  if (raw === null) return 1;
+  const n = parseFloat(raw);
+  if (!Number.isFinite(n)) return 1;
+  return Math.max(0, Math.min(1, n));
+}
+export function setNotificationVolume(v: number) {
+  const clamped = Math.max(0, Math.min(1, v));
+  localStorage.setItem(VOLUME_STORAGE_KEY, String(clamped));
 }
 
 // ─── Engine: sons sintetizados (Web Audio) + arquivo ──────────────────
@@ -106,6 +121,7 @@ function tone(opts: {
   const ctx = getAudioCtx();
   if (!ctx) return;
   const { freq, duration = 0.18, type = "sine", volume = 0.25, attack = 0.005, decay = 0.12, endFreq } = opts;
+  const vol = volume * getNotificationVolume();
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.type = type;
@@ -115,7 +131,7 @@ function tone(opts: {
     osc.frequency.exponentialRampToValueAtTime(Math.max(1, endFreq), now + duration);
   }
   gain.gain.setValueAtTime(0, now);
-  gain.gain.linearRampToValueAtTime(volume, now + attack);
+  gain.gain.linearRampToValueAtTime(vol, now + attack);
   gain.gain.exponentialRampToValueAtTime(0.0001, now + attack + decay);
   osc.connect(gain).connect(ctx.destination);
   osc.start(now);
@@ -133,6 +149,7 @@ function noiseBurst(opts: {
   const ctx = getAudioCtx();
   if (!ctx) return;
   const { duration = 0.18, volume = 0.25, filterType = "bandpass", filterFreq = 2000, filterQ = 1, decay = 0.15 } = opts;
+  const vol = volume * getNotificationVolume();
   const length = Math.floor(ctx.sampleRate * duration);
   const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
   const data = buffer.getChannelData(0);
@@ -146,7 +163,7 @@ function noiseBurst(opts: {
   const gain = ctx.createGain();
   const now = ctx.currentTime;
   gain.gain.setValueAtTime(0, now);
-  gain.gain.linearRampToValueAtTime(volume, now + 0.005);
+  gain.gain.linearRampToValueAtTime(vol, now + 0.005);
   gain.gain.exponentialRampToValueAtTime(0.0001, now + decay);
   src.connect(filter).connect(gain).connect(ctx.destination);
   src.start(now);
@@ -159,8 +176,8 @@ function playDefaultMp3() {
   try {
     if (!notifAudio) {
       notifAudio = new Audio("/sounds/notification.mp3");
-      notifAudio.volume = 0.5;
     }
+    notifAudio.volume = 0.5 * getNotificationVolume();
     notifAudio.currentTime = 0;
     notifAudio.play().catch(() => {});
   } catch {}

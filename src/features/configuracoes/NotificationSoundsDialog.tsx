@@ -1,13 +1,16 @@
 import { useState } from "react";
-import { Play, VolumeX, Bell } from "lucide-react";
+import { Play, VolumeX, Bell, Volume2, Volume1 } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
 import {
   NOTIFICATION_SOUNDS,
   getCategorySound,
   setCategorySound,
+  getNotificationVolume,
+  setNotificationVolume,
   type SoundCategory,
 } from "@/lib/notifications";
 
@@ -77,8 +80,45 @@ function SoundRow({
 }
 
 export function NotificationSoundsPanel() {
+  const [volume, setVolume] = useState<number>(() => Math.round(getNotificationVolume() * 100));
+
+  const handleVolumeChange = (vals: number[]) => {
+    const v = vals[0] ?? 100;
+    setVolume(v);
+    setNotificationVolume(v / 100);
+  };
+
+  const handleVolumeCommit = () => {
+    NOTIFICATION_SOUNDS.find((x) => x.id === "pop")?.play();
+  };
+
+  const VolIcon = volume === 0 ? VolumeX : volume < 50 ? Volume1 : Volume2;
+
   return (
     <div className="space-y-3">
+      <div className="flex flex-col gap-3 rounded-lg border border-border/60 p-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-sm font-medium">Volume das notificações</div>
+            <div className="text-xs text-muted-foreground">
+              Controla o volume de todos os sons de notificação.
+            </div>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground tabular-nums">
+            <VolIcon className="h-4 w-4" />
+            <span className="w-9 text-right">{volume}%</span>
+          </div>
+        </div>
+        <Slider
+          value={[volume]}
+          min={0}
+          max={100}
+          step={1}
+          onValueChange={handleVolumeChange}
+          onValueCommit={handleVolumeCommit}
+        />
+      </div>
+
       <SoundRow
         category="chat"
         title="Mensagens do chat"
