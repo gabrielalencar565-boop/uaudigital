@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search, Users, Hash } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -13,14 +13,16 @@ import { useChatPresence } from "./hooks/useChatPresence";
 import { useGeneralConversation } from "./hooks/useGeneralConversation";
 import { useChatUnread } from "./hooks/useChatUnread";
 import { getOrCreateDirect } from "./chat-api";
+import { setActiveConversation, setChatPanelOpen } from "./active-chat-state";
 
 
 interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  initialConversationId?: string | null;
 }
 
-export function ChatPanel({ open, onOpenChange }: Props) {
+export function ChatPanel({ open, onOpenChange, initialConversationId }: Props) {
   const { user } = useSession();
   const { isAdmin } = useRole(user?.id);
   const generalId = useGeneralConversation();
@@ -32,12 +34,28 @@ export function ChatPanel({ open, onOpenChange }: Props) {
   const [activeOther, setActiveOther] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
+  const otherMembers = useMemo(
+    () => (members ?? []).filter((m) => m.user_id !== user?.id),
+    [members, user]
+  );
+
   const filteredMembers = useMemo(() => {
     const q = search.toLowerCase().trim();
-    return (members ?? [])
-      .filter((m) => m.user_id !== user?.id)
-      .filter((m) => !q || m.display_name.toLowerCase().includes(q));
-  }, [members, search, user]);
+    return otherMembers.filter((m) => !q || m.display_name.toLowerCase().includes(q));
+  }, [otherMembers, search]);
+
+  const { onlineMembers, offlineMembers } = useMemo(() => {
+    const online: typeof filteredMembers = [];
+    const offline: typeof filteredMembers = [];
+    filteredMembers.forEach((m) => {
+      if (presence?.[m.user_id]?.is_online) online.push(m);
+      else offline.push(m);
+    });
+    const sortFn = (a: any, b: any) => a.display_name.localeCompare(b.display_name);
+    online.sort(sortFn);
+    offline.sort(sortFn);
+    return { onlineMembers: online, offlineMembers: offline };
+  }, [filteredMembers, presence]);
 
   const unreadByOther = useMemo(() => {
     const m = new Map<string, number>();
@@ -57,7 +75,73 @@ export function ChatPanel({ open, onOpenChange }: Props) {
 
   const effectiveConv = tab === "general" ? generalId : activeConv;
 
+  // Track active conversation globally so the notifier can suppress
+  // sound/toast when the user is already looking at that thread.
+  useEffect(() => {
+    setChatPanelOpen(open);
+    setActiveConversation(open ? effectiveConv : null);
+    return () => {
+      setActiveConversation(null);
+      setChatPanelOpen(false);
+    };
+  }, [open, effectiveConv]);
+
+  // When opened with an initial conv id (e.g. from a toast click), pick the
+  // matching tab/thread.
+  useEffect(() => {
+    if (!open || !initialConversationId) return;
+    if (initialConversationId === generalId) {
+      setTab("general");
+      return;
+    }
+    const other = (unread ?? []).find((u) => u.conversation_id === initialConversationId)?.other_user_id;
+    setTab("direct");
+    setActiveConv(initialConversationId);
+    if (other) setActiveOther(other);
+  }, [open, initialConversationId, generalId, unread]);
+
   if (!user) return null;
+
+  const renderMemberRow = (m: any) => {
+    const online = !!presence?.[m.user_id]?.is_online;
+    const unreadCount = unreadByOther.get(m.user_id) ?? 0;
+    const active = activeOther === m.user_id;
+    return (
+      <button
+        key={m.user_id}
+        onClick={() => openDirect(m.user_id)}
+        className={cn(
+          "flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent/50",
+          active && "bg-accent",
+          !online && "opacity-70"
+        )}
+      >
+        <div className="relative">
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={m.avatar_url ?? undefined} />
+            <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+              {m.display_name.split(" ").slice(0, 2).map((p: string) => p[0]?.toUpperCase() ?? "").join("")}
+            </AvatarFallback>
+          </Avatar>
+          <span
+            className={cn(
+              "absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-background",
+              online ? "bg-green-500" : "bg-muted-foreground/40"
+            )}
+          />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="truncate font-medium">{m.display_name}</div>
+          <div className="truncate text-[10px] text-muted-foreground">{m.role_title}</div>
+        </div>
+        {unreadCount > 0 && (
+          <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] text-primary-foreground">
+            {unreadCount}
+          </span>
+        )}
+      </button>
+    );
+  };
 
 
   return (
@@ -77,6 +161,11 @@ export function ChatPanel({ open, onOpenChange }: Props) {
               </TabsTrigger>
               <TabsTrigger value="direct" className="gap-2">
                 <Users className="h-4 w-4" /> Privado
+                {onlineMembers.length > 0 && (
+                  <span className="ml-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-green-500/20 px-1 text-[10px] font-semibold text-green-600 dark:text-green-400">
+                    {onlineMembers.length}
+                  </span>
+                )}
               </TabsTrigger>
             </TabsList>
           </div>
@@ -109,45 +198,22 @@ export function ChatPanel({ open, onOpenChange }: Props) {
                 </div>
               </div>
               <div className="flex-1 overflow-y-auto">
-                {filteredMembers.map((m) => {
-                  const online = !!presence?.[m.user_id]?.is_online;
-                  const unreadCount = unreadByOther.get(m.user_id) ?? 0;
-                  const active = activeOther === m.user_id;
-                  return (
-                    <button
-                      key={m.user_id}
-                      onClick={() => openDirect(m.user_id)}
-                      className={cn(
-                        "flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent/50",
-                        active && "bg-accent"
-                      )}
-                    >
-                      <div className="relative">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={m.avatar_url ?? undefined} />
-                          <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
-                            {m.display_name.split(" ").slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("")}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span
-                          className={cn(
-                            "absolute bottom-0 right-0 h-2 w-2 rounded-full border border-background",
-                            online ? "bg-green-500" : "bg-muted-foreground/40"
-                          )}
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="truncate font-medium">{m.display_name}</div>
-                        <div className="truncate text-[10px] text-muted-foreground">{m.role_title}</div>
-                      </div>
-                      {unreadCount > 0 && (
-                        <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] text-primary-foreground">
-                          {unreadCount}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
+                <div className="px-3 pt-3 pb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                  Online <span className="text-muted-foreground/60">({onlineMembers.length})</span>
+                </div>
+                {onlineMembers.length > 0 ? (
+                  onlineMembers.map(renderMemberRow)
+                ) : (
+                  <div className="px-3 py-2 text-[11px] text-muted-foreground/70 italic">Ninguém online no momento</div>
+                )}
+
+                <div className="px-3 pt-4 pb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
+                  Offline <span className="text-muted-foreground/60">({offlineMembers.length})</span>
+                </div>
+                {offlineMembers.map(renderMemberRow)}
+
                 {filteredMembers.length === 0 && (
                   <div className="p-4 text-center text-xs text-muted-foreground">Nenhum colaborador encontrado</div>
                 )}
@@ -173,7 +239,8 @@ export function ChatPanel({ open, onOpenChange }: Props) {
                             </Avatar>
                             <div>
                               <div className="font-semibold leading-tight">{m?.display_name}</div>
-                              <div className="text-[10px] text-muted-foreground">
+                              <div className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                <span className={cn("h-1.5 w-1.5 rounded-full", online ? "bg-green-500" : "bg-muted-foreground/40")} />
                                 {online ? "Online" : "Offline"}
                               </div>
                             </div>
@@ -191,4 +258,3 @@ export function ChatPanel({ open, onOpenChange }: Props) {
     </Sheet>
   );
 }
-

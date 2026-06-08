@@ -1,11 +1,29 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { MessageCircle } from "lucide-react";
 import { useTotalUnread } from "./hooks/useChatUnread";
+import { useChatNotifier } from "./hooks/useChatNotifier";
 import { ChatPanel } from "./ChatPanel";
 
 export function ChatBellButton() {
   const [open, setOpen] = useState(false);
+  const [initialConv, setInitialConv] = useState<string | null>(null);
   const total = useTotalUnread();
+
+  useChatNotifier((conversationId) => {
+    setInitialConv(conversationId);
+    setOpen(true);
+  });
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { conversationId?: string } | undefined;
+      if (detail?.conversationId) setInitialConv(detail.conversationId);
+      setOpen(true);
+    };
+    window.addEventListener("uau:open-chat", handler);
+    return () => window.removeEventListener("uau:open-chat", handler);
+  }, []);
+
   return (
     <>
       <button
@@ -20,7 +38,7 @@ export function ChatBellButton() {
           </span>
         )}
       </button>
-      <ChatPanel open={open} onOpenChange={setOpen} />
+      <ChatPanel open={open} onOpenChange={setOpen} initialConversationId={initialConv} />
     </>
   );
 }

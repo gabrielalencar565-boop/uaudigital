@@ -16,30 +16,35 @@ export function useChatPresence() {
   // Heartbeat
   useEffect(() => {
     if (!user) return;
-    const ping = async () => {
+    const ping = async (online = true) => {
       await supabase
         .from("chat_presence")
         .upsert(
-          { user_id: user.id, is_online: true, last_seen_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+          { user_id: user.id, is_online: online, last_seen_at: new Date().toISOString(), updated_at: new Date().toISOString() },
           { onConflict: "user_id" }
         )
         .then(() => {}, () => {});
     };
-    ping();
-    const interval = setInterval(ping, 30_000);
+    ping(!document.hidden);
+    const interval = setInterval(() => ping(!document.hidden), 30_000);
+    const onVisibility = () => ping(!document.hidden);
     const onUnload = () => {
       navigator.sendBeacon?.(
-        // best-effort offline marker; ignore errors
         `${(import.meta as any).env.VITE_SUPABASE_URL}/rest/v1/chat_presence?user_id=eq.${user.id}`,
         new Blob([JSON.stringify({ is_online: false, last_seen_at: new Date().toISOString() })], { type: "application/json" })
       );
     };
+    document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("beforeunload", onUnload);
+    window.addEventListener("pagehide", onUnload);
     return () => {
       clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("beforeunload", onUnload);
+      window.removeEventListener("pagehide", onUnload);
     };
   }, [user]);
+
 
   // Subscribe to presence updates
   useEffect(() => {

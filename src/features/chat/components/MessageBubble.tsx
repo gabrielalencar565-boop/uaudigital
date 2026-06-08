@@ -1,11 +1,22 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Pin, Reply, Trash2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { AttachmentView } from "./AttachmentView";
 import { deleteChatMessage, togglePin } from "../chat-api";
 import type { ChatMessage, TeamMemberLite } from "../types";
+
 
 interface Props {
   message: ChatMessage;
@@ -23,12 +34,14 @@ function formatTime(iso: string) {
 }
 
 export function MessageBubble({ message, isOwn, isAdmin, isGeneral, sender, replyTo, onReply, showAvatar }: Props) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const initials = useMemo(() => {
     const n = sender?.display_name ?? "?";
     return n.split(" ").slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("");
   }, [sender]);
 
   const canModerate = isOwn || (isAdmin && isGeneral);
+
 
   return (
     <div className={cn("group flex gap-2", isOwn ? "flex-row-reverse" : "flex-row")}>
@@ -91,7 +104,7 @@ export function MessageBubble({ message, isOwn, isAdmin, isGeneral, sender, repl
         {!message.is_deleted && (
           <div
             className={cn(
-              "mt-1 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition",
+              "mt-1 flex items-center gap-0.5 transition md:opacity-0 md:group-hover:opacity-100",
               isOwn ? "flex-row-reverse" : "flex-row"
             )}
           >
@@ -115,11 +128,7 @@ export function MessageBubble({ message, isOwn, isAdmin, isGeneral, sender, repl
                 size="icon"
                 className="h-6 w-6 text-destructive"
                 title="Remover"
-                onClick={() => {
-                  if (confirm("Remover esta mensagem?")) {
-                    deleteChatMessage(message.id).then(() => {}, () => {});
-                  }
-                }}
+                onClick={() => setConfirmDelete(true)}
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
@@ -127,6 +136,29 @@ export function MessageBubble({ message, isOwn, isAdmin, isGeneral, sender, repl
           </div>
         )}
       </div>
+
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover mensagem?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. A mensagem será marcada como removida para todos os participantes.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                deleteChatMessage(message.id).then(() => {}, () => {});
+                setConfirmDelete(false);
+              }}
+            >
+              Remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
