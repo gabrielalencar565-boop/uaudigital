@@ -359,10 +359,32 @@ export function useTeamActivity() {
           }
 
           const isSubtask = !!row.parent_task_id;
-          const type: ActivityType = isSubtask ? "subtask_completed" : "task_completed";
-          const dedupeKey = row.id ?? `${row.assignee_id}|${row.title}`;
-          const openTaskId = isSubtask ? row.parent_task_id : row.id;
-          maybeShow(dedupeKey, type, name, avatarUrl, row.title ?? "Tarefa", openTaskId);
+
+          // Para subtarefas: notifica usando o título e o id da TAREFA PAI.
+          // Assim várias subtarefas concluídas em sequência colapsam em uma
+          // única notificação (dedup pelo id da pai) e o nome exibido é o da
+          // tarefa principal — não da subtarefa.
+          let displayTitle: string = row.title ?? "Tarefa";
+          let openTaskId: string = row.id;
+          let dedupeKey: string = row.id ?? `${row.assignee_id}|${row.title}`;
+          if (isSubtask) {
+            openTaskId = row.parent_task_id;
+            dedupeKey = row.parent_task_id;
+            // Também respeita supressão local pela pai
+            if (isRecentlyMine(row.parent_task_id)) return;
+            try {
+              const { data: parent } = await supabase
+                .from("pm_tasks")
+                .select("title")
+                .eq("id", row.parent_task_id)
+                .maybeSingle();
+              if (parent?.title) displayTitle = parent.title;
+            } catch {
+              /* keep subtask title as fallback */
+            }
+          }
+
+          maybeShow(dedupeKey, "task_completed", name, avatarUrl, displayTitle, openTaskId);
         },
       )
       .subscribe();
