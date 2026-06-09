@@ -250,7 +250,7 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
 
           {/* CENTER: Task detail */}
           <div className="flex-1 overflow-y-auto min-h-0">
-            <TaskContentView task={currentTask} childTasks={childTasks} attachments={attachments} membersMap={membersMap} members={members} isAdmin={isAdmin} onSelectSubtask={handleSelectSubtask} activeSubtaskId={null} onClose={handleClose} clientsMap={clientsMap} allTags={allTags} parentStageCurrent={isSubtaskView ? resolvedRootTask.stage_current : undefined} globalTags={globalTagsQ.data ?? []} onEditTask={(taskId) => setTaskStack(prev => [...prev, taskId])} />
+            <TaskContentView task={currentTask} parentTask={resolvedRootTask} childTasks={childTasks} attachments={attachments} membersMap={membersMap} members={members} isAdmin={isAdmin} onSelectSubtask={handleSelectSubtask} activeSubtaskId={null} onClose={handleClose} clientsMap={clientsMap} allTags={allTags} parentStageCurrent={isSubtaskView ? resolvedRootTask.stage_current : undefined} globalTags={globalTagsQ.data ?? []} onEditTask={(taskId) => setTaskStack(prev => [...prev, taskId])} />
           </div>
 
           {/* RIGHT: Comments sidebar (hidden on mobile) */}
@@ -360,8 +360,8 @@ function StageCircle({ stageKey, size = "md" }: { stageKey: string; size?: "xs" 
 
 // ─── Task Content View ───
 
-function TaskContentView({ task, childTasks, attachments, membersMap, members, isAdmin, onSelectSubtask, activeSubtaskId, onClose, clientsMap, allTags, parentStageCurrent, globalTags, onEditTask }: {
-  task: PmTask; childTasks: PmTask[]; attachments: any[];
+function TaskContentView({ task, parentTask, childTasks, attachments, membersMap, members, isAdmin, onSelectSubtask, activeSubtaskId, onClose, clientsMap, allTags, parentStageCurrent, globalTags, onEditTask }: {
+  task: PmTask; parentTask: PmTask; childTasks: PmTask[]; attachments: any[];
   membersMap: Record<string, { name: string; avatar?: string }>; members: { id: string; name: string }[];
   isAdmin: boolean; onSelectSubtask: (sub: PmTask) => void; activeSubtaskId: string | null;
   onClose: () => void; clientsMap: Record<string, string>; allTags: string[];
@@ -465,11 +465,9 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
 
   const notifyTaskCompletion = useCallback((sourceTask: PmTask = task) => {
     const parentId = sourceTask.parent_task_id ?? sourceTask.id;
-    const parent = sourceTask.parent_task_id
-      ? (queryClient.getQueryData<PmTask[]>(["pm_tasks"]) ?? []).find(t => t.id === sourceTask.parent_task_id)
-      : null;
+    const parent = sourceTask.parent_task_id ? parentTask : null;
     broadcastTeamActivity("task_completed", parent?.title ?? sourceTask.title, parentId, parentId, sourceTask.id);
-  }, [queryClient, task]);
+  }, [parentTask, task]);
 
   const invalidatePmTaskQueries = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
