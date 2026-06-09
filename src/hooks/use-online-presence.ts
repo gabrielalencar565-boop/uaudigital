@@ -115,7 +115,7 @@ export function useOnlinePresence() {
             },
           },
           h("div", {
-            className: "absolute -inset-8 opacity-90",
+            className: "absolute -inset-8 opacity-90 pointer-events-none",
             style: {
               background:
                 "linear-gradient(135deg, #4C1D95 0%, #6D28D9 25%, #7C3AED 50%, #5B21B6 75%, #4C1D95 100%)",
@@ -124,7 +124,7 @@ export function useOnlinePresence() {
             },
           }),
           h("div", {
-            className: "absolute -inset-12 opacity-60",
+            className: "absolute -inset-12 opacity-60 pointer-events-none",
             style: {
               background:
                 "radial-gradient(ellipse 70% 60% at 25% 35%, #8B5CF6 0%, transparent 70%), radial-gradient(ellipse 55% 65% at 75% 65%, #5B21B6 0%, transparent 65%)",
@@ -132,7 +132,7 @@ export function useOnlinePresence() {
             },
           }),
           h("div", {
-            className: "absolute -inset-16 opacity-50",
+            className: "absolute -inset-16 opacity-50 pointer-events-none",
             style: {
               background:
                 "radial-gradient(circle 280px at 20% 70%, #7C3AED 0%, transparent 60%), radial-gradient(circle 220px at 80% 25%, #6D28D9 0%, transparent 55%)",
@@ -141,7 +141,7 @@ export function useOnlinePresence() {
             },
           }),
           h("div", {
-            className: "absolute inset-0 opacity-[0.07]",
+            className: "absolute inset-0 opacity-[0.07] pointer-events-none",
             style: {
               backgroundImage:
                 "linear-gradient(rgba(255,255,255,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.4) 1px, transparent 1px)",
