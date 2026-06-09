@@ -668,7 +668,9 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
             priority: task.priority,
             project_id: task.project_id ?? null,
             tags: task.tags ?? [],
-            is_extra_demand: task.is_extra_demand,
+            // Avanço de etapa via fluxo nunca herda is_extra_demand do origem
+            // (workflow padrão é sempre não-extra).
+            is_extra_demand: false,
             status_global: "backlog",
             post_type: resolvedPostType ?? null,
             origin_task_id: originId,
