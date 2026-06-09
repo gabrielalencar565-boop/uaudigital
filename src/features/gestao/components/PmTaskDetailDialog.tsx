@@ -463,6 +463,14 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     } catch (_) { /* ignore */ }
   };
 
+  const notifyTaskCompletion = useCallback((sourceTask: PmTask = task) => {
+    const parentId = sourceTask.parent_task_id ?? sourceTask.id;
+    const parent = sourceTask.parent_task_id
+      ? (queryClient.getQueryData<PmTask[]>(["pm_tasks"]) ?? []).find(t => t.id === sourceTask.parent_task_id)
+      : null;
+    broadcastTeamActivity("task_completed", parent?.title ?? sourceTask.title, parentId, parentId, sourceTask.id);
+  }, [queryClient, task]);
+
   const invalidatePmTaskQueries = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
     queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
