@@ -1131,8 +1131,12 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     }
 
     // ═══ MANUAL DESIGN/VÍDEO TASKS: standalone — only workflow-generated items advance to Revisão ═══
+    // Heurística: tarefa criada manualmente é "flat" (sem subtarefas). Splits do
+    // Planejamento sempre carregam as subtarefas (posts/peças) — então se houver
+    // subtarefas, é fluxo e deve avançar normalmente, mesmo sem origin_task_id.
     const isStandaloneProductionTask = !task.parent_task_id
       && !task.origin_task_id
+      && childTasks.length === 0
       && (completedStage === "design" || completedStage === "edicao_videos");
     if (isStandaloneProductionTask) {
       const sb = supabase as any;
