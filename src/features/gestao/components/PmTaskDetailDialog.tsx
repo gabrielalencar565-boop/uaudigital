@@ -1035,7 +1035,7 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
   const handleConcluido = async () => {
     if (isDone) return;
     const completedStage = task.stage_current;
-    broadcastTeamActivity("task_completed", task.title, task.id);
+    notifyTaskCompletion();
 
     // ═══ CAPTAÇÃO: just mark as done, no stage advancement ═══
     if (completedStage === "captacao") {
