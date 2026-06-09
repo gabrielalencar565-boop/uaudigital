@@ -668,7 +668,9 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
             priority: task.priority,
             project_id: task.project_id ?? null,
             tags: task.tags ?? [],
-            is_extra_demand: task.is_extra_demand,
+            // Avanço de etapa via fluxo nunca herda is_extra_demand do origem
+            // (workflow padrão é sempre não-extra).
+            is_extra_demand: false,
             status_global: "backlog",
             post_type: resolvedPostType ?? null,
             origin_task_id: originId,
@@ -939,7 +941,10 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       priority: task.priority,
       project_id: task.project_id ?? undefined,
       tags: task.tags ?? [],
-      is_extra_demand: task.is_extra_demand,
+      // Tarefas geradas pelo split do fluxo (Design/Vídeo após Revisão) nunca
+      // são "extra demand" — pertencem ao workflow padrão mesmo que o
+      // Planejamento de origem tenha sido marcado como extra por engano.
+      is_extra_demand: false,
       status_global: "backlog",
       post_type: postType,
       origin_task_id: originId,
