@@ -1907,7 +1907,10 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
                         <button
                           key={p.key}
                           className={cn("flex items-center gap-3 w-full px-3 py-2 rounded text-sm hover:bg-accent transition", isSelected && "bg-accent")}
-                          onClick={() => updateTask.mutate({ id: task.id, periodic_stage_key: p.key as any, stage_current: "entrega" as any, status_global: "concluido" as any })}
+                          onClick={() => {
+                            notifyTaskCompletion();
+                            updateTask.mutate({ id: task.id, periodic_stage_key: p.key as any, stage_current: "entrega" as any, status_global: "concluido" as any });
+                          }}
                         >
                           <span
                             className={cn("h-5 w-5 rounded-full flex items-center justify-center shrink-0", swatch ? swatch.bg : "bg-primary/20")}
@@ -2016,6 +2019,7 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
                   <RotateCcw className="h-3.5 w-3.5" /> {resolvedTaskPostType === "video" ? "ALT/VDO" : resolvedTaskPostType === "design" ? "ALT/DSG" : resolvedTaskPostType === "planejamento" ? "ALT/PLAN" : "Em Alteração"}
                 </div>
                 <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={async () => {
+                  notifyTaskCompletion();
                   updateTask.mutate({ id: task.id, status_global: "concluido" });
                   const { data: { user: u } } = await supabase.auth.getUser();
                    if (u) syncStage.mutate({ pmTaskId: task.id, completedStage: task.stage_current, userId: u.id });
@@ -2027,6 +2031,7 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
             ) : (
               <>
                 <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={async () => {
+                  notifyTaskCompletion();
                   updateTask.mutate({ id: task.id, status_global: "concluido" });
                   const { data: { user: u } } = await supabase.auth.getUser();
                   if (u) syncStage.mutate({ pmTaskId: task.id, completedStage: task.stage_current, userId: u.id });
