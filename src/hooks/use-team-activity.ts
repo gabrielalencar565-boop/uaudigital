@@ -18,8 +18,10 @@ type ActivityPayload = {
   task_title: string;
   /** Id used for navigation when the toast is clicked (parent task for subtasks). */
   task_id?: string;
+  /** Actual row that changed. For subtasks, this is the child id while task_id is the parent. */
+  source_task_id?: string;
   /** Stable id used only for deduplication — defaults to task_id. For subtasks
-   *  pass the subtask id so different subtasks of the same parent don't collide. */
+   *  use the parent id so a parent-with-children only shows one toast. */
   dedupe_id?: string;
 };
 
@@ -50,6 +52,7 @@ export async function broadcastTeamActivity(
   taskTitle: string,
   taskId?: string,
   dedupeId?: string,
+  sourceTaskId?: string,
 ) {
   if (!sender || !sender.user_id) return;
   const payload: ActivityPayload = {
@@ -59,12 +62,12 @@ export async function broadcastTeamActivity(
     avatar_url: sender.avatar_url,
     task_title: taskTitle,
     task_id: taskId,
+    source_task_id: sourceTaskId,
     dedupe_id: dedupeId ?? taskId,
   };
   // Also remember locally so the pg_changes fallback doesn't re-toast my own action.
-  // Use the subtask/dedupe id when present so the pg event for the subtask row is suppressed.
-  const localKey = dedupeId ?? taskId;
-  if (localKey) markLocalCompletion(localKey);
+  // Mark the parent, dedupe id and changed row id so explicit broadcasts + DB fallback collapse.
+  [taskId, dedupeId, sourceTaskId].filter(Boolean).forEach((key) => markLocalCompletion(key as string));
   if (!sender.channel || !sender.subscribed) {
     sender.pending.push(payload);
     return;
@@ -335,9 +338,28 @@ export function useTeamActivity() {
           // Ignore stale events from before this session
           const ts = row.updated_at ? new Date(row.updated_at).getTime() : Date.now();
           if (ts < sessionStart) return;
-          // Skip my own action (either as assignee or just-completed locally)
-          if (row.id && isRecentlyMine(row.id)) return;
-          if (row.assignee_id === user.id) return;
+          const isSubtask = !!row.parent_task_id;
+          let activityTaskId = isSubtask ? row.parent_task_id : row.id;
+          let activityTitle = row.title ?? "Tarefa";
+
+          if (isSubtask && row.parent_task_id) {
+            try {
+              const { data: parent } = await supabase
+                .from("pm_tasks")
+                .select("id, title")
+                .eq("id", row.parent_task_id)
+                .maybeSingle();
+              if (parent) {
+                activityTaskId = parent.id;
+                activityTitle = parent.title ?? activityTitle;
+              }
+            } catch {
+              /* ignore */
+            }
+          }
+
+          // Skip my own action when it was already sent through the explicit broadcast path.
+          if ((row.id && isRecentlyMine(row.id)) || (activityTaskId && isRecentlyMine(activityTaskId))) return;
 
           // Resolve who completed (fallback to assignee_id)
           let name = "Alguém";
@@ -358,33 +380,8 @@ export function useTeamActivity() {
             }
           }
 
-          const isSubtask = !!row.parent_task_id;
-
-          // Para subtarefas: notifica usando o título e o id da TAREFA PAI.
-          // Assim várias subtarefas concluídas em sequência colapsam em uma
-          // única notificação (dedup pelo id da pai) e o nome exibido é o da
-          // tarefa principal — não da subtarefa.
-          let displayTitle: string = row.title ?? "Tarefa";
-          let openTaskId: string = row.id;
-          let dedupeKey: string = row.id ?? `${row.assignee_id}|${row.title}`;
-          if (isSubtask) {
-            openTaskId = row.parent_task_id;
-            dedupeKey = row.parent_task_id;
-            // Também respeita supressão local pela pai
-            if (isRecentlyMine(row.parent_task_id)) return;
-            try {
-              const { data: parent } = await supabase
-                .from("pm_tasks")
-                .select("title")
-                .eq("id", row.parent_task_id)
-                .maybeSingle();
-              if (parent?.title) displayTitle = parent.title;
-            } catch {
-              /* keep subtask title as fallback */
-            }
-          }
-
-          maybeShow(dedupeKey, "task_completed", name, avatarUrl, displayTitle, openTaskId);
+          const dedupeKey = activityTaskId ?? row.id ?? `${row.assignee_id}|${activityTitle}`;
+          maybeShow(dedupeKey, "task_completed", name, avatarUrl, activityTitle, activityTaskId);
         },
       )
       .subscribe();

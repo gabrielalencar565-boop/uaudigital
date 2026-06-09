@@ -250,7 +250,7 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
 
           {/* CENTER: Task detail */}
           <div className="flex-1 overflow-y-auto min-h-0">
-            <TaskContentView task={currentTask} childTasks={childTasks} attachments={attachments} membersMap={membersMap} members={members} isAdmin={isAdmin} onSelectSubtask={handleSelectSubtask} activeSubtaskId={null} onClose={handleClose} clientsMap={clientsMap} allTags={allTags} parentStageCurrent={isSubtaskView ? resolvedRootTask.stage_current : undefined} globalTags={globalTagsQ.data ?? []} onEditTask={(taskId) => setTaskStack(prev => [...prev, taskId])} />
+            <TaskContentView task={currentTask} parentTask={resolvedRootTask} childTasks={childTasks} attachments={attachments} membersMap={membersMap} members={members} isAdmin={isAdmin} onSelectSubtask={handleSelectSubtask} activeSubtaskId={null} onClose={handleClose} clientsMap={clientsMap} allTags={allTags} parentStageCurrent={isSubtaskView ? resolvedRootTask.stage_current : undefined} globalTags={globalTagsQ.data ?? []} onEditTask={(taskId) => setTaskStack(prev => [...prev, taskId])} />
           </div>
 
           {/* RIGHT: Comments sidebar (hidden on mobile) */}
@@ -360,8 +360,8 @@ function StageCircle({ stageKey, size = "md" }: { stageKey: string; size?: "xs" 
 
 // ─── Task Content View ───
 
-function TaskContentView({ task, childTasks, attachments, membersMap, members, isAdmin, onSelectSubtask, activeSubtaskId, onClose, clientsMap, allTags, parentStageCurrent, globalTags, onEditTask }: {
-  task: PmTask; childTasks: PmTask[]; attachments: any[];
+function TaskContentView({ task, parentTask, childTasks, attachments, membersMap, members, isAdmin, onSelectSubtask, activeSubtaskId, onClose, clientsMap, allTags, parentStageCurrent, globalTags, onEditTask }: {
+  task: PmTask; parentTask: PmTask; childTasks: PmTask[]; attachments: any[];
   membersMap: Record<string, { name: string; avatar?: string }>; members: { id: string; name: string }[];
   isAdmin: boolean; onSelectSubtask: (sub: PmTask) => void; activeSubtaskId: string | null;
   onClose: () => void; clientsMap: Record<string, string>; allTags: string[];
@@ -462,6 +462,12 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       });
     } catch (_) { /* ignore */ }
   };
+
+  const notifyTaskCompletion = useCallback((sourceTask: PmTask = task) => {
+    const parentId = sourceTask.parent_task_id ?? sourceTask.id;
+    const parent = sourceTask.parent_task_id ? parentTask : null;
+    broadcastTeamActivity("task_completed", parent?.title ?? sourceTask.title, parentId, parentId, sourceTask.id);
+  }, [parentTask, task]);
 
   const invalidatePmTaskQueries = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
@@ -1029,7 +1035,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
   const handleConcluido = async () => {
     if (isDone) return;
     const completedStage = task.stage_current;
-    broadcastTeamActivity("task_completed", task.title, task.id);
+    notifyTaskCompletion();
 
     // ═══ CAPTAÇÃO: just mark as done, no stage advancement ═══
     if (completedStage === "captacao") {
@@ -1901,7 +1907,10 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                         <button
                           key={p.key}
                           className={cn("flex items-center gap-3 w-full px-3 py-2 rounded text-sm hover:bg-accent transition", isSelected && "bg-accent")}
-                          onClick={() => updateTask.mutate({ id: task.id, periodic_stage_key: p.key as any, stage_current: "entrega" as any, status_global: "concluido" as any })}
+                          onClick={() => {
+                            notifyTaskCompletion();
+                            updateTask.mutate({ id: task.id, periodic_stage_key: p.key as any, stage_current: "entrega" as any, status_global: "concluido" as any });
+                          }}
                         >
                           <span
                             className={cn("h-5 w-5 rounded-full flex items-center justify-center shrink-0", swatch ? swatch.bg : "bg-primary/20")}
@@ -2010,6 +2019,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
                   <RotateCcw className="h-3.5 w-3.5" /> {resolvedTaskPostType === "video" ? "ALT/VDO" : resolvedTaskPostType === "design" ? "ALT/DSG" : resolvedTaskPostType === "planejamento" ? "ALT/PLAN" : "Em Alteração"}
                 </div>
                 <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={async () => {
+                  notifyTaskCompletion();
                   updateTask.mutate({ id: task.id, status_global: "concluido" });
                   const { data: { user: u } } = await supabase.auth.getUser();
                    if (u) syncStage.mutate({ pmTaskId: task.id, completedStage: task.stage_current, userId: u.id });
@@ -2021,6 +2031,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
             ) : (
               <>
                 <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={async () => {
+                  notifyTaskCompletion();
                   updateTask.mutate({ id: task.id, status_global: "concluido" });
                   const { data: { user: u } } = await supabase.auth.getUser();
                   if (u) syncStage.mutate({ pmTaskId: task.id, completedStage: task.stage_current, userId: u.id });
