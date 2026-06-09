@@ -359,13 +359,10 @@ export function useTeamActivity() {
           }
 
           const isSubtask = !!row.parent_task_id;
-          // Não notifica subtarefas concluídas — só a tarefa pai gera toast
-          // para o time. Isso evita poluição quando muitas subtarefas são
-          // marcadas em sequência.
-          if (isSubtask) return;
-          const type: ActivityType = "task_completed";
+          const type: ActivityType = isSubtask ? "subtask_completed" : "task_completed";
           const dedupeKey = row.id ?? `${row.assignee_id}|${row.title}`;
-          maybeShow(dedupeKey, type, name, avatarUrl, row.title ?? "Tarefa", row.id);
+          const openTaskId = isSubtask ? row.parent_task_id : row.id;
+          maybeShow(dedupeKey, type, name, avatarUrl, row.title ?? "Tarefa", openTaskId);
         },
       )
       .subscribe();

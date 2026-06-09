@@ -174,8 +174,11 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
     } else {
       updateTask.mutate({ id: sub.id, status_global: "concluido" as any });
       toast.success("Subtarefa concluída!");
-      // Não notifica outros usuários ao concluir subtarefas — apenas a tarefa
-      // pai gera notificação para o time quando é finalizada.
+      // Notifica o time usando o título da tarefa pai (não da subtarefa) e
+      // deduplica pelo id da pai — várias subtarefas concluídas em sequência
+      // viram apenas UMA notificação no time.
+      const { broadcastTeamActivity } = await import("@/hooks/use-team-activity");
+      broadcastTeamActivity("task_completed", parentTask.title, parentTask.id, parentTask.id);
     }
   };
 

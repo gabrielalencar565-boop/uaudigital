@@ -668,9 +668,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
             priority: task.priority,
             project_id: task.project_id ?? null,
             tags: task.tags ?? [],
-            // Avanço de etapa via fluxo nunca herda is_extra_demand do origem
-            // (workflow padrão é sempre não-extra).
-            is_extra_demand: false,
+            is_extra_demand: task.is_extra_demand,
             status_global: "backlog",
             post_type: resolvedPostType ?? null,
             origin_task_id: originId,
@@ -941,10 +939,7 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
       priority: task.priority,
       project_id: task.project_id ?? undefined,
       tags: task.tags ?? [],
-      // Tarefas geradas pelo split do fluxo (Design/Vídeo após Revisão) nunca
-      // são "extra demand" — pertencem ao workflow padrão mesmo que o
-      // Planejamento de origem tenha sido marcado como extra por engano.
-      is_extra_demand: false,
+      is_extra_demand: task.is_extra_demand,
       status_global: "backlog",
       post_type: postType,
       origin_task_id: originId,
@@ -1136,12 +1131,8 @@ function TaskContentView({ task, childTasks, attachments, membersMap, members, i
     }
 
     // ═══ MANUAL DESIGN/VÍDEO TASKS: standalone — only workflow-generated items advance to Revisão ═══
-    // Heurística: tarefa criada manualmente é "flat" (sem subtarefas). Splits do
-    // Planejamento sempre carregam as subtarefas (posts/peças) — então se houver
-    // subtarefas, é fluxo e deve avançar normalmente, mesmo sem origin_task_id.
     const isStandaloneProductionTask = !task.parent_task_id
       && !task.origin_task_id
-      && childTasks.length === 0
       && (completedStage === "design" || completedStage === "edicao_videos");
     if (isStandaloneProductionTask) {
       const sb = supabase as any;
