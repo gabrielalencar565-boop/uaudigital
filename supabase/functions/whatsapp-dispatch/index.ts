@@ -102,10 +102,9 @@ async function requireAdmin(req: Request): Promise<{ userId: string } | Response
   const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     global: { headers: { Authorization: authHeader } },
   });
-  const token = authHeader.replace("Bearer ", "");
-  const { data, error } = await client.auth.getClaims(token);
-  if (error || !data?.claims?.sub) return json({ error: "unauthorized" }, 401);
-  const userId = data.claims.sub as string;
+  const { data, error } = await client.auth.getUser();
+  if (error || !data?.user?.id) return json({ error: "unauthorized" }, 401);
+  const userId = data.user.id;
   const { data: isAdmin } = await admin.rpc("has_role", { _user_id: userId, _role: "admin" });
   if (!isAdmin) return json({ error: "forbidden" }, 403);
   return { userId };
