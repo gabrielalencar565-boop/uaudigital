@@ -82,17 +82,19 @@ export function AdminWhatsAppPanel() {
   const usersQ = useQuery({
     queryKey: ["whatsapp_users_admin"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("user_whatsapp_preferences" as any)
-        .select("user_id, phone_e164, enabled, notify_new_task, notify_deadline, notify_company, notify_xp_rank, updated_at");
-      const ids = (data ?? []).map((r: any) => r.user_id);
-      if (ids.length === 0) return [] as any[];
       const { data: tm } = await supabase
         .from("team_members")
         .select("user_id, display_name, role_title")
-        .in("user_id", ids);
-      const byId = new Map((tm ?? []).map((t: any) => [t.user_id, t]));
-      return (data ?? []).map((r: any) => ({ ...r, ...(byId.get(r.user_id) || {}) }));
+        .order("display_name");
+      const ids = (tm ?? []).map((t: any) => t.user_id);
+      const { data: prefs } = ids.length
+        ? await supabase
+            .from("user_whatsapp_preferences" as any)
+            .select("user_id, phone_e164, enabled, notify_new_task, notify_deadline, notify_late, notify_company, notify_xp_rank, updated_at")
+            .in("user_id", ids)
+        : { data: [] as any[] };
+      const byId = new Map((prefs ?? []).map((p: any) => [p.user_id, p]));
+      return (tm ?? []).map((t: any) => ({ ...t, ...(byId.get(t.user_id) || {}) }));
     },
   });
 
