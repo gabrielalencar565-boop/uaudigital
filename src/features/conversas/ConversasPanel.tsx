@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Search, Send, Copy, Check, RefreshCw, MessagesSquare } from "lucide-react";
+import { Search, Send, Copy, Check, RefreshCw, MessagesSquare, Link2, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 
 type Contact = {
@@ -18,9 +20,18 @@ type Contact = {
   origin: "colaborador" | "lead" | "cliente" | "desconhecido";
   status: string;
   user_id: string | null;
+  profile_pic_url: string | null;
   last_message_at: string | null;
   last_message_preview: string | null;
   unread_count: number;
+};
+
+type TeamMember = {
+  user_id: string;
+  display_name: string;
+  role_title: string;
+  avatar_url: string | null;
+  is_active: boolean;
 };
 
 type Message = {
