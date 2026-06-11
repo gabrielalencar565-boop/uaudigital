@@ -289,6 +289,9 @@ export function ConversasPanel() {
             ) : (
               filtered.map((c) => {
                 const active = c.phone_e164 === activePhone;
+                const member = memberFor(c);
+                const name = displayName(c);
+                const avatarSrc = displayAvatar(c);
                 return (
                   <button
                     key={c.id}
@@ -299,13 +302,14 @@ export function ConversasPanel() {
                     )}
                   >
                     <Avatar className="h-9 w-9 shrink-0">
+                      {avatarSrc ? <AvatarImage src={avatarSrc} alt={name} /> : null}
                       <AvatarFallback className="text-[11px] bg-primary/10 text-primary">
-                        {initials(c.name, c.phone_e164)}
+                        {initials(name, c.phone_e164)}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium truncate">{c.name ?? c.phone_e164}</span>
+                        <span className="text-sm font-medium truncate">{name}</span>
                         <span className="ml-auto text-[10px] text-muted-foreground shrink-0">
                           {formatTime(c.last_message_at)}
                         </span>
@@ -320,10 +324,18 @@ export function ConversasPanel() {
                           </span>
                         )}
                       </div>
-                      <div className="mt-1">
-                        <Badge variant="outline" className="text-[9px] py-0 px-1.5 h-4">
+                      <div className="mt-1 flex items-center gap-1">
+                        <Badge
+                          variant={member ? "default" : "outline"}
+                          className="text-[9px] py-0 px-1.5 h-4"
+                        >
                           {originLabel(c.origin)}
                         </Badge>
+                        {member && (
+                          <span className="text-[9px] text-muted-foreground truncate">
+                            · {member.role_title}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </button>
