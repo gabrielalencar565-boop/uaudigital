@@ -217,7 +217,7 @@ export function ConversasPanel() {
       if ((data as any)?.ok === false) throw new Error("Falha no envio");
       setDraft("");
       toast.success("Mensagem enviada");
-      qc.invalidateQueries({ queryKey: ["wa-messages", activeContact.phone_e164] });
+      qc.invalidateQueries({ queryKey: ["wa-messages", activeKey] });
       qc.invalidateQueries({ queryKey: ["wa-contacts"] });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro ao enviar");
@@ -415,7 +415,7 @@ export function ConversasPanel() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => qc.invalidateQueries({ queryKey: ["wa-messages", activeContact.phone_e164] })}
+                  onClick={() => qc.invalidateQueries({ queryKey: ["wa-messages", activeKey] })}
                 >
                   <RefreshCw className="h-3.5 w-3.5" />
                 </Button>
