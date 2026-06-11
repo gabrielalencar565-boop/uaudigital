@@ -290,12 +290,11 @@ export function ConversasPanel() {
               />
             </div>
             <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterKey)}>
-              <TabsList className="grid grid-cols-5 h-8">
+              <TabsList className="grid grid-cols-4 h-8">
                 <TabsTrigger value="all" className="text-[10px] px-1">Todas</TabsTrigger>
                 <TabsTrigger value="unread" className="text-[10px] px-1">Não lidas</TabsTrigger>
                 <TabsTrigger value="colaborador" className="text-[10px] px-1">Equipe</TabsTrigger>
                 <TabsTrigger value="lead" className="text-[10px] px-1">Leads</TabsTrigger>
-                <TabsTrigger value="cliente" className="text-[10px] px-1">Clientes</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
@@ -308,14 +307,16 @@ export function ConversasPanel() {
               </div>
             ) : (
               filtered.map((c) => {
-                const active = c.phone_e164 === activePhone;
+                const key = c.phone_key ?? phoneKey(c.phone_e164);
+                const active = key === activeKey;
                 const member = memberFor(c);
                 const name = displayName(c);
                 const avatarSrc = displayAvatar(c);
                 return (
                   <button
-                    key={c.id}
-                    onClick={() => setActivePhone(c.phone_e164)}
+                    key={key ?? c.id}
+                    onClick={() => setActiveKey(key)}
+                    disabled={!key}
                     className={cn(
                       "w-full flex items-center gap-2 px-3 py-2.5 text-left border-b border-border/40 hover:bg-accent/50 transition",
                       active && "bg-accent",
