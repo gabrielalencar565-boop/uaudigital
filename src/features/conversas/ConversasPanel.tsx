@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 type Contact = {
   id: string;
   phone_e164: string;
+  phone_key: string | null;
   name: string | null;
   origin: "colaborador" | "lead" | "cliente" | "desconhecido";
   status: string;
@@ -37,6 +38,7 @@ type TeamMember = {
 type Message = {
   id: string;
   contact_phone: string;
+  contact_phone_key: string | null;
   direction: "in" | "out";
   body: string | null;
   media_url: string | null;
@@ -47,7 +49,7 @@ type Message = {
   created_at: string;
 };
 
-type FilterKey = "all" | "unread" | "colaborador" | "lead" | "cliente";
+type FilterKey = "all" | "unread" | "colaborador" | "lead";
 
 const PROJECT_REF = (import.meta.env.VITE_SUPABASE_PROJECT_ID as string) || "";
 const WEBHOOK_URL = PROJECT_REF
@@ -73,6 +75,11 @@ function formatStamp(iso: string) {
   return d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
+function phoneKey(phone: string | null | undefined) {
+  const digits = (phone ?? "").replace(/\D/g, "");
+  return digits ? digits.slice(-10) : null;
+}
+
 function originLabel(o: Contact["origin"]) {
   switch (o) {
     case "colaborador": return "Equipe";
@@ -86,7 +93,7 @@ export function ConversasPanel() {
   const qc = useQueryClient();
   const [filter, setFilter] = useState<FilterKey>("all");
   const [search, setSearch] = useState("");
-  const [activePhone, setActivePhone] = useState<string | null>(null);
+  const [activeKey, setActiveKey] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -132,13 +139,13 @@ export function ConversasPanel() {
   });
 
   const messagesQ = useQuery({
-    queryKey: ["wa-messages", activePhone],
-    enabled: !!activePhone,
+    queryKey: ["wa-messages", activeKey],
+    enabled: !!activeKey,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("whatsapp_messages")
         .select("*")
-        .eq("contact_phone", activePhone!)
+        .eq("contact_phone_key", activeKey!)
         .order("created_at", { ascending: true })
         .limit(500);
       if (error) throw error;
@@ -153,8 +160,9 @@ export function ConversasPanel() {
       .on("postgres_changes", { event: "*", schema: "public", table: "whatsapp_messages" }, (payload) => {
         const row = (payload.new ?? payload.old) as Message | undefined;
         qc.invalidateQueries({ queryKey: ["wa-contacts"] });
-        if (row?.contact_phone) {
-          qc.invalidateQueries({ queryKey: ["wa-messages", row.contact_phone] });
+        const key = row?.contact_phone_key ?? phoneKey(row?.contact_phone);
+        if (key) {
+          qc.invalidateQueries({ queryKey: ["wa-messages", key] });
         }
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "whatsapp_contacts" }, () => {
@@ -171,18 +179,18 @@ export function ConversasPanel() {
       if (filter === "unread" && c.unread_count <= 0) return false;
       if (filter === "colaborador" && c.origin !== "colaborador") return false;
       if (filter === "lead" && c.origin !== "lead") return false;
-      if (filter === "cliente" && c.origin !== "cliente") return false;
       if (!q) return true;
       return (
         (c.name ?? "").toLowerCase().includes(q) ||
-        c.phone_e164.toLowerCase().includes(q)
+        c.phone_e164.toLowerCase().includes(q) ||
+        (c.phone_key ?? "").includes(q)
       );
     });
   }, [contacts, filter, search]);
 
   const activeContact = useMemo(
-    () => contacts.find((c) => c.phone_e164 === activePhone) ?? null,
-    [contacts, activePhone],
+    () => contacts.find((c) => (c.phone_key ?? phoneKey(c.phone_e164)) === activeKey) ?? null,
+    [contacts, activeKey],
   );
 
   // Auto-mark as read when opening
