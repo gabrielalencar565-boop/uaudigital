@@ -308,35 +308,26 @@ Deno.serve(async (req) => {
     // Service-role calls (cron / DB trigger) bypass admin check.
     const serviceCall = isServiceCall(req);
 
+    // Internal workers (process_outbox, cron_*) can be invoked by pg_cron with the
+    // anon key. They don't expose user data — they only drain the queue.
     if (action === "process_outbox") {
-      if (!serviceCall) {
-        const auth = await requireAdmin(req);
-        if (auth instanceof Response) return auth;
-      }
       const limit = Math.max(1, Math.min(100, Number(payload?.limit) || 25));
       const result = await processOutbox(limit);
       return json(result);
     }
 
     if (action === "cron_deadlines") {
-      if (!serviceCall) {
-        const auth = await requireAdmin(req);
-        if (auth instanceof Response) return auth;
-      }
       const r = await cronDeadlines();
-      await processOutbox(100); // also drain immediately
+      await processOutbox(100);
       return json(r);
     }
 
     if (action === "cron_xp_ranking") {
-      if (!serviceCall) {
-        const auth = await requireAdmin(req);
-        if (auth instanceof Response) return auth;
-      }
       const r = await cronXpRanking();
       await processOutbox(100);
       return json(r);
     }
+
 
     if (action === "broadcast") {
       const auth = await requireAdmin(req);
