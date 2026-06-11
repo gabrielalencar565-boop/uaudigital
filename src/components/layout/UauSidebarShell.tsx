@@ -2,7 +2,7 @@ import { PropsWithChildren, useEffect, useMemo, useState } from "react";
 import { normalizeAvatarUrl } from "@/lib/avatar-url";
 import {
   CalendarDays, ChevronDown, ClipboardList, DollarSign,
-  Eye, FileSpreadsheet, FolderOpen, Gift, LayoutGrid, Lock, Receipt, Settings, Target, TrendingUp, Trophy,
+  Eye, FileSpreadsheet, FolderOpen, Gift, LayoutGrid, Lock, MessagesSquare, Receipt, Settings, Target, TrendingUp, Trophy,
   UserRound, Users, Workflow, CalendarRange, PieChart, PanelLeftClose, ArrowRightLeft } from
   "lucide-react";
 import { toast } from "sonner";
@@ -47,6 +47,7 @@ export type MainTab =
 "fin_receitas_despesas" |
 "fin_despesas_detalhadas" |
 "fin_lancamentos" |
+"conversas" |
 "configuracoes";
 
 type NavGroup = {
@@ -88,7 +89,8 @@ const NAV: NavEntry[] = [
   { key: "fin_lancamentos", label: "Lançamentos", icon: ArrowRightLeft },
   { key: "metas", label: "Metas", icon: TrendingUp }]
 },
-{ key: "recompensas", label: "Uau XP", icon: Gift }];
+{ key: "recompensas", label: "Uau XP", icon: Gift },
+{ key: "conversas", label: "Conversas", icon: MessagesSquare, adminOnly: true }];
 
 
 

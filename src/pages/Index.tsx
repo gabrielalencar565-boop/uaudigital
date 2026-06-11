@@ -20,6 +20,7 @@ import { GestaoPanel } from "@/features/gestao/GestaoPanel";
 
 import { ProjetosPanel } from "@/features/projetos/ProjetosPanel";
 import { RecompensasPanel } from "@/features/recompensas/RecompensasPanel";
+import { ConversasPanel } from "@/features/conversas/ConversasPanel";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -279,6 +280,7 @@ const Index = () => {
     if (isGestaoTab) return <GestaoPanel forcedView={gestaoView} />;
     if (tab === "visao_geral_projetos") return <ProjetosPanel />;
     if (tab === "configuracoes" && isAdmin) return <AdminContainer onNavigate={(t) => setTab(t as any)} />;
+    if (tab === "conversas" && isAdmin) return <ConversasPanel />;
     if (tab === "financeiro" && isAdmin) return <FinanceiroPanel />;
     if (tab === "fin_clientes" && isAdmin) return <AdminContainer onNavigate={(t) => setTab(t as any)} />;
     if (tab === "fin_receitas_despesas" && isAdmin) return <FinReceitasDespesasTab />;
