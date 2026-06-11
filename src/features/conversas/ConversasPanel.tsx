@@ -90,6 +90,32 @@ export function ConversasPanel() {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [linkOpen, setLinkOpen] = useState(false);
+
+  const teamQ = useQuery({
+    queryKey: ["wa-team-members"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("team_members")
+        .select("user_id,display_name,role_title,avatar_url,is_active")
+        .order("display_name");
+      if (error) throw error;
+      return (data ?? []) as TeamMember[];
+    },
+    staleTime: 60_000,
+  });
+  const teamById = useMemo(() => {
+    const m = new Map<string, TeamMember>();
+    (teamQ.data ?? []).forEach((t) => m.set(t.user_id, t));
+    return m;
+  }, [teamQ.data]);
+
+  const memberFor = (c: Contact | null) =>
+    c?.user_id ? teamById.get(c.user_id) ?? null : null;
+  const displayName = (c: Contact) =>
+    memberFor(c)?.display_name ?? c.name ?? c.phone_e164;
+  const displayAvatar = (c: Contact) =>
+    memberFor(c)?.avatar_url ?? c.profile_pic_url ?? null;
 
   const contactsQ = useQuery({
     queryKey: ["wa-contacts"],
