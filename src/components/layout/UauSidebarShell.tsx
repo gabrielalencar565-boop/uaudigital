@@ -89,7 +89,8 @@ const NAV: NavEntry[] = [
   { key: "fin_lancamentos", label: "Lançamentos", icon: ArrowRightLeft },
   { key: "metas", label: "Metas", icon: TrendingUp }]
 },
-{ key: "recompensas", label: "Uau XP", icon: Gift }];
+{ key: "recompensas", label: "Uau XP", icon: Gift },
+{ key: "conversas", label: "Conversas", icon: MessagesSquare, adminOnly: true }];
 
 
 
