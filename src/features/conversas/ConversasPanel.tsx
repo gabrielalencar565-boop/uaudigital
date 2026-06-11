@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Search, Send, Copy, Check, RefreshCw, MessagesSquare } from "lucide-react";
+import { Search, Send, Copy, Check, RefreshCw, MessagesSquare, Link2, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 
 type Contact = {
@@ -18,9 +20,18 @@ type Contact = {
   origin: "colaborador" | "lead" | "cliente" | "desconhecido";
   status: string;
   user_id: string | null;
+  profile_pic_url: string | null;
   last_message_at: string | null;
   last_message_preview: string | null;
   unread_count: number;
+};
+
+type TeamMember = {
+  user_id: string;
+  display_name: string;
+  role_title: string;
+  avatar_url: string | null;
+  is_active: boolean;
 };
 
 type Message = {
@@ -64,10 +75,10 @@ function formatStamp(iso: string) {
 
 function originLabel(o: Contact["origin"]) {
   switch (o) {
-    case "colaborador": return "Colaborador";
+    case "colaborador": return "Equipe";
     case "lead": return "Lead";
     case "cliente": return "Cliente";
-    default: return "Desconhecido";
+    default: return "Lead";
   }
 }
 
@@ -79,6 +90,32 @@ export function ConversasPanel() {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [linkOpen, setLinkOpen] = useState(false);
+
+  const teamQ = useQuery({
+    queryKey: ["wa-team-members"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("team_members")
+        .select("user_id,display_name,role_title,avatar_url,is_active")
+        .order("display_name");
+      if (error) throw error;
+      return (data ?? []) as TeamMember[];
+    },
+    staleTime: 60_000,
+  });
+  const teamById = useMemo(() => {
+    const m = new Map<string, TeamMember>();
+    (teamQ.data ?? []).forEach((t) => m.set(t.user_id, t));
+    return m;
+  }, [teamQ.data]);
+
+  const memberFor = (c: Contact | null) =>
+    c?.user_id ? teamById.get(c.user_id) ?? null : null;
+  const displayName = (c: Contact) =>
+    memberFor(c)?.display_name ?? c.name ?? c.phone_e164;
+  const displayAvatar = (c: Contact) =>
+    memberFor(c)?.avatar_url ?? c.profile_pic_url ?? null;
 
   const contactsQ = useQuery({
     queryKey: ["wa-contacts"],
@@ -187,6 +224,18 @@ export function ConversasPanel() {
     qc.invalidateQueries({ queryKey: ["wa-contacts"] });
   };
 
+  const linkContact = async (userId: string | null) => {
+    if (!activeContact) return;
+    const { error } = await supabase.rpc("whatsapp_link_contact_to_user" as any, {
+      _phone: activeContact.phone_e164,
+      _user_id: userId,
+    });
+    if (error) { toast.error(error.message); return; }
+    toast.success(userId ? "Contato vinculado" : "Vínculo removido");
+    setLinkOpen(false);
+    qc.invalidateQueries({ queryKey: ["wa-contacts"] });
+  };
+
   const copyWebhook = async () => {
     if (!WEBHOOK_URL) return;
     await navigator.clipboard.writeText(WEBHOOK_URL);
@@ -252,6 +301,9 @@ export function ConversasPanel() {
             ) : (
               filtered.map((c) => {
                 const active = c.phone_e164 === activePhone;
+                const member = memberFor(c);
+                const name = displayName(c);
+                const avatarSrc = displayAvatar(c);
                 return (
                   <button
                     key={c.id}
@@ -262,13 +314,14 @@ export function ConversasPanel() {
                     )}
                   >
                     <Avatar className="h-9 w-9 shrink-0">
+                      {avatarSrc ? <AvatarImage src={avatarSrc} alt={name} /> : null}
                       <AvatarFallback className="text-[11px] bg-primary/10 text-primary">
-                        {initials(c.name, c.phone_e164)}
+                        {initials(name, c.phone_e164)}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium truncate">{c.name ?? c.phone_e164}</span>
+                        <span className="text-sm font-medium truncate">{name}</span>
                         <span className="ml-auto text-[10px] text-muted-foreground shrink-0">
                           {formatTime(c.last_message_at)}
                         </span>
@@ -283,10 +336,18 @@ export function ConversasPanel() {
                           </span>
                         )}
                       </div>
-                      <div className="mt-1">
-                        <Badge variant="outline" className="text-[9px] py-0 px-1.5 h-4">
+                      <div className="mt-1 flex items-center gap-1">
+                        <Badge
+                          variant={member ? "default" : "outline"}
+                          className="text-[9px] py-0 px-1.5 h-4"
+                        >
                           {originLabel(c.origin)}
                         </Badge>
+                        {member && (
+                          <span className="text-[9px] text-muted-foreground truncate">
+                            · {member.role_title}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </button>
@@ -305,19 +366,40 @@ export function ConversasPanel() {
           ) : (
             <>
               <header className="border-b border-border px-4 py-3 flex items-center gap-3">
-                <Avatar className="h-9 w-9">
-                  <AvatarFallback className="text-[11px] bg-primary/10 text-primary">
-                    {initials(activeContact.name, activeContact.phone_e164)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold leading-tight truncate">
-                    {activeContact.name ?? activeContact.phone_e164}
-                  </div>
-                  <div className="text-[11px] text-muted-foreground">
-                    +{activeContact.phone_e164} · {originLabel(activeContact.origin)}
-                  </div>
-                </div>
+                {(() => {
+                  const member = memberFor(activeContact);
+                  const name = displayName(activeContact);
+                  const avatarSrc = displayAvatar(activeContact);
+                  return (
+                    <>
+                      <Avatar className="h-10 w-10">
+                        {avatarSrc ? <AvatarImage src={avatarSrc} alt={name} /> : null}
+                        <AvatarFallback className="text-[11px] bg-primary/10 text-primary">
+                          {initials(name, activeContact.phone_e164)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold leading-tight truncate flex items-center gap-2">
+                          {name}
+                          <Badge
+                            variant={member ? "default" : "outline"}
+                            className="text-[9px] py-0 px-1.5 h-4"
+                          >
+                            {originLabel(activeContact.origin)}
+                          </Badge>
+                        </div>
+                        <div className="text-[11px] text-muted-foreground truncate">
+                          +{activeContact.phone_e164}
+                          {member ? ` · ${member.role_title}` : ""}
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
+                <Button variant="outline" size="sm" onClick={() => setLinkOpen(true)}>
+                  <Link2 className="h-3.5 w-3.5 mr-1" />
+                  {activeContact.user_id ? "Alterar vínculo" : "Vincular contato"}
+                </Button>
                 <Button variant="outline" size="sm" onClick={markAsRead}>
                   <Check className="h-3.5 w-3.5 mr-1" /> Marcar como lida
                 </Button>
@@ -399,6 +481,50 @@ export function ConversasPanel() {
           )}
         </section>
       </div>
+
+      <Dialog open={linkOpen} onOpenChange={setLinkOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Vincular contato a um colaborador</DialogTitle>
+          </DialogHeader>
+          <Command>
+            <CommandInput placeholder="Buscar colaborador..." />
+            <CommandList>
+              <CommandEmpty>Nenhum colaborador encontrado.</CommandEmpty>
+              <CommandGroup heading="Equipe">
+                {(teamQ.data ?? []).filter((m) => m.is_active).map((m) => (
+                  <CommandItem
+                    key={m.user_id}
+                    value={`${m.display_name} ${m.role_title}`}
+                    onSelect={() => linkContact(m.user_id)}
+                    className="gap-2"
+                  >
+                    <Avatar className="h-6 w-6">
+                      {m.avatar_url ? <AvatarImage src={m.avatar_url} alt={m.display_name} /> : null}
+                      <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+                        {initials(m.display_name, "")}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="flex-1 truncate">{m.display_name}</span>
+                    <span className="text-[10px] text-muted-foreground">{m.role_title}</span>
+                    {activeContact?.user_id === m.user_id && <Check className="h-3 w-3" />}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+          <DialogFooter className="flex sm:justify-between gap-2">
+            {activeContact?.user_id && (
+              <Button variant="outline" size="sm" onClick={() => linkContact(null)}>
+                <X className="h-3.5 w-3.5 mr-1" /> Remover vínculo
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" onClick={() => setLinkOpen(false)}>
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

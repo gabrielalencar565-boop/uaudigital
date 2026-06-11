@@ -2464,6 +2464,7 @@ export type Database = {
           name: string | null
           origin: string
           phone_e164: string
+          profile_pic_url: string | null
           status: string
           unread_count: number
           updated_at: string
@@ -2477,6 +2478,7 @@ export type Database = {
           name?: string | null
           origin?: string
           phone_e164: string
+          profile_pic_url?: string | null
           status?: string
           unread_count?: number
           updated_at?: string
@@ -2490,6 +2492,7 @@ export type Database = {
           name?: string | null
           origin?: string
           phone_e164?: string
+          profile_pic_url?: string | null
           status?: string
           unread_count?: number
           updated_at?: string
@@ -2962,6 +2965,10 @@ export type Database = {
           _user_id: string
         }
         Returns: string
+      }
+      whatsapp_link_contact_to_user: {
+        Args: { _phone: string; _user_id: string }
+        Returns: undefined
       }
       xp_apply_monthly_rankings: {
         Args: { _month: number; _year: number }
