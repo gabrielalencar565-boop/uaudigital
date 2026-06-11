@@ -12,6 +12,11 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+function phoneKey(raw: string): string | null {
+  const digits = String(raw ?? "").replace(/\D/g, "");
+  return digits ? digits.slice(-10) : null;
+}
+
 function pickBody(p: any): { body: string | null; media_url: string | null; media_type: string | null } {
   if (typeof p?.text?.message === "string") return { body: p.text.message, media_url: null, media_type: null };
   if (typeof p?.message === "string") return { body: p.message, media_url: null, media_type: null };
@@ -39,6 +44,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true, ignored: "no_phone" }), { headers: corsHeaders });
     }
     const phone = String(phoneRaw).replace(/\D/g, "");
+    const key = phoneKey(phone);
     const fromMe = !!payload.fromMe;
     const senderName: string | null = payload.senderName ?? payload.chatName ?? null;
     const photoUrl: string | null =
@@ -72,18 +78,18 @@ Deno.serve(async (req) => {
       raw: payload,
     });
 
-    if (senderName) {
+    if (key && senderName) {
       await admin
         .from("whatsapp_contacts")
         .update({ name: senderName })
-        .eq("phone_e164", phone)
+        .eq("phone_key", key)
         .is("name", null);
     }
-    if (photoUrl) {
+    if (key && photoUrl) {
       await admin
         .from("whatsapp_contacts")
         .update({ profile_pic_url: photoUrl })
-        .eq("phone_e164", phone);
+        .eq("phone_key", key);
     }
 
     return new Response(JSON.stringify({ ok: true }), {

@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 type Contact = {
   id: string;
   phone_e164: string;
+  phone_key: string | null;
   name: string | null;
   origin: "colaborador" | "lead" | "cliente" | "desconhecido";
   status: string;
@@ -37,6 +38,7 @@ type TeamMember = {
 type Message = {
   id: string;
   contact_phone: string;
+  contact_phone_key: string | null;
   direction: "in" | "out";
   body: string | null;
   media_url: string | null;
@@ -47,7 +49,7 @@ type Message = {
   created_at: string;
 };
 
-type FilterKey = "all" | "unread" | "colaborador" | "lead" | "cliente";
+type FilterKey = "all" | "unread" | "colaborador" | "lead";
 
 const PROJECT_REF = (import.meta.env.VITE_SUPABASE_PROJECT_ID as string) || "";
 const WEBHOOK_URL = PROJECT_REF
@@ -73,11 +75,14 @@ function formatStamp(iso: string) {
   return d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
+function phoneKey(phone: string | null | undefined) {
+  const digits = (phone ?? "").replace(/\D/g, "");
+  return digits ? digits.slice(-10) : null;
+}
+
 function originLabel(o: Contact["origin"]) {
   switch (o) {
     case "colaborador": return "Equipe";
-    case "lead": return "Lead";
-    case "cliente": return "Cliente";
     default: return "Lead";
   }
 }
@@ -86,7 +91,7 @@ export function ConversasPanel() {
   const qc = useQueryClient();
   const [filter, setFilter] = useState<FilterKey>("all");
   const [search, setSearch] = useState("");
-  const [activePhone, setActivePhone] = useState<string | null>(null);
+  const [activeKey, setActiveKey] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -132,13 +137,13 @@ export function ConversasPanel() {
   });
 
   const messagesQ = useQuery({
-    queryKey: ["wa-messages", activePhone],
-    enabled: !!activePhone,
+    queryKey: ["wa-messages", activeKey],
+    enabled: !!activeKey,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("whatsapp_messages")
         .select("*")
-        .eq("contact_phone", activePhone!)
+        .eq("contact_phone_key", activeKey!)
         .order("created_at", { ascending: true })
         .limit(500);
       if (error) throw error;
@@ -153,8 +158,9 @@ export function ConversasPanel() {
       .on("postgres_changes", { event: "*", schema: "public", table: "whatsapp_messages" }, (payload) => {
         const row = (payload.new ?? payload.old) as Message | undefined;
         qc.invalidateQueries({ queryKey: ["wa-contacts"] });
-        if (row?.contact_phone) {
-          qc.invalidateQueries({ queryKey: ["wa-messages", row.contact_phone] });
+        const key = row?.contact_phone_key ?? phoneKey(row?.contact_phone);
+        if (key) {
+          qc.invalidateQueries({ queryKey: ["wa-messages", key] });
         }
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "whatsapp_contacts" }, () => {
@@ -171,18 +177,18 @@ export function ConversasPanel() {
       if (filter === "unread" && c.unread_count <= 0) return false;
       if (filter === "colaborador" && c.origin !== "colaborador") return false;
       if (filter === "lead" && c.origin !== "lead") return false;
-      if (filter === "cliente" && c.origin !== "cliente") return false;
       if (!q) return true;
       return (
         (c.name ?? "").toLowerCase().includes(q) ||
-        c.phone_e164.toLowerCase().includes(q)
+        c.phone_e164.toLowerCase().includes(q) ||
+        (c.phone_key ?? "").includes(q)
       );
     });
   }, [contacts, filter, search]);
 
   const activeContact = useMemo(
-    () => contacts.find((c) => c.phone_e164 === activePhone) ?? null,
-    [contacts, activePhone],
+    () => contacts.find((c) => (c.phone_key ?? phoneKey(c.phone_e164)) === activeKey) ?? null,
+    [contacts, activeKey],
   );
 
   // Auto-mark as read when opening
@@ -209,7 +215,7 @@ export function ConversasPanel() {
       if ((data as any)?.ok === false) throw new Error("Falha no envio");
       setDraft("");
       toast.success("Mensagem enviada");
-      qc.invalidateQueries({ queryKey: ["wa-messages", activeContact.phone_e164] });
+      qc.invalidateQueries({ queryKey: ["wa-messages", activeKey] });
       qc.invalidateQueries({ queryKey: ["wa-contacts"] });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro ao enviar");
@@ -282,12 +288,11 @@ export function ConversasPanel() {
               />
             </div>
             <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterKey)}>
-              <TabsList className="grid grid-cols-5 h-8">
+              <TabsList className="grid grid-cols-4 h-8">
                 <TabsTrigger value="all" className="text-[10px] px-1">Todas</TabsTrigger>
                 <TabsTrigger value="unread" className="text-[10px] px-1">Não lidas</TabsTrigger>
                 <TabsTrigger value="colaborador" className="text-[10px] px-1">Equipe</TabsTrigger>
                 <TabsTrigger value="lead" className="text-[10px] px-1">Leads</TabsTrigger>
-                <TabsTrigger value="cliente" className="text-[10px] px-1">Clientes</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
@@ -300,14 +305,16 @@ export function ConversasPanel() {
               </div>
             ) : (
               filtered.map((c) => {
-                const active = c.phone_e164 === activePhone;
+                const key = c.phone_key ?? phoneKey(c.phone_e164);
+                const active = key === activeKey;
                 const member = memberFor(c);
                 const name = displayName(c);
                 const avatarSrc = displayAvatar(c);
                 return (
                   <button
-                    key={c.id}
-                    onClick={() => setActivePhone(c.phone_e164)}
+                    key={key ?? c.id}
+                    onClick={() => setActiveKey(key)}
+                    disabled={!key}
                     className={cn(
                       "w-full flex items-center gap-2 px-3 py-2.5 text-left border-b border-border/40 hover:bg-accent/50 transition",
                       active && "bg-accent",
@@ -406,7 +413,7 @@ export function ConversasPanel() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => qc.invalidateQueries({ queryKey: ["wa-messages", activeContact.phone_e164] })}
+                  onClick={() => qc.invalidateQueries({ queryKey: ["wa-messages", activeKey] })}
                 >
                   <RefreshCw className="h-3.5 w-3.5" />
                 </Button>

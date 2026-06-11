@@ -2464,6 +2464,7 @@ export type Database = {
           name: string | null
           origin: string
           phone_e164: string
+          phone_key: string | null
           profile_pic_url: string | null
           status: string
           unread_count: number
@@ -2478,6 +2479,7 @@ export type Database = {
           name?: string | null
           origin?: string
           phone_e164: string
+          phone_key?: string | null
           profile_pic_url?: string | null
           status?: string
           unread_count?: number
@@ -2492,6 +2494,7 @@ export type Database = {
           name?: string | null
           origin?: string
           phone_e164?: string
+          phone_key?: string | null
           profile_pic_url?: string | null
           status?: string
           unread_count?: number
@@ -2504,6 +2507,7 @@ export type Database = {
         Row: {
           body: string | null
           contact_phone: string
+          contact_phone_key: string | null
           created_at: string
           direction: string
           id: string
@@ -2519,6 +2523,7 @@ export type Database = {
         Insert: {
           body?: string | null
           contact_phone: string
+          contact_phone_key?: string | null
           created_at?: string
           direction: string
           id?: string
@@ -2534,6 +2539,7 @@ export type Database = {
         Update: {
           body?: string | null
           contact_phone?: string
+          contact_phone_key?: string | null
           created_at?: string
           direction?: string
           id?: string
@@ -2968,6 +2974,11 @@ export type Database = {
       }
       whatsapp_link_contact_to_user: {
         Args: { _phone: string; _user_id: string }
+        Returns: undefined
+      }
+      whatsapp_phone_key: { Args: { _phone: string }; Returns: string }
+      whatsapp_rebuild_contact_summary: {
+        Args: { _phone_key: string }
         Returns: undefined
       }
       xp_apply_monthly_rankings: {
