@@ -183,6 +183,12 @@ async function processOutbox(limit = 25) {
         error_message: result.ok ? null : String(result.status),
         source_ref: row.source_ref, sent_at: result.ok ? new Date().toISOString() : null,
       });
+      if (result.ok) {
+        await admin.from("whatsapp_messages").insert({
+          contact_phone: phone, direction: "out", body: row.message,
+          status: "sent", source_type: "notification", source_ref: row.source_ref,
+        });
+      }
       await admin.from("whatsapp_outbox").update({
         status: result.ok ? "done" : "failed",
         processed_at: new Date().toISOString(),
