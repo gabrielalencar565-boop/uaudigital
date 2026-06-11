@@ -2383,6 +2383,42 @@ export type Database = {
         }
         Relationships: []
       }
+      user_whatsapp_preferences: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          notify_company: boolean
+          notify_deadline: boolean
+          notify_new_task: boolean
+          notify_xp_rank: boolean
+          phone_e164: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          notify_company?: boolean
+          notify_deadline?: boolean
+          notify_new_task?: boolean
+          notify_xp_rank?: boolean
+          phone_e164?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          notify_company?: boolean
+          notify_deadline?: boolean
+          notify_new_task?: boolean
+          notify_xp_rank?: boolean
+          phone_e164?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_xp_events: {
         Row: {
           amount: number
@@ -2413,6 +2449,129 @@ export type Database = {
           source_id?: string | null
           source_type?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      whatsapp_outbox: {
+        Row: {
+          attempts: number
+          created_at: string
+          id: string
+          last_error: string | null
+          message: string
+          notification_type: string
+          processed_at: string | null
+          source_ref: string | null
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          message: string
+          notification_type: string
+          processed_at?: string | null
+          source_ref?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          message?: string
+          notification_type?: string
+          processed_at?: string | null
+          source_ref?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      whatsapp_send_log: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          message: string
+          notification_type: string
+          phone_e164: string | null
+          provider: Database["public"]["Enums"]["whatsapp_provider"] | null
+          provider_response: Json | null
+          sent_at: string | null
+          source_ref: string | null
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          message: string
+          notification_type: string
+          phone_e164?: string | null
+          provider?: Database["public"]["Enums"]["whatsapp_provider"] | null
+          provider_response?: Json | null
+          sent_at?: string | null
+          source_ref?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          message?: string
+          notification_type?: string
+          phone_e164?: string | null
+          provider?: Database["public"]["Enums"]["whatsapp_provider"] | null
+          provider_response?: Json | null
+          sent_at?: string | null
+          source_ref?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      whatsapp_settings: {
+        Row: {
+          api_key_secret: string
+          base_url: string | null
+          default_country_code: string
+          enabled: boolean
+          id: number
+          instance_name: string | null
+          provider: Database["public"]["Enums"]["whatsapp_provider"]
+          updated_at: string
+          updated_by: string | null
+          zapi_client_token_secret: string | null
+        }
+        Insert: {
+          api_key_secret?: string
+          base_url?: string | null
+          default_country_code?: string
+          enabled?: boolean
+          id?: number
+          instance_name?: string | null
+          provider?: Database["public"]["Enums"]["whatsapp_provider"]
+          updated_at?: string
+          updated_by?: string | null
+          zapi_client_token_secret?: string | null
+        }
+        Update: {
+          api_key_secret?: string
+          base_url?: string | null
+          default_country_code?: string
+          enabled?: boolean
+          id?: number
+          instance_name?: string | null
+          provider?: Database["public"]["Enums"]["whatsapp_provider"]
+          updated_at?: string
+          updated_by?: string | null
+          zapi_client_token_secret?: string | null
         }
         Relationships: []
       }
@@ -2702,6 +2861,15 @@ export type Database = {
           stage_completed: boolean
         }[]
       }
+      whatsapp_enqueue: {
+        Args: {
+          _message: string
+          _source_ref?: string
+          _type: string
+          _user_id: string
+        }
+        Returns: string
+      }
       xp_apply_monthly_rankings: {
         Args: { _month: number; _year: number }
         Returns: undefined
@@ -2779,6 +2947,7 @@ export type Database = {
         | "alteracoes"
         | "agendamento"
       task_status: "pendente" | "em_andamento" | "concluido"
+      whatsapp_provider: "evolution" | "zapi"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2974,6 +3143,7 @@ export const Constants = {
         "agendamento",
       ],
       task_status: ["pendente", "em_andamento", "concluido"],
+      whatsapp_provider: ["evolution", "zapi"],
     },
   },
 } as const

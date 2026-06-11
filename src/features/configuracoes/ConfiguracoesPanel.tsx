@@ -27,6 +27,7 @@ import { useSession } from "@/hooks/use-session";
 import { useRole } from "@/hooks/use-role";
 import { useAppSettings, useUpdateAppSettings } from "@/features/data/queries";
 import { toast } from "sonner";
+import { WhatsAppPreferencesCard } from "./WhatsAppPreferencesCard";
 
 const settingsSchema = z.object({
   full_name: z.string().trim().min(2, "Informe seu nome").max(120),
@@ -447,6 +448,8 @@ export function ConfiguracoesPanel() {
       ) : null}
 
       <NotificationSoundsCard />
+
+      <WhatsAppPreferencesCard />
 
       {isAdmin ? (
         <LoginBgImagesCard />
