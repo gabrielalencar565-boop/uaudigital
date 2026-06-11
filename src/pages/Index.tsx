@@ -20,6 +20,7 @@ import { GestaoPanel } from "@/features/gestao/GestaoPanel";
 
 import { ProjetosPanel } from "@/features/projetos/ProjetosPanel";
 import { RecompensasPanel } from "@/features/recompensas/RecompensasPanel";
+import { ConversasPanel } from "@/features/conversas/ConversasPanel";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
