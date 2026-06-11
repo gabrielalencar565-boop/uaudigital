@@ -224,6 +224,18 @@ export function ConversasPanel() {
     qc.invalidateQueries({ queryKey: ["wa-contacts"] });
   };
 
+  const linkContact = async (userId: string | null) => {
+    if (!activeContact) return;
+    const { error } = await supabase.rpc("whatsapp_link_contact_to_user" as any, {
+      _phone: activeContact.phone_e164,
+      _user_id: userId,
+    });
+    if (error) { toast.error(error.message); return; }
+    toast.success(userId ? "Contato vinculado" : "Vínculo removido");
+    setLinkOpen(false);
+    qc.invalidateQueries({ queryKey: ["wa-contacts"] });
+  };
+
   const copyWebhook = async () => {
     if (!WEBHOOK_URL) return;
     await navigator.clipboard.writeText(WEBHOOK_URL);
