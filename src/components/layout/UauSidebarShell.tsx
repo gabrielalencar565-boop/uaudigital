@@ -47,6 +47,7 @@ export type MainTab =
 "fin_receitas_despesas" |
 "fin_despesas_detalhadas" |
 "fin_lancamentos" |
+"conversas" |
 "configuracoes";
 
 type NavGroup = {
