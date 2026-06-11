@@ -1,41 +1,50 @@
-## Objetivo
+# Central de Conversas (WhatsApp)
 
-1. Ampliar o catálogo de sons de notificação (de 6 para ~14 opções).
-2. Garantir que, **por padrão**, o som do **Chat** seja diferente do som de **Tarefas/Menções** — a menos que o usuário escolha o mesmo manualmente.
+Nova seção no menu lateral exibindo todas as conversas trocadas via Z-API em formato de chat, preparada para futura evolução para atendimento comercial.
 
-## Mudanças
+## 1. Banco de dados (migration)
 
-Tudo concentrado em **`src/lib/notifications.ts`** — nenhum outro arquivo precisa mudar, porque os componentes (`ConfiguracoesPanel`, `NotificationSoundsDialog`) já leem do array `NOTIFICATION_SOUNDS`.
+**Tabela `whatsapp_contacts`**
+- `phone_e164` (PK lógica, único), `name`, `origin` (`colaborador` | `lead` | `cliente` | `desconhecido`), `status` (`ativo` | `arquivado` | `bloqueado`), `user_id` (FK opcional p/ colaborador), `last_message_at`, `unread_count`, `created_at`, `updated_at`.
 
-### 1. Novos sons sintetizados (Web Audio, sem novos assets)
+**Tabela `whatsapp_messages`**
+- `contact_phone` (FK lógico), `direction` (`in` | `out`), `body`, `media_url`, `media_type`, `zapi_message_id`, `status` (`pending` | `sent` | `delivered` | `read` | `failed` | `received`), `sent_by_user_id` (quem respondeu pela plataforma), `source_type` (`manual` | `notification` | `webhook`), `source_ref`, `created_at`.
 
-Adicionar ao `NOTIFICATION_SOUNDS` os seguintes presets:
+**Acesso**: somente admins (RLS via `has_role`). GRANTs para `authenticated` + `service_role`.
 
-| id | label | descrição sonora |
-|---|---|---|
-| `whistle` | Assobio | sweep ascendente 700→1200 Hz |
-| `blip` | Blip retrô | square 660 Hz curto (estilo 8-bit) |
-| `knock` | Batida | duas batidas surdas sine 180 Hz |
-| `drop` | Gota | sweep descendente 1500→600 Hz com bandpass |
-| `coin` | Moeda | C5 → E6 rápido em square (arcade) |
-| `pulse` | Pulso | triangle 330 Hz com attack lento |
-| `tap` | Toque | noise burst muito curto com bandpass |
-| `swoosh` | Swoosh | noise filtrado high-pass com envelope |
+**Trigger**: ao inserir mensagem, atualiza `last_message_at` e (se `direction='in'`) incrementa `unread_count` do contato. Upsert do contato pelo telefone se não existir.
 
-Total: **14 opções** (6 atuais + 8 novas).
+**Backfill**: cada `INSERT` em `whatsapp_outbox`/`whatsapp_send_log` (envios já existentes) também grava em `whatsapp_messages` via trigger, para que toda mensagem disparada apareça no histórico.
 
-### 2. Defaults diferentes por categoria
+## 2. Edge function — webhook Z-API
 
-Alterar:
+Nova função pública `whatsapp-webhook` (verify_jwt=false) que recebe os POSTs configurados na Z-API:
+- Extrai `phone`, `senderName`, `text.message` / `image.imageUrl` etc.
+- Faz upsert do contato.
+- Insere `whatsapp_messages` com `direction='in'`.
+- Responde 200 rápido.
 
-```ts
-const DEFAULT_SOUND_BY_CATEGORY: Record<SoundCategory, string> = {
-  chat: "pop",     // antes: "default"
-  task: "chime",   // antes: "default"
-};
-```
+URL do webhook a configurar na Z-API: `https://<project>.functions.supabase.co/whatsapp-webhook` (mostrada na UI).
 
-`getCategorySound()` só usa o default quando o usuário **ainda não escolheu nada** no `localStorage` — então quem já configurou mantém a escolha (mesmo se for igual nas duas categorias).
+A função `whatsapp-dispatch` (envio) passa a também gravar a mensagem enviada em `whatsapp_messages` com `direction='out'` e `status='sent'`.
 
-### Arquivos tocados
-- `src/lib/notifications.ts` — adiciona os 8 sons e troca os defaults
+## 3. UI — `/conversas`
+
+- Item "Conversas" no `UauSidebarShell` (ícone `MessagesSquare`), visível só para admin.
+- Página `ConversasPanel`:
+  - **Esquerda (lista)**: contatos ordenados por `last_message_at`, avatar/iniciais, último trecho, badge de não lidas, filtros no topo (Todas / Não lidas / Colaboradores / Leads / Clientes), busca por nome/número.
+  - **Direita (thread)**: cabeçalho com nome + número + origem; bolhas de mensagens (recebidas à esquerda em `muted`, enviadas à direita em `primary`); horário, status de envio.
+  - **Composer**: textarea + botão enviar → chama `whatsapp-dispatch` com `action: 'send'`, registra como `manual`.
+  - Botão "Marcar como lida" zera `unread_count`; auto-marca ao abrir a conversa.
+  - URL do webhook copiável dentro da aba (atalho de config).
+
+## 4. Detalhes técnicos
+
+- Realtime: `supabase.channel` em `whatsapp_messages` para atualizar a thread aberta + lista.
+- React Query keys: `["wa-contacts", filter]`, `["wa-messages", phone]`.
+- Filtros baseados em `contact.origin`. Colaboradores são reconhecidos cruzando `phone_e164` com `user_whatsapp_preferences`.
+- Sem alterações em código de produção fora dos arquivos novos + sidebar + `whatsapp-dispatch`.
+
+## 5. Fora do escopo desta entrega
+
+- Funil de vendas, tags comerciais, atribuição de atendente, respostas rápidas, automações — a estrutura fica preparada (campos `origin`, `status`, `sent_by_user_id`) mas não é implementada agora.
