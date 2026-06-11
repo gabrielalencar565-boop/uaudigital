@@ -61,84 +61,47 @@ export default function CronogramaPublic() {
     const load = async () => {
       setLoading(true);
       try {
-        let resolvedClientId = clientFilterId;
-
-        if (resolvedClientId) {
-          const { data: client } = await sb.from("clients").select("name").eq("id", resolvedClientId).single();
-          if (client?.name) {
-            setClientName(client.name);
-            setParentTitle(client.name);
-          }
-        } else {
-          const { data: parent } = await sb.from("pm_tasks").select("title, client_id").eq("id", taskId).single();
-          if (parent) {
-            setParentTitle(parent.title);
-            resolvedClientId = parent.client_id;
-            const { data: client } = await sb.from("clients").select("name").eq("id", parent.client_id).single();
-            if (client?.name) setClientName(client.name);
-          }
-        }
-
-        let childrenQuery = sb
-          .from("pm_tasks")
-          .select("id, title, post_type, posting_date, posting_time, caption, cover_url")
-          .not("posting_date", "is", null)
-          .order("posting_date", { ascending: true });
-
-        if (clientFilterId) {
-          childrenQuery = childrenQuery.eq("client_id", clientFilterId).not("parent_task_id", "is", null);
-        } else {
-          childrenQuery = childrenQuery.eq("parent_task_id", taskId);
-        }
-
-        const { data: children } = await childrenQuery;
-        const childRows = (children ?? []) as PostData[];
-
-        if (childRows.length > 0) {
-          const childIds = childRows.map((c) => c.id);
-          const { data: attachments } = await sb
-            .from("pm_attachments")
-            .select("task_id, public_url, file_type, order_index")
-            .in("task_id", childIds)
-            .order("order_index", { ascending: true })
-            .order("created_at", { ascending: true });
-
-          const firstImageMap = new Map<string, string>();
-          const allImagesMap = new Map<string, string[]>();
-          (attachments ?? []).forEach((att: any) => {
-            if (att.file_type?.startsWith("image/") && att.public_url) {
-              if (!firstImageMap.has(att.task_id)) firstImageMap.set(att.task_id, att.public_url);
-              const arr = allImagesMap.get(att.task_id) ?? [];
-              arr.push(att.public_url);
-              allImagesMap.set(att.task_id, arr);
-            }
-          });
-
-          const enriched = childRows.map((c) => ({
-            ...c,
-            attachment_url: firstImageMap.get(c.id) ?? null,
-            all_attachment_urls: allImagesMap.get(c.id) ?? [],
-          }));
-
-          setPosts(enriched);
-          setSelectedPost(enriched[0]);
-
-          const { data: fbData } = await sb
-            .from("pm_cronograma_feedback")
-            .select("*")
-            .in("task_id", childIds);
-
-          const fbMap: Record<string, FeedbackData> = {};
-          (fbData ?? []).forEach((fb: FeedbackData) => {
-            fbMap[fb.task_id] = fb;
-          });
-          setFeedbacks(fbMap);
-        } else {
+        const { data, error } = await supabase.functions.invoke("public-cronograma", {
+          body: { action: "load", taskId, clientFilterId: clientFilterId ?? null },
+        });
+        if (error || !data) {
           setPosts([]);
           setSelectedPost(null);
           setFeedbacks({});
+          return;
         }
 
+        setClientName(data.clientName ?? "");
+        setParentTitle(data.parentTitle ?? "");
+
+        const childRows = (data.posts ?? []) as PostData[];
+        const attachments = (data.attachments ?? []) as Array<{ task_id: string; public_url: string | null; file_type: string | null }>;
+
+        const firstImageMap = new Map<string, string>();
+        const allImagesMap = new Map<string, string[]>();
+        attachments.forEach((att) => {
+          if (att.file_type?.startsWith("image/") && att.public_url) {
+            if (!firstImageMap.has(att.task_id)) firstImageMap.set(att.task_id, att.public_url);
+            const arr = allImagesMap.get(att.task_id) ?? [];
+            arr.push(att.public_url);
+            allImagesMap.set(att.task_id, arr);
+          }
+        });
+
+        const enriched = childRows.map((c) => ({
+          ...c,
+          attachment_url: firstImageMap.get(c.id) ?? null,
+          all_attachment_urls: allImagesMap.get(c.id) ?? [],
+        }));
+
+        setPosts(enriched);
+        setSelectedPost(enriched[0] ?? null);
+
+        const fbMap: Record<string, FeedbackData> = {};
+        ((data.feedbacks ?? []) as FeedbackData[]).forEach((fb) => {
+          fbMap[fb.task_id] = fb;
+        });
+        setFeedbacks(fbMap);
       } finally {
         setLoading(false);
       }
@@ -148,14 +111,12 @@ export default function CronogramaPublic() {
   }, [taskId, clientFilterId]);
 
   const handleSubmitFeedback = async (postId: string, status: string, text: string) => {
-    const existing = feedbacks[postId];
-    if (existing) {
-      await sb.from("pm_cronograma_feedback").update({ status, feedback_text: text || null, updated_at: new Date().toISOString() }).eq("id", existing.id);
-    } else {
-      await sb.from("pm_cronograma_feedback").insert({ task_id: postId, status, feedback_text: text || null });
+    const { data } = await supabase.functions.invoke("public-cronograma", {
+      body: { action: "feedback", postId, status, text },
+    });
+    if (data?.feedback) {
+      setFeedbacks((prev) => ({ ...prev, [postId]: data.feedback as FeedbackData }));
     }
-    const { data } = await sb.from("pm_cronograma_feedback").select("*").eq("task_id", postId).single();
-    if (data) setFeedbacks(prev => ({ ...prev, [postId]: data }));
     toast.success(status === "aprovado" ? "Postagem aprovada!" : "Alteração solicitada!");
   };
 

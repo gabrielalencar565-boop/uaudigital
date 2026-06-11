@@ -87,19 +87,17 @@ export default function HealthScorePublic() {
         return;
       }
 
-      const { data: tokenRow, error: tokenError } = await supabase
-        .from("health_score_tokens" as any)
-        .select("id, client_id, month, year, used_at")
-        .eq("slug", slug)
-        .single();
+      const { data, error: fnError } = await supabase.functions.invoke("public-health-score", {
+        body: { action: "load", slug },
+      });
 
-      if (tokenError || !tokenRow) {
+      if (fnError || !data?.token) {
         setError("Link inválido ou expirado.");
         setLoading(false);
         return;
       }
 
-      const row = tokenRow as unknown as { id: string; client_id: string; month: number; year: number; used_at: string | null };
+      const row = data.token as { id: string; client_id: string; month: number; year: number; used_at: string | null; client_name?: string };
 
       if (row.used_at) {
         setError("Esta avaliação já foi respondida.");
@@ -107,20 +105,13 @@ export default function HealthScorePublic() {
         return;
       }
 
-      // Get client name
-      const { data: client } = await supabase
-        .from("clients")
-        .select("name")
-        .eq("id", row.client_id)
-        .single();
-
       setTokenData({
         id: row.id,
         client_id: row.client_id,
         month: row.month,
         year: row.year,
         used_at: row.used_at,
-        client_name: client?.name ?? "Cliente",
+        client_name: row.client_name ?? "Cliente",
       });
       setLoading(false);
     }
@@ -144,31 +135,19 @@ export default function HealthScorePublic() {
   };
 
   const handleSubmit = async () => {
-    if (!tokenData) return;
+    if (!tokenData || !slug) return;
 
     setSubmitting(true);
 
-    // Insert health score
-    const { error: insertError } = await supabase.from("health_scores" as any).insert({
-      client_id: tokenData.client_id,
-      evaluated_by: "00000000-0000-0000-0000-000000000000",
-      month: tokenData.month,
-      year: tokenData.year,
-      ...formValues,
-      ...formComments,
+    const { data, error: fnError } = await supabase.functions.invoke("public-health-score", {
+      body: { action: "submit", slug, values: formValues, comments: formComments },
     });
 
-    if (insertError) {
+    if (fnError || !data?.ok) {
       toast.error("Erro ao enviar avaliação. Tente novamente.");
       setSubmitting(false);
       return;
     }
-
-    // Mark token as used
-    await supabase
-      .from("health_score_tokens" as any)
-      .update({ used_at: new Date().toISOString() })
-      .eq("id", tokenData.id);
 
     setSubmitted(true);
     setSubmitting(false);
