@@ -481,6 +481,50 @@ export function ConversasPanel() {
           )}
         </section>
       </div>
+
+      <Dialog open={linkOpen} onOpenChange={setLinkOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Vincular contato a um colaborador</DialogTitle>
+          </DialogHeader>
+          <Command>
+            <CommandInput placeholder="Buscar colaborador..." />
+            <CommandList>
+              <CommandEmpty>Nenhum colaborador encontrado.</CommandEmpty>
+              <CommandGroup heading="Equipe">
+                {(teamQ.data ?? []).filter((m) => m.is_active).map((m) => (
+                  <CommandItem
+                    key={m.user_id}
+                    value={`${m.display_name} ${m.role_title}`}
+                    onSelect={() => linkContact(m.user_id)}
+                    className="gap-2"
+                  >
+                    <Avatar className="h-6 w-6">
+                      {m.avatar_url ? <AvatarImage src={m.avatar_url} alt={m.display_name} /> : null}
+                      <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+                        {initials(m.display_name, "")}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="flex-1 truncate">{m.display_name}</span>
+                    <span className="text-[10px] text-muted-foreground">{m.role_title}</span>
+                    {activeContact?.user_id === m.user_id && <Check className="h-3 w-3" />}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+          <DialogFooter className="flex sm:justify-between gap-2">
+            {activeContact?.user_id && (
+              <Button variant="outline" size="sm" onClick={() => linkContact(null)}>
+                <X className="h-3.5 w-3.5 mr-1" /> Remover vínculo
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" onClick={() => setLinkOpen(false)}>
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
