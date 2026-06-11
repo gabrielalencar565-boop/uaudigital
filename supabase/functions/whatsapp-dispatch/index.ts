@@ -380,7 +380,16 @@ Deno.serve(async (req) => {
         error_message: result.ok ? null : String(result.status),
         sent_at: result.ok ? new Date().toISOString() : null,
       });
-      return json({ ok: result.ok, status: result.status, response: result.response });
+      if (result.ok) {
+        await admin.from("whatsapp_messages").insert({
+          contact_phone: phone, direction: "out", body: message,
+          status: "sent", source_type: type === "manual" ? "manual" : "notification",
+          sent_by_user_id: auth.userId,
+        });
+      }
+      return new Response(JSON.stringify({ ok: result.ok, status: result.status, response: result.response }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     return json({ error: "unknown_action" }, 400);
