@@ -75,10 +75,10 @@ function formatStamp(iso: string) {
 
 function originLabel(o: Contact["origin"]) {
   switch (o) {
-    case "colaborador": return "Colaborador";
+    case "colaborador": return "Equipe";
     case "lead": return "Lead";
     case "cliente": return "Cliente";
-    default: return "Desconhecido";
+    default: return "Lead";
   }
 }
 
