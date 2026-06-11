@@ -41,6 +41,7 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [soundsOpen, setSoundsOpen] = useState(false);
+  const [whatsappOpen, setWhatsappOpen] = useState(false);
 
   const userName = myProfileQ.data?.full_name ?? "Usuário";
   const userRole = myProfileQ.data?.role_title ?? "Colaborador";
