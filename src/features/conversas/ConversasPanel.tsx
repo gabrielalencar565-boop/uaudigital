@@ -83,8 +83,6 @@ function phoneKey(phone: string | null | undefined) {
 function originLabel(o: Contact["origin"]) {
   switch (o) {
     case "colaborador": return "Equipe";
-    case "lead": return "Lead";
-    case "cliente": return "Cliente";
     default: return "Lead";
   }
 }
