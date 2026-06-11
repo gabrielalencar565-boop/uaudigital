@@ -41,6 +41,14 @@ Deno.serve(async (req) => {
     const phone = String(phoneRaw).replace(/\D/g, "");
     const fromMe = !!payload.fromMe;
     const senderName: string | null = payload.senderName ?? payload.chatName ?? null;
+    const photoUrl: string | null =
+      payload.senderPhoto ??
+      payload.photo ??
+      payload.profilePicture ??
+      payload.senderPhotoUrl ??
+      payload.chat?.photo ??
+      payload.contact?.photo ??
+      null;
     const { body, media_url, media_type } = pickBody(payload);
     const zapiMessageId = payload.messageId ?? payload.id ?? null;
 
