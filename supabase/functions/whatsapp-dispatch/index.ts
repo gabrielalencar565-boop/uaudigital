@@ -63,12 +63,13 @@ async function sendViaEvolution(settings: any, phone: string, message: string): 
 async function sendViaZapi(settings: any, phone: string, message: string): Promise<SendResult> {
   const apiKey = Deno.env.get(settings.api_key_secret || "WHATSAPP_API_KEY");
   const clientToken = Deno.env.get(settings.zapi_client_token_secret || "WHATSAPP_ZAPI_CLIENT_TOKEN");
-  if (!settings.instance_name || !apiKey) {
+  const instance = settings.instance_name || Deno.env.get("WHATSAPP_ZAPI_INSTANCE_ID");
+  if (!instance || !apiKey) {
     return { ok: false, status: 0, response: { error: "zapi_not_configured" } };
   }
   // Z-API URL pattern: https://api.z-api.io/instances/{instance}/token/{token}/send-text
   const baseUrl = settings.base_url?.replace(/\/$/, "") || "https://api.z-api.io";
-  const url = `${baseUrl}/instances/${encodeURIComponent(settings.instance_name)}/token/${encodeURIComponent(apiKey)}/send-text`;
+  const url = `${baseUrl}/instances/${encodeURIComponent(instance)}/token/${encodeURIComponent(apiKey)}/send-text`;
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (clientToken) headers["Client-Token"] = clientToken;
   const res = await fetch(url, {

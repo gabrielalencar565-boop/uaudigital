@@ -121,6 +121,22 @@ export function AdminWhatsAppPanel() {
     }
   };
 
+  const sendTestToMe = async () => {
+    setSending(true);
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      const userId = auth?.user?.id;
+      if (!userId) throw new Error("Sessão não encontrada");
+      await callDispatch({ action: "send", userId, type: "manual", message: testMessage });
+      toast.success("Mensagem enviada para o seu WhatsApp");
+      qc.invalidateQueries({ queryKey: ["whatsapp_send_log"] });
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha no envio (verifique se você cadastrou seu número em Configurações)");
+    } finally {
+      setSending(false);
+    }
+  };
+
   const sendBroadcast = async () => {
     if (!broadcastMsg.trim()) return;
     setSending(true);
@@ -262,9 +278,14 @@ export function AdminWhatsAppPanel() {
               <Label>Mensagem</Label>
               <Textarea rows={3} value={testMessage} onChange={(e) => setTestMessage(e.target.value)} />
             </div>
-            <Button onClick={sendTest} disabled={sending} variant="brand" className="gap-2">
-              <Send className="h-4 w-4" /> Enviar teste
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={sendTest} disabled={sending} variant="brand" className="gap-2">
+                <Send className="h-4 w-4" /> Enviar para número
+              </Button>
+              <Button onClick={sendTestToMe} disabled={sending} variant="outline" className="gap-2">
+                <Send className="h-4 w-4" /> Testar para mim
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
