@@ -49,6 +49,12 @@ export function AdminWhatsAppPanel() {
   const [broadcastMsg, setBroadcastMsg] = useState("");
   const [sending, setSending] = useState(false);
 
+  // Admin edit dialog
+  const [editUserId, setEditUserId] = useState<string | null>(null);
+  const [editUserName, setEditUserName] = useState<string>("");
+
+
+
   useEffect(() => {
     supabase
       .from("whatsapp_settings" as any)
