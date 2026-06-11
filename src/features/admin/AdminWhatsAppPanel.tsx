@@ -121,6 +121,22 @@ export function AdminWhatsAppPanel() {
     }
   };
 
+  const sendTestToMe = async () => {
+    setSending(true);
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      const userId = auth?.user?.id;
+      if (!userId) throw new Error("Sessão não encontrada");
+      await callDispatch({ action: "send", userId, type: "manual", message: testMessage });
+      toast.success("Mensagem enviada para o seu WhatsApp");
+      qc.invalidateQueries({ queryKey: ["whatsapp_send_log"] });
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha no envio (verifique se você cadastrou seu número em Configurações)");
+    } finally {
+      setSending(false);
+    }
+  };
+
   const sendBroadcast = async () => {
     if (!broadcastMsg.trim()) return;
     setSending(true);
