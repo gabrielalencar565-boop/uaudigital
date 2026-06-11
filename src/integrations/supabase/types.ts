@@ -2455,6 +2455,96 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_contacts: {
+        Row: {
+          created_at: string
+          id: string
+          last_message_at: string | null
+          last_message_preview: string | null
+          name: string | null
+          origin: string
+          phone_e164: string
+          status: string
+          unread_count: number
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          last_message_preview?: string | null
+          name?: string | null
+          origin?: string
+          phone_e164: string
+          status?: string
+          unread_count?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          last_message_preview?: string | null
+          name?: string | null
+          origin?: string
+          phone_e164?: string
+          status?: string
+          unread_count?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      whatsapp_messages: {
+        Row: {
+          body: string | null
+          contact_phone: string
+          created_at: string
+          direction: string
+          id: string
+          media_type: string | null
+          media_url: string | null
+          raw: Json | null
+          sent_by_user_id: string | null
+          source_ref: string | null
+          source_type: string
+          status: string
+          zapi_message_id: string | null
+        }
+        Insert: {
+          body?: string | null
+          contact_phone: string
+          created_at?: string
+          direction: string
+          id?: string
+          media_type?: string | null
+          media_url?: string | null
+          raw?: Json | null
+          sent_by_user_id?: string | null
+          source_ref?: string | null
+          source_type?: string
+          status?: string
+          zapi_message_id?: string | null
+        }
+        Update: {
+          body?: string | null
+          contact_phone?: string
+          created_at?: string
+          direction?: string
+          id?: string
+          media_type?: string | null
+          media_url?: string | null
+          raw?: Json | null
+          sent_by_user_id?: string | null
+          source_ref?: string | null
+          source_type?: string
+          status?: string
+          zapi_message_id?: string | null
+        }
+        Relationships: []
+      }
       whatsapp_outbox: {
         Row: {
           attempts: number
