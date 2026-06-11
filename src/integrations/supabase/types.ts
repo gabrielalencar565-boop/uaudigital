@@ -2977,6 +2977,10 @@ export type Database = {
         Returns: undefined
       }
       whatsapp_phone_key: { Args: { _phone: string }; Returns: string }
+      whatsapp_rebuild_contact_summary: {
+        Args: { _phone_key: string }
+        Returns: undefined
+      }
       xp_apply_monthly_rankings: {
         Args: { _month: number; _year: number }
         Returns: undefined
