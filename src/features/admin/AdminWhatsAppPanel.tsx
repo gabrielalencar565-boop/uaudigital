@@ -278,9 +278,14 @@ export function AdminWhatsAppPanel() {
               <Label>Mensagem</Label>
               <Textarea rows={3} value={testMessage} onChange={(e) => setTestMessage(e.target.value)} />
             </div>
-            <Button onClick={sendTest} disabled={sending} variant="brand" className="gap-2">
-              <Send className="h-4 w-4" /> Enviar teste
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={sendTest} disabled={sending} variant="brand" className="gap-2">
+                <Send className="h-4 w-4" /> Enviar para número
+              </Button>
+              <Button onClick={sendTestToMe} disabled={sending} variant="outline" className="gap-2">
+                <Send className="h-4 w-4" /> Testar para mim
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
