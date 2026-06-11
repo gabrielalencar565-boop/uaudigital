@@ -22,6 +22,8 @@ import { ChatBellButton } from "@/features/chat/ChatBellButton";
 
 import { useQueryClient } from "@tanstack/react-query";
 import { NotificationSoundsDialog } from "@/features/configuracoes/NotificationSoundsDialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { WhatsAppPreferencesCard } from "@/features/configuracoes/WhatsAppPreferencesCard";
 
 function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
