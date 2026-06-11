@@ -1,0 +1,1 @@
+ALTER TABLE public.user_whatsapp_preferences ADD COLUMN IF NOT EXISTS notify_late boolean NOT NULL DEFAULT true;

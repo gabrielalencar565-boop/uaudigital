@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from "react";
-import { LogOut, Moon, Pencil, Sun, Volume2 } from "lucide-react";
+import { LogOut, MessageCircle, Moon, Pencil, Sun, Volume2 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { WorkspaceDropdown } from "@/components/layout/WorkspaceDropdown";
 import { TaskSearchDropdown } from "@/components/layout/TaskSearchDropdown";
@@ -22,6 +22,8 @@ import { ChatBellButton } from "@/features/chat/ChatBellButton";
 
 import { useQueryClient } from "@tanstack/react-query";
 import { NotificationSoundsDialog } from "@/features/configuracoes/NotificationSoundsDialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { WhatsAppPreferencesCard } from "@/features/configuracoes/WhatsAppPreferencesCard";
 
 function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
@@ -39,6 +41,7 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [soundsOpen, setSoundsOpen] = useState(false);
+  const [whatsappOpen, setWhatsappOpen] = useState(false);
 
   const userName = myProfileQ.data?.full_name ?? "Usuário";
   const userRole = myProfileQ.data?.role_title ?? "Colaborador";
@@ -157,6 +160,18 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
                 Som de notificações
               </DropdownMenuItem>
 
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault();
+                  setWhatsappOpen(true);
+                }}
+                className="gap-2.5 rounded-lg px-3 py-2.5 cursor-pointer"
+              >
+                <MessageCircle className="h-4 w-4 text-muted-foreground" />
+                Notificações WhatsApp
+              </DropdownMenuItem>
+
+
 
               <DropdownMenuSeparator />
 
@@ -172,6 +187,19 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
         </div>
       </div>
       <NotificationSoundsDialog open={soundsOpen} onOpenChange={setSoundsOpen} />
+      <Dialog open={whatsappOpen} onOpenChange={setWhatsappOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageCircle className="h-5 w-5" /> Notificações WhatsApp
+            </DialogTitle>
+            <DialogDescription>
+              Cadastre seu número e escolha quais avisos receber.
+            </DialogDescription>
+          </DialogHeader>
+          <WhatsAppPreferencesCard bare onSaved={() => setWhatsappOpen(false)} />
+        </DialogContent>
+      </Dialog>
     </header>
 
   );

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { MessageCircle, Save, Send, RefreshCw, Megaphone, Clock, Trophy } from "lucide-react";
+import { MessageCircle, Save, Send, RefreshCw, Megaphone, Clock, Trophy, Pencil } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,8 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { WhatsAppPreferencesCard } from "@/features/configuracoes/WhatsAppPreferencesCard";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -47,6 +49,12 @@ export function AdminWhatsAppPanel() {
   const [broadcastMsg, setBroadcastMsg] = useState("");
   const [sending, setSending] = useState(false);
 
+  // Admin edit dialog
+  const [editUserId, setEditUserId] = useState<string | null>(null);
+  const [editUserName, setEditUserName] = useState<string>("");
+
+
+
   useEffect(() => {
     supabase
       .from("whatsapp_settings" as any)
@@ -74,17 +82,19 @@ export function AdminWhatsAppPanel() {
   const usersQ = useQuery({
     queryKey: ["whatsapp_users_admin"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("user_whatsapp_preferences" as any)
-        .select("user_id, phone_e164, enabled, notify_new_task, notify_deadline, notify_company, notify_xp_rank, updated_at");
-      const ids = (data ?? []).map((r: any) => r.user_id);
-      if (ids.length === 0) return [] as any[];
       const { data: tm } = await supabase
         .from("team_members")
         .select("user_id, display_name, role_title")
-        .in("user_id", ids);
-      const byId = new Map((tm ?? []).map((t: any) => [t.user_id, t]));
-      return (data ?? []).map((r: any) => ({ ...r, ...(byId.get(r.user_id) || {}) }));
+        .order("display_name");
+      const ids = (tm ?? []).map((t: any) => t.user_id);
+      const { data: prefs } = ids.length
+        ? await supabase
+            .from("user_whatsapp_preferences" as any)
+            .select("user_id, phone_e164, enabled, notify_new_task, notify_deadline, notify_late, notify_company, notify_xp_rank, updated_at")
+            .in("user_id", ids)
+        : { data: [] as any[] };
+      const byId = new Map((prefs ?? []).map((p: any) => [p.user_id, p]));
+      return (tm ?? []).map((t: any) => ({ ...t, ...(byId.get(t.user_id) || {}) }));
     },
   });
 
@@ -306,8 +316,8 @@ export function AdminWhatsAppPanel() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>Colaboradores cadastrados</CardTitle>
-            <CardDescription>Quem já tem WhatsApp configurado e quais notificações recebe.</CardDescription>
+            <CardTitle>Colaboradores</CardTitle>
+            <CardDescription>Cadastre ou edite o número e as preferências de WhatsApp de cada colaborador.</CardDescription>
           </div>
           <Button variant="outline" size="sm" onClick={() => usersQ.refetch()} className="gap-2">
             <RefreshCw className="h-4 w-4" /> Atualizar
@@ -315,28 +325,69 @@ export function AdminWhatsAppPanel() {
         </CardHeader>
         <CardContent>
           {(usersQ.data ?? []).length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum colaborador cadastrou WhatsApp ainda.</p>
+            <p className="text-sm text-muted-foreground">Nenhum colaborador encontrado.</p>
           ) : (
             <div className="space-y-2">
-              {(usersQ.data ?? []).map((u: any) => (
-                <div key={u.user_id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border p-3">
-                  <div>
-                    <div className="font-medium">{u.display_name ?? u.user_id.slice(0, 8)}</div>
-                    <div className="text-xs text-muted-foreground">{u.role_title ?? "—"} • {u.phone_e164 ?? "sem número"}</div>
+              {(usersQ.data ?? []).map((u: any) => {
+                const hasPrefs = u.phone_e164 != null || u.enabled != null;
+                return (
+                  <div key={u.user_id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border p-3">
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">{u.display_name ?? u.user_id.slice(0, 8)}</div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        {u.role_title ?? "—"} • {u.phone_e164 ?? <span className="italic">sem número</span>}
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1">
+                      {!hasPrefs && <Badge variant="secondary">Não cadastrado</Badge>}
+                      {hasPrefs && !u.enabled && <Badge variant="secondary">Desativado</Badge>}
+                      {u.notify_new_task && <Badge variant="outline">Tarefas</Badge>}
+                      {u.notify_deadline && <Badge variant="outline">Prazos</Badge>}
+                      {u.notify_late && <Badge variant="outline">Atrasadas</Badge>}
+                      {u.notify_company && <Badge variant="outline">Avisos</Badge>}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="gap-1 ml-1"
+                        onClick={() => {
+                          setEditUserId(u.user_id);
+                          setEditUserName(u.display_name ?? "Colaborador");
+                        }}
+                      >
+                        <Pencil className="h-3.5 w-3.5" /> Editar
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-1">
-                    {!u.enabled && <Badge variant="secondary">Desativado</Badge>}
-                    {u.notify_new_task && <Badge variant="outline">Tarefas</Badge>}
-                    {u.notify_deadline && <Badge variant="outline">Prazos</Badge>}
-                    {u.notify_company && <Badge variant="outline">Avisos</Badge>}
-                    {u.notify_xp_rank && <Badge variant="outline">Ranking</Badge>}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!editUserId} onOpenChange={(o) => !o && setEditUserId(null)}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageCircle className="h-5 w-5" /> WhatsApp · {editUserName}
+            </DialogTitle>
+            <DialogDescription>
+              Edite o número e as preferências deste colaborador.
+            </DialogDescription>
+          </DialogHeader>
+          {editUserId && (
+            <WhatsAppPreferencesCard
+              bare
+              userId={editUserId}
+              onSaved={() => {
+                setEditUserId(null);
+                qc.invalidateQueries({ queryKey: ["whatsapp_users_admin"] });
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
 
       <Card>
         <CardHeader>
