@@ -146,6 +146,26 @@ export function AdminWhatsAppPanel() {
     }
   };
 
+  const runDeadlines = async () => {
+    try {
+      const r = await callDispatch({ action: "cron_deadlines" });
+      toast.success(`Lembretes de prazo: ${r.enqueued ?? 0} enfileirados`);
+      qc.invalidateQueries({ queryKey: ["whatsapp_send_log"] });
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha");
+    }
+  };
+
+  const runXpRanking = async () => {
+    try {
+      const r = await callDispatch({ action: "cron_xp_ranking" });
+      toast.success(`Ranking XP: ${r.enqueued ?? 0} enviados`);
+      qc.invalidateQueries({ queryKey: ["whatsapp_send_log"] });
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -294,6 +314,21 @@ export function AdminWhatsAppPanel() {
               ))}
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Disparos automáticos</CardTitle>
+          <CardDescription>Execute manualmente os jobs. Para automação completa, agende um cron chamando estas ações.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={runDeadlines} className="gap-2">
+            <Clock className="h-4 w-4" /> Lembretes de prazo (hoje/amanhã/atrasadas)
+          </Button>
+          <Button variant="outline" onClick={runXpRanking} className="gap-2">
+            <Trophy className="h-4 w-4" /> Ranking XP do mês (Top 3)
+          </Button>
         </CardContent>
       </Card>
 
