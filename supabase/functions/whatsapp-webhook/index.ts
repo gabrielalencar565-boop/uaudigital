@@ -78,14 +78,14 @@ Deno.serve(async (req) => {
       raw: payload,
     });
 
-    if (senderName) {
+    if (key && senderName) {
       await admin
         .from("whatsapp_contacts")
         .update({ name: senderName })
         .eq("phone_key", key)
         .is("name", null);
     }
-    if (photoUrl) {
+    if (key && photoUrl) {
       await admin
         .from("whatsapp_contacts")
         .update({ profile_pic_url: photoUrl })
