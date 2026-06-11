@@ -316,8 +316,8 @@ export function AdminWhatsAppPanel() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>Colaboradores cadastrados</CardTitle>
-            <CardDescription>Quem já tem WhatsApp configurado e quais notificações recebe.</CardDescription>
+            <CardTitle>Colaboradores</CardTitle>
+            <CardDescription>Cadastre ou edite o número e as preferências de WhatsApp de cada colaborador.</CardDescription>
           </div>
           <Button variant="outline" size="sm" onClick={() => usersQ.refetch()} className="gap-2">
             <RefreshCw className="h-4 w-4" /> Atualizar
@@ -325,28 +325,69 @@ export function AdminWhatsAppPanel() {
         </CardHeader>
         <CardContent>
           {(usersQ.data ?? []).length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum colaborador cadastrou WhatsApp ainda.</p>
+            <p className="text-sm text-muted-foreground">Nenhum colaborador encontrado.</p>
           ) : (
             <div className="space-y-2">
-              {(usersQ.data ?? []).map((u: any) => (
-                <div key={u.user_id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border p-3">
-                  <div>
-                    <div className="font-medium">{u.display_name ?? u.user_id.slice(0, 8)}</div>
-                    <div className="text-xs text-muted-foreground">{u.role_title ?? "—"} • {u.phone_e164 ?? "sem número"}</div>
+              {(usersQ.data ?? []).map((u: any) => {
+                const hasPrefs = u.phone_e164 != null || u.enabled != null;
+                return (
+                  <div key={u.user_id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border p-3">
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">{u.display_name ?? u.user_id.slice(0, 8)}</div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        {u.role_title ?? "—"} • {u.phone_e164 ?? <span className="italic">sem número</span>}
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1">
+                      {!hasPrefs && <Badge variant="secondary">Não cadastrado</Badge>}
+                      {hasPrefs && !u.enabled && <Badge variant="secondary">Desativado</Badge>}
+                      {u.notify_new_task && <Badge variant="outline">Tarefas</Badge>}
+                      {u.notify_deadline && <Badge variant="outline">Prazos</Badge>}
+                      {u.notify_late && <Badge variant="outline">Atrasadas</Badge>}
+                      {u.notify_company && <Badge variant="outline">Avisos</Badge>}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="gap-1 ml-1"
+                        onClick={() => {
+                          setEditUserId(u.user_id);
+                          setEditUserName(u.display_name ?? "Colaborador");
+                        }}
+                      >
+                        <Pencil className="h-3.5 w-3.5" /> Editar
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-1">
-                    {!u.enabled && <Badge variant="secondary">Desativado</Badge>}
-                    {u.notify_new_task && <Badge variant="outline">Tarefas</Badge>}
-                    {u.notify_deadline && <Badge variant="outline">Prazos</Badge>}
-                    {u.notify_company && <Badge variant="outline">Avisos</Badge>}
-                    {u.notify_xp_rank && <Badge variant="outline">Ranking</Badge>}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!editUserId} onOpenChange={(o) => !o && setEditUserId(null)}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageCircle className="h-5 w-5" /> WhatsApp · {editUserName}
+            </DialogTitle>
+            <DialogDescription>
+              Edite o número e as preferências deste colaborador.
+            </DialogDescription>
+          </DialogHeader>
+          {editUserId && (
+            <WhatsAppPreferencesCard
+              bare
+              userId={editUserId}
+              onSaved={() => {
+                setEditUserId(null);
+                qc.invalidateQueries({ queryKey: ["whatsapp_users_admin"] });
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
 
       <Card>
         <CardHeader>
