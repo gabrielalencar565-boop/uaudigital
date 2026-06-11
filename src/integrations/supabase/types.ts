@@ -2389,6 +2389,7 @@ export type Database = {
           enabled: boolean
           notify_company: boolean
           notify_deadline: boolean
+          notify_late: boolean
           notify_new_task: boolean
           notify_xp_rank: boolean
           phone_e164: string | null
@@ -2400,6 +2401,7 @@ export type Database = {
           enabled?: boolean
           notify_company?: boolean
           notify_deadline?: boolean
+          notify_late?: boolean
           notify_new_task?: boolean
           notify_xp_rank?: boolean
           phone_e164?: string | null
@@ -2411,6 +2413,7 @@ export type Database = {
           enabled?: boolean
           notify_company?: boolean
           notify_deadline?: boolean
+          notify_late?: boolean
           notify_new_task?: boolean
           notify_xp_rank?: boolean
           phone_e164?: string | null
