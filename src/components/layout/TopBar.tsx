@@ -160,6 +160,18 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
                 Som de notificações
               </DropdownMenuItem>
 
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault();
+                  setWhatsappOpen(true);
+                }}
+                className="gap-2.5 rounded-lg px-3 py-2.5 cursor-pointer"
+              >
+                <MessageCircle className="h-4 w-4 text-muted-foreground" />
+                Notificações WhatsApp
+              </DropdownMenuItem>
+
+
 
               <DropdownMenuSeparator />
 
