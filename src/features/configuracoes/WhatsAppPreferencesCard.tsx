@@ -14,6 +14,7 @@ type Prefs = {
   enabled: boolean;
   notify_new_task: boolean;
   notify_deadline: boolean;
+  notify_late: boolean;
   notify_company: boolean;
   notify_xp_rank: boolean;
 };
@@ -23,6 +24,7 @@ const DEFAULT_PREFS: Prefs = {
   enabled: true,
   notify_new_task: true,
   notify_deadline: true,
+  notify_late: true,
   notify_company: true,
   notify_xp_rank: true,
 };
@@ -31,33 +33,44 @@ function digitsOnly(v: string) {
   return v.replace(/\D/g, "");
 }
 
-export function WhatsAppPreferencesCard() {
+interface Props {
+  /** When provided, edit this user's prefs (admin mode). Defaults to current session user. */
+  userId?: string;
+  /** Hide the Card chrome — useful when embedding inside a Dialog. */
+  bare?: boolean;
+  /** Called after a successful save. */
+  onSaved?: () => void;
+}
+
+export function WhatsAppPreferencesCard({ userId: userIdProp, bare, onSaved }: Props = {}) {
   const { user } = useSession();
+  const userId = userIdProp ?? user?.id ?? null;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
 
   useEffect(() => {
-    if (!user) return;
+    if (!userId) return;
     let cancelled = false;
     setLoading(true);
     supabase
       .from("user_whatsapp_preferences" as any)
-      .select("phone_e164, enabled, notify_new_task, notify_deadline, notify_company, notify_xp_rank")
-      .eq("user_id", user.id)
+      .select("phone_e164, enabled, notify_new_task, notify_deadline, notify_late, notify_company, notify_xp_rank")
+      .eq("user_id", userId)
       .maybeSingle()
       .then(({ data }) => {
         if (cancelled) return;
         if (data) setPrefs({ ...DEFAULT_PREFS, ...(data as any) });
+        else setPrefs(DEFAULT_PREFS);
         setLoading(false);
       }, () => !cancelled && setLoading(false));
     return () => {
       cancelled = true;
     };
-  }, [user?.id]);
+  }, [userId]);
 
   const save = async () => {
-    if (!user) return;
+    if (!userId) return;
     setSaving(true);
     const phone = digitsOnly(prefs.phone_e164);
     if (phone && phone.length < 10) {
@@ -68,27 +81,20 @@ export function WhatsAppPreferencesCard() {
     const { error } = await supabase
       .from("user_whatsapp_preferences" as any)
       .upsert(
-        { user_id: user.id, ...prefs, phone_e164: phone || null },
+        { user_id: userId, ...prefs, phone_e164: phone || null },
         { onConflict: "user_id" },
       );
     if (error) toast.error(error.message);
-    else toast.success("Preferências de WhatsApp salvas");
+    else {
+      toast.success("Preferências de WhatsApp salvas");
+      onSaved?.();
+    }
     setSaving(false);
   };
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <MessageCircle className="h-5 w-5" />
-          Notificações WhatsApp
-        </CardTitle>
-        <CardDescription>
-          Receba avisos automáticos da plataforma direto no seu WhatsApp.
-        </CardDescription>
-      </CardHeader>
-
-      <CardContent className="space-y-5">
+  const body = (
+    <>
+      <div className="space-y-5">
         <div className="space-y-2">
           <Label htmlFor="wa-phone">Número de WhatsApp</Label>
           <Input
@@ -106,8 +112,8 @@ export function WhatsAppPreferencesCard() {
 
         <div className="flex items-center justify-between rounded-lg border border-border p-3">
           <div>
-            <div className="font-medium">Ativar notificações</div>
-            <p className="text-xs text-muted-foreground">Desligue para pausar todos os envios para você.</p>
+            <div className="font-medium">Ativar notificações WhatsApp</div>
+            <p className="text-xs text-muted-foreground">Desligue para pausar todos os envios.</p>
           </div>
           <Switch
             checked={prefs.enabled}
@@ -117,12 +123,12 @@ export function WhatsAppPreferencesCard() {
         </div>
 
         <div className="space-y-3">
-          <div className="text-sm font-medium">Quais avisos eu quero receber</div>
+          <div className="text-sm font-medium">Quais avisos receber</div>
           {([
-            ["notify_new_task", "Novas tarefas atribuídas", "Quando uma nova tarefa for atribuída a você."],
-            ["notify_deadline", "Lembretes de prazo", "Tarefas próximas do vencimento ou atrasadas."],
+            ["notify_new_task", "Novas tarefas atribuídas", "Quando uma nova tarefa for atribuída."],
+            ["notify_deadline", "Lembretes de prazo", "Tarefas próximas do vencimento."],
+            ["notify_late", "Tarefas atrasadas", "Tarefas que passaram do prazo."],
             ["notify_company", "Avisos da empresa", "Comunicados gerais enviados por administradores."],
-            ["notify_xp_rank", "Ranking XP semanal", "Sua posição no ranking semanal de performance."],
           ] as const).map(([key, title, desc]) => (
             <div key={key} className="flex items-start justify-between gap-4 rounded-lg border border-border p-3">
               <div>
@@ -137,14 +143,31 @@ export function WhatsAppPreferencesCard() {
             </div>
           ))}
         </div>
-      </CardContent>
+      </div>
 
-      <CardFooter>
-        <Button onClick={save} variant="brand" className="gap-2" disabled={saving || loading}>
+      <div className={bare ? "mt-5 flex justify-end" : ""}>
+        <Button onClick={save} variant="brand" className="gap-2" disabled={saving || loading || !userId}>
           <Save className="h-4 w-4" />
           {saving ? "Salvando..." : "Salvar preferências"}
         </Button>
-      </CardFooter>
+      </div>
+    </>
+  );
+
+  if (bare) return <div>{body}</div>;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <MessageCircle className="h-5 w-5" />
+          Notificações WhatsApp
+        </CardTitle>
+        <CardDescription>
+          Receba avisos automáticos da plataforma direto no seu WhatsApp.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>{body}</CardContent>
     </Card>
   );
 }
