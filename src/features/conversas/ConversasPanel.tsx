@@ -354,19 +354,40 @@ export function ConversasPanel() {
           ) : (
             <>
               <header className="border-b border-border px-4 py-3 flex items-center gap-3">
-                <Avatar className="h-9 w-9">
-                  <AvatarFallback className="text-[11px] bg-primary/10 text-primary">
-                    {initials(activeContact.name, activeContact.phone_e164)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold leading-tight truncate">
-                    {activeContact.name ?? activeContact.phone_e164}
-                  </div>
-                  <div className="text-[11px] text-muted-foreground">
-                    +{activeContact.phone_e164} · {originLabel(activeContact.origin)}
-                  </div>
-                </div>
+                {(() => {
+                  const member = memberFor(activeContact);
+                  const name = displayName(activeContact);
+                  const avatarSrc = displayAvatar(activeContact);
+                  return (
+                    <>
+                      <Avatar className="h-10 w-10">
+                        {avatarSrc ? <AvatarImage src={avatarSrc} alt={name} /> : null}
+                        <AvatarFallback className="text-[11px] bg-primary/10 text-primary">
+                          {initials(name, activeContact.phone_e164)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold leading-tight truncate flex items-center gap-2">
+                          {name}
+                          <Badge
+                            variant={member ? "default" : "outline"}
+                            className="text-[9px] py-0 px-1.5 h-4"
+                          >
+                            {originLabel(activeContact.origin)}
+                          </Badge>
+                        </div>
+                        <div className="text-[11px] text-muted-foreground truncate">
+                          +{activeContact.phone_e164}
+                          {member ? ` · ${member.role_title}` : ""}
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
+                <Button variant="outline" size="sm" onClick={() => setLinkOpen(true)}>
+                  <Link2 className="h-3.5 w-3.5 mr-1" />
+                  {activeContact.user_id ? "Alterar vínculo" : "Vincular contato"}
+                </Button>
                 <Button variant="outline" size="sm" onClick={markAsRead}>
                   <Check className="h-3.5 w-3.5 mr-1" /> Marcar como lida
                 </Button>
