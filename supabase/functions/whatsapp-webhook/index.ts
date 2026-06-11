@@ -79,6 +79,12 @@ Deno.serve(async (req) => {
         .eq("phone_e164", phone)
         .is("name", null);
     }
+    if (photoUrl) {
+      await admin
+        .from("whatsapp_contacts")
+        .update({ profile_pic_url: photoUrl })
+        .eq("phone_e164", phone);
+    }
 
     return new Response(JSON.stringify({ ok: true }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
