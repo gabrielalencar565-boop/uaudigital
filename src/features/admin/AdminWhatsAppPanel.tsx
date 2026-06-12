@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { WhatsAppPreferencesCard } from "@/features/configuracoes/WhatsAppPreferencesCard";
+import { AutomationsCenter } from "@/features/admin/whatsapp/AutomationsCenter";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
