@@ -2929,6 +2929,10 @@ export type Database = {
     }
     Functions: {
       admin_exists: { Args: never; Returns: boolean }
+      apply_msg_template: {
+        Args: { _template: string; _vars: Json }
+        Returns: string
+      }
       chat_conversation_type: {
         Args: { _conv: string }
         Returns: Database["public"]["Enums"]["chat_conversation_type"]

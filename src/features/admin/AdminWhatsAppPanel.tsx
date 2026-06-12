@@ -325,46 +325,59 @@ export function AdminWhatsAppPanel() {
           <CardContent className="space-y-5">
             <IntroField
               label="Nova tarefa atribuída"
-              hint="Enviado quando uma tarefa é atribuída a um colaborador. Depois desta frase aparece: «Título · Cliente · Prazo»."
-              example={(v) => `${v || "🆕 Nova tarefa atribuída:"} Criar carrossel\nCliente: Acme\nPrazo: 27/06/2026`}
+              hint="Enviado quando uma tarefa é atribuída a um colaborador. Se você usar variáveis, a mensagem usa exatamente o que você escreveu; sem variáveis, o sistema acrescenta «Título · Cliente · Prazo» após a frase."
+              vars={["nome", "primeiro_nome", "tarefa", "cliente", "prazo"]}
+              sample={{ nome: "Gabriel Silva", primeiro_nome: "Gabriel", tarefa: "Criar carrossel", cliente: "Acme", prazo: "27/06/2026" }}
+              fallback="🆕 Nova tarefa atribuída: Criar carrossel\nCliente: Acme\nPrazo: 27/06/2026"
               value={settings.msg_new_task_intro}
               onChange={(v) => setSettings((s) => ({ ...s, msg_new_task_intro: v }))}
             />
             <IntroField
               label="Prazo hoje"
               hint="Lembrete enviado para tarefas que vencem no dia."
-              example={(v) => `${v || "⏰ Prazo hoje:"} Editar vídeo\nVencimento: 12/06/2026`}
+              vars={["nome", "primeiro_nome", "tarefa", "cliente", "prazo"]}
+              sample={{ nome: "Gabriel Silva", primeiro_nome: "Gabriel", tarefa: "Editar vídeo", cliente: "Acme", prazo: "12/06/2026" }}
+              fallback="⏰ Prazo hoje: Editar vídeo\nVencimento: 12/06/2026"
               value={settings.msg_deadline_today_intro}
               onChange={(v) => setSettings((s) => ({ ...s, msg_deadline_today_intro: v }))}
             />
             <IntroField
               label="Prazo amanhã"
               hint="Lembrete enviado para tarefas que vencem no dia seguinte."
-              example={(v) => `${v || "⏰ Prazo amanhã:"} Aprovar legenda\nVencimento: 13/06/2026`}
+              vars={["nome", "primeiro_nome", "tarefa", "cliente", "prazo"]}
+              sample={{ nome: "Gabriel Silva", primeiro_nome: "Gabriel", tarefa: "Aprovar legenda", cliente: "Acme", prazo: "13/06/2026" }}
+              fallback="⏰ Prazo amanhã: Aprovar legenda\nVencimento: 13/06/2026"
               value={settings.msg_deadline_tomorrow_intro}
               onChange={(v) => setSettings((s) => ({ ...s, msg_deadline_tomorrow_intro: v }))}
             />
             <IntroField
               label="Prazo atrasado"
               hint="Lembrete enviado para tarefas vencidas há 1 dia ou mais."
-              example={(v) => `${v || "⚠️ Prazo atrasado:"} Postar reels\nVencimento: 10/06/2026`}
+              vars={["nome", "primeiro_nome", "tarefa", "cliente", "prazo"]}
+              sample={{ nome: "Gabriel Silva", primeiro_nome: "Gabriel", tarefa: "Postar reels", cliente: "Acme", prazo: "10/06/2026" }}
+              fallback="⚠️ Prazo atrasado: Postar reels\nVencimento: 10/06/2026"
               value={settings.msg_deadline_overdue_intro}
               onChange={(v) => setSettings((s) => ({ ...s, msg_deadline_overdue_intro: v }))}
             />
             <IntroField
               label="Ranking XP do mês"
               hint="Mensagem para o Top 3 de desempenho do mês."
-              example={(v) => `${v || "🏆 Ranking do mês:"} 🥇 você está em 1º lugar com 84.0 pontos. Continue assim!`}
+              vars={["nome", "primeiro_nome", "xp"]}
+              sample={{ nome: "Gabriel Silva", primeiro_nome: "Gabriel", xp: "84.0" }}
+              fallback="🏆 Ranking do mês: 🥇 você está em 1º lugar com 84.0 pontos. Continue assim!"
               value={settings.msg_xp_rank_intro}
               onChange={(v) => setSettings((s) => ({ ...s, msg_xp_rank_intro: v }))}
             />
             <IntroField
               label="Aviso para a equipe (broadcast)"
               hint="Prefixo aplicado antes do texto digitado em 'Aviso para a equipe'."
-              example={(v) => `${v || "📣 Aviso da equipe:"}\nReunião geral às 14h.`}
+              vars={["nome", "primeiro_nome"]}
+              sample={{ nome: "Gabriel Silva", primeiro_nome: "Gabriel" }}
+              fallback="📣 Aviso da equipe:\nReunião geral às 14h."
               value={settings.msg_broadcast_intro}
               onChange={(v) => setSettings((s) => ({ ...s, msg_broadcast_intro: v }))}
             />
+
 
             <Button onClick={saveSettings} variant="brand" className="gap-2" disabled={saving}>
               <Save className="h-4 w-4" /> {saving ? "Salvando..." : "Salvar mensagens"}
@@ -542,25 +555,56 @@ export function AdminWhatsAppPanel() {
   );
 }
 
+function applyTemplate(template: string, vars: Record<string, string>): string {
+  if (!template) return "";
+  return template.replace(/\{([a-zA-Z0-9_]+)\}/g, (_, k) => (vars[k] ?? ""));
+}
+
+function hasPlaceholders(s: string): boolean {
+  return /\{[a-zA-Z0-9_]+\}/.test(s || "");
+}
+
 function IntroField({
-  label, hint, value, onChange, example,
+  label, hint, value, onChange, vars, sample, fallback,
 }: {
   label: string;
   hint: string;
   value: string;
   onChange: (v: string) => void;
-  example: (v: string) => string;
+  vars: string[];
+  sample: Record<string, string>;
+  fallback: string;
 }) {
+  const preview = hasPlaceholders(value)
+    ? applyTemplate(value, sample)
+    : (value ? `${value} ${sample.tarefa ?? ""}`.trim() : fallback);
+
+  const insertVar = (name: string) => onChange((value || "") + `{${name}}`);
+
   return (
     <div className="space-y-2 rounded-lg border border-border p-4">
       <div>
         <Label className="text-sm font-semibold">{label}</Label>
         <p className="text-xs text-muted-foreground mt-0.5">{hint}</p>
       </div>
-      <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder="Frase inicial..." />
+      <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder="Digite a mensagem. Use variáveis como {primeiro_nome}..." />
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="text-[11px] text-muted-foreground">Variáveis disponíveis:</span>
+        {vars.map((v) => (
+          <button
+            key={v}
+            type="button"
+            onClick={() => insertVar(v)}
+            className="rounded-md border border-border/60 bg-muted/40 px-1.5 py-0.5 text-[11px] font-mono text-foreground hover:bg-muted/70 transition-colors"
+            title={`Inserir {${v}}`}
+          >
+            {`{${v}}`}
+          </button>
+        ))}
+      </div>
       <div className="rounded-md bg-muted/50 p-2.5 text-xs whitespace-pre-wrap text-muted-foreground">
         <span className="font-medium text-foreground">Pré-visualização: </span>
-        {example(value)}
+        {preview}
       </div>
     </div>
   );

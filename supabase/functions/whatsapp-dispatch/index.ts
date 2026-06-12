@@ -38,6 +38,26 @@ function normalizePhone(raw: string, defaultCountry: string): string | null {
   return defaultCountry + digits;
 }
 
+// Replace {placeholders} in templates. Unknown placeholders are left intact-stripped (replaced with empty).
+function applyTemplate(template: string, vars: Record<string, string | null | undefined>): string {
+  if (!template) return "";
+  return template.replace(/\{([a-zA-Z0-9_]+)\}/g, (_, key) => {
+    const v = vars[key];
+    return v == null ? "" : String(v);
+  });
+}
+
+function hasPlaceholders(s: string | null | undefined): boolean {
+  return !!s && /\{[a-zA-Z0-9_]+\}/.test(s);
+}
+
+async function getProfileName(userId: string): Promise<{ full: string; first: string }> {
+  const { data } = await admin.from("profiles").select("full_name").eq("user_id", userId).maybeSingle();
+  const full = (data?.full_name ?? "").trim();
+  const first = full.split(/\s+/)[0] ?? "";
+  return { full, first };
+}
+
 // ---------------------------------------------------------------------------
 // Provider adapters — stubs ready for Evolution API and Z-API.
 // Reads credentials from edge function secrets (configured via Lovable).
@@ -257,7 +277,19 @@ async function cronDeadlines() {
   for (const t of rows) {
     const due = t.due_date ? new Date(t.due_date).toLocaleDateString("pt-BR") : "—";
     const intro = t._kind === "atrasada" ? introOverdue : t._kind === "hoje" ? introToday : introTomorrow;
-    const msg = `${intro} ${t.title ?? "—"}\nVencimento: ${due}`;
+    const { full, first } = await getProfileName(t.assignee_id);
+    let clientName = "—";
+    if (t.client_id) {
+      const { data: c } = await admin.from("clients").select("name").eq("id", t.client_id).maybeSingle();
+      clientName = c?.name ?? "—";
+    }
+    const vars = {
+      nome: full, primeiro_nome: first,
+      tarefa: t.title ?? "—", cliente: clientName, prazo: due,
+    };
+    const msg = hasPlaceholders(intro)
+      ? applyTemplate(intro, vars)
+      : `${intro} ${t.title ?? "—"}\nVencimento: ${due}`;
     const { data: id } = await admin.rpc("whatsapp_enqueue", {
       _user_id: t.assignee_id, _type: "deadline", _message: msg, _source_ref: t.id,
     });
@@ -294,7 +326,12 @@ async function cronXpRanking() {
   for (let i = 0; i < ranked.length; i++) {
     const place = i + 1;
     const medal = place === 1 ? "🥇" : place === 2 ? "🥈" : "🥉";
-    const msg = `${intro} ${medal} você está em ${place}º lugar com ${ranked[i].total.toFixed(1)} pontos. Continue assim!`;
+    const { full, first } = await getProfileName(ranked[i].user_id);
+    const xp = ranked[i].total.toFixed(1);
+    const vars = { nome: full, primeiro_nome: first, xp, tarefa: "", cliente: "", prazo: "" };
+    const msg = hasPlaceholders(intro)
+      ? applyTemplate(intro, vars)
+      : `${intro} ${medal} você está em ${place}º lugar com ${xp} pontos. Continue assim!`;
     const { data: id } = await admin.rpc("whatsapp_enqueue", {
       _user_id: ranked[i].user_id, _type: "xp_rank", _message: msg, _source_ref: `rank_${year}_${month}_${place}`,
     });
@@ -306,8 +343,6 @@ async function cronXpRanking() {
 async function broadcast(message: string, senderId: string) {
   const { data: settings } = await admin.from("whatsapp_settings").select("msg_broadcast_intro").eq("id", 1).maybeSingle();
   const intro = settings?.msg_broadcast_intro || "📣 Aviso da equipe:";
-  const finalMessage = `${intro}\n${message}`;
-
   const { data: users } = await admin
     .from("user_whatsapp_preferences")
     .select("user_id")
@@ -317,6 +352,11 @@ async function broadcast(message: string, senderId: string) {
 
   let enqueued = 0;
   for (const u of users ?? []) {
+    const { full, first } = await getProfileName(u.user_id);
+    const vars = { nome: full, primeiro_nome: first, tarefa: "", cliente: "", prazo: "", xp: "" };
+    const finalMessage = hasPlaceholders(intro)
+      ? `${applyTemplate(intro, vars)}\n${message}`
+      : `${intro}\n${message}`;
     const { data: id } = await admin.rpc("whatsapp_enqueue", {
       _user_id: u.user_id, _type: "company", _message: finalMessage, _source_ref: `bcast:${senderId}:${Date.now()}`,
     });
