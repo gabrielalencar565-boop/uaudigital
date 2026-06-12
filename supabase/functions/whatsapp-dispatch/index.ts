@@ -62,16 +62,28 @@ async function sendViaEvolution(settings: any, phone: string, message: string): 
 
 async function sendViaZapi(settings: any, phone: string, message: string): Promise<SendResult> {
   const apiKey = Deno.env.get(settings.api_key_secret || "WHATSAPP_API_KEY");
-  const clientToken = Deno.env.get(settings.zapi_client_token_secret || "WHATSAPP_ZAPI_CLIENT_TOKEN");
+  const clientTokenSecretName = settings.zapi_client_token_secret || "WHATSAPP_ZAPI_CLIENT_TOKEN";
+  const clientToken = Deno.env.get(clientTokenSecretName);
   const instance = settings.instance_name || Deno.env.get("WHATSAPP_ZAPI_INSTANCE_ID");
+  console.log("[zapi] resolving client-token", {
+    secret_name: clientTokenSecretName,
+    client_token_resolved: !!clientToken,
+    client_token_length: clientToken ? clientToken.length : 0,
+    instance_present: !!instance,
+    api_key_present: !!apiKey,
+  });
   if (!instance || !apiKey) {
     return { ok: false, status: 0, response: { error: "zapi_not_configured" } };
   }
-  // Z-API URL pattern: https://api.z-api.io/instances/{instance}/token/{token}/send-text
   const baseUrl = settings.base_url?.replace(/\/$/, "") || "https://api.z-api.io";
   const url = `${baseUrl}/instances/${encodeURIComponent(instance)}/token/${encodeURIComponent(apiKey)}/send-text`;
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (clientToken) headers["Client-Token"] = clientToken;
+  console.log("[zapi] sending request", {
+    url_path: `/instances/.../token/.../send-text`,
+    has_client_token_header: "Client-Token" in headers,
+    phone_digits: phone.length,
+  });
   const res = await fetch(url, {
     method: "POST",
     headers,
@@ -79,6 +91,7 @@ async function sendViaZapi(settings: any, phone: string, message: string): Promi
   });
   let body: unknown;
   try { body = await res.json(); } catch { body = await res.text(); }
+  console.log("[zapi] response", { status: res.status, ok: res.ok });
   return { ok: res.ok, status: res.status, response: body };
 }
 
