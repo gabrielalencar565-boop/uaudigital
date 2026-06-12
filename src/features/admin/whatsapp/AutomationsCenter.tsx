@@ -193,7 +193,7 @@ function AutomationEditor({ open, current, onClose, onSave }: {
   const [form, setForm] = useState<AutomationInput>(initial);
 
   // Reset when dialog opens
-  useMemo(() => { if (open) setForm(initial); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [open, current?.id]);
+  useEffect(() => { if (open) setForm(initial); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [open, current?.id]);
 
   const trig = getTrigger(form.trigger_key);
   const availableVars = trig?.vars ?? [];
