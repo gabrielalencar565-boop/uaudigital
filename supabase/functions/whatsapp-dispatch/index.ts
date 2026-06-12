@@ -573,6 +573,12 @@ Deno.serve(async (req) => {
       return json(result);
     }
 
+    if (action === "run_schedules") {
+      const r = await runSchedules();
+      return json(r);
+    }
+
+    // Legacy handlers — kept for backward compatibility; new system uses run_schedules.
     if (action === "cron_deadlines") {
       const r = await cronDeadlines();
       await processOutbox(100);
@@ -584,6 +590,7 @@ Deno.serve(async (req) => {
       await processOutbox(100);
       return json(r);
     }
+
 
 
     if (action === "broadcast") {
