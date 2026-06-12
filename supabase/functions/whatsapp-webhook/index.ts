@@ -52,11 +52,13 @@ Deno.serve(async (req) => {
   if (!payload) return new Response(JSON.stringify({ ok: true }), { headers: corsHeaders });
 
   try {
-    const phoneRaw: string | undefined = payload.phone ?? payload.from ?? payload.connectedPhone;
+    const phoneRaw: string | undefined =
+      payload.chatId ?? payload.groupId ?? payload.phone ?? payload.from ?? payload.connectedPhone;
     if (!phoneRaw) {
       return new Response(JSON.stringify({ ok: true, ignored: "no_phone" }), { headers: corsHeaders });
     }
-    const phone = String(phoneRaw).replace(/\D/g, "");
+    const groupFlag = !!(payload.isGroup || payload.isGroupMsg || isGroupId(String(phoneRaw)));
+    const phone = groupFlag ? normalizePhoneOrGroup(String(phoneRaw)) : String(phoneRaw).replace(/\D/g, "");
     const key = phoneKey(phone);
     const fromMe = !!payload.fromMe;
     const senderName: string | null = payload.senderName ?? payload.chatName ?? null;
