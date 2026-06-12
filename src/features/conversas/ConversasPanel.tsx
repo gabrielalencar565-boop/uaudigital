@@ -357,8 +357,11 @@ export function ConversasPanel() {
                       </div>
                       <div className="mt-1 flex items-center gap-1">
                         <Badge
-                          variant={member ? "default" : "outline"}
-                          className="text-[9px] py-0 px-1.5 h-4"
+                          variant={isGroupContact(c) ? "default" : member ? "default" : "outline"}
+                          className={cn(
+                            "text-[9px] py-0 px-1.5 h-4",
+                            isGroupContact(c) && "bg-blue-500 hover:bg-blue-500 text-white border-blue-500",
+                          )}
                         >
                           {originLabel(c)}
                         </Badge>
