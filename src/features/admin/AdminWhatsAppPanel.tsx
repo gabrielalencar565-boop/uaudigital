@@ -65,7 +65,7 @@ type CardDef = {
 
 const CARDS: CardDef[] = [
   { key: "provedor", title: "Provedor", description: "Configure Evolution/Z-API, URL base, instância e DDI padrão.", icon: Settings2 },
-  { key: "mensagens", title: "Mensagens", description: "Personalize as frases iniciais das notificações (nova tarefa, prazos, ranking e avisos).", icon: MessageSquareText },
+  { key: "mensagens", title: "Automações", description: "Crie, edite, ative ou desative notificações automáticas (eventos e horários).", icon: MessageSquareText },
   { key: "teste", title: "Enviar teste", description: "Dispare uma mensagem para um número ou para você mesmo e valide a integração.", icon: Send },
   { key: "aviso", title: "Aviso para a equipe", description: "Mensagem em massa para todos os colaboradores que aceitam avisos.", icon: Megaphone },
   { key: "colaboradores", title: "Colaboradores", description: "Cadastre números e preferências de WhatsApp de cada colaborador.", icon: Users },
