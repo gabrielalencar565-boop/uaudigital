@@ -222,6 +222,11 @@ async function processOutbox(limit = 25) {
 // Cron orchestrators
 // ---------------------------------------------------------------------------
 async function cronDeadlines() {
+  const { data: settings } = await admin.from("whatsapp_settings").select("msg_deadline_today_intro, msg_deadline_tomorrow_intro, msg_deadline_overdue_intro").eq("id", 1).maybeSingle();
+  const introToday = settings?.msg_deadline_today_intro || "⏰ Prazo hoje:";
+  const introTomorrow = settings?.msg_deadline_tomorrow_intro || "⏰ Prazo amanhã:";
+  const introOverdue = settings?.msg_deadline_overdue_intro || "⚠️ Prazo atrasado:";
+
   // Enqueue reminders for: due tomorrow, due today, overdue (1+ days).
   const today = new Date();
   const isoToday = today.toISOString().slice(0, 10);
@@ -251,8 +256,8 @@ async function cronDeadlines() {
   let enqueued = 0;
   for (const t of rows) {
     const due = t.due_date ? new Date(t.due_date).toLocaleDateString("pt-BR") : "—";
-    const emoji = t._kind === "atrasada" ? "⚠️" : "⏰";
-    const msg = `${emoji} Prazo ${t._kind}: ${t.title ?? "—"}\nVencimento: ${due}`;
+    const intro = t._kind === "atrasada" ? introOverdue : t._kind === "hoje" ? introToday : introTomorrow;
+    const msg = `${intro} ${t.title ?? "—"}\nVencimento: ${due}`;
     const { data: id } = await admin.rpc("whatsapp_enqueue", {
       _user_id: t.assignee_id, _type: "deadline", _message: msg, _source_ref: t.id,
     });
@@ -260,6 +265,7 @@ async function cronDeadlines() {
   }
   return { enqueued, scanned: rows.length };
 }
+
 
 async function cronXpRanking() {
   const now = new Date();
