@@ -12,8 +12,21 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+function isGroupId(raw: string): boolean {
+  const s = String(raw ?? "").toLowerCase().trim();
+  return s.includes("-") || s.endsWith("@g.us");
+}
+
+function normalizePhoneOrGroup(raw: string): string {
+  const s = String(raw ?? "").trim();
+  if (isGroupId(s)) return s.toLowerCase().replace(/@g\.us$/, "");
+  return s.replace(/\D/g, "");
+}
+
 function phoneKey(raw: string): string | null {
-  const digits = String(raw ?? "").replace(/\D/g, "");
+  const s = String(raw ?? "");
+  if (isGroupId(s)) return s.toLowerCase().trim().replace(/@g\.us$/, "");
+  const digits = s.replace(/\D/g, "");
   return digits ? digits.slice(-10) : null;
 }
 
