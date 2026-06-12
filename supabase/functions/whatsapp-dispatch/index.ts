@@ -38,6 +38,26 @@ function normalizePhone(raw: string, defaultCountry: string): string | null {
   return defaultCountry + digits;
 }
 
+// Replace {placeholders} in templates. Unknown placeholders are left intact-stripped (replaced with empty).
+function applyTemplate(template: string, vars: Record<string, string | null | undefined>): string {
+  if (!template) return "";
+  return template.replace(/\{([a-zA-Z0-9_]+)\}/g, (_, key) => {
+    const v = vars[key];
+    return v == null ? "" : String(v);
+  });
+}
+
+function hasPlaceholders(s: string | null | undefined): boolean {
+  return !!s && /\{[a-zA-Z0-9_]+\}/.test(s);
+}
+
+async function getProfileName(userId: string): Promise<{ full: string; first: string }> {
+  const { data } = await admin.from("profiles").select("full_name").eq("user_id", userId).maybeSingle();
+  const full = (data?.full_name ?? "").trim();
+  const first = full.split(/\s+/)[0] ?? "";
+  return { full, first };
+}
+
 // ---------------------------------------------------------------------------
 // Provider adapters — stubs ready for Evolution API and Z-API.
 // Reads credentials from edge function secrets (configured via Lovable).
