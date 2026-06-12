@@ -3355,6 +3355,7 @@ export type Database = {
         Args: { p_client: string; p_month: number; p_year: number }
         Returns: string
       }
+      crm_is_phoneish: { Args: { _s: string }; Returns: boolean }
       crm_render_welcome: {
         Args: {
           _lead: Database["public"]["Tables"]["crm_leads"]["Row"]
