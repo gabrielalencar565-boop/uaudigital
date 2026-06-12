@@ -3,7 +3,7 @@ import {
   Home, ClipboardList, Eye, DollarSign,
   CalendarDays, CalendarRange, PieChart, Workflow,
   Target, Trophy, Users, Receipt, FileSpreadsheet,
-  ArrowRightLeft, TrendingUp, Settings,
+  ArrowRightLeft, TrendingUp, Settings, Briefcase,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { MainTab } from "@/components/layout/UauSidebarShell";
@@ -32,6 +32,7 @@ const BOTTOM_TABS: { key: string; label: string; icon: React.ComponentType<any>;
   { key: "home", label: "Home", icon: Home, tab: "meu_painel" },
   { key: "tarefas", label: "Tarefas", icon: CalendarDays, tab: "agenda_gestao" },
   { key: "dashboard", label: "Dashboard", icon: Eye, tab: "visao_do_dia" },
+  { key: "comercial", label: "Comercial", icon: Briefcase, tab: "comercial", adminOnly: true },
   { key: "financeiro", label: "Financeiro", icon: DollarSign, tab: "financeiro", adminOnly: true },
   { key: "configuracoes", label: "Config", icon: Settings, tab: "configuracoes", adminOnly: true },
 ];
@@ -44,6 +45,7 @@ function resolveActiveBottom(tab: MainTab): string {
   if (dashTabs.includes(tab)) return "dashboard";
   const finTabs: MainTab[] = ["financeiro", "fin_receitas_despesas", "fin_despesas_detalhadas", "fin_lancamentos", "metas"];
   if (finTabs.includes(tab)) return "financeiro";
+  if (tab === "comercial") return "comercial";
   if (tab === "meu_painel") return "home";
   if (tab === "configuracoes") return "configuracoes";
   return "";

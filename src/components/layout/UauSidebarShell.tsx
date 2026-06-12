@@ -3,7 +3,7 @@ import { normalizeAvatarUrl } from "@/lib/avatar-url";
 import {
   CalendarDays, ChevronDown, ClipboardList, DollarSign,
   Eye, FileSpreadsheet, FolderOpen, Gift, LayoutGrid, Lock, MessagesSquare, Receipt, Settings, Target, TrendingUp, Trophy,
-  UserRound, Users, Workflow, CalendarRange, PieChart, PanelLeftClose, ArrowRightLeft } from
+  UserRound, Users, Workflow, CalendarRange, PieChart, PanelLeftClose, ArrowRightLeft, Briefcase } from
   "lucide-react";
 import { toast } from "sonner";
 import { useAppSettings } from "@/features/data/queries";
@@ -48,6 +48,7 @@ export type MainTab =
 "fin_despesas_detalhadas" |
 "fin_lancamentos" |
 "conversas" |
+"comercial" |
 "configuracoes";
 
 type NavGroup = {
@@ -89,8 +90,9 @@ const NAV: NavEntry[] = [
   { key: "fin_lancamentos", label: "Lançamentos", icon: ArrowRightLeft },
   { key: "metas", label: "Metas", icon: TrendingUp }]
 },
-{ key: "recompensas", label: "Uau XP", icon: Gift },
-{ key: "conversas", label: "Conversas", icon: MessagesSquare, adminOnly: true }];
+  { key: "recompensas", label: "Uau XP", icon: Gift },
+  { key: "comercial", label: "Comercial", icon: Briefcase, adminOnly: true },
+  { key: "conversas", label: "Conversas", icon: MessagesSquare, adminOnly: true }];
 
 
 

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Users, Building2, SprayCan, Trophy, Palette, CalendarPlus, Workflow, ChevronRight, ArrowLeft, MessageCircle, Briefcase } from "lucide-react";
+import { Users, Building2, SprayCan, Trophy, Palette, CalendarPlus, Workflow, ChevronRight, ArrowLeft, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AdminPanel } from "./AdminPanel";
 import { AdminClientesPanel } from "./AdminClientesPanel";
@@ -8,9 +8,8 @@ import { AdminPontuacaoPanel } from "./AdminPontuacaoPanel";
 import { AdminAparenciaPanel } from "./AdminAparenciaPanel";
 import { AdminDatasInternasPanel } from "./AdminDatasInternasPanel";
 import { AdminWhatsAppPanel } from "./AdminWhatsAppPanel";
-import { ComercialPanel } from "./comercial/ComercialPanel";
 
-type AdminSubTab = "usuarios" | "clientes" | "limpeza" | "pontuacao" | "aparencia" | "datas" | "whatsapp" | "comercial";
+type AdminSubTab = "usuarios" | "clientes" | "limpeza" | "pontuacao" | "aparencia" | "datas" | "whatsapp";
 
 type CardDef = {
   key: AdminSubTab | "fluxos";
@@ -28,7 +27,6 @@ const CARDS: CardDef[] = [
   { key: "pontuacao", title: "Pontuação", description: "Ajuste regras de pontos, pesos por etapa e penalidades de desempenho.", icon: Trophy },
   { key: "aparencia", title: "Aparência", description: "Personalize a identidade visual do sistema, tema, cores e logotipo.", icon: Palette },
   { key: "whatsapp", title: "WhatsApp", description: "Configure o provedor (Evolution/Z-API), envie avisos e acompanhe os envios.", icon: MessageCircle },
-  { key: "comercial", title: "Comercial", description: "CRM comercial integrado ao WhatsApp: funil, leads, propostas e relatórios.", icon: Briefcase },
   { key: "fluxos", title: "Fluxos", description: "Configure os fluxos operacionais, etapas e responsáveis por papel.", icon: Workflow, external: true },
 ];
 
@@ -101,7 +99,6 @@ export function AdminContainer({ onNavigate }: { onNavigate?: (tab: string) => v
           {subTab === "pontuacao" && <AdminPontuacaoPanel />}
           {subTab === "aparencia" && <AdminAparenciaPanel />}
           {subTab === "whatsapp" && <AdminWhatsAppPanel />}
-          {subTab === "comercial" && <ComercialPanel />}
         </div>
       )}
     </div>
