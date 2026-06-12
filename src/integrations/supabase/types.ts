@@ -679,6 +679,77 @@ export type Database = {
           },
         ]
       }
+      crm_lead_automations: {
+        Row: {
+          business_days: number[]
+          business_hours_end: string
+          business_hours_start: string
+          cooldown_days: number
+          created_at: string
+          enabled: boolean
+          followup_minutes: number
+          message_template: string
+          scenario: string
+          updated_at: string
+        }
+        Insert: {
+          business_days?: number[]
+          business_hours_end?: string
+          business_hours_start?: string
+          cooldown_days?: number
+          created_at?: string
+          enabled?: boolean
+          followup_minutes?: number
+          message_template: string
+          scenario: string
+          updated_at?: string
+        }
+        Update: {
+          business_days?: number[]
+          business_hours_end?: string
+          business_hours_start?: string
+          cooldown_days?: number
+          created_at?: string
+          enabled?: boolean
+          followup_minutes?: number
+          message_template?: string
+          scenario?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      crm_lead_welcome_log: {
+        Row: {
+          id: string
+          lead_id: string | null
+          phone_key: string
+          scenario: string
+          sent_at: string
+        }
+        Insert: {
+          id?: string
+          lead_id?: string | null
+          phone_key: string
+          scenario: string
+          sent_at?: string
+        }
+        Update: {
+          id?: string
+          lead_id?: string | null
+          phone_key?: string
+          scenario?: string
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_lead_welcome_log_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_leads: {
         Row: {
           cidade: string | null
@@ -708,6 +779,8 @@ export type Database = {
           updated_at: string
           urgencia: Database["public"]["Enums"]["crm_urgencia"] | null
           valor_estimado: number | null
+          welcome_scenario: string | null
+          welcome_sent_at: string | null
           whatsapp_contact_id: string | null
         }
         Insert: {
@@ -738,6 +811,8 @@ export type Database = {
           updated_at?: string
           urgencia?: Database["public"]["Enums"]["crm_urgencia"] | null
           valor_estimado?: number | null
+          welcome_scenario?: string | null
+          welcome_sent_at?: string | null
           whatsapp_contact_id?: string | null
         }
         Update: {
@@ -768,6 +843,8 @@ export type Database = {
           updated_at?: string
           urgencia?: Database["public"]["Enums"]["crm_urgencia"] | null
           valor_estimado?: number | null
+          welcome_scenario?: string | null
+          welcome_sent_at?: string | null
           whatsapp_contact_id?: string | null
         }
         Relationships: []
@@ -3278,6 +3355,14 @@ export type Database = {
         Args: { p_client: string; p_month: number; p_year: number }
         Returns: string
       }
+      crm_render_welcome: {
+        Args: {
+          _lead: Database["public"]["Tables"]["crm_leads"]["Row"]
+          _template: string
+        }
+        Returns: string
+      }
+      crm_should_send_welcome: { Args: { _lead_id: string }; Returns: string }
       get_performance_month_totals: {
         Args: { _year: number }
         Returns: {
