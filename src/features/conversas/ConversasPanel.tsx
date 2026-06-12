@@ -18,7 +18,7 @@ type Contact = {
   phone_e164: string;
   phone_key: string | null;
   name: string | null;
-  origin: "colaborador" | "lead" | "cliente" | "desconhecido";
+  origin: "colaborador" | "lead" | "cliente" | "desconhecido" | "grupo";
   status: string;
   user_id: string | null;
   profile_pic_url: string | null;
