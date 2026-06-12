@@ -473,6 +473,27 @@ async function listOptedInUsers(): Promise<string[]> {
   return (data ?? []).map((r: any) => r.user_id);
 }
 
+async function enqueueForAuto(
+  auto: any,
+  userId: string | null,
+  key: string,
+  msg: string,
+  sourceRef: string,
+): Promise<boolean> {
+  if (auto.audience === "group") {
+    if (!auto.group_phone) return false;
+    const { data: id } = await admin.rpc("whatsapp_enqueue_phone", {
+      _phone: auto.group_phone, _type: key, _message: msg, _source_ref: sourceRef,
+    });
+    return !!id;
+  }
+  if (!userId) return false;
+  const { data: id } = await admin.rpc("whatsapp_enqueue", {
+    _user_id: userId, _type: key, _message: msg, _source_ref: sourceRef,
+  });
+  return !!id;
+}
+
 async function runScheduledAutomation(auto: any, now: ReturnType<typeof nowInSaoPaulo>): Promise<number> {
   const key = auto.trigger_key as string;
   let enqueued = 0;
@@ -511,25 +532,34 @@ async function runScheduledAutomation(auto: any, now: ReturnType<typeof nowInSao
       };
       const msg = applyTemplate(auto.message_template, vars);
       if (msg.trim()) {
-        const { data: id } = await admin.rpc("whatsapp_enqueue", {
-          _user_id: t.assignee_id, _type: key, _message: msg, _source_ref: t.id,
-        });
-        if (id) enqueued++;
+        if (await enqueueForAuto(auto, t.assignee_id, key, msg, t.id)) enqueued++;
       }
     }
     return enqueued;
   }
 
   // Per-user style schedules: daily_agenda, daily_summary, weekly_summary, performance_report
+  if (auto.audience === "group") {
+    // For group audience on per-user schedules, send a single team-wide message
+    // by aggregating sample variables (uses first opted-in user as context).
+    const users = await listOptedInUsers();
+    if (users.length === 0) return 0;
+    const vars = await buildUserVars(users[0], now.dateIso);
+    // Override personal vars for group context
+    vars.nome = "equipe";
+    vars.primeiro_nome = "equipe";
+    const msg = applyTemplate(auto.message_template, vars);
+    if (!msg.trim()) return 0;
+    if (await enqueueForAuto(auto, null, key, msg, `${key}:${now.slot}`)) enqueued++;
+    return enqueued;
+  }
+
   const users = await listOptedInUsers();
   for (const uid of users) {
     const vars = await buildUserVars(uid, now.dateIso);
     const msg = applyTemplate(auto.message_template, vars);
     if (!msg.trim()) continue;
-    const { data: id } = await admin.rpc("whatsapp_enqueue", {
-      _user_id: uid, _type: key, _message: msg, _source_ref: `${key}:${now.slot}`,
-    });
-    if (id) enqueued++;
+    if (await enqueueForAuto(auto, uid, key, msg, `${key}:${now.slot}`)) enqueued++;
   }
   return enqueued;
 }
