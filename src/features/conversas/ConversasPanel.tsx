@@ -358,7 +358,7 @@ export function ConversasPanel() {
                           variant={member ? "default" : "outline"}
                           className="text-[9px] py-0 px-1.5 h-4"
                         >
-                          {originLabel(c.origin)}
+                          {originLabel(c)}
                         </Badge>
                         {member && (
                           <span className="text-[9px] text-muted-foreground truncate">
@@ -402,7 +402,7 @@ export function ConversasPanel() {
                             variant={member ? "default" : "outline"}
                             className="text-[9px] py-0 px-1.5 h-4"
                           >
-                            {originLabel(activeContact.origin)}
+                            {originLabel(activeContact)}
                           </Badge>
                         </div>
                         <div className="text-[11px] text-muted-foreground truncate">
