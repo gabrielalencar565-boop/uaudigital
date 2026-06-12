@@ -367,6 +367,190 @@ async function broadcast(message: string, senderId: string) {
 
 
 // ---------------------------------------------------------------------------
+// Automations runtime (schedule-based)
+// ---------------------------------------------------------------------------
+const SAO_PAULO_TZ = "America/Sao_Paulo";
+
+function nowInSaoPaulo() {
+  const parts = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: SAO_PAULO_TZ,
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", weekday: "short",
+    hour12: false,
+  }).formatToParts(new Date());
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  const y = get("year"), mo = get("month"), d = get("day");
+  const h = get("hour"), mi = get("minute");
+  // weekday: dom, seg, ter, qua, qui, sex, sáb
+  const wdMap: Record<string, number> = { dom: 0, seg: 1, ter: 2, qua: 3, qui: 4, sex: 5, "sáb": 6, sab: 6 };
+  const wkRaw = get("weekday").toLowerCase().replace(/\./g, "");
+  const wd = wdMap[wkRaw] ?? new Date().getUTCDay();
+  const slot = `${y}-${mo}-${d} ${h}:${String(Math.floor(parseInt(mi) / 5) * 5).padStart(2, "0")}`;
+  return { y: parseInt(y), mo: parseInt(mo), d: parseInt(d), h: parseInt(h), mi: parseInt(mi), wd, slot, dateIso: `${y}-${mo}-${d}` };
+}
+
+function shouldFireSchedule(scheduleTime: string | null, now: { h: number; mi: number }): boolean {
+  if (!scheduleTime) return false;
+  const [h, m] = scheduleTime.split(":").map((x) => parseInt(x, 10));
+  if (Number.isNaN(h) || Number.isNaN(m)) return false;
+  // Fire when current 5-min slot covers the scheduled minute.
+  const cur = now.h * 60 + now.mi;
+  const tgt = h * 60 + m;
+  return cur >= tgt && cur < tgt + 5;
+}
+
+async function buildUserVars(userId: string, dateIso: string) {
+  const { data: prof } = await admin.from("profiles").select("full_name").eq("user_id", userId).maybeSingle();
+  const full = (prof?.full_name ?? "").trim();
+  const first = full.split(/\s+/)[0] ?? "";
+
+  // Tarefas do dia
+  const { data: today } = await admin
+    .from("pm_tasks")
+    .select("title, client_id, posting_time, status_global")
+    .eq("assignee_id", userId)
+    .is("deleted_at", null)
+    .eq("due_date", dateIso);
+
+  const { data: overdue } = await admin
+    .from("pm_tasks")
+    .select("title, due_date")
+    .eq("assignee_id", userId)
+    .is("deleted_at", null)
+    .neq("status_global", "concluido")
+    .lt("due_date", dateIso);
+
+  const { data: done } = await admin
+    .from("pm_tasks")
+    .select("title")
+    .eq("assignee_id", userId)
+    .is("deleted_at", null)
+    .eq("status_global", "concluido")
+    .eq("due_date", dateIso);
+
+  const clientIds = Array.from(new Set((today ?? []).map((t: any) => t.client_id).filter(Boolean)));
+  const clientMap: Record<string, string> = {};
+  if (clientIds.length > 0) {
+    const { data: clients } = await admin.from("clients").select("id, name").in("id", clientIds);
+    (clients ?? []).forEach((c: any) => { clientMap[c.id] = c.name; });
+  }
+
+  const fmtTasks = (rows: any[]) =>
+    rows.length === 0 ? "Nenhuma." : rows.map((t: any) => {
+      const cli = t.client_id ? ` · ${clientMap[t.client_id] ?? ""}` : "";
+      const tm = t.posting_time ? ` · ${t.posting_time}` : "";
+      return `• ${t.title}${cli}${tm}`;
+    }).join("\n");
+
+  return {
+    nome: full,
+    primeiro_nome: first,
+    tarefas_do_dia: fmtTasks(today ?? []),
+    tarefas_atrasadas: (overdue ?? []).length === 0 ? "Nenhuma." : (overdue ?? []).map((t: any) => `• ${t.title} (venceu em ${t.due_date})`).join("\n"),
+    tarefas_concluidas: (done ?? []).length === 0 ? "Nenhuma." : (done ?? []).map((t: any) => `• ${t.title}`).join("\n"),
+    total_tarefas_dia: String((today ?? []).length),
+  };
+}
+
+async function listOptedInUsers(): Promise<string[]> {
+  const { data } = await admin
+    .from("user_whatsapp_preferences")
+    .select("user_id")
+    .eq("enabled", true)
+    .not("phone_e164", "is", null);
+  return (data ?? []).map((r: any) => r.user_id);
+}
+
+async function runScheduledAutomation(auto: any, now: ReturnType<typeof nowInSaoPaulo>): Promise<number> {
+  const key = auto.trigger_key as string;
+  let enqueued = 0;
+
+  // Per-task style schedules: deadline_today / tomorrow / overdue
+  if (key === "deadline_today" || key === "deadline_tomorrow" || key === "deadline_overdue") {
+    const isoToday = now.dateIso;
+    const tomorrow = (() => {
+      const d = new Date(`${isoToday}T12:00:00Z`);
+      d.setUTCDate(d.getUTCDate() + 1);
+      return d.toISOString().slice(0, 10);
+    })();
+    let query = admin.from("pm_tasks")
+      .select("id, title, due_date, assignee_id, client_id")
+      .is("deleted_at", null)
+      .neq("status_global", "concluido")
+      .not("assignee_id", "is", null);
+    if (key === "deadline_today") query = query.eq("due_date", isoToday);
+    else if (key === "deadline_tomorrow") query = query.eq("due_date", tomorrow);
+    else query = query.lt("due_date", isoToday);
+
+    const { data: rows } = await query;
+    for (const t of rows ?? []) {
+      const { data: prof } = await admin.from("profiles").select("full_name").eq("user_id", t.assignee_id).maybeSingle();
+      const full = (prof?.full_name ?? "").trim();
+      const first = full.split(/\s+/)[0] ?? "";
+      let cli = "—";
+      if (t.client_id) {
+        const { data: c } = await admin.from("clients").select("name").eq("id", t.client_id).maybeSingle();
+        cli = c?.name ?? "—";
+      }
+      const vars = {
+        nome: full, primeiro_nome: first,
+        tarefa: t.title ?? "—", cliente: cli,
+        prazo: t.due_date ? new Date(`${t.due_date}T12:00:00Z`).toLocaleDateString("pt-BR") : "—",
+      };
+      const msg = applyTemplate(auto.message_template, vars);
+      if (msg.trim()) {
+        const { data: id } = await admin.rpc("whatsapp_enqueue", {
+          _user_id: t.assignee_id, _type: key, _message: msg, _source_ref: t.id,
+        });
+        if (id) enqueued++;
+      }
+    }
+    return enqueued;
+  }
+
+  // Per-user style schedules: daily_agenda, daily_summary, weekly_summary, performance_report
+  const users = await listOptedInUsers();
+  for (const uid of users) {
+    const vars = await buildUserVars(uid, now.dateIso);
+    const msg = applyTemplate(auto.message_template, vars);
+    if (!msg.trim()) continue;
+    const { data: id } = await admin.rpc("whatsapp_enqueue", {
+      _user_id: uid, _type: key, _message: msg, _source_ref: `${key}:${now.slot}`,
+    });
+    if (id) enqueued++;
+  }
+  return enqueued;
+}
+
+async function runSchedules() {
+  const now = nowInSaoPaulo();
+  const { data: autos } = await admin
+    .from("whatsapp_automations")
+    .select("*")
+    .eq("enabled", true)
+    .eq("trigger_type", "schedule");
+
+  let total = 0;
+  let fired = 0;
+  for (const auto of autos ?? []) {
+    if (!shouldFireSchedule(auto.schedule_time, now)) continue;
+    const days: number[] = auto.schedule_days ?? [0, 1, 2, 3, 4, 5, 6];
+    if (!days.includes(now.wd)) continue;
+    if (auto.last_run_slot === now.slot) continue;
+
+    const enqueued = await runScheduledAutomation(auto, now);
+    await admin.from("whatsapp_automations").update({
+      last_run_at: new Date().toISOString(),
+      last_run_slot: now.slot,
+    }).eq("id", auto.id);
+    total += enqueued;
+    fired++;
+  }
+  await processOutbox(100);
+  return { fired, enqueued: total, slot: now.slot };
+}
+
+// ---------------------------------------------------------------------------
 // Handler
 // ---------------------------------------------------------------------------
 Deno.serve(async (req) => {
