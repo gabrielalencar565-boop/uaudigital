@@ -2530,6 +2530,66 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_automations: {
+        Row: {
+          audience: string
+          channel: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          enabled: boolean
+          filters: Json
+          id: string
+          last_run_at: string | null
+          last_run_slot: string | null
+          message_template: string
+          name: string
+          schedule_days: number[] | null
+          schedule_time: string | null
+          trigger_key: string
+          trigger_type: string
+          updated_at: string
+        }
+        Insert: {
+          audience?: string
+          channel?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          enabled?: boolean
+          filters?: Json
+          id?: string
+          last_run_at?: string | null
+          last_run_slot?: string | null
+          message_template: string
+          name: string
+          schedule_days?: number[] | null
+          schedule_time?: string | null
+          trigger_key: string
+          trigger_type: string
+          updated_at?: string
+        }
+        Update: {
+          audience?: string
+          channel?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          enabled?: boolean
+          filters?: Json
+          id?: string
+          last_run_at?: string | null
+          last_run_slot?: string | null
+          message_template?: string
+          name?: string
+          schedule_days?: number[] | null
+          schedule_time?: string | null
+          trigger_key?: string
+          trigger_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       whatsapp_contacts: {
         Row: {
           created_at: string
@@ -3060,6 +3120,15 @@ export type Database = {
           new_status: Database["public"]["Enums"]["task_status"]
           stage_completed: boolean
         }[]
+      }
+      whatsapp_dispatch_event: {
+        Args: {
+          _key: string
+          _source_ref?: string
+          _user_id: string
+          _vars: Json
+        }
+        Returns: number
       }
       whatsapp_enqueue: {
         Args: {
