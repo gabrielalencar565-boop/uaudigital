@@ -1292,6 +1292,81 @@ export type Database = {
         }
         Relationships: []
       }
+      ops_db_health_snapshots: {
+        Row: {
+          commits: number | null
+          connections: number | null
+          db_size_bytes: number | null
+          deadlocks: number | null
+          id: string
+          max_connections: number | null
+          note: string | null
+          rollbacks: number | null
+          snapshot_at: string
+          wal_size_bytes: number | null
+        }
+        Insert: {
+          commits?: number | null
+          connections?: number | null
+          db_size_bytes?: number | null
+          deadlocks?: number | null
+          id?: string
+          max_connections?: number | null
+          note?: string | null
+          rollbacks?: number | null
+          snapshot_at?: string
+          wal_size_bytes?: number | null
+        }
+        Update: {
+          commits?: number | null
+          connections?: number | null
+          db_size_bytes?: number | null
+          deadlocks?: number | null
+          id?: string
+          max_connections?: number | null
+          note?: string | null
+          rollbacks?: number | null
+          snapshot_at?: string
+          wal_size_bytes?: number | null
+        }
+        Relationships: []
+      }
+      ops_top_queries_snapshots: {
+        Row: {
+          calls: number | null
+          id: string
+          mean_ms: number | null
+          query: string | null
+          queryid: number | null
+          rank: number
+          rows: number | null
+          snapshot_at: string
+          total_ms: number | null
+        }
+        Insert: {
+          calls?: number | null
+          id?: string
+          mean_ms?: number | null
+          query?: string | null
+          queryid?: number | null
+          rank: number
+          rows?: number | null
+          snapshot_at?: string
+          total_ms?: number | null
+        }
+        Update: {
+          calls?: number | null
+          id?: string
+          mean_ms?: number | null
+          query?: string | null
+          queryid?: number | null
+          rank?: number
+          rows?: number | null
+          snapshot_at?: string
+          total_ms?: number | null
+        }
+        Relationships: []
+      }
       performance_scores: {
         Row: {
           ambiente_organizado: number
@@ -2915,6 +2990,7 @@ export type Database = {
         Returns: string
       }
       magic2_seed_year: { Args: { _year: number }; Returns: undefined }
+      ops_capture_snapshot: { Args: { _note?: string }; Returns: undefined }
       pm_recalc_tag_points: {
         Args: { _pm_task_id: string }
         Returns: undefined
