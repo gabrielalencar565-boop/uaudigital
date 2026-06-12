@@ -343,21 +343,6 @@ export function useTeamActivity() {
           let activityTaskId = row.id;
           let activityTitle = row.title ?? "Tarefa";
 
-          if (isSubtask && row.parent_task_id) {
-            try {
-              const { data: parent } = await supabase
-                .from("pm_tasks")
-                .select("id, title")
-                .eq("id", row.parent_task_id)
-                .maybeSingle();
-              if (parent) {
-                activityTaskId = parent.id;
-                activityTitle = parent.title ?? activityTitle;
-              }
-            } catch {
-              /* ignore */
-            }
-          }
 
           // Skip my own action when it was already sent through the explicit broadcast path.
           if ((row.id && isRecentlyMine(row.id)) || (activityTaskId && isRecentlyMine(activityTaskId))) return;
