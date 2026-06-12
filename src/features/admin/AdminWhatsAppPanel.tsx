@@ -555,25 +555,56 @@ export function AdminWhatsAppPanel() {
   );
 }
 
+function applyTemplate(template: string, vars: Record<string, string>): string {
+  if (!template) return "";
+  return template.replace(/\{([a-zA-Z0-9_]+)\}/g, (_, k) => (vars[k] ?? ""));
+}
+
+function hasPlaceholders(s: string): boolean {
+  return /\{[a-zA-Z0-9_]+\}/.test(s || "");
+}
+
 function IntroField({
-  label, hint, value, onChange, example,
+  label, hint, value, onChange, vars, sample, fallback,
 }: {
   label: string;
   hint: string;
   value: string;
   onChange: (v: string) => void;
-  example: (v: string) => string;
+  vars: string[];
+  sample: Record<string, string>;
+  fallback: string;
 }) {
+  const preview = hasPlaceholders(value)
+    ? applyTemplate(value, sample)
+    : (value ? `${value} ${sample.tarefa ?? ""}`.trim() : fallback);
+
+  const insertVar = (name: string) => onChange((value || "") + `{${name}}`);
+
   return (
     <div className="space-y-2 rounded-lg border border-border p-4">
       <div>
         <Label className="text-sm font-semibold">{label}</Label>
         <p className="text-xs text-muted-foreground mt-0.5">{hint}</p>
       </div>
-      <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder="Frase inicial..." />
+      <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder="Digite a mensagem. Use variáveis como {primeiro_nome}..." />
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="text-[11px] text-muted-foreground">Variáveis disponíveis:</span>
+        {vars.map((v) => (
+          <button
+            key={v}
+            type="button"
+            onClick={() => insertVar(v)}
+            className="rounded-md border border-border/60 bg-muted/40 px-1.5 py-0.5 text-[11px] font-mono text-foreground hover:bg-muted/70 transition-colors"
+            title={`Inserir {${v}}`}
+          >
+            {`{${v}}`}
+          </button>
+        ))}
+      </div>
       <div className="rounded-md bg-muted/50 p-2.5 text-xs whitespace-pre-wrap text-muted-foreground">
         <span className="font-medium text-foreground">Pré-visualização: </span>
-        {example(value)}
+        {preview}
       </div>
     </div>
   );
