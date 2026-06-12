@@ -2539,6 +2539,7 @@ export type Database = {
           description: string | null
           enabled: boolean
           filters: Json
+          group_phone: string | null
           id: string
           last_run_at: string | null
           last_run_slot: string | null
@@ -2558,6 +2559,7 @@ export type Database = {
           description?: string | null
           enabled?: boolean
           filters?: Json
+          group_phone?: string | null
           id?: string
           last_run_at?: string | null
           last_run_slot?: string | null
@@ -2577,6 +2579,7 @@ export type Database = {
           description?: string | null
           enabled?: boolean
           filters?: Json
+          group_phone?: string | null
           id?: string
           last_run_at?: string | null
           last_run_slot?: string | null
@@ -2700,6 +2703,7 @@ export type Database = {
           processed_at: string | null
           source_ref: string | null
           status: string
+          target_phone: string | null
           user_id: string | null
         }
         Insert: {
@@ -2712,6 +2716,7 @@ export type Database = {
           processed_at?: string | null
           source_ref?: string | null
           status?: string
+          target_phone?: string | null
           user_id?: string | null
         }
         Update: {
@@ -2724,6 +2729,7 @@ export type Database = {
           processed_at?: string | null
           source_ref?: string | null
           status?: string
+          target_phone?: string | null
           user_id?: string | null
         }
         Relationships: []
@@ -3139,11 +3145,20 @@ export type Database = {
         }
         Returns: string
       }
+      whatsapp_enqueue_phone: {
+        Args: {
+          _message: string
+          _phone: string
+          _source_ref?: string
+          _type: string
+        }
+        Returns: string
+      }
       whatsapp_link_contact_to_user: {
         Args: { _phone: string; _user_id: string }
         Returns: undefined
       }
-      whatsapp_phone_key: { Args: { _phone: string }; Returns: string }
+      whatsapp_phone_key: { Args: { _raw: string }; Returns: string }
       whatsapp_rebuild_contact_summary: {
         Args: { _phone_key: string }
         Returns: undefined
