@@ -258,11 +258,15 @@ export function AdminWhatsAppPanel() {
             </div>
             {settings.provider === "zapi" && (
               <div className="space-y-2">
-                <Label>Segredo do Client-Token (Z-API)</Label>
+                <Label>Nome do segredo do Client-Token (Supabase Secret)</Label>
                 <Input
                   value={settings.zapi_client_token_secret ?? ""}
                   onChange={(e) => setSettings((s) => ({ ...s, zapi_client_token_secret: e.target.value }))}
+                  placeholder="WHATSAPP_ZAPI_CLIENT_TOKEN"
                 />
+                <p className="text-xs text-muted-foreground">
+                  Informe o nome do secret cadastrado no Supabase. Não cole o token da Z-API diretamente aqui.
+                </p>
               </div>
             )}
           </div>
