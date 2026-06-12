@@ -304,7 +304,7 @@ export function useTeamActivity() {
         const p = payload as ActivityPayload | undefined;
         if (!p) return;
         if (p.user_id === user.id) return;
-        if (p.type !== "task_completed" && p.type !== "subtask_completed") return;
+        if (p.type !== "task_completed") return;
         const key = p.dedupe_id ?? p.task_id ?? `${p.user_id}|${p.task_title}`;
         maybeShow(
           key,
@@ -335,28 +335,14 @@ export function useTeamActivity() {
           if (row.status_global !== "concluido") return;
           if (old.status_global === "concluido") return;
           if (row.deleted_at) return;
+          // Only notify on parent task completion — ignore subtasks
+          if (row.parent_task_id) return;
           // Ignore stale events from before this session
           const ts = row.updated_at ? new Date(row.updated_at).getTime() : Date.now();
           if (ts < sessionStart) return;
-          const isSubtask = !!row.parent_task_id;
-          let activityTaskId = isSubtask ? row.parent_task_id : row.id;
+          let activityTaskId = row.id;
           let activityTitle = row.title ?? "Tarefa";
 
-          if (isSubtask && row.parent_task_id) {
-            try {
-              const { data: parent } = await supabase
-                .from("pm_tasks")
-                .select("id, title")
-                .eq("id", row.parent_task_id)
-                .maybeSingle();
-              if (parent) {
-                activityTaskId = parent.id;
-                activityTitle = parent.title ?? activityTitle;
-              }
-            } catch {
-              /* ignore */
-            }
-          }
 
           // Skip my own action when it was already sent through the explicit broadcast path.
           if ((row.id && isRecentlyMine(row.id)) || (activityTaskId && isRecentlyMine(activityTaskId))) return;
