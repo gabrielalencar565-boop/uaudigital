@@ -12,6 +12,7 @@ export type WhatsappAutomation = {
   message_template: string;
   channel: string;
   audience: string;
+  group_phone: string | null;
   filters: Record<string, unknown>;
   enabled: boolean;
   last_run_at: string | null;
@@ -30,6 +31,7 @@ export type AutomationInput = {
   schedule_days?: number[] | null;
   message_template: string;
   audience: string;
+  group_phone?: string | null;
   enabled: boolean;
 };
 
@@ -60,6 +62,8 @@ export function useUpsertAutomation() {
         payload.schedule_time = null;
         payload.schedule_days = null;
       }
+      if (payload.audience !== "group") payload.group_phone = null;
+      if (typeof payload.group_phone === "string") payload.group_phone = payload.group_phone.trim() || null;
       const q = supabase.from("whatsapp_automations" as any);
       if (input.id) {
         const { error } = await q.update(payload).eq("id", input.id);

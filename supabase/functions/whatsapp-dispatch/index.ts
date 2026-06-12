@@ -29,11 +29,17 @@ const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 
 const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+function isGroupId(raw: string): boolean {
+  const s = String(raw ?? "").toLowerCase().trim();
+  return s.includes("-") || s.endsWith("@g.us");
+}
+
 function normalizePhone(raw: string, defaultCountry: string): string | null {
   if (!raw) return null;
-  const digits = raw.replace(/\D/g, "");
+  // Group IDs are sent verbatim (Z-API accepts them in `phone` field).
+  if (isGroupId(raw)) return String(raw).trim().toLowerCase().replace(/@g\.us$/, "");
+  const digits = String(raw).replace(/\D/g, "");
   if (!digits) return null;
-  // If it already starts with country code, keep it; otherwise prepend.
   if (digits.length >= 12) return digits;
   return defaultCountry + digits;
 }
@@ -160,7 +166,7 @@ async function processOutbox(limit = 25) {
 
   const { data: rows, error } = await admin
     .from("whatsapp_outbox")
-    .select("id, user_id, notification_type, message, source_ref")
+    .select("id, user_id, target_phone, notification_type, message, source_ref")
     .eq("status", "queued")
     .order("created_at", { ascending: true })
     .limit(limit);
@@ -169,7 +175,6 @@ async function processOutbox(limit = 25) {
 
   let processed = 0;
   for (const row of rows) {
-    // Mark processing first so concurrent calls don't double-send.
     const claim = await admin
       .from("whatsapp_outbox")
       .update({ status: "processing", attempts: 1 })
@@ -179,26 +184,33 @@ async function processOutbox(limit = 25) {
       .maybeSingle();
     if (!claim.data) continue;
 
-    const { data: pref } = await admin
-      .from("user_whatsapp_preferences")
-      .select("phone_e164, enabled, notify_new_task, notify_deadline, notify_company, notify_xp_rank")
-      .eq("user_id", row.user_id)
-      .maybeSingle();
+    let phone: string | null = null;
 
-    if (!pref || !pref.enabled || !pref.phone_e164) {
-      await admin.from("whatsapp_outbox").update({
-        status: "done", processed_at: new Date().toISOString(), last_error: "user_disabled_or_missing_phone",
-      }).eq("id", row.id);
-      await admin.from("whatsapp_send_log").insert({
-        user_id: row.user_id, phone_e164: pref?.phone_e164 ?? null,
-        notification_type: row.notification_type, message: row.message,
-        status: "skipped", provider: settings.provider, source_ref: row.source_ref,
-        error_message: "user_disabled_or_missing_phone",
-      });
-      continue;
+    if (row.target_phone) {
+      // Direct send (group or admin-targeted phone)
+      phone = normalizePhone(row.target_phone, settings.default_country_code || "55");
+    } else if (row.user_id) {
+      const { data: pref } = await admin
+        .from("user_whatsapp_preferences")
+        .select("phone_e164, enabled, notify_new_task, notify_deadline, notify_company, notify_xp_rank")
+        .eq("user_id", row.user_id)
+        .maybeSingle();
+
+      if (!pref || !pref.enabled || !pref.phone_e164) {
+        await admin.from("whatsapp_outbox").update({
+          status: "done", processed_at: new Date().toISOString(), last_error: "user_disabled_or_missing_phone",
+        }).eq("id", row.id);
+        await admin.from("whatsapp_send_log").insert({
+          user_id: row.user_id, phone_e164: pref?.phone_e164 ?? null,
+          notification_type: row.notification_type, message: row.message,
+          status: "skipped", provider: settings.provider, source_ref: row.source_ref,
+          error_message: "user_disabled_or_missing_phone",
+        });
+        continue;
+      }
+      phone = normalizePhone(pref.phone_e164, settings.default_country_code || "55");
     }
 
-    const phone = normalizePhone(pref.phone_e164, settings.default_country_code || "55");
     if (!phone) {
       await admin.from("whatsapp_outbox").update({
         status: "failed", processed_at: new Date().toISOString(), last_error: "invalid_phone",
@@ -461,6 +473,27 @@ async function listOptedInUsers(): Promise<string[]> {
   return (data ?? []).map((r: any) => r.user_id);
 }
 
+async function enqueueForAuto(
+  auto: any,
+  userId: string | null,
+  key: string,
+  msg: string,
+  sourceRef: string,
+): Promise<boolean> {
+  if (auto.audience === "group") {
+    if (!auto.group_phone) return false;
+    const { data: id } = await admin.rpc("whatsapp_enqueue_phone", {
+      _phone: auto.group_phone, _type: key, _message: msg, _source_ref: sourceRef,
+    });
+    return !!id;
+  }
+  if (!userId) return false;
+  const { data: id } = await admin.rpc("whatsapp_enqueue", {
+    _user_id: userId, _type: key, _message: msg, _source_ref: sourceRef,
+  });
+  return !!id;
+}
+
 async function runScheduledAutomation(auto: any, now: ReturnType<typeof nowInSaoPaulo>): Promise<number> {
   const key = auto.trigger_key as string;
   let enqueued = 0;
@@ -499,25 +532,34 @@ async function runScheduledAutomation(auto: any, now: ReturnType<typeof nowInSao
       };
       const msg = applyTemplate(auto.message_template, vars);
       if (msg.trim()) {
-        const { data: id } = await admin.rpc("whatsapp_enqueue", {
-          _user_id: t.assignee_id, _type: key, _message: msg, _source_ref: t.id,
-        });
-        if (id) enqueued++;
+        if (await enqueueForAuto(auto, t.assignee_id, key, msg, t.id)) enqueued++;
       }
     }
     return enqueued;
   }
 
   // Per-user style schedules: daily_agenda, daily_summary, weekly_summary, performance_report
+  if (auto.audience === "group") {
+    // For group audience on per-user schedules, send a single team-wide message
+    // by aggregating sample variables (uses first opted-in user as context).
+    const users = await listOptedInUsers();
+    if (users.length === 0) return 0;
+    const vars = await buildUserVars(users[0], now.dateIso);
+    // Override personal vars for group context
+    vars.nome = "equipe";
+    vars.primeiro_nome = "equipe";
+    const msg = applyTemplate(auto.message_template, vars);
+    if (!msg.trim()) return 0;
+    if (await enqueueForAuto(auto, null, key, msg, `${key}:${now.slot}`)) enqueued++;
+    return enqueued;
+  }
+
   const users = await listOptedInUsers();
   for (const uid of users) {
     const vars = await buildUserVars(uid, now.dateIso);
     const msg = applyTemplate(auto.message_template, vars);
     if (!msg.trim()) continue;
-    const { data: id } = await admin.rpc("whatsapp_enqueue", {
-      _user_id: uid, _type: key, _message: msg, _source_ref: `${key}:${now.slot}`,
-    });
-    if (id) enqueued++;
+    if (await enqueueForAuto(auto, uid, key, msg, `${key}:${now.slot}`)) enqueued++;
   }
   return enqueued;
 }

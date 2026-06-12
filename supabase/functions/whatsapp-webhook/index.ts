@@ -12,8 +12,21 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+function isGroupId(raw: string): boolean {
+  const s = String(raw ?? "").toLowerCase().trim();
+  return s.includes("-") || s.endsWith("@g.us");
+}
+
+function normalizePhoneOrGroup(raw: string): string {
+  const s = String(raw ?? "").trim();
+  if (isGroupId(s)) return s.toLowerCase().replace(/@g\.us$/, "");
+  return s.replace(/\D/g, "");
+}
+
 function phoneKey(raw: string): string | null {
-  const digits = String(raw ?? "").replace(/\D/g, "");
+  const s = String(raw ?? "");
+  if (isGroupId(s)) return s.toLowerCase().trim().replace(/@g\.us$/, "");
+  const digits = s.replace(/\D/g, "");
   return digits ? digits.slice(-10) : null;
 }
 
@@ -39,11 +52,13 @@ Deno.serve(async (req) => {
   if (!payload) return new Response(JSON.stringify({ ok: true }), { headers: corsHeaders });
 
   try {
-    const phoneRaw: string | undefined = payload.phone ?? payload.from ?? payload.connectedPhone;
+    const phoneRaw: string | undefined =
+      payload.chatId ?? payload.groupId ?? payload.phone ?? payload.from ?? payload.connectedPhone;
     if (!phoneRaw) {
       return new Response(JSON.stringify({ ok: true, ignored: "no_phone" }), { headers: corsHeaders });
     }
-    const phone = String(phoneRaw).replace(/\D/g, "");
+    const groupFlag = !!(payload.isGroup || payload.isGroupMsg || isGroupId(String(phoneRaw)));
+    const phone = groupFlag ? normalizePhoneOrGroup(String(phoneRaw)) : String(phoneRaw).replace(/\D/g, "");
     const key = phoneKey(phone);
     const fromMe = !!payload.fromMe;
     const senderName: string | null = payload.senderName ?? payload.chatName ?? null;

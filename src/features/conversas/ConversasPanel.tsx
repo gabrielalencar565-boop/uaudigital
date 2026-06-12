@@ -18,7 +18,7 @@ type Contact = {
   phone_e164: string;
   phone_key: string | null;
   name: string | null;
-  origin: "colaborador" | "lead" | "cliente" | "desconhecido";
+  origin: "colaborador" | "lead" | "cliente" | "desconhecido" | "grupo";
   status: string;
   user_id: string | null;
   profile_pic_url: string | null;
@@ -49,7 +49,7 @@ type Message = {
   created_at: string;
 };
 
-type FilterKey = "all" | "unread" | "colaborador" | "lead";
+type FilterKey = "all" | "unread" | "colaborador" | "lead" | "grupo";
 
 const PROJECT_REF = (import.meta.env.VITE_SUPABASE_PROJECT_ID as string) || "";
 const WEBHOOK_URL = PROJECT_REF
@@ -75,16 +75,26 @@ function formatStamp(iso: string) {
   return d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
+function isGroupContact(c: { origin?: string; phone_e164?: string | null; phone_key?: string | null }) {
+  if (c.origin === "grupo") return true;
+  const p = (c.phone_e164 ?? "").toString();
+  const k = (c.phone_key ?? "").toString();
+  return p.includes("-") || p.toLowerCase().endsWith("@g.us") || k.includes("-");
+}
+
 function phoneKey(phone: string | null | undefined) {
-  const digits = (phone ?? "").replace(/\D/g, "");
+  const raw = (phone ?? "").toString();
+  if (raw.includes("-") || raw.toLowerCase().endsWith("@g.us")) {
+    return raw.toLowerCase().trim().replace(/@g\.us$/, "");
+  }
+  const digits = raw.replace(/\D/g, "");
   return digits ? digits.slice(-10) : null;
 }
 
-function originLabel(o: Contact["origin"]) {
-  switch (o) {
-    case "colaborador": return "Equipe";
-    default: return "Lead";
-  }
+function originLabel(c: Contact) {
+  if (isGroupContact(c)) return "Grupo";
+  if (c.origin === "colaborador") return "Equipe";
+  return "Lead";
 }
 
 export function ConversasPanel() {
@@ -175,8 +185,9 @@ export function ConversasPanel() {
     const q = search.trim().toLowerCase();
     return contacts.filter((c) => {
       if (filter === "unread" && c.unread_count <= 0) return false;
-      if (filter === "colaborador" && c.origin !== "colaborador") return false;
-      if (filter === "lead" && c.origin !== "lead") return false;
+      if (filter === "colaborador" && (c.origin !== "colaborador" || isGroupContact(c))) return false;
+      if (filter === "lead" && (c.origin !== "lead" || isGroupContact(c))) return false;
+      if (filter === "grupo" && !isGroupContact(c)) return false;
       if (!q) return true;
       return (
         (c.name ?? "").toLowerCase().includes(q) ||
@@ -288,11 +299,12 @@ export function ConversasPanel() {
               />
             </div>
             <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterKey)}>
-              <TabsList className="grid grid-cols-4 h-8">
+              <TabsList className="grid grid-cols-5 h-8">
                 <TabsTrigger value="all" className="text-[10px] px-1">Todas</TabsTrigger>
                 <TabsTrigger value="unread" className="text-[10px] px-1">Não lidas</TabsTrigger>
                 <TabsTrigger value="colaborador" className="text-[10px] px-1">Equipe</TabsTrigger>
                 <TabsTrigger value="lead" className="text-[10px] px-1">Leads</TabsTrigger>
+                <TabsTrigger value="grupo" className="text-[10px] px-1">Grupos</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
@@ -345,10 +357,13 @@ export function ConversasPanel() {
                       </div>
                       <div className="mt-1 flex items-center gap-1">
                         <Badge
-                          variant={member ? "default" : "outline"}
-                          className="text-[9px] py-0 px-1.5 h-4"
+                          variant={isGroupContact(c) ? "default" : member ? "default" : "outline"}
+                          className={cn(
+                            "text-[9px] py-0 px-1.5 h-4",
+                            isGroupContact(c) && "bg-blue-500 hover:bg-blue-500 text-white border-blue-500",
+                          )}
                         >
-                          {originLabel(c.origin)}
+                          {originLabel(c)}
                         </Badge>
                         {member && (
                           <span className="text-[9px] text-muted-foreground truncate">
@@ -389,15 +404,34 @@ export function ConversasPanel() {
                         <div className="font-semibold leading-tight truncate flex items-center gap-2">
                           {name}
                           <Badge
-                            variant={member ? "default" : "outline"}
-                            className="text-[9px] py-0 px-1.5 h-4"
+                            variant={isGroupContact(activeContact) ? "default" : member ? "default" : "outline"}
+                            className={cn(
+                              "text-[9px] py-0 px-1.5 h-4",
+                              isGroupContact(activeContact) && "bg-blue-500 hover:bg-blue-500 text-white border-blue-500",
+                            )}
                           >
-                            {originLabel(activeContact.origin)}
+                            {originLabel(activeContact)}
                           </Badge>
                         </div>
-                        <div className="text-[11px] text-muted-foreground truncate">
-                          +{activeContact.phone_e164}
-                          {member ? ` · ${member.role_title}` : ""}
+                        <div className="text-[11px] text-muted-foreground truncate flex items-center gap-1.5">
+                          {isGroupContact(activeContact) ? (
+                            <>
+                              <span className="font-mono">{activeContact.phone_e164}</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(activeContact.phone_e164);
+                                  toast.success("ID do grupo copiado");
+                                }}
+                                className="inline-flex items-center gap-1 rounded border border-border/60 bg-muted/40 px-1.5 py-0.5 text-[10px] hover:bg-muted/70"
+                                title="Copiar ID do grupo"
+                              >
+                                <Copy className="h-2.5 w-2.5" /> ID
+                              </button>
+                            </>
+                          ) : (
+                            <span>+{activeContact.phone_e164}{member ? ` · ${member.role_title}` : ""}</span>
+                          )}
                         </div>
                       </div>
                     </>

@@ -22,6 +22,7 @@ const EMPTY: AutomationInput = {
   schedule_days: [0, 1, 2, 3, 4, 5, 6],
   message_template: "",
   audience: "assignee",
+  group_phone: null,
   enabled: true,
 };
 
@@ -187,6 +188,7 @@ function AutomationEditor({ open, current, onClose, onSave }: {
     schedule_days: current.schedule_days ?? [0, 1, 2, 3, 4, 5, 6],
     message_template: current.message_template,
     audience: current.audience,
+    group_phone: current.group_phone ?? null,
     enabled: current.enabled,
   } : EMPTY;
 
@@ -301,6 +303,22 @@ function AutomationEditor({ open, current, onClose, onSave }: {
             <p className="text-xs text-muted-foreground">{AUDIENCES.find((a) => a.value === form.audience)?.description}</p>
           </div>
 
+          {form.audience === "group" && (
+            <div className="space-y-1.5 rounded-md border border-border bg-muted/30 p-3">
+              <Label>ID do grupo do WhatsApp</Label>
+              <Input
+                value={form.group_phone ?? ""}
+                onChange={(e) => setForm((s) => ({ ...s, group_phone: e.target.value }))}
+                placeholder="Ex.: 120363154123456789-1714567890"
+                className="font-mono text-xs"
+              />
+              <p className="text-xs text-muted-foreground">
+                Cole o ID do grupo (formato Z-API). Você encontra na aba <strong>Conversar</strong> abrindo o grupo desejado,
+                ou no painel da Z-API. Aceita também com sufixo <code>@g.us</code>.
+              </p>
+            </div>
+          )}
+
           <div className="space-y-1.5">
             <Label>Mensagem</Label>
             <Textarea
@@ -340,7 +358,7 @@ function AutomationEditor({ open, current, onClose, onSave }: {
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>
           <Button
             variant="brand"
-            disabled={!form.name.trim() || !form.message_template.trim()}
+            disabled={!form.name.trim() || !form.message_template.trim() || (form.audience === "group" && !form.group_phone?.trim())}
             onClick={() => onSave(form)}
           >Salvar</Button>
         </DialogFooter>
