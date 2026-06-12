@@ -2721,6 +2721,12 @@ export type Database = {
           enabled: boolean
           id: number
           instance_name: string | null
+          msg_broadcast_intro: string
+          msg_deadline_overdue_intro: string
+          msg_deadline_today_intro: string
+          msg_deadline_tomorrow_intro: string
+          msg_new_task_intro: string
+          msg_xp_rank_intro: string
           provider: Database["public"]["Enums"]["whatsapp_provider"]
           updated_at: string
           updated_by: string | null
@@ -2733,6 +2739,12 @@ export type Database = {
           enabled?: boolean
           id?: number
           instance_name?: string | null
+          msg_broadcast_intro?: string
+          msg_deadline_overdue_intro?: string
+          msg_deadline_today_intro?: string
+          msg_deadline_tomorrow_intro?: string
+          msg_new_task_intro?: string
+          msg_xp_rank_intro?: string
           provider?: Database["public"]["Enums"]["whatsapp_provider"]
           updated_at?: string
           updated_by?: string | null
@@ -2745,6 +2757,12 @@ export type Database = {
           enabled?: boolean
           id?: number
           instance_name?: string | null
+          msg_broadcast_intro?: string
+          msg_deadline_overdue_intro?: string
+          msg_deadline_today_intro?: string
+          msg_deadline_tomorrow_intro?: string
+          msg_new_task_intro?: string
+          msg_xp_rank_intro?: string
           provider?: Database["public"]["Enums"]["whatsapp_provider"]
           updated_at?: string
           updated_by?: string | null
