@@ -1,0 +1,1 @@
+UPDATE public.whatsapp_settings SET zapi_client_token_secret = 'WHATSAPP_ZAPI_CLIENT_TOKEN', updated_at = now() WHERE id = 1;
