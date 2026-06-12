@@ -268,6 +268,9 @@ async function cronDeadlines() {
 
 
 async function cronXpRanking() {
+  const { data: settings } = await admin.from("whatsapp_settings").select("msg_xp_rank_intro").eq("id", 1).maybeSingle();
+  const intro = settings?.msg_xp_rank_intro || "🏆 Ranking do mês:";
+
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth() + 1;
@@ -291,7 +294,7 @@ async function cronXpRanking() {
   for (let i = 0; i < ranked.length; i++) {
     const place = i + 1;
     const medal = place === 1 ? "🥇" : place === 2 ? "🥈" : "🥉";
-    const msg = `${medal} Ranking semanal — você está em ${place}º lugar com ${ranked[i].total.toFixed(1)} pontos. Continue assim!`;
+    const msg = `${intro} ${medal} você está em ${place}º lugar com ${ranked[i].total.toFixed(1)} pontos. Continue assim!`;
     const { data: id } = await admin.rpc("whatsapp_enqueue", {
       _user_id: ranked[i].user_id, _type: "xp_rank", _message: msg, _source_ref: `rank_${year}_${month}_${place}`,
     });
@@ -301,6 +304,10 @@ async function cronXpRanking() {
 }
 
 async function broadcast(message: string, senderId: string) {
+  const { data: settings } = await admin.from("whatsapp_settings").select("msg_broadcast_intro").eq("id", 1).maybeSingle();
+  const intro = settings?.msg_broadcast_intro || "📣 Aviso da equipe:";
+  const finalMessage = `${intro}\n${message}`;
+
   const { data: users } = await admin
     .from("user_whatsapp_preferences")
     .select("user_id")
@@ -311,12 +318,13 @@ async function broadcast(message: string, senderId: string) {
   let enqueued = 0;
   for (const u of users ?? []) {
     const { data: id } = await admin.rpc("whatsapp_enqueue", {
-      _user_id: u.user_id, _type: "company", _message: message, _source_ref: `bcast:${senderId}:${Date.now()}`,
+      _user_id: u.user_id, _type: "company", _message: finalMessage, _source_ref: `bcast:${senderId}:${Date.now()}`,
     });
     if (id) enqueued++;
   }
   return { enqueued, recipients: users?.length ?? 0 };
 }
+
 
 // ---------------------------------------------------------------------------
 // Handler
