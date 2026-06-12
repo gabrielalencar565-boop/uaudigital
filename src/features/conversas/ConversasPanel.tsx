@@ -185,8 +185,9 @@ export function ConversasPanel() {
     const q = search.trim().toLowerCase();
     return contacts.filter((c) => {
       if (filter === "unread" && c.unread_count <= 0) return false;
-      if (filter === "colaborador" && c.origin !== "colaborador") return false;
-      if (filter === "lead" && c.origin !== "lead") return false;
+      if (filter === "colaborador" && (c.origin !== "colaborador" || isGroupContact(c))) return false;
+      if (filter === "lead" && (c.origin !== "lead" || isGroupContact(c))) return false;
+      if (filter === "grupo" && !isGroupContact(c)) return false;
       if (!q) return true;
       return (
         (c.name ?? "").toLowerCase().includes(q) ||
