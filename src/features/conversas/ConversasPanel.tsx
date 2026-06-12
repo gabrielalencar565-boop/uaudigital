@@ -299,11 +299,12 @@ export function ConversasPanel() {
               />
             </div>
             <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterKey)}>
-              <TabsList className="grid grid-cols-4 h-8">
+              <TabsList className="grid grid-cols-5 h-8">
                 <TabsTrigger value="all" className="text-[10px] px-1">Todas</TabsTrigger>
                 <TabsTrigger value="unread" className="text-[10px] px-1">Não lidas</TabsTrigger>
                 <TabsTrigger value="colaborador" className="text-[10px] px-1">Equipe</TabsTrigger>
                 <TabsTrigger value="lead" className="text-[10px] px-1">Leads</TabsTrigger>
+                <TabsTrigger value="grupo" className="text-[10px] px-1">Grupos</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
