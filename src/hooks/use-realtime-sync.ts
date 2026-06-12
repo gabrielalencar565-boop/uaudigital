@@ -117,6 +117,7 @@ const TABLE_TO_QUERY_KEYS: Record<RealtimeTable, string[][]> = {
   notification_reads: [["notification_reads"]],
 };
 
+// PR-A: removidas pm_attachments e app_settings de CORE (mudam pouco / fetchadas sob demanda).
 const CORE_TABLES: RealtimeTable[] = [
   "tasks",
   "clients",
@@ -124,49 +125,15 @@ const CORE_TABLES: RealtimeTable[] = [
   "pm_tasks",
   "pm_subtasks",
   "pm_comments",
-  "pm_attachments",
   "profiles",
   "team_members",
   "notification_reads",
-  "app_settings",
 ];
 
+// PR-A: tabelas raramente alteradas foram removidas da publicação supabase_realtime no banco.
+// Mantemos no client apenas o que realmente recebe eventos.
 const SECONDARY_TABLES: RealtimeTable[] = [
-  "client_cycle_stages",
-  "client_stages",
-  "client_cycles",
-  "magic2_cycles",
-  "magic2_cycle_stages",
-  "magic2_clients",
-  "magic2_client_links",
   "user_roles",
-  "access_requests",
-  "performance_scores",
-  "task_deadline_overrides",
-  "task_activity_log",
-  "cleaning_categories",
-  "cleaning_schedules",
-  "cleaning_completions",
-  "pm_activity_log",
-  "pm_projects",
-  "pm_stage_flows",
-  "pm_tags",
-  "pm_pdf_settings",
-  "pm_cronograma_feedback",
-  "scoring_config",
-  "internal_dates",
-  "health_scores",
-  "health_score_tokens",
-  "financial_clients",
-  "financial_expenses",
-  "financial_revenues",
-  "financial_goals",
-  "financial_transactions",
-  "financial_credit_cards",
-  "mrr_movements",
-  "squads",
-  "squad_members",
-  "client_squads",
 ];
 
 const CORE_TABLE_SET = new Set<RealtimeTable>(CORE_TABLES);
