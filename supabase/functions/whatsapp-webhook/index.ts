@@ -61,8 +61,13 @@ Deno.serve(async (req) => {
     const phone = groupFlag ? normalizePhoneOrGroup(String(phoneRaw)) : String(phoneRaw).replace(/\D/g, "");
     const key = phoneKey(phone);
     const fromMe = !!payload.fromMe;
-    const senderName: string | null = payload.senderName ?? payload.chatName ?? null;
+    // For groups, the contact represents the group itself, so prefer the group name (chatName).
+    // For 1:1, prefer senderName.
+    const contactName: string | null = groupFlag
+      ? (payload.chatName ?? payload.groupName ?? payload.senderName ?? null)
+      : (payload.senderName ?? payload.chatName ?? null);
     const photoUrl: string | null =
+      (groupFlag ? (payload.groupPhoto ?? payload.chat?.photo) : null) ??
       payload.senderPhoto ??
       payload.photo ??
       payload.profilePicture ??
@@ -93,12 +98,19 @@ Deno.serve(async (req) => {
       raw: payload,
     });
 
-    if (key && senderName) {
-      await admin
-        .from("whatsapp_contacts")
-        .update({ name: senderName })
-        .eq("phone_key", key)
-        .is("name", null);
+    if (key) {
+      // For groups, force origin='grupo' and overwrite name with the group name.
+      if (groupFlag) {
+        const patch: Record<string, unknown> = { origin: "grupo" };
+        if (contactName) patch.name = contactName;
+        await admin.from("whatsapp_contacts").update(patch).eq("phone_key", key);
+      } else if (contactName) {
+        await admin
+          .from("whatsapp_contacts")
+          .update({ name: contactName })
+          .eq("phone_key", key)
+          .is("name", null);
+      }
     }
     if (key && photoUrl) {
       await admin
