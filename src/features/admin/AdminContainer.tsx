@@ -28,6 +28,7 @@ const CARDS: CardDef[] = [
   { key: "pontuacao", title: "Pontuação", description: "Ajuste regras de pontos, pesos por etapa e penalidades de desempenho.", icon: Trophy },
   { key: "aparencia", title: "Aparência", description: "Personalize a identidade visual do sistema, tema, cores e logotipo.", icon: Palette },
   { key: "whatsapp", title: "WhatsApp", description: "Configure o provedor (Evolution/Z-API), envie avisos e acompanhe os envios.", icon: MessageCircle },
+  { key: "comercial", title: "Comercial", description: "CRM comercial integrado ao WhatsApp: funil, leads, propostas e relatórios.", icon: Briefcase },
   { key: "fluxos", title: "Fluxos", description: "Configure os fluxos operacionais, etapas e responsáveis por papel.", icon: Workflow, external: true },
 ];
 
