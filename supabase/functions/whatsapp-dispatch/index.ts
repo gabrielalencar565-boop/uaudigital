@@ -29,11 +29,17 @@ const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 
 const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+function isGroupId(raw: string): boolean {
+  const s = String(raw ?? "").toLowerCase().trim();
+  return s.includes("-") || s.endsWith("@g.us");
+}
+
 function normalizePhone(raw: string, defaultCountry: string): string | null {
   if (!raw) return null;
-  const digits = raw.replace(/\D/g, "");
+  // Group IDs are sent verbatim (Z-API accepts them in `phone` field).
+  if (isGroupId(raw)) return String(raw).trim().toLowerCase().replace(/@g\.us$/, "");
+  const digits = String(raw).replace(/\D/g, "");
   if (!digits) return null;
-  // If it already starts with country code, keep it; otherwise prepend.
   if (digits.length >= 12) return digits;
   return defaultCountry + digits;
 }
