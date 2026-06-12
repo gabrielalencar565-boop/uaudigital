@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Users, Building2, SprayCan, Trophy, Palette, CalendarPlus, Workflow, ChevronRight, ArrowLeft, MessageCircle } from "lucide-react";
+import { Users, Building2, SprayCan, Trophy, Palette, CalendarPlus, Workflow, ChevronRight, ArrowLeft, MessageCircle, Briefcase } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AdminPanel } from "./AdminPanel";
 import { AdminClientesPanel } from "./AdminClientesPanel";
@@ -8,8 +8,9 @@ import { AdminPontuacaoPanel } from "./AdminPontuacaoPanel";
 import { AdminAparenciaPanel } from "./AdminAparenciaPanel";
 import { AdminDatasInternasPanel } from "./AdminDatasInternasPanel";
 import { AdminWhatsAppPanel } from "./AdminWhatsAppPanel";
+import { ComercialPanel } from "./comercial/ComercialPanel";
 
-type AdminSubTab = "usuarios" | "clientes" | "limpeza" | "pontuacao" | "aparencia" | "datas" | "whatsapp";
+type AdminSubTab = "usuarios" | "clientes" | "limpeza" | "pontuacao" | "aparencia" | "datas" | "whatsapp" | "comercial";
 
 type CardDef = {
   key: AdminSubTab | "fluxos";
