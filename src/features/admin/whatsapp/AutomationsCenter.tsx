@@ -22,6 +22,7 @@ const EMPTY: AutomationInput = {
   schedule_days: [0, 1, 2, 3, 4, 5, 6],
   message_template: "",
   audience: "assignee",
+  group_phone: null,
   enabled: true,
 };
 
