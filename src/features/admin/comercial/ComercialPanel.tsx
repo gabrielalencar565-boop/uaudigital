@@ -21,6 +21,7 @@ import { LossReasonDialog } from "./components/LossReasonDialog";
 import { ComercialTasksTab } from "./components/ComercialTasksTab";
 import { ComercialProposalsTab } from "./components/ComercialProposalsTab";
 import { ComercialRelatoriosTab } from "./components/ComercialRelatoriosTab";
+import { ComercialAutomacoesTab } from "./components/ComercialAutomacoesTab";
 
 export function ComercialPanel() {
   const { data: leads = [] } = useCrmLeads();
@@ -126,6 +127,7 @@ export function ComercialPanel() {
           <TabsTrigger value="tarefas">Tarefas</TabsTrigger>
           <TabsTrigger value="propostas">Propostas</TabsTrigger>
           <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
+          <TabsTrigger value="automacoes">Automações</TabsTrigger>
         </TabsList>
         <TabsContent value="funil" className="mt-4">
           <FunilKanban
@@ -144,6 +146,9 @@ export function ComercialPanel() {
         </TabsContent>
         <TabsContent value="relatorios" className="mt-4">
           <ComercialRelatoriosTab members={members.data ?? []} />
+        </TabsContent>
+        <TabsContent value="automacoes" className="mt-4">
+          <ComercialAutomacoesTab />
         </TabsContent>
       </Tabs>
 
