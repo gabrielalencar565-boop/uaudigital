@@ -2734,6 +2734,30 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_ranking_state: {
+        Row: {
+          first_user_id: string | null
+          month: number
+          top3_user_ids: string[]
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          first_user_id?: string | null
+          month: number
+          top3_user_ids?: string[]
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          first_user_id?: string | null
+          month?: number
+          top3_user_ids?: string[]
+          updated_at?: string
+          year?: number
+        }
+        Relationships: []
+      }
       whatsapp_send_log: {
         Row: {
           created_at: string
@@ -3126,6 +3150,10 @@ export type Database = {
           new_status: Database["public"]["Enums"]["task_status"]
           stage_completed: boolean
         }[]
+      }
+      whatsapp_check_ranking_changes: {
+        Args: { _month: number; _year: number }
+        Returns: undefined
       }
       whatsapp_dispatch_event: {
         Args: {
