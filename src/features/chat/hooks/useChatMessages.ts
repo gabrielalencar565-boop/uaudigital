@@ -67,7 +67,15 @@ export function useChatMessages(conversationId: string | null) {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "chat_message_reads" },
-        () => qc.invalidateQueries({ queryKey: ["chat", "messages", conversationId] })
+        (payload: any) => {
+          // PR-A: só invalida se a leitura é de uma mensagem da conversa aberta
+          const msgId = payload?.new?.message_id ?? payload?.old?.message_id;
+          if (!msgId) return;
+          const cached = qc.getQueryData<any[]>(["chat", "messages", conversationId]);
+          if (cached?.some((m) => m.id === msgId)) {
+            qc.invalidateQueries({ queryKey: ["chat", "messages", conversationId] });
+          }
+        }
       )
       .subscribe();
     return () => {
