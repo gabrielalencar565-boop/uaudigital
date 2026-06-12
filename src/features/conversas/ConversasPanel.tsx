@@ -75,16 +75,26 @@ function formatStamp(iso: string) {
   return d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
+function isGroupContact(c: { origin?: string; phone_e164?: string | null; phone_key?: string | null }) {
+  if (c.origin === "grupo") return true;
+  const p = (c.phone_e164 ?? "").toString();
+  const k = (c.phone_key ?? "").toString();
+  return p.includes("-") || p.toLowerCase().endsWith("@g.us") || k.includes("-");
+}
+
 function phoneKey(phone: string | null | undefined) {
-  const digits = (phone ?? "").replace(/\D/g, "");
+  const raw = (phone ?? "").toString();
+  if (raw.includes("-") || raw.toLowerCase().endsWith("@g.us")) {
+    return raw.toLowerCase().trim().replace(/@g\.us$/, "");
+  }
+  const digits = raw.replace(/\D/g, "");
   return digits ? digits.slice(-10) : null;
 }
 
-function originLabel(o: Contact["origin"]) {
-  switch (o) {
-    case "colaborador": return "Equipe";
-    default: return "Lead";
-  }
+function originLabel(c: Contact) {
+  if (isGroupContact(c)) return "Grupo";
+  if (c.origin === "colaborador") return "Equipe";
+  return "Lead";
 }
 
 export function ConversasPanel() {
