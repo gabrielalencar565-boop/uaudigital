@@ -1,47 +1,142 @@
+## Aba Comercial — CRM integrado ao WhatsApp
 
-## Diagnóstico do problema
+Nova aba "Comercial" no painel administrativo, funcionando como CRM completo com funil kanban, integração automática com WhatsApp e relatórios.
 
-Investiguei por que o gatilho "Assumiu 1º lugar" não chegou no grupo. O ID configurado na automação é `5599826449551560491860` (apenas dígitos). O Z-API exige o formato **com hífen** (`559982644955-1560491860` ou com sufixo `@g.us`) para enviar a um grupo.
+---
 
-No payload bruto que chegou pelo webhook, o `phone` original era de fato `559982644955-1560491860`, mas o sistema **removeu o hífen** ao salvar em `whatsapp_contacts.phone_e164`. Resultado: ao clicar em "ID" no Conversar, copiamos um ID sem hífen; o dispatcher então roda `isGroupId()` (procura por `-` ou `@g.us`) → não reconhece como grupo → trata como telefone normal → Z-API tenta enviar para um número de telefone inexistente.
+### 1. Navegação e estrutura
 
-Mesma raiz afeta os 4 grupos atuais:
-- `Eu` → deveria ser `559982644955-1560491860`
-- `UAU TEAM 💜⚡️` / `Gerência Uau` / `Comunidade - Uau Digital` → IDs Z-API completos no formato `120363xxx-xxxxxx`
+- Novo card "Comercial" no `AdminContainer` (ícone `Briefcase` ou `Target`), abrindo o painel `ComercialPanel`.
+- Painel com sub-abas internas (Tabs): **Dashboard**, **Funil**, **Leads**, **Tarefas**, **Propostas**, **Relatórios**.
+- Filtros globais persistentes no topo: responsável, origem, status, período.
 
-## O que vou implementar
+### 2. Dashboard (topo)
 
-### 1. Preservar o hífen do ID do grupo (webhook + dispatcher)
-- Ajustar a normalização no `whatsapp-webhook` para, quando `isGroup=true`, **manter o `phone` original** (com hífen) ao inserir em `whatsapp_messages.contact_phone` e em `whatsapp_contacts.phone_e164`.
-- Garantir que `isGroupId()` no dispatcher trate qualquer string que tenha contido hífen como grupo (já trata, só precisa receber o valor correto).
+Cards de resumo (estilo `FinMetricCard`):
+- Leads novos (mês)
+- Leads em atendimento
+- Propostas enviadas
+- Reuniões marcadas
+- Clientes fechados
+- Vendas perdidas
+- Faturamento previsto (soma de `valor_estimado` em etapas ativas, ponderado opcional)
+- Taxa de conversão (fechados / total no período)
 
-### 2. Corrigir os contatos de grupo já existentes
-- Migration de dados: para cada contato com `origin = 'grupo'`, reler o último `whatsapp_messages.raw->>'phone'` daquele grupo e atualizar `phone_e164` para o valor original com hífen. Atualizar também o `phone_key` (já preserva hífen, ok).
-- Atualizar a automação "Assumiu 1º lugar" para o `group_phone` corrigido do grupo "Eu" (`559982644955-1560491860`), assim o próximo evento vai para o grupo.
+### 3. Funil kanban
 
-### 3. Botão "Testar" em cada card de automação
-- No `AutomationCard` (Central de Automações) adicionar botão **"Testar"** (ícone Send).
-- Ao clicar, enviar uma única mensagem renderizada com **dados de exemplo** (`nome=Gabriel`, `primeiro_nome=Gabriel`, `tarefa=Tarefa de teste`, `cliente=Cliente Demo`, `prazo=12/06/2026`, `xp=120`, `nivel=5`, `ranking=1º lugar`, `tarefas_do_dia=• Exemplo`, etc.).
-- Roteamento conforme audiência configurada:
-  - `group` → envia direto pelo `whatsapp-dispatch` (action `send` com `phone=group_phone`) para o ID do grupo.
-  - `assignee` / `all_team` / `admins` → envia para o **admin que disparou o teste** (próprio número), com o prefixo `🧪 [TESTE] ` para deixar claro.
-- Toast com resultado (sucesso/erro + status code).
+Colunas: Novo lead → Primeiro contato → Qualificação → Diagnóstico → Proposta enviada → Follow-up → Fechado → Perdido.
 
-### 4. UI do Conversar
-- Manter o botão "Copiar ID" mas agora copiando o `phone_e164` já com hífen (após a correção dos dados).
+- Drag-and-drop entre colunas (mesma lib usada em Gestão).
+- Card mostra: nome, empresa, valor estimado, responsável (avatar), badge de origem, tempo na etapa, ícone se há tarefa atrasada.
+- Mover para **Perdido** abre dialog obrigatório com motivo: preço, sem retorno, fechou com concorrente, sem orçamento, não era o momento, lead sem perfil.
 
-## Detalhes técnicos
+### 4. Cadastro/detalhe do lead
 
-- **Webhook**: na função `normalizePhoneOrGroup`, quando `isGroup`, retornar o `phone` bruto em lowercase sem `@g.us`, **sem aplicar regex de dígitos**.
-- **Dispatcher / action `send`**: aceita `phone` arbitrário (já aceita), `isGroupId` cobre os formatos com hífen e `@g.us` — sem mudanças funcionais.
-- **Migration**: bloco PL/pgSQL que faz `UPDATE whatsapp_contacts SET phone_e164 = ...` baseado em `raw->>'phone'` da última mensagem de cada grupo, lidando com a unique constraint (`phone_e164_key`).
-- **Botão Testar**: chama `supabase.functions.invoke('whatsapp-dispatch', { body: { action: 'send', phone, type: 'automation_test', message } })`.
+Sheet/Dialog lateral com abas:
+- **Resumo**: nome, telefone, empresa, cidade, segmento, interesse, origem, responsável, status, valor estimado, observações.
+- **Qualificação**: já investe em marketing (sim/não), orçamento aproximado, principal problema, urgência (baixa/média/alta), nível de interesse (1-5), potencial de fechamento (baixo/médio/alto).
+- **WhatsApp**: thread de mensagens (reaproveita componentes do `ConversasPanel`) com composer para responder.
+- **Tarefas**: lista de tarefas comerciais do lead, com criar/concluir.
+- **Propostas**: lista com valor, data envio, status, anexo, resultado.
+- **Histórico**: log de atividades (mudança de etapa, troca de responsável, mensagens, etc).
 
-## Arquivos afetados
+### 5. Integração automática com WhatsApp
 
-- `supabase/functions/whatsapp-webhook/index.ts` — preservar hífen em grupos
-- `supabase/migrations/<novo>.sql` — corrigir contatos e o `group_phone` da automação `xp_first`
-- `src/features/admin/whatsapp/AutomationsCenter.tsx` — botão Testar + handler
-- (opcional) `src/features/admin/whatsapp/use-whatsapp-automations.ts` — mutation `useTestAutomation`
+Trigger no `whatsapp_messages` (INSERT direction='in'):
+- Se mensagem é de grupo → ignora.
+- Procura `crm_leads` por `phone_key`.
+- Se NÃO existe E o contato `whatsapp_contacts` não tem `user_id` (não é colaborador): cria lead na etapa `novo_lead` com nome do contato (push name) e telefone.
+- Se existe: apenas atualiza `last_message_at` (sem duplicar).
 
-Sem mudanças no schema, apenas dados e código.
+### 6. Tarefas comerciais
+
+- Tabela `crm_tasks` (independente das tarefas de gestão, escopo comercial).
+- Tipos: ligação, envio de proposta, follow-up, reunião.
+- Aba "Tarefas" lista todas com filtro; atrasadas (`due_at < now()` e não concluídas) em destaque vermelho no topo.
+
+### 7. Propostas
+
+- Tabela `crm_proposals` com valor, enviada_em, status (rascunho/enviada/aceita/recusada), arquivo (storage bucket `crm-proposals`), resultado.
+
+### 8. Relatórios
+
+Aba com gráficos (recharts já no projeto):
+- Conversão por etapa (funil bar/funnel chart)
+- Leads por origem (pie/bar)
+- Vendas por responsável (bar)
+- Motivos de perda (bar)
+- Ticket médio (kpi + linha mensal)
+- Previsão de faturamento (kpi + barras por mês)
+
+---
+
+### Detalhes técnicos
+
+**Migrations (Lovable Cloud):**
+
+```sql
+-- enums
+create type crm_stage as enum ('novo_lead','primeiro_contato','qualificacao','diagnostico','proposta_enviada','follow_up','fechado','perdido');
+create type crm_loss_reason as enum ('preco','sem_retorno','concorrente','sem_orcamento','nao_era_momento','sem_perfil');
+create type crm_task_type as enum ('ligacao','proposta','follow_up','reuniao');
+create type crm_task_status as enum ('pendente','concluida','cancelada');
+create type crm_proposal_status as enum ('rascunho','enviada','aceita','recusada','expirada');
+create type crm_urgencia as enum ('baixa','media','alta');
+create type crm_potencial as enum ('baixo','medio','alto');
+
+-- crm_leads (nome, telefone, phone_key, empresa, cidade, segmento, interesse, origem,
+--  responsavel_id, stage, valor_estimado, observacoes, loss_reason, qualif_* fields, whatsapp_contact_id, ...)
+-- crm_tasks (lead_id, tipo, titulo, due_at, status, assigned_user_id)
+-- crm_proposals (lead_id, valor, enviada_em, status, arquivo_url, resultado, observacoes)
+-- crm_activity_log (lead_id, user_id, action, payload jsonb)
+```
+
+Todas com GRANT a `authenticated`/`service_role`, RLS exigindo admin (`has_role(auth.uid(),'admin')`).
+
+**Trigger de auto-criação de lead:**
+```sql
+create function crm_auto_create_lead_from_message() returns trigger ...
+-- após INSERT em whatsapp_messages direction='in', se não-grupo e sem lead existente, cria
+```
+
+**Trigger de motivo de perda obrigatório:**
+```sql
+-- BEFORE UPDATE em crm_leads: se stage='perdido', loss_reason NOT NULL
+```
+
+**Frontend (novos arquivos):**
+- `src/features/admin/comercial/ComercialPanel.tsx`
+- `src/features/admin/comercial/components/ComercialDashboard.tsx`
+- `src/features/admin/comercial/components/FunilKanban.tsx`
+- `src/features/admin/comercial/components/LeadCard.tsx`
+- `src/features/admin/comercial/components/LeadDetailSheet.tsx` (com sub-tabs)
+- `src/features/admin/comercial/components/LeadWhatsAppThread.tsx` (reusa lógica de `ConversasPanel`)
+- `src/features/admin/comercial/components/LeadQualificacaoForm.tsx`
+- `src/features/admin/comercial/components/LeadTasksList.tsx`
+- `src/features/admin/comercial/components/LeadProposalsList.tsx`
+- `src/features/admin/comercial/components/LossReasonDialog.tsx`
+- `src/features/admin/comercial/components/ComercialTasksTab.tsx`
+- `src/features/admin/comercial/components/ComercialProposalsTab.tsx`
+- `src/features/admin/comercial/components/ComercialRelatoriosTab.tsx`
+- `src/features/admin/comercial/hooks/use-crm-leads.ts`
+- `src/features/admin/comercial/hooks/use-crm-tasks.ts`
+- `src/features/admin/comercial/hooks/use-crm-proposals.ts`
+- `src/features/admin/comercial/hooks/use-crm-reports.ts`
+- `src/features/admin/comercial/crm-constants.ts` (stages, labels, cores)
+
+**Acesso:** apenas `admin` (consistente com Conversar/WhatsApp).
+
+**Realtime:** ativar replicação em `crm_leads`, `crm_tasks`, `crm_proposals`, `crm_activity_log` para atualizações ao vivo.
+
+**Storage:** bucket privado `crm-proposals` para anexos de propostas.
+
+---
+
+### Perguntas antes de executar
+
+1. **Auto-criação de lead pelo WhatsApp:** devo criar lead para QUALQUER mensagem recebida de número novo (que não seja colaborador nem grupo), ou só quando o número enviar mensagem com alguma palavra-chave/horário comercial?
+2. **Responsável comercial padrão:** ao criar lead automaticamente, deixo `responsavel_id = NULL` (entra como "sem dono") ou atribuo a algum admin específico via configuração?
+3. **Propostas:** anexo é PDF único por proposta ou múltiplos arquivos?
+4. **Visibilidade:** apenas admins, ou criar também o papel `comercial` para colaboradores que só veem a aba Comercial?
+
+Posso assumir defaults (1 = qualquer número novo não-colaborador/não-grupo cria lead; 2 = sem dono; 3 = um arquivo; 4 = apenas admin) e seguir, se preferir.

@@ -644,6 +644,240 @@ export type Database = {
         }
         Relationships: []
       }
+      crm_activity_log: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          lead_id: string
+          payload: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          lead_id: string
+          payload?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          lead_id?: string
+          payload?: Json | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_activity_log_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_leads: {
+        Row: {
+          cidade: string | null
+          created_at: string
+          created_by: string | null
+          empresa: string | null
+          id: string
+          interesse: string | null
+          ja_investe_marketing: boolean | null
+          last_message_at: string | null
+          loss_reason: Database["public"]["Enums"]["crm_loss_reason"] | null
+          nivel_interesse: number | null
+          nome: string
+          observacoes: string | null
+          orcamento_aproximado: number | null
+          origem: string | null
+          phone_key: string | null
+          potencial_fechamento:
+            | Database["public"]["Enums"]["crm_potencial"]
+            | null
+          principal_problema: string | null
+          responsavel_id: string | null
+          segmento: string | null
+          stage: Database["public"]["Enums"]["crm_stage"]
+          stage_changed_at: string
+          telefone: string | null
+          updated_at: string
+          urgencia: Database["public"]["Enums"]["crm_urgencia"] | null
+          valor_estimado: number | null
+          whatsapp_contact_id: string | null
+        }
+        Insert: {
+          cidade?: string | null
+          created_at?: string
+          created_by?: string | null
+          empresa?: string | null
+          id?: string
+          interesse?: string | null
+          ja_investe_marketing?: boolean | null
+          last_message_at?: string | null
+          loss_reason?: Database["public"]["Enums"]["crm_loss_reason"] | null
+          nivel_interesse?: number | null
+          nome: string
+          observacoes?: string | null
+          orcamento_aproximado?: number | null
+          origem?: string | null
+          phone_key?: string | null
+          potencial_fechamento?:
+            | Database["public"]["Enums"]["crm_potencial"]
+            | null
+          principal_problema?: string | null
+          responsavel_id?: string | null
+          segmento?: string | null
+          stage?: Database["public"]["Enums"]["crm_stage"]
+          stage_changed_at?: string
+          telefone?: string | null
+          updated_at?: string
+          urgencia?: Database["public"]["Enums"]["crm_urgencia"] | null
+          valor_estimado?: number | null
+          whatsapp_contact_id?: string | null
+        }
+        Update: {
+          cidade?: string | null
+          created_at?: string
+          created_by?: string | null
+          empresa?: string | null
+          id?: string
+          interesse?: string | null
+          ja_investe_marketing?: boolean | null
+          last_message_at?: string | null
+          loss_reason?: Database["public"]["Enums"]["crm_loss_reason"] | null
+          nivel_interesse?: number | null
+          nome?: string
+          observacoes?: string | null
+          orcamento_aproximado?: number | null
+          origem?: string | null
+          phone_key?: string | null
+          potencial_fechamento?:
+            | Database["public"]["Enums"]["crm_potencial"]
+            | null
+          principal_problema?: string | null
+          responsavel_id?: string | null
+          segmento?: string | null
+          stage?: Database["public"]["Enums"]["crm_stage"]
+          stage_changed_at?: string
+          telefone?: string | null
+          updated_at?: string
+          urgencia?: Database["public"]["Enums"]["crm_urgencia"] | null
+          valor_estimado?: number | null
+          whatsapp_contact_id?: string | null
+        }
+        Relationships: []
+      }
+      crm_proposals: {
+        Row: {
+          arquivo_nome: string | null
+          arquivo_url: string | null
+          created_at: string
+          created_by: string | null
+          enviada_em: string | null
+          id: string
+          lead_id: string
+          observacoes: string | null
+          resultado: string | null
+          status: Database["public"]["Enums"]["crm_proposal_status"]
+          updated_at: string
+          valor: number | null
+        }
+        Insert: {
+          arquivo_nome?: string | null
+          arquivo_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          enviada_em?: string | null
+          id?: string
+          lead_id: string
+          observacoes?: string | null
+          resultado?: string | null
+          status?: Database["public"]["Enums"]["crm_proposal_status"]
+          updated_at?: string
+          valor?: number | null
+        }
+        Update: {
+          arquivo_nome?: string | null
+          arquivo_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          enviada_em?: string | null
+          id?: string
+          lead_id?: string
+          observacoes?: string | null
+          resultado?: string | null
+          status?: Database["public"]["Enums"]["crm_proposal_status"]
+          updated_at?: string
+          valor?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_proposals_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_tasks: {
+        Row: {
+          assigned_user_id: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          descricao: string | null
+          due_at: string | null
+          id: string
+          lead_id: string
+          status: Database["public"]["Enums"]["crm_task_status"]
+          tipo: Database["public"]["Enums"]["crm_task_type"]
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_user_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          due_at?: string | null
+          id?: string
+          lead_id: string
+          status?: Database["public"]["Enums"]["crm_task_status"]
+          tipo: Database["public"]["Enums"]["crm_task_type"]
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_user_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          due_at?: string | null
+          id?: string
+          lead_id?: string
+          status?: Database["public"]["Enums"]["crm_task_status"]
+          tipo?: Database["public"]["Enums"]["crm_task_type"]
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_tasks_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       financial_clients: {
         Row: {
           cnpj: string | null
@@ -3210,6 +3444,32 @@ export type Database = {
       access_request_status: "pending" | "approved" | "rejected"
       app_role: "admin" | "collaborator" | "planner"
       chat_conversation_type: "general" | "direct"
+      crm_loss_reason:
+        | "preco"
+        | "sem_retorno"
+        | "concorrente"
+        | "sem_orcamento"
+        | "nao_era_momento"
+        | "sem_perfil"
+      crm_potencial: "baixo" | "medio" | "alto"
+      crm_proposal_status:
+        | "rascunho"
+        | "enviada"
+        | "aceita"
+        | "recusada"
+        | "expirada"
+      crm_stage:
+        | "novo_lead"
+        | "primeiro_contato"
+        | "qualificacao"
+        | "diagnostico"
+        | "proposta_enviada"
+        | "follow_up"
+        | "fechado"
+        | "perdido"
+      crm_task_status: "pendente" | "concluida" | "cancelada"
+      crm_task_type: "ligacao" | "proposta" | "follow_up" | "reuniao"
+      crm_urgencia: "baixa" | "media" | "alta"
       expense_category:
         | "administrativa"
         | "operacional"
@@ -3399,6 +3659,35 @@ export const Constants = {
       access_request_status: ["pending", "approved", "rejected"],
       app_role: ["admin", "collaborator", "planner"],
       chat_conversation_type: ["general", "direct"],
+      crm_loss_reason: [
+        "preco",
+        "sem_retorno",
+        "concorrente",
+        "sem_orcamento",
+        "nao_era_momento",
+        "sem_perfil",
+      ],
+      crm_potencial: ["baixo", "medio", "alto"],
+      crm_proposal_status: [
+        "rascunho",
+        "enviada",
+        "aceita",
+        "recusada",
+        "expirada",
+      ],
+      crm_stage: [
+        "novo_lead",
+        "primeiro_contato",
+        "qualificacao",
+        "diagnostico",
+        "proposta_enviada",
+        "follow_up",
+        "fechado",
+        "perdido",
+      ],
+      crm_task_status: ["pendente", "concluida", "cancelada"],
+      crm_task_type: ["ligacao", "proposta", "follow_up", "reuniao"],
+      crm_urgencia: ["baixa", "media", "alta"],
       expense_category: [
         "administrativa",
         "operacional",
