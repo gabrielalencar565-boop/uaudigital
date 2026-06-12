@@ -49,7 +49,7 @@ type Message = {
   created_at: string;
 };
 
-type FilterKey = "all" | "unread" | "colaborador" | "lead";
+type FilterKey = "all" | "unread" | "colaborador" | "lead" | "grupo";
 
 const PROJECT_REF = (import.meta.env.VITE_SUPABASE_PROJECT_ID as string) || "";
 const WEBHOOK_URL = PROJECT_REF
