@@ -277,7 +277,19 @@ async function cronDeadlines() {
   for (const t of rows) {
     const due = t.due_date ? new Date(t.due_date).toLocaleDateString("pt-BR") : "—";
     const intro = t._kind === "atrasada" ? introOverdue : t._kind === "hoje" ? introToday : introTomorrow;
-    const msg = `${intro} ${t.title ?? "—"}\nVencimento: ${due}`;
+    const { full, first } = await getProfileName(t.assignee_id);
+    let clientName = "—";
+    if (t.client_id) {
+      const { data: c } = await admin.from("clients").select("name").eq("id", t.client_id).maybeSingle();
+      clientName = c?.name ?? "—";
+    }
+    const vars = {
+      nome: full, primeiro_nome: first,
+      tarefa: t.title ?? "—", cliente: clientName, prazo: due,
+    };
+    const msg = hasPlaceholders(intro)
+      ? applyTemplate(intro, vars)
+      : `${intro} ${t.title ?? "—"}\nVencimento: ${due}`;
     const { data: id } = await admin.rpc("whatsapp_enqueue", {
       _user_id: t.assignee_id, _type: "deadline", _message: msg, _source_ref: t.id,
     });
