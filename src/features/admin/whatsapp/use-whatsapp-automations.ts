@@ -62,6 +62,8 @@ export function useUpsertAutomation() {
         payload.schedule_time = null;
         payload.schedule_days = null;
       }
+      if (payload.audience !== "group") payload.group_phone = null;
+      if (typeof payload.group_phone === "string") payload.group_phone = payload.group_phone.trim() || null;
       const q = supabase.from("whatsapp_automations" as any);
       if (input.id) {
         const { error } = await q.update(payload).eq("id", input.id);
