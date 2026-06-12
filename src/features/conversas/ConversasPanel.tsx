@@ -404,15 +404,34 @@ export function ConversasPanel() {
                         <div className="font-semibold leading-tight truncate flex items-center gap-2">
                           {name}
                           <Badge
-                            variant={member ? "default" : "outline"}
-                            className="text-[9px] py-0 px-1.5 h-4"
+                            variant={isGroupContact(activeContact) ? "default" : member ? "default" : "outline"}
+                            className={cn(
+                              "text-[9px] py-0 px-1.5 h-4",
+                              isGroupContact(activeContact) && "bg-blue-500 hover:bg-blue-500 text-white border-blue-500",
+                            )}
                           >
                             {originLabel(activeContact)}
                           </Badge>
                         </div>
-                        <div className="text-[11px] text-muted-foreground truncate">
-                          +{activeContact.phone_e164}
-                          {member ? ` · ${member.role_title}` : ""}
+                        <div className="text-[11px] text-muted-foreground truncate flex items-center gap-1.5">
+                          {isGroupContact(activeContact) ? (
+                            <>
+                              <span className="font-mono">{activeContact.phone_e164}</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(activeContact.phone_e164);
+                                  toast.success("ID do grupo copiado");
+                                }}
+                                className="inline-flex items-center gap-1 rounded border border-border/60 bg-muted/40 px-1.5 py-0.5 text-[10px] hover:bg-muted/70"
+                                title="Copiar ID do grupo"
+                              >
+                                <Copy className="h-2.5 w-2.5" /> ID
+                              </button>
+                            </>
+                          ) : (
+                            <span>+{activeContact.phone_e164}{member ? ` · ${member.role_title}` : ""}</span>
+                          )}
                         </div>
                       </div>
                     </>
