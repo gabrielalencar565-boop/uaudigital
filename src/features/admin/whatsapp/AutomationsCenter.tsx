@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, Power, Calendar, Zap, Clock } from "lucide-react";
+import { Plus, Pencil, Trash2, Power, Calendar, Zap, Clock, Send, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { TRIGGERS, WEEKDAYS, AUDIENCES, getTrigger, renderTemplate, type TriggerVar } from "./automation-catalog";
 import { useWhatsappAutomations, useUpsertAutomation, useDeleteAutomation, useToggleAutomation, type WhatsappAutomation, type AutomationInput } from "./use-whatsapp-automations";
 
