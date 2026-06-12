@@ -304,7 +304,7 @@ export function useTeamActivity() {
         const p = payload as ActivityPayload | undefined;
         if (!p) return;
         if (p.user_id === user.id) return;
-        if (p.type !== "task_completed" && p.type !== "subtask_completed") return;
+        if (p.type !== "task_completed") return;
         const key = p.dedupe_id ?? p.task_id ?? `${p.user_id}|${p.task_title}`;
         maybeShow(
           key,
