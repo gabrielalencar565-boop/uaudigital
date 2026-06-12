@@ -101,6 +101,7 @@ export function AdminContainer({ onNavigate }: { onNavigate?: (tab: string) => v
           {subTab === "pontuacao" && <AdminPontuacaoPanel />}
           {subTab === "aparencia" && <AdminAparenciaPanel />}
           {subTab === "whatsapp" && <AdminWhatsAppPanel />}
+          {subTab === "comercial" && <ComercialPanel />}
         </div>
       )}
     </div>
