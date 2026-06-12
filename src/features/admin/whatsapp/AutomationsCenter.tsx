@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, Power, Calendar, Zap, Clock } from "lucide-react";
+import { Plus, Pencil, Trash2, Power, Calendar, Zap, Clock, Send, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { TRIGGERS, WEEKDAYS, AUDIENCES, getTrigger, renderTemplate, type TriggerVar } from "./automation-catalog";
 import { useWhatsappAutomations, useUpsertAutomation, useDeleteAutomation, useToggleAutomation, type WhatsappAutomation, type AutomationInput } from "./use-whatsapp-automations";
 
@@ -134,6 +135,68 @@ function AutomationCard({ automation, onToggle, onEdit, onDelete }: {
 }) {
   const trig = getTrigger(automation.trigger_key);
   const Icon = automation.trigger_type === "schedule" ? Clock : Zap;
+  const [testing, setTesting] = useState(false);
+
+  const handleTest = async () => {
+    setTesting(true);
+    try {
+      const vars = trig?.vars ?? [];
+      const rendered = renderTemplate(automation.message_template, vars);
+      if (!rendered.trim()) {
+        toast.error("Mensagem vazia — nada para enviar.");
+        return;
+      }
+
+      let phone: string | null = null;
+      let prefix = "🧪 *[TESTE — Automação]* \n";
+
+      if (automation.audience === "group") {
+        if (!automation.group_phone?.trim()) {
+          toast.error("Configure o ID do grupo antes de testar.");
+          return;
+        }
+        phone = automation.group_phone.trim();
+      } else {
+        // Send to the admin testing it
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { toast.error("Sessão inválida."); return; }
+        const { data: pref } = await supabase
+          .from("user_whatsapp_preferences")
+          .select("phone_e164, enabled")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (!pref?.enabled || !pref.phone_e164) {
+          toast.error("Configure seu WhatsApp em Preferências antes de testar.");
+          return;
+        }
+        phone = pref.phone_e164;
+      }
+
+      const { data, error } = await supabase.functions.invoke("whatsapp-dispatch", {
+        body: {
+          action: "send",
+          phone,
+          type: `automation_test:${automation.trigger_key}`,
+          message: prefix + rendered,
+        },
+      });
+      if (error) throw error;
+      if ((data as any)?.ok === false) {
+        toast.error(`Falha no envio (status ${(data as any)?.status ?? "?"}).`);
+      } else {
+        toast.success(
+          automation.audience === "group"
+            ? "Teste enviado ao grupo do WhatsApp."
+            : "Teste enviado para o seu WhatsApp."
+        );
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "Erro ao testar a automação.");
+    } finally {
+      setTesting(false);
+    }
+  };
+
   return (
     <Card className={automation.enabled ? "" : "opacity-60"}>
       <CardContent className="p-4 space-y-3">
@@ -145,6 +208,11 @@ function AutomationCard({ automation, onToggle, onEdit, onDelete }: {
               <Badge variant={automation.enabled ? "default" : "secondary"} className="shrink-0">
                 {automation.enabled ? "Ativa" : "Inativa"}
               </Badge>
+              {automation.audience === "group" && (
+                <Badge variant="outline" className="shrink-0 bg-blue-500/10 text-blue-600 border-blue-500/30 dark:text-blue-400">
+                  Grupo
+                </Badge>
+              )}
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
               {trig?.label ?? automation.trigger_key}
@@ -161,6 +229,10 @@ function AutomationCard({ automation, onToggle, onEdit, onDelete }: {
         </div>
 
         <div className="flex items-center justify-end gap-1">
+          <Button size="sm" variant="ghost" className="gap-1.5" onClick={handleTest} disabled={testing}>
+            {testing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+            Testar
+          </Button>
           <Button size="sm" variant="ghost" className="gap-1.5" onClick={onEdit}>
             <Pencil className="h-3.5 w-3.5" /> Editar
           </Button>
