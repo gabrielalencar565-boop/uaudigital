@@ -12,6 +12,7 @@ export type WhatsappAutomation = {
   message_template: string;
   channel: string;
   audience: string;
+  group_phone: string | null;
   filters: Record<string, unknown>;
   enabled: boolean;
   last_run_at: string | null;
@@ -30,6 +31,7 @@ export type AutomationInput = {
   schedule_days?: number[] | null;
   message_template: string;
   audience: string;
+  group_phone?: string | null;
   enabled: boolean;
 };
 
