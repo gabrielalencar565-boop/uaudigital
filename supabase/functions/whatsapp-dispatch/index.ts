@@ -166,7 +166,7 @@ async function processOutbox(limit = 25) {
 
   const { data: rows, error } = await admin
     .from("whatsapp_outbox")
-    .select("id, user_id, notification_type, message, source_ref")
+    .select("id, user_id, target_phone, notification_type, message, source_ref")
     .eq("status", "queued")
     .order("created_at", { ascending: true })
     .limit(limit);
@@ -175,7 +175,6 @@ async function processOutbox(limit = 25) {
 
   let processed = 0;
   for (const row of rows) {
-    // Mark processing first so concurrent calls don't double-send.
     const claim = await admin
       .from("whatsapp_outbox")
       .update({ status: "processing", attempts: 1 })
@@ -185,26 +184,33 @@ async function processOutbox(limit = 25) {
       .maybeSingle();
     if (!claim.data) continue;
 
-    const { data: pref } = await admin
-      .from("user_whatsapp_preferences")
-      .select("phone_e164, enabled, notify_new_task, notify_deadline, notify_company, notify_xp_rank")
-      .eq("user_id", row.user_id)
-      .maybeSingle();
+    let phone: string | null = null;
 
-    if (!pref || !pref.enabled || !pref.phone_e164) {
-      await admin.from("whatsapp_outbox").update({
-        status: "done", processed_at: new Date().toISOString(), last_error: "user_disabled_or_missing_phone",
-      }).eq("id", row.id);
-      await admin.from("whatsapp_send_log").insert({
-        user_id: row.user_id, phone_e164: pref?.phone_e164 ?? null,
-        notification_type: row.notification_type, message: row.message,
-        status: "skipped", provider: settings.provider, source_ref: row.source_ref,
-        error_message: "user_disabled_or_missing_phone",
-      });
-      continue;
+    if (row.target_phone) {
+      // Direct send (group or admin-targeted phone)
+      phone = normalizePhone(row.target_phone, settings.default_country_code || "55");
+    } else if (row.user_id) {
+      const { data: pref } = await admin
+        .from("user_whatsapp_preferences")
+        .select("phone_e164, enabled, notify_new_task, notify_deadline, notify_company, notify_xp_rank")
+        .eq("user_id", row.user_id)
+        .maybeSingle();
+
+      if (!pref || !pref.enabled || !pref.phone_e164) {
+        await admin.from("whatsapp_outbox").update({
+          status: "done", processed_at: new Date().toISOString(), last_error: "user_disabled_or_missing_phone",
+        }).eq("id", row.id);
+        await admin.from("whatsapp_send_log").insert({
+          user_id: row.user_id, phone_e164: pref?.phone_e164 ?? null,
+          notification_type: row.notification_type, message: row.message,
+          status: "skipped", provider: settings.provider, source_ref: row.source_ref,
+          error_message: "user_disabled_or_missing_phone",
+        });
+        continue;
+      }
+      phone = normalizePhone(pref.phone_e164, settings.default_country_code || "55");
     }
 
-    const phone = normalizePhone(pref.phone_e164, settings.default_country_code || "55");
     if (!phone) {
       await admin.from("whatsapp_outbox").update({
         status: "failed", processed_at: new Date().toISOString(), last_error: "invalid_phone",
