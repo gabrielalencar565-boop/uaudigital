@@ -188,6 +188,7 @@ function AutomationEditor({ open, current, onClose, onSave }: {
     schedule_days: current.schedule_days ?? [0, 1, 2, 3, 4, 5, 6],
     message_template: current.message_template,
     audience: current.audience,
+    group_phone: current.group_phone ?? null,
     enabled: current.enabled,
   } : EMPTY;
 
