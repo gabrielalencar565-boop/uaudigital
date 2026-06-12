@@ -80,11 +80,12 @@ export const WEEKDAYS = [
   { value: 6, short: "S", label: "Sábado" },
 ];
 
-export type Audience = "assignee" | "all_team" | "admins";
+export type Audience = "assignee" | "all_team" | "admins" | "group";
 export const AUDIENCES: { value: Audience; label: string; description: string }[] = [
   { value: "assignee", label: "Colaborador relacionado", description: "Quem é responsável pelo evento (ex.: dono da tarefa)." },
   { value: "all_team", label: "Toda a equipe", description: "Todos com WhatsApp habilitado." },
   { value: "admins", label: "Apenas admins", description: "Somente usuários com papel admin." },
+  { value: "group", label: "Grupo do WhatsApp", description: "Envia para um grupo do WhatsApp (informe o ID do grupo)." },
 ];
 
 const SAMPLE_VARS: Record<TriggerVar, string> = {
