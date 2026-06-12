@@ -358,7 +358,7 @@ function AutomationEditor({ open, current, onClose, onSave }: {
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>
           <Button
             variant="brand"
-            disabled={!form.name.trim() || !form.message_template.trim()}
+            disabled={!form.name.trim() || !form.message_template.trim() || (form.audience === "group" && !form.group_phone?.trim())}
             onClick={() => onSave(form)}
           >Salvar</Button>
         </DialogFooter>
