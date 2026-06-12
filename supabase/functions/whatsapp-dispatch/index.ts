@@ -326,7 +326,12 @@ async function cronXpRanking() {
   for (let i = 0; i < ranked.length; i++) {
     const place = i + 1;
     const medal = place === 1 ? "🥇" : place === 2 ? "🥈" : "🥉";
-    const msg = `${intro} ${medal} você está em ${place}º lugar com ${ranked[i].total.toFixed(1)} pontos. Continue assim!`;
+    const { full, first } = await getProfileName(ranked[i].user_id);
+    const xp = ranked[i].total.toFixed(1);
+    const vars = { nome: full, primeiro_nome: first, xp, tarefa: "", cliente: "", prazo: "" };
+    const msg = hasPlaceholders(intro)
+      ? applyTemplate(intro, vars)
+      : `${intro} ${medal} você está em ${place}º lugar com ${xp} pontos. Continue assim!`;
     const { data: id } = await admin.rpc("whatsapp_enqueue", {
       _user_id: ranked[i].user_id, _type: "xp_rank", _message: msg, _source_ref: `rank_${year}_${month}_${place}`,
     });
