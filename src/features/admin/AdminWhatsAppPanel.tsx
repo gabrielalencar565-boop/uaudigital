@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { WhatsAppPreferencesCard } from "@/features/configuracoes/WhatsAppPreferencesCard";
+import { AutomationsCenter } from "@/features/admin/whatsapp/AutomationsCenter";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -64,7 +65,7 @@ type CardDef = {
 
 const CARDS: CardDef[] = [
   { key: "provedor", title: "Provedor", description: "Configure Evolution/Z-API, URL base, instância e DDI padrão.", icon: Settings2 },
-  { key: "mensagens", title: "Mensagens", description: "Personalize as frases iniciais das notificações (nova tarefa, prazos, ranking e avisos).", icon: MessageSquareText },
+  { key: "mensagens", title: "Automações", description: "Crie, edite, ative ou desative notificações automáticas (eventos e horários).", icon: MessageSquareText },
   { key: "teste", title: "Enviar teste", description: "Dispare uma mensagem para um número ou para você mesmo e valide a integração.", icon: Send },
   { key: "aviso", title: "Aviso para a equipe", description: "Mensagem em massa para todos os colaboradores que aceitam avisos.", icon: Megaphone },
   { key: "colaboradores", title: "Colaboradores", description: "Cadastre números e preferências de WhatsApp de cada colaborador.", icon: Users },
@@ -315,76 +316,9 @@ export function AdminWhatsAppPanel() {
       )}
 
       {subTab === "mensagens" && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Mensagens automáticas</CardTitle>
-            <CardDescription>
-              Personalize a frase inicial de cada tipo de notificação. Após a frase, o sistema acrescenta automaticamente os detalhes (título da tarefa, cliente, prazo, etc.).
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            <IntroField
-              label="Nova tarefa atribuída"
-              hint="Enviado quando uma tarefa é atribuída a um colaborador. Se você usar variáveis, a mensagem usa exatamente o que você escreveu; sem variáveis, o sistema acrescenta «Título · Cliente · Prazo» após a frase."
-              vars={["nome", "primeiro_nome", "tarefa", "cliente", "prazo"]}
-              sample={{ nome: "Gabriel Silva", primeiro_nome: "Gabriel", tarefa: "Criar carrossel", cliente: "Acme", prazo: "27/06/2026" }}
-              fallback="🆕 Nova tarefa atribuída: Criar carrossel\nCliente: Acme\nPrazo: 27/06/2026"
-              value={settings.msg_new_task_intro}
-              onChange={(v) => setSettings((s) => ({ ...s, msg_new_task_intro: v }))}
-            />
-            <IntroField
-              label="Prazo hoje"
-              hint="Lembrete enviado para tarefas que vencem no dia."
-              vars={["nome", "primeiro_nome", "tarefa", "cliente", "prazo"]}
-              sample={{ nome: "Gabriel Silva", primeiro_nome: "Gabriel", tarefa: "Editar vídeo", cliente: "Acme", prazo: "12/06/2026" }}
-              fallback="⏰ Prazo hoje: Editar vídeo\nVencimento: 12/06/2026"
-              value={settings.msg_deadline_today_intro}
-              onChange={(v) => setSettings((s) => ({ ...s, msg_deadline_today_intro: v }))}
-            />
-            <IntroField
-              label="Prazo amanhã"
-              hint="Lembrete enviado para tarefas que vencem no dia seguinte."
-              vars={["nome", "primeiro_nome", "tarefa", "cliente", "prazo"]}
-              sample={{ nome: "Gabriel Silva", primeiro_nome: "Gabriel", tarefa: "Aprovar legenda", cliente: "Acme", prazo: "13/06/2026" }}
-              fallback="⏰ Prazo amanhã: Aprovar legenda\nVencimento: 13/06/2026"
-              value={settings.msg_deadline_tomorrow_intro}
-              onChange={(v) => setSettings((s) => ({ ...s, msg_deadline_tomorrow_intro: v }))}
-            />
-            <IntroField
-              label="Prazo atrasado"
-              hint="Lembrete enviado para tarefas vencidas há 1 dia ou mais."
-              vars={["nome", "primeiro_nome", "tarefa", "cliente", "prazo"]}
-              sample={{ nome: "Gabriel Silva", primeiro_nome: "Gabriel", tarefa: "Postar reels", cliente: "Acme", prazo: "10/06/2026" }}
-              fallback="⚠️ Prazo atrasado: Postar reels\nVencimento: 10/06/2026"
-              value={settings.msg_deadline_overdue_intro}
-              onChange={(v) => setSettings((s) => ({ ...s, msg_deadline_overdue_intro: v }))}
-            />
-            <IntroField
-              label="Ranking XP do mês"
-              hint="Mensagem para o Top 3 de desempenho do mês."
-              vars={["nome", "primeiro_nome", "xp"]}
-              sample={{ nome: "Gabriel Silva", primeiro_nome: "Gabriel", xp: "84.0" }}
-              fallback="🏆 Ranking do mês: 🥇 você está em 1º lugar com 84.0 pontos. Continue assim!"
-              value={settings.msg_xp_rank_intro}
-              onChange={(v) => setSettings((s) => ({ ...s, msg_xp_rank_intro: v }))}
-            />
-            <IntroField
-              label="Aviso para a equipe (broadcast)"
-              hint="Prefixo aplicado antes do texto digitado em 'Aviso para a equipe'."
-              vars={["nome", "primeiro_nome"]}
-              sample={{ nome: "Gabriel Silva", primeiro_nome: "Gabriel" }}
-              fallback="📣 Aviso da equipe:\nReunião geral às 14h."
-              value={settings.msg_broadcast_intro}
-              onChange={(v) => setSettings((s) => ({ ...s, msg_broadcast_intro: v }))}
-            />
-
-
-            <Button onClick={saveSettings} variant="brand" className="gap-2" disabled={saving}>
-              <Save className="h-4 w-4" /> {saving ? "Salvando..." : "Salvar mensagens"}
-            </Button>
-          </CardContent>
-        </Card>
+        <AutomationsCenter />
       )}
+
 
       {subTab === "teste" && (
         <Card>
