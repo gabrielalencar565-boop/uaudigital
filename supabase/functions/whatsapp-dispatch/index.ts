@@ -222,6 +222,11 @@ async function processOutbox(limit = 25) {
 // Cron orchestrators
 // ---------------------------------------------------------------------------
 async function cronDeadlines() {
+  const { data: settings } = await admin.from("whatsapp_settings").select("msg_deadline_today_intro, msg_deadline_tomorrow_intro, msg_deadline_overdue_intro").eq("id", 1).maybeSingle();
+  const introToday = settings?.msg_deadline_today_intro || "⏰ Prazo hoje:";
+  const introTomorrow = settings?.msg_deadline_tomorrow_intro || "⏰ Prazo amanhã:";
+  const introOverdue = settings?.msg_deadline_overdue_intro || "⚠️ Prazo atrasado:";
+
   // Enqueue reminders for: due tomorrow, due today, overdue (1+ days).
   const today = new Date();
   const isoToday = today.toISOString().slice(0, 10);
@@ -251,8 +256,8 @@ async function cronDeadlines() {
   let enqueued = 0;
   for (const t of rows) {
     const due = t.due_date ? new Date(t.due_date).toLocaleDateString("pt-BR") : "—";
-    const emoji = t._kind === "atrasada" ? "⚠️" : "⏰";
-    const msg = `${emoji} Prazo ${t._kind}: ${t.title ?? "—"}\nVencimento: ${due}`;
+    const intro = t._kind === "atrasada" ? introOverdue : t._kind === "hoje" ? introToday : introTomorrow;
+    const msg = `${intro} ${t.title ?? "—"}\nVencimento: ${due}`;
     const { data: id } = await admin.rpc("whatsapp_enqueue", {
       _user_id: t.assignee_id, _type: "deadline", _message: msg, _source_ref: t.id,
     });
@@ -261,7 +266,11 @@ async function cronDeadlines() {
   return { enqueued, scanned: rows.length };
 }
 
+
 async function cronXpRanking() {
+  const { data: settings } = await admin.from("whatsapp_settings").select("msg_xp_rank_intro").eq("id", 1).maybeSingle();
+  const intro = settings?.msg_xp_rank_intro || "🏆 Ranking do mês:";
+
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth() + 1;
@@ -285,7 +294,7 @@ async function cronXpRanking() {
   for (let i = 0; i < ranked.length; i++) {
     const place = i + 1;
     const medal = place === 1 ? "🥇" : place === 2 ? "🥈" : "🥉";
-    const msg = `${medal} Ranking semanal — você está em ${place}º lugar com ${ranked[i].total.toFixed(1)} pontos. Continue assim!`;
+    const msg = `${intro} ${medal} você está em ${place}º lugar com ${ranked[i].total.toFixed(1)} pontos. Continue assim!`;
     const { data: id } = await admin.rpc("whatsapp_enqueue", {
       _user_id: ranked[i].user_id, _type: "xp_rank", _message: msg, _source_ref: `rank_${year}_${month}_${place}`,
     });
@@ -295,6 +304,10 @@ async function cronXpRanking() {
 }
 
 async function broadcast(message: string, senderId: string) {
+  const { data: settings } = await admin.from("whatsapp_settings").select("msg_broadcast_intro").eq("id", 1).maybeSingle();
+  const intro = settings?.msg_broadcast_intro || "📣 Aviso da equipe:";
+  const finalMessage = `${intro}\n${message}`;
+
   const { data: users } = await admin
     .from("user_whatsapp_preferences")
     .select("user_id")
@@ -305,12 +318,13 @@ async function broadcast(message: string, senderId: string) {
   let enqueued = 0;
   for (const u of users ?? []) {
     const { data: id } = await admin.rpc("whatsapp_enqueue", {
-      _user_id: u.user_id, _type: "company", _message: message, _source_ref: `bcast:${senderId}:${Date.now()}`,
+      _user_id: u.user_id, _type: "company", _message: finalMessage, _source_ref: `bcast:${senderId}:${Date.now()}`,
     });
     if (id) enqueued++;
   }
   return { enqueued, recipients: users?.length ?? 0 };
 }
+
 
 // ---------------------------------------------------------------------------
 // Handler
