@@ -343,8 +343,6 @@ async function cronXpRanking() {
 async function broadcast(message: string, senderId: string) {
   const { data: settings } = await admin.from("whatsapp_settings").select("msg_broadcast_intro").eq("id", 1).maybeSingle();
   const intro = settings?.msg_broadcast_intro || "📣 Aviso da equipe:";
-  const finalMessage = `${intro}\n${message}`;
-
   const { data: users } = await admin
     .from("user_whatsapp_preferences")
     .select("user_id")
@@ -354,6 +352,11 @@ async function broadcast(message: string, senderId: string) {
 
   let enqueued = 0;
   for (const u of users ?? []) {
+    const { full, first } = await getProfileName(u.user_id);
+    const vars = { nome: full, primeiro_nome: first, tarefa: "", cliente: "", prazo: "", xp: "" };
+    const finalMessage = hasPlaceholders(intro)
+      ? `${applyTemplate(intro, vars)}\n${message}`
+      : `${intro}\n${message}`;
     const { data: id } = await admin.rpc("whatsapp_enqueue", {
       _user_id: u.user_id, _type: "company", _message: finalMessage, _source_ref: `bcast:${senderId}:${Date.now()}`,
     });
