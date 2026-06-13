@@ -9,6 +9,7 @@ export type TriggerType = "event" | "schedule";
 export type TriggerVar =
   | "nome"
   | "primeiro_nome"
+  | "etapa"
   | "tarefa"
   | "cliente"
   | "prazo"
