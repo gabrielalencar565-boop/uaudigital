@@ -34,11 +34,11 @@ export type TriggerDef = {
 export const TRIGGERS: TriggerDef[] = [
   // Eventos — Tarefas
   { key: "task_assigned", label: "Nova tarefa atribuída", description: "Quando uma tarefa é atribuída a um colaborador.", type: "event", category: "tarefas",
-    vars: ["nome", "primeiro_nome", "tarefa", "cliente", "prazo"] },
+    vars: ["nome", "primeiro_nome", "etapa", "tarefa", "cliente", "prazo"] },
   { key: "task_completed", label: "Tarefa concluída", description: "Quando uma tarefa é marcada como concluída.", type: "event", category: "tarefas",
-    vars: ["nome", "primeiro_nome", "tarefa", "cliente", "prazo"] },
+    vars: ["nome", "primeiro_nome", "etapa", "tarefa", "cliente", "prazo"] },
   { key: "task_overdue", label: "Tarefa atrasada", description: "Quando uma tarefa fica vencida sem ser concluída.", type: "event", category: "tarefas",
-    vars: ["nome", "primeiro_nome", "tarefa", "cliente", "prazo"] },
+    vars: ["nome", "primeiro_nome", "etapa", "tarefa", "cliente", "prazo"] },
 
   // Eventos — XP
   { key: "xp_gain", label: "Ganho de XP", description: "Toda vez que o colaborador recebe XP.", type: "event", category: "xp",
