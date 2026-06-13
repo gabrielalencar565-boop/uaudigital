@@ -9,6 +9,7 @@ export type TriggerType = "event" | "schedule";
 export type TriggerVar =
   | "nome"
   | "primeiro_nome"
+  | "etapa"
   | "tarefa"
   | "cliente"
   | "prazo"
@@ -33,11 +34,11 @@ export type TriggerDef = {
 export const TRIGGERS: TriggerDef[] = [
   // Eventos — Tarefas
   { key: "task_assigned", label: "Nova tarefa atribuída", description: "Quando uma tarefa é atribuída a um colaborador.", type: "event", category: "tarefas",
-    vars: ["nome", "primeiro_nome", "tarefa", "cliente", "prazo"] },
+    vars: ["nome", "primeiro_nome", "etapa", "tarefa", "cliente", "prazo"] },
   { key: "task_completed", label: "Tarefa concluída", description: "Quando uma tarefa é marcada como concluída.", type: "event", category: "tarefas",
-    vars: ["nome", "primeiro_nome", "tarefa", "cliente", "prazo"] },
+    vars: ["nome", "primeiro_nome", "etapa", "tarefa", "cliente", "prazo"] },
   { key: "task_overdue", label: "Tarefa atrasada", description: "Quando uma tarefa fica vencida sem ser concluída.", type: "event", category: "tarefas",
-    vars: ["nome", "primeiro_nome", "tarefa", "cliente", "prazo"] },
+    vars: ["nome", "primeiro_nome", "etapa", "tarefa", "cliente", "prazo"] },
 
   // Eventos — XP
   { key: "xp_gain", label: "Ganho de XP", description: "Toda vez que o colaborador recebe XP.", type: "event", category: "xp",
@@ -51,11 +52,11 @@ export const TRIGGERS: TriggerDef[] = [
 
   // Horários
   { key: "deadline_today", label: "Prazo hoje", description: "Lembrete diário para tarefas que vencem hoje.", type: "schedule", category: "tarefas",
-    vars: ["nome", "primeiro_nome", "tarefa", "cliente", "prazo"], defaultTime: "08:00" },
+    vars: ["nome", "primeiro_nome", "etapa", "tarefa", "cliente", "prazo"], defaultTime: "08:00" },
   { key: "deadline_tomorrow", label: "Prazo amanhã", description: "Lembrete diário para tarefas que vencem amanhã.", type: "schedule", category: "tarefas",
-    vars: ["nome", "primeiro_nome", "tarefa", "cliente", "prazo"], defaultTime: "17:00" },
+    vars: ["nome", "primeiro_nome", "etapa", "tarefa", "cliente", "prazo"], defaultTime: "17:00" },
   { key: "deadline_overdue", label: "Prazo atrasado", description: "Lembrete diário para tarefas vencidas há 1 dia ou mais.", type: "schedule", category: "tarefas",
-    vars: ["nome", "primeiro_nome", "tarefa", "cliente", "prazo"], defaultTime: "09:00" },
+    vars: ["nome", "primeiro_nome", "etapa", "tarefa", "cliente", "prazo"], defaultTime: "09:00" },
   { key: "daily_agenda", label: "Agenda diária", description: "Resumo matinal com as tarefas do dia do colaborador.", type: "schedule", category: "resumo",
     vars: ["nome", "primeiro_nome", "tarefas_do_dia", "total_tarefas_dia"], defaultTime: "08:30" },
   { key: "daily_summary", label: "Resumo do dia", description: "Resumo ao fim do dia com tarefas concluídas e atrasadas.", type: "schedule", category: "resumo",
@@ -91,15 +92,16 @@ export const AUDIENCES: { value: Audience; label: string; description: string }[
 const SAMPLE_VARS: Record<TriggerVar, string> = {
   nome: "Gabriel Silva",
   primeiro_nome: "Gabriel",
-  tarefa: "Editar vídeo institucional",
+  etapa: "Design",
+  tarefa: "(Design) - Editar vídeo institucional",
   cliente: "Acme",
   prazo: "27/06/2026",
   xp: "150",
   nivel: "5",
   ranking: "1º Lugar no Ranking Mensal",
-  tarefas_do_dia: "• Editar vídeo · Acme · 14h\n• Postar reels · Beta · 18h",
-  tarefas_atrasadas: "• Aprovar legenda (venceu em 10/06/2026)",
-  tarefas_concluidas: "• Editar vídeo\n• Postar reels",
+  tarefas_do_dia: "• (Design) - Editar vídeo · Acme · 14h\n• (Vídeo) - Postar reels · Beta · 18h",
+  tarefas_atrasadas: "• (Revisão) - Aprovar legenda (venceu em 10/06/2026)",
+  tarefas_concluidas: "• (Design) - Editar vídeo\n• (Vídeo) - Postar reels",
   total_tarefas_dia: "2",
 };
 
