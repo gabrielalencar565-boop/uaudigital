@@ -52,11 +52,11 @@ export const TRIGGERS: TriggerDef[] = [
 
   // Horários
   { key: "deadline_today", label: "Prazo hoje", description: "Lembrete diário para tarefas que vencem hoje.", type: "schedule", category: "tarefas",
-    vars: ["nome", "primeiro_nome", "tarefa", "cliente", "prazo"], defaultTime: "08:00" },
+    vars: ["nome", "primeiro_nome", "etapa", "tarefa", "cliente", "prazo"], defaultTime: "08:00" },
   { key: "deadline_tomorrow", label: "Prazo amanhã", description: "Lembrete diário para tarefas que vencem amanhã.", type: "schedule", category: "tarefas",
-    vars: ["nome", "primeiro_nome", "tarefa", "cliente", "prazo"], defaultTime: "17:00" },
+    vars: ["nome", "primeiro_nome", "etapa", "tarefa", "cliente", "prazo"], defaultTime: "17:00" },
   { key: "deadline_overdue", label: "Prazo atrasado", description: "Lembrete diário para tarefas vencidas há 1 dia ou mais.", type: "schedule", category: "tarefas",
-    vars: ["nome", "primeiro_nome", "tarefa", "cliente", "prazo"], defaultTime: "09:00" },
+    vars: ["nome", "primeiro_nome", "etapa", "tarefa", "cliente", "prazo"], defaultTime: "09:00" },
   { key: "daily_agenda", label: "Agenda diária", description: "Resumo matinal com as tarefas do dia do colaborador.", type: "schedule", category: "resumo",
     vars: ["nome", "primeiro_nome", "tarefas_do_dia", "total_tarefas_dia"], defaultTime: "08:30" },
   { key: "daily_summary", label: "Resumo do dia", description: "Resumo ao fim do dia com tarefas concluídas e atrasadas.", type: "schedule", category: "resumo",
