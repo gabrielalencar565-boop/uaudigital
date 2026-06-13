@@ -252,6 +252,14 @@ export function ConversasPanel() {
     qc.invalidateQueries({ queryKey: ["wa-contacts"] });
   };
 
+  const deleteMessage = async (id: string) => {
+    const { error } = await supabase.from("whatsapp_messages").delete().eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Mensagem apagada");
+    qc.invalidateQueries({ queryKey: ["wa-messages", activeKey] });
+    qc.invalidateQueries({ queryKey: ["wa-contacts"] });
+  };
+
   const linkContact = async (userId: string | null) => {
     if (!activeContact) return;
     const { error } = await supabase.rpc("whatsapp_link_contact_to_user" as any, {
