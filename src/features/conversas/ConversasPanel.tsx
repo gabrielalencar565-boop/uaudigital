@@ -483,7 +483,37 @@ export function ConversasPanel() {
                   (messagesQ.data ?? []).map((m) => {
                     const own = m.direction === "out";
                     return (
-                      <div key={m.id} className={cn("flex", own ? "justify-end" : "justify-start")}>
+                      <div key={m.id} className={cn("group flex items-center gap-1.5", own ? "justify-end" : "justify-start")}>
+                        {own && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <button
+                                type="button"
+                                className="opacity-0 group-hover:opacity-100 transition text-muted-foreground hover:text-destructive p-1"
+                                title="Apagar mensagem"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Apagar mensagem?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Esta ação remove a mensagem do histórico permanentemente. Não é possível desfazer.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  onClick={() => deleteMessage(m.id)}
+                                >
+                                  Apagar
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
                         <div
                           className={cn(
                             "max-w-[75%] rounded-2xl px-3 py-2 shadow-sm",
@@ -513,6 +543,36 @@ export function ConversasPanel() {
                             {own && <span>· {m.status}</span>}
                           </div>
                         </div>
+                        {!own && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <button
+                                type="button"
+                                className="opacity-0 group-hover:opacity-100 transition text-muted-foreground hover:text-destructive p-1"
+                                title="Apagar mensagem"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Apagar mensagem?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Esta ação remove a mensagem do histórico permanentemente. Não é possível desfazer.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  onClick={() => deleteMessage(m.id)}
+                                >
+                                  Apagar
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
                       </div>
                     );
                   })
