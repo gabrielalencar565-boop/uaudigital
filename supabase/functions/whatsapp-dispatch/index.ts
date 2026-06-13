@@ -288,7 +288,7 @@ async function cronDeadlines() {
 
   const { data: upcoming } = await admin
     .from("pm_tasks")
-    .select("id, title, due_date, assignee_id, client_id")
+    .select("id, title, due_date, assignee_id, client_id, stage_current")
     .is("deleted_at", null)
     .neq("status_global", "concluido")
     .not("assignee_id", "is", null)
@@ -296,7 +296,7 @@ async function cronDeadlines() {
 
   const { data: overdue } = await admin
     .from("pm_tasks")
-    .select("id, title, due_date, assignee_id, client_id")
+    .select("id, title, due_date, assignee_id, client_id, stage_current")
     .is("deleted_at", null)
     .neq("status_global", "concluido")
     .not("assignee_id", "is", null)
@@ -319,7 +319,9 @@ async function cronDeadlines() {
     }
     const vars = {
       nome: full, primeiro_nome: first,
-      tarefa: t.title ?? "—", cliente: clientName, prazo: due,
+      etapa: stageLabel(t.stage_current ?? ""),
+      tarefa: fmtTask(t.title ?? "—", t.stage_current),
+      cliente: clientName, prazo: due,
     };
     const msg = hasPlaceholders(intro)
       ? applyTemplate(intro, vars)
@@ -441,14 +443,14 @@ async function buildUserVars(userId: string, dateIso: string) {
   // Tarefas do dia
   const { data: today } = await admin
     .from("pm_tasks")
-    .select("title, client_id, posting_time, status_global")
+    .select("title, client_id, posting_time, status_global, stage_current")
     .eq("assignee_id", userId)
     .is("deleted_at", null)
     .eq("due_date", dateIso);
 
   const { data: overdue } = await admin
     .from("pm_tasks")
-    .select("title, due_date")
+    .select("title, due_date, stage_current")
     .eq("assignee_id", userId)
     .is("deleted_at", null)
     .neq("status_global", "concluido")
@@ -456,7 +458,7 @@ async function buildUserVars(userId: string, dateIso: string) {
 
   const { data: done } = await admin
     .from("pm_tasks")
-    .select("title")
+    .select("title, stage_current")
     .eq("assignee_id", userId)
     .is("deleted_at", null)
     .eq("status_global", "concluido")
@@ -473,15 +475,15 @@ async function buildUserVars(userId: string, dateIso: string) {
     rows.length === 0 ? "Nenhuma." : rows.map((t: any) => {
       const cli = t.client_id ? ` · ${clientMap[t.client_id] ?? ""}` : "";
       const tm = t.posting_time ? ` · ${t.posting_time}` : "";
-      return `• ${t.title}${cli}${tm}`;
+      return `• ${fmtTask(t.title, t.stage_current)}${cli}${tm}`;
     }).join("\n");
 
   return {
     nome: full,
     primeiro_nome: first,
     tarefas_do_dia: fmtTasks(today ?? []),
-    tarefas_atrasadas: (overdue ?? []).length === 0 ? "Nenhuma." : (overdue ?? []).map((t: any) => `• ${t.title} (venceu em ${t.due_date})`).join("\n"),
-    tarefas_concluidas: (done ?? []).length === 0 ? "Nenhuma." : (done ?? []).map((t: any) => `• ${t.title}`).join("\n"),
+    tarefas_atrasadas: (overdue ?? []).length === 0 ? "Nenhuma." : (overdue ?? []).map((t: any) => `• ${fmtTask(t.title, t.stage_current)} (venceu em ${t.due_date})`).join("\n"),
+    tarefas_concluidas: (done ?? []).length === 0 ? "Nenhuma." : (done ?? []).map((t: any) => `• ${fmtTask(t.title, t.stage_current)}`).join("\n"),
     total_tarefas_dia: String((today ?? []).length),
   };
 }
@@ -529,7 +531,7 @@ async function runScheduledAutomation(auto: any, now: ReturnType<typeof nowInSao
       return d.toISOString().slice(0, 10);
     })();
     let query = admin.from("pm_tasks")
-      .select("id, title, due_date, assignee_id, client_id")
+      .select("id, title, due_date, assignee_id, client_id, stage_current")
       .is("deleted_at", null)
       .neq("status_global", "concluido")
       .not("assignee_id", "is", null);
@@ -549,7 +551,9 @@ async function runScheduledAutomation(auto: any, now: ReturnType<typeof nowInSao
       }
       const vars = {
         nome: full, primeiro_nome: first,
-        tarefa: t.title ?? "—", cliente: cli,
+        etapa: stageLabel(t.stage_current ?? ""),
+        tarefa: fmtTask(t.title ?? "—", t.stage_current),
+        cliente: cli,
         prazo: t.due_date ? new Date(`${t.due_date}T12:00:00Z`).toLocaleDateString("pt-BR") : "—",
       };
       const msg = applyTemplate(auto.message_template, vars);
