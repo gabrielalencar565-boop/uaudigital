@@ -1,6 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Search, Send, Copy, Check, RefreshCw, MessagesSquare, Link2, X } from "lucide-react";
+import { Search, Send, Copy, Check, RefreshCw, MessagesSquare, Link2, X, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -241,6 +252,14 @@ export function ConversasPanel() {
     qc.invalidateQueries({ queryKey: ["wa-contacts"] });
   };
 
+  const deleteMessage = async (id: string) => {
+    const { error } = await supabase.from("whatsapp_messages").delete().eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Mensagem apagada");
+    qc.invalidateQueries({ queryKey: ["wa-messages", activeKey] });
+    qc.invalidateQueries({ queryKey: ["wa-contacts"] });
+  };
+
   const linkContact = async (userId: string | null) => {
     if (!activeContact) return;
     const { error } = await supabase.rpc("whatsapp_link_contact_to_user" as any, {
@@ -464,7 +483,37 @@ export function ConversasPanel() {
                   (messagesQ.data ?? []).map((m) => {
                     const own = m.direction === "out";
                     return (
-                      <div key={m.id} className={cn("flex", own ? "justify-end" : "justify-start")}>
+                      <div key={m.id} className={cn("group flex items-center gap-1.5", own ? "justify-end" : "justify-start")}>
+                        {own && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <button
+                                type="button"
+                                className="opacity-0 group-hover:opacity-100 transition text-muted-foreground hover:text-destructive p-1"
+                                title="Apagar mensagem"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Apagar mensagem?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Esta ação remove a mensagem do histórico permanentemente. Não é possível desfazer.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  onClick={() => deleteMessage(m.id)}
+                                >
+                                  Apagar
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
                         <div
                           className={cn(
                             "max-w-[75%] rounded-2xl px-3 py-2 shadow-sm",
@@ -494,6 +543,36 @@ export function ConversasPanel() {
                             {own && <span>· {m.status}</span>}
                           </div>
                         </div>
+                        {!own && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <button
+                                type="button"
+                                className="opacity-0 group-hover:opacity-100 transition text-muted-foreground hover:text-destructive p-1"
+                                title="Apagar mensagem"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Apagar mensagem?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Esta ação remove a mensagem do histórico permanentemente. Não é possível desfazer.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  onClick={() => deleteMessage(m.id)}
+                                >
+                                  Apagar
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
                       </div>
                     );
                   })
