@@ -208,6 +208,16 @@ export function ConversasPanel() {
     });
   }, [contacts, filter, search]);
 
+  const duplicateKeys = useMemo(() => {
+    const counts = new Map<string, number>();
+    contacts.forEach((c) => {
+      const k = c.phone_key ?? phoneKey(c.phone_e164);
+      if (!k) return;
+      counts.set(k, (counts.get(k) ?? 0) + 1);
+    });
+    return new Set([...counts.entries()].filter(([, v]) => v > 1).map(([k]) => k));
+  }, [contacts]);
+
   const activeContact = useMemo(
     () => contacts.find((c) => (c.phone_key ?? phoneKey(c.phone_e164)) === activeKey) ?? null,
     [contacts, activeKey],
