@@ -208,6 +208,16 @@ export function ConversasPanel() {
     });
   }, [contacts, filter, search]);
 
+  const duplicateKeys = useMemo(() => {
+    const counts = new Map<string, number>();
+    contacts.forEach((c) => {
+      const k = c.phone_key ?? phoneKey(c.phone_e164);
+      if (!k) return;
+      counts.set(k, (counts.get(k) ?? 0) + 1);
+    });
+    return new Set([...counts.entries()].filter(([, v]) => v > 1).map(([k]) => k));
+  }, [contacts]);
+
   const activeContact = useMemo(
     () => contacts.find((c) => (c.phone_key ?? phoneKey(c.phone_e164)) === activeKey) ?? null,
     [contacts, activeKey],
@@ -258,6 +268,19 @@ export function ConversasPanel() {
     toast.success("Mensagem apagada");
     qc.invalidateQueries({ queryKey: ["wa-messages", activeKey] });
     qc.invalidateQueries({ queryKey: ["wa-contacts"] });
+  };
+
+  const deleteContact = async (c: Contact) => {
+    const key = c.phone_key ?? phoneKey(c.phone_e164);
+    if (key) {
+      await supabase.from("whatsapp_messages").delete().eq("contact_phone_key", key);
+    }
+    const { error } = await supabase.from("whatsapp_contacts").delete().eq("phone_e164", c.phone_e164);
+    if (error) { toast.error(error.message); return; }
+    if (activeKey === key) setActiveKey(null);
+    toast.success("Conversa apagada");
+    qc.invalidateQueries({ queryKey: ["wa-contacts"] });
+    if (key) qc.invalidateQueries({ queryKey: ["wa-messages", key] });
   };
 
   const linkContact = async (userId: string | null) => {
@@ -341,14 +364,18 @@ export function ConversasPanel() {
                 const member = memberFor(c);
                 const name = displayName(c);
                 const avatarSrc = displayAvatar(c);
+                const isDup = key ? duplicateKeys.has(key) : false;
                 return (
-                  <button
-                    key={key ?? c.id}
-                    onClick={() => setActiveKey(key)}
-                    disabled={!key}
+                  <div
+                    key={c.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => key && setActiveKey(key)}
+                    onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && key) { e.preventDefault(); setActiveKey(key); } }}
                     className={cn(
-                      "w-full flex items-center gap-2 px-3 py-2.5 text-left border-b border-border/40 hover:bg-accent/50 transition",
+                      "group relative w-full flex items-center gap-2 px-3 py-2.5 text-left border-b border-border/40 hover:bg-accent/50 transition cursor-pointer",
                       active && "bg-accent",
+                      !key && "opacity-60 cursor-not-allowed",
                     )}
                   >
                     <Avatar className="h-9 w-9 shrink-0">
@@ -374,7 +401,7 @@ export function ConversasPanel() {
                           </span>
                         )}
                       </div>
-                      <div className="mt-1 flex items-center gap-1">
+                      <div className="mt-1 flex items-center gap-1 flex-wrap">
                         <Badge
                           variant={isGroupContact(c) ? "default" : member ? "default" : "outline"}
                           className={cn(
@@ -389,9 +416,47 @@ export function ConversasPanel() {
                             · {member.role_title}
                           </span>
                         )}
+                        {isDup && (
+                          <Badge
+                            variant="outline"
+                            className="text-[9px] py-0 px-1.5 h-4 border-amber-500 text-amber-600 dark:text-amber-400"
+                            title="Este número aparece em mais de um contato (ex.: Lead e Equipe)"
+                          >
+                            Duplicado
+                          </Badge>
+                        )}
                       </div>
                     </div>
-                  </button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={(e) => e.stopPropagation()}
+                          className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition text-muted-foreground hover:text-destructive p-1 rounded shrink-0"
+                          title="Apagar conversa"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Apagar conversa?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Remove o contato {name} e todo o histórico de mensagens. Não é possível desfazer.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            onClick={() => deleteContact(c)}
+                          >
+                            Apagar
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 );
               })
             )}
