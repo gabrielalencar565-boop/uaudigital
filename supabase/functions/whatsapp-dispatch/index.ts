@@ -64,6 +64,28 @@ async function getProfileName(userId: string): Promise<{ full: string; first: st
   return { full, first };
 }
 
+function stageLabel(key: string): string {
+  const map: Record<string, string> = {
+    captacao: "Captação",
+    planejamento: "Planejamento",
+    design: "Design",
+    edicao_videos: "Vídeo",
+    revisao: "Revisão",
+    pdf: "PDF",
+    agendamento: "Agendamento",
+    entrega: "Entregue",
+    roteiro: "Roteiro",
+    edicao: "Edição",
+    alteracoes: "Alterações",
+  };
+  return map[key] ?? key;
+}
+
+function fmtTask(title: string, stage: string | null | undefined): string {
+  const lbl = stageLabel(stage ?? "");
+  return `(${lbl}) - ${title}`;
+}
+
 // ---------------------------------------------------------------------------
 // Provider adapters — stubs ready for Evolution API and Z-API.
 // Reads credentials from edge function secrets (configured via Lovable).
