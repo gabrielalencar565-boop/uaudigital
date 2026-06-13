@@ -92,15 +92,16 @@ export const AUDIENCES: { value: Audience; label: string; description: string }[
 const SAMPLE_VARS: Record<TriggerVar, string> = {
   nome: "Gabriel Silva",
   primeiro_nome: "Gabriel",
-  tarefa: "Editar vídeo institucional",
+  etapa: "Design",
+  tarefa: "(Design) - Editar vídeo institucional",
   cliente: "Acme",
   prazo: "27/06/2026",
   xp: "150",
   nivel: "5",
   ranking: "1º Lugar no Ranking Mensal",
-  tarefas_do_dia: "• Editar vídeo · Acme · 14h\n• Postar reels · Beta · 18h",
-  tarefas_atrasadas: "• Aprovar legenda (venceu em 10/06/2026)",
-  tarefas_concluidas: "• Editar vídeo\n• Postar reels",
+  tarefas_do_dia: "• (Design) - Editar vídeo · Acme · 14h\n• (Vídeo) - Postar reels · Beta · 18h",
+  tarefas_atrasadas: "• (Revisão) - Aprovar legenda (venceu em 10/06/2026)",
+  tarefas_concluidas: "• (Design) - Editar vídeo\n• (Vídeo) - Postar reels",
   total_tarefas_dia: "2",
 };
 
