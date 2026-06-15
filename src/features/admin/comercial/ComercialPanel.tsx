@@ -22,6 +22,8 @@ import { ComercialTasksTab } from "./components/ComercialTasksTab";
 import { ComercialProposalsTab } from "./components/ComercialProposalsTab";
 import { ComercialRelatoriosTab } from "./components/ComercialRelatoriosTab";
 import { ComercialAutomacoesTab } from "./components/ComercialAutomacoesTab";
+import { ConversasPanel } from "@/features/conversas/ConversasPanel";
+import { useCrmWhatsAppContacts } from "./hooks/use-crm-whatsapp-contacts";
 
 export function ComercialPanel() {
   const { data: leads = [] } = useCrmLeads();
