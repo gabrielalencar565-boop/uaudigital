@@ -58,6 +58,7 @@ type Message = {
   sent_by_user_id: string | null;
   source_type: string;
   created_at: string;
+  raw: any | null;
 };
 
 type FilterKey = "all" | "unread" | "colaborador" | "lead" | "grupo";
@@ -88,18 +89,39 @@ function formatStamp(iso: string) {
 
 function isGroupContact(c: { origin?: string; phone_e164?: string | null; phone_key?: string | null }) {
   if (c.origin === "grupo") return true;
-  const p = (c.phone_e164 ?? "").toString();
-  const k = (c.phone_key ?? "").toString();
-  return p.includes("-") || p.toLowerCase().endsWith("@g.us") || k.includes("-");
+  const p = (c.phone_e164 ?? "").toString().toLowerCase();
+  const k = (c.phone_key ?? "").toString().toLowerCase();
+  if (p.endsWith("-group") || k.endsWith("-group")) return true;
+  if (p.endsWith("@g.us")) return true;
+  return p.includes("-") || k.includes("-");
 }
 
 function phoneKey(phone: string | null | undefined) {
-  const raw = (phone ?? "").toString();
-  if (raw.includes("-") || raw.toLowerCase().endsWith("@g.us")) {
-    return raw.toLowerCase().trim().replace(/@g\.us$/, "");
+  const raw = (phone ?? "").toString().toLowerCase().trim();
+  if (!raw) return null;
+  if (raw.endsWith("-group") || raw.endsWith("-lid")) return raw;
+  if (raw.includes("-") && !raw.endsWith("@g.us") && !raw.endsWith("@lid")) {
+    return raw.replace(/@g\.us$/, "");
+  }
+  if (raw.endsWith("@g.us")) {
+    const d = raw.replace(/\D/g, "");
+    return d ? `${d}-group` : null;
+  }
+  if (raw.endsWith("@lid")) {
+    const d = raw.replace(/\D/g, "");
+    return d ? `${d}-lid` : null;
   }
   const digits = raw.replace(/\D/g, "");
-  return digits ? digits.slice(-10) : null;
+  if (!digits) return null;
+  if (digits.length > 15) return `${digits}-group`;
+  return digits.slice(-10);
+}
+
+function messageSenderName(m: Message): string | null {
+  const r = m.raw;
+  if (!r || typeof r !== "object") return null;
+  const name = r.senderName ?? r.participantName ?? r.notifyName ?? null;
+  return typeof name === "string" && name.trim() ? name.trim() : null;
 }
 
 function originLabel(c: Contact) {
@@ -587,6 +609,12 @@ export function ConversasPanel() {
                               : "bg-card border border-border rounded-bl-sm",
                           )}
                         >
+                          {!own && isGroupContact(activeContact) && (() => {
+                            const sender = messageSenderName(m);
+                            return sender ? (
+                              <div className="text-[11px] font-semibold text-primary mb-0.5">{sender}</div>
+                            ) : null;
+                          })()}
                           {m.body && (
                             <div className="whitespace-pre-wrap text-sm leading-snug">{m.body}</div>
                           )}
