@@ -8,17 +8,34 @@ import { cn } from "@/lib/utils";
 import { STAGES, STAGE_LABEL, fmtCurrency, type CrmStage } from "../crm-constants";
 import type { CrmLead } from "../hooks/use-crm-leads";
 import type { CrmTask } from "../hooks/use-crm-tasks";
+import { formatPhonePretty, type CrmWhatsAppContact } from "../hooks/use-crm-whatsapp-contacts";
 
 interface Props {
   leads: CrmLead[];
   tasks: CrmTask[];
   members: { user_id: string; display_name: string; avatar_url: string | null }[];
+  contactsByKey?: Map<string, CrmWhatsAppContact>;
+  contactsById?: Map<string, CrmWhatsAppContact>;
   onLeadStageChange: (lead: CrmLead, newStage: CrmStage) => void;
   onLeadClick: (lead: CrmLead) => void;
 }
 
-function LeadCard({ lead, member, hasOverdue, onClick }: any) {
+function resolveContact(
+  lead: CrmLead,
+  byKey?: Map<string, CrmWhatsAppContact>,
+  byId?: Map<string, CrmWhatsAppContact>,
+): CrmWhatsAppContact | undefined {
+  if (lead.whatsapp_contact_id && byId?.get(lead.whatsapp_contact_id)) return byId.get(lead.whatsapp_contact_id);
+  if (lead.phone_key && byKey?.get(lead.phone_key)) return byKey.get(lead.phone_key);
+  return undefined;
+}
+
+function LeadCard({ lead, member, hasOverdue, contact, onClick }: any) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: lead.id, data: lead });
+  const displayName = (lead.nome && lead.nome !== "Novo lead" ? lead.nome : null) ?? contact?.name ?? "Novo lead";
+  const phone = lead.telefone ?? contact?.phone_e164 ?? null;
+  const photo = contact?.profile_pic_url ?? null;
+  const initial = (displayName || "?").trim()[0]?.toUpperCase() ?? "?";
   return (
     <Card
       ref={setNodeRef}
@@ -30,13 +47,18 @@ function LeadCard({ lead, member, hasOverdue, onClick }: any) {
         isDragging && "opacity-40",
       )}
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex items-start gap-2.5">
+        <Avatar className="h-9 w-9 shrink-0">
+          <AvatarImage src={photo ?? undefined} />
+          <AvatarFallback className="text-[11px]">{initial}</AvatarFallback>
+        </Avatar>
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-semibold truncate">{lead.nome}</div>
-          {lead.empresa && <div className="text-xs text-muted-foreground truncate">{lead.empresa}</div>}
+          <div className="text-sm font-semibold truncate">{displayName}</div>
+          {phone && <div className="text-[11px] text-muted-foreground truncate">{formatPhonePretty(phone)}</div>}
+          {lead.empresa && <div className="text-[11px] text-muted-foreground truncate">{lead.empresa}</div>}
         </div>
         {member ? (
-          <Avatar className="h-6 w-6 shrink-0">
+          <Avatar className="h-6 w-6 shrink-0" title={member.display_name}>
             <AvatarImage src={member.avatar_url ?? undefined} />
             <AvatarFallback className="text-[10px]">{(member.display_name || "?")[0]}</AvatarFallback>
           </Avatar>
@@ -63,7 +85,7 @@ function LeadCard({ lead, member, hasOverdue, onClick }: any) {
   );
 }
 
-function Column({ stage, leads, members, tasks, onLeadClick }: any) {
+function Column({ stage, leads, members, tasks, contactsByKey, contactsById, onLeadClick }: any) {
   const { setNodeRef, isOver } = useDroppable({ id: stage.value });
   const total = leads.reduce((s: number, l: CrmLead) => s + (Number(l.valor_estimado) || 0), 0);
   return (
@@ -84,8 +106,9 @@ function Column({ stage, leads, members, tasks, onLeadClick }: any) {
           const hasOverdue = tasks.some((t: CrmTask) =>
             t.lead_id === lead.id && t.status === "pendente" && t.due_at && new Date(t.due_at) < new Date(),
           );
+          const contact = resolveContact(lead, contactsByKey, contactsById);
           return (
-            <LeadCard key={lead.id} lead={lead} member={member} hasOverdue={hasOverdue} onClick={() => onLeadClick(lead)} />
+            <LeadCard key={lead.id} lead={lead} member={member} hasOverdue={hasOverdue} contact={contact} onClick={() => onLeadClick(lead)} />
           );
         })}
         {leads.length === 0 && (
@@ -106,7 +129,7 @@ function timeAgo(iso: string) {
   return `${Math.max(m, 0)}m`;
 }
 
-export function FunilKanban({ leads, tasks, members, onLeadStageChange, onLeadClick }: Props) {
+export function FunilKanban({ leads, tasks, members, contactsByKey, contactsById, onLeadStageChange, onLeadClick }: Props) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -140,6 +163,8 @@ export function FunilKanban({ leads, tasks, members, onLeadStageChange, onLeadCl
               leads={byStage[s.value] ?? []}
               members={members}
               tasks={tasks}
+              contactsByKey={contactsByKey}
+              contactsById={contactsById}
               onLeadClick={onLeadClick}
             />
           ))}
