@@ -129,7 +129,7 @@ function timeAgo(iso: string) {
   return `${Math.max(m, 0)}m`;
 }
 
-export function FunilKanban({ leads, tasks, members, onLeadStageChange, onLeadClick }: Props) {
+export function FunilKanban({ leads, tasks, members, contactsByKey, contactsById, onLeadStageChange, onLeadClick }: Props) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const [activeId, setActiveId] = useState<string | null>(null);
 
