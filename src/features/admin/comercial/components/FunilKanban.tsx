@@ -8,13 +8,26 @@ import { cn } from "@/lib/utils";
 import { STAGES, STAGE_LABEL, fmtCurrency, type CrmStage } from "../crm-constants";
 import type { CrmLead } from "../hooks/use-crm-leads";
 import type { CrmTask } from "../hooks/use-crm-tasks";
+import { formatPhonePretty, type CrmWhatsAppContact } from "../hooks/use-crm-whatsapp-contacts";
 
 interface Props {
   leads: CrmLead[];
   tasks: CrmTask[];
   members: { user_id: string; display_name: string; avatar_url: string | null }[];
+  contactsByKey?: Map<string, CrmWhatsAppContact>;
+  contactsById?: Map<string, CrmWhatsAppContact>;
   onLeadStageChange: (lead: CrmLead, newStage: CrmStage) => void;
   onLeadClick: (lead: CrmLead) => void;
+}
+
+function resolveContact(
+  lead: CrmLead,
+  byKey?: Map<string, CrmWhatsAppContact>,
+  byId?: Map<string, CrmWhatsAppContact>,
+): CrmWhatsAppContact | undefined {
+  if (lead.whatsapp_contact_id && byId?.get(lead.whatsapp_contact_id)) return byId.get(lead.whatsapp_contact_id);
+  if (lead.phone_key && byKey?.get(lead.phone_key)) return byKey.get(lead.phone_key);
+  return undefined;
 }
 
 function LeadCard({ lead, member, hasOverdue, onClick }: any) {
