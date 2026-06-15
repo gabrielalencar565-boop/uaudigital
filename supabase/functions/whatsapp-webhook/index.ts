@@ -131,14 +131,15 @@ Deno.serve(async (req) => {
 
     const photoUrl: string | null = fromMe
       ? null
-      : (isGroup ? (payload.groupPhoto ?? payload.chat?.photo) : null) ??
-        payload.senderPhoto ??
-        payload.photo ??
-        payload.profilePicture ??
-        payload.senderPhotoUrl ??
-        payload.chat?.photo ??
-        payload.contact?.photo ??
-        null;
+      : isGroup
+        ? (payload.groupPhoto ?? payload.group?.photo ?? null)
+        : payload.senderPhoto ??
+          payload.photo ??
+          payload.profilePicture ??
+          payload.senderPhotoUrl ??
+          payload.chat?.photo ??
+          payload.contact?.photo ??
+          null;
 
     const { body, media_url, media_type } = pickBody(payload);
     const zapiMessageId = payload.messageId ?? payload.id ?? null;
