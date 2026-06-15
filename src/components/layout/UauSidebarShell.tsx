@@ -91,8 +91,7 @@ const NAV: NavEntry[] = [
   { key: "metas", label: "Metas", icon: TrendingUp }]
 },
   { key: "recompensas", label: "Uau XP", icon: Gift },
-  { key: "comercial", label: "Comercial", icon: Briefcase, adminOnly: true },
-  { key: "conversas", label: "Conversas", icon: MessagesSquare, adminOnly: true }];
+  { key: "comercial", label: "Comercial", icon: Briefcase, adminOnly: true }];
 
 
 
