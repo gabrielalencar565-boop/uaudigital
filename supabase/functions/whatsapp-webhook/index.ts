@@ -12,22 +12,40 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-function isGroupId(raw: string): boolean {
+// A chat is a group when:
+// - Z-API flags it (isGroup / isGroupMsg)
+// - the raw id ends with @g.us
+// - the raw id contains a '-' (legacy <creator>-<timestamp>)
+// - the digits-only id is longer than 15 (E.164 max), e.g. 120363... new groups
+function isGroupId(raw: string, flag?: boolean): boolean {
+  if (flag) return true;
   const s = String(raw ?? "").toLowerCase().trim();
-  return s.includes("-") || s.endsWith("@g.us");
-}
-
-function normalizePhoneOrGroup(raw: string): string {
-  const s = String(raw ?? "").trim();
-  if (isGroupId(s)) return s.toLowerCase().replace(/@g\.us$/, "");
-  return s.replace(/\D/g, "");
-}
-
-function phoneKey(raw: string): string | null {
-  const s = String(raw ?? "");
-  if (isGroupId(s)) return s.toLowerCase().trim().replace(/@g\.us$/, "");
+  if (!s) return false;
+  if (s.endsWith("@g.us")) return true;
+  if (s.includes("-")) return true;
   const digits = s.replace(/\D/g, "");
-  return digits ? digits.slice(-10) : null;
+  return digits.length > 15;
+}
+
+function isLidId(raw: string): boolean {
+  return String(raw ?? "").toLowerCase().trim().endsWith("@lid");
+}
+
+// Returns the canonical identifier used both as contact_phone and contact_phone_key.
+function canonicalId(raw: string, isGroup: boolean): string {
+  const s = String(raw ?? "").toLowerCase().trim();
+  if (!s) return "";
+  if (isGroup) {
+    // Legacy format already has '-' — strip @g.us only.
+    if (s.includes("-") && !s.endsWith("@g.us")) return s.replace(/@g\.us$/, "");
+    const digits = s.replace(/\D/g, "");
+    return digits ? `${digits}-group` : "";
+  }
+  if (isLidId(s)) {
+    const digits = s.replace(/\D/g, "");
+    return digits ? `${digits}-lid` : "";
+  }
+  return s.replace(/\D/g, "");
 }
 
 function pickBody(p: any): { body: string | null; media_url: string | null; media_type: string | null } {
@@ -52,29 +70,39 @@ Deno.serve(async (req) => {
   if (!payload) return new Response(JSON.stringify({ ok: true }), { headers: corsHeaders });
 
   try {
-    const phoneRaw: string | undefined =
-      payload.chatId ?? payload.groupId ?? payload.phone ?? payload.from ?? payload.connectedPhone;
-    if (!phoneRaw) {
+    // Prefer the chat identifier (group id for groups, phone for 1:1).
+    // For groups the participant id may appear in `participant`/`senderPhone`; never use it as the chat key.
+    const groupFlag = !!(payload.isGroup || payload.isGroupMsg);
+    const rawChat: string | undefined =
+      payload.chatId ?? payload.groupId ?? (groupFlag ? payload.phone : undefined) ?? payload.phone ?? payload.from ?? payload.connectedPhone;
+    if (!rawChat) {
       return new Response(JSON.stringify({ ok: true, ignored: "no_phone" }), { headers: corsHeaders });
     }
-    const groupFlag = !!(payload.isGroup || payload.isGroupMsg || isGroupId(String(phoneRaw)));
-    const phone = groupFlag ? normalizePhoneOrGroup(String(phoneRaw)) : String(phoneRaw).replace(/\D/g, "");
-    const key = phoneKey(phone);
+    const isGroup = isGroupId(String(rawChat), groupFlag);
+    const canonical = canonicalId(String(rawChat), isGroup);
+    if (!canonical) {
+      return new Response(JSON.stringify({ ok: true, ignored: "empty_id" }), { headers: corsHeaders });
+    }
     const fromMe = !!payload.fromMe;
-    // For groups, the contact represents the group itself, so prefer the group name (chatName).
-    // For 1:1, prefer senderName.
-    const contactName: string | null = groupFlag
-      ? (payload.chatName ?? payload.groupName ?? payload.senderName ?? null)
-      : (payload.senderName ?? payload.chatName ?? null);
-    const photoUrl: string | null =
-      (groupFlag ? (payload.groupPhoto ?? payload.chat?.photo) : null) ??
-      payload.senderPhoto ??
-      payload.photo ??
-      payload.profilePicture ??
-      payload.senderPhotoUrl ??
-      payload.chat?.photo ??
-      payload.contact?.photo ??
-      null;
+
+    // Name to display for the CONTACT (chat), never the sender of an outbound echo.
+    const contactName: string | null = isGroup
+      ? (payload.chatName ?? payload.groupName ?? null)
+      : fromMe
+        ? null // own messages echo our own senderName ("Uau Digital"); don't overwrite the contact
+        : (payload.senderName ?? payload.chatName ?? null);
+
+    const photoUrl: string | null = fromMe
+      ? null
+      : (isGroup ? (payload.groupPhoto ?? payload.chat?.photo) : null) ??
+        payload.senderPhoto ??
+        payload.photo ??
+        payload.profilePicture ??
+        payload.senderPhotoUrl ??
+        payload.chat?.photo ??
+        payload.contact?.photo ??
+        null;
+
     const { body, media_url, media_type } = pickBody(payload);
     const zapiMessageId = payload.messageId ?? payload.id ?? null;
 
@@ -89,7 +117,7 @@ Deno.serve(async (req) => {
     }
 
     await admin.from("whatsapp_messages").insert({
-      contact_phone: phone,
+      contact_phone: canonical,
       direction: fromMe ? "out" : "in",
       body, media_url, media_type,
       zapi_message_id: zapiMessageId,
@@ -98,25 +126,31 @@ Deno.serve(async (req) => {
       raw: payload,
     });
 
-    if (key) {
-      // For groups, force origin='grupo' and overwrite name with the group name.
-      if (groupFlag) {
-        const patch: Record<string, unknown> = { origin: "grupo" };
-        if (contactName) patch.name = contactName;
-        await admin.from("whatsapp_contacts").update(patch).eq("phone_key", key);
-      } else if (contactName) {
-        await admin
-          .from("whatsapp_contacts")
-          .update({ name: contactName })
-          .eq("phone_key", key)
-          .is("name", null);
-      }
-    }
-    if (key && photoUrl) {
+    // Upsert the contact (single row per chat). The trigger canonicalizes phone_e164/phone_key.
+    const baseRow: Record<string, unknown> = {
+      phone_e164: canonical,
+      origin: isGroup ? "grupo" : undefined,
+    };
+    if (contactName) baseRow.name = contactName;
+    if (photoUrl) baseRow.profile_pic_url = photoUrl;
+
+    await admin
+      .from("whatsapp_contacts")
+      .upsert(baseRow, { onConflict: "phone_key", ignoreDuplicates: false });
+
+    // For groups, always reflect the latest group name/photo.
+    if (isGroup && (contactName || photoUrl)) {
+      const patch: Record<string, unknown> = {};
+      if (contactName) patch.name = contactName;
+      if (photoUrl) patch.profile_pic_url = photoUrl;
+      await admin.from("whatsapp_contacts").update(patch).eq("phone_key", canonical);
+    } else if (!isGroup && !fromMe && contactName) {
+      // For 1:1 inbound only: fill name if still empty (don't overwrite a manually edited one).
       await admin
         .from("whatsapp_contacts")
-        .update({ profile_pic_url: photoUrl })
-        .eq("phone_key", key);
+        .update({ name: contactName })
+        .eq("phone_key", canonical)
+        .is("name", null);
     }
 
     return new Response(JSON.stringify({ ok: true }), {
