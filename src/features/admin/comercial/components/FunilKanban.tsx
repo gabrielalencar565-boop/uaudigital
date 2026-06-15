@@ -85,7 +85,7 @@ function LeadCard({ lead, member, hasOverdue, contact, onClick }: any) {
   );
 }
 
-function Column({ stage, leads, members, tasks, onLeadClick }: any) {
+function Column({ stage, leads, members, tasks, contactsByKey, contactsById, onLeadClick }: any) {
   const { setNodeRef, isOver } = useDroppable({ id: stage.value });
   const total = leads.reduce((s: number, l: CrmLead) => s + (Number(l.valor_estimado) || 0), 0);
   return (
@@ -106,8 +106,9 @@ function Column({ stage, leads, members, tasks, onLeadClick }: any) {
           const hasOverdue = tasks.some((t: CrmTask) =>
             t.lead_id === lead.id && t.status === "pendente" && t.due_at && new Date(t.due_at) < new Date(),
           );
+          const contact = resolveContact(lead, contactsByKey, contactsById);
           return (
-            <LeadCard key={lead.id} lead={lead} member={member} hasOverdue={hasOverdue} onClick={() => onLeadClick(lead)} />
+            <LeadCard key={lead.id} lead={lead} member={member} hasOverdue={hasOverdue} contact={contact} onClick={() => onLeadClick(lead)} />
           );
         })}
         {leads.length === 0 && (
