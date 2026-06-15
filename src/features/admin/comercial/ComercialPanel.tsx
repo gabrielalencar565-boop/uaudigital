@@ -29,6 +29,7 @@ export function ComercialPanel() {
   const { data: leads = [] } = useCrmLeads();
   const { data: tasks = [] } = useCrmTasks();
   const { data: proposals = [] } = useCrmProposals();
+  const { data: contactsData } = useCrmWhatsAppContacts();
   const create = useCreateLead();
   const update = useUpdateLead();
 
