@@ -129,6 +129,7 @@ export function ComercialPanel() {
           <TabsTrigger value="funil">Funil</TabsTrigger>
           <TabsTrigger value="tarefas">Tarefas</TabsTrigger>
           <TabsTrigger value="propostas">Propostas</TabsTrigger>
+          <TabsTrigger value="conversas">Conversas</TabsTrigger>
           <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
           <TabsTrigger value="automacoes">Automações</TabsTrigger>
         </TabsList>
@@ -137,6 +138,8 @@ export function ComercialPanel() {
             leads={filtered}
             tasks={tasks}
             members={members.data ?? []}
+            contactsByKey={contactsData?.byKey}
+            contactsById={contactsData?.byId}
             onLeadStageChange={handleStageChange}
             onLeadClick={(l) => setActiveLead(l)}
           />
@@ -146,6 +149,9 @@ export function ComercialPanel() {
         </TabsContent>
         <TabsContent value="propostas" className="mt-4">
           <ComercialProposalsTab onOpenLead={openLead} />
+        </TabsContent>
+        <TabsContent value="conversas" className="mt-4">
+          <ConversasPanel defaultFilter="lead" />
         </TabsContent>
         <TabsContent value="relatorios" className="mt-4">
           <ComercialRelatoriosTab members={members.data ?? []} />
