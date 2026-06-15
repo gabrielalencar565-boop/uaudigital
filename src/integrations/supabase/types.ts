@@ -3502,6 +3502,10 @@ export type Database = {
         }
         Returns: string
       }
+      whatsapp_is_lid_alias: {
+        Args: { _key: string; _lid: string }
+        Returns: boolean
+      }
       whatsapp_link_contact_to_user: {
         Args: { _phone: string; _user_id: string }
         Returns: undefined
