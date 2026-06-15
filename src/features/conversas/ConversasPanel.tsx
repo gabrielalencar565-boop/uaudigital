@@ -609,6 +609,12 @@ export function ConversasPanel() {
                               : "bg-card border border-border rounded-bl-sm",
                           )}
                         >
+                          {!own && isGroupContact(activeContact) && (() => {
+                            const sender = messageSenderName(m);
+                            return sender ? (
+                              <div className="text-[11px] font-semibold text-primary mb-0.5">{sender}</div>
+                            ) : null;
+                          })()}
                           {m.body && (
                             <div className="whitespace-pre-wrap text-sm leading-snug">{m.body}</div>
                           )}
