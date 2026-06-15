@@ -130,9 +130,9 @@ function originLabel(c: Contact) {
   return "Lead";
 }
 
-export function ConversasPanel() {
+export function ConversasPanel({ defaultFilter = "all" }: { defaultFilter?: FilterKey } = {}) {
   const qc = useQueryClient();
-  const [filter, setFilter] = useState<FilterKey>("all");
+  const [filter, setFilter] = useState<FilterKey>(defaultFilter);
   const [search, setSearch] = useState("");
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
