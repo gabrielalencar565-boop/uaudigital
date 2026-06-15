@@ -163,6 +163,8 @@ export function FunilKanban({ leads, tasks, members, contactsByKey, contactsById
               leads={byStage[s.value] ?? []}
               members={members}
               tasks={tasks}
+              contactsByKey={contactsByKey}
+              contactsById={contactsById}
               onLeadClick={onLeadClick}
             />
           ))}
