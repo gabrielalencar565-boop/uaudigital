@@ -30,8 +30,12 @@ function resolveContact(
   return undefined;
 }
 
-function LeadCard({ lead, member, hasOverdue, onClick }: any) {
+function LeadCard({ lead, member, hasOverdue, contact, onClick }: any) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: lead.id, data: lead });
+  const displayName = (lead.nome && lead.nome !== "Novo lead" ? lead.nome : null) ?? contact?.name ?? "Novo lead";
+  const phone = lead.telefone ?? contact?.phone_e164 ?? null;
+  const photo = contact?.profile_pic_url ?? null;
+  const initial = (displayName || "?").trim()[0]?.toUpperCase() ?? "?";
   return (
     <Card
       ref={setNodeRef}
@@ -43,13 +47,18 @@ function LeadCard({ lead, member, hasOverdue, onClick }: any) {
         isDragging && "opacity-40",
       )}
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex items-start gap-2.5">
+        <Avatar className="h-9 w-9 shrink-0">
+          <AvatarImage src={photo ?? undefined} />
+          <AvatarFallback className="text-[11px]">{initial}</AvatarFallback>
+        </Avatar>
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-semibold truncate">{lead.nome}</div>
-          {lead.empresa && <div className="text-xs text-muted-foreground truncate">{lead.empresa}</div>}
+          <div className="text-sm font-semibold truncate">{displayName}</div>
+          {phone && <div className="text-[11px] text-muted-foreground truncate">{formatPhonePretty(phone)}</div>}
+          {lead.empresa && <div className="text-[11px] text-muted-foreground truncate">{lead.empresa}</div>}
         </div>
         {member ? (
-          <Avatar className="h-6 w-6 shrink-0">
+          <Avatar className="h-6 w-6 shrink-0" title={member.display_name}>
             <AvatarImage src={member.avatar_url ?? undefined} />
             <AvatarFallback className="text-[10px]">{(member.display_name || "?")[0]}</AvatarFallback>
           </Avatar>
