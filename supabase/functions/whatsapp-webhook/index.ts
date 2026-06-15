@@ -21,6 +21,7 @@ function isGroupId(raw: string, flag?: boolean): boolean {
   if (flag) return true;
   const s = String(raw ?? "").toLowerCase().trim();
   if (!s) return false;
+  if (s.endsWith("@lid") || s.endsWith("-lid")) return false;
   if (s.endsWith("@g.us")) return true;
   if (s.includes("-")) return true;
   const digits = s.replace(/\D/g, "");
@@ -46,6 +47,38 @@ function canonicalId(raw: string, isGroup: boolean): string {
     return digits ? `${digits}-lid` : "";
   }
   return s.replace(/\D/g, "");
+}
+
+function isLidLikeKey(key: string | null | undefined, chatLid?: string | null): boolean {
+  const k = String(key ?? "").toLowerCase().trim();
+  if (!k) return false;
+  if (k.endsWith("-lid")) return true;
+  const lidDigits = String(chatLid ?? "").replace(/\D/g, "");
+  return !!lidDigits && (k === lidDigits || k === lidDigits.slice(-10));
+}
+
+async function resolveKnownContactByLid(chatLid?: string | null, currentKey?: string | null) {
+  if (!chatLid) return null;
+  const { data: rows } = await admin
+    .from("whatsapp_messages")
+    .select("contact_phone_key")
+    .eq("raw->>chatLid", chatLid)
+    .not("contact_phone_key", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  const knownKey = (rows ?? [])
+    .map((row: any) => String(row.contact_phone_key ?? ""))
+    .find((key) => key && key !== currentKey && !isLidLikeKey(key, chatLid));
+  if (!knownKey) return null;
+
+  const { data: contact } = await admin
+    .from("whatsapp_contacts")
+    .select("phone_e164,phone_key")
+    .eq("phone_key", knownKey)
+    .maybeSingle();
+
+  return contact?.phone_e164 ? String(contact.phone_e164) : knownKey;
 }
 
 function pickBody(p: any): { body: string | null; media_url: string | null; media_type: string | null } {
@@ -79,9 +112,13 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true, ignored: "no_phone" }), { headers: corsHeaders });
     }
     const isGroup = isGroupId(String(rawChat), groupFlag);
-    const canonical = canonicalId(String(rawChat), isGroup);
+    let canonical = canonicalId(String(rawChat), isGroup);
     if (!canonical) {
       return new Response(JSON.stringify({ ok: true, ignored: "empty_id" }), { headers: corsHeaders });
+    }
+    if (!isGroup) {
+      const knownContact = await resolveKnownContactByLid(payload.chatLid ?? payload.lid ?? null, canonical);
+      if (knownContact) canonical = knownContact;
     }
     const fromMe = !!payload.fromMe;
 
