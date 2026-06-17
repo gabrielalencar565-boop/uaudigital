@@ -596,7 +596,11 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
     let list = tasks.filter((t) => t.status_global !== "pausado");
     if (filterClient && filterClient !== "__all__") list = list.filter((t) => t.client_id === filterClient);
     if (filterAssignee && filterAssignee !== "__all__") {
-      list = list.filter((t) => t.assignee_id === filterAssignee || (t.watchers ?? []).includes(filterAssignee) || fixedAssigneeClientIds.has(t.client_id));
+      list = list.filter((t) =>
+        t.assignee_id === filterAssignee ||
+        (t.watchers ?? []).includes(filterAssignee) ||
+        (fixedAssigneeClientIds.has(t.client_id) && t.stage_current === "planejamento" && !t.assignee_id)
+      );
     }
     if (search) {
       const q = search.toLowerCase();

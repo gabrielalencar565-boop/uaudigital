@@ -111,7 +111,9 @@ export function PmKanbanBoard({ tasks, childTasksMap, clientsMap, membersMap, av
       list = list.filter((t) =>
         t.assignee_id === filters.assigneeId ||
         (t.watchers ?? []).includes(filters.assigneeId!) ||
-        fixedClients.has(t.client_id)
+        // Fixed planejamento assignee only matches when the task is in planejamento
+        // and has no explicit assignee — prevents tasks of other people from leaking in.
+        (fixedClients.has(t.client_id) && t.stage_current === "planejamento" && !t.assignee_id)
       );
     }
     if (filters.search) {
