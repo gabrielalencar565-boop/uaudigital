@@ -224,7 +224,7 @@ export function AdminDeadlineReport({
     mutationFn: async ({ id, status }: { id: string; status: "aprovado"|"recusado" }) => {
       const userRes = await supabase.auth.getUser();
       const reviewerId = userRes.data.user?.id ?? null;
-      const { error } = await supabase.from("task_appeals" as any).update({ status, reviewed_by: reviewerId, reviewed_at: new Date().toISOString() }).eq("id", id);
+      const { error } = await (supabase.from("task_appeals" as any) as any).update({ status, reviewed_by: reviewerId, reviewed_at: new Date().toISOString() }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
