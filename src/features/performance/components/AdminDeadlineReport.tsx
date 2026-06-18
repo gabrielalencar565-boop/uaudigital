@@ -768,6 +768,27 @@ export function AdminDeadlineReport({
                           </Badge>
                         </TableCell>
                         <TableCell className="text-center">
+                          {(() => {
+                            const ap = appealByTaskId.get(t.id);
+                            if (!ap) return <span className="text-xs text-muted-foreground">—</span>;
+                            if (ap.status === "pendente") {
+                              return (
+                                <div className="flex flex-col items-center gap-1">
+                                  <Badge variant="outline" className="border-amber-500/60 bg-amber-500/10 text-amber-600 dark:text-amber-300 text-[10px]" title={ap.reason}>Pendente</Badge>
+                                  {(role.isAdmin || role.isPlanner) && (
+                                    <div className="flex gap-1">
+                                      <Button size="sm" variant="outline" className="h-6 px-2 text-[10px] border-emerald-500/60 text-emerald-600 hover:bg-emerald-500/10" onClick={() => reviewAppeal.mutate({ id: ap.id, status: "aprovado" })}>Aprovar</Button>
+                                      <Button size="sm" variant="outline" className="h-6 px-2 text-[10px] border-rose-500/60 text-rose-600 hover:bg-rose-500/10" onClick={() => reviewAppeal.mutate({ id: ap.id, status: "recusado" })}>Recusar</Button>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            }
+                            if (ap.status === "aprovado") return <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 hover:bg-emerald-500/20 text-[10px]" title={ap.reason}>Aprovado</Badge>;
+                            return <Badge className="bg-rose-500/15 text-rose-600 dark:text-rose-300 hover:bg-rose-500/20 text-[10px]" title={ap.reason}>Recusado</Badge>;
+                          })()}
+                        </TableCell>
+                        <TableCell className="text-center">
                           {customInputTaskId === t.id ? (
                             <div className="flex items-center gap-1 mx-auto w-[160px]">
                               <Input
