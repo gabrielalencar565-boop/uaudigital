@@ -211,7 +211,7 @@ export function AdminDeadlineReport({
     queryKey: ["task_appeals_all"],
     queryFn: async () => {
       const { data } = await supabase.from("task_appeals" as any).select("id, task_id, user_id, reason, status, reviewed_at, review_note");
-      return (data ?? []) as AppealRow[];
+      return ((data ?? []) as unknown) as AppealRow[];
     },
     staleTime: 30_000,
   });
