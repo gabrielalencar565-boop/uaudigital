@@ -202,7 +202,8 @@ export function AdminDeadlineReport({
   const pmTasksQ = usePmTasks(); 
   const teamMembersQ = useTeamMembers();
   const role = useRole();
-  const qc = useQueryClient();
+  // qc obtained from outer scope (declared above)
+
 
   // Appeals (recursos) for late completions
   type AppealRow = { id: string; task_id: string; user_id: string; reason: string; status: "pendente"|"aprovado"|"recusado"; reviewed_at: string|null; review_note: string|null };
