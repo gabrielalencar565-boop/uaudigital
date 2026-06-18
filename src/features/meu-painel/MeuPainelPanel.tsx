@@ -28,6 +28,7 @@ import { SmartFeedbackWidget } from "@/features/meu-painel/components/SmartFeedb
 import { DayQuickView } from "@/features/meu-painel/components/DayQuickView";
 import { BottleneckWidget } from "@/features/meu-painel/components/BottleneckWidget";
 import { MetricSparkCard } from "@/features/meu-painel/components/MetricSparkCard";
+import { LateCompletionAppealDialog } from "@/features/appeals/LateCompletionAppealDialog";
 
 import {
   useCleaningSchedules,
@@ -357,6 +358,8 @@ export function MeuPainelPanel() {
     } catch (e: any) { toast.error(e?.message ?? "Erro ao iniciar tarefa"); }
   };
 
+  const [appealDialog, setAppealDialog] = useState<{ taskId: string } | null>(null);
+
   const onToggleComplete = async (taskId: string, current: "pendente" | "em_andamento" | "concluido") => {
     if (!user) return;
     if (taskId.startsWith("cleaning:")) {
@@ -364,6 +367,12 @@ export function MeuPainelPanel() {
       return;
     }
     const next = current === "concluido" ? "em_andamento" : "concluido";
+    // If completing and the task is late, intercept with the appeal dialog
+    if (next === "concluido") {
+      const task = myTasks.find((t) => t.id === taskId);
+      const isLate = !!task && task.due_date < todayKey;
+      if (isLate) { setAppealDialog({ taskId }); return; }
+    }
     try {
       await setTaskStatus.mutateAsync({ taskId, status: next, userId: user.id });
       toast.success(next === "concluido" ? "Concluída! ✔" : "Voltou para em andamento");
@@ -465,6 +474,20 @@ export function MeuPainelPanel() {
 
       {/* ── PM Task Dialog ── */}
       <PmTaskDetailDialogWrapper taskId={selectedPmTaskId} onClose={() => setSelectedPmTaskId(null)} isAdmin={isAdmin} />
+
+      {/* ── Late completion appeal ── */}
+      {user && (
+        <LateCompletionAppealDialog
+          open={!!appealDialog}
+          onOpenChange={(o) => { if (!o) setAppealDialog(null); }}
+          taskId={appealDialog?.taskId ?? null}
+          userId={user.id}
+          onConfirmComplete={async () => {
+            if (!appealDialog) return;
+            await setTaskStatus.mutateAsync({ taskId: appealDialog.taskId, status: "concluido", userId: user.id });
+          }}
+        />
+      )}
     </div>
   );
 }
