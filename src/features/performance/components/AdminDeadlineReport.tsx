@@ -202,49 +202,6 @@ export function AdminDeadlineReport({
   const pmTasksQ = usePmTasks(); 
   const teamMembersQ = useTeamMembers();
   const role = useRole();
-  // qc obtained from outer scope (declared above)
-
-
-  // Appeals (recursos) for late completions
-  type AppealRow = { id: string; task_id: string; user_id: string; reason: string; status: "pendente"|"aprovado"|"recusado"; reviewed_at: string|null; review_note: string|null };
-  const appealsQ = useQuery({
-    queryKey: ["task_appeals_all"],
-    queryFn: async () => {
-      const { data } = await supabase.from("task_appeals" as any).select("id, task_id, user_id, reason, status, reviewed_at, review_note");
-      return ((data ?? []) as unknown) as AppealRow[];
-    },
-    staleTime: 30_000,
-  });
-  const appealByTaskId = useMemo(() => {
-    const m = new Map<string, AppealRow>();
-    (appealsQ.data ?? []).forEach((a) => m.set(a.task_id, a));
-    return m;
-  }, [appealsQ.data]);
-  const reviewAppeal = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: "aprovado"|"recusado" }) => {
-      const userRes = await supabase.auth.getUser();
-      const reviewerId = userRes.data.user?.id ?? null;
-      const { error } = await (supabase.from("task_appeals" as any) as any).update({ status, reviewed_by: reviewerId, reviewed_at: new Date().toISOString() }).eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Recurso atualizado");
-      qc.invalidateQueries({ queryKey: ["task_appeals_all"] });
-      qc.invalidateQueries({ queryKey: ["performance_scores"] });
-    },
-    onError: (e: any) => toast.error(e?.message ?? "Erro ao atualizar recurso"),
-  });
-
-  // Realtime: refresh appeals when changes occur
-  useEffect(() => {
-    const ch = supabase.channel("task_appeals_admin")
-      .on("postgres_changes", { event: "*", schema: "public", table: "task_appeals" }, () => {
-        qc.invalidateQueries({ queryKey: ["task_appeals_all"] });
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
-  }, [qc]);
-
 
   const clientsQ = useQ({
     queryKey: ["clients_map_perf"],
@@ -696,7 +653,6 @@ export function AdminDeadlineReport({
                      <TableHead className="text-center">Prazo</TableHead>
                      <TableHead className="text-center">Concluiu</TableHead>
                      <TableHead className="text-center">Auto</TableHead>
-                     <TableHead className="text-center">Recurso</TableHead>
                      <TableHead className="text-center">Exceção</TableHead>
                      <TableHead className="w-10"></TableHead>
                   </TableRow>
@@ -766,27 +722,6 @@ export function AdminDeadlineReport({
                           <Badge variant={auto >= 0 ? "secondary" : "destructive"} className="tabular-nums">
                             {auto}
                           </Badge>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {(() => {
-                            const ap = appealByTaskId.get(t.id);
-                            if (!ap) return <span className="text-xs text-muted-foreground">—</span>;
-                            if (ap.status === "pendente") {
-                              return (
-                                <div className="flex flex-col items-center gap-1">
-                                  <Badge variant="outline" className="border-amber-500/60 bg-amber-500/10 text-amber-600 dark:text-amber-300 text-[10px]" title={ap.reason}>Pendente</Badge>
-                                  {(role.isAdmin || role.isPlanner) && (
-                                    <div className="flex gap-1">
-                                      <Button size="sm" variant="outline" className="h-6 px-2 text-[10px] border-emerald-500/60 text-emerald-600 hover:bg-emerald-500/10" onClick={() => reviewAppeal.mutate({ id: ap.id, status: "aprovado" })}>Aprovar</Button>
-                                      <Button size="sm" variant="outline" className="h-6 px-2 text-[10px] border-rose-500/60 text-rose-600 hover:bg-rose-500/10" onClick={() => reviewAppeal.mutate({ id: ap.id, status: "recusado" })}>Recusar</Button>
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            }
-                            if (ap.status === "aprovado") return <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 hover:bg-emerald-500/20 text-[10px]" title={ap.reason}>Aprovado</Badge>;
-                            return <Badge className="bg-rose-500/15 text-rose-600 dark:text-rose-300 hover:bg-rose-500/20 text-[10px]" title={ap.reason}>Recusado</Badge>;
-                          })()}
                         </TableCell>
                         <TableCell className="text-center">
                           {customInputTaskId === t.id ? (
@@ -878,7 +813,7 @@ export function AdminDeadlineReport({
                   })}
                   {userTasks.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="py-8 text-center text-sm text-muted-foreground">
+                      <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
                         Nenhuma tarefa concluída para este colaborador no mês.
                       </TableCell>
                     </TableRow>
