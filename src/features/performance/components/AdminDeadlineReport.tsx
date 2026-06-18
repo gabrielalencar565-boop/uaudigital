@@ -202,6 +202,48 @@ export function AdminDeadlineReport({
   const pmTasksQ = usePmTasks(); 
   const teamMembersQ = useTeamMembers();
   const role = useRole();
+  const qc = useQueryClient();
+
+  // Appeals (recursos) for late completions
+  type AppealRow = { id: string; task_id: string; user_id: string; reason: string; status: "pendente"|"aprovado"|"recusado"; reviewed_at: string|null; review_note: string|null };
+  const appealsQ = useQuery({
+    queryKey: ["task_appeals_all"],
+    queryFn: async () => {
+      const { data } = await supabase.from("task_appeals" as any).select("id, task_id, user_id, reason, status, reviewed_at, review_note");
+      return (data ?? []) as AppealRow[];
+    },
+    staleTime: 30_000,
+  });
+  const appealByTaskId = useMemo(() => {
+    const m = new Map<string, AppealRow>();
+    (appealsQ.data ?? []).forEach((a) => m.set(a.task_id, a));
+    return m;
+  }, [appealsQ.data]);
+  const reviewAppeal = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: "aprovado"|"recusado" }) => {
+      const userRes = await supabase.auth.getUser();
+      const reviewerId = userRes.data.user?.id ?? null;
+      const { error } = await supabase.from("task_appeals" as any).update({ status, reviewed_by: reviewerId, reviewed_at: new Date().toISOString() }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Recurso atualizado");
+      qc.invalidateQueries({ queryKey: ["task_appeals_all"] });
+      qc.invalidateQueries({ queryKey: ["performance_scores"] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao atualizar recurso"),
+  });
+
+  // Realtime: refresh appeals when changes occur
+  useEffect(() => {
+    const ch = supabase.channel("task_appeals_admin")
+      .on("postgres_changes", { event: "*", schema: "public", table: "task_appeals" }, () => {
+        qc.invalidateQueries({ queryKey: ["task_appeals_all"] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [qc]);
+
 
   const clientsQ = useQ({
     queryKey: ["clients_map_perf"],
