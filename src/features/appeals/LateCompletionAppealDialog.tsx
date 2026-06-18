@@ -44,7 +44,7 @@ export function LateCompletionAppealDialog({ open, onOpenChange, taskId, userId,
     setSubmitting(true);
     try {
       await onConfirmComplete();
-      const { error } = await supabase.from("task_appeals").upsert(
+      const { error } = await (supabase.from("task_appeals" as any) as any).upsert(
         { task_id: taskId, user_id: userId, reason: reason.trim(), status: "pendente", reviewed_by: null, reviewed_at: null, review_note: null },
         { onConflict: "task_id" },
       );
