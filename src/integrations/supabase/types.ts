@@ -3403,6 +3403,7 @@ export type Database = {
         Returns: string
       }
       crm_should_send_welcome: { Args: { _lead_id: string }; Returns: string }
+      first_valid_name: { Args: { _names: string[] }; Returns: string }
       get_performance_month_totals: {
         Args: { _year: number }
         Returns: {
@@ -3440,6 +3441,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_valid_person_name: { Args: { _name: string }; Returns: boolean }
       list_users_admin: {
         Args: never
         Returns: {
