@@ -482,6 +482,19 @@ export function MeuPainelPanel() {
 
       {/* ── PM Task Dialog ── */}
       <PmTaskDetailDialogWrapper taskId={selectedPmTaskId} onClose={() => setSelectedPmTaskId(null)} isAdmin={isAdmin} />
+
+      {/* ── Late task appeal dialog ── */}
+      <LateAppealDialog
+        open={!!appealTask}
+        taskId={appealTask?.id ?? null}
+        taskTitle={appealTask?.title}
+        dueDate={appealTask?.dueDate}
+        userId={user?.id ?? ""}
+        onClose={() => setAppealTask(null)}
+        onConfirm={async () => {
+          if (appealTask) await performComplete(appealTask.id, "concluido");
+        }}
+      />
     </div>
   );
 }
