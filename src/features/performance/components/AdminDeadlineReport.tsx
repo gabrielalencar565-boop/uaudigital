@@ -588,6 +588,43 @@ export function AdminDeadlineReport({
     onError: (e: any) => toast.error(e?.message ?? "Erro ao apagar tarefa"),
   });
 
+  const reviewAppealMut = useMutation({
+    mutationFn: async (input: { appealId: string; taskId: string; userId: string; decision: "aprovado" | "rejeitado"; note?: string }) => {
+      const { error } = await supabase
+        .from("task_appeals")
+        .update({
+          status: input.decision,
+          reviewed_at: new Date().toISOString(),
+          reviewed_by: currentUserId,
+          review_note: input.note ?? null,
+        })
+        .eq("id", input.appealId);
+      if (error) throw error;
+
+      // If approved, forgive the late penalty by setting override to expected points
+      if (input.decision === "aprovado") {
+        const task = (tasksQ.data ?? []).find((t) => t.id === input.taskId);
+        if (task) {
+          const expected = calcExpectedPoints(task, scoringConfigMap, pmTagsMap);
+          await supabase
+            .from("task_deadline_overrides")
+            .upsert({ task_id: input.taskId, override_points: expected, created_by: currentUserId }, { onConflict: "task_id" });
+          await supabase.rpc("recompute_metas_prazos", { _user_id: input.userId, _year: year, _month: month });
+        }
+      }
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["deadline_report_appeals", year, month] }),
+        qc.invalidateQueries({ queryKey: ["deadline_report_overrides", year, month] }),
+        qc.invalidateQueries({ queryKey: ["performance_scores"] }),
+      ]);
+      toast.success("Análise registrada");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao revisar"),
+  });
+
+
   return (
     <div className="space-y-4">
       <div className="space-y-4">
