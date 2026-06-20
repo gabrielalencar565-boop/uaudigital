@@ -471,15 +471,25 @@ export function AgendaPanel() {
       toast.error(e?.message ?? "Erro ao criar tarefa");
     }
   };
+  const [appealTask, setAppealTask] = useState<{ id: string; title: string; dueDate: string } | null>(null);
+
+  const performToggle = async (taskId: string, next: "pendente" | "em_andamento" | "concluido") => {
+    if (!user) return;
+    await setTaskStatus.mutateAsync({ taskId, status: next, userId: user.id });
+    if (next === "concluido") toast.success("Concluída! ✔ Atualizamos o cliente automaticamente.");
+  };
+
   const toggleComplete = async (taskId: string, next: "pendente" | "em_andamento" | "concluido") => {
     if (!user) return;
+    if (next === "concluido") {
+      const t = tasks.find((x) => x.id === taskId);
+      if (t && isTaskLate(t.due_date)) {
+        setAppealTask({ id: t.id, title: t.title ?? "Tarefa", dueDate: t.due_date });
+        return;
+      }
+    }
     try {
-      await setTaskStatus.mutateAsync({
-        taskId,
-        status: next,
-        userId: user.id
-      });
-      if (next === "concluido") toast.success("Concluída! ✔ Atualizamos o cliente automaticamente.");
+      await performToggle(taskId, next);
     } catch (e: any) {
       toast.error(e?.message ?? "Erro ao atualizar tarefa");
     }
