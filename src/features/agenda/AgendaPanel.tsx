@@ -38,6 +38,8 @@ import { TaskTrashPanel } from "@/features/agenda/components/TaskTrashPanel";
 import { TaskActivityReport } from "@/features/agenda/components/TaskActivityReport";
 import { AgendaReportsPanel } from "@/features/agenda/components/AgendaReportsPanel";
 import { useAddTaskAssignees, useTaskAssigneesByMonth } from "@/features/data/task-assignees-queries";
+import { LateAppealDialog } from "@/features/tasks/LateAppealDialog";
+import { isTaskLate } from "@/features/tasks/is-task-late";
 import { useMagic2InactiveAgendaClients } from "@/features/magic2/hooks/use-magic2";
 import { useRole } from "@/hooks/use-role";
 import { useSession } from "@/hooks/use-session";
@@ -469,15 +471,25 @@ export function AgendaPanel() {
       toast.error(e?.message ?? "Erro ao criar tarefa");
     }
   };
+  const [appealTask, setAppealTask] = useState<{ id: string; title: string; dueDate: string } | null>(null);
+
+  const performToggle = async (taskId: string, next: "pendente" | "em_andamento" | "concluido") => {
+    if (!user) return;
+    await setTaskStatus.mutateAsync({ taskId, status: next, userId: user.id });
+    if (next === "concluido") toast.success("Concluída! ✔ Atualizamos o cliente automaticamente.");
+  };
+
   const toggleComplete = async (taskId: string, next: "pendente" | "em_andamento" | "concluido") => {
     if (!user) return;
+    if (next === "concluido") {
+      const t = tasks.find((x) => x.id === taskId);
+      if (t && isTaskLate(t.due_date)) {
+        setAppealTask({ id: t.id, title: t.title ?? "Tarefa", dueDate: t.due_date });
+        return;
+      }
+    }
     try {
-      await setTaskStatus.mutateAsync({
-        taskId,
-        status: next,
-        userId: user.id
-      });
-      if (next === "concluido") toast.success("Concluída! ✔ Atualizamos o cliente automaticamente.");
+      await performToggle(taskId, next);
     } catch (e: any) {
       toast.error(e?.message ?? "Erro ao atualizar tarefa");
     }
@@ -1468,5 +1480,16 @@ export function AgendaPanel() {
         </div>
       </div>}
     </div>
+    <LateAppealDialog
+      open={!!appealTask}
+      taskId={appealTask?.id ?? null}
+      taskTitle={appealTask?.title}
+      dueDate={appealTask?.dueDate}
+      userId={user?.id ?? ""}
+      onClose={() => setAppealTask(null)}
+      onConfirm={async () => {
+        if (appealTask) await performToggle(appealTask.id, "concluido");
+      }}
+    />
   </DndContext>;
 }

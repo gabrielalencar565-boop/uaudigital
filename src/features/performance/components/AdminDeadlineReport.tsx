@@ -294,6 +294,27 @@ export function AdminDeadlineReport({
     },
   });
 
+  const appealsQ = useQuery({
+    enabled: (tasksQ.data?.length ?? 0) > 0,
+    queryKey: ["deadline_report_appeals", year, month],
+    queryFn: async () => {
+      const ids = (tasksQ.data ?? []).map((t) => t.id);
+      const { data, error } = await supabase
+        .from("task_appeals")
+        .select("id, task_id, user_id, reason, status, review_note, reviewed_at, reviewed_by, created_at")
+        .in("task_id", ids);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const appealsByTaskUser = useMemo(() => {
+    const map = new Map<string, typeof appealsQ.data extends infer T ? T extends Array<infer R> ? R : never : never>();
+    for (const a of (appealsQ.data ?? []) as any[]) map.set(`${a.task_id}::${a.user_id}`, a);
+    return map;
+  }, [appealsQ.data]);
+
+
   const scoringConfigQ = useQuery({
     queryKey: ["scoring_config"],
     queryFn: async (): Promise<ScoringConfigRow[]> => {
@@ -567,6 +588,43 @@ export function AdminDeadlineReport({
     onError: (e: any) => toast.error(e?.message ?? "Erro ao apagar tarefa"),
   });
 
+  const reviewAppealMut = useMutation({
+    mutationFn: async (input: { appealId: string; taskId: string; userId: string; decision: "aprovado" | "rejeitado"; note?: string }) => {
+      const { error } = await supabase
+        .from("task_appeals")
+        .update({
+          status: input.decision,
+          reviewed_at: new Date().toISOString(),
+          reviewed_by: currentUserId,
+          review_note: input.note ?? null,
+        })
+        .eq("id", input.appealId);
+      if (error) throw error;
+
+      // If approved, forgive the late penalty by setting override to expected points
+      if (input.decision === "aprovado") {
+        const task = (tasksQ.data ?? []).find((t) => t.id === input.taskId);
+        if (task) {
+          const expected = calcExpectedPoints(task, scoringConfigMap, pmTagsMap);
+          await supabase
+            .from("task_deadline_overrides")
+            .upsert({ task_id: input.taskId, override_points: expected, created_by: currentUserId }, { onConflict: "task_id" });
+          await supabase.rpc("recompute_metas_prazos", { _user_id: input.userId, _year: year, _month: month });
+        }
+      }
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["deadline_report_appeals", year, month] }),
+        qc.invalidateQueries({ queryKey: ["deadline_report_overrides", year, month] }),
+        qc.invalidateQueries({ queryKey: ["performance_scores"] }),
+      ]);
+      toast.success("Análise registrada");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao revisar"),
+  });
+
+
   return (
     <div className="space-y-4">
       <div className="space-y-4">
@@ -685,6 +743,18 @@ export function AdminDeadlineReport({
                             <p className="truncate font-medium group-hover:text-primary group-hover:underline flex items-center gap-1">
                               {t.title ?? (t.client?.name ? `Cliente: ${t.client.name}` : "Tarefa")}
                               <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-60 shrink-0" />
+                              {(() => {
+                                const ap = appealsByTaskUser.get(`${t.id}::${selectedUserId}`) as any;
+                                if (!ap) return null;
+                                return (
+                                  <Badge
+                                    variant={ap.status === "aprovado" ? "secondary" : ap.status === "rejeitado" ? "destructive" : "outline"}
+                                    className={cn("text-[9px] px-1.5 py-0", ap.status === "pendente" && "border-amber-500 text-amber-600 dark:text-amber-400")}
+                                  >
+                                    {ap.status === "pendente" ? "📋 Análise" : ap.status === "aprovado" ? "✓ Aprovado" : "✕ Rejeitado"}
+                                  </Badge>
+                                );
+                              })()}
                             </p>
                             <p className="truncate text-xs text-muted-foreground">{teamById.get(t.assigned_user_id)?.role_title}</p>
                           </button>
@@ -895,6 +965,49 @@ export function AdminDeadlineReport({
                 {detailTask.is_extra_demand && (
                   <Badge variant="secondary" className="text-xs">Demanda extra • Qtd: {detailTask.quantity}</Badge>
                 )}
+
+                {(() => {
+                  const appeal = appealsByTaskUser.get(`${detailTask.id}::${selectedUserId}`) as any;
+                  if (!appeal) return null;
+                  return (
+                    <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-semibold text-amber-600 dark:text-amber-400">
+                          📋 Pedido de análise de justificativa
+                        </p>
+                        <Badge variant={appeal.status === "aprovado" ? "secondary" : appeal.status === "rejeitado" ? "destructive" : "outline"} className="text-[10px]">
+                          {appeal.status === "pendente" ? "Pendente" : appeal.status === "aprovado" ? "Aprovado" : "Rejeitado"}
+                        </Badge>
+                      </div>
+                      <p className="text-sm whitespace-pre-wrap">{appeal.reason}</p>
+                      {appeal.status === "pendente" ? (
+                        <div className="flex gap-2 pt-1">
+                          <Button
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => reviewAppealMut.mutate({ appealId: appeal.id, taskId: detailTask.id, userId: selectedUserId, decision: "aprovado" })}
+                            disabled={reviewAppealMut.isPending}
+                          >
+                            Aprovar
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1"
+                            onClick={() => reviewAppealMut.mutate({ appealId: appeal.id, taskId: detailTask.id, userId: selectedUserId, decision: "rejeitado" })}
+                            disabled={reviewAppealMut.isPending}
+                          >
+                            Rejeitar
+                          </Button>
+                        </div>
+                      ) : (
+                        <p className="text-[11px] text-muted-foreground">
+                          Revisado em {appeal.reviewed_at ? format(new Date(appeal.reviewed_at), "dd/MM/yyyy HH:mm") : "—"}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {extractPmTaskId(detailTask.description) && (
                   <Button
