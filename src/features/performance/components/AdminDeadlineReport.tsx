@@ -743,6 +743,18 @@ export function AdminDeadlineReport({
                             <p className="truncate font-medium group-hover:text-primary group-hover:underline flex items-center gap-1">
                               {t.title ?? (t.client?.name ? `Cliente: ${t.client.name}` : "Tarefa")}
                               <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-60 shrink-0" />
+                              {(() => {
+                                const ap = appealsByTaskUser.get(`${t.id}::${selectedUserId}`) as any;
+                                if (!ap) return null;
+                                return (
+                                  <Badge
+                                    variant={ap.status === "aprovado" ? "secondary" : ap.status === "rejeitado" ? "destructive" : "outline"}
+                                    className={cn("text-[9px] px-1.5 py-0", ap.status === "pendente" && "border-amber-500 text-amber-600 dark:text-amber-400")}
+                                  >
+                                    {ap.status === "pendente" ? "📋 Análise" : ap.status === "aprovado" ? "✓ Aprovado" : "✕ Rejeitado"}
+                                  </Badge>
+                                );
+                              })()}
                             </p>
                             <p className="truncate text-xs text-muted-foreground">{teamById.get(t.assigned_user_id)?.role_title}</p>
                           </button>
