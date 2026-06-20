@@ -294,6 +294,27 @@ export function AdminDeadlineReport({
     },
   });
 
+  const appealsQ = useQuery({
+    enabled: (tasksQ.data?.length ?? 0) > 0,
+    queryKey: ["deadline_report_appeals", year, month],
+    queryFn: async () => {
+      const ids = (tasksQ.data ?? []).map((t) => t.id);
+      const { data, error } = await supabase
+        .from("task_appeals")
+        .select("id, task_id, user_id, reason, status, review_note, reviewed_at, reviewed_by, created_at")
+        .in("task_id", ids);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const appealsByTaskUser = useMemo(() => {
+    const map = new Map<string, typeof appealsQ.data extends infer T ? T extends Array<infer R> ? R : never : never>();
+    for (const a of (appealsQ.data ?? []) as any[]) map.set(`${a.task_id}::${a.user_id}`, a);
+    return map;
+  }, [appealsQ.data]);
+
+
   const scoringConfigQ = useQuery({
     queryKey: ["scoring_config"],
     queryFn: async (): Promise<ScoringConfigRow[]> => {
