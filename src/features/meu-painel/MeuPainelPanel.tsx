@@ -28,6 +28,8 @@ import { SmartFeedbackWidget } from "@/features/meu-painel/components/SmartFeedb
 import { DayQuickView } from "@/features/meu-painel/components/DayQuickView";
 import { BottleneckWidget } from "@/features/meu-painel/components/BottleneckWidget";
 import { MetricSparkCard } from "@/features/meu-painel/components/MetricSparkCard";
+import { LateAppealDialog } from "@/features/tasks/LateAppealDialog";
+import { isTaskLate } from "@/features/tasks/is-task-late";
 
 import {
   useCleaningSchedules,
