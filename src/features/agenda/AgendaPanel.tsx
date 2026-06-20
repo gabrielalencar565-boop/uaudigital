@@ -38,6 +38,8 @@ import { TaskTrashPanel } from "@/features/agenda/components/TaskTrashPanel";
 import { TaskActivityReport } from "@/features/agenda/components/TaskActivityReport";
 import { AgendaReportsPanel } from "@/features/agenda/components/AgendaReportsPanel";
 import { useAddTaskAssignees, useTaskAssigneesByMonth } from "@/features/data/task-assignees-queries";
+import { LateAppealDialog } from "@/features/tasks/LateAppealDialog";
+import { isTaskLate } from "@/features/tasks/is-task-late";
 import { useMagic2InactiveAgendaClients } from "@/features/magic2/hooks/use-magic2";
 import { useRole } from "@/hooks/use-role";
 import { useSession } from "@/hooks/use-session";
