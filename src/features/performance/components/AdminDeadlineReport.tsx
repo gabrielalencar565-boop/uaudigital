@@ -954,6 +954,49 @@ export function AdminDeadlineReport({
                   <Badge variant="secondary" className="text-xs">Demanda extra • Qtd: {detailTask.quantity}</Badge>
                 )}
 
+                {(() => {
+                  const appeal = appealsByTaskUser.get(`${detailTask.id}::${selectedUserId}`) as any;
+                  if (!appeal) return null;
+                  return (
+                    <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-semibold text-amber-600 dark:text-amber-400">
+                          📋 Pedido de análise de justificativa
+                        </p>
+                        <Badge variant={appeal.status === "aprovado" ? "secondary" : appeal.status === "rejeitado" ? "destructive" : "outline"} className="text-[10px]">
+                          {appeal.status === "pendente" ? "Pendente" : appeal.status === "aprovado" ? "Aprovado" : "Rejeitado"}
+                        </Badge>
+                      </div>
+                      <p className="text-sm whitespace-pre-wrap">{appeal.reason}</p>
+                      {appeal.status === "pendente" ? (
+                        <div className="flex gap-2 pt-1">
+                          <Button
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => reviewAppealMut.mutate({ appealId: appeal.id, taskId: detailTask.id, userId: selectedUserId, decision: "aprovado" })}
+                            disabled={reviewAppealMut.isPending}
+                          >
+                            Aprovar
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1"
+                            onClick={() => reviewAppealMut.mutate({ appealId: appeal.id, taskId: detailTask.id, userId: selectedUserId, decision: "rejeitado" })}
+                            disabled={reviewAppealMut.isPending}
+                          >
+                            Rejeitar
+                          </Button>
+                        </div>
+                      ) : (
+                        <p className="text-[11px] text-muted-foreground">
+                          Revisado em {appeal.reviewed_at ? format(new Date(appeal.reviewed_at), "dd/MM/yyyy HH:mm") : "—"}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 {extractPmTaskId(detailTask.description) && (
                   <Button
                     variant="outline"
