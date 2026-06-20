@@ -1480,5 +1480,16 @@ export function AgendaPanel() {
         </div>
       </div>}
     </div>
+    <LateAppealDialog
+      open={!!appealTask}
+      taskId={appealTask?.id ?? null}
+      taskTitle={appealTask?.title}
+      dueDate={appealTask?.dueDate}
+      userId={user?.id ?? ""}
+      onClose={() => setAppealTask(null)}
+      onConfirm={async () => {
+        if (appealTask) await performToggle(appealTask.id, "concluido");
+      }}
+    />
   </DndContext>;
 }
