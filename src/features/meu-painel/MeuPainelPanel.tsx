@@ -359,6 +359,14 @@ export function MeuPainelPanel() {
     } catch (e: any) { toast.error(e?.message ?? "Erro ao iniciar tarefa"); }
   };
 
+  const [appealTask, setAppealTask] = useState<{ id: string; title: string; dueDate: string } | null>(null);
+
+  const performComplete = async (taskId: string, next: "pendente" | "em_andamento" | "concluido") => {
+    if (!user) return;
+    await setTaskStatus.mutateAsync({ taskId, status: next, userId: user.id });
+    toast.success(next === "concluido" ? "Concluída! ✔" : "Voltou para em andamento");
+  };
+
   const onToggleComplete = async (taskId: string, current: "pendente" | "em_andamento" | "concluido") => {
     if (!user) return;
     if (taskId.startsWith("cleaning:")) {
@@ -366,9 +374,16 @@ export function MeuPainelPanel() {
       return;
     }
     const next = current === "concluido" ? "em_andamento" : "concluido";
+    // If completing a late task, ask for justification first
+    if (next === "concluido") {
+      const t = myTasks.find((x) => x.id === taskId);
+      if (t && isTaskLate(t.due_date)) {
+        setAppealTask({ id: t.id, title: t.title ?? "Tarefa", dueDate: t.due_date });
+        return;
+      }
+    }
     try {
-      await setTaskStatus.mutateAsync({ taskId, status: next, userId: user.id });
-      toast.success(next === "concluido" ? "Concluída! ✔" : "Voltou para em andamento");
+      await performComplete(taskId, next);
     } catch (e: any) { toast.error(e?.message ?? "Erro ao atualizar tarefa"); }
   };
 
