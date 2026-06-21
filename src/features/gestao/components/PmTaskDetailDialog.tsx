@@ -45,6 +45,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { inferPmPostType, type PmPostType } from "../utils/infer-pm-post-type";
 import { broadcastTeamActivity } from "@/hooks/use-team-activity";
 import { setViewingTask } from "@/hooks/use-task-viewers";
+import { LateAppealDialog } from "@/features/tasks/LateAppealDialog";
+import { isTaskLate } from "@/features/tasks/is-task-late";
 
 function initials(n: string) {
   return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
@@ -418,6 +420,19 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
   const canCorrect = isRoleAdmin || isPlanner;
   const isCompletedSnapshot = task.status_global === "concluido" && task.stage_current !== "entrega" && !task.parent_task_id && !task.is_extra_demand;
   const [correctionMode, setCorrectionMode] = useState(false);
+
+  // Late-task justification dialog
+  const [lateAppeal, setLateAppeal] = useState<{ open: boolean; action: (() => void | Promise<void>) | null }>({ open: false, action: null });
+  const runWithLateCheck = useCallback((action: () => void | Promise<void>) => {
+    const isLate = isTaskLate(task.due_date) && task.status_global !== "concluido";
+    const uid = sessionUser?.id;
+    const involved = !!uid && (task.assignee_id === uid || (task.watchers ?? []).includes(uid));
+    if (isLate && involved) {
+      setLateAppeal({ open: true, action });
+    } else {
+      void action();
+    }
+  }, [task.due_date, task.status_global, task.assignee_id, task.watchers, sessionUser?.id]);
   const periodicStagesQ = usePeriodicStages();
   const periodicStages = periodicStagesQ.data ?? [];
   const currentPeriodic = task.periodic_stage_key ? periodicStages.find(p => p.key === task.periodic_stage_key) : null;
@@ -2018,25 +2033,25 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-destructive/10 border border-destructive/30 text-destructive text-xs font-semibold">
                   <RotateCcw className="h-3.5 w-3.5" /> {resolvedTaskPostType === "video" ? "ALT/VDO" : resolvedTaskPostType === "design" ? "ALT/DSG" : resolvedTaskPostType === "planejamento" ? "ALT/PLAN" : "Em Alteração"}
                 </div>
-                <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={async () => {
+                <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={() => runWithLateCheck(async () => {
                   notifyTaskCompletion();
                   updateTask.mutate({ id: task.id, status_global: "concluido" });
                   const { data: { user: u } } = await supabase.auth.getUser();
                    if (u) syncStage.mutate({ pmTaskId: task.id, completedStage: task.stage_current, userId: u.id });
                   toast.success("Subtarefa concluída ✓");
-                }}>
+                })}>
                   <CheckCircle2 className="h-4 w-4" /> Concluído
                 </Button>
               </>
             ) : (
               <>
-                <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={async () => {
+                <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={() => runWithLateCheck(async () => {
                   notifyTaskCompletion();
                   updateTask.mutate({ id: task.id, status_global: "concluido" });
                   const { data: { user: u } } = await supabase.auth.getUser();
                   if (u) syncStage.mutate({ pmTaskId: task.id, completedStage: task.stage_current, userId: u.id });
                   toast.success("Subtarefa concluída ✓");
-                }}>
+                })}>
                   <CheckCircle2 className="h-4 w-4" /> Concluído
                 </Button>
                 <Button size="sm" variant="outline" className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => {
@@ -2081,7 +2096,7 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
         <div className="flex flex-wrap items-center gap-2 pt-2">
           {!(isDone || isCompletedSnapshot) ? (
             <>
-              <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={handleConcluido}>
+              <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={() => runWithLateCheck(handleConcluido)}>
                 <CheckCircle2 className="h-4 w-4" />
                 {task.stage_current === "revisao" ? "Aprovar e seguir fluxo" : "Concluir"}
                 <ChevronRight className="h-3.5 w-3.5" />
@@ -2333,6 +2348,16 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <LateAppealDialog
+        open={lateAppeal.open}
+        taskId={task.id}
+        taskTitle={task.title ?? undefined}
+        dueDate={task.due_date ?? undefined}
+        userId={sessionUser?.id ?? ""}
+        onClose={() => setLateAppeal({ open: false, action: null })}
+        onConfirm={async () => { const a = lateAppeal.action; if (a) await a(); }}
+      />
     </div>
   );
 }
