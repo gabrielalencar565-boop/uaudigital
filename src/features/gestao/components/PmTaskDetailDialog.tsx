@@ -2045,13 +2045,13 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
               </>
             ) : (
               <>
-                <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={async () => {
+                <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={() => runWithLateCheck(async () => {
                   notifyTaskCompletion();
                   updateTask.mutate({ id: task.id, status_global: "concluido" });
                   const { data: { user: u } } = await supabase.auth.getUser();
                   if (u) syncStage.mutate({ pmTaskId: task.id, completedStage: task.stage_current, userId: u.id });
                   toast.success("Subtarefa concluída ✓");
-                }}>
+                })}>
                   <CheckCircle2 className="h-4 w-4" /> Concluído
                 </Button>
                 <Button size="sm" variant="outline" className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => {
