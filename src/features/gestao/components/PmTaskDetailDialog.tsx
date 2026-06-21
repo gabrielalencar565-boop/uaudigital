@@ -2348,6 +2348,16 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <LateAppealDialog
+        open={lateAppeal.open}
+        taskId={task.id}
+        taskTitle={task.title ?? undefined}
+        dueDate={task.due_date ?? undefined}
+        userId={sessionUser?.id ?? ""}
+        onClose={() => setLateAppeal({ open: false, action: null })}
+        onConfirm={async () => { const a = lateAppeal.action; if (a) await a(); }}
+      />
     </div>
   );
 }
