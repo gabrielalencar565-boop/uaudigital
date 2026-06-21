@@ -2033,13 +2033,13 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-destructive/10 border border-destructive/30 text-destructive text-xs font-semibold">
                   <RotateCcw className="h-3.5 w-3.5" /> {resolvedTaskPostType === "video" ? "ALT/VDO" : resolvedTaskPostType === "design" ? "ALT/DSG" : resolvedTaskPostType === "planejamento" ? "ALT/PLAN" : "Em Alteração"}
                 </div>
-                <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={async () => {
+                <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={() => runWithLateCheck(async () => {
                   notifyTaskCompletion();
                   updateTask.mutate({ id: task.id, status_global: "concluido" });
                   const { data: { user: u } } = await supabase.auth.getUser();
                    if (u) syncStage.mutate({ pmTaskId: task.id, completedStage: task.stage_current, userId: u.id });
                   toast.success("Subtarefa concluída ✓");
-                }}>
+                })}>
                   <CheckCircle2 className="h-4 w-4" /> Concluído
                 </Button>
               </>
