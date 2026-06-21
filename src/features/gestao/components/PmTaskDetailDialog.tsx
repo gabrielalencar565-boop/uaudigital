@@ -420,6 +420,19 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
   const canCorrect = isRoleAdmin || isPlanner;
   const isCompletedSnapshot = task.status_global === "concluido" && task.stage_current !== "entrega" && !task.parent_task_id && !task.is_extra_demand;
   const [correctionMode, setCorrectionMode] = useState(false);
+
+  // Late-task justification dialog
+  const [lateAppeal, setLateAppeal] = useState<{ open: boolean; action: (() => void | Promise<void>) | null }>({ open: false, action: null });
+  const runWithLateCheck = useCallback((action: () => void | Promise<void>) => {
+    const isLate = isTaskLate(task.due_date) && task.status_global !== "concluido";
+    const uid = sessionUser?.id;
+    const involved = !!uid && (task.assignee_id === uid || (task.watchers ?? []).includes(uid));
+    if (isLate && involved) {
+      setLateAppeal({ open: true, action });
+    } else {
+      void action();
+    }
+  }, [task.due_date, task.status_global, task.assignee_id, task.watchers, sessionUser?.id]);
   const periodicStagesQ = usePeriodicStages();
   const periodicStages = periodicStagesQ.data ?? [];
   const currentPeriodic = task.periodic_stage_key ? periodicStages.find(p => p.key === task.periodic_stage_key) : null;
