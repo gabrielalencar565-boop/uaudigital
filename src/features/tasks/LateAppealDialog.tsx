@@ -65,7 +65,7 @@ export function LateAppealDialog({ open, taskId, taskTitle, dueDate, userId, onC
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); }}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="z-[300] max-w-md" overlayClassName="z-[290]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-amber-500">
             <AlertTriangle className="h-5 w-5" /> Tarefa atrasada
