@@ -45,6 +45,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { inferPmPostType, type PmPostType } from "../utils/infer-pm-post-type";
 import { broadcastTeamActivity } from "@/hooks/use-team-activity";
 import { setViewingTask } from "@/hooks/use-task-viewers";
+import { LateAppealDialog } from "@/features/tasks/LateAppealDialog";
+import { isTaskLate } from "@/features/tasks/is-task-late";
 
 function initials(n: string) {
   return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
