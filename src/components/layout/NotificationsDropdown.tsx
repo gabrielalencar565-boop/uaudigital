@@ -21,6 +21,7 @@ type NotificationItem = {
   subtitle: string;
   timestamp: string;
   taskId?: string;
+  appealUserId?: string;
 };
 
 interface NotificationsDropdownProps {
