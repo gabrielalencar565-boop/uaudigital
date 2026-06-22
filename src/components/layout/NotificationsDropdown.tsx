@@ -1,8 +1,9 @@
 import { useMemo, useCallback } from "react";
 import { normalizeAvatarUrl } from "@/lib/avatar-url";
-import { Bell, AlertTriangle, AtSign, UserPlus, Clock, Check, CheckCheck } from "lucide-react";
+import { Bell, AlertTriangle, AtSign, UserPlus, Clock, Check, CheckCheck, FileText } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, differenceInCalendarDays } from "date-fns";
+import { useRole } from "@/hooks/use-role";
 
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -15,7 +16,7 @@ import { useSession } from "@/hooks/use-session";
 type NotificationItem = {
   id: string;
   key: string; // unique key for read tracking
-  type: "mention" | "assigned" | "overdue" | "upcoming";
+  type: "mention" | "assigned" | "overdue" | "upcoming" | "appeal";
   title: string;
   subtitle: string;
   timestamp: string;
@@ -30,6 +31,36 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
   const { user } = useSession();
   const today = new Date();
   const queryClient = useQueryClient();
+  const { isAdmin } = useRole(user?.id);
+
+  const appealsQ = useQuery({
+    queryKey: ["notifications_appeals_admin", user?.id],
+    enabled: !!user?.id && isAdmin,
+    staleTime: 0,
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("task_appeals")
+        .select("id, task_id, user_id, reason, status, created_at")
+        .eq("status", "pendente")
+        .order("created_at", { ascending: false })
+        .limit(50);
+      return data ?? [];
+    },
+  });
+
+  const appealPmTasksQ = useQuery({
+    queryKey: ["notifications_appeals_pm_tasks", (appealsQ.data ?? []).map((a: any) => a.task_id).join(",")],
+    enabled: !!appealsQ.data && appealsQ.data.length > 0,
+    queryFn: async () => {
+      const ids = Array.from(new Set((appealsQ.data ?? []).map((a: any) => a.task_id)));
+      if (ids.length === 0) return [];
+      const { data } = await (supabase as any)
+        .from("pm_tasks")
+        .select("id, title")
+        .in("id", ids);
+      return data ?? [];
+    },
+  });
 
   const mentionsQ = useQuery({
     queryKey: ["notifications_mentions", user?.id],
@@ -167,9 +198,26 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
       }
     });
 
+    if (isAdmin) {
+      const titlesById = new Map<string, string>((appealPmTasksQ.data ?? []).map((t: any) => [t.id, t.title]));
+      (appealsQ.data ?? []).forEach((a: any) => {
+        const requester = membersMap[a.user_id];
+        const taskTitle = titlesById.get(a.task_id) ?? "Tarefa";
+        items.push({
+          id: `appeal-${a.id}`,
+          key: `appeal-${a.id}`,
+          type: "appeal",
+          title: `${requester?.name ?? "Alguém"} pediu análise de atraso`,
+          subtitle: `${taskTitle} — ${(a.reason ?? "").substring(0, 80)}`,
+          timestamp: a.created_at,
+          taskId: a.task_id,
+        });
+      });
+    }
+
     items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     return items.slice(0, 30);
-  }, [mentionsQ.data, assignedQ.data, membersMap, today, formatMentionContent]);
+  }, [mentionsQ.data, assignedQ.data, appealsQ.data, appealPmTasksQ.data, isAdmin, membersMap, today, formatMentionContent]);
 
   const unreadCount = notifications.filter(n => !readKeys.has(n.key)).length;
 
@@ -178,6 +226,7 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
     assigned: UserPlus,
     overdue: AlertTriangle,
     upcoming: Clock,
+    appeal: FileText,
   };
 
   const typeColor = {
@@ -185,6 +234,7 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
     assigned: "text-blue-400",
     overdue: "text-destructive",
     upcoming: "text-warning",
+    appeal: "text-yellow-500",
   };
 
   const handleClickNotification = (n: NotificationItem) => {
