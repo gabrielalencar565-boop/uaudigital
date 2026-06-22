@@ -31,6 +31,36 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
   const { user } = useSession();
   const today = new Date();
   const queryClient = useQueryClient();
+  const { isAdmin } = useRole(user?.id);
+
+  const appealsQ = useQuery({
+    queryKey: ["notifications_appeals_admin", user?.id],
+    enabled: !!user?.id && isAdmin,
+    staleTime: 0,
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("task_appeals")
+        .select("id, task_id, user_id, reason, status, created_at")
+        .eq("status", "pendente")
+        .order("created_at", { ascending: false })
+        .limit(50);
+      return data ?? [];
+    },
+  });
+
+  const appealPmTasksQ = useQuery({
+    queryKey: ["notifications_appeals_pm_tasks", (appealsQ.data ?? []).map((a: any) => a.task_id).join(",")],
+    enabled: !!appealsQ.data && appealsQ.data.length > 0,
+    queryFn: async () => {
+      const ids = Array.from(new Set((appealsQ.data ?? []).map((a: any) => a.task_id)));
+      if (ids.length === 0) return [];
+      const { data } = await (supabase as any)
+        .from("pm_tasks")
+        .select("id, title")
+        .in("id", ids);
+      return data ?? [];
+    },
+  });
 
   const mentionsQ = useQuery({
     queryKey: ["notifications_mentions", user?.id],
