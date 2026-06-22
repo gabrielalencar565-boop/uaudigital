@@ -198,6 +198,7 @@ export function AdminDeadlineReport({
   const [pmTaskToOpen, setPmTaskToOpen] = useState<PmTask | null>(null);
   const [customInputTaskId, setCustomInputTaskId] = useState<string | null>(null);
   const [customInputValue, setCustomInputValue] = useState("");
+  const [pendingAppealOpen, setPendingAppealOpen] = useState<{ pmTaskId: string; userId: string } | null>(null);
 
   const pmTasksQ = usePmTasks(); 
   const teamMembersQ = useTeamMembers();
