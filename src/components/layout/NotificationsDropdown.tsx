@@ -243,6 +243,12 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
     if (!readKeys.has(n.key)) {
       markAsRead.mutate(n.key);
     }
+    if (n.type === "appeal" && n.taskId && n.appealUserId) {
+      window.dispatchEvent(new CustomEvent("open-appeal-review", {
+        detail: { pmTaskId: n.taskId, userId: n.appealUserId },
+      }));
+      return;
+    }
     if (n.taskId && onOpenTask) {
       onOpenTask(n.taskId);
     }
