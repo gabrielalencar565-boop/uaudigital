@@ -298,21 +298,43 @@ export function AdminDeadlineReport({
     enabled: (tasksQ.data?.length ?? 0) > 0,
     queryKey: ["deadline_report_appeals", year, month],
     queryFn: async () => {
-      const ids = (tasksQ.data ?? []).map((t) => t.id);
+      const legacyIds = (tasksQ.data ?? []).map((t) => t.id);
+      const pmIds = (tasksQ.data ?? [])
+        .map((t) => extractPmTaskId(t.description))
+        .filter(Boolean) as string[];
+      const allIds = Array.from(new Set([...legacyIds, ...pmIds]));
+      if (allIds.length === 0) return [];
       const { data, error } = await supabase
         .from("task_appeals")
         .select("id, task_id, user_id, reason, status, review_note, reviewed_at, reviewed_by, created_at")
-        .in("task_id", ids);
+        .in("task_id", allIds);
       if (error) throw error;
       return data ?? [];
     },
   });
 
   const appealsByTaskUser = useMemo(() => {
-    const map = new Map<string, typeof appealsQ.data extends infer T ? T extends Array<infer R> ? R : never : never>();
-    for (const a of (appealsQ.data ?? []) as any[]) map.set(`${a.task_id}::${a.user_id}`, a);
+    // Index appeals by both legacy tasks.id::user and pm_task_id::user so lookups work
+    // regardless of which id the appeal was saved under (LateAppealDialog passes pm_task_id).
+    const map = new Map<string, any>();
+    const tasksById = new Map((tasksQ.data ?? []).map((t) => [t.id, t] as const));
+    const tasksByPmId = new Map<string, TaskForReport>();
+    for (const t of tasksQ.data ?? []) {
+      const pmId = extractPmTaskId(t.description);
+      if (pmId) tasksByPmId.set(pmId, t);
+    }
+    for (const a of (appealsQ.data ?? []) as any[]) {
+      map.set(`${a.task_id}::${a.user_id}`, a);
+      const asLegacy = tasksById.get(a.task_id);
+      if (asLegacy) {
+        const pmId = extractPmTaskId(asLegacy.description);
+        if (pmId) map.set(`${pmId}::${a.user_id}`, a);
+      }
+      const asPm = tasksByPmId.get(a.task_id);
+      if (asPm) map.set(`${asPm.id}::${a.user_id}`, a);
+    }
     return map;
-  }, [appealsQ.data]);
+  }, [appealsQ.data, tasksQ.data]);
 
 
   const scoringConfigQ = useQuery({
