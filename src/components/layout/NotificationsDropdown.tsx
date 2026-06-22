@@ -1,8 +1,9 @@
 import { useMemo, useCallback } from "react";
 import { normalizeAvatarUrl } from "@/lib/avatar-url";
-import { Bell, AlertTriangle, AtSign, UserPlus, Clock, Check, CheckCheck } from "lucide-react";
+import { Bell, AlertTriangle, AtSign, UserPlus, Clock, Check, CheckCheck, FileText } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, differenceInCalendarDays } from "date-fns";
+import { useRole } from "@/hooks/use-role";
 
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
