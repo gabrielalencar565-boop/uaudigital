@@ -16,7 +16,7 @@ import { useSession } from "@/hooks/use-session";
 type NotificationItem = {
   id: string;
   key: string; // unique key for read tracking
-  type: "mention" | "assigned" | "overdue" | "upcoming";
+  type: "mention" | "assigned" | "overdue" | "upcoming" | "appeal";
   title: string;
   subtitle: string;
   timestamp: string;
