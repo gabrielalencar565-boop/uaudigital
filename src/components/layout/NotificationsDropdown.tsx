@@ -212,6 +212,7 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
           subtitle: `${taskTitle} — ${(a.reason ?? "").substring(0, 80)}`,
           timestamp: a.created_at,
           taskId: a.task_id,
+          appealUserId: a.user_id,
         });
       });
     }
