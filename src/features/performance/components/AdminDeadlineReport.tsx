@@ -198,6 +198,7 @@ export function AdminDeadlineReport({
   const [pmTaskToOpen, setPmTaskToOpen] = useState<PmTask | null>(null);
   const [customInputTaskId, setCustomInputTaskId] = useState<string | null>(null);
   const [customInputValue, setCustomInputValue] = useState("");
+  const [pendingAppealOpen, setPendingAppealOpen] = useState<{ pmTaskId: string; userId: string } | null>(null);
 
   const pmTasksQ = usePmTasks(); 
   const teamMembersQ = useTeamMembers();
@@ -504,6 +505,32 @@ export function AdminDeadlineReport({
       qc.invalidateQueries({ queryKey: ["performance_scores_metas", year, month] });
     })();
   }, [tasksQ.data, tasksQ.isLoading]);
+
+  // Listen for "open appeal review" requests coming from the notifications bell.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { pmTaskId?: string; userId?: string } | undefined;
+      if (!detail?.pmTaskId || !detail.userId) return;
+      setPendingAppealOpen({ pmTaskId: detail.pmTaskId, userId: detail.userId });
+      setSelectedUserId(detail.userId);
+    };
+    window.addEventListener("open-appeal-review", handler);
+    return () => window.removeEventListener("open-appeal-review", handler);
+  }, []);
+
+  // Resolve the pending appeal once tasks are loaded — find the matching task and open the detail dialog.
+  useEffect(() => {
+    if (!pendingAppealOpen) return;
+    if (!tasksQ.data) return;
+    const match = (tasksQ.data ?? []).find((t) => {
+      if (t.id === pendingAppealOpen.pmTaskId) return true;
+      return extractPmTaskId(t.description) === pendingAppealOpen.pmTaskId;
+    });
+    if (match) {
+      setDetailTask(match);
+      setPendingAppealOpen(null);
+    }
+  }, [pendingAppealOpen, tasksQ.data]);
 
   const userTasks = useMemo(() => {
     return (tasksQ.data ?? [])

@@ -21,6 +21,7 @@ type NotificationItem = {
   subtitle: string;
   timestamp: string;
   taskId?: string;
+  appealUserId?: string;
 };
 
 interface NotificationsDropdownProps {
@@ -211,6 +212,7 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
           subtitle: `${taskTitle} — ${(a.reason ?? "").substring(0, 80)}`,
           timestamp: a.created_at,
           taskId: a.task_id,
+          appealUserId: a.user_id,
         });
       });
     }
@@ -240,6 +242,12 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
   const handleClickNotification = (n: NotificationItem) => {
     if (!readKeys.has(n.key)) {
       markAsRead.mutate(n.key);
+    }
+    if (n.type === "appeal" && n.taskId && n.appealUserId) {
+      window.dispatchEvent(new CustomEvent("open-appeal-review", {
+        detail: { pmTaskId: n.taskId, userId: n.appealUserId },
+      }));
+      return;
     }
     if (n.taskId && onOpenTask) {
       onOpenTask(n.taskId);

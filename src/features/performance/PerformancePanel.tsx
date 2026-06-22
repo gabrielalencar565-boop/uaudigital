@@ -85,6 +85,12 @@ const TOTAL_POINTS = 27;
     setReportMonth(currentMonth);
   }, [currentMonth, currentYear]);
 
+  useEffect(() => {
+    const handler = () => setTab("relatorio");
+    window.addEventListener("open-appeal-review", handler);
+    return () => window.removeEventListener("open-appeal-review", handler);
+  }, []);
+
   const years = useMemo(() => {
     const y = currentYear;
     return [y - 1, y, y + 1];

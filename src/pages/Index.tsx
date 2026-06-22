@@ -66,6 +66,12 @@ const Index = () => {
   const [popoverOpen, setPopoverOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    const handler = () => setTab("desempenho");
+    window.addEventListener("open-appeal-review", handler);
+    return () => window.removeEventListener("open-appeal-review", handler);
+  }, []);
+
   const form = useForm<ProfileValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: { full_name: "", role_title: "" },
