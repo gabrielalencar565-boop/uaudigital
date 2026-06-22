@@ -198,9 +198,26 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
       }
     });
 
+    if (isAdmin) {
+      const titlesById = new Map<string, string>((appealPmTasksQ.data ?? []).map((t: any) => [t.id, t.title]));
+      (appealsQ.data ?? []).forEach((a: any) => {
+        const requester = membersMap[a.user_id];
+        const taskTitle = titlesById.get(a.task_id) ?? "Tarefa";
+        items.push({
+          id: `appeal-${a.id}`,
+          key: `appeal-${a.id}`,
+          type: "appeal",
+          title: `${requester?.name ?? "Alguém"} pediu análise de atraso`,
+          subtitle: `${taskTitle} — ${(a.reason ?? "").substring(0, 80)}`,
+          timestamp: a.created_at,
+          taskId: a.task_id,
+        });
+      });
+    }
+
     items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     return items.slice(0, 30);
-  }, [mentionsQ.data, assignedQ.data, membersMap, today, formatMentionContent]);
+  }, [mentionsQ.data, assignedQ.data, appealsQ.data, appealPmTasksQ.data, isAdmin, membersMap, today, formatMentionContent]);
 
   const unreadCount = notifications.filter(n => !readKeys.has(n.key)).length;
 
@@ -209,6 +226,7 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
     assigned: UserPlus,
     overdue: AlertTriangle,
     upcoming: Clock,
+    appeal: FileText,
   };
 
   const typeColor = {
@@ -216,6 +234,7 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
     assigned: "text-blue-400",
     overdue: "text-destructive",
     upcoming: "text-warning",
+    appeal: "text-yellow-500",
   };
 
   const handleClickNotification = (n: NotificationItem) => {
