@@ -770,8 +770,11 @@ export function AdminDeadlineReport({
                                 if (!ap) return null;
                                 return (
                                   <Badge
-                                    variant={ap.status === "aprovado" ? "secondary" : ap.status === "rejeitado" ? "destructive" : "outline"}
-                                    className={cn("text-[9px] px-1.5 py-0", ap.status === "pendente" && "border-amber-500 text-amber-600 dark:text-amber-400")}
+                                    variant={ap.status === "aprovado" ? "secondary" : ap.status === "rejeitado" ? "destructive" : "default"}
+                                    className={cn(
+                                      "text-[9px] px-1.5 py-0",
+                                      ap.status === "pendente" && "bg-yellow-400 hover:bg-yellow-400 text-black border-transparent",
+                                    )}
                                   >
                                     {ap.status === "pendente" ? "📋 Análise" : ap.status === "aprovado" ? "✓ Aprovado" : "✕ Rejeitado"}
                                   </Badge>
