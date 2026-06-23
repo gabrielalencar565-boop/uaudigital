@@ -144,7 +144,8 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
     return (defaultFlow?.stage_assignees ?? {}) as StageAssignees;
   }, [flowsQ.data]);
 
-  // Get client IDs where the filtered assignee is the fixed PLANEJAMENTO assignee only
+  // Get client IDs where the filtered assignee is the fixed PLANEJAMENTO assignee only.
+  // Used to also surface planejamento tasks that haven't been explicitly assigned yet.
   const fixedAssigneeClientIds = useMemo(() => {
     if (filterAssignee === "__all__") return new Set<string>();
     const clientIds = new Set<string>();
