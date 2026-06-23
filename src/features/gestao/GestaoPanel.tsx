@@ -144,7 +144,8 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
     return (defaultFlow?.stage_assignees ?? {}) as StageAssignees;
   }, [flowsQ.data]);
 
-  // Get client IDs where the filtered assignee is the fixed PLANEJAMENTO assignee only
+  // Get client IDs where the filtered assignee is the fixed PLANEJAMENTO assignee only.
+  // Used to also surface planejamento tasks that haven't been explicitly assigned yet.
   const fixedAssigneeClientIds = useMemo(() => {
     if (filterAssignee === "__all__") return new Set<string>();
     const clientIds = new Set<string>();
@@ -596,7 +597,13 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
     let list = tasks.filter((t) => t.status_global !== "pausado");
     if (filterClient && filterClient !== "__all__") list = list.filter((t) => t.client_id === filterClient);
     if (filterAssignee && filterAssignee !== "__all__") {
-      list = list.filter((t) => t.assignee_id === filterAssignee || (t.watchers ?? []).includes(filterAssignee) || fixedAssigneeClientIds.has(t.client_id));
+      list = list.filter((t) =>
+        t.assignee_id === filterAssignee ||
+        (t.watchers ?? []).includes(filterAssignee) ||
+        // Fixed planejamento assignee só vale para tarefas que ainda estão na etapa de planejamento
+        // e que não possuem um responsável explícito atribuído.
+        (t.stage_current === "planejamento" && !t.assignee_id && fixedAssigneeClientIds.has(t.client_id))
+      );
     }
     if (search) {
       const q = search.toLowerCase();
