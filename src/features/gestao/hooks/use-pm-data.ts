@@ -635,7 +635,7 @@ export function useAddPmComment() {
 export function useUploadPmAttachment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ task_id, file }: { task_id: string; file: File }) => {
+    mutationFn: async ({ task_id, file, category }: { task_id: string; file: File; category?: "material" | "final" }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Não autenticado");
 
@@ -654,6 +654,7 @@ export function useUploadPmAttachment() {
         file_size: file.size,
         storage_path: path,
         public_url: urlData.publicUrl,
+        category: category ?? "material",
       }).select().single();
       if (error) throw error;
 
