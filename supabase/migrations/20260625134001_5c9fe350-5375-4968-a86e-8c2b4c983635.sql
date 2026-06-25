@@ -1,0 +1,1 @@
+ALTER TABLE public.pm_attachments ADD COLUMN IF NOT EXISTS category text NOT NULL DEFAULT 'material' CHECK (category IN ('material','final'));

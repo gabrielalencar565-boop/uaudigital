@@ -1761,6 +1761,7 @@ export type Database = {
       }
       pm_attachments: {
         Row: {
+          category: string
           created_at: string
           file_name: string
           file_size: number | null
@@ -1774,6 +1775,7 @@ export type Database = {
           uploaded_by: string
         }
         Insert: {
+          category?: string
           created_at?: string
           file_name: string
           file_size?: number | null
@@ -1787,6 +1789,7 @@ export type Database = {
           uploaded_by: string
         }
         Update: {
+          category?: string
           created_at?: string
           file_name?: string
           file_size?: number | null
