@@ -69,6 +69,7 @@ export interface PmAttachment {
   storage_path: string;
   public_url: string | null;
   created_at: string;
+  category?: "material" | "final";
 }
 
 export interface PmProject {
