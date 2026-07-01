@@ -1,18 +1,25 @@
-## Problema
+Implementar opção de minimizar/expandir cada categoria de anexos na tela de detalhes da tarefa.
 
-O `LateAppealDialog` foi integrado apenas em **Meu Painel** e **Agenda**. Mas o botão verde "Concluir" que aparece nos prints é da tela de **Gestão de Tarefas** (`PmTaskDetailDialog`), que não foi conectada — por isso clicar em "Concluir" numa tarefa atrasada não abre o diálogo de justificativa.
+## Contexto
+A seção de anexos foi separada em duas categorias:
+- 🎯 Materiais de Produção
+- 🚀 Conteúdo Final
 
-## Correção (pontual, sem refatorar)
+Atualmente ambas as seções são sempre renderizadas abertas, ocupando espaço mesmo quando o usuário quer focar em apenas uma delas.
 
-Conectar o `LateAppealDialog` no `src/features/gestao/components/PmTaskDetailDialog.tsx`:
+## O que será feito
+1. Adicionar botão de minimizar/expandir no cabeçalho de cada `CategorySection` em `PmAttachmentsSection.tsx`.
+2. Usar o componente `Collapsible` já existente no shadcn/ui para manter consistência com o resto do app (ex.: painel "Meu Painel").
+3. Estado local controlará o colapso de cada categoria separadamente, respeitando a ação do usuário.
+4. O conteúdo colapsado incluirá: lista de arquivos, uploads em progresso, drop zones e estado vazio.
+5. O cabeçalho permanecerá visível com: ícone da categoria, título, contador de arquivos, botão de upload e o botão de expandir/minimizar.
+6. O botão de upload continuará acessível mesmo quando a seção estiver minimizada, para permitir envio rápido sem precisar expandir.
+7. Será usado ícone `ChevronDown` / `ChevronUp` com rotação suave, seguindo o padrão do `Collapsible`.
 
-1. **Estado local** `lateAppeal` com `{ open, pendingAction }`.
-2. **Helper `runWithLateCheck(action)`**: se `isTaskLate(task.due_date)` e a tarefa ainda não está concluída e o usuário atual é o `assignee_id` (ou está em `watchers`), abre o diálogo guardando `action` como `pendingAction`. Caso contrário executa `action()` direto.
-3. **Wrap nos 3 botões "Concluir" da tarefa pai e das subtarefas** (linhas ~2033, ~2021, ~2084) — passar o `onClick` atual por dentro do `runWithLateCheck`.
-4. **Renderizar `<LateAppealDialog>`** no final do dialog, executando `pendingAction()` no `onConfirm` (que faz o complete normal, com ou sem justificativa salva em `task_appeals`).
+## Arquivos alterados
+- `src/features/gestao/components/PmAttachmentsSection.tsx`
 
-Sem mudanças de regra de pontuação, layout, fluxo de etapas ou banco — apenas plugar o diálogo já existente no ponto de entrada que estava faltando.
-
-## Arquivos
-
-- `src/features/gestao/components/PmTaskDetailDialog.tsx` (edição)
+## Não será alterado
+- Banco de dados (a coluna `category` já existe e funciona).
+- Lógica de upload, exclusão, renomear, mover categoria ou download.
+- `PmTaskDetailDialog.tsx` e demais componentes de tarefa (apenas a seção de anexos terá o colapso).
