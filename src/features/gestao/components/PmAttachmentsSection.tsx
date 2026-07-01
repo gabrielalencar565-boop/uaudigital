@@ -11,6 +11,7 @@ import type { PmAttachment } from "../pm-types";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { PmImageViewer } from "./PmImageViewer";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 
