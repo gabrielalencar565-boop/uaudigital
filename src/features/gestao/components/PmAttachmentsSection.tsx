@@ -362,6 +362,7 @@ function CategorySection(props: CategorySectionProps) {
 
   const fileRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
 
   const isImage = (type: string | null) => type?.startsWith("image/");
   const isHeic = (name: string) => /\.heic$/i.test(name);
