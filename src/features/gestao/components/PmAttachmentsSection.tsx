@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { format } from "date-fns";
-import { Upload, FileText, Download, MoreHorizontal, Link2, ImagePlus, GripVertical, Trash2, Loader2, Pencil, ArrowRightLeft, Target, Rocket } from "lucide-react";
+import { Upload, FileText, Download, MoreHorizontal, Link2, ImagePlus, GripVertical, Trash2, Loader2, Pencil, ArrowRightLeft, Target, Rocket, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -11,6 +11,7 @@ import type { PmAttachment } from "../pm-types";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { PmImageViewer } from "./PmImageViewer";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -361,6 +362,7 @@ function CategorySection(props: CategorySectionProps) {
 
   const fileRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
 
   const isImage = (type: string | null) => type?.startsWith("image/");
   const isHeic = (name: string) => /\.heic$/i.test(name);
@@ -381,22 +383,30 @@ function CategorySection(props: CategorySectionProps) {
   };
 
   return (
-    <div
-      className={cn("rounded-lg border bg-card/30 p-3 space-y-3", accentClass)}
+    <Collapsible
+      open={isOpen}
+      onOpenChange={setIsOpen}
+      className={cn("rounded-lg border bg-card/30 p-3", accentClass)}
       onDrop={handleDrop}
       onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
       onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragging(false); }}
     >
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          {icon}
-          <div className="min-w-0">
-            <p className="text-sm font-semibold leading-tight">
-              {title} <span className="text-muted-foreground font-normal">({list.length})</span>
-            </p>
-            <p className="text-[10px] text-muted-foreground truncate">{subtitle}</p>
-          </div>
-        </div>
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="flex items-center gap-2 min-w-0 flex-1 text-left rounded-md px-1 py-1 transition hover:bg-accent/50"
+          >
+            <div className="shrink-0">{icon}</div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold leading-tight">
+                {title} <span className="text-muted-foreground font-normal">({list.length})</span>
+              </p>
+              <p className="text-[10px] text-muted-foreground truncate">{subtitle}</p>
+            </div>
+            <ChevronDown className={cn("h-4 w-4 text-muted-foreground shrink-0 transition-transform", isOpen && "rotate-180")} />
+          </button>
+        </CollapsibleTrigger>
         <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploadingFiles.length > 0}>
           {uploadingFiles.length > 0 ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Upload className="mr-1 h-3 w-3" />}
           Upload
@@ -404,147 +414,149 @@ function CategorySection(props: CategorySectionProps) {
         <input ref={fileRef} type="file" multiple className="hidden" onChange={handleSelect} />
       </div>
 
-      {uploadingFiles.length > 0 && (
-        <div className="space-y-2">
-          {uploadingFiles.map((f) => (
-            <div key={f.name} className="rounded-lg border border-border/40 bg-card/50 p-2.5 space-y-1.5">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-medium truncate max-w-[70%]">{f.name}</p>
-                <span className="text-[10px] text-muted-foreground">{formatFileSize(f.size)}</span>
-              </div>
-              <Progress value={f.progress} className="h-1.5" />
-              <p className="text-[10px] text-muted-foreground">
-                {f.progress < 100 ? `${f.progress}% enviado...` : "Concluído!"}
-              </p>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {dragging && (
-        <div className="flex items-center justify-center rounded-lg border-2 border-dashed border-primary/50 bg-primary/5 py-6">
-          <p className="text-sm text-primary font-medium">Solte os arquivos aqui</p>
-        </div>
-      )}
-
-      {list.length === 0 && !dragging && uploadingFiles.length === 0 && (
-        <div
-          className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border/40 py-6 cursor-pointer hover:border-primary/30 transition"
-          onClick={() => fileRef.current?.click()}
-        >
-          <Upload className="h-5 w-5 text-muted-foreground/40 mb-1.5" />
-          <p className="text-xs text-muted-foreground">Arraste ou clique para anexar</p>
-        </div>
-      )}
-
-      {list.length > 0 && (
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-1.5">
-          {list.map((att) => {
-            const isCover = currentCoverUrl === att.public_url;
-            const isImg = isImage(att.file_type);
-            const uploader = membersMap[att.uploaded_by];
-
-            return (
-              <div
-                key={att.id}
-                className={cn(
-                  "relative group rounded-md border bg-card/30 transition-all",
-                  isCover ? "border-primary/50 ring-1 ring-primary/30" : "border-border/40",
-                )}
-              >
-                {att.public_url ? (
-                  <AttachmentThumbnail
-                    url={att.public_url}
-                    name={att.file_name}
-                    isKnownImage={!!isImg || isHeic(att.file_name)}
-                    onClick={() => (isImg || isHeic(att.file_name)) ? onOpenViewer(att) : undefined}
-                  />
-                ) : (
-                  <div className="w-full aspect-[4/3] flex items-center justify-center overflow-hidden rounded-t-md bg-muted/50">
-                    <FileText className="h-6 w-6 text-muted-foreground/40" />
-                  </div>
-                )}
-
-                <div className="absolute top-1 right-1 z-20">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button size="icon" variant="secondary" className="h-5 w-5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm">
-                        <MoreHorizontal className="h-3 w-3" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-52" side="bottom" sideOffset={4} style={{ zIndex: 99999 }}>
-                      {isImg && att.public_url && onSetCover && !isCover && (
-                        <DropdownMenuItem className="text-xs gap-2" onClick={() => onSetCover(att.public_url!)}>
-                          <ImagePlus className="h-3.5 w-3.5" /> Definir como capa
-                        </DropdownMenuItem>
-                      )}
-                      <DropdownMenuItem className="text-xs gap-2" onClick={() => onMove(att)}>
-                        <ArrowRightLeft className="h-3.5 w-3.5" /> {moveLabel}
-                      </DropdownMenuItem>
-                      {att.public_url && (
-                        <DropdownMenuItem className="text-xs gap-2" onClick={() => onCopyUrl(att.public_url!)}>
-                          <Link2 className="h-3.5 w-3.5" /> Copiar URL
-                        </DropdownMenuItem>
-                      )}
-                      {att.public_url && (
-                        <DropdownMenuItem className="text-xs gap-2" onClick={() => onDownload(att.public_url!, att.file_name)}>
-                          <Download className="h-3.5 w-3.5" /> Baixar
-                        </DropdownMenuItem>
-                      )}
-                      <DropdownMenuItem className="text-xs gap-2" onClick={() => onRenameStart(att)}>
-                        <Pencil className="h-3.5 w-3.5" /> Renomear
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-xs gap-2 text-destructive focus:text-destructive"
-                        onClick={() => onDelete(att)}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" /> Excluir
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+      <CollapsibleContent className="space-y-3 data-[state=open]:mt-3">
+        {uploadingFiles.length > 0 && (
+          <div className="space-y-2">
+            {uploadingFiles.map((f) => (
+              <div key={f.name} className="rounded-lg border border-border/40 bg-card/50 p-2.5 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium truncate max-w-[70%]">{f.name}</p>
+                  <span className="text-[10px] text-muted-foreground">{formatFileSize(f.size)}</span>
                 </div>
+                <Progress value={f.progress} className="h-1.5" />
+                <p className="text-[10px] text-muted-foreground">
+                  {f.progress < 100 ? `${f.progress}% enviado...` : "Concluído!"}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
 
-                <div className="px-1.5 py-1 space-y-0.5">
-                  {renamingId === att.id ? (
-                    <Input
-                      autoFocus
-                      value={renameDraft}
-                      onChange={(e) => setRenameDraft(e.target.value)}
-                      onBlur={() => onRenameCommit(att.id)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") onRenameCommit(att.id);
-                        if (e.key === "Escape") setRenamingId(null);
-                      }}
-                      className="h-5 text-[9px] px-1 py-0 rounded"
+        {dragging && (
+          <div className="flex items-center justify-center rounded-lg border-2 border-dashed border-primary/50 bg-primary/5 py-6">
+            <p className="text-sm text-primary font-medium">Solte os arquivos aqui</p>
+          </div>
+        )}
+
+        {list.length === 0 && !dragging && uploadingFiles.length === 0 && (
+          <div
+            className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border/40 py-6 cursor-pointer hover:border-primary/30 transition"
+            onClick={() => fileRef.current?.click()}
+          >
+            <Upload className="h-5 w-5 text-muted-foreground/40 mb-1.5" />
+            <p className="text-xs text-muted-foreground">Arraste ou clique para anexar</p>
+          </div>
+        )}
+
+        {list.length > 0 && (
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-1.5">
+            {list.map((att) => {
+              const isCover = currentCoverUrl === att.public_url;
+              const isImg = isImage(att.file_type);
+              const uploader = membersMap[att.uploaded_by];
+
+              return (
+                <div
+                  key={att.id}
+                  className={cn(
+                    "relative group rounded-md border bg-card/30 transition-all",
+                    isCover ? "border-primary/50 ring-1 ring-primary/30" : "border-border/40",
+                  )}
+                >
+                  {att.public_url ? (
+                    <AttachmentThumbnail
+                      url={att.public_url}
+                      name={att.file_name}
+                      isKnownImage={!!isImg || isHeic(att.file_name)}
+                      onClick={() => (isImg || isHeic(att.file_name)) ? onOpenViewer(att) : undefined}
                     />
                   ) : (
-                    <>
-                      <p className="truncate text-[9px] font-medium min-w-0">
-                        {att.file_name}
-                        {isCover && <span className="ml-0.5 text-[7px] text-primary font-bold uppercase">Capa</span>}
-                      </p>
-                      {att.file_size && (
-                        <p className="text-[8px] text-muted-foreground">{formatFileSize(att.file_size)}</p>
-                      )}
-                    </>
+                    <div className="w-full aspect-[4/3] flex items-center justify-center overflow-hidden rounded-t-md bg-muted/50">
+                      <FileText className="h-6 w-6 text-muted-foreground/40" />
+                    </div>
                   )}
-                  <div className="flex items-center gap-1 text-[8px] text-muted-foreground">
-                    <span>{format(new Date(att.created_at), "MMM dd 'às' h:mm a")}</span>
-                    {uploader && (
-                      <Avatar className="h-3.5 w-3.5 shrink-0 border border-background ml-auto">
-                        <AvatarImage src={uploader.avatar} />
-                        <AvatarFallback className="text-[5px] bg-primary/10 text-primary">
-                          {initials(uploader.name)}
-                        </AvatarFallback>
-                      </Avatar>
+
+                  <div className="absolute top-1 right-1 z-20">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button size="icon" variant="secondary" className="h-5 w-5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm">
+                          <MoreHorizontal className="h-3 w-3" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-52" side="bottom" sideOffset={4} style={{ zIndex: 99999 }}>
+                        {isImg && att.public_url && onSetCover && !isCover && (
+                          <DropdownMenuItem className="text-xs gap-2" onClick={() => onSetCover(att.public_url!)}>
+                            <ImagePlus className="h-3.5 w-3.5" /> Definir como capa
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem className="text-xs gap-2" onClick={() => onMove(att)}>
+                          <ArrowRightLeft className="h-3.5 w-3.5" /> {moveLabel}
+                        </DropdownMenuItem>
+                        {att.public_url && (
+                          <DropdownMenuItem className="text-xs gap-2" onClick={() => onCopyUrl(att.public_url!)}>
+                            <Link2 className="h-3.5 w-3.5" /> Copiar URL
+                          </DropdownMenuItem>
+                        )}
+                        {att.public_url && (
+                          <DropdownMenuItem className="text-xs gap-2" onClick={() => onDownload(att.public_url!, att.file_name)}>
+                            <Download className="h-3.5 w-3.5" /> Baixar
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem className="text-xs gap-2" onClick={() => onRenameStart(att)}>
+                          <Pencil className="h-3.5 w-3.5" /> Renomear
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-xs gap-2 text-destructive focus:text-destructive"
+                          onClick={() => onDelete(att)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" /> Excluir
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+
+                  <div className="px-1.5 py-1 space-y-0.5">
+                    {renamingId === att.id ? (
+                      <Input
+                        autoFocus
+                        value={renameDraft}
+                        onChange={(e) => setRenameDraft(e.target.value)}
+                        onBlur={() => onRenameCommit(att.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") onRenameCommit(att.id);
+                          if (e.key === "Escape") setRenamingId(null);
+                        }}
+                        className="h-5 text-[9px] px-1 py-0 rounded"
+                      />
+                    ) : (
+                      <>
+                        <p className="truncate text-[9px] font-medium min-w-0">
+                          {att.file_name}
+                          {isCover && <span className="ml-0.5 text-[7px] text-primary font-bold uppercase">Capa</span>}
+                        </p>
+                        {att.file_size && (
+                          <p className="text-[8px] text-muted-foreground">{formatFileSize(att.file_size)}</p>
+                        )}
+                      </>
                     )}
+                    <div className="flex items-center gap-1 text-[8px] text-muted-foreground">
+                      <span>{format(new Date(att.created_at), "MMM dd 'às' h:mm a")}</span>
+                      {uploader && (
+                        <Avatar className="h-3.5 w-3.5 shrink-0 border border-background ml-auto">
+                          <AvatarImage src={uploader.avatar} />
+                          <AvatarFallback className="text-[5px] bg-primary/10 text-primary">
+                            {initials(uploader.name)}
+                          </AvatarFallback>
+                        </Avatar>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
+              );
+            })}
+          </div>
+        )}
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
