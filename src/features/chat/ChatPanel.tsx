@@ -8,9 +8,7 @@ import { useSession } from "@/hooks/use-session";
 import { useTeamMembers, type TeamMemberLite } from "./hooks/useTeamMembers";
 import { useChatPresence } from "./hooks/useChatPresence";
 
-type StatusKey = "online" | "away" | "offline";
-
-const AWAY_WINDOW_MS = 10 * 60 * 1000; // 10 minutes since last heartbeat = ausente
+type StatusKey = "online" | "offline";
 
 const STATUS_META: Record<StatusKey, { label: string; dot: string; ring: string; text: string; bg: string }> = {
   online: {
@@ -19,13 +17,6 @@ const STATUS_META: Record<StatusKey, { label: string; dot: string; ring: string;
     ring: "ring-emerald-500/30",
     text: "text-emerald-600 dark:text-emerald-400",
     bg: "bg-emerald-500/10",
-  },
-  away: {
-    label: "Ausente",
-    dot: "bg-amber-500",
-    ring: "ring-amber-500/30",
-    text: "text-amber-600 dark:text-amber-400",
-    bg: "bg-amber-500/10",
   },
   offline: {
     label: "Offline",
@@ -36,12 +27,8 @@ const STATUS_META: Record<StatusKey, { label: string; dot: string; ring: string;
   },
 };
 
-function computeStatus(is_online: boolean | undefined, last_seen_at: string | null | undefined): StatusKey {
-  if (is_online) return "online";
-  if (!last_seen_at) return "offline";
-  const diff = Date.now() - new Date(last_seen_at).getTime();
-  if (diff <= AWAY_WINDOW_MS) return "away";
-  return "offline";
+function computeStatus(is_online: boolean | undefined): StatusKey {
+  return is_online ? "online" : "offline";
 }
 
 function formatLastSeen(iso: string | null | undefined) {
@@ -86,18 +73,15 @@ export function TeamStatusPanel({ open, onOpenChange }: Props) {
     const q = search.toLowerCase().trim();
     const filtered = otherMembers.filter((m) => !q || m.display_name.toLowerCase().includes(q));
     const online: TeamMemberLite[] = [];
-    const away: TeamMemberLite[] = [];
     const offline: TeamMemberLite[] = [];
     filtered.forEach((m) => {
       const p = presence?.[m.user_id];
-      const s = computeStatus(p?.is_online, p?.last_seen_at);
+      const s = computeStatus(p?.is_online);
       if (s === "online") online.push(m);
-      else if (s === "away") away.push(m);
       else offline.push(m);
     });
     const byName = (a: TeamMemberLite, b: TeamMemberLite) => a.display_name.localeCompare(b.display_name);
     online.sort(byName);
-    away.sort(byName);
     offline.sort((a, b) => {
       const la = presence?.[a.user_id]?.last_seen_at;
       const lb = presence?.[b.user_id]?.last_seen_at;
@@ -106,14 +90,14 @@ export function TeamStatusPanel({ open, onOpenChange }: Props) {
       if (lb) return 1;
       return byName(a, b);
     });
-    return { online, away, offline, total: filtered.length };
+    return { online, offline, total: filtered.length };
   }, [otherMembers, presence, search]);
 
   if (!user) return null;
 
   const renderMember = (m: TeamMemberLite) => {
     const p = presence?.[m.user_id];
-    const status = computeStatus(p?.is_online, p?.last_seen_at);
+    const status = computeStatus(p?.is_online);
     const meta = STATUS_META[status];
     return (
       <div
@@ -189,7 +173,7 @@ export function TeamStatusPanel({ open, onOpenChange }: Props) {
             <div>
               <h2 className="text-base font-bold leading-tight">Status da Equipe</h2>
               <p className="text-[11px] text-muted-foreground">
-                {grouped.online.length} online · {grouped.away.length} ausentes · {grouped.offline.length} offline
+                {grouped.online.length} online · {grouped.offline.length} offline
               </p>
             </div>
           </div>
@@ -206,7 +190,6 @@ export function TeamStatusPanel({ open, onOpenChange }: Props) {
 
         <div className="flex-1 space-y-5 overflow-y-auto px-4 py-4">
           <Section title="Online" items={grouped.online} statusKey="online" />
-          <Section title="Ausente" items={grouped.away} statusKey="away" />
           <Section title="Offline" items={grouped.offline} statusKey="offline" />
           {grouped.total === 0 && (
             <div className="py-12 text-center text-sm text-muted-foreground">
