@@ -97,7 +97,7 @@ export function TeamStatusPanel({ open, onOpenChange }: Props) {
 
   const renderMember = (m: TeamMemberLite) => {
     const p = presence?.[m.user_id];
-    const status = computeStatus(p?.is_online, p?.last_seen_at);
+    const status = computeStatus(p?.is_online);
     const meta = STATUS_META[status];
     return (
       <div
