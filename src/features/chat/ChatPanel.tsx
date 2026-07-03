@@ -8,9 +8,7 @@ import { useSession } from "@/hooks/use-session";
 import { useTeamMembers, type TeamMemberLite } from "./hooks/useTeamMembers";
 import { useChatPresence } from "./hooks/useChatPresence";
 
-type StatusKey = "online" | "away" | "offline";
-
-const AWAY_WINDOW_MS = 10 * 60 * 1000; // 10 minutes since last heartbeat = ausente
+type StatusKey = "online" | "offline";
 
 const STATUS_META: Record<StatusKey, { label: string; dot: string; ring: string; text: string; bg: string }> = {
   online: {
@@ -19,13 +17,6 @@ const STATUS_META: Record<StatusKey, { label: string; dot: string; ring: string;
     ring: "ring-emerald-500/30",
     text: "text-emerald-600 dark:text-emerald-400",
     bg: "bg-emerald-500/10",
-  },
-  away: {
-    label: "Ausente",
-    dot: "bg-amber-500",
-    ring: "ring-amber-500/30",
-    text: "text-amber-600 dark:text-amber-400",
-    bg: "bg-amber-500/10",
   },
   offline: {
     label: "Offline",
@@ -36,12 +27,8 @@ const STATUS_META: Record<StatusKey, { label: string; dot: string; ring: string;
   },
 };
 
-function computeStatus(is_online: boolean | undefined, last_seen_at: string | null | undefined): StatusKey {
-  if (is_online) return "online";
-  if (!last_seen_at) return "offline";
-  const diff = Date.now() - new Date(last_seen_at).getTime();
-  if (diff <= AWAY_WINDOW_MS) return "away";
-  return "offline";
+function computeStatus(is_online: boolean | undefined): StatusKey {
+  return is_online ? "online" : "offline";
 }
 
 function formatLastSeen(iso: string | null | undefined) {
