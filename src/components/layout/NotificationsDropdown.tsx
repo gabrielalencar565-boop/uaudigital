@@ -282,6 +282,8 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
       markAsRead.mutate(n.key);
     }
     if (n.type === "appeal" && n.taskId && n.appealUserId) {
+      // Persist the pending appeal so AdminDeadlineReport picks it up on mount
+      setPendingAppeal({ pmTaskId: n.taskId, userId: n.appealUserId });
       window.dispatchEvent(new CustomEvent("open-appeal-review", {
         detail: { pmTaskId: n.taskId, userId: n.appealUserId },
       }));
@@ -296,6 +298,12 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
     e?.stopPropagation();
     const unreadKeys = notifications.filter(n => !readKeys.has(n.key)).map(n => n.key);
     if (unreadKeys.length > 0) markAllAsRead.mutate(unreadKeys);
+  };
+
+  const handleClearAll = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    const keys = notifications.map(n => n.key);
+    if (keys.length > 0) dismissAll.mutate(keys);
   };
 
   const handleOpenChange = (open: boolean) => {
