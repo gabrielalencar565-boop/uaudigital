@@ -256,8 +256,8 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
     }
 
     items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-    return items.slice(0, 30);
-  }, [mentionsQ.data, assignedQ.data, appealsQ.data, appealPmTasksQ.data, isAdmin, membersMap, today, formatMentionContent]);
+    return items.filter(n => !dismissedKeys.has(n.key)).slice(0, 30);
+  }, [mentionsQ.data, assignedQ.data, appealsQ.data, appealPmTasksQ.data, isAdmin, membersMap, today, formatMentionContent, dismissedKeys]);
 
   const unreadCount = notifications.filter(n => !readKeys.has(n.key)).length;
 
