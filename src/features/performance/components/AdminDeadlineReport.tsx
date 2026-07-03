@@ -26,6 +26,7 @@ import { useQuery as useQ } from "@tanstack/react-query";
 import { useRole } from "@/hooks/use-role";
 import type { PmTask } from "@/features/gestao/pm-types";
 import { normalizePmTagStageKey } from "@/features/gestao/utils/normalize-pm-tag-stage";
+import { getPendingAppeal, setPendingAppeal, subscribePendingAppeal } from "@/lib/pending-appeal-store";
 
 type TaskForReport = {
   id: string;
