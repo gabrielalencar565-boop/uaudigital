@@ -508,7 +508,19 @@ export function AdminDeadlineReport({
   }, [tasksQ.data, tasksQ.isLoading]);
 
   // Listen for "open appeal review" requests coming from the notifications bell.
+  // Uses both a shared store (survives across component mounts) and the legacy
+  // CustomEvent (for callers already mounted). The store makes it work even when
+  // the bell click happens *before* this component mounts (e.g. tab switch).
   useEffect(() => {
+    const applyPending = (p: { pmTaskId: string; userId: string } | null) => {
+      if (!p) return;
+      setPendingAppealOpen({ pmTaskId: p.pmTaskId, userId: p.userId });
+      setSelectedUserId(p.userId);
+    };
+    // Consume any pending appeal set before we mounted.
+    applyPending(getPendingAppeal());
+    const unsub = subscribePendingAppeal(applyPending);
+
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail as { pmTaskId?: string; userId?: string } | undefined;
       if (!detail?.pmTaskId || !detail.userId) return;
@@ -516,7 +528,10 @@ export function AdminDeadlineReport({
       setSelectedUserId(detail.userId);
     };
     window.addEventListener("open-appeal-review", handler);
-    return () => window.removeEventListener("open-appeal-review", handler);
+    return () => {
+      unsub();
+      window.removeEventListener("open-appeal-review", handler);
+    };
   }, []);
 
   // Resolve the pending appeal once tasks are loaded — find the matching task and open the detail dialog.
@@ -530,6 +545,7 @@ export function AdminDeadlineReport({
     if (match) {
       setDetailTask(match);
       setPendingAppealOpen(null);
+      setPendingAppeal(null);
     }
   }, [pendingAppealOpen, tasksQ.data]);
 
