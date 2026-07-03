@@ -1,6 +1,6 @@
 import { useMemo, useCallback } from "react";
 import { normalizeAvatarUrl } from "@/lib/avatar-url";
-import { Bell, AlertTriangle, AtSign, UserPlus, Clock, Check, CheckCheck, FileText } from "lucide-react";
+import { Bell, AlertTriangle, AtSign, UserPlus, Clock, Check, CheckCheck, FileText, Trash2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, differenceInCalendarDays } from "date-fns";
 import { useRole } from "@/hooks/use-role";
@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
+import { setPendingAppeal } from "@/lib/pending-appeal-store";
 
 type NotificationItem = {
   id: string;
@@ -121,6 +122,21 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
 
   const readKeys = readsQ.data ?? new Set<string>();
 
+  // Fetch dismissed notification keys (used by "Limpar")
+  const dismissalsQ = useQuery({
+    queryKey: ["notification_dismissals_bell", user?.id],
+    enabled: !!user?.id,
+    staleTime: 0,
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("notification_dismissals")
+        .select("notification_key")
+        .eq("user_id", user!.id);
+      return new Set<string>((data ?? []).map((r: any) => r.notification_key));
+    },
+  });
+  const dismissedKeys = dismissalsQ.data ?? new Set<string>();
+
   const markAsRead = useMutation({
     mutationFn: async (key: string) => {
       await (supabase as any)
@@ -138,6 +154,20 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
         .upsert(rows, { onConflict: "user_id,notification_key" });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notification_reads"] }),
+  });
+
+  const dismissAll = useMutation({
+    mutationFn: async (keys: string[]) => {
+      if (keys.length === 0) return;
+      const rows = keys.map(k => ({ user_id: user!.id, notification_key: k }));
+      await (supabase as any)
+        .from("notification_dismissals")
+        .upsert(rows, { onConflict: "user_id,notification_key" });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notification_dismissals_bell"] });
+      queryClient.invalidateQueries({ queryKey: ["mentions_dismissals"] });
+    },
   });
 
   const membersMap = useMemo(() => {
@@ -226,8 +256,8 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
     }
 
     items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-    return items.slice(0, 30);
-  }, [mentionsQ.data, assignedQ.data, appealsQ.data, appealPmTasksQ.data, isAdmin, membersMap, today, formatMentionContent]);
+    return items.filter(n => !dismissedKeys.has(n.key)).slice(0, 30);
+  }, [mentionsQ.data, assignedQ.data, appealsQ.data, appealPmTasksQ.data, isAdmin, membersMap, today, formatMentionContent, dismissedKeys]);
 
   const unreadCount = notifications.filter(n => !readKeys.has(n.key)).length;
 
@@ -252,6 +282,8 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
       markAsRead.mutate(n.key);
     }
     if (n.type === "appeal" && n.taskId && n.appealUserId) {
+      // Persist the pending appeal so AdminDeadlineReport picks it up on mount
+      setPendingAppeal({ pmTaskId: n.taskId, userId: n.appealUserId });
       window.dispatchEvent(new CustomEvent("open-appeal-review", {
         detail: { pmTaskId: n.taskId, userId: n.appealUserId },
       }));
@@ -266,6 +298,12 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
     e?.stopPropagation();
     const unreadKeys = notifications.filter(n => !readKeys.has(n.key)).map(n => n.key);
     if (unreadKeys.length > 0) markAllAsRead.mutate(unreadKeys);
+  };
+
+  const handleClearAll = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    const keys = notifications.map(n => n.key);
+    if (keys.length > 0) dismissAll.mutate(keys);
   };
 
   const handleOpenChange = (open: boolean) => {
@@ -287,17 +325,31 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
       <PopoverContent align="end" className="w-96 rounded-xl p-0">
         <div className="flex items-center justify-between border-b border-border/40 px-4 py-3">
           <h3 className="text-sm font-semibold">Notificações</h3>
-          {unreadCount > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-              onClick={handleMarkAllRead}
-            >
-              <CheckCheck className="h-3.5 w-3.5" />
-              Marcar tudo como lido
-            </Button>
-          )}
+          <div className="flex items-center gap-1">
+            {unreadCount > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                onClick={handleMarkAllRead}
+              >
+                <CheckCheck className="h-3.5 w-3.5" />
+                Marcar tudo como lido
+              </Button>
+            )}
+            {notifications.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-destructive"
+                onClick={handleClearAll}
+                title="Limpar notificações"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Limpar
+              </Button>
+            )}
+          </div>
         </div>
         <ScrollArea className="max-h-[400px]">
           {notifications.length === 0 ? (
