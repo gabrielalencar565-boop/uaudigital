@@ -73,18 +73,15 @@ export function TeamStatusPanel({ open, onOpenChange }: Props) {
     const q = search.toLowerCase().trim();
     const filtered = otherMembers.filter((m) => !q || m.display_name.toLowerCase().includes(q));
     const online: TeamMemberLite[] = [];
-    const away: TeamMemberLite[] = [];
     const offline: TeamMemberLite[] = [];
     filtered.forEach((m) => {
       const p = presence?.[m.user_id];
-      const s = computeStatus(p?.is_online, p?.last_seen_at);
+      const s = computeStatus(p?.is_online);
       if (s === "online") online.push(m);
-      else if (s === "away") away.push(m);
       else offline.push(m);
     });
     const byName = (a: TeamMemberLite, b: TeamMemberLite) => a.display_name.localeCompare(b.display_name);
     online.sort(byName);
-    away.sort(byName);
     offline.sort((a, b) => {
       const la = presence?.[a.user_id]?.last_seen_at;
       const lb = presence?.[b.user_id]?.last_seen_at;
@@ -93,7 +90,7 @@ export function TeamStatusPanel({ open, onOpenChange }: Props) {
       if (lb) return 1;
       return byName(a, b);
     });
-    return { online, away, offline, total: filtered.length };
+    return { online, offline, total: filtered.length };
   }, [otherMembers, presence, search]);
 
   if (!user) return null;
