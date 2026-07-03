@@ -1,290 +1,219 @@
-import { useEffect, useMemo, useState } from "react";
-import { Search, Users, Hash } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Search, Users, Circle } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { useSession } from "@/hooks/use-session";
-import { useRole } from "@/hooks/use-role";
-import { ChatThread } from "./components/ChatThread";
-import { useTeamMembers } from "./hooks/useTeamMembers";
+import { useTeamMembers, type TeamMemberLite } from "./hooks/useTeamMembers";
 import { useChatPresence } from "./hooks/useChatPresence";
-import { useGeneralConversation } from "./hooks/useGeneralConversation";
-import { useChatUnread } from "./hooks/useChatUnread";
-import { getOrCreateDirect } from "./chat-api";
-import { setActiveConversation, setChatPanelOpen } from "./active-chat-state";
+
+type StatusKey = "online" | "away" | "offline";
+
+const AWAY_WINDOW_MS = 10 * 60 * 1000; // 10 minutes since last heartbeat = ausente
+
+const STATUS_META: Record<StatusKey, { label: string; dot: string; ring: string; text: string; bg: string }> = {
+  online: {
+    label: "Online",
+    dot: "bg-emerald-500",
+    ring: "ring-emerald-500/30",
+    text: "text-emerald-600 dark:text-emerald-400",
+    bg: "bg-emerald-500/10",
+  },
+  away: {
+    label: "Ausente",
+    dot: "bg-amber-500",
+    ring: "ring-amber-500/30",
+    text: "text-amber-600 dark:text-amber-400",
+    bg: "bg-amber-500/10",
+  },
+  offline: {
+    label: "Offline",
+    dot: "bg-muted-foreground/50",
+    ring: "ring-muted-foreground/20",
+    text: "text-muted-foreground",
+    bg: "bg-muted/50",
+  },
+};
+
+function computeStatus(is_online: boolean | undefined, last_seen_at: string | null | undefined): StatusKey {
+  if (is_online) return "online";
+  if (!last_seen_at) return "offline";
+  const diff = Date.now() - new Date(last_seen_at).getTime();
+  if (diff <= AWAY_WINDOW_MS) return "away";
+  return "offline";
+}
 
 function formatLastSeen(iso: string | null | undefined) {
-  if (!iso) return "visto por último há algum tempo";
+  if (!iso) return "sem registro";
   const now = new Date();
   const d = new Date(iso);
   const time = d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
   const nowDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const dDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
   const diffDays = Math.round((nowDate.getTime() - dDate.getTime()) / 86_400_000);
-  if (diffDays === 0) return `visto por último hoje às ${time}`;
-  if (diffDays === 1) return `visto por último ontem às ${time}`;
+  if (diffDays === 0) return `visto hoje às ${time}`;
+  if (diffDays === 1) return `visto ontem às ${time}`;
   const dateStr = d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
-  return `visto por último ${dateStr} às ${time}`;
+  return `visto em ${dateStr} às ${time}`;
+}
+
+function initialsOf(name: string) {
+  return name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase() ?? "")
+    .join("");
 }
 
 interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  initialConversationId?: string | null;
 }
 
-export function ChatPanel({ open, onOpenChange, initialConversationId }: Props) {
+export function TeamStatusPanel({ open, onOpenChange }: Props) {
   const { user } = useSession();
-  const { isAdmin } = useRole(user?.id);
-  const generalId = useGeneralConversation();
   const { data: members } = useTeamMembers();
   const { data: presence } = useChatPresence();
-  const { data: unread } = useChatUnread();
-  const [tab, setTab] = useState<"general" | "direct">("direct");
-  const [activeConv, setActiveConv] = useState<string | null>(null);
-  const [activeOther, setActiveOther] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
   const otherMembers = useMemo(
     () => (members ?? []).filter((m) => m.user_id !== user?.id),
-    [members, user]
+    [members, user],
   );
 
-  const filteredMembers = useMemo(() => {
+  const grouped = useMemo(() => {
     const q = search.toLowerCase().trim();
-    return otherMembers.filter((m) => !q || m.display_name.toLowerCase().includes(q));
-  }, [otherMembers, search]);
-
-  const { onlineMembers, offlineMembers } = useMemo(() => {
-    const online: typeof filteredMembers = [];
-    const offline: typeof filteredMembers = [];
-    filteredMembers.forEach((m) => {
-      if (presence?.[m.user_id]?.is_online) online.push(m);
+    const filtered = otherMembers.filter((m) => !q || m.display_name.toLowerCase().includes(q));
+    const online: TeamMemberLite[] = [];
+    const away: TeamMemberLite[] = [];
+    const offline: TeamMemberLite[] = [];
+    filtered.forEach((m) => {
+      const p = presence?.[m.user_id];
+      const s = computeStatus(p?.is_online, p?.last_seen_at);
+      if (s === "online") online.push(m);
+      else if (s === "away") away.push(m);
       else offline.push(m);
     });
-    online.sort((a, b) => a.display_name.localeCompare(b.display_name));
+    const byName = (a: TeamMemberLite, b: TeamMemberLite) => a.display_name.localeCompare(b.display_name);
+    online.sort(byName);
+    away.sort(byName);
     offline.sort((a, b) => {
       const la = presence?.[a.user_id]?.last_seen_at;
       const lb = presence?.[b.user_id]?.last_seen_at;
       if (la && lb) return new Date(lb).getTime() - new Date(la).getTime();
       if (la) return -1;
       if (lb) return 1;
-      return a.display_name.localeCompare(b.display_name);
+      return byName(a, b);
     });
-    return { onlineMembers: online, offlineMembers: offline };
-  }, [filteredMembers, presence]);
-
-
-  const unreadByOther = useMemo(() => {
-    const m = new Map<string, number>();
-    (unread ?? []).forEach((u) => {
-      if (u.type === "direct" && u.other_user_id) m.set(u.other_user_id, u.unread_count);
-    });
-    return m;
-  }, [unread]);
-
-  const generalUnread = (unread ?? []).find((u) => u.type === "general")?.unread_count ?? 0;
-
-  const openDirect = async (otherId: string) => {
-    setActiveOther(otherId);
-    const id = await getOrCreateDirect(otherId);
-    if (id) setActiveConv(id);
-  };
-
-  const effectiveConv = tab === "general" ? generalId : activeConv;
-
-  // Track active conversation globally so the notifier can suppress
-  // sound/toast when the user is already looking at that thread.
-  useEffect(() => {
-    setChatPanelOpen(open);
-    setActiveConversation(open ? effectiveConv : null);
-    return () => {
-      setActiveConversation(null);
-      setChatPanelOpen(false);
-    };
-  }, [open, effectiveConv]);
-
-  // When opened with an initial conv id (e.g. from a toast click), pick the
-  // matching tab/thread.
-  useEffect(() => {
-    if (!open || !initialConversationId) return;
-    if (initialConversationId === generalId) {
-      setTab("general");
-      return;
-    }
-    const other = (unread ?? []).find((u) => u.conversation_id === initialConversationId)?.other_user_id;
-    setTab("direct");
-    setActiveConv(initialConversationId);
-    if (other) setActiveOther(other);
-  }, [open, initialConversationId, generalId, unread]);
+    return { online, away, offline, total: filtered.length };
+  }, [otherMembers, presence, search]);
 
   if (!user) return null;
 
-  const renderMemberRow = (m: any) => {
-    const online = !!presence?.[m.user_id]?.is_online;
-    const unreadCount = unreadByOther.get(m.user_id) ?? 0;
-    const active = activeOther === m.user_id;
+  const renderMember = (m: TeamMemberLite) => {
+    const p = presence?.[m.user_id];
+    const status = computeStatus(p?.is_online, p?.last_seen_at);
+    const meta = STATUS_META[status];
     return (
-      <button
+      <div
         key={m.user_id}
-        onClick={() => openDirect(m.user_id)}
-        className={cn(
-          "flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent/50",
-          active && "bg-accent",
-          !online && "opacity-70"
-        )}
+        className="group flex items-center gap-3 rounded-xl border border-border/40 bg-card/60 px-3 py-2.5 transition hover:border-border hover:bg-card"
       >
-        <div className="relative">
-          <Avatar className="h-8 w-8">
-            <AvatarImage src={m.avatar_url ?? undefined} />
-            <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
-              {m.display_name.split(" ").slice(0, 2).map((p: string) => p[0]?.toUpperCase() ?? "").join("")}
+        <div className="relative shrink-0">
+          <Avatar className={cn("h-11 w-11 ring-2", meta.ring)}>
+            <AvatarImage src={m.avatar_url ?? undefined} alt={m.display_name} />
+            <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
+              {initialsOf(m.display_name) || "?"}
             </AvatarFallback>
           </Avatar>
           <span
             className={cn(
-              "absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-background",
-              online ? "bg-green-500" : "bg-muted-foreground/40"
+              "absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background",
+              meta.dot,
             )}
           />
         </div>
-        <div className="flex-1 min-w-0">
-          <div className="truncate font-medium">{m.display_name}</div>
-          <div className="truncate text-[10px] text-muted-foreground">
-            {online ? m.role_title : formatLastSeen(presence?.[m.user_id]?.last_seen_at)}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="truncate text-sm font-semibold text-foreground">{m.display_name}</span>
+            <span
+              className={cn(
+                "inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium",
+                meta.bg,
+                meta.text,
+              )}
+            >
+              <Circle className={cn("h-1.5 w-1.5 fill-current stroke-none")} />
+              {meta.label}
+            </span>
           </div>
+          {m.role_title && (
+            <div className="truncate text-[11px] text-muted-foreground">{m.role_title}</div>
+          )}
+          {status !== "online" && (
+            <div className="truncate text-[10px] text-muted-foreground/70">
+              {formatLastSeen(p?.last_seen_at)}
+            </div>
+          )}
         </div>
-        {unreadCount > 0 && (
-          <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] text-primary-foreground">
-            {unreadCount}
-          </span>
-        )}
-      </button>
+      </div>
     );
   };
 
+  const Section = ({ title, items, statusKey }: { title: string; items: TeamMemberLite[]; statusKey: StatusKey }) => {
+    if (items.length === 0) return null;
+    const meta = STATUS_META[statusKey];
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 px-1">
+          <span className={cn("h-1.5 w-1.5 rounded-full", meta.dot)} />
+          <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            {title}
+          </h3>
+          <span className="text-[11px] text-muted-foreground/60">({items.length})</span>
+        </div>
+        <div className="space-y-1.5">{items.map(renderMember)}</div>
+      </div>
+    );
+  };
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-2xl p-0 flex flex-col gap-0">
-        <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="flex h-full flex-col">
-          <div className="border-b border-border/40 px-4 pt-4 pb-2">
-            <h2 className="text-lg font-bold mb-3">Chat UAU</h2>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="direct" className="gap-2">
-                <Users className="h-4 w-4" /> Privado
-                {onlineMembers.length > 0 && (
-                  <span className="ml-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-green-500/20 px-1 text-[10px] font-semibold text-green-600 dark:text-green-400">
-                    {onlineMembers.length}
-                  </span>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="general" className="gap-2">
-                <Hash className="h-4 w-4" /> Geral
-                {generalUnread > 0 && (
-                  <span className="ml-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] text-primary-foreground">
-                    {generalUnread}
-                  </span>
-                )}
-              </TabsTrigger>
-            </TabsList>
-          </div>
-
-          <TabsContent value="direct" className="flex-1 overflow-hidden m-0 flex">
-            <aside className="w-64 border-r border-border/40 flex flex-col">
-              <div className="p-2 border-b border-border/40">
-                <div className="relative">
-                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                  <Input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Buscar colaborador..."
-                    className="pl-7 h-8 text-xs"
-                  />
-                </div>
-              </div>
-              <div className="flex-1 overflow-y-auto">
-                <div className="px-3 pt-3 pb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                  Online <span className="text-muted-foreground/60">({onlineMembers.length})</span>
-                </div>
-                {onlineMembers.length > 0 ? (
-                  onlineMembers.map(renderMemberRow)
-                ) : (
-                  <div className="px-3 py-2 text-[11px] text-muted-foreground/70 italic">Ninguém online no momento</div>
-                )}
-
-                <div className="px-3 pt-4 pb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
-                  Offline <span className="text-muted-foreground/60">({offlineMembers.length})</span>
-                </div>
-                {offlineMembers.map(renderMemberRow)}
-
-                {filteredMembers.length === 0 && (
-                  <div className="p-4 text-center text-xs text-muted-foreground">Nenhum colaborador encontrado</div>
-                )}
-              </div>
-            </aside>
-            <div className="flex-1 min-w-0">
-              <ChatThread
-                conversationId={effectiveConv}
-                currentUserId={user.id}
-                isAdmin={isAdmin}
-                isGeneral={false}
-                headerSlot={
-                  activeOther ? (
-                    <div className="border-b border-border/40 px-4 py-2 flex items-center gap-2 text-sm">
-                      {(() => {
-                        const m = (members ?? []).find((x) => x.user_id === activeOther);
-                        const online = !!presence?.[activeOther]?.is_online;
-                        return (
-                          <>
-                            <div className="relative">
-                              <Avatar className="h-7 w-7">
-                                <AvatarImage src={m?.avatar_url ?? undefined} />
-                                <AvatarFallback className="text-[10px]">{m?.display_name?.[0]}</AvatarFallback>
-                              </Avatar>
-                              <span
-                                className={cn(
-                                  "absolute bottom-0 right-0 h-2 w-2 rounded-full border-2 border-background",
-                                  online ? "bg-green-500" : "bg-muted-foreground/40"
-                                )}
-                              />
-                            </div>
-                            <div>
-                              <div className="font-semibold leading-tight">{m?.display_name}</div>
-                              <div className="text-[10px] text-muted-foreground flex items-center gap-1">
-                                <span className={cn("h-1.5 w-1.5 rounded-full", online ? "bg-green-500" : "bg-muted-foreground/40")} />
-                                {online ? "Online" : formatLastSeen(presence?.[activeOther ?? ""]?.last_seen_at)}
-                              </div>
-                            </div>
-                          </>
-                        );
-
-                      })()}
-                    </div>
-                  ) : undefined
-                }
-              />
+      <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col gap-0">
+        <div className="border-b border-border/40 px-5 pt-5 pb-4">
+          <div className="flex items-center gap-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Users className="h-4 w-4" />
             </div>
-          </TabsContent>
-
-          <TabsContent value="general" className="flex-1 overflow-hidden m-0">
-            <ChatThread
-              conversationId={effectiveConv}
-              currentUserId={user.id}
-              isAdmin={isAdmin}
-              isGeneral
-              headerSlot={
-                <div className="border-b border-border/40 px-4 py-2 text-xs text-muted-foreground">
-                  Chat geral da empresa • {(members ?? []).length} colaboradores
-                </div>
-              }
+            <div>
+              <h2 className="text-base font-bold leading-tight">Status da Equipe</h2>
+              <p className="text-[11px] text-muted-foreground">
+                {grouped.online.length} online · {grouped.away.length} ausentes · {grouped.offline.length} offline
+              </p>
+            </div>
+          </div>
+          <div className="relative mt-4">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar colaborador..."
+              className="h-9 pl-8 text-xs"
             />
-          </TabsContent>
-        </Tabs>
+          </div>
+        </div>
+
+        <div className="flex-1 space-y-5 overflow-y-auto px-4 py-4">
+          <Section title="Online" items={grouped.online} statusKey="online" />
+          <Section title="Ausente" items={grouped.away} statusKey="away" />
+          <Section title="Offline" items={grouped.offline} statusKey="offline" />
+          {grouped.total === 0 && (
+            <div className="py-12 text-center text-sm text-muted-foreground">
+              Nenhum colaborador encontrado
+            </div>
+          )}
+        </div>
       </SheetContent>
     </Sheet>
   );
