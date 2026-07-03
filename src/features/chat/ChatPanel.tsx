@@ -173,7 +173,7 @@ export function TeamStatusPanel({ open, onOpenChange }: Props) {
             <div>
               <h2 className="text-base font-bold leading-tight">Status da Equipe</h2>
               <p className="text-[11px] text-muted-foreground">
-                {grouped.online.length} online · {grouped.away.length} ausentes · {grouped.offline.length} offline
+                {grouped.online.length} online · {grouped.offline.length} offline
               </p>
             </div>
           </div>
@@ -190,7 +190,6 @@ export function TeamStatusPanel({ open, onOpenChange }: Props) {
 
         <div className="flex-1 space-y-5 overflow-y-auto px-4 py-4">
           <Section title="Online" items={grouped.online} statusKey="online" />
-          <Section title="Ausente" items={grouped.away} statusKey="away" />
           <Section title="Offline" items={grouped.offline} statusKey="offline" />
           {grouped.total === 0 && (
             <div className="py-12 text-center text-sm text-muted-foreground">
