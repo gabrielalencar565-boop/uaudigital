@@ -158,7 +158,15 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
   const notifications = useMemo<NotificationItem[]>(() => {
     const items: NotificationItem[] = [];
 
-    (mentionsQ.data ?? []).forEach((c: any) => {
+    // Dedupe cloned mentions (same author + content across split subtasks) — keep earliest
+    const mentionsSorted = [...(mentionsQ.data ?? [])].sort(
+      (a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+    const seenMentions = new Set<string>();
+    mentionsSorted.forEach((c: any) => {
+      const dedupeKey = `${c.author_id}::${(c.content ?? "").trim()}`;
+      if (seenMentions.has(dedupeKey)) return;
+      seenMentions.add(dedupeKey);
       const author = membersMap[c.author_id];
       items.push({
         id: `mention-${c.id}`,
