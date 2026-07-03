@@ -1,25 +1,24 @@
-import { useEffect, useState } from "react";
-import { MessageCircle } from "lucide-react";
-import { useTotalUnread } from "./hooks/useChatUnread";
-import { useChatNotifier } from "./hooks/useChatNotifier";
-import { ChatPanel } from "./ChatPanel";
+import { useEffect, useMemo, useState } from "react";
+import { Users } from "lucide-react";
+import { TeamStatusPanel } from "./ChatPanel";
+import { useChatPresence } from "./hooks/useChatPresence";
+import { useTeamMembers } from "./hooks/useTeamMembers";
+import { useSession } from "@/hooks/use-session";
 
 export function ChatBellButton() {
   const [open, setOpen] = useState(false);
-  const [initialConv, setInitialConv] = useState<string | null>(null);
-  const total = useTotalUnread();
+  const { user } = useSession();
+  const { data: presence } = useChatPresence();
+  const { data: members } = useTeamMembers();
 
-  useChatNotifier((conversationId) => {
-    setInitialConv(conversationId);
-    setOpen(true);
-  });
+  const onlineCount = useMemo(() => {
+    if (!members) return 0;
+    return members.filter((m) => m.user_id !== user?.id && presence?.[m.user_id]?.is_online).length;
+  }, [members, presence, user?.id]);
 
+  // Legacy event: some flows still dispatch `uau:open-chat` to open the panel.
   useEffect(() => {
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { conversationId?: string } | undefined;
-      if (detail?.conversationId) setInitialConv(detail.conversationId);
-      setOpen(true);
-    };
+    const handler = () => setOpen(true);
     window.addEventListener("uau:open-chat", handler);
     return () => window.removeEventListener("uau:open-chat", handler);
   }, []);
@@ -29,16 +28,17 @@ export function ChatBellButton() {
       <button
         onClick={() => setOpen(true)}
         className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg transition hover:bg-accent/50"
-        aria-label="Abrir chat"
+        aria-label="Status da equipe"
+        title="Status da equipe"
       >
-        <MessageCircle className="h-[18px] w-[18px]" />
-        {total > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
-            {total > 99 ? "99+" : total}
+        <Users className="h-[18px] w-[18px]" />
+        {onlineCount > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-green-500 px-1 text-[10px] font-semibold text-white ring-2 ring-background">
+            {onlineCount > 99 ? "99+" : onlineCount}
           </span>
         )}
       </button>
-      <ChatPanel open={open} onOpenChange={setOpen} initialConversationId={initialConv} />
+      <TeamStatusPanel open={open} onOpenChange={setOpen} />
     </>
   );
 }
