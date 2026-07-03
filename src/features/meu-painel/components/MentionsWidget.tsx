@@ -117,13 +117,27 @@ export function MentionsWidget({ onOpenTask }: MentionsWidgetProps) {
   const mentions = useMemo(() => {
     const now = Date.now();
     const dayMs = 24 * 60 * 60 * 1000;
-    return (mentionsQ.data ?? []).filter((m: any) => {
-      const key = `mention-${m.id}`;
-      if (dismissed.has(key)) return false;
-      const readAt = reads.get(key);
-      if (readAt && now - new Date(readAt).getTime() > dayMs) return false;
-      return true;
+    // Dedupe cloned mentions (same author+content) — keep earliest occurrence
+    const sorted = [...(mentionsQ.data ?? [])].sort(
+      (a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+    const seen = new Set<string>();
+    const deduped: any[] = [];
+    sorted.forEach((m: any) => {
+      const k = `${m.author_id}::${(m.content ?? "").trim()}`;
+      if (seen.has(k)) return;
+      seen.add(k);
+      deduped.push(m);
     });
+    return deduped
+      .filter((m: any) => {
+        const key = `mention-${m.id}`;
+        if (dismissed.has(key)) return false;
+        const readAt = reads.get(key);
+        if (readAt && now - new Date(readAt).getTime() > dayMs) return false;
+        return true;
+      })
+      .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }, [mentionsQ.data, reads, dismissed]);
 
   const formatContent = (content: string) => {
