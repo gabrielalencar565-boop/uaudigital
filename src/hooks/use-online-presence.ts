@@ -91,15 +91,9 @@ export function useOnlinePresence() {
           }),
         );
 
-        const openDirect = async () => {
-          try {
-            const convId = await getOrCreateDirect(key);
-            window.dispatchEvent(
-              new CustomEvent("uau:open-chat", { detail: { conversationId: convId } }),
-            );
-          } catch {
-            window.dispatchEvent(new CustomEvent("uau:open-chat"));
-          }
+        const openDirect = () => {
+          // Chat de mensagens foi removido; abre apenas o painel de status da equipe.
+          window.dispatchEvent(new CustomEvent("uau:open-chat"));
         };
 
         const card = h(
