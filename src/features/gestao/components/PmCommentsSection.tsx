@@ -470,44 +470,51 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
     setFileDescription("");
   };
 
+  const sendingRef = useRef(false);
   const handleSend = async () => {
     if (!content.trim() && !pendingFile) return;
+    if (sendingRef.current || addComment.isPending || uploadAttachment.isPending) return;
+    sendingRef.current = true;
 
-    let imageUrl: string | null = null;
-    let fileName: string | undefined;
-    if (pendingFile) {
-      try {
-        const att = await uploadAttachment.mutateAsync({ task_id: taskId, file: pendingFile.file });
-        imageUrl = att.public_url;
-        fileName = pendingFile.file.name;
-      } catch { toast.error("Erro ao enviar arquivo"); return; }
+    try {
+      let imageUrl: string | null = null;
+      let fileName: string | undefined;
+      if (pendingFile) {
+        try {
+          const att = await uploadAttachment.mutateAsync({ task_id: taskId, file: pendingFile.file });
+          imageUrl = att.public_url;
+          fileName = pendingFile.file.name;
+        } catch { toast.error("Erro ao enviar arquivo"); return; }
+      }
+
+      const linkUrl = extractUrl(content.trim());
+
+      let linkTitle: string | undefined;
+      let linkImage: string | undefined;
+      if (linkUrl && typingPreview) {
+        linkTitle = typingPreview.title ?? undefined;
+        linkImage = typingPreview.image ?? undefined;
+      } else if (linkUrl) {
+        const data = await fetchLinkPreview(linkUrl);
+        if (data) { linkTitle = data.title ?? undefined; linkImage = data.image ?? undefined; }
+      }
+
+      const storageContent = contentToStorage(content.trim());
+      await addComment.mutateAsync({
+        task_id: taskId,
+        content: storageContent || (pendingFile ? (fileDescription || fileName || "Arquivo anexado") : ""),
+        image_url: imageUrl ?? undefined,
+        image_description: pendingFile ? (fileDescription || fileName) : undefined,
+        link_url: linkUrl ?? undefined,
+        link_title: linkTitle,
+        link_image: linkImage,
+      });
+      setContent("");
+      setMentionMap({});
+      clearPendingFile();
+    } finally {
+      sendingRef.current = false;
     }
-
-    const linkUrl = extractUrl(content.trim());
-
-    let linkTitle: string | undefined;
-    let linkImage: string | undefined;
-    if (linkUrl && typingPreview) {
-      linkTitle = typingPreview.title ?? undefined;
-      linkImage = typingPreview.image ?? undefined;
-    } else if (linkUrl) {
-      const data = await fetchLinkPreview(linkUrl);
-      if (data) { linkTitle = data.title ?? undefined; linkImage = data.image ?? undefined; }
-    }
-
-    const storageContent = contentToStorage(content.trim());
-    await addComment.mutateAsync({
-      task_id: taskId,
-      content: storageContent || (pendingFile ? (fileDescription || fileName || "Arquivo anexado") : ""),
-      image_url: imageUrl ?? undefined,
-      image_description: pendingFile ? (fileDescription || fileName) : undefined,
-      link_url: linkUrl ?? undefined,
-      link_title: linkTitle,
-      link_image: linkImage,
-    });
-    setContent("");
-    setMentionMap({});
-    clearPendingFile();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
