@@ -122,6 +122,21 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
 
   const readKeys = readsQ.data ?? new Set<string>();
 
+  // Fetch dismissed notification keys (used by "Limpar")
+  const dismissalsQ = useQuery({
+    queryKey: ["notification_dismissals_bell", user?.id],
+    enabled: !!user?.id,
+    staleTime: 0,
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("notification_dismissals")
+        .select("notification_key")
+        .eq("user_id", user!.id);
+      return new Set<string>((data ?? []).map((r: any) => r.notification_key));
+    },
+  });
+  const dismissedKeys = dismissalsQ.data ?? new Set<string>();
+
   const markAsRead = useMutation({
     mutationFn: async (key: string) => {
       await (supabase as any)
@@ -139,6 +154,20 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
         .upsert(rows, { onConflict: "user_id,notification_key" });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notification_reads"] }),
+  });
+
+  const dismissAll = useMutation({
+    mutationFn: async (keys: string[]) => {
+      if (keys.length === 0) return;
+      const rows = keys.map(k => ({ user_id: user!.id, notification_key: k }));
+      await (supabase as any)
+        .from("notification_dismissals")
+        .upsert(rows, { onConflict: "user_id,notification_key" });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notification_dismissals_bell"] });
+      queryClient.invalidateQueries({ queryKey: ["mentions_dismissals"] });
+    },
   });
 
   const membersMap = useMemo(() => {
