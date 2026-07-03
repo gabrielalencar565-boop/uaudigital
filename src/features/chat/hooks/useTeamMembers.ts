@@ -1,6 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import type { TeamMemberLite } from "../types";
+
+export type TeamMemberLite = {
+  user_id: string;
+  display_name: string;
+  role_title: string | null;
+  avatar_url: string | null;
+  is_active: boolean;
+};
 
 export function useTeamMembers() {
   return useQuery({
