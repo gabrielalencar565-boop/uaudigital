@@ -1,6 +1,6 @@
 import { useMemo, useCallback } from "react";
 import { normalizeAvatarUrl } from "@/lib/avatar-url";
-import { Bell, AlertTriangle, AtSign, UserPlus, Clock, Check, CheckCheck, FileText } from "lucide-react";
+import { Bell, AlertTriangle, AtSign, UserPlus, Clock, Check, CheckCheck, FileText, Trash2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, differenceInCalendarDays } from "date-fns";
 import { useRole } from "@/hooks/use-role";
@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
+import { setPendingAppeal } from "@/lib/pending-appeal-store";
 
 type NotificationItem = {
   id: string;
