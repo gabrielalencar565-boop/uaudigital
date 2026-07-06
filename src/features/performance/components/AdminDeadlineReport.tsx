@@ -798,6 +798,8 @@ export function AdminDeadlineReport({
                             type="button"
                             className="min-w-0 text-left group cursor-pointer"
                             onClick={() => {
+                              const hasAppeal = appealsByTaskUser.has(`${t.id}::${selectedUserId}`);
+                              if (hasAppeal) { setDetailTask(t); return; }
                               const pmId = extractPmTaskId(t.description);
                               if (pmId) {
                                 const pmTask = (pmTasksQ.data ?? []).find(p => p.id === pmId);
@@ -813,21 +815,30 @@ export function AdminDeadlineReport({
                                 const ap = appealsByTaskUser.get(`${t.id}::${selectedUserId}`) as any;
                                 if (!ap) return null;
                                 return (
-                                  <Badge
-                                    variant={ap.status === "aprovado" ? "secondary" : ap.status === "rejeitado" ? "destructive" : "default"}
-                                    className={cn(
-                                      "text-[9px] px-1.5 py-0",
-                                      ap.status === "pendente" && "bg-yellow-400 hover:bg-yellow-400 text-black border-transparent",
-                                    )}
+                                  <span
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={(e) => { e.stopPropagation(); setDetailTask(t); }}
+                                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); setDetailTask(t); } }}
+                                    className="inline-flex cursor-pointer"
                                   >
-                                    {ap.status === "pendente" ? "📋 Análise" : ap.status === "aprovado" ? "✓ Aprovado" : "✕ Rejeitado"}
-                                  </Badge>
+                                    <Badge
+                                      variant={ap.status === "aprovado" ? "secondary" : ap.status === "rejeitado" ? "destructive" : "default"}
+                                      className={cn(
+                                        "text-[9px] px-1.5 py-0 hover:opacity-80",
+                                        ap.status === "pendente" && "bg-yellow-400 hover:bg-yellow-400 text-black border-transparent",
+                                      )}
+                                    >
+                                      {ap.status === "pendente" ? "📋 Análise" : ap.status === "aprovado" ? "✓ Aprovado" : "✕ Rejeitado"}
+                                    </Badge>
+                                  </span>
                                 );
                               })()}
                             </p>
                             <p className="truncate text-xs text-muted-foreground">{teamById.get(t.assigned_user_id)?.role_title}</p>
                           </button>
                         </TableCell>
+
                         <TableCell className="text-center">
                           {(() => {
                             const stageKey = getReportStageKey(t);
