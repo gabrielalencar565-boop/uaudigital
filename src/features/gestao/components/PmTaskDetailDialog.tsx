@@ -1075,6 +1075,8 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
       await sb.from("pm_tasks")
         .update({ status_global: "concluido" })
         .in("id", allIds);
+      // Sync scoring for periodic stage — creates mirror rows in `tasks` and recomputes performance
+      await syncCompletedStage(task.stage_current);
       queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
       queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
       queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
