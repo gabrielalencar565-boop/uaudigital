@@ -21,6 +21,7 @@ const CATEGORIES = [
   { value: "operacional", label: "Operacional" },
   { value: "financeira", label: "Financeira" },
   { value: "comercial", label: "Comercial" },
+  { value: "investimento", label: "Investimento" },
 ];
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -28,6 +29,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   operacional: "bg-red-500/10 text-red-600 border-red-500/20",
   financeira: "bg-slate-500/10 text-slate-600 border-slate-500/20",
   comercial: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20",
+  investimento: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
 };
 
 const CARD_BRANDS = [
