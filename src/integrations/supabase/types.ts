@@ -3630,6 +3630,7 @@ export type Database = {
         | "operacional"
         | "financeira"
         | "comercial"
+        | "investimento"
       logo_shape_type: "circle" | "square"
       magic2_stage_type:
         | "captacao"
@@ -3848,6 +3849,7 @@ export const Constants = {
         "operacional",
         "financeira",
         "comercial",
+        "investimento",
       ],
       logo_shape_type: ["circle", "square"],
       magic2_stage_type: [
