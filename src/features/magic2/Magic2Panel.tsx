@@ -1,18 +1,13 @@
 import { useMemo, useState } from "react";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Target } from "lucide-react";
-import { useToggleMagic2Stage, useCreateAndToggleMagic2Stage } from "@/features/magic2/hooks/use-magic2";
 import { useMagic2Dashboard } from "@/features/magic2/hooks/use-magic2-dashboard";
-import { useSession } from "@/hooks/use-session";
+import { useMagic2ScheduledStages } from "@/features/magic2/hooks/use-magic2-scheduled-stages";
 import { MonthYearNav } from "@/features/magic2/components/MonthYearNav";
 import { Magic2Checklist } from "@/features/magic2/components/Magic2Checklist";
 import { Magic2Dashboard } from "@/features/magic2/components/Magic2Dashboard";
 import { CountdownTo27Badge } from "@/features/magic2/components/CountdownTo27Badge";
-import type { Magic2StageKey } from "@/features/magic2/magic2-stages";
 
 function getCycleMonthYear(now: Date) {
   // Regra do ciclo: se passou do dia 27, o ciclo vigente é do próximo mês (inicia dia 28).
