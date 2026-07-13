@@ -80,7 +80,7 @@ export function Magic2Fluxo({ cycles, scheduledByClient, isLoading }: Props) {
                           className={cn(
                             "flex items-center gap-2 rounded-md border px-2.5 py-2 text-xs font-medium transition",
                             on
-                              ? "border-success/40 bg-success/10 text-success"
+                              ? "border-success bg-success text-white"
                               : "border-border/60 bg-muted/20 text-muted-foreground",
                           )}
                           title={on ? "Etapa agendada" : "Etapa sem data agendada"}

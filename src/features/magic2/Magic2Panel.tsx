@@ -82,8 +82,8 @@ export function Magic2Panel() {
         <Tabs value={tab} onValueChange={v => setTab(v as any)}>
           <TabsList className="bg-card/40">
             <TabsTrigger value="checklist">Checklist</TabsTrigger>
-            <TabsTrigger value="fluxo">Fluxo</TabsTrigger>
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+            <TabsTrigger value="fluxo">Fluxo</TabsTrigger>
           </TabsList>
 
           <TabsContent value="checklist" className="mt-4">
@@ -98,16 +98,16 @@ export function Magic2Panel() {
             />
           </TabsContent>
 
+          <TabsContent value="dashboard" className="mt-4">
+            <Magic2Dashboard dashboard={dashboard} year={year} month={month} />
+          </TabsContent>
+
           <TabsContent value="fluxo" className="mt-4">
             <Magic2Fluxo
               cycles={cycles}
               scheduledByClient={scheduledQuery.data ?? new Map()}
               isLoading={scheduledQuery.isLoading}
             />
-          </TabsContent>
-
-          <TabsContent value="dashboard" className="mt-4">
-            <Magic2Dashboard dashboard={dashboard} year={year} month={month} />
           </TabsContent>
         </Tabs>
       )}
