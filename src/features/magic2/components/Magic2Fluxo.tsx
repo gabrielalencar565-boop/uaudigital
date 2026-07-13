@@ -27,7 +27,7 @@ export function Magic2Fluxo({ cycles, scheduledByClient, isLoading }: Props) {
     });
   }, [cycles]);
 
-  const totalStages = MAGIC2_STAGES.length;
+  const totalStages = FLUXO_STAGES.length;
 
   return (
     <Card>
@@ -47,7 +47,7 @@ export function Magic2Fluxo({ cycles, scheduledByClient, isLoading }: Props) {
           <div className="space-y-3">
             {sortedCycles.map((c) => {
               const scheduled = scheduledByClient.get(c.client_id) ?? new Set<Magic2StageKey>();
-              const done = MAGIC2_STAGES.reduce(
+              const done = FLUXO_STAGES.reduce(
                 (acc, st) => acc + (scheduled.has(st.key) ? 1 : 0),
                 0,
               );
@@ -74,7 +74,7 @@ export function Magic2Fluxo({ cycles, scheduledByClient, isLoading }: Props) {
                       isMobile ? "grid-cols-2" : "grid-cols-4 lg:grid-cols-7",
                     )}
                   >
-                    {MAGIC2_STAGES.map((st) => {
+                    {FLUXO_STAGES.map((st) => {
                       const on = scheduled.has(st.key);
                       return (
                         <div
