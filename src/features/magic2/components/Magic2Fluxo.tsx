@@ -71,7 +71,7 @@ export function Magic2Fluxo({ cycles, scheduledByClient, isLoading }: Props) {
                   <div
                     className={cn(
                       "grid gap-2",
-                      isMobile ? "grid-cols-2" : "grid-cols-4 lg:grid-cols-7",
+                      isMobile ? "grid-cols-2" : "grid-cols-3 lg:grid-cols-6",
                     )}
                   >
                     {FLUXO_STAGES.map((st) => {
