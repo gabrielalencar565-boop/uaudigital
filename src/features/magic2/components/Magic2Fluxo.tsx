@@ -7,6 +7,8 @@ import type { Magic2CycleRow } from "@/features/magic2/hooks/use-magic2";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 
+const FLUXO_STAGES = MAGIC2_STAGES.filter((s) => s.key !== "alteracoes");
+
 type Props = {
   cycles: Magic2CycleRow[];
   scheduledByClient: Map<string, Set<Magic2StageKey>>;
