@@ -18,44 +18,14 @@ function getCycleMonthYear(now: Date) {
 }
 
 export function Magic2Panel() {
-  const { user } = useSession();
   const now = new Date();
   const initial = getCycleMonthYear(now);
   const [year, setYear] = useState<number>(initial.year);
   const [month, setMonth] = useState<number>(initial.month);
   const [tab, setTab] = useState<"checklist" | "dashboard">("checklist");
-  const { query: q, dashboard, cycles } = useMagic2Dashboard(year, month);
-  const toggle = useToggleMagic2Stage();
-  const createAndToggle = useCreateAndToggleMagic2Stage();
+  const { dashboard, cycles } = useMagic2Dashboard(year, month);
+  const scheduledQuery = useMagic2ScheduledStages(year, month);
 
-  const onToggleCell = async (stageId: string, current: boolean) => {
-    if (!user) return;
-    const nextCompleted = !current;
-    try {
-      await toggle.mutateAsync({
-        stageId,
-        nextCompleted,
-        userId: user.id,
-      });
-    } catch (e: any) {
-      toast.error(e?.message ?? "Erro ao marcar etapa");
-    }
-  };
-
-  // Handler para criar stage on-demand quando não existe
-  const onCreateAndToggle = async (cycleId: string, stage: Magic2StageKey) => {
-    if (!user) return;
-    try {
-      await createAndToggle.mutateAsync({
-        cycleId,
-        stage,
-        completed: true,
-        userId: user.id,
-      });
-    } catch (e: any) {
-      toast.error(e?.message ?? "Erro ao criar etapa");
-    }
-  };
   const hasAny = cycles.length > 0;
   const due = useMemo(() => new Date(year, month - 1, 27), [month, year]);
   return <div className="space-y-6">
@@ -93,13 +63,9 @@ export function Magic2Panel() {
 
           <TabsContent value="checklist" className="mt-4">
             <Magic2Checklist
-              year={year}
-              month={month}
               cycles={cycles}
-              stages={q.data?.stages ?? []}
-              isBusy={toggle.isPending || createAndToggle.isPending}
-              onToggleStage={onToggleCell}
-              onCreateStage={onCreateAndToggle}
+              scheduledByClient={scheduledQuery.data ?? new Map()}
+              isLoading={scheduledQuery.isLoading}
             />
           </TabsContent>
 
