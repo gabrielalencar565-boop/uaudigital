@@ -82,6 +82,8 @@ const App = () => {
           <BrowserRouter>
             <AppRoutes />
           </BrowserRouter>
+          {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
+
           
         </TooltipProvider>
       </QueryClientProvider>
