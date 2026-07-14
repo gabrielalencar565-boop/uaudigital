@@ -47,8 +47,9 @@ function AppRoutes() {
 }
 
 const App = () => {
-  // Cria o QueryClient uma única vez (padrão React Query)
   const [queryClient] = useState(() => createQueryClient());
+  const [showSplash, setShowSplash] = useState(true);
+
 
   // Safety-net: evita "tela branca" por erros assíncronos não tratados em alguns aparelhos.
   useEffect(() => {
