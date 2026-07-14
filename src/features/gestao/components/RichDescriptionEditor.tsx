@@ -36,13 +36,41 @@ const TOOLBAR_ITEMS = [
   { cmd: "code", icon: Code, label: "Código" },
 ] as const;
 
+function sanitizeRichDescriptionHtml(html: string): string {
+  if (!html || typeof document === "undefined") return html || "";
+
+  const template = document.createElement("template");
+  template.innerHTML = html;
+
+  template.content.querySelectorAll<HTMLElement>("*").forEach((el) => {
+    el.style.removeProperty("color");
+    el.style.removeProperty("background");
+    el.style.removeProperty("background-color");
+    el.style.removeProperty("background-image");
+    el.style.removeProperty("-webkit-text-fill-color");
+    el.style.removeProperty("box-shadow");
+    el.removeAttribute("bgcolor");
+
+    if (el.tagName.toLowerCase() === "font") {
+      el.removeAttribute("color");
+      el.removeAttribute("face");
+    }
+
+    if (!el.getAttribute("style")?.trim()) {
+      el.removeAttribute("style");
+    }
+  });
+
+  return template.innerHTML;
+}
+
 export function RichDescriptionEditor({ value, onChange, onSave, onCancel }: Props) {
   const editorRef = useRef<HTMLDivElement>(null);
   
 
   useEffect(() => {
     if (editorRef.current && !editorRef.current.innerHTML) {
-      editorRef.current.innerHTML = value || "";
+      editorRef.current.innerHTML = sanitizeRichDescriptionHtml(value || "");
     }
   }, []);
 
@@ -86,9 +114,18 @@ export function RichDescriptionEditor({ value, onChange, onSave, onCancel }: Pro
 
   const handleInput = useCallback(() => {
     if (editorRef.current) {
-      onChange(editorRef.current.innerHTML);
+      onChange(sanitizeRichDescriptionHtml(editorRef.current.innerHTML));
     }
   }, [onChange]);
+
+  const handlePaste = useCallback((event: React.ClipboardEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const html = event.clipboardData.getData("text/html");
+    const text = event.clipboardData.getData("text/plain");
+    const sanitized = html ? sanitizeRichDescriptionHtml(html) : text.replace(/\n/g, "<br>");
+    document.execCommand("insertHTML", false, sanitized);
+    handleInput();
+  }, [handleInput]);
 
   return (
     <div className="space-y-2">
@@ -180,10 +217,12 @@ export function RichDescriptionEditor({ value, onChange, onSave, onCancel }: Pro
         ref={editorRef}
         contentEditable
         onInput={handleInput}
+        onPaste={handlePaste}
         className={cn(
           "min-h-[120px] max-h-[300px] overflow-y-auto rounded-lg border border-border/60 bg-background px-3 py-2",
           "text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40",
           "[&_*]:!text-inherit [&_span]:!text-inherit [&_div]:!text-inherit [&_p]:!text-inherit [&_font]:!text-inherit",
+          "[&_*]:!bg-transparent [&_span]:!bg-transparent [&_div]:!bg-transparent [&_p]:!bg-transparent [&_font]:!bg-transparent [&_mark]:!bg-transparent",
           "[&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-2 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mb-1 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mb-1 [&_h4]:text-sm [&_h4]:font-semibold [&_h4]:mb-0.5",
           "[&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5",
           "[&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs [&_code]:font-mono",
@@ -193,7 +232,7 @@ export function RichDescriptionEditor({ value, onChange, onSave, onCancel }: Pro
 
       {/* Actions */}
       <div className="flex gap-2">
-        <Button size="sm" onClick={() => { if (editorRef.current) onChange(editorRef.current.innerHTML); onSave(); }}>
+        <Button size="sm" onClick={() => { if (editorRef.current) onChange(sanitizeRichDescriptionHtml(editorRef.current.innerHTML)); onSave(); }}>
           Salvar
         </Button>
         <Button size="sm" variant="ghost" onClick={onCancel}>
@@ -244,7 +283,7 @@ export function ExpandableDescription({
   const contentRef = useRef<HTMLDivElement>(null);
   const [needsExpand, setNeedsExpand] = useState(false);
 
-  const processedHtml = html ? linkifyHtml(html) : "";
+  const processedHtml = html ? linkifyHtml(sanitizeRichDescriptionHtml(html)) : "";
 
   useEffect(() => {
     if (contentRef.current) {
