@@ -221,7 +221,7 @@ export function RichDescriptionEditor({ value, onChange, onSave, onCancel }: Pro
         className={cn(
           "min-h-[120px] max-h-[300px] overflow-y-auto rounded-lg border border-border/60 bg-background px-3 py-2",
           "text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40",
-          "[&_*]:!text-inherit [&_span]:!text-inherit [&_div]:!text-inherit [&_p]:!text-inherit [&_font]:!text-inherit",
+          "[&_*]:!text-foreground [&_span]:!text-foreground [&_div]:!text-foreground [&_p]:!text-foreground [&_font]:!text-foreground",
           "[&_*]:!bg-transparent [&_span]:!bg-transparent [&_div]:!bg-transparent [&_p]:!bg-transparent [&_font]:!bg-transparent [&_mark]:!bg-transparent",
           "[&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-2 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mb-1 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mb-1 [&_h4]:text-sm [&_h4]:font-semibold [&_h4]:mb-0.5",
           "[&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5",
@@ -342,13 +342,13 @@ export function ExpandableDescription({
         ref={contentRef}
         onClick={handleContentClick}
         className={cn(
-          "cursor-pointer text-sm text-foreground/80 hover:text-foreground transition overflow-hidden",
-          "[&_*]:!text-inherit [&_span]:!text-inherit [&_div]:!text-inherit [&_p]:!text-inherit [&_font]:!text-inherit",
+          "cursor-pointer text-sm text-foreground hover:text-foreground transition overflow-hidden bg-transparent",
+          "[&_*]:!text-foreground [&_span]:!text-foreground [&_div]:!text-foreground [&_p]:!text-foreground [&_font]:!text-foreground",
           "[&_*]:!bg-transparent [&_span]:!bg-transparent [&_div]:!bg-transparent [&_p]:!bg-transparent [&_font]:!bg-transparent [&_mark]:!bg-transparent",
           "[&_a]:!text-primary [&_a]:underline [&_a:hover]:!text-primary/80",
           "[&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-2 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mb-1 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mb-1 [&_h4]:text-sm [&_h4]:font-semibold [&_h4]:mb-0.5",
           "[&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5",
-          "[&_code]:!bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs [&_code]:font-mono",
+          "[&_code]:!bg-transparent [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs [&_code]:font-mono",
           !expanded && "max-h-[80px]"
         )}
         dangerouslySetInnerHTML={{ __html: processedHtml }}
