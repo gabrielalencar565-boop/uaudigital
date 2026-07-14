@@ -134,32 +134,32 @@ All colors MUST be HSL.
     --background: 0 0% 9.4%;
     --foreground: 220 20% 93%;
 
-    /* Cards: lighter layer for depth */
-    --card: 224 18% 10%;
-    --card-foreground: 220 20% 93%;
+    /* Cards: lighter layer for depth — neutral black, no blue tint */
+    --card: 0 0% 10%;
+    --card-foreground: 0 0% 93%;
 
-    /* Popovers: slightly elevated */
-    --popover: 224 18% 11%;
-    --popover-foreground: 220 20% 93%;
+    /* Popovers: slightly elevated — neutral black, no blue tint */
+    --popover: 0 0% 11%;
+    --popover-foreground: 0 0% 93%;
 
     /* Primary: vibrant purple */
     --primary: 253 90% 68%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 224 18% 12%;
-    --secondary-foreground: 220 20% 88%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 88%;
 
-    /* Muted: soft separation */
-    --muted: 224 16% 14%;
-    --muted-foreground: 220 10% 50%;
+    /* Muted: soft separation — neutral black, no blue tint */
+    --muted: 0 0% 14%;
+    --muted-foreground: 0 0% 50%;
 
-    /* Accent: subtle hover layer */
-    --accent: 224 16% 13%;
-    --accent-foreground: 220 14% 70%;
+    /* Accent: subtle hover layer — neutral black, no blue tint */
+    --accent: 0 0% 13%;
+    --accent-foreground: 0 0% 70%;
 
-    /* Borders: whisper-thin, low opacity feel */
-    --border: 224 14% 18%;
-    --input: 224 18% 12%;
+    /* Borders: whisper-thin, low opacity feel — neutral black, no blue tint */
+    --border: 0 0% 18%;
+    --input: 0 0% 12%;
     --ring: 253 90% 68%;
 
     --destructive: 350 90% 64%;
