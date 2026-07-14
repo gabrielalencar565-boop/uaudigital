@@ -17,6 +17,8 @@ import { AppErrorBoundary } from "@/components/error/AppErrorBoundary";
 import { useLocation } from "react-router-dom";
 import { createQueryClient } from "@/lib/query-client";
 import { AvatarBootstrap } from "@/components/avatar/AvatarBootstrap";
+import { SplashScreen } from "@/components/SplashScreen";
+
 
 
 function AppRoutes() {
@@ -45,8 +47,9 @@ function AppRoutes() {
 }
 
 const App = () => {
-  // Cria o QueryClient uma única vez (padrão React Query)
   const [queryClient] = useState(() => createQueryClient());
+  const [showSplash, setShowSplash] = useState(true);
+
 
   // Safety-net: evita "tela branca" por erros assíncronos não tratados em alguns aparelhos.
   useEffect(() => {
@@ -79,6 +82,8 @@ const App = () => {
           <BrowserRouter>
             <AppRoutes />
           </BrowserRouter>
+          {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
+
           
         </TooltipProvider>
       </QueryClientProvider>
