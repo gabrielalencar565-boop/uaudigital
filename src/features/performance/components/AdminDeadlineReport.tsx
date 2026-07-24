@@ -318,12 +318,19 @@ export function AdminDeadlineReport({
   const appealsByTaskUser = useMemo(() => {
     // Index appeals by both legacy tasks.id::user and pm_task_id::user so lookups work
     // regardless of which id the appeal was saved under (LateAppealDialog passes pm_task_id).
+    // A single pm_task_id may correspond to MULTIPLE legacy mirror rows (one per assignee
+    // and/or split subtask). Map the appeal onto every matching mirror row so the badge
+    // shows on all relevant rows in the report — not just an arbitrary last one.
     const map = new Map<string, any>();
     const tasksById = new Map((tasksQ.data ?? []).map((t) => [t.id, t] as const));
-    const tasksByPmId = new Map<string, TaskForReport>();
+    const tasksByPmId = new Map<string, TaskForReport[]>();
     for (const t of tasksQ.data ?? []) {
       const pmId = extractPmTaskId(t.description);
-      if (pmId) tasksByPmId.set(pmId, t);
+      if (pmId) {
+        const list = tasksByPmId.get(pmId) ?? [];
+        list.push(t);
+        tasksByPmId.set(pmId, list);
+      }
     }
     for (const a of (appealsQ.data ?? []) as any[]) {
       map.set(`${a.task_id}::${a.user_id}`, a);
@@ -332,8 +339,10 @@ export function AdminDeadlineReport({
         const pmId = extractPmTaskId(asLegacy.description);
         if (pmId) map.set(`${pmId}::${a.user_id}`, a);
       }
-      const asPm = tasksByPmId.get(a.task_id);
-      if (asPm) map.set(`${asPm.id}::${a.user_id}`, a);
+      const asPmList = tasksByPmId.get(a.task_id) ?? [];
+      for (const asPm of asPmList) {
+        map.set(`${asPm.id}::${a.user_id}`, a);
+      }
     }
     return map;
   }, [appealsQ.data, tasksQ.data]);
