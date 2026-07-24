@@ -86,6 +86,10 @@ const TOTAL_POINTS = 27;
   }, [currentMonth, currentYear]);
 
   useEffect(() => {
+    // Also consult store on mount in case the event was dispatched before this component mounted.
+    import("@/lib/pending-appeal-store").then(({ getPendingAppeal }) => {
+      if (getPendingAppeal()) setTab("relatorio");
+    });
     const handler = () => setTab("relatorio");
     window.addEventListener("open-appeal-review", handler);
     return () => window.removeEventListener("open-appeal-review", handler);
