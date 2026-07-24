@@ -351,7 +351,7 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
             )}
           </div>
         </div>
-        <ScrollArea className="max-h-[400px]">
+        <ScrollArea className="h-[400px]">
           {notifications.length === 0 ? (
             <div className="py-8 text-center text-sm text-muted-foreground">
               Nenhuma notificação no momento
