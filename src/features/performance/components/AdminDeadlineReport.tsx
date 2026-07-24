@@ -834,11 +834,11 @@ export function AdminDeadlineReport({
                                     <Badge
                                       variant={ap.status === "aprovado" ? "secondary" : ap.status === "rejeitado" ? "destructive" : "default"}
                                       className={cn(
-                                        "text-[9px] px-1.5 py-0 hover:opacity-80",
-                                        ap.status === "pendente" && "bg-yellow-400 hover:bg-yellow-400 text-black border-transparent",
+                                        "text-[11px] font-semibold px-2.5 py-0.5 hover:opacity-80 shadow-sm",
+                                        ap.status === "pendente" && "bg-yellow-400 hover:bg-yellow-400 text-black border-transparent ring-1 ring-yellow-500/60",
                                       )}
                                     >
-                                      {ap.status === "pendente" ? "📋 Análise" : ap.status === "aprovado" ? "✓ Aprovado" : "✕ Rejeitado"}
+                                      {ap.status === "pendente" ? "📋 Em análise" : ap.status === "aprovado" ? "✓ Aprovado" : "✕ Rejeitado"}
                                     </Badge>
                                   </span>
                                 );
