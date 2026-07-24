@@ -85,14 +85,53 @@ const TOTAL_POINTS = 27;
     setReportMonth(currentMonth);
   }, [currentMonth, currentYear]);
 
+  // When a pending appeal is set (from the notifications bell), switch to the report tab
+  // AND auto-select the month of the task the appeal refers to, so the report can find
+  // and open the correct row even if it's in a different month than the one currently displayed.
   useEffect(() => {
-    // Also consult store on mount in case the event was dispatched before this component mounted.
-    import("@/lib/pending-appeal-store").then(({ getPendingAppeal }) => {
-      if (getPendingAppeal()) setTab("relatorio");
+    const applyPendingMonth = async (pmTaskId: string) => {
+      try {
+        const { data } = await supabase
+          .from("tasks")
+          .select("due_date")
+          .ilike("description", `pm:${pmTaskId}:%`)
+          .is("deleted_at", null)
+          .order("due_date", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (data?.due_date) {
+          const [yStr, mStr] = data.due_date.split("-");
+          const y = Number(yStr);
+          const m = Number(mStr);
+          if (y && m) {
+            setReportYear(y);
+            setReportMonth(m);
+          }
+        }
+      } catch { /* noop */ }
+    };
+    import("@/lib/pending-appeal-store").then(({ getPendingAppeal, subscribePendingAppeal }) => {
+      const pending = getPendingAppeal();
+      if (pending) {
+        setTab("relatorio");
+        applyPendingMonth(pending.pmTaskId);
+      }
+      const unsub = subscribePendingAppeal((p) => {
+        if (p) {
+          setTab("relatorio");
+          applyPendingMonth(p.pmTaskId);
+        }
+      });
+      // stash unsub on window so cleanup below can retrieve it (import is async)
+      (window as any).__pendingAppealUnsub = unsub;
     });
     const handler = () => setTab("relatorio");
     window.addEventListener("open-appeal-review", handler);
-    return () => window.removeEventListener("open-appeal-review", handler);
+    return () => {
+      window.removeEventListener("open-appeal-review", handler);
+      const unsub = (window as any).__pendingAppealUnsub as (() => void) | undefined;
+      if (unsub) { unsub(); (window as any).__pendingAppealUnsub = undefined; }
+    };
   }, []);
 
   const years = useMemo(() => {
