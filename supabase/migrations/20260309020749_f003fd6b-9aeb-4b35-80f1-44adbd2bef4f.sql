@@ -2,7 +2,7 @@
 CREATE TABLE public.health_score_tokens (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   client_id uuid NOT NULL REFERENCES public.clients(id) ON DELETE CASCADE,
-  token text NOT NULL UNIQUE DEFAULT encode(gen_random_bytes(32), 'hex'),
+  token text NOT NULL UNIQUE DEFAULT encode(extensions.gen_random_bytes(32), 'hex'),
   month integer NOT NULL CHECK (month >= 1 AND month <= 12),
   year integer NOT NULL CHECK (year >= 2000 AND year <= 2100),
   used_at timestamp with time zone,

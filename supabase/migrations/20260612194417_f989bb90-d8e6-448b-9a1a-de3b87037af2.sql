@@ -229,8 +229,8 @@ BEGIN
   -- trigger immediate processing (best-effort)
   BEGIN
     PERFORM net.http_post(
-      url := 'https://mkgxjeyztruvigdoecwe.supabase.co/functions/v1/whatsapp-dispatch',
-      headers := '{"Content-Type":"application/json","apikey":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1rZ3hqZXl6dHJ1dmlnZG9lY3dlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAwNzM4NDEsImV4cCI6MjA4NTY0OTg0MX0.c8APPJGRbTM9jOT5f1fC_lRtDpLT-wL465MBbuobnAY"}'::jsonb,
+      url := 'https://bzzubzjbsjwuvchuhklr.supabase.co/functions/v1/whatsapp-dispatch',
+      headers := '{"Content-Type":"application/json","apikey":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ6enViempic2p3dXZjaHVoa2xyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5ODE5NDcsImV4cCI6MjEwMDU1Nzk0N30.KlznJ82oOa7DSXDNDZBdzoPhwYTSdP6X6cOzLWM2Q24"}'::jsonb,
       body := '{"action":"process_outbox","limit":5}'::jsonb
     );
   EXCEPTION WHEN OTHERS THEN NULL;

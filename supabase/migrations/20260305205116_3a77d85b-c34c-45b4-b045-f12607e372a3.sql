@@ -135,9 +135,9 @@ CREATE POLICY "pm_att_read" ON storage.objects FOR SELECT TO authenticated USING
 CREATE POLICY "pm_att_delete" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'pm-attachments' AND (auth.uid()::text = (storage.foldername(name))[1] OR public.has_role(auth.uid(), 'admin'::public.app_role)));
 
 -- Realtime
-ALTER PUBLICATION supabase_realtime ADD TABLE public.pm_tasks;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.pm_subtasks;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.pm_comments;
+DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.pm_tasks; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.pm_subtasks; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.pm_comments; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- Updated_at triggers
 CREATE TRIGGER pm_projects_updated_at BEFORE UPDATE ON public.pm_projects FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
