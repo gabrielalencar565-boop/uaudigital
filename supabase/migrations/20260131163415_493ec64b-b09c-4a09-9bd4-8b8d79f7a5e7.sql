@@ -39,4 +39,4 @@ CREATE POLICY "task_assignees_self_delete"
   USING (auth.uid() = user_id);
 
 -- Enable realtime for task_assignees
-ALTER PUBLICATION supabase_realtime ADD TABLE public.task_assignees;
+DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.task_assignees; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
