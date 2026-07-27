@@ -32,7 +32,8 @@ export function PwaInstallPrompt() {
     }
     if (
       window.location.hostname.includes("id-preview--") ||
-      window.location.hostname.includes("lovableproject.com")
+      window.location.hostname.includes("lovableproject.com") ||
+      window.location.hostname.endsWith(".vercel.app")
     )
       return;
 

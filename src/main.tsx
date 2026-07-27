@@ -78,7 +78,8 @@ createRoot(rootEl).render(<App />);
   const isInIframe = (() => { try { return window.self !== window.top; } catch { return true; } })();
   const isPreview =
     window.location.hostname.includes("id-preview--") ||
-    window.location.hostname.includes("lovableproject.com");
+    window.location.hostname.includes("lovableproject.com") ||
+    window.location.hostname.endsWith(".vercel.app");
 
   if (isPreview || isInIframe) {
     navigator.serviceWorker.getRegistrations().then((regs) => regs.forEach((r) => r.unregister()));

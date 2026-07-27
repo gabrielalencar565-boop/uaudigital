@@ -40,7 +40,7 @@ Sistema interno de gestão de equipe e clientes para agência de marketing digit
 
 - **Frontend**: React 18 + TypeScript + Vite
 - **Estilização**: Tailwind CSS + shadcn/ui
-- **Backend**: Supabase (Lovable Cloud)
+- **Backend**: Supabase
 - **Estado**: TanStack Query (React Query)
 - **Drag & Drop**: @dnd-kit
 - **Gráficos**: Recharts
