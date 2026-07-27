@@ -639,12 +639,12 @@ export function useUploadPmAttachment() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Não autenticado");
 
-      const ext = file.name.split(".").pop() || "bin";
-      const path = `${user.id}/${task_id}/${crypto.randomUUID()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from("pm-attachments").upload(path, file, { contentType: file.type });
-      if (upErr) throw upErr;
-
-      const { data: urlData } = supabase.storage.from("pm-attachments").getPublicUrl(path);
+      const formData = new FormData();
+      formData.append("file", file);
+      const { data: driveData, error: driveErr } = await supabase.functions.invoke("drive-upload", {
+        body: formData,
+      });
+      if (driveErr) throw driveErr;
 
       const { data, error } = await sb.from("pm_attachments").insert({
         task_id,
@@ -652,8 +652,9 @@ export function useUploadPmAttachment() {
         file_name: file.name,
         file_type: file.type,
         file_size: file.size,
-        storage_path: path,
-        public_url: urlData.publicUrl,
+        storage_provider: "drive",
+        drive_file_id: driveData.drive_file_id,
+        public_url: driveData.public_url,
         category: category ?? "material",
       }).select().single();
       if (error) throw error;

@@ -10,7 +10,32 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.1"
+    PostgrestVersion: "14.5"
+  }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
@@ -1784,13 +1809,15 @@ export type Database = {
         Row: {
           category: string
           created_at: string
+          drive_file_id: string | null
           file_name: string
           file_size: number | null
           file_type: string | null
           id: string
           order_index: number
           public_url: string | null
-          storage_path: string
+          storage_path: string | null
+          storage_provider: string
           subtask_id: string | null
           task_id: string | null
           uploaded_by: string
@@ -1798,13 +1825,15 @@ export type Database = {
         Insert: {
           category?: string
           created_at?: string
+          drive_file_id?: string | null
           file_name: string
           file_size?: number | null
           file_type?: string | null
           id?: string
           order_index?: number
           public_url?: string | null
-          storage_path: string
+          storage_path?: string | null
+          storage_provider?: string
           subtask_id?: string | null
           task_id?: string | null
           uploaded_by: string
@@ -1812,13 +1841,15 @@ export type Database = {
         Update: {
           category?: string
           created_at?: string
+          drive_file_id?: string | null
           file_name?: string
           file_size?: number | null
           file_type?: string | null
           id?: string
           order_index?: number
           public_url?: string | null
-          storage_path?: string
+          storage_path?: string | null
+          storage_provider?: string
           subtask_id?: string | null
           task_id?: string | null
           uploaded_by?: string
@@ -3810,6 +3841,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       access_request_status: ["pending", "approved", "rejected"],
