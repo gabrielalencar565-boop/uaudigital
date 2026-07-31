@@ -641,6 +641,7 @@ export function useUploadPmAttachment() {
 
       const formData = new FormData();
       formData.append("file", file);
+      formData.append("task_id", task_id);
       const { data: driveData, error: driveErr } = await supabase.functions.invoke("drive-upload", {
         body: formData,
       });
@@ -655,6 +656,7 @@ export function useUploadPmAttachment() {
         storage_provider: "drive",
         drive_file_id: driveData.drive_file_id,
         public_url: driveData.public_url,
+        access_token: driveData.access_token,
         category: category ?? "material",
       }).select().single();
       if (error) throw error;

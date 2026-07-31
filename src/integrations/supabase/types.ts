@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       access_requests: {
@@ -980,6 +955,32 @@ export type Database = {
           },
         ]
       }
+      drive_client_folders: {
+        Row: {
+          client_id: string
+          created_at: string
+          drive_folder_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          drive_folder_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          drive_folder_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drive_client_folders_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       financial_clients: {
         Row: {
           cnpj: string | null
@@ -1807,9 +1808,11 @@ export type Database = {
       }
       pm_attachments: {
         Row: {
+          access_token: string | null
           category: string
           created_at: string
           drive_file_id: string | null
+          drive_organized_at: string | null
           file_name: string
           file_size: number | null
           file_type: string | null
@@ -1823,9 +1826,11 @@ export type Database = {
           uploaded_by: string
         }
         Insert: {
+          access_token?: string | null
           category?: string
           created_at?: string
           drive_file_id?: string | null
+          drive_organized_at?: string | null
           file_name: string
           file_size?: number | null
           file_type?: string | null
@@ -1839,9 +1844,11 @@ export type Database = {
           uploaded_by: string
         }
         Update: {
+          access_token?: string | null
           category?: string
           created_at?: string
           drive_file_id?: string | null
+          drive_organized_at?: string | null
           file_name?: string
           file_size?: number | null
           file_type?: string | null
@@ -3841,9 +3848,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       access_request_status: ["pending", "approved", "rejected"],
