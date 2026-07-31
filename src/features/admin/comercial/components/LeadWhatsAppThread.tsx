@@ -1,10 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Send, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,8 +22,6 @@ interface Props { lead: CrmLead }
 
 export function LeadWhatsAppThread({ lead }: Props) {
   const qc = useQueryClient();
-  const [draft, setDraft] = useState("");
-  const [sending, setSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const messages = useQuery({
@@ -63,26 +59,6 @@ export function LeadWhatsAppThread({ lead }: Props) {
   if (!lead.telefone) {
     return <div className="text-center text-sm text-muted-foreground py-10">Lead sem telefone cadastrado.</div>;
   }
-
-  const send = async () => {
-    const msg = draft.trim();
-    if (!msg) return;
-    setSending(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("whatsapp-dispatch", {
-        body: { action: "send", phone: lead.telefone, type: "manual", message: msg },
-      });
-      if (error) throw error;
-      if ((data as any)?.ok === false) throw new Error("Falha no envio");
-      setDraft("");
-      toast.success("Mensagem enviada");
-      qc.invalidateQueries({ queryKey: ["crm-wa-messages", lead.phone_key] });
-    } catch (e: any) {
-      toast.error(e?.message ?? "Erro ao enviar");
-    } finally {
-      setSending(false);
-    }
-  };
 
   return (
     <div className="flex flex-col h-[480px]">
@@ -137,16 +113,8 @@ export function LeadWhatsAppThread({ lead }: Props) {
           );
         })}
       </div>
-      <div className="mt-3 flex items-end gap-2">
-        <Textarea
-          rows={2}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder="Escreva uma mensagem..."
-          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-          className="resize-none"
-        />
-        <Button onClick={send} disabled={sending || !draft.trim()}><Send className="h-4 w-4" /></Button>
+      <div className="mt-3 text-center text-xs text-muted-foreground">
+        Envio pelo WhatsApp desativado — histórico somente leitura.
       </div>
     </div>
   );

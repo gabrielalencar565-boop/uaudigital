@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Search, Send, Copy, Check, RefreshCw, MessagesSquare, Link2, X, Trash2 } from "lucide-react";
+import { Search, Copy, Check, RefreshCw, MessagesSquare, Link2, X, Trash2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,7 +16,6 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -135,8 +134,6 @@ export function ConversasPanel({ defaultFilter = "all" }: { defaultFilter?: Filt
   const [filter, setFilter] = useState<FilterKey>(defaultFilter);
   const [search, setSearch] = useState("");
   const [activeKey, setActiveKey] = useState<string | null>(null);
-  const [draft, setDraft] = useState("");
-  const [sending, setSending] = useState(false);
   const [copied, setCopied] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
 
@@ -256,27 +253,6 @@ export function ConversasPanel({ defaultFilter = "all" }: { defaultFilter?: Filt
   }, [activeContact?.phone_e164, activeContact?.unread_count, qc]);
 
   const totalUnread = contacts.reduce((s, c) => s + (c.unread_count || 0), 0);
-
-  const sendMessage = async () => {
-    if (!activeContact || !draft.trim()) return;
-    setSending(true);
-    const message = draft.trim();
-    try {
-      const { data, error } = await supabase.functions.invoke("whatsapp-dispatch", {
-        body: { action: "send", phone: activeContact.phone_e164, type: "manual", message },
-      });
-      if (error) throw error;
-      if ((data as any)?.ok === false) throw new Error("Falha no envio");
-      setDraft("");
-      toast.success("Mensagem enviada");
-      qc.invalidateQueries({ queryKey: ["wa-messages", activeKey] });
-      qc.invalidateQueries({ queryKey: ["wa-contacts"] });
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro ao enviar");
-    } finally {
-      setSending(false);
-    }
-  };
 
   const markAsRead = async () => {
     if (!activeContact) return;
@@ -672,23 +648,8 @@ export function ConversasPanel({ defaultFilter = "all" }: { defaultFilter?: Filt
                 )}
               </div>
 
-              <div className="border-t border-border p-3 flex items-end gap-2">
-                <Textarea
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  placeholder="Digite sua resposta..."
-                  rows={2}
-                  className="resize-none text-sm"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                      e.preventDefault();
-                      sendMessage();
-                    }
-                  }}
-                />
-                <Button onClick={sendMessage} disabled={sending || !draft.trim()} size="icon" className="h-10 w-10 shrink-0">
-                  <Send className="h-4 w-4" />
-                </Button>
+              <div className="border-t border-border p-3 text-center text-xs text-muted-foreground">
+                Envio pelo WhatsApp desativado — histórico somente leitura.
               </div>
             </>
           )}
