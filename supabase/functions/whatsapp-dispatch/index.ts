@@ -88,7 +88,8 @@ function fmtTask(title: string, stage: string | null | undefined): string {
 
 // ---------------------------------------------------------------------------
 // Provider adapters — stubs ready for Evolution API and Z-API.
-// Reads credentials from edge function secrets (configured via Lovable).
+// Reads credentials from edge function secrets. Currently unconfigured — Z-API
+// was dropped in the Vercel/Supabase migration; UI entry points are hidden.
 // ---------------------------------------------------------------------------
 type SendResult = { ok: boolean; status: number; response: unknown };
 

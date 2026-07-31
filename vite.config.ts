@@ -17,4 +17,8 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  define: {
+    // Vercel sets this automatically during the build step (production/preview/development).
+    __VERCEL_ENV__: JSON.stringify(process.env.VERCEL_ENV ?? "development"),
+  },
 }));

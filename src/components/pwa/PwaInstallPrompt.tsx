@@ -30,12 +30,7 @@ export function PwaInstallPrompt() {
     } catch {
       return;
     }
-    if (
-      window.location.hostname.includes("id-preview--") ||
-      window.location.hostname.includes("lovableproject.com") ||
-      window.location.hostname.endsWith(".vercel.app")
-    )
-      return;
+    if (__VERCEL_ENV__ !== "production") return;
 
     // Already installed
     if (isInStandaloneMode()) return;
