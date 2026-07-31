@@ -8,7 +8,7 @@ ALTER TABLE public.pm_attachments
 
 ALTER TABLE public.pm_attachments
   ADD CONSTRAINT pm_attachments_storage_provider_check
-  CHECK (storage_provider IN ('supabase', 'drive'));
+  CHECK (storage_provider IN ('supabase', 'drive', 'missing'));
 
 CREATE INDEX IF NOT EXISTS idx_pm_attachments_storage_provider ON public.pm_attachments (storage_provider);
 
