@@ -30,10 +30,11 @@ interface Props {
   members: { id: string; name: string }[];
   membersMap?: Record<string, { name: string; avatar?: string }>;
   defaultStatus?: string;
+  defaultAssigneeId?: string;
   onCreated?: (taskId: string) => void;
 }
 
-export function PmCreateTaskDialog({ open, onClose, clients, members, membersMap, defaultStatus, onCreated }: Props) {
+export function PmCreateTaskDialog({ open, onClose, clients, members, membersMap, defaultStatus, defaultAssigneeId, onCreated }: Props) {
   const createTask = useCreatePmTask();
   const { stageAssignees } = useDefaultFlowWithDates();
   const { data: periodicStages = [] } = usePeriodicStages();
@@ -51,12 +52,12 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, membersMap
     if (open) {
       setClientId("");
       setStage(defaultStatus || "");
-      setSelectedMemberIds([]);
+      setSelectedMemberIds(defaultAssigneeId ? [defaultAssigneeId] : []);
       setIsExtra(false);
       setCustomTitle("");
       setMonthRef(String(new Date().getMonth() + 1).padStart(2, "0"));
     }
-  }, [open, defaultStatus]);
+  }, [open, defaultStatus, defaultAssigneeId]);
 
   // Auto-assign when stage + client change (skip for periodic stages)
   useEffect(() => {

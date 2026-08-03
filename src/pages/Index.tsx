@@ -48,8 +48,8 @@ type ProfileValues = z.infer<typeof profileSchema>;
 
 // Map sidebar tabs to GestaoPanel views
 const GESTAO_VIEW_MAP: Record<string, string> = {
-  tarefas: "kanban",
   agenda_gestao: "agenda",
+  pauta_pessoas: "equipe",
   cronograma: "cronograma",
   fluxos: "fluxo",
 };

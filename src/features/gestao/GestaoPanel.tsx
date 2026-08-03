@@ -13,7 +13,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 
 import { useSession } from "@/hooks/use-session";
@@ -23,7 +22,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { usePmTasks, usePmAllChildTasks, useUpdatePmTask, useDeletePmTask } from "./hooks/use-pm-data";
 import { useDeleteTask, useTasks, useTeamMembers } from "@/features/data/queries";
 import { useTaskAssigneesByMonth } from "@/features/data/task-assignees-queries";
-import { PmKanbanBoard } from "./components/PmKanbanBoard";
 import { PmClientView } from "./components/PmClientView";
 import { PmTeamWeekView } from "./components/PmTeamWeekView";
 import { PmTaskDetailDialog } from "./components/PmTaskDetailDialog";
@@ -74,10 +72,9 @@ function getPeriodicStageFallbackLabel(key: string) {
 }
 
 const VIEW_TITLES: Record<string, string> = {
-  kanban: "Kanban de tarefas",
   agenda: "Agenda de tarefas",
   clientes: "Tarefas por cliente",
-  equipe: "Tarefas por pessoa",
+  equipe: "Pauta",
   pauta: "Montagem de pauta",
   cronograma: "Cronograma",
   fluxo: "Configuração de fluxos",
@@ -88,47 +85,23 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
   const { user } = useSession();
   const { isAdmin } = useRole(user?.id);
 
-  const [view, setView] = useState<"kanban" | "agenda" | "clientes" | "equipe" | "pauta" | "cronograma" | "fluxo" | "responsaveis">(
-    forcedView as any ?? "kanban"
+  const [view, setView] = useState<"agenda" | "clientes" | "equipe" | "pauta" | "cronograma" | "fluxo" | "responsaveis">(
+    forcedView as any ?? "agenda"
   );
-  // Allow user to toggle between agenda <-> kanban from the title dropdown even when forcedView is set
-  const isAgendaKanbanEntry = forcedView === "agenda" || forcedView === "kanban";
-  const [agendaKanbanMode, setAgendaKanbanMode] = useState<"agenda" | "kanban">(
-    (forcedView === "kanban" ? "kanban" : "agenda")
-  );
-  const effectiveView = isAgendaKanbanEntry
-    ? agendaKanbanMode
-    : (forcedView ? (forcedView === "fluxo" ? "fluxo" : forcedView as any) : view);
+  const effectiveView = forcedView ? (forcedView as any) : view;
   const hideViewTabs = !!forcedView;
   const [search, setSearch] = useState("");
   const [filterClient, setFilterClient] = useState("__all__");
-  // Kanban defaults to logged-in user; Agenda defaults to all
-  const initialFilter = (forcedView ?? "kanban") === "agenda" ? "__all__" : (user?.id ?? "__all__");
-  const [filterAssignee, setFilterAssignee] = useState(initialFilter);
+  const [filterAssignee, setFilterAssignee] = useState("__all__");
   const [filterStage, setFilterStage] = useState("__all__");
   const { data: periodicStages = [] } = usePeriodicStages();
-
-  useEffect(() => {
-    if (effectiveView === "kanban" && user?.id) {
-      setFilterAssignee(user.id);
-    } else if (effectiveView === "agenda") {
-      setFilterAssignee("__all__");
-    }
-  }, [user?.id, effectiveView]);
-
-  // When switching views, adjust filter default
-  const handleViewChange = (newView: typeof view) => {
-    setView(newView);
-    if (newView === "agenda") {
-      setFilterAssignee("__all__");
-    } else if (newView === "kanban" && user?.id) {
-      setFilterAssignee(user.id);
-    }
-  };
 
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [createDefaultStatus, setCreateDefaultStatus] = useState<string | undefined>();
+  const [createDefaultAssignee, setCreateDefaultAssignee] = useState<string | undefined>();
+  const [createForcedDueDate, setCreateForcedDueDate] = useState<string | undefined>();
+  const patchTaskDueDate = useUpdatePmTask();
 
   // Agenda calendar state
   const [agendaCursor, setAgendaCursor] = useState(() => startOfMonth(new Date()));
@@ -207,50 +180,12 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
 
   const filters = { clientId: filterClient === "__all__" ? undefined : filterClient, assigneeId: filterAssignee === "__all__" ? undefined : filterAssignee, search: search || undefined, fixedAssigneeClientIds, stage: filterStage === "__all__" ? undefined : filterStage };
 
-  const openCreate = (status?: string) => {
-    setCreateDefaultStatus(status);
-    setCreateOpen(true);
-  };
-
   return (
     <div className="space-y-4">
       {/* Header — título + filtros alinhados */}
       <div className="flex flex-col gap-3 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
         <div className="flex items-center justify-between gap-3">
-          {isAgendaKanbanEntry ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  className="group inline-flex items-center gap-2 rounded-xl px-1 -mx-1 outline-none transition-colors hover:bg-muted/30"
-                  aria-label="Trocar modo de visualização"
-                >
-                  <h2 className="font-bold tracking-tight text-2xl sm:text-3xl">
-                    {agendaKanbanMode === "agenda" ? "Agenda de tarefas" : "Kanban de tarefas"}
-                  </h2>
-                  <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="min-w-[200px]">
-                <DropdownMenuItem
-                  onClick={() => setAgendaKanbanMode("agenda")}
-                  className={cn("gap-2", agendaKanbanMode === "agenda" && "bg-accent font-semibold")}
-                >
-                  <CalendarDays className="h-4 w-4" />
-                  Agenda de tarefas
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => setAgendaKanbanMode("kanban")}
-                  className={cn("gap-2", agendaKanbanMode === "kanban" && "bg-accent font-semibold")}
-                >
-                  <LayoutGrid className="h-4 w-4" />
-                  Kanban de tarefas
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <h2 className="font-bold tracking-tight text-2xl sm:text-3xl">{VIEW_TITLES[effectiveView] ?? "Tarefas"}</h2>
-          )}
+          <h2 className="font-bold tracking-tight text-2xl sm:text-3xl">{VIEW_TITLES[effectiveView] ?? "Tarefas"}</h2>
         </div>
         <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border/30 bg-muted/20 p-2">
           <div className="relative flex-1 min-w-[160px] sm:max-w-xs">
@@ -357,11 +292,8 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
 
       {/* View tabs — hidden when sidebar drives the view */}
       {!hideViewTabs &&
-      <Tabs value={effectiveView} onValueChange={(v) => handleViewChange(v as any)}>
+      <Tabs value={effectiveView} onValueChange={(v) => setView(v as any)}>
           <TabsList className="bg-muted/40 h-10 p-1 rounded-xl gap-0.5">
-            <TabsTrigger value="kanban" className="gap-1.5 text-xs h-8 rounded-lg data-[state=active]:shadow-sm">
-              <LayoutGrid className="h-3.5 w-3.5" /> Kanban
-            </TabsTrigger>
             <TabsTrigger value="agenda" className="gap-1.5 text-xs h-8 rounded-lg data-[state=active]:shadow-sm">
               <CalendarDays className="h-3.5 w-3.5" /> Agenda
             </TabsTrigger>
@@ -389,19 +321,6 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
 
       {/* View content */}
       <div className="mt-4">
-        {effectiveView === "kanban" &&
-        <PmKanbanBoard
-          tasks={tasks}
-          childTasksMap={childTasksMap}
-          clientsMap={clientsMap}
-          membersMap={membersMap}
-          avatarsPrimed={avatarsPrimed}
-          onTaskClick={(t) => setSelectedTaskId(t.id)}
-          onCreateClick={openCreate}
-          filters={filters}
-          isAdmin={isAdmin} />
-
-        }
         {effectiveView === "agenda" &&
         <AgendaCalendarView
           tasks={tasks}
@@ -438,7 +357,17 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
           tasks={tasks}
           clientsMap={clientsMap}
           membersMap={membersMap}
-          onTaskClick={(t) => setSelectedTaskId(t.id)} />
+          filterClient={filterClient}
+          filterAssignee={filterAssignee}
+          filterStage={filterStage}
+          search={search}
+          onTaskClick={(t) => setSelectedTaskId(t.id)}
+          onAddClick={(userId, dayKey) => {
+            setCreateDefaultStatus(undefined);
+            setCreateDefaultAssignee(userId);
+            setCreateForcedDueDate(dayKey);
+            setCreateOpen(true);
+          }} />
 
         }
         {effectiveView === "pauta" &&
@@ -487,13 +416,23 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
       {/* Create task dialog */}
       <PmCreateTaskDialog
         open={createOpen}
-        onClose={() => setCreateOpen(false)}
+        onClose={() => {
+          setCreateOpen(false);
+          setCreateDefaultAssignee(undefined);
+          setCreateForcedDueDate(undefined);
+        }}
         clients={(clientsQ.data ?? []).map((c) => ({ id: c.id, name: c.name }))}
         members={membersList}
         membersMap={membersMap}
         defaultStatus={createDefaultStatus}
+        defaultAssigneeId={createDefaultAssignee}
         onCreated={(taskId) => {
           setCreateOpen(false);
+          if (createForcedDueDate) {
+            patchTaskDueDate.mutate({ id: taskId, due_date: createForcedDueDate });
+          }
+          setCreateDefaultAssignee(undefined);
+          setCreateForcedDueDate(undefined);
           setSelectedTaskId(taskId);
         }} />
       
