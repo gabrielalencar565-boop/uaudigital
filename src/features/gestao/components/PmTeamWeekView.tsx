@@ -443,9 +443,9 @@ export function PmTeamWeekView({ tasks, clientsMap, membersMap, clients, current
           className="flex items-center gap-3 rounded-2xl px-4 py-2.5 shadow-lg overflow-x-auto"
           style={{ background: BAR_GRADIENT, boxShadow: "0 12px 30px -12px rgba(76,29,149,0.5)" }}
         >
-          <div className="flex shrink-0 items-center gap-2">
-            <p className="text-[10px] font-semibold uppercase text-white/70">Magic Number</p>
-            <p className="text-2xl font-bold text-white leading-none">{format(cycleEndDateVal, "dd/MM")}</p>
+          <div className="flex shrink-0 flex-col items-start">
+            <p className="text-[10px] font-semibold uppercase text-white/70 leading-tight">Magic Number</p>
+            <p className="text-2xl font-bold text-white leading-tight">{format(cycleEndDateVal, "dd/MM")}</p>
           </div>
 
           <Popover>
