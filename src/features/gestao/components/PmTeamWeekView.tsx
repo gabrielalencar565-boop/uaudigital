@@ -189,7 +189,7 @@ function DayCell({ id, userId, dayKey, tasksInCell, clientsMap, todayKey, minima
     <div
       ref={setNodeRef}
       className={cn(
-        "border-b border-r border-border/45 last:border-r-0 px-1.5 py-1.5 space-y-1 align-top min-h-[40px] transition-colors",
+        "border-b border-r border-black/25 last:border-r-0 px-1.5 py-1.5 space-y-1 align-top min-h-[40px] transition-colors",
         isOver && "bg-primary/5 ring-1 ring-inset ring-primary/30",
       )}
     >
@@ -608,11 +608,11 @@ export function PmTeamWeekView({ tasks, clientsMap, membersMap, clients, current
                   <AccordionContent className="px-0 pb-0">
                     <div className="overflow-x-auto">
                       <div className="min-w-[760px] grid" style={{ gridTemplateColumns: `220px repeat(${visibleDays.length}, 1fr)` }}>
-                        <div className="border-b border-r border-border/20 bg-muted/30 px-3 py-2" />
+                        <div className="border-b border-r border-black/25 bg-muted/30 px-3 py-2" />
                         {visibleDays.map((d, i) => {
                           const isToday = format(d, "yyyy-MM-dd") === todayKey;
                           return (
-                            <div key={i} className={cn("border-b border-r border-border/20 last:border-r-0 px-3 py-2 text-center", isToday ? "bg-primary/5" : "bg-muted/30")}>
+                            <div key={i} className={cn("border-b border-r border-black/25 last:border-r-0 px-3 py-2 text-center", isToday ? "bg-primary/5" : "bg-muted/30")}>
                               <p className="text-xs font-semibold text-muted-foreground">{WEEKDAY_SHORT[d.getDay()]}</p>
                               <p className={cn("text-sm font-bold", isToday && "text-primary")}>{format(d, "d")}</p>
                             </div>
@@ -621,7 +621,7 @@ export function PmTeamWeekView({ tasks, clientsMap, membersMap, clients, current
 
                         {teamMembers.map((member) => (
                           <div key={member.user_id} className="contents">
-                            <div className="flex items-center gap-2 border-b border-r border-border/45 px-3 py-2.5 bg-background sticky left-0">
+                            <div className="flex items-center gap-2 border-b border-r border-black/25 px-3 py-2.5 bg-background sticky left-0">
                               <UserAvatar avatarUrl={member.avatar_url} name={member.display_name} className="h-7 w-7 shrink-0" fallbackClassName="text-[10px] font-bold bg-primary/10 text-primary" />
                               <div className="min-w-0">
                                 <p className="truncate text-xs font-semibold leading-4">{member.display_name}</p>
