@@ -182,7 +182,8 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
 
   return (
     <div className="space-y-4">
-      {/* Header — título + filtros alinhados */}
+      {/* Header — título + filtros alinhados (Pauta traz seu próprio cabeçalho/barra) */}
+      {effectiveView !== "equipe" &&
       <div className="flex flex-col gap-3 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
         <div className="flex items-center justify-between gap-3">
           <h2 className="font-bold tracking-tight text-2xl sm:text-3xl">{VIEW_TITLES[effectiveView] ?? "Tarefas"}</h2>
@@ -242,7 +243,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
           </Select>
         </div>
       </div>
-
+      }
 
 
 
@@ -357,10 +358,8 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
           tasks={tasks}
           clientsMap={clientsMap}
           membersMap={membersMap}
-          filterClient={filterClient}
-          filterAssignee={filterAssignee}
-          filterStage={filterStage}
-          search={search}
+          clients={(clientsQ.data ?? []).map((c) => ({ id: c.id, name: c.name }))}
+          currentUserId={user?.id ?? null}
           onTaskClick={(t) => setSelectedTaskId(t.id)}
           onAddClick={(userId, dayKey) => {
             setCreateDefaultStatus(undefined);
