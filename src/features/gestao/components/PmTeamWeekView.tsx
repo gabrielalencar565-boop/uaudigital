@@ -611,11 +611,11 @@ export function PmTeamWeekView({ tasks, clientsMap, membersMap, clients, current
                         className="min-w-[760px] grid gap-px bg-black/10"
                         style={{ gridTemplateColumns: `220px repeat(${visibleDays.length}, 1fr)` }}
                       >
-                        <div className="bg-muted/30 px-3 py-2" />
+                        <div className="bg-background px-3 py-2" />
                         {visibleDays.map((d, i) => {
                           const isToday = format(d, "yyyy-MM-dd") === todayKey;
                           return (
-                            <div key={i} className={cn("px-3 py-2 text-center", isToday ? "bg-primary/5" : "bg-muted/30")}>
+                            <div key={i} className="bg-background px-3 py-2 text-center">
                               <p className="text-xs font-semibold text-muted-foreground">{WEEKDAY_SHORT[d.getDay()]}</p>
                               <p className={cn("text-sm font-bold", isToday && "text-primary")}>{format(d, "d")}</p>
                             </div>
