@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.1"
   }
   public: {
     Tables: {
@@ -955,32 +955,6 @@ export type Database = {
           },
         ]
       }
-      drive_client_folders: {
-        Row: {
-          client_id: string
-          created_at: string
-          drive_folder_id: string
-        }
-        Insert: {
-          client_id: string
-          created_at?: string
-          drive_folder_id: string
-        }
-        Update: {
-          client_id?: string
-          created_at?: string
-          drive_folder_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "drive_client_folders_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: true
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       financial_clients: {
         Row: {
           cnpj: string | null
@@ -1808,55 +1782,43 @@ export type Database = {
       }
       pm_attachments: {
         Row: {
-          access_token: string | null
           category: string
           created_at: string
-          drive_file_id: string | null
-          drive_organized_at: string | null
           file_name: string
           file_size: number | null
           file_type: string | null
           id: string
           order_index: number
           public_url: string | null
-          storage_path: string | null
-          storage_provider: string
+          storage_path: string
           subtask_id: string | null
           task_id: string | null
           uploaded_by: string
         }
         Insert: {
-          access_token?: string | null
           category?: string
           created_at?: string
-          drive_file_id?: string | null
-          drive_organized_at?: string | null
           file_name: string
           file_size?: number | null
           file_type?: string | null
           id?: string
           order_index?: number
           public_url?: string | null
-          storage_path?: string | null
-          storage_provider?: string
+          storage_path: string
           subtask_id?: string | null
           task_id?: string | null
           uploaded_by: string
         }
         Update: {
-          access_token?: string | null
           category?: string
           created_at?: string
-          drive_file_id?: string | null
-          drive_organized_at?: string | null
           file_name?: string
           file_size?: number | null
           file_type?: string | null
           id?: string
           order_index?: number
           public_url?: string | null
-          storage_path?: string | null
-          storage_provider?: string
+          storage_path?: string
           subtask_id?: string | null
           task_id?: string | null
           uploaded_by?: string

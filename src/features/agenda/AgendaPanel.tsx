@@ -546,24 +546,31 @@ export function AgendaPanel() {
     setActiveTaskId(null);
     const { active, over } = event;
     if (!over) return;
-    
+
     const taskId = String(active.id);
     const newDate = String(over.id);
-    
+
+    // Só aceita drops em zonas de dia (yyyy-MM-dd)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate)) return;
+
     // Se o dia é o mesmo, não faz nada
     const task = tasks.find(t => t.id === taskId);
     if (!task || task.due_date === newDate) return;
-    
+
     try {
-      await updateTask.mutateAsync({
-        taskId,
-        updates: { due_date: newDate },
-      });
+      const updates: any = { due_date: newDate };
+      // Mantém o horário quando existir
+      if (task.due_at) {
+        const time = new Date(task.due_at).toTimeString().slice(0, 8);
+        updates.due_at = new Date(`${newDate}T${time}`).toISOString();
+      }
+      await updateTask.mutateAsync({ taskId, updates });
       toast.success("Tarefa movida!");
     } catch (e: any) {
       toast.error(e?.message ?? "Erro ao mover tarefa");
     }
   };
+
 
   return <DndContext
     sensors={sensors}
