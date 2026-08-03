@@ -799,13 +799,14 @@ export function useSetTaskStatus() {
       const { error } = await supabase.from("tasks").update({ status: input.status }).eq("id", input.taskId);
       if (error) throw error;
 
+      const [y, m] = String(task.due_date).split("-");
+      const year = Number(y);
+      const month = Number(m);
+      const safeYear = Number.isFinite(year) ? year : null;
+
       // Demanda extra: não sincroniza com Magic Number (v1/v2). Ela só pontua no desempenho.
-      // Importante: os triggers do backend também fazem esse filtro, mas aqui garantimos que
-      // nenhuma sincronização client-side rode por engano.
       if ((task as any).is_extra_demand === true) {
-        const [y, _m] = String(task.due_date).split("-");
-        const year = Number(y);
-        return { year: Number.isFinite(year) ? year : null };
+        return { year: safeYear };
       }
 
       // Magic Number v2 (magic2): somente estágios suportados pela tabela magic2_cycle_stages
@@ -824,10 +825,11 @@ export function useSetTaskStatus() {
       // - Checklist (client_cycle_stages) é a fonte do Dashboard.
       // - Ao concluir UMA tarefa da etapa no mês -> marca a etapa como concluída.
       // - Ao desmarcar tarefa -> verifica se ainda há outras concluídas; se não, desmarca a etapa.
-      const [y, m] = String(task.due_date).split("-");
-      const year = Number(y);
-      const month = Number(m);
+      // IMPORTANTE: a conclusão da tarefa já foi salva acima. Falhas nas sincronizações
+      // abaixo não devem reverter (rollback) a conclusão na UI.
+      try {
       if (year && month) {
+
         const isCompleting = input.status === "concluido";
 
         const syncMagic2 = async (nextCompleted: boolean) => {
