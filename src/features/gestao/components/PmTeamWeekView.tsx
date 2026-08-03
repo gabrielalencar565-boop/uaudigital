@@ -189,7 +189,7 @@ function DayCell({ id, userId, dayKey, tasksInCell, clientsMap, todayKey, minima
     <div
       ref={setNodeRef}
       className={cn(
-        "bg-background px-1.5 py-1.5 space-y-1 align-top min-h-[40px] transition-colors",
+        "h-full bg-background px-1.5 py-1.5 space-y-1 align-top min-h-[40px] transition-colors",
         isOver ? "bg-primary/5 ring-1 ring-inset ring-primary/30" : "hover:bg-muted/30",
       )}
     >
@@ -635,7 +635,7 @@ export function PmTeamWeekView({ tasks, clientsMap, membersMap, clients, current
                               const dayKey = format(d, "yyyy-MM-dd");
                               const dayTasks = tasksByPersonDay.get(`${member.user_id}_${dayKey}`) ?? [];
                               return (
-                                <div key={i} className="group">
+                                <div key={i} className="group h-full">
                                   <DayCell
                                     id={`${member.user_id}_${dayKey}`}
                                     userId={member.user_id}
