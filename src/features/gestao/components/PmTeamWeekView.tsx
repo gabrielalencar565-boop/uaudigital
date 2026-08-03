@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { addDays, format, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-  Calendar, Check, Filter, GripVertical,
+  Calendar, Check, ChevronDown, Filter, GripVertical,
   History, Maximize2, Minimize2, Plus, Search, User,
 } from "lucide-react";
 import { DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from "@dnd-kit/core";
@@ -452,11 +452,12 @@ export function PmTeamWeekView({ tasks, clientsMap, membersMap, clients, current
             <PopoverTrigger asChild>
               <button
                 type="button"
-                className="flex shrink-0 items-center gap-2 rounded-xl bg-white/15 px-3 py-2 text-sm font-medium text-white hover:bg-white/25 transition-colors"
+                className="flex h-9 shrink-0 items-center gap-1.5 rounded-xl bg-white/15 px-3 text-sm font-medium text-white hover:bg-white/25 transition-colors"
               >
-                <span className="whitespace-nowrap">
-                  Ciclo {cycleNumber(cursor)} · {format(cycleStartDate, "dd/MM")} a {format(cycleEndDateVal, "dd/MM")}
+                <span className="whitespace-nowrap capitalize">
+                  Ciclo {cycleNumber(cursor)} · {format(cycleEndDateVal, "MMM", { locale: ptBR })}
                 </span>
+                <ChevronDown className="h-3.5 w-3.5 text-white/70" />
               </button>
             </PopoverTrigger>
             <PopoverContent align="start" className="w-64 p-1 max-h-80 overflow-y-auto">
