@@ -35,6 +35,7 @@ export type MainTab =
 "visao_geral_projetos" |
 "tarefas" |
 "agenda_gestao" |
+"pauta_pessoas" |
 "cronograma" |
 "fluxos" |
 "visao_do_dia" |
@@ -73,7 +74,8 @@ function isGroup(e: NavEntry): e is NavGroup {return "children" in e;}
 const NAV: NavEntry[] = [
 { key: "meu_painel", label: "Meu Painel", icon: UserRound },
 
-{ key: "agenda_gestao", label: "Tarefas", icon: CalendarDays },
+{ key: "agenda_gestao", label: "Agenda", icon: CalendarDays },
+{ key: "pauta_pessoas", label: "Pauta", icon: ClipboardList },
 { key: "visao_do_dia", label: "Visão do Dia", icon: Eye },
 { key: "magic2", label: "Magic Number", icon: Target },
 { key: "desempenho", label: "The Best", icon: Trophy },
