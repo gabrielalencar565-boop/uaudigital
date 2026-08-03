@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { addDays, format, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, LayoutGrid, List } from "lucide-react";
+import { ChevronLeft, ChevronRight, Film, LayoutGrid, List, Grid3x3, Image as ImageIcon } from "lucide-react";
 import { DndContext, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -14,7 +14,7 @@ import {
 } from "../hooks/use-calendar-data";
 import { CALENDAR_STATUS_LABELS, CONTENT_TYPE_LABELS, type CalendarPublication, type CalendarStatus } from "../calendar-types";
 import { PublicationCard } from "./PublicationCard";
-import { PublicationEditSheet } from "./PublicationEditSheet";
+import { PublicationPreviewPanel } from "./PublicationPreviewPanel";
 
 interface Props {
   onOpenTask: (taskId: string) => void;
@@ -67,11 +67,12 @@ function DropZone({ id, children, className }: { id: string; children: React.Rea
 export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
   const [clientId, setClientId] = useState<string | null>(null);
   const [cursor, setCursor] = useState(() => anchorForDate(new Date()));
-  const [view, setView] = useState<"calendario" | "lista">("calendario");
+  const [view, setView] = useState<"calendario" | "lista" | "feed">("calendario");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   const clientsQ = useClients();
+  const clientName = clientsQ.data?.find((c) => c.id === clientId)?.name ?? "Cliente";
   const calendarsQ = useCalendarsForClient(clientId);
   const cycleStartKey = format(cycleStart(cursor), "yyyy-MM-dd");
   const calendar = useMemo(() => (calendarsQ.data ?? []).find((c) => c.cycle_start === cycleStartKey) ?? null, [calendarsQ.data, cycleStartKey]);
@@ -84,10 +85,8 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
   const updatePublication = useUpdateCalendarPublication();
   const updateCalendarStatus = useUpdateCalendarStatus();
 
-  const thumbnailFor = (taskId: string) => {
-    const list = attachmentsQ.data?.get(taskId) ?? [];
-    return list.find((m) => m.type?.startsWith("image/"))?.url ?? null;
-  };
+  const mediaFor = (taskId: string) => attachmentsQ.data?.get(taskId) ?? [];
+  const thumbnailFor = (taskId: string) => mediaFor(taskId).find((m) => m.type?.startsWith("image/"))?.url ?? null;
 
   const byDay = useMemo(() => {
     const map = new Map<string, CalendarPublication[]>();
@@ -117,7 +116,49 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
     alteracao: publications.filter((p) => p.status === "alteracao_solicitada").length,
   }), [publications]);
 
-  const selected = publications.find((p) => p.id === selectedId) ?? null;
+  // Feed: chronological reading order (most recent first), excluding stories
+  // and anything missing what it needs to actually appear in a real feed.
+  const { feedItems, outsideFeed } = useMemo(() => {
+    const feed: CalendarPublication[] = [];
+    const outside: { publication: CalendarPublication; reason: string }[] = [];
+    for (const p of publications) {
+      if (p.content_type === "story") {
+        outside.push({ publication: p, reason: "Stories não entram na grade do feed" });
+        continue;
+      }
+      if (!p.publish_date) {
+        outside.push({ publication: p, reason: "Data não definida" });
+        continue;
+      }
+      if (!p.publish_time) {
+        outside.push({ publication: p, reason: "Horário não definido" });
+        continue;
+      }
+      if (mediaFor(p.task_id).length === 0) {
+        outside.push({ publication: p, reason: "Arquivo final não selecionado" });
+        continue;
+      }
+      feed.push(p);
+    }
+    feed.sort((a, b) => `${b.publish_date}T${b.publish_time}`.localeCompare(`${a.publish_date}T${a.publish_time}`));
+    return { feedItems: feed, outsideFeed: outside };
+  }, [publications, attachmentsQ.data]);
+
+  const listOrder = useMemo(
+    () => [...publications].sort((a, b) => (a.publish_date ?? "9999") > (b.publish_date ?? "9999") ? 1 : -1),
+    [publications],
+  );
+
+  const navList = view === "feed" ? feedItems : listOrder;
+  const navIndex = navList.findIndex((p) => p.id === selectedId);
+  const selected = navIndex >= 0 ? navList[navIndex] : null;
+
+  const handleNavigate = (direction: "prev" | "next") => {
+    if (navIndex < 0) return;
+    const nextIndex = direction === "prev" ? navIndex - 1 : navIndex + 1;
+    if (nextIndex < 0 || nextIndex >= navList.length) return;
+    setSelectedId(navList[nextIndex].id);
+  };
 
   const handleDragEnd = (e: DragEndEvent) => {
     const { active, over } = e;
@@ -174,6 +215,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
           <TabsList className="h-9 rounded-full">
             <TabsTrigger value="calendario" className="gap-1.5 rounded-full text-xs"><LayoutGrid className="h-3.5 w-3.5" /> Calendário</TabsTrigger>
             <TabsTrigger value="lista" className="gap-1.5 rounded-full text-xs"><List className="h-3.5 w-3.5" /> Lista</TabsTrigger>
+            <TabsTrigger value="feed" className="gap-1.5 rounded-full text-xs"><Grid3x3 className="h-3.5 w-3.5" /> Feed</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
@@ -199,54 +241,53 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
             <Badge variant="secondary" className="gap-1 rounded-full bg-destructive/15 text-destructive hover:bg-destructive/15">{counts.alteracao} com alteração</Badge>
           </div>
 
-          <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-            <DropZone id={UNSCHEDULED_ID} className="space-y-2 rounded-2xl border border-dashed border-border/40 p-3">
-              <p className="text-xs font-semibold uppercase text-muted-foreground">Publicações sem data</p>
-              <div className="flex flex-wrap gap-2">
-                {(byDay.get(UNSCHEDULED_ID) ?? []).length === 0 && (
-                  <p className="text-xs text-muted-foreground/60">Nenhuma — arraste uma publicação aqui para tirar a data.</p>
-                )}
-                {(byDay.get(UNSCHEDULED_ID) ?? []).map((p) => (
-                  <div key={p.id} className="w-56">
-                    <DraggablePublication publication={p} thumbnailUrl={thumbnailFor(p.task_id)} onClick={() => setSelectedId(p.id)} />
-                  </div>
-                ))}
-              </div>
-            </DropZone>
-
-            {view === "calendario" ? (
-              <div className="space-y-2">
-                <div className="grid grid-cols-7 gap-px overflow-hidden rounded-xl bg-black/10">
-                  {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((d) => (
-                    <div key={d} className="bg-muted/30 px-2 py-1.5 text-center text-xs font-semibold text-muted-foreground">{d}</div>
+          {view !== "feed" && (
+            <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+              <DropZone id={UNSCHEDULED_ID} className="space-y-2 rounded-2xl border border-dashed border-border/40 p-3">
+                <p className="text-xs font-semibold uppercase text-muted-foreground">Publicações sem data</p>
+                <div className="flex flex-wrap gap-2">
+                  {(byDay.get(UNSCHEDULED_ID) ?? []).length === 0 && (
+                    <p className="text-xs text-muted-foreground/60">Nenhuma — arraste uma publicação aqui para tirar a data.</p>
+                  )}
+                  {(byDay.get(UNSCHEDULED_ID) ?? []).map((p) => (
+                    <div key={p.id} className="w-56">
+                      <DraggablePublication publication={p} thumbnailUrl={thumbnailFor(p.task_id)} onClick={() => setSelectedId(p.id)} />
+                    </div>
                   ))}
                 </div>
-                {weeks.map((week, wi) => (
-                  <div key={wi} className="grid grid-cols-7 gap-px overflow-hidden rounded-xl bg-black/10">
-                    {week.map((d, di) => {
-                      const key = format(d, "yyyy-MM-dd");
-                      const isToday = key === todayKey;
-                      const dayPubs = byDay.get(key) ?? [];
-                      return (
-                        <DropZone key={di} id={key} className={cn("min-h-[90px] space-y-1 bg-background p-1.5", isToday && "bg-primary/5")}>
-                          <p className={cn("text-[11px] font-semibold", isToday ? "text-primary" : "text-muted-foreground")}>{format(d, "d")}</p>
-                          {dayPubs.map((p) => (
-                            <DraggablePublication key={p.id} publication={p} thumbnailUrl={thumbnailFor(p.task_id)} onClick={() => setSelectedId(p.id)} />
-                          ))}
-                        </DropZone>
-                      );
-                    })}
+              </DropZone>
+
+              {view === "calendario" ? (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-7 gap-px overflow-hidden rounded-xl bg-black/10">
+                    {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((d) => (
+                      <div key={d} className="bg-muted/30 px-2 py-1.5 text-center text-xs font-semibold text-muted-foreground">{d}</div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {publications.length === 0 && (
-                  <p className="text-sm text-muted-foreground">Nenhuma publicação neste ciclo ainda.</p>
-                )}
-                {[...publications]
-                  .sort((a, b) => (a.publish_date ?? "9999") > (b.publish_date ?? "9999") ? 1 : -1)
-                  .map((p) => (
+                  {weeks.map((week, wi) => (
+                    <div key={wi} className="grid grid-cols-7 gap-px overflow-hidden rounded-xl bg-black/10">
+                      {week.map((d, di) => {
+                        const key = format(d, "yyyy-MM-dd");
+                        const isToday = key === todayKey;
+                        const dayPubs = byDay.get(key) ?? [];
+                        return (
+                          <DropZone key={di} id={key} className={cn("min-h-[90px] space-y-1 bg-background p-1.5", isToday && "bg-primary/5")}>
+                            <p className={cn("text-[11px] font-semibold", isToday ? "text-primary" : "text-muted-foreground")}>{format(d, "d")}</p>
+                            {dayPubs.map((p) => (
+                              <DraggablePublication key={p.id} publication={p} thumbnailUrl={thumbnailFor(p.task_id)} onClick={() => setSelectedId(p.id)} />
+                            ))}
+                          </DropZone>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {publications.length === 0 && (
+                    <p className="text-sm text-muted-foreground">Nenhuma publicação neste ciclo ainda.</p>
+                  )}
+                  {listOrder.map((p) => (
                     <button
                       key={p.id}
                       type="button"
@@ -268,17 +309,85 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
                       <Badge variant="outline" className="shrink-0 rounded-full text-[10px]">{p.status.replace(/_/g, " ")}</Badge>
                     </button>
                   ))}
+                </div>
+              )}
+            </DndContext>
+          )}
+
+          {view === "feed" && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-3 gap-0.5 overflow-hidden rounded-xl border border-border/30">
+                {feedItems.length === 0 && (
+                  <p className="col-span-3 p-6 text-center text-sm text-muted-foreground">Nenhuma publicação pronta para o feed ainda.</p>
+                )}
+                {feedItems.map((p) => {
+                  const media = mediaFor(p.task_id);
+                  const images = media.filter((m) => m.type?.startsWith("image/"));
+                  const thumb = images[0]?.url ?? null;
+                  const isCarousel = p.content_type === "carrossel" && images.length > 1;
+                  const isVideoish = p.content_type === "reel" || p.content_type === "video";
+                  return (
+                    <button key={p.id} type="button" onClick={() => setSelectedId(p.id)} className="group relative aspect-square bg-muted">
+                      {thumb ? (
+                        <img src={thumb} alt="" className="h-full w-full object-cover transition-opacity group-hover:opacity-90" />
+                      ) : (
+                        <span className="flex h-full w-full items-center justify-center"><ImageIcon className="h-6 w-6 text-muted-foreground/40" /></span>
+                      )}
+                      <span className="absolute right-1.5 top-1.5 flex items-center gap-1">
+                        {isCarousel && <LayoutGrid className="h-3.5 w-3.5 text-white drop-shadow" />}
+                        {isVideoish && <Film className="h-3.5 w-3.5 text-white drop-shadow" />}
+                      </span>
+                      {isCarousel && (
+                        <span className="absolute right-1.5 bottom-1.5 rounded bg-black/60 px-1 text-[9px] font-medium text-white">{images.length}p</span>
+                      )}
+                      <span className={cn(
+                        "absolute left-1.5 top-1.5 h-1.5 w-1.5 rounded-full",
+                        p.status === "aprovada" ? "bg-success" : p.status === "alteracao_solicitada" ? "bg-destructive" : "bg-amber-400",
+                      )} />
+                    </button>
+                  );
+                })}
               </div>
-            )}
-          </DndContext>
+
+              {outsideFeed.length > 0 && (
+                <div className="space-y-2 rounded-2xl border border-dashed border-border/40 p-3">
+                  <p className="text-xs font-semibold uppercase text-muted-foreground">Conteúdos fora do feed</p>
+                  <div className="flex flex-wrap gap-2">
+                    {outsideFeed.map(({ publication: p, reason }) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => setSelectedId(p.id)}
+                        className="flex w-56 items-center gap-2 rounded-lg border border-border/30 bg-card px-2 py-1.5 text-left hover:bg-muted/40"
+                      >
+                        {thumbnailFor(p.task_id) ? (
+                          <img src={thumbnailFor(p.task_id)!} alt="" className="h-8 w-8 shrink-0 rounded-md object-cover" />
+                        ) : (
+                          <span className="h-8 w-8 shrink-0 rounded-md bg-muted" />
+                        )}
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-[11px] font-medium">{p.title}</span>
+                          <span className="block truncate text-[10px] text-muted-foreground">{reason}</span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </>
       )}
 
-      <PublicationEditSheet
+      <PublicationPreviewPanel
         publication={selected}
-        media={selected ? attachmentsQ.data?.get(selected.task_id) ?? [] : []}
+        media={selected ? mediaFor(selected.task_id) : []}
+        clientName={clientName}
         onClose={() => setSelectedId(null)}
         onOpenTask={onOpenTask}
+        onNavigate={handleNavigate}
+        hasPrev={navIndex > 0}
+        hasNext={navIndex >= 0 && navIndex < navList.length - 1}
       />
     </div>
   );
