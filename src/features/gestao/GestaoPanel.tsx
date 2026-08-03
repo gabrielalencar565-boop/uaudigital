@@ -25,6 +25,7 @@ import { useDeleteTask, useTasks, useTeamMembers } from "@/features/data/queries
 import { useTaskAssigneesByMonth } from "@/features/data/task-assignees-queries";
 import { PmKanbanBoard } from "./components/PmKanbanBoard";
 import { PmClientView } from "./components/PmClientView";
+import { PmTeamWeekView } from "./components/PmTeamWeekView";
 import { PmTaskDetailDialog } from "./components/PmTaskDetailDialog";
 import { PmCreateTaskDialog } from "./components/PmCreateTaskDialog";
 import { PmStageFlowConfig, useStageFlows } from "./components/PmStageFlowConfig";
@@ -76,6 +77,7 @@ const VIEW_TITLES: Record<string, string> = {
   kanban: "Kanban de tarefas",
   agenda: "Agenda de tarefas",
   clientes: "Tarefas por cliente",
+  equipe: "Tarefas por pessoa",
   pauta: "Montagem de pauta",
   cronograma: "Cronograma",
   fluxo: "Configuração de fluxos",
@@ -86,7 +88,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
   const { user } = useSession();
   const { isAdmin } = useRole(user?.id);
 
-  const [view, setView] = useState<"kanban" | "agenda" | "clientes" | "pauta" | "cronograma" | "fluxo" | "responsaveis">(
+  const [view, setView] = useState<"kanban" | "agenda" | "clientes" | "equipe" | "pauta" | "cronograma" | "fluxo" | "responsaveis">(
     forcedView as any ?? "kanban"
   );
   // Allow user to toggle between agenda <-> kanban from the title dropdown even when forcedView is set
@@ -366,6 +368,9 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
             <TabsTrigger value="clientes" className="gap-1.5 text-xs h-8 rounded-lg data-[state=active]:shadow-sm">
               <FolderOpen className="h-3.5 w-3.5" /> Por Cliente
             </TabsTrigger>
+            <TabsTrigger value="equipe" className="gap-1.5 text-xs h-8 rounded-lg data-[state=active]:shadow-sm">
+              <Users className="h-3.5 w-3.5" /> Por Pessoa
+            </TabsTrigger>
             <TabsTrigger value="pauta" className="gap-1.5 text-xs h-8 rounded-lg data-[state=active]:shadow-sm">
               <FileSpreadsheet className="h-3.5 w-3.5" /> Montagem de Pauta
             </TabsTrigger>
@@ -423,6 +428,14 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
         <PmClientView
           tasks={tasks}
           childTasksMap={childTasksMap}
+          clientsMap={clientsMap}
+          membersMap={membersMap}
+          onTaskClick={(t) => setSelectedTaskId(t.id)} />
+
+        }
+        {effectiveView === "equipe" &&
+        <PmTeamWeekView
+          tasks={tasks}
           clientsMap={clientsMap}
           membersMap={membersMap}
           onTaskClick={(t) => setSelectedTaskId(t.id)} />
