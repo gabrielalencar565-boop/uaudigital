@@ -1037,8 +1037,27 @@ export function useUpdateTask() {
         .eq("id", input.taskId);
       if (error) throw error;
     },
-    onSuccess: async () => {
+    // Atualização otimista: evita que a tarefa "volte" para a data antiga
+    // enquanto o servidor responde (arrastar e soltar).
+    onMutate: async (input) => {
+      await qc.cancelQueries({ queryKey: ["tasks"] });
+      const previousTasks = qc.getQueriesData({ queryKey: ["tasks"] });
+      qc.setQueriesData<TaskRow[] | undefined>({ queryKey: ["tasks"] }, (old) => {
+        if (!old) return old;
+        return old.map((t) => (t.id === input.taskId ? { ...t, ...(input.updates as any) } : t));
+      });
+      return { previousTasks };
+    },
+    onError: (_err, _vars, context: any) => {
+      if (context?.previousTasks) {
+        for (const [queryKey, data] of context.previousTasks) {
+          qc.setQueryData(queryKey, data);
+        }
+      }
+    },
+    onSettled: async () => {
       await qc.invalidateQueries({ queryKey: ["tasks"] });
     },
   });
+
 }
