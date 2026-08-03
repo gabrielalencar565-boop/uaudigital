@@ -970,11 +970,13 @@ export function useSetTaskStatus() {
           }
         }
       }
+      } catch (syncErr) {
+        console.warn("[useSetTaskStatus] sync Magic Number falhou (status da tarefa já salvo):", syncErr);
+      }
 
       // Retorna a chave do mês para invalidarmos o Dashboard exatamente.
-      return {
-        year: Number.isFinite(year) ? year : null,
-      };
+      return { year: safeYear };
+
     },
     onSettled: async (result) => {
       // Revalida após a mutação (sucesso ou erro) para garantir consistência
