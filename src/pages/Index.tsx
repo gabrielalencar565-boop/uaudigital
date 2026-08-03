@@ -50,6 +50,7 @@ type ProfileValues = z.infer<typeof profileSchema>;
 const GESTAO_VIEW_MAP: Record<string, string> = {
   agenda_gestao: "agenda",
   pauta_pessoas: "equipe",
+  calendario_publicacao: "calendario",
   cronograma: "cronograma",
   fluxos: "fluxo",
 };

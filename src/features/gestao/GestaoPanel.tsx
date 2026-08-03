@@ -24,6 +24,7 @@ import { useDeleteTask, useTasks, useTeamMembers } from "@/features/data/queries
 import { useTaskAssigneesByMonth } from "@/features/data/task-assignees-queries";
 import { PmClientView } from "./components/PmClientView";
 import { PmTeamWeekView } from "./components/PmTeamWeekView";
+import { CalendarioPublicacaoPanel } from "@/features/calendario/components/CalendarioPublicacaoPanel";
 import { PmTaskDetailDialog } from "./components/PmTaskDetailDialog";
 import { PmCreateTaskDialog } from "./components/PmCreateTaskDialog";
 import { PmStageFlowConfig, useStageFlows } from "./components/PmStageFlowConfig";
@@ -85,7 +86,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
   const { user } = useSession();
   const { isAdmin } = useRole(user?.id);
 
-  const [view, setView] = useState<"agenda" | "clientes" | "equipe" | "pauta" | "cronograma" | "fluxo" | "responsaveis">(
+  const [view, setView] = useState<"agenda" | "clientes" | "equipe" | "calendario" | "pauta" | "cronograma" | "fluxo" | "responsaveis">(
     forcedView as any ?? "agenda"
   );
   const effectiveView = forcedView ? (forcedView as any) : view;
@@ -183,7 +184,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
   return (
     <div className="space-y-4">
       {/* Header — título + filtros alinhados (Pauta traz seu próprio cabeçalho/barra) */}
-      {effectiveView !== "equipe" &&
+      {effectiveView !== "equipe" && effectiveView !== "calendario" &&
       <div className="flex flex-col gap-3 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
         <div className="flex items-center justify-between gap-3">
           <h2 className="font-bold tracking-tight text-2xl sm:text-3xl">{VIEW_TITLES[effectiveView] ?? "Tarefas"}</h2>
@@ -368,6 +369,9 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
             setCreateOpen(true);
           }} />
 
+        }
+        {effectiveView === "calendario" &&
+        <CalendarioPublicacaoPanel onOpenTask={(taskId) => setSelectedTaskId(taskId)} />
         }
         {effectiveView === "pauta" &&
         <PmPautaView
