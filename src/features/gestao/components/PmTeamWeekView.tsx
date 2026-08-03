@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { addDays, format, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-  Calendar, Check, ChevronLeft, ChevronRight, Filter, GripVertical,
+  Calendar, Check, Filter, GripVertical,
   History, Maximize2, Minimize2, Plus, Search, User,
 } from "lucide-react";
 import { DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from "@dnd-kit/core";
@@ -443,8 +443,8 @@ export function PmTeamWeekView({ tasks, clientsMap, membersMap, clients, current
           className="flex items-center gap-3 rounded-2xl px-4 py-2.5 shadow-lg overflow-x-auto"
           style={{ background: BAR_GRADIENT, boxShadow: "0 12px 30px -12px rgba(76,29,149,0.5)" }}
         >
-          <div className="shrink-0 leading-tight">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-white/70">Magic Number</p>
+          <div className="shrink-0 leading-tight text-left">
+            <p className="text-[10px] font-semibold uppercase text-white/70">Magic Number</p>
             <p className="text-2xl font-bold text-white leading-tight">{format(cycleEndDateVal, "dd/MM")}</p>
           </div>
 
@@ -457,7 +457,6 @@ export function PmTeamWeekView({ tasks, clientsMap, membersMap, clients, current
                 <span className="whitespace-nowrap">
                   Ciclo {cycleNumber(cursor)} · {format(cycleStartDate, "dd/MM")} a {format(cycleEndDateVal, "dd/MM")}
                 </span>
-                <ChevronLeft className="hidden" />
               </button>
             </PopoverTrigger>
             <PopoverContent align="start" className="w-64 p-1 max-h-80 overflow-y-auto">
@@ -477,15 +476,6 @@ export function PmTeamWeekView({ tasks, clientsMap, membersMap, clients, current
               ))}
             </PopoverContent>
           </Popover>
-
-          <div className="flex items-center gap-1 shrink-0">
-            <button type="button" onClick={() => setCursor((a) => new Date(a.getFullYear(), a.getMonth() - 1, 1))} className="flex h-8 w-8 items-center justify-center rounded-lg text-white/80 hover:bg-white/15">
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <button type="button" onClick={() => setCursor((a) => new Date(a.getFullYear(), a.getMonth() + 1, 1))} className="flex h-8 w-8 items-center justify-center rounded-lg text-white/80 hover:bg-white/15">
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
 
           <div className="relative min-w-[160px] flex-1">
             <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/70" />
