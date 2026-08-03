@@ -448,6 +448,7 @@ export function PmTeamWeekView({ tasks, clientsMap, membersMap, clients, current
             <p className="w-fit text-2xl font-bold text-white leading-tight">{format(cycleEndDateVal, "dd/MM")}</p>
           </div>
 
+          <div className="ml-auto flex items-center gap-3">
           <Popover>
             <PopoverTrigger asChild>
               <button
@@ -488,7 +489,7 @@ export function PmTeamWeekView({ tasks, clientsMap, membersMap, clients, current
             />
           </div>
 
-          <div className="ml-auto flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0">
             <Popover>
               <PopoverTrigger asChild>
                 <span>
@@ -585,6 +586,7 @@ export function PmTeamWeekView({ tasks, clientsMap, membersMap, clients, current
             <BarIconButton label="Histórico" onClick={() => setHistoryOpen(true)}>
               <History className="h-4 w-4" />
             </BarIconButton>
+          </div>
           </div>
         </div>
 
