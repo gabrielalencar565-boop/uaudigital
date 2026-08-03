@@ -445,7 +445,7 @@ export function PmTeamWeekView({ tasks, clientsMap, membersMap, clients, current
         >
           <div className="shrink-0 leading-tight">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-white/70">Magic Number</p>
-            <p className="text-lg font-bold text-white">{format(cycleEndDateVal, "dd/MM")}</p>
+            <p className="text-2xl font-bold text-white leading-tight">{format(cycleEndDateVal, "dd/MM")}</p>
           </div>
 
           <Popover>
