@@ -29,6 +29,7 @@ export type ClientRow = {
   resumed_from?: string | null;
   ended_at?: string | null;
   end_reason?: string | null;
+  logo_url?: string | null;
 };
 
 /** Returns the freelancer sentinel client (if exists) */
@@ -263,7 +264,7 @@ export function useAllClients() {
     queryFn: async (): Promise<ClientRow[]> => {
       const { data, error } = await supabase
         .from("clients")
-        .select("id, name, magic_due_date, notes, is_active, is_freelancer_sentinel, manager_id, plan_name, monthly_value, contract_start, services, participates_magic, participates_ranking, has_goals, paused_from, resumed_from, ended_at, end_reason")
+        .select("id, name, magic_due_date, notes, is_active, is_freelancer_sentinel, manager_id, plan_name, monthly_value, contract_start, services, participates_magic, participates_ranking, has_goals, paused_from, resumed_from, ended_at, end_reason, logo_url")
         .eq("is_freelancer_sentinel", false)
         .order("is_active", { ascending: false })
         .order("name", { ascending: true });

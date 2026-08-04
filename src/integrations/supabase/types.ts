@@ -655,6 +655,7 @@ export type Database = {
           id: string
           is_active: boolean
           is_freelancer_sentinel: boolean
+          logo_url: string | null
           magic_due_date: string
           manager_id: string | null
           monthly_value: number
@@ -678,6 +679,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_freelancer_sentinel?: boolean
+          logo_url?: string | null
           magic_due_date: string
           manager_id?: string | null
           monthly_value?: number
@@ -701,6 +703,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_freelancer_sentinel?: boolean
+          logo_url?: string | null
           magic_due_date?: string
           manager_id?: string | null
           monthly_value?: number
