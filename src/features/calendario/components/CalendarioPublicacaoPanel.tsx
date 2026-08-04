@@ -365,16 +365,13 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
               </DropZone>
 
               {view === "calendario" ? (
-                <div className="space-y-2 overflow-x-auto pb-2">
-                  <div
-                    className="grid gap-2 text-center text-xs font-medium text-muted-foreground"
-                    style={{ gridTemplateColumns: "repeat(7, minmax(190px, 1fr))" }}
-                  >
+                <div className="space-y-2">
+                  <div className="grid grid-cols-7 gap-1.5 text-center text-xs font-medium text-muted-foreground">
                     {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((d) => (
-                      <div key={d} className="px-2 py-1">{d}</div>
+                      <div key={d} className="px-1 py-1">{d}</div>
                     ))}
                   </div>
-                  <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(7, minmax(190px, 1fr))" }}>
+                  <div className="grid grid-cols-7 gap-1.5">
                     {weeks.flat().map((d) => {
                       const key = format(d, "yyyy-MM-dd");
                       const isToday = key === todayKey;
@@ -385,7 +382,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
                           key={key}
                           id={key}
                           className={cn(
-                            "calendar-card-hover relative min-h-[130px] space-y-1.5 rounded-xl border border-border/40 bg-card/20 p-2 transition",
+                            "calendar-card-hover relative min-h-[110px] space-y-1.5 rounded-xl border border-border/40 bg-card/20 p-1.5 transition",
                             isToday && "border-primary/40",
                             !inCycle && "opacity-50",
                           )}
