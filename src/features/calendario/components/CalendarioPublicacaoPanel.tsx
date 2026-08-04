@@ -228,19 +228,26 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
                 type="button"
                 onClick={() => setClientId(c.id)}
                 className={cn(
-                  "flex w-full flex-col items-center gap-1.5 rounded-2xl border border-border/30 bg-card p-3 text-center shadow-sm transition-all hover:shadow-md",
+                  "flex w-full items-center gap-2.5 rounded-2xl border border-border/30 bg-card p-3 text-left shadow-sm transition-all hover:shadow-md",
                   clientId === c.id && "border-primary/50 ring-1 ring-primary/30",
                 )}
               >
-                <span className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-tr from-purple-500 via-pink-500 to-orange-400 text-sm font-bold text-white">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-purple-500 via-pink-500 to-orange-400 text-sm font-bold text-white">
                   {initial}
                 </span>
-                <span className="w-full truncate text-sm font-semibold">{c.name}</span>
-                {statusMeta && (
-                  <span className={cn("rounded-md px-2 py-0.5 text-[10px] font-semibold", statusMeta.className)}>
-                    {statusMeta.label}
-                  </span>
-                )}
+                <span className="flex min-w-0 flex-1 flex-col gap-1">
+                  <span className="truncate text-sm font-semibold">{c.name}</span>
+                  {statusMeta && (
+                    <span
+                      className={cn(
+                        "w-fit rounded-md px-2 py-0.5 text-[10px] font-semibold",
+                        statusMeta.className,
+                      )}
+                    >
+                      {statusMeta.label}
+                    </span>
+                  )}
+                </span>
               </button>
             );
           })}
