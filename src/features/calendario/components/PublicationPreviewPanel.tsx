@@ -176,14 +176,6 @@ export function PublicationPreviewPanel({ publication, media, clientName, client
           {/* Internal editing fields */}
           <div className="space-y-4 px-3 py-4">
             <div className="space-y-1.5">
-              <Label>Nome da publicação</Label>
-              <Input
-                defaultValue={publication.title}
-                onBlur={(e) => e.target.value.trim() && e.target.value !== publication.title && save({ title: e.target.value.trim() })}
-              />
-            </div>
-
-            <div className="space-y-1.5">
               <Label>Tipo de conteúdo</Label>
               <Select value={publication.content_type} onValueChange={(v: PublicationContentType) => save({ content_type: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
