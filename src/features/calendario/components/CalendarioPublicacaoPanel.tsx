@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useClients } from "@/features/data/queries";
 import {
-  useCalendarPublications, useCalendarsForClient, useTaskAttachmentsMap, useUpdateCalendarPublication, useUpdateCalendarShare, useUpdateCalendarStatus,
+  useCalendarPublications, useCalendarsForClient, useCalendarsForCycle, useTaskAttachmentsMap, useUpdateCalendarPublication, useUpdateCalendarShare, useUpdateCalendarStatus,
 } from "../hooks/use-calendar-data";
 import { CALENDAR_STATUS_LABELS, CONTENT_TYPE_LABELS, type CalendarPublication, type CalendarStatus } from "../calendar-types";
 import { PublicationCard } from "./PublicationCard";
@@ -82,6 +82,14 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
   const calendarsQ = useCalendarsForClient(clientId);
   const cycleStartKey = format(cycleStart(cursor), "yyyy-MM-dd");
   const calendar = useMemo(() => (calendarsQ.data ?? []).find((c) => c.cycle_start === cycleStartKey) ?? null, [calendarsQ.data, cycleStartKey]);
+
+  // Which clients have a calendar in the current ciclo, for the sidebar dots.
+  const cycleCalendarsQ = useCalendarsForCycle(cycleStartKey);
+  const calendarByClientId = useMemo(() => {
+    const map = new Map<string, { id: string; status: string }>();
+    for (const c of cycleCalendarsQ.data ?? []) map.set(c.client_id, c);
+    return map;
+  }, [cycleCalendarsQ.data]);
 
   const publicationsQ = useCalendarPublications(calendar?.id ?? null);
   const publications = publicationsQ.data ?? [];
@@ -182,32 +190,53 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
   const cycleMonthLabel = format(cycleEnd(cursor), "MMMM", { locale: ptBR });
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/30 bg-muted/20 p-3">
-        <Select value={clientId ?? undefined} onValueChange={(v) => setClientId(v)}>
-          <SelectTrigger className="h-9 w-56 rounded-full text-sm">
-            <SelectValue placeholder="Selecione um cliente" />
-          </SelectTrigger>
-          <SelectContent>
-            {(clientsQ.data ?? []).map((c) => (
-              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <div className="flex items-center gap-1">
-          <button type="button" onClick={() => setCursor((a) => new Date(a.getFullYear(), a.getMonth() - 1, 1))} className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted">
-            <ChevronLeft className="h-4 w-4" />
+    <div className="flex gap-4">
+      {/* Left: cycle nav + vertical client list */}
+      <div className="w-60 shrink-0 space-y-2">
+        <div className="flex items-center gap-1 rounded-2xl border border-border/30 bg-muted/20 p-2">
+          <button type="button" onClick={() => setCursor((a) => new Date(a.getFullYear(), a.getMonth() - 1, 1))} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg hover:bg-muted">
+            <ChevronLeft className="h-3.5 w-3.5" />
           </button>
-          <span className="whitespace-nowrap text-sm font-medium capitalize">
-            Ciclo {cycleNumber(cursor)} · {cycleMonthLabel} ({format(cycleStart(cursor), "dd/MM")} a {format(cycleEnd(cursor), "dd/MM")})
+          <span className="flex-1 truncate text-center text-xs font-medium capitalize">
+            Ciclo {cycleNumber(cursor)} · {cycleMonthLabel}
           </span>
-          <button type="button" onClick={() => setCursor((a) => new Date(a.getFullYear(), a.getMonth() + 1, 1))} className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted">
-            <ChevronRight className="h-4 w-4" />
+          <button type="button" onClick={() => setCursor((a) => new Date(a.getFullYear(), a.getMonth() + 1, 1))} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg hover:bg-muted">
+            <ChevronRight className="h-3.5 w-3.5" />
           </button>
         </div>
 
-        {calendar && (
+        <div className="max-h-[70vh] divide-y overflow-y-auto rounded-2xl border border-border/30 bg-card">
+          {(clientsQ.data ?? []).map((c) => {
+            const cal = calendarByClientId.get(c.id);
+            return (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setClientId(c.id)}
+                className={cn(
+                  "flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left text-sm transition-colors hover:bg-muted/40",
+                  clientId === c.id && "bg-primary/10 font-semibold text-primary",
+                )}
+              >
+                <span className="truncate">{c.name}</span>
+                {cal && (
+                  <span
+                    className={cn(
+                      "h-2 w-2 shrink-0 rounded-full",
+                      cal.status === "aprovado" ? "bg-success" : cal.status === "alteracoes_solicitadas" ? "bg-destructive" : "bg-amber-400",
+                    )}
+                  />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Right: selected client's calendar */}
+      <div className="min-w-0 flex-1 space-y-4">
+      {calendar && (
+        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/30 bg-muted/20 p-3">
           <Select value={calendar.status} onValueChange={(v: CalendarStatus) => updateCalendarStatus.mutate({ id: calendar.id, status: v, clientId: clientId! })}>
             <SelectTrigger className="h-9 w-auto rounded-full text-sm"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -216,9 +245,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
               ))}
             </SelectContent>
           </Select>
-        )}
 
-        {calendar && (
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" size="sm" className="h-9 gap-1.5 rounded-full">
@@ -262,20 +289,20 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
               )}
             </PopoverContent>
           </Popover>
-        )}
 
-        <Tabs value={view} onValueChange={(v) => setView(v as any)} className="ml-auto">
-          <TabsList className="h-9 rounded-full">
-            <TabsTrigger value="calendario" className="gap-1.5 rounded-full text-xs"><LayoutGrid className="h-3.5 w-3.5" /> Calendário</TabsTrigger>
-            <TabsTrigger value="lista" className="gap-1.5 rounded-full text-xs"><List className="h-3.5 w-3.5" /> Lista</TabsTrigger>
-            <TabsTrigger value="feed" className="gap-1.5 rounded-full text-xs"><Grid3x3 className="h-3.5 w-3.5" /> Feed</TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </div>
+          <Tabs value={view} onValueChange={(v) => setView(v as any)} className="ml-auto">
+            <TabsList className="h-9 rounded-full">
+              <TabsTrigger value="calendario" className="gap-1.5 rounded-full text-xs"><LayoutGrid className="h-3.5 w-3.5" /> Calendário</TabsTrigger>
+              <TabsTrigger value="lista" className="gap-1.5 rounded-full text-xs"><List className="h-3.5 w-3.5" /> Lista</TabsTrigger>
+              <TabsTrigger value="feed" className="gap-1.5 rounded-full text-xs"><Grid3x3 className="h-3.5 w-3.5" /> Feed</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+      )}
 
       {!clientId && (
         <div className="rounded-2xl border border-dashed border-border/40 p-10 text-center text-sm text-muted-foreground">
-          Selecione um cliente para ver o calendário de publicação.
+          Selecione um cliente na lista ao lado para ver o calendário de publicação.
         </div>
       )}
 
@@ -431,6 +458,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
           )}
         </>
       )}
+      </div>
 
       <PublicationPreviewPanel
         publication={selected}

@@ -20,6 +20,20 @@ export function useCalendarsForClient(clientId: string | null) {
   });
 }
 
+export function useCalendarsForCycle(cycleStart: string) {
+  return useQuery({
+    queryKey: ["publication_calendars_cycle", cycleStart],
+    queryFn: async (): Promise<Pick<PublicationCalendar, "id" | "client_id" | "status">[]> => {
+      const { data, error } = await sb
+        .from("publication_calendars")
+        .select("id, client_id, status")
+        .eq("cycle_start", cycleStart);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
 export function useCalendarPublications(calendarId: string | null) {
   return useQuery({
     enabled: !!calendarId,
