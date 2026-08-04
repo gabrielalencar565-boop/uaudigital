@@ -365,13 +365,16 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
               </DropZone>
 
               {view === "calendario" ? (
-                <div className="space-y-2">
-                  <div className="grid grid-cols-7 gap-2 text-center text-xs font-medium text-muted-foreground">
+                <div className="space-y-2 overflow-x-auto pb-2">
+                  <div
+                    className="grid gap-2 text-center text-xs font-medium text-muted-foreground"
+                    style={{ gridTemplateColumns: "repeat(7, minmax(190px, 1fr))" }}
+                  >
                     {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((d) => (
                       <div key={d} className="px-2 py-1">{d}</div>
                     ))}
                   </div>
-                  <div className="grid grid-cols-7 gap-2">
+                  <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(7, minmax(190px, 1fr))" }}>
                     {weeks.flat().map((d) => {
                       const key = format(d, "yyyy-MM-dd");
                       const isToday = key === todayKey;
