@@ -27,7 +27,7 @@ const CONTENT_TYPE_COLOR_KEY: Record<CalendarPublication["content_type"], string
 function getContentTypeColor(contentType: CalendarPublication["content_type"]) {
   const key = CONTENT_TYPE_COLOR_KEY[contentType];
   const found = TAG_COLORS.find((c) => c.key === key);
-  return found ? { bg: found.bg, text: found.text } : { bg: "bg-muted", text: "text-muted-foreground" };
+  return found ? { bg: found.dot, text: "text-white" } : { bg: "bg-muted-foreground", text: "text-white" };
 }
 
 const STATUS_PILL: Record<CalendarPublication["status"], { label: string; className: string }> = {
