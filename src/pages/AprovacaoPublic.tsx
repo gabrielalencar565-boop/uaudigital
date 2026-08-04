@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { format, parseISO, addDays, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-  Loader2, CalendarX, LayoutGrid, Grid3x3, X, Check, MessageSquareWarning, Film, Image as ImageIcon,
+  Loader2, CalendarX, LayoutGrid, Grid3x3, X, Check, MessageSquareWarning, Film, Image as ImageIcon, Camera, Smartphone, File, Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,12 +20,26 @@ const CONTENT_TYPE_LABELS: Record<string, string> = {
   imagem: "Imagem", carrossel: "Carrossel", reel: "Reel", video: "Vídeo", story: "Story", outro: "Outro",
 };
 
-const STATUS_META: Record<string, { label: string; className: string }> = {
-  rascunho: { label: "Em preparação", className: "bg-muted text-muted-foreground" },
-  aguardando_aprovacao: { label: "Aguardando sua aprovação", className: "bg-amber-500/15 text-amber-600" },
-  aprovada: { label: "Aprovada", className: "bg-emerald-500/15 text-emerald-600" },
-  alteracao_solicitada: { label: "Alteração solicitada", className: "bg-red-500/15 text-red-600" },
-  atualizada: { label: "Atualizada", className: "bg-blue-500/15 text-blue-600" },
+const CONTENT_TYPE_ICON: Record<string, typeof Film> = {
+  imagem: ImageIcon, carrossel: LayoutGrid, reel: Film, video: Camera, story: Smartphone, outro: File,
+};
+
+const STATUS_META: Record<string, { label: string; shortLabel: string; className: string }> = {
+  rascunho: { label: "Em preparação", shortLabel: "Em preparo", className: "bg-muted text-muted-foreground" },
+  aguardando_aprovacao: { label: "Aguardando sua aprovação", shortLabel: "Aguardando", className: "bg-amber-500/15 text-amber-600" },
+  aprovada: { label: "Aprovada", shortLabel: "Aprovada", className: "bg-emerald-500/15 text-emerald-600" },
+  alteracao_solicitada: { label: "Alteração solicitada", shortLabel: "Alteração", className: "bg-red-500/15 text-red-600" },
+  atualizada: { label: "Atualizada", shortLabel: "Atualizada", className: "bg-blue-500/15 text-blue-600" },
+};
+
+const CALENDAR_STATUS_META: Record<string, { label: string; className: string }> = {
+  em_montagem: { label: "Em montagem", className: "bg-muted text-muted-foreground" },
+  em_revisao_interna: { label: "Em revisão interna", className: "bg-muted text-muted-foreground" },
+  pronto_para_envio: { label: "Pronto para envio", className: "bg-amber-500/15 text-amber-600" },
+  enviado_ao_cliente: { label: "Aguardando sua aprovação", className: "bg-amber-500/15 text-amber-600" },
+  alteracoes_solicitadas: { label: "Alterações solicitadas", className: "bg-red-500/15 text-red-600" },
+  aprovado: { label: "Aprovado", className: "bg-emerald-500/15 text-emerald-600" },
+  arquivado: { label: "Arquivado", className: "bg-muted text-muted-foreground" },
 };
 
 interface PublicationData {
@@ -152,12 +166,12 @@ export default function AprovacaoPublic() {
     );
   }
 
-  const statusMeta = STATUS_META[calendarInfo.status] ?? { label: calendarInfo.status, className: "bg-muted" };
+  const statusMeta = CALENDAR_STATUS_META[calendarInfo.status] ?? { label: calendarInfo.status, className: "bg-muted" };
 
   return (
     <div className="min-h-screen bg-slate-50 pb-16">
       <header className="border-b bg-white px-4 py-4 sm:px-8">
-        <div className="mx-auto flex max-w-4xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mx-auto flex max-w-6xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-lg font-bold"><span className="text-primary">uaü</span> digital</p>
             <h1 className="text-xl font-bold">{clientName}</h1>
@@ -172,7 +186,7 @@ export default function AprovacaoPublic() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-4xl px-4 py-6 sm:px-8">
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-8">
         {canApproveAll && (
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3">
             <p className="text-sm font-medium">Revisou tudo? Aprove o ciclo inteiro de uma vez.</p>
@@ -216,52 +230,81 @@ export default function AprovacaoPublic() {
                       {format(d, "EEEE, d 'de' MMMM", { locale: ptBR })}
                     </p>
                     <div className="divide-y">
-                      {dayPubs.map((p) => (
-                        <button key={p.id} type="button" onClick={() => setSelectedId(p.id)} className="flex w-full items-center gap-3 p-3 text-left active:bg-slate-50">
-                          {p.media[0] ? (
-                            <img src={p.media[0].url} alt="" className="h-20 w-20 shrink-0 rounded-xl object-cover" />
-                          ) : (
-                            <span className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-slate-100"><ImageIcon className="h-6 w-6 text-slate-300" /></span>
-                          )}
-                          <span className="min-w-0 flex-1">
-                            <span className="block text-sm font-medium">{p.publish_time ? p.publish_time.slice(0, 5) : "Sem horário"}</span>
-                            <span className="block text-xs text-muted-foreground">{CONTENT_TYPE_LABELS[p.content_type] ?? p.content_type}</span>
-                            <Badge className={cn("mt-1 rounded-full text-[10px]", (STATUS_META[p.status] ?? {}).className)} variant="secondary">
-                              {(STATUS_META[p.status] ?? { label: p.status }).label}
-                            </Badge>
-                          </span>
-                        </button>
-                      ))}
+                      {dayPubs.map((p) => {
+                        const ContentIcon = CONTENT_TYPE_ICON[p.content_type] ?? File;
+                        return (
+                          <button key={p.id} type="button" onClick={() => setSelectedId(p.id)} className="flex w-full items-center gap-3 p-3 text-left active:bg-slate-50">
+                            {p.media[0] ? (
+                              <img src={p.media[0].url} alt="" className="h-24 w-24 shrink-0 rounded-xl object-cover" />
+                            ) : (
+                              <span className="flex h-24 w-24 shrink-0 items-center justify-center rounded-xl bg-slate-100"><ImageIcon className="h-7 w-7 text-slate-300" /></span>
+                            )}
+                            <span className="min-w-0 flex-1 space-y-1.5">
+                              <Badge className={cn("rounded-full text-[10px]", (STATUS_META[p.status] ?? {}).className)} variant="secondary">
+                                {(STATUS_META[p.status] ?? { label: p.status }).label}
+                              </Badge>
+                              <span className="flex items-center gap-1.5 text-sm font-medium">
+                                <Clock className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                                {p.publish_time ? p.publish_time.slice(0, 5) : "Sem horário"}
+                              </span>
+                              <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                <ContentIcon className="h-3.5 w-3.5 shrink-0" />
+                                {CONTENT_TYPE_LABELS[p.content_type] ?? p.content_type}
+                              </span>
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 );
               })}
             </div>
 
-            {/* Desktop / tablet: 7-column grid */}
-            <div className="hidden overflow-hidden rounded-2xl border bg-white sm:block">
-              <div className="grid grid-cols-7 border-b bg-slate-50">
+            {/* Desktop / tablet: 7-column grid, same visual language as the internal Agenda */}
+            <div className="hidden space-y-2 sm:block">
+              <div className="grid grid-cols-7 gap-2 text-center text-xs font-semibold text-muted-foreground">
                 {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((d) => (
-                  <div key={d} className="px-2 py-2 text-center text-xs font-semibold text-muted-foreground">{d}</div>
+                  <div key={d} className="px-2 py-1">{d}</div>
                 ))}
               </div>
-              <div className="grid grid-cols-7">
+              <div className="grid grid-cols-7 gap-2">
                 {days.map((d, i) => {
                   const key = format(d, "yyyy-MM-dd");
                   const dayPubs = byDay.get(key) ?? [];
                   return (
-                    <div key={i} className="min-h-[130px] space-y-1.5 border-b border-r p-2 last:border-r-0 [&:nth-child(7n)]:border-r-0">
-                      <p className="text-xs font-semibold text-muted-foreground">{format(d, "d")}</p>
-                      {dayPubs.map((p) => (
-                        <button key={p.id} type="button" onClick={() => setSelectedId(p.id)} className="block w-full overflow-hidden rounded-lg bg-slate-100 text-left hover:opacity-90">
-                          {p.media[0] ? (
-                            <img src={p.media[0].url} alt="" className="aspect-square w-full object-cover" />
-                          ) : (
-                            <span className="flex aspect-square w-full items-center justify-center bg-slate-200"><ImageIcon className="h-5 w-5 text-slate-400" /></span>
-                          )}
-                          <span className="block truncate px-1 py-0.5 text-[10px] font-medium">{p.publish_time?.slice(0, 5)}</span>
-                        </button>
-                      ))}
+                    <div key={i} className="calendar-card-hover min-h-[190px] space-y-1.5 rounded-xl border border-slate-200 bg-white p-2 transition">
+                      <div className="flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-[11px] text-slate-500">
+                        {format(d, "d")}
+                      </div>
+                      {dayPubs.map((p) => {
+                        const ContentIcon = CONTENT_TYPE_ICON[p.content_type] ?? File;
+                        const statusMeta = STATUS_META[p.status] ?? { shortLabel: p.status, className: "bg-slate-100 text-slate-500" };
+                        return (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => setSelectedId(p.id)}
+                            className="block w-full overflow-hidden rounded-lg border border-slate-200 text-left transition-colors hover:border-primary/40"
+                          >
+                            {p.media[0] ? (
+                              <img src={p.media[0].url} alt="" className="aspect-square w-full object-cover" />
+                            ) : (
+                              <span className="flex aspect-square w-full items-center justify-center bg-slate-100"><ImageIcon className="h-5 w-5 text-slate-300" /></span>
+                            )}
+                            <span className="block space-y-1 p-1.5">
+                              <span className={cn("inline-flex w-fit items-center rounded-full px-1.5 py-0.5 text-[9px] font-semibold", statusMeta.className)}>
+                                {statusMeta.shortLabel}
+                              </span>
+                              <span className="flex items-center gap-1 text-[10px] text-slate-500">
+                                <ContentIcon className="h-3 w-3 shrink-0" />
+                                <span className="truncate">{CONTENT_TYPE_LABELS[p.content_type] ?? p.content_type}</span>
+                                {p.publish_time && <span className="shrink-0">· {p.publish_time.slice(0, 5)}</span>}
+                              </span>
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
                   );
                 })}
