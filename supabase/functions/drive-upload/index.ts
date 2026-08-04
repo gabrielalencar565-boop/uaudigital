@@ -8,10 +8,12 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const CLIENT_ID = Deno.env.get("GOOGLE_DRIVE_CLIENT_ID")!;
-const CLIENT_SECRET = Deno.env.get("GOOGLE_DRIVE_CLIENT_SECRET")!;
-const REFRESH_TOKEN = Deno.env.get("GOOGLE_DRIVE_REFRESH_TOKEN")!;
-const FOLDER_ID = Deno.env.get("GOOGLE_DRIVE_FOLDER_ID")!;
+const CLIENT_ID = Deno.env.get("GOOGLE_DRIVE_CLIENT_ID") ?? "";
+const CLIENT_SECRET = Deno.env.get("GOOGLE_DRIVE_CLIENT_SECRET") ?? "";
+const REFRESH_TOKEN = Deno.env.get("GOOGLE_DRIVE_REFRESH_TOKEN") ?? "";
+const FOLDER_ID = Deno.env.get("GOOGLE_DRIVE_FOLDER_ID") ?? "";
+const DRIVE_CONFIGURED = !!(CLIENT_ID && CLIENT_SECRET && REFRESH_TOKEN && FOLDER_ID);
+const STORAGE_BUCKET = "pm-attachments";
 
 async function getAccessToken(): Promise<string> {
   const res = await fetch("https://oauth2.googleapis.com/token", {
@@ -109,6 +111,34 @@ Deno.serve(async (req) => {
     }
 
     const bytes = new Uint8Array(await file.arrayBuffer());
+
+    // Fallback: when Google Drive credentials are not configured, store the file
+    // in the public Supabase Storage bucket so uploads keep working.
+    if (!DRIVE_CONFIGURED) {
+      const admin = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      );
+      const safeName = file.name.replace(/[^\w.\-]+/g, "_");
+      const path = `${userData.user.id}/${Date.now()}-${safeName}`;
+      const { error: upErr } = await admin.storage.from(STORAGE_BUCKET).upload(path, bytes, {
+        contentType: file.type || "application/octet-stream",
+        upsert: false,
+      });
+      if (upErr) {
+        console.error("storage upload failed:", upErr.message);
+        return new Response(JSON.stringify({ error: `storage upload failed: ${upErr.message}` }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { data: pub } = admin.storage.from(STORAGE_BUCKET).getPublicUrl(path);
+      return new Response(
+        JSON.stringify({ storage_provider: "supabase", storage_path: path, public_url: pub.publicUrl }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     const accessToken = await getAccessToken();
     const fileId = await uploadToDrive(accessToken, file.name, file.type || "application/octet-stream", bytes);
     await makePublic(accessToken, fileId);
@@ -116,10 +146,11 @@ Deno.serve(async (req) => {
     const publicUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
 
     return new Response(
-      JSON.stringify({ drive_file_id: fileId, public_url: publicUrl }),
+      JSON.stringify({ storage_provider: "drive", drive_file_id: fileId, public_url: publicUrl }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (e) {
+    console.error("drive-upload error:", String(e));
     return new Response(JSON.stringify({ error: String(e) }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
