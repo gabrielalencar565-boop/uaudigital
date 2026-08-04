@@ -40,7 +40,7 @@ export function PublicationCard({ publication, thumbnailUrl, onClick, dragHandle
       )}
     >
       <div className="flex items-center justify-between gap-1">
-        <span className={cn("inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[9px] font-semibold leading-snug", statusPill.className)}>
+        <span className={cn("inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[10px] font-semibold leading-snug", statusPill.className)}>
           {statusPill.label}
         </span>
         <span
@@ -49,20 +49,20 @@ export function PublicationCard({ publication, thumbnailUrl, onClick, dragHandle
           {...(dragHandleProps?.attributes ?? {})}
           className="shrink-0 cursor-grab touch-none text-muted-foreground/40 opacity-0 transition-opacity group-hover:opacity-100 active:cursor-grabbing"
         >
-          <GripVertical className="h-3 w-3" />
+          <GripVertical className="h-3.5 w-3.5" />
         </span>
       </div>
       <button type="button" onClick={onClick} className="mt-1.5 flex w-full min-w-0 items-center gap-2 text-left">
         {thumbnailUrl ? (
-          <img src={thumbnailUrl} alt="" className="h-8 w-8 shrink-0 rounded-md object-cover" />
+          <img src={thumbnailUrl} alt="" className="h-12 w-12 shrink-0 rounded-md object-cover" />
         ) : (
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted">
-            <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-muted">
+            <Icon className="h-4 w-4 text-muted-foreground" />
           </span>
         )}
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[11px] font-medium leading-4">{publication.title}</span>
-          <span className="block truncate text-[10px] text-muted-foreground leading-3">
+          <span className="block truncate text-[13px] font-medium leading-4">{publication.title}</span>
+          <span className="block truncate text-[11px] text-muted-foreground leading-4">
             {publication.publish_time ? `${publication.publish_time.slice(0, 5)} · ` : ""}
             {publication.caption ? publication.caption.replace(/\s+/g, " ").trim() : "sem legenda"}
           </span>

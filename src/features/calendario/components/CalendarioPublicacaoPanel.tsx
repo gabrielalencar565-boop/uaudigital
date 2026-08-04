@@ -382,7 +382,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
                           key={key}
                           id={key}
                           className={cn(
-                            "calendar-card-hover relative min-h-[110px] space-y-1.5 rounded-xl border border-border/40 bg-card/20 p-2 transition",
+                            "calendar-card-hover relative min-h-[130px] space-y-1.5 rounded-xl border border-border/40 bg-card/20 p-2 transition",
                             isToday && "border-primary/40",
                             !inCycle && "opacity-50",
                           )}
