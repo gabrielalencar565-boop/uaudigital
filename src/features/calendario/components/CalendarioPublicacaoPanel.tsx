@@ -204,10 +204,10 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
   const cycleMonthLabel = format(cycleEnd(cursor), "MMMM", { locale: ptBR });
 
   return (
-    <div className="flex gap-4">
-      {/* Left: cycle nav + vertical client list */}
-      <div className="w-60 shrink-0 space-y-2">
-        <div className="flex items-center gap-1 rounded-2xl border border-border/30 bg-muted/20 p-2">
+    <div className="space-y-4">
+      {/* Top: cycle nav + horizontal scrollable client strip */}
+      <div className="space-y-2">
+        <div className="flex w-fit items-center gap-1 rounded-2xl border border-border/30 bg-muted/20 p-2">
           <button type="button" onClick={() => setCursor((a) => new Date(a.getFullYear(), a.getMonth() - 1, 1))} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg hover:bg-muted">
             <ChevronLeft className="h-3.5 w-3.5" />
           </button>
@@ -219,7 +219,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
           </button>
         </div>
 
-        <div className="max-h-[75vh] space-y-2 overflow-y-auto pr-0.5">
+        <div className="flex gap-2 overflow-x-auto pb-2">
           {(clientsQ.data ?? []).map((c) => {
             const cal = calendarByClientId.get(c.id);
             const statusMeta = cal ? CLIENT_CARD_STATUS[cal.status] ?? CLIENT_CARD_STATUS.em_montagem : null;
@@ -230,7 +230,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
                 type="button"
                 onClick={() => setClientId(c.id)}
                 className={cn(
-                  "flex w-full items-center gap-2.5 rounded-2xl border border-border/30 bg-card p-3 text-left shadow-sm transition-all hover:shadow-md",
+                  "flex w-56 shrink-0 items-center gap-2.5 rounded-2xl border border-border/30 bg-card p-3 text-left shadow-sm transition-all hover:shadow-md",
                   clientId === c.id && "border-primary/50 ring-1 ring-primary/30",
                 )}
               >
@@ -260,8 +260,8 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
         </div>
       </div>
 
-      {/* Right: selected client's calendar */}
-      <div className="min-w-0 flex-1 space-y-4">
+      {/* Bottom: selected client's calendar, full width */}
+      <div className="space-y-4">
       {calendar && (
         <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/30 bg-muted/20 p-3">
           <Select value={calendar.status} onValueChange={(v: CalendarStatus) => updateCalendarStatus.mutate({ id: calendar.id, status: v, clientId: clientId! })}>
