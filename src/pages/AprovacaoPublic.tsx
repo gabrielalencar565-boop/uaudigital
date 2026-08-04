@@ -200,24 +200,36 @@ export default function AprovacaoPublic() {
         </div>
 
         {view === "calendario" ? (
-          <div className="overflow-hidden rounded-2xl border bg-white">
-            <div className="grid grid-cols-7 border-b bg-slate-50">
-              {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((d) => (
-                <div key={d} className="px-2 py-2 text-center text-xs font-semibold text-muted-foreground">{d}</div>
-              ))}
-            </div>
-            <div className="grid grid-cols-7">
-              {days.map((d, i) => {
+          <>
+            {/* Mobile: vertical agenda, one section per day with content, big thumbnails */}
+            <div className="space-y-4 sm:hidden">
+              {days.filter((d) => (byDay.get(format(d, "yyyy-MM-dd")) ?? []).length > 0).length === 0 && (
+                <p className="rounded-2xl border bg-white p-8 text-center text-sm text-muted-foreground">Nada programado ainda.</p>
+              )}
+              {days.map((d) => {
                 const key = format(d, "yyyy-MM-dd");
                 const dayPubs = byDay.get(key) ?? [];
+                if (dayPubs.length === 0) return null;
                 return (
-                  <div key={i} className="min-h-[80px] border-b border-r p-1.5 last:border-r-0 [&:nth-child(7n)]:border-r-0">
-                    <p className="text-[11px] font-semibold text-muted-foreground">{format(d, "d")}</p>
-                    <div className="mt-1 space-y-1">
+                  <div key={key} className="overflow-hidden rounded-2xl border bg-white">
+                    <p className="border-b bg-slate-50 px-3 py-2 text-sm font-semibold capitalize text-foreground">
+                      {format(d, "EEEE, d 'de' MMMM", { locale: ptBR })}
+                    </p>
+                    <div className="divide-y">
                       {dayPubs.map((p) => (
-                        <button key={p.id} type="button" onClick={() => setSelectedId(p.id)} className="flex w-full items-center gap-1 rounded-md bg-slate-100 px-1 py-0.5 text-left hover:bg-slate-200">
-                          {p.media[0] ? <img src={p.media[0].url} alt="" className="h-4 w-4 shrink-0 rounded-sm object-cover" /> : <span className="h-4 w-4 shrink-0 rounded-sm bg-slate-300" />}
-                          <span className="truncate text-[9px] font-medium">{p.publish_time?.slice(0, 5)}</span>
+                        <button key={p.id} type="button" onClick={() => setSelectedId(p.id)} className="flex w-full items-center gap-3 p-3 text-left active:bg-slate-50">
+                          {p.media[0] ? (
+                            <img src={p.media[0].url} alt="" className="h-20 w-20 shrink-0 rounded-xl object-cover" />
+                          ) : (
+                            <span className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-slate-100"><ImageIcon className="h-6 w-6 text-slate-300" /></span>
+                          )}
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-sm font-medium">{p.publish_time ? p.publish_time.slice(0, 5) : "Sem horário"}</span>
+                            <span className="block text-xs text-muted-foreground">{CONTENT_TYPE_LABELS[p.content_type] ?? p.content_type}</span>
+                            <Badge className={cn("mt-1 rounded-full text-[10px]", (STATUS_META[p.status] ?? {}).className)} variant="secondary">
+                              {(STATUS_META[p.status] ?? { label: p.status }).label}
+                            </Badge>
+                          </span>
                         </button>
                       ))}
                     </div>
@@ -225,7 +237,37 @@ export default function AprovacaoPublic() {
                 );
               })}
             </div>
-          </div>
+
+            {/* Desktop / tablet: 7-column grid */}
+            <div className="hidden overflow-hidden rounded-2xl border bg-white sm:block">
+              <div className="grid grid-cols-7 border-b bg-slate-50">
+                {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((d) => (
+                  <div key={d} className="px-2 py-2 text-center text-xs font-semibold text-muted-foreground">{d}</div>
+                ))}
+              </div>
+              <div className="grid grid-cols-7">
+                {days.map((d, i) => {
+                  const key = format(d, "yyyy-MM-dd");
+                  const dayPubs = byDay.get(key) ?? [];
+                  return (
+                    <div key={i} className="min-h-[130px] space-y-1.5 border-b border-r p-2 last:border-r-0 [&:nth-child(7n)]:border-r-0">
+                      <p className="text-xs font-semibold text-muted-foreground">{format(d, "d")}</p>
+                      {dayPubs.map((p) => (
+                        <button key={p.id} type="button" onClick={() => setSelectedId(p.id)} className="block w-full overflow-hidden rounded-lg bg-slate-100 text-left hover:opacity-90">
+                          {p.media[0] ? (
+                            <img src={p.media[0].url} alt="" className="aspect-square w-full object-cover" />
+                          ) : (
+                            <span className="flex aspect-square w-full items-center justify-center bg-slate-200"><ImageIcon className="h-5 w-5 text-slate-400" /></span>
+                          )}
+                          <span className="block truncate px-1 py-0.5 text-[10px] font-medium">{p.publish_time?.slice(0, 5)}</span>
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </>
         ) : (
           <div className="grid grid-cols-3 gap-0.5 overflow-hidden rounded-2xl border bg-white">
             {feedItems.length === 0 && <p className="col-span-3 p-8 text-center text-sm text-muted-foreground">Nada pronto para mostrar ainda.</p>}
