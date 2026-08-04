@@ -35,7 +35,7 @@ export function PublicationCard({ publication, thumbnailUrl, onClick, dragHandle
   return (
     <div
       className={cn(
-        "group flex items-start gap-2 rounded-lg border border-border/60 bg-card/20 p-1.5 shadow-sm transition-colors hover:border-primary/50 hover:bg-card/40",
+        "group flex w-full max-w-full items-start gap-1.5 overflow-hidden rounded-lg border border-border/60 bg-card/20 p-1.5 shadow-sm transition-colors hover:border-primary/50 hover:bg-card/40",
         isDragging && "opacity-40",
       )}
     >
@@ -49,9 +49,9 @@ export function PublicationCard({ publication, thumbnailUrl, onClick, dragHandle
         )}
       </button>
 
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center justify-between gap-1">
-          <span className={cn("inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[10px] font-semibold leading-snug", statusPill.className)}>
+      <div className="min-w-0 flex-1 space-y-1">
+        <div className="flex min-w-0 items-center justify-between gap-1">
+          <span className={cn("min-w-0 truncate rounded-full px-1.5 py-0.5 text-[9px] font-semibold leading-snug", statusPill.className)}>
             {statusPill.label}
           </span>
           <span
@@ -64,15 +64,15 @@ export function PublicationCard({ publication, thumbnailUrl, onClick, dragHandle
           </span>
         </div>
 
-        <button type="button" onClick={onClick} className="mt-1.5 flex w-full flex-wrap items-center gap-x-2 gap-y-0.5 text-left text-[11px] text-muted-foreground">
-          <span className="inline-flex items-center gap-1">
+        <button type="button" onClick={onClick} className="block w-full min-w-0 text-left">
+          <span className="flex min-w-0 items-center gap-1 truncate text-[11px] text-muted-foreground">
             <Icon className="h-3 w-3 shrink-0" />
-            {CONTENT_TYPE_LABELS[publication.content_type]}
+            <span className="truncate">{CONTENT_TYPE_LABELS[publication.content_type]}</span>
           </span>
           {publication.publish_time && (
-            <span className="inline-flex items-center gap-1">
+            <span className="flex min-w-0 items-center gap-1 truncate text-[11px] text-muted-foreground">
               <Clock className="h-3 w-3 shrink-0" />
-              {publication.publish_time.slice(0, 5)}
+              <span className="truncate">{publication.publish_time.slice(0, 5)}</span>
             </span>
           )}
         </button>
