@@ -366,28 +366,42 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
 
               {view === "calendario" ? (
                 <div className="space-y-2">
-                  <div className="grid grid-cols-7 gap-px overflow-hidden rounded-xl bg-black/10">
+                  <div className="grid grid-cols-7 gap-2 text-center text-xs font-medium text-muted-foreground">
                     {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((d) => (
-                      <div key={d} className="bg-muted/30 px-2 py-1.5 text-center text-xs font-semibold text-muted-foreground">{d}</div>
+                      <div key={d} className="px-2 py-1">{d}</div>
                     ))}
                   </div>
-                  {weeks.map((week, wi) => (
-                    <div key={wi} className="grid grid-cols-7 gap-px overflow-hidden rounded-xl bg-black/10">
-                      {week.map((d, di) => {
-                        const key = format(d, "yyyy-MM-dd");
-                        const isToday = key === todayKey;
-                        const dayPubs = byDay.get(key) ?? [];
-                        return (
-                          <DropZone key={di} id={key} className={cn("min-h-[90px] space-y-1 bg-background p-1.5", isToday && "bg-primary/5")}>
-                            <p className={cn("text-[11px] font-semibold", isToday ? "text-primary" : "text-muted-foreground")}>{format(d, "d")}</p>
-                            {dayPubs.map((p) => (
-                              <DraggablePublication key={p.id} publication={p} thumbnailUrl={thumbnailFor(p.task_id)} onClick={() => setSelectedId(p.id)} />
-                            ))}
-                          </DropZone>
-                        );
-                      })}
-                    </div>
-                  ))}
+                  <div className="grid grid-cols-7 gap-2">
+                    {weeks.flat().map((d) => {
+                      const key = format(d, "yyyy-MM-dd");
+                      const isToday = key === todayKey;
+                      const inCycle = d >= cycleStart(cursor) && d <= cycleEnd(cursor);
+                      const dayPubs = byDay.get(key) ?? [];
+                      return (
+                        <DropZone
+                          key={key}
+                          id={key}
+                          className={cn(
+                            "calendar-card-hover relative min-h-[110px] space-y-1.5 rounded-xl border border-border/40 bg-card/20 p-2 transition",
+                            isToday && "border-primary/40",
+                            !inCycle && "opacity-50",
+                          )}
+                        >
+                          <div
+                            className={cn(
+                              "flex h-6 w-6 items-center justify-center rounded-full border border-border/60 bg-background/60 text-[11px]",
+                              isToday ? "text-primary" : "text-muted-foreground",
+                            )}
+                          >
+                            {format(d, "d")}
+                          </div>
+                          {dayPubs.map((p) => (
+                            <DraggablePublication key={p.id} publication={p} thumbnailUrl={thumbnailFor(p.task_id)} onClick={() => setSelectedId(p.id)} />
+                          ))}
+                        </DropZone>
+                      );
+                    })}
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-2">

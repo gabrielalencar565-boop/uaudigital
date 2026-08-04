@@ -11,13 +11,13 @@ const CONTENT_TYPE_ICON: Record<CalendarPublication["content_type"], typeof Film
   outro: File,
 };
 
-const STATUS_DOT: Record<CalendarPublication["status"], string> = {
-  rascunho: "bg-muted-foreground/40",
-  aguardando_aprovacao: "bg-amber-500",
-  aprovada: "bg-success",
-  alteracao_solicitada: "bg-destructive",
-  atualizada: "bg-blue-500",
-  cancelada: "bg-muted-foreground/20",
+const STATUS_PILL: Record<CalendarPublication["status"], { label: string; className: string }> = {
+  rascunho: { label: "RASCUNHO", className: "bg-muted text-muted-foreground" },
+  aguardando_aprovacao: { label: "AGUARDANDO", className: "bg-amber-500/15 text-amber-600" },
+  aprovada: { label: "APROVADA", className: "bg-success/15 text-success" },
+  alteracao_solicitada: { label: "ALTERAÇÃO", className: "bg-destructive/15 text-destructive" },
+  atualizada: { label: "ATUALIZADA", className: "bg-blue-500/15 text-blue-600" },
+  cancelada: { label: "CANCELADA", className: "bg-muted-foreground/10 text-muted-foreground/60" },
 };
 
 interface Props {
@@ -30,23 +30,29 @@ interface Props {
 
 export function PublicationCard({ publication, thumbnailUrl, onClick, dragHandleProps, isDragging }: Props) {
   const Icon = CONTENT_TYPE_ICON[publication.content_type];
+  const statusPill = STATUS_PILL[publication.status];
 
   return (
     <div
       className={cn(
-        "group flex items-start gap-1.5 rounded-lg border border-border/30 bg-card px-1.5 py-1.5 text-left transition-colors hover:bg-muted/50",
+        "group rounded-lg border border-border/60 bg-card/20 p-2 shadow-sm transition-colors hover:border-primary/50 hover:bg-card/40",
         isDragging && "opacity-40",
       )}
     >
-      <span
-        ref={dragHandleProps?.setActivatorNodeRef}
-        {...(dragHandleProps?.listeners ?? {})}
-        {...(dragHandleProps?.attributes ?? {})}
-        className="mt-0.5 shrink-0 cursor-grab touch-none text-muted-foreground/40 opacity-0 group-hover:opacity-100 active:cursor-grabbing"
-      >
-        <GripVertical className="h-3 w-3" />
-      </span>
-      <button type="button" onClick={onClick} className="flex min-w-0 flex-1 items-center gap-2 text-left">
+      <div className="flex items-center justify-between gap-1">
+        <span className={cn("inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[9px] font-semibold leading-snug", statusPill.className)}>
+          {statusPill.label}
+        </span>
+        <span
+          ref={dragHandleProps?.setActivatorNodeRef}
+          {...(dragHandleProps?.listeners ?? {})}
+          {...(dragHandleProps?.attributes ?? {})}
+          className="shrink-0 cursor-grab touch-none text-muted-foreground/40 opacity-0 transition-opacity group-hover:opacity-100 active:cursor-grabbing"
+        >
+          <GripVertical className="h-3 w-3" />
+        </span>
+      </div>
+      <button type="button" onClick={onClick} className="mt-1.5 flex w-full min-w-0 items-center gap-2 text-left">
         {thumbnailUrl ? (
           <img src={thumbnailUrl} alt="" className="h-8 w-8 shrink-0 rounded-md object-cover" />
         ) : (
@@ -55,10 +61,7 @@ export function PublicationCard({ publication, thumbnailUrl, onClick, dragHandle
           </span>
         )}
         <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-1">
-            <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", STATUS_DOT[publication.status])} />
-            <span className="truncate text-[11px] font-medium leading-4">{publication.title}</span>
-          </span>
+          <span className="block truncate text-[11px] font-medium leading-4">{publication.title}</span>
           <span className="block truncate text-[10px] text-muted-foreground leading-3">
             {publication.publish_time ? `${publication.publish_time.slice(0, 5)} · ` : ""}
             {publication.caption ? publication.caption.replace(/\s+/g, " ").trim() : "sem legenda"}
