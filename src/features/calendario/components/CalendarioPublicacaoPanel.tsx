@@ -424,9 +424,9 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
                         <span className="h-10 w-10 shrink-0 rounded-lg bg-muted" />
                       )}
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-medium">{p.title}</span>
+                        <span className="block truncate text-sm font-medium">{CONTENT_TYPE_LABELS[p.content_type]}</span>
                         <span className="block truncate text-xs text-muted-foreground">
-                          {CONTENT_TYPE_LABELS[p.content_type]} · {p.publish_date ? format(new Date(`${p.publish_date}T00:00:00`), "dd/MM") : "sem data"}
+                          {p.publish_date ? format(new Date(`${p.publish_date}T00:00:00`), "dd/MM") : "sem data"}
                           {p.publish_time ? ` às ${p.publish_time.slice(0, 5)}` : ""}
                         </span>
                       </span>
@@ -490,7 +490,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
                           <span className="h-8 w-8 shrink-0 rounded-md bg-muted" />
                         )}
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate text-[11px] font-medium">{p.title}</span>
+                          <span className="block truncate text-[11px] font-medium">{CONTENT_TYPE_LABELS[p.content_type]}</span>
                           <span className="block truncate text-[10px] text-muted-foreground">{reason}</span>
                         </span>
                       </button>

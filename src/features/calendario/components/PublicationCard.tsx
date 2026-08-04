@@ -64,11 +64,7 @@ export function PublicationCard({ publication, thumbnailUrl, onClick, dragHandle
           </span>
         </div>
 
-        <button type="button" onClick={onClick} className="mt-1 block w-full text-left">
-          <span className="block truncate text-[13px] font-medium leading-4">{publication.title}</span>
-        </button>
-
-        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
+        <button type="button" onClick={onClick} className="mt-1.5 flex w-full flex-wrap items-center gap-x-2 gap-y-0.5 text-left text-[11px] text-muted-foreground">
           <span className="inline-flex items-center gap-1">
             <Icon className="h-3 w-3 shrink-0" />
             {CONTENT_TYPE_LABELS[publication.content_type]}
@@ -79,7 +75,7 @@ export function PublicationCard({ publication, thumbnailUrl, onClick, dragHandle
               {publication.publish_time.slice(0, 5)}
             </span>
           )}
-        </div>
+        </button>
       </div>
     </div>
   );
