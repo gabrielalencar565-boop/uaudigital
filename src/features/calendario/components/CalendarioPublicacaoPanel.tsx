@@ -90,7 +90,9 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   const clientsQ = useClients();
-  const clientName = clientsQ.data?.find((c) => c.id === clientId)?.name ?? "Cliente";
+  const selectedClient = clientsQ.data?.find((c) => c.id === clientId);
+  const clientName = selectedClient?.name ?? "Cliente";
+  const clientLogoUrl = selectedClient?.logo_url ?? null;
   const calendarsQ = useCalendarsForClient(clientId);
   const cycleStartKey = format(cycleStart(cursor), "yyyy-MM-dd");
   const calendar = useMemo(() => (calendarsQ.data ?? []).find((c) => c.cycle_start === cycleStartKey) ?? null, [calendarsQ.data, cycleStartKey]);
@@ -232,8 +234,12 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
                   clientId === c.id && "border-primary/50 ring-1 ring-primary/30",
                 )}
               >
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-purple-500 via-pink-500 to-orange-400 text-sm font-bold text-white">
-                  {initial}
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-tr from-purple-500 via-pink-500 to-orange-400 text-sm font-bold text-white">
+                  {c.logo_url ? (
+                    <img src={c.logo_url} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    initial
+                  )}
                 </span>
                 <span className="flex min-w-0 flex-1 flex-col gap-1">
                   <span className="truncate text-sm font-semibold">{c.name}</span>
@@ -485,6 +491,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
         publication={selected}
         media={selected ? mediaFor(selected.task_id) : []}
         clientName={clientName}
+        clientLogoUrl={clientLogoUrl}
         onClose={() => setSelectedId(null)}
         onOpenTask={onOpenTask}
         onNavigate={handleNavigate}

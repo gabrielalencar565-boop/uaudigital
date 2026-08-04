@@ -17,6 +17,7 @@ interface Props {
   publication: CalendarPublication | null;
   media: { url: string; type: string | null }[];
   clientName: string;
+  clientLogoUrl?: string | null;
   onClose: () => void;
   onOpenTask: (taskId: string) => void;
   onNavigate?: (direction: "prev" | "next") => void;
@@ -26,7 +27,7 @@ interface Props {
 
 const CAPTION_LIMIT = 2200;
 
-export function PublicationPreviewPanel({ publication, media, clientName, onClose, onOpenTask, onNavigate, hasPrev, hasNext }: Props) {
+export function PublicationPreviewPanel({ publication, media, clientName, clientLogoUrl, onClose, onOpenTask, onNavigate, hasPrev, hasNext }: Props) {
   const updatePublication = useUpdateCalendarPublication();
   const removePublication = useRemoveCalendarPublication();
   const [caption, setCaption] = useState("");
@@ -87,8 +88,12 @@ export function PublicationPreviewPanel({ publication, media, clientName, onClos
           {/* Instagram-style visual simulation */}
           <div className="border-b pb-3">
             <div className="flex items-center gap-2.5 px-3 py-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-tr from-purple-500 via-pink-500 to-orange-400">
-                <span className="text-xs font-bold text-white">{clientInitial}</span>
+              <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-gradient-to-tr from-purple-500 via-pink-500 to-orange-400">
+                {clientLogoUrl ? (
+                  <img src={clientLogoUrl} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <span className="text-xs font-bold text-white">{clientInitial}</span>
+                )}
               </div>
               <div className="flex flex-col">
                 <span className="text-sm font-semibold leading-tight">{clientName}</span>

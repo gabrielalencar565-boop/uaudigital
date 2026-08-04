@@ -247,7 +247,7 @@ export function useClients() {
     queryFn: async (): Promise<ClientRow[]> => {
       const { data, error } = await supabase
         .from("clients")
-        .select("id, name, magic_due_date, notes, is_active, is_freelancer_sentinel")
+        .select("id, name, magic_due_date, notes, is_active, is_freelancer_sentinel, logo_url")
         .eq("is_active", true)
         .eq("is_freelancer_sentinel", false)
         .order("magic_due_date", { ascending: true });
