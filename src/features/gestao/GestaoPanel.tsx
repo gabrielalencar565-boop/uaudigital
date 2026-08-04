@@ -145,10 +145,24 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
     return map;
   }, [allChildTasksQ.data]);
 
+  // Tasks opened by id from outside the loaded root-task list (e.g. a child
+  // task reached from the Calendário de Publicação's "Abrir tarefa original")
+  // aren't in `allTasks`, which only holds root tasks — fetch it directly.
+  const missingTaskId = selectedTaskId && !allTasks.find((t) => t.id === selectedTaskId) ? selectedTaskId : null;
+  const fallbackTaskQ = useQuery({
+    queryKey: ["pm_task_by_id", missingTaskId],
+    enabled: !!missingTaskId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("pm_tasks").select("*").eq("id", missingTaskId!).single();
+      if (error) throw error;
+      return data as unknown as PmTask;
+    },
+  });
+
   const selectedTask = useMemo(() => {
     if (!selectedTaskId) return null;
-    return allTasks.find((t) => t.id === selectedTaskId) ?? null;
-  }, [selectedTaskId, allTasks]);
+    return allTasks.find((t) => t.id === selectedTaskId) ?? fallbackTaskQ.data ?? null;
+  }, [selectedTaskId, allTasks, fallbackTaskQ.data]);
 
   // Clients
   const clientsQ = useQuery({
