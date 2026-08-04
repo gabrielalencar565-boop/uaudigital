@@ -42,6 +42,18 @@ function cycleNumber(anchor: Date) {
 
 const UNSCHEDULED_ID = "unscheduled";
 
+// Collapses the 7 calendar_status values into the 4 buckets shown on the
+// client card in the sidebar, each with its own color.
+const CLIENT_CARD_STATUS: Record<string, { label: string; className: string }> = {
+  em_montagem: { label: "Incompleto", className: "bg-slate-200 text-slate-600" },
+  em_revisao_interna: { label: "Incompleto", className: "bg-slate-200 text-slate-600" },
+  pronto_para_envio: { label: "Aguardando aprovação", className: "bg-amber-500/15 text-amber-600" },
+  enviado_ao_cliente: { label: "Aguardando aprovação", className: "bg-amber-500/15 text-amber-600" },
+  alteracoes_solicitadas: { label: "Com alteração", className: "bg-destructive/15 text-destructive" },
+  aprovado: { label: "Aprovado", className: "bg-success/15 text-success" },
+  arquivado: { label: "Incompleto", className: "bg-slate-200 text-slate-600" },
+};
+
 function DraggablePublication({ publication, thumbnailUrl, onClick }: { publication: CalendarPublication; thumbnailUrl?: string | null; onClick: () => void }) {
   const { setNodeRef, listeners, attributes, setActivatorNodeRef, transform, isDragging } = useDraggable({
     id: publication.id,
@@ -205,27 +217,29 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
           </button>
         </div>
 
-        <div className="max-h-[70vh] divide-y overflow-y-auto rounded-2xl border border-border/30 bg-card">
+        <div className="max-h-[75vh] space-y-2 overflow-y-auto pr-0.5">
           {(clientsQ.data ?? []).map((c) => {
             const cal = calendarByClientId.get(c.id);
+            const statusMeta = cal ? CLIENT_CARD_STATUS[cal.status] ?? CLIENT_CARD_STATUS.em_montagem : null;
+            const initial = c.name.trim().charAt(0).toUpperCase() || "?";
             return (
               <button
                 key={c.id}
                 type="button"
                 onClick={() => setClientId(c.id)}
                 className={cn(
-                  "flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left text-sm transition-colors hover:bg-muted/40",
-                  clientId === c.id && "bg-primary/10 font-semibold text-primary",
+                  "flex w-full flex-col items-center gap-1.5 rounded-2xl border border-border/30 bg-card p-3 text-center shadow-sm transition-all hover:shadow-md",
+                  clientId === c.id && "border-primary/50 ring-1 ring-primary/30",
                 )}
               >
-                <span className="truncate">{c.name}</span>
-                {cal && (
-                  <span
-                    className={cn(
-                      "h-2 w-2 shrink-0 rounded-full",
-                      cal.status === "aprovado" ? "bg-success" : cal.status === "alteracoes_solicitadas" ? "bg-destructive" : "bg-amber-400",
-                    )}
-                  />
+                <span className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-tr from-purple-500 via-pink-500 to-orange-400 text-sm font-bold text-white">
+                  {initial}
+                </span>
+                <span className="w-full truncate text-sm font-semibold">{c.name}</span>
+                {statusMeta && (
+                  <span className={cn("rounded-md px-2 py-0.5 text-[10px] font-semibold", statusMeta.className)}>
+                    {statusMeta.label}
+                  </span>
                 )}
               </button>
             );
