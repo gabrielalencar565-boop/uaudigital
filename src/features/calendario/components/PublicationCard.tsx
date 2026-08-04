@@ -41,10 +41,10 @@ export function PublicationCard({ publication, thumbnailUrl, onClick, dragHandle
     >
       <button type="button" onClick={onClick} className="shrink-0">
         {thumbnailUrl ? (
-          <img src={thumbnailUrl} alt="" className="h-11 w-11 rounded-md object-cover" />
+          <img src={thumbnailUrl} alt="" className="h-14 w-14 rounded-md object-cover" />
         ) : (
-          <span className="flex h-11 w-11 items-center justify-center rounded-md bg-muted">
-            <Icon className="h-4 w-4 text-muted-foreground" />
+          <span className="flex h-14 w-14 items-center justify-center rounded-md bg-muted">
+            <Icon className="h-5 w-5 text-muted-foreground" />
           </span>
         )}
       </button>
