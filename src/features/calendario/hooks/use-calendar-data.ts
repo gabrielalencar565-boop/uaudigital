@@ -103,3 +103,17 @@ export function useUpdateCalendarStatus() {
   });
 }
 
+export function useUpdateCalendarShare() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, clientId, ...updates }: { id: string; clientId: string; share_enabled?: boolean; share_token?: string }) => {
+      const { data, error } = await sb.from("publication_calendars").update(updates).eq("id", id).select().single();
+      if (error) throw error;
+      return { data: data as PublicationCalendar, clientId };
+    },
+    onSuccess: ({ clientId }) => {
+      qc.invalidateQueries({ queryKey: ["publication_calendars", clientId] });
+    },
+  });
+}
+

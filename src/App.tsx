@@ -8,6 +8,7 @@ import { ThemeProvider } from "next-themes";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import CronogramaPublic from "./pages/CronogramaPublic";
+import AprovacaoPublic from "./pages/AprovacaoPublic";
 import HealthScorePublic from "./pages/HealthScorePublic";
 import Pending from "./pages/Pending";
 import NotFound from "./pages/NotFound";
@@ -31,6 +32,7 @@ function AppRoutes() {
         <Route path="/pending" element={<Pending />} />
         <Route path="/cronograma/:taskId" element={<CronogramaPublic />} />
         <Route path="/avaliacao/:slug" element={<HealthScorePublic />} />
+        <Route path="/aprovacao/:token" element={<AprovacaoPublic />} />
         <Route
           path="/"
           element={

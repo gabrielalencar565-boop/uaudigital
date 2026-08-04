@@ -10,6 +10,8 @@ export interface PublicationCalendar {
   cycle_start: string;
   cycle_end: string;
   status: CalendarStatus;
+  share_token: string;
+  share_enabled: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -26,6 +28,8 @@ export interface CalendarPublication {
   status: PublicationStatus;
   internal_note: string | null;
   client_note: string | null;
+  client_feedback: string | null;
+  client_responded_at: string | null;
   order_index: number;
   created_at: string;
   updated_at: string;

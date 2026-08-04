@@ -1,16 +1,22 @@
 import { useMemo, useState } from "react";
 import { addDays, format, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Film, LayoutGrid, List, Grid3x3, Image as ImageIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, Film, LayoutGrid, List, Grid3x3, Image as ImageIcon, Link2, Copy, RefreshCw } from "lucide-react";
 import { DndContext, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import { useClients } from "@/features/data/queries";
 import {
-  useCalendarPublications, useCalendarsForClient, useTaskAttachmentsMap, useUpdateCalendarPublication, useUpdateCalendarStatus,
+  useCalendarPublications, useCalendarsForClient, useTaskAttachmentsMap, useUpdateCalendarPublication, useUpdateCalendarShare, useUpdateCalendarStatus,
 } from "../hooks/use-calendar-data";
 import { CALENDAR_STATUS_LABELS, CONTENT_TYPE_LABELS, type CalendarPublication, type CalendarStatus } from "../calendar-types";
 import { PublicationCard } from "./PublicationCard";
@@ -84,6 +90,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
 
   const updatePublication = useUpdateCalendarPublication();
   const updateCalendarStatus = useUpdateCalendarStatus();
+  const updateCalendarShare = useUpdateCalendarShare();
 
   const mediaFor = (taskId: string) => attachmentsQ.data?.get(taskId) ?? [];
   const thumbnailFor = (taskId: string) => mediaFor(taskId).find((m) => m.type?.startsWith("image/"))?.url ?? null;
@@ -209,6 +216,52 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
               ))}
             </SelectContent>
           </Select>
+        )}
+
+        {calendar && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9 gap-1.5 rounded-full">
+                <Link2 className="h-3.5 w-3.5" /> Compartilhar
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-80 space-y-3">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="share-toggle">Link ativo pro cliente</Label>
+                <Switch
+                  id="share-toggle"
+                  checked={calendar.share_enabled}
+                  onCheckedChange={(checked) => updateCalendarShare.mutate({ id: calendar.id, clientId: clientId!, share_enabled: checked })}
+                />
+              </div>
+              {calendar.share_enabled && (
+                <>
+                  <div className="flex items-center gap-2">
+                    <Input readOnly value={`${window.location.origin}/aprovacao/${calendar.share_token}`} className="h-8 text-xs" />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8 shrink-0"
+                      onClick={() => {
+                        navigator.clipboard.writeText(`${window.location.origin}/aprovacao/${calendar.share_token}`);
+                        toast.success("Link copiado!");
+                      }}
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 gap-1.5 text-xs text-muted-foreground"
+                    onClick={() => updateCalendarShare.mutate({ id: calendar.id, clientId: clientId!, share_token: crypto.randomUUID() })}
+                  >
+                    <RefreshCw className="h-3 w-3" /> Gerar novo link (invalida o anterior)
+                  </Button>
+                </>
+              )}
+            </PopoverContent>
+          </Popover>
         )}
 
         <Tabs value={view} onValueChange={(v) => setView(v as any)} className="ml-auto">
