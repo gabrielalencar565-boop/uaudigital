@@ -11,6 +11,7 @@ import CronogramaPublic from "./pages/CronogramaPublic";
 import HealthScorePublic from "./pages/HealthScorePublic";
 import Pending from "./pages/Pending";
 import NotFound from "./pages/NotFound";
+import { RedirectNotice } from "@/components/redirect/RedirectNotice";
 import { RequireAuth } from "@/components/auth/RequireAuth";
 import { toast } from "sonner";
 import { AppErrorBoundary } from "@/components/error/AppErrorBoundary";
@@ -73,7 +74,10 @@ const App = () => {
   }, []);
 
   return (
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} storageKey="uau-theme">
+    <>
+      <RedirectNotice />
+      <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} storageKey="uau-theme">
+
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <AvatarBootstrap />
@@ -88,6 +92,7 @@ const App = () => {
         </TooltipProvider>
       </QueryClientProvider>
     </ThemeProvider>
+    </>
   );
 };
 
