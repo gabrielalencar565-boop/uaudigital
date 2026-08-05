@@ -57,7 +57,7 @@ function buildAnchorHtml(url: string) {
   anchor.href = cleanUrl;
   anchor.target = "_blank";
   anchor.rel = "noopener noreferrer";
-  anchor.className = "text-primary underline";
+  anchor.className = "text-blue-600 underline cursor-pointer hover:text-blue-700";
   anchor.textContent = cleanUrl;
   wrapper.append(anchor);
   if (trailingText) wrapper.append(document.createTextNode(trailingText));
@@ -105,7 +105,7 @@ function linkifyHtmlContent(html: string) {
       anchor.href = cleanUrl;
       anchor.target = "_blank";
       anchor.rel = "noopener noreferrer";
-      anchor.className = "text-primary underline";
+      anchor.className = "text-blue-600 underline cursor-pointer hover:text-blue-700";
       anchor.textContent = cleanUrl;
       fragment.append(anchor);
 
@@ -213,11 +213,13 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
   }, []);
 
   const handleEditorMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    // Only intercept clicks when modifier keys are held (Ctrl/Cmd+click) to open the link.
-    // Plain clicks must allow normal cursor placement / text editing.
-    if (!(e.ctrlKey || e.metaKey)) return;
+    // A click directly on an already-linkified <a> opens it right away — no modifier needed.
+    // Clicks elsewhere (including on raw URL text not yet wrapped in <a>) still require
+    // Ctrl/Cmd so normal cursor placement / text editing keeps working everywhere else.
     const anchor = (e.target as HTMLElement).closest("a[href]");
-    const href = anchor instanceof HTMLAnchorElement ? anchor.href : getUrlFromPointer(e.clientX, e.clientY);
+    const href = anchor instanceof HTMLAnchorElement
+      ? anchor.href
+      : (e.ctrlKey || e.metaKey) ? getUrlFromPointer(e.clientX, e.clientY) : null;
     if (!href) return;
     e.preventDefault();
     e.stopPropagation();
@@ -599,6 +601,7 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
           "w-full rounded-lg border border-border/40 bg-background px-3 py-2",
           "text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40",
           "[&_*]:!text-inherit [&_span]:!text-inherit [&_div]:!text-inherit [&_p]:!text-inherit [&_font]:!text-inherit",
+          "[&_a]:!text-blue-600 [&_a]:!cursor-pointer [&_a:hover]:!text-blue-700",
           "[&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5",
           "[&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-2 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mb-1 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mb-1 [&_h4]:text-sm [&_h4]:font-semibold [&_h4]:mb-0.5",
           "empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground/50 empty:before:pointer-events-none",
