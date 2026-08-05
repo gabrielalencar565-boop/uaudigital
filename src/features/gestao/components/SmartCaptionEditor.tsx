@@ -353,7 +353,7 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   const [plainText, setPlainText] = useState("");
   const [spellPopover, setSpellPopover] = useState<{ error: SpellError; rect: DOMRect } | null>(null);
-  const [pasteMenu, setPasteMenu] = useState<{ top: number; left: number; url: string; range: Range } | null>(null);
+  const [pasteMenu, setPasteMenu] = useState<{ bottom: number; left: number; url: string; range: Range } | null>(null);
   const pasteMenuRef = useRef<HTMLDivElement>(null);
   const [embedMenu, setEmbedMenu] = useState<{ top: number; left: number; url: string; cardEl: HTMLElement } | null>(null);
   const embedMenuRef = useRef<HTMLDivElement>(null);
@@ -599,26 +599,33 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
       return;
     }
     const url = normalizeUrl(pastedText);
-
-    e.preventDefault();
-
-    const sel = window.getSelection();
-    const range = sel && sel.rangeCount > 0 ? sel.getRangeAt(0).cloneRange() : null;
     const editorEl = editorRef.current;
-    if (!range || !editorEl) {
-      document.execCommand("insertHTML", false, buildAnchorHtml(url));
-      handleInput();
-      return;
-    }
+    if (!editorEl) return;
 
-    const rangeRect = range.getBoundingClientRect();
-    const editorRect = editorEl.getBoundingClientRect();
-    const hasRect = rangeRect.width > 0 || rangeRect.height > 0 || rangeRect.top > 0;
-    setPasteMenu({
-      top: (hasRect ? rangeRect.top : editorRect.top) - editorRect.top + 22,
-      left: Math.max(0, (hasRect ? rangeRect.left : editorRect.left) - editorRect.left),
-      url,
-      range,
+    // Let the browser paste the URL as plain text normally (so it's always visibly there),
+    // then locate exactly what was just inserted and offer to convert it via a menu that
+    // floats above it — never hiding or delaying the actual paste.
+    requestAnimationFrame(() => {
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0) return;
+      const caret = sel.getRangeAt(0);
+      const endNode = caret.startContainer;
+      const endOffset = caret.startOffset;
+      if (endNode.nodeType !== Node.TEXT_NODE || endOffset < pastedText.length) return;
+
+      const range = document.createRange();
+      range.setStart(endNode, endOffset - pastedText.length);
+      range.setEnd(endNode, endOffset);
+      if (range.toString() !== pastedText) return; // rich clipboard data landed differently — skip the menu, keep the paste
+
+      const rangeRect = range.getBoundingClientRect();
+      const editorRect = editorEl.getBoundingClientRect();
+      setPasteMenu({
+        bottom: editorRect.height - (rangeRect.top - editorRect.top) + 8,
+        left: Math.max(0, rangeRect.left - editorRect.left),
+        url,
+        range,
+      });
     });
   }, []);
 
@@ -1057,12 +1064,12 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
         </div>
       )}
 
-      {/* "Colar como" menu — shown right after pasting a bare URL */}
+      {/* "Colar como" menu — shown right after pasting a bare URL; floats above the pasted text so it never covers it */}
       {pasteMenu && (
         <div
           ref={pasteMenuRef}
-          className="absolute z-50 w-56 rounded-xl border border-white/10 shadow-2xl p-1 animate-in fade-in-0 slide-in-from-top-2 duration-150"
-          style={{ top: pasteMenu.top, left: pasteMenu.left, background: GRADIENT_MENU }}
+          className="absolute z-50 w-56 rounded-xl border border-white/10 shadow-2xl p-1 animate-in fade-in-0 slide-in-from-bottom-2 duration-150"
+          style={{ bottom: pasteMenu.bottom, left: pasteMenu.left, background: GRADIENT_MENU }}
         >
           <p className="px-2 py-1.5 text-[10px] text-white/50 font-semibold uppercase tracking-wider">Colar como</p>
           <button
