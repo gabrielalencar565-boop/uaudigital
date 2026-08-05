@@ -11,6 +11,7 @@ import CronogramaPublic from "./pages/CronogramaPublic";
 import HealthScorePublic from "./pages/HealthScorePublic";
 import Pending from "./pages/Pending";
 import NotFound from "./pages/NotFound";
+import { RedirectNotice } from "@/components/redirect/RedirectNotice";
 import { RequireAuth } from "@/components/auth/RequireAuth";
 import { toast } from "sonner";
 import { AppErrorBoundary } from "@/components/error/AppErrorBoundary";
