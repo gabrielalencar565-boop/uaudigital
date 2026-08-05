@@ -74,7 +74,10 @@ const App = () => {
   }, []);
 
   return (
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} storageKey="uau-theme">
+    <>
+      <RedirectNotice />
+      <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} storageKey="uau-theme">
+
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <AvatarBootstrap />
