@@ -1,7 +1,22 @@
 import { useRef, useState } from "react";
 import { ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { detectPlatform, fetchLinkPreview, shortenUrl, type LinkPreviewData } from "@/lib/link-preview";
+import { detectPlatform, fetchLinkPreview, shortenUrl, PLATFORM_ICON_PATHS, type LinkPreviewData } from "@/lib/link-preview";
+
+/** Renders a platform's brand-shaped icon (matches the raw-DOM icons built in SmartCaptionEditor). */
+function PlatformIcon({ platformKey, className }: { platformKey: string; className?: string }) {
+  const shapes = PLATFORM_ICON_PATHS[platformKey] ?? PLATFORM_ICON_PATHS.web;
+  return (
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}>
+      {shapes.map((shape, i) => {
+        const { tag: Tag, attrs, text } = shape;
+        const props: Record<string, any> = {};
+        Object.entries(attrs).forEach(([k, v]) => { props[k] = v; });
+        return <Tag key={i} {...props}>{text}</Tag>;
+      })}
+    </svg>
+  );
+}
 
 /** The rich hover-preview body — shared between the floating popover here and any other
  * place that wants to render fetched OG metadata (avatar/title + big image), Instagram-card style. */
@@ -81,7 +96,7 @@ export function LinkChip({ url, className }: { url: string; className?: string }
           className,
         )}
       >
-        <span className="shrink-0">{platform.emoji}</span>
+        <PlatformIcon platformKey={platform.key} className="shrink-0" />
         <span className="shrink-0 font-semibold">{platform.label}</span>
         <span className="min-w-0 truncate text-white/50">{shortenUrl(url)}</span>
       </a>

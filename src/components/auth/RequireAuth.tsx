@@ -1,7 +1,16 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { Loader2 } from "lucide-react";
 import { useSession } from "@/hooks/use-session";
 import { supabase } from "@/integrations/supabase/client";
+
+function AuthLoading() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background">
+      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+    </div>
+  );
+}
 
 type AccessStatus = "none" | "pending" | "approved" | "rejected";
 
@@ -83,9 +92,9 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
     };
   }, [user?.id]);
 
-  if (loading) return null;
+  if (loading) return <AuthLoading />;
   if (!user) return <Navigate to="/auth" replace state={{ from: location.pathname }} />;
-  if (checkingAccess) return null;
+  if (checkingAccess) return <AuthLoading />;
 
   if (!isAdmin && (accessStatus === "pending" || accessStatus === "rejected")) {
     return <Navigate to={`/pending?status=${accessStatus}`} replace />;

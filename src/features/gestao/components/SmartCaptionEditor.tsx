@@ -3,7 +3,8 @@ import {
   Bold, Italic, Underline, Strikethrough, List, ListOrdered,
   Wand2, Loader2, SpellCheck as SpellCheckIcon, ArrowUpRight, ArrowDownRight, Feather, Sparkles,
   Undo2, Redo2, Type, Heading1, Heading2, Heading3, Heading4, ChevronDown, Check,
-  Clock, Maximize2, CheckCircle2, AlertCircle, Link2, GalleryHorizontal, CaseSensitive,
+  Clock, Maximize2, CheckCircle2, AlertCircle, Link2, GalleryHorizontal,
+  ExternalLink, Trash2, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,7 +13,7 @@ import { useSpellcheck, type SpellError } from "../hooks/use-spellcheck";
 import { SpellCheckOverlay } from "./SpellCheckOverlay";
 import { SpellSuggestionPopover } from "./SpellSuggestionPopover";
 import { LinkPreviewBody } from "@/components/LinkChip";
-import { fetchLinkPreview, detectPlatform, shortenUrl, type LinkPreviewData } from "@/lib/link-preview";
+import { fetchLinkPreview, detectPlatform, shortenUrl, PLATFORM_ICON_PATHS, type LinkPreviewData, type IconChild } from "@/lib/link-preview";
 
 const AI_ACTIONS = [
   { key: "improve", label: "Melhorar a escrita", icon: Sparkles },
@@ -42,7 +43,14 @@ const TOOLBAR_BUTTONS = [
 
 const GRADIENT_TOOLBAR = "linear-gradient(135deg, hsl(263 70% 50%), hsl(263 70% 36%))";
 const GRADIENT_MENU = "linear-gradient(160deg, hsl(263 70% 42%), hsl(263 70% 30%))";
-const URL_REGEX_SOURCE = String.raw`https?:\/\/[^\s<>"']+`;
+// Matches either a full "https://…" URL or a bare "www.…" domain (no protocol) —
+// links copied without "https://" (common from some apps/share sheets) still get detected.
+const URL_REGEX_SOURCE = String.raw`(?:https?:\/\/[^\s<>"']+|www\.[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}[^\s<>"']*)`;
+
+/** Ensures a matched URL has a protocol — "www.…" matches need "https://" prepended before use as an href. */
+function normalizeUrl(url: string) {
+  return /^https?:\/\//i.test(url) ? url : `https://${url}`;
+}
 
 function splitTrailingUrlPunctuation(url: string) {
   const match = url.match(/^(.*?)([.,;:!?\)\]]+)$/);
@@ -77,8 +85,8 @@ function buildAnchorElement(url: string): HTMLAnchorElement {
   } satisfies Partial<CSSStyleDeclaration>);
   setImportantColor(anchor, "#fff");
 
-  const emojiSpan = document.createElement("span");
-  emojiSpan.textContent = platform.emoji;
+  const icon = buildPlatformIconElement(platform.key);
+  Object.assign(icon.style, { flexShrink: "0" } satisfies Partial<CSSStyleDeclaration>);
   const labelSpan = document.createElement("span");
   labelSpan.style.fontWeight = "600";
   labelSpan.textContent = platform.label;
@@ -90,7 +98,7 @@ function buildAnchorElement(url: string): HTMLAnchorElement {
   setImportantColor(urlSpan, "#9aa0a6");
   urlSpan.textContent = shortenUrl(url);
 
-  anchor.append(emojiSpan, labelSpan, urlSpan);
+  anchor.append(icon, labelSpan, urlSpan);
   return anchor;
 }
 
@@ -116,84 +124,154 @@ function buildLoadingPlaceholderHtml(id: string) {
   return span.outerHTML;
 }
 
-/** Rich Instagram-share-sheet-style card: avatar/initials + name + "Abrir" button, then a big image. */
-function buildPreviewCardHtml(url: string, data: LinkPreviewData) {
-  const platform = detectPlatform(url);
-  const name = data.site_name || platform.label;
-  const initials = (data.site_name || platform.label || "?").slice(0, 2).toUpperCase();
+/** Builds a small line-icon <svg> from a set of shape definitions (mirrors lucide icons). */
+function createSvgIcon(children: IconChild[]): SVGSVGElement {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("width", "14");
+  svg.setAttribute("height", "14");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-width", "2");
+  svg.setAttribute("stroke-linecap", "round");
+  svg.setAttribute("stroke-linejoin", "round");
+  children.forEach(({ tag, attrs, text }) => {
+    const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
+    if (text) el.textContent = text;
+    svg.append(el);
+  });
+  return svg;
+}
 
-  const card = document.createElement("a");
-  card.href = url;
-  card.target = "_blank";
-  card.rel = "noopener noreferrer";
+/** The platform's brand-shaped icon (falls back to the generic globe if unrecognized). */
+function buildPlatformIconElement(platformKey: string): SVGSVGElement {
+  return createSvgIcon(PLATFORM_ICON_PATHS[platformKey] ?? PLATFORM_ICON_PATHS.web);
+}
+
+const TOOLBAR_ICON_PATHS = {
+  link: [
+    { tag: "path" as const, attrs: { d: "M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" } },
+    { tag: "path" as const, attrs: { d: "M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" } },
+  ],
+  externalLink: [
+    { tag: "path" as const, attrs: { d: "M15 3h6v6" } },
+    { tag: "path" as const, attrs: { d: "M10 14 21 3" } },
+    { tag: "path" as const, attrs: { d: "M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" } },
+  ],
+  expand: [
+    { tag: "path" as const, attrs: { d: "M15 3h6v6" } },
+    { tag: "path" as const, attrs: { d: "M9 21H3v-6" } },
+    { tag: "path" as const, attrs: { d: "m21 3-7 7" } },
+    { tag: "path" as const, attrs: { d: "m3 21 7-7" } },
+  ],
+  more: [
+    { tag: "circle" as const, attrs: { cx: "12", cy: "12", r: "1" } },
+    { tag: "circle" as const, attrs: { cx: "19", cy: "12", r: "1" } },
+    { tag: "circle" as const, attrs: { cx: "5", cy: "12", r: "1" } },
+  ],
+};
+
+function buildToolbarButton(action: string, iconKey: keyof typeof TOOLBAR_ICON_PATHS, title: string): HTMLButtonElement {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.title = title;
+  btn.setAttribute("data-action", action);
+  btn.setAttribute("contenteditable", "false");
+  Object.assign(btn.style, {
+    display: "inline-flex", alignItems: "center", justifyContent: "center", width: "24px", height: "24px",
+    borderRadius: "6px", background: "rgba(0,0,0,0.55)", border: "none", cursor: "pointer", padding: "0",
+  } satisfies Partial<CSSStyleDeclaration>);
+  setImportantColor(btn, "#fff");
+  btn.append(createSvgIcon(TOOLBAR_ICON_PATHS[iconKey]));
+  return btn;
+}
+
+function buildResizeHandle(side: "left" | "right"): HTMLDivElement {
+  const handle = document.createElement("div");
+  handle.className = "up-lp-resize";
+  handle.setAttribute("data-resize", side);
+  handle.setAttribute("contenteditable", "false");
+  Object.assign(handle.style, {
+    position: "absolute", top: "0", bottom: "0", [side]: "0", width: "10px", cursor: "ew-resize",
+  } satisfies Partial<CSSStyleDeclaration>);
+  const grip = document.createElement("div");
+  Object.assign(grip.style, {
+    position: "absolute", top: "50%", [side]: "3px", transform: "translateY(-50%)",
+    width: "4px", height: "32px", borderRadius: "2px", background: "rgba(255,255,255,0.6)",
+  } satisfies Partial<CSSStyleDeclaration>);
+  handle.append(grip);
+  return handle;
+}
+
+/**
+ * Image-first preview card (Notion-style embed): the OG image is the whole thumbnail (no
+ * caption shown by default), scrollable if taller than the card, with a hover-revealed
+ * top-right toolbar (copy link / open / expand / more) and side resize handles.
+ */
+function buildPreviewCardElement(url: string, data: LinkPreviewData): HTMLDivElement {
+  const platform = detectPlatform(url);
+  const card = document.createElement("div");
+  card.className = "up-lp-card";
   card.setAttribute("contenteditable", "false");
   card.setAttribute("data-link-preview", "1");
   card.setAttribute("data-preview-url", url);
   Object.assign(card.style, {
-    display: "block", width: "288px", maxWidth: "100%", borderRadius: "12px", overflow: "hidden",
-    textDecoration: "none", background: "#111214", border: "1px solid rgba(255,255,255,0.1)",
-    margin: "4px 2px",
+    position: "relative", display: "block", width: "320px", maxWidth: "100%", borderRadius: "12px",
+    overflow: "hidden", background: "#111214", border: "1px solid rgba(255,255,255,0.1)", margin: "6px 2px",
   } satisfies Partial<CSSStyleDeclaration>);
-  setImportantColor(card, "#fff");
-
-  const headerRow = document.createElement("div");
-  Object.assign(headerRow.style, { display: "flex", alignItems: "center", gap: "10px", padding: "10px 12px" } satisfies Partial<CSSStyleDeclaration>);
-
-  const avatar = document.createElement("span");
-  Object.assign(avatar.style, {
-    width: "36px", height: "36px", borderRadius: "999px", background: "rgba(255,255,255,0.1)",
-    display: "flex", alignItems: "center", justifyContent: "center", fontSize: "11px", fontWeight: "700",
-    flexShrink: "0",
-  } satisfies Partial<CSSStyleDeclaration>);
-  setImportantColor(avatar, "#fff");
-  avatar.textContent = initials;
-
-  const textCol = document.createElement("span");
-  Object.assign(textCol.style, { minWidth: "0", flex: "1", overflow: "hidden" } satisfies Partial<CSSStyleDeclaration>);
-  const nameSpan = document.createElement("span");
-  Object.assign(nameSpan.style, { display: "block", fontSize: "13px", fontWeight: "600", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } satisfies Partial<CSSStyleDeclaration>);
-  setImportantColor(nameSpan, "#fff");
-  nameSpan.textContent = name;
-  const urlSpan = document.createElement("span");
-  Object.assign(urlSpan.style, { display: "block", fontSize: "11px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } satisfies Partial<CSSStyleDeclaration>);
-  setImportantColor(urlSpan, "rgba(255,255,255,0.5)");
-  urlSpan.textContent = shortenUrl(url);
-  textCol.append(nameSpan, urlSpan);
-
-  const openBadge = document.createElement("span");
-  Object.assign(openBadge.style, {
-    flexShrink: "0", background: "rgba(255,255,255,0.15)", fontSize: "11px", fontWeight: "600",
-    padding: "6px 10px", borderRadius: "8px",
-  } satisfies Partial<CSSStyleDeclaration>);
-  setImportantColor(openBadge, "#fff");
-  openBadge.textContent = "Abrir";
-
-  headerRow.append(avatar, textCol, openBadge);
-  card.append(headerRow);
 
   if (data.image) {
     const imgWrap = document.createElement("div");
-    Object.assign(imgWrap.style, { width: "100%", aspectRatio: "1 / 1", background: "rgba(255,255,255,0.06)" } satisfies Partial<CSSStyleDeclaration>);
+    Object.assign(imgWrap.style, {
+      width: "100%", maxHeight: "360px", overflowY: "auto", background: "rgba(255,255,255,0.06)",
+    } satisfies Partial<CSSStyleDeclaration>);
     const img = document.createElement("img");
     img.src = data.image;
     img.alt = "";
-    Object.assign(img.style, { width: "100%", height: "100%", objectFit: "cover", display: "block" } satisfies Partial<CSSStyleDeclaration>);
+    img.draggable = false;
+    Object.assign(img.style, { width: "100%", height: "auto", display: "block" } satisfies Partial<CSSStyleDeclaration>);
     imgWrap.append(img);
     card.append(imgWrap);
+  } else {
+    // No OG image to use as a thumbnail — fall back to a compact name/url row.
+    const fallback = document.createElement("div");
+    Object.assign(fallback.style, { display: "flex", alignItems: "center", gap: "10px", padding: "16px" } satisfies Partial<CSSStyleDeclaration>);
+    const icon = buildPlatformIconElement(platform.key);
+    Object.assign(icon.style, { width: "22px", height: "22px", flexShrink: "0" } satisfies Partial<CSSStyleDeclaration>);
+    setImportantColor(icon, "#fff");
+    const textCol = document.createElement("span");
+    Object.assign(textCol.style, { minWidth: "0", flex: "1", overflow: "hidden" } satisfies Partial<CSSStyleDeclaration>);
+    const nameSpan = document.createElement("span");
+    Object.assign(nameSpan.style, { display: "block", fontSize: "13px", fontWeight: "600" } satisfies Partial<CSSStyleDeclaration>);
+    setImportantColor(nameSpan, "#fff");
+    nameSpan.textContent = data.site_name || platform.label;
+    const urlSpan = document.createElement("span");
+    Object.assign(urlSpan.style, { display: "block", fontSize: "11px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } satisfies Partial<CSSStyleDeclaration>);
+    setImportantColor(urlSpan, "rgba(255,255,255,0.5)");
+    urlSpan.textContent = shortenUrl(url);
+    textCol.append(nameSpan, urlSpan);
+    fallback.append(icon, textCol);
+    card.append(fallback);
   }
 
-  if (data.title) {
-    const titleRow = document.createElement("div");
-    Object.assign(titleRow.style, { padding: "10px 12px", borderTop: "1px solid rgba(255,255,255,0.1)" } satisfies Partial<CSSStyleDeclaration>);
-    const titleSpan = document.createElement("span");
-    Object.assign(titleSpan.style, { fontSize: "12px", lineHeight: "1.5" } satisfies Partial<CSSStyleDeclaration>);
-    setImportantColor(titleSpan, "rgba(255,255,255,0.7)");
-    titleSpan.textContent = data.title;
-    titleRow.append(titleSpan);
-    card.append(titleRow);
-  }
+  const toolbar = document.createElement("div");
+  toolbar.className = "up-lp-toolbar";
+  toolbar.setAttribute("contenteditable", "false");
+  Object.assign(toolbar.style, { position: "absolute", top: "8px", right: "8px", display: "flex", gap: "4px" } satisfies Partial<CSSStyleDeclaration>);
+  toolbar.append(
+    buildToolbarButton("copy", "link", "Copiar link"),
+    buildToolbarButton("open", "externalLink", "Abrir link"),
+    buildToolbarButton("expand", "expand", "Expandir"),
+    buildToolbarButton("menu", "more", "Mais opções"),
+  );
+  card.append(toolbar, buildResizeHandle("left"), buildResizeHandle("right"));
 
-  return card.outerHTML;
+  return card;
+}
+
+function buildPreviewCardHtml(url: string, data: LinkPreviewData) {
+  return buildPreviewCardElement(url, data).outerHTML;
 }
 
 function linkifyHtmlContent(html: string) {
@@ -233,7 +311,7 @@ function linkifyHtmlContent(html: string) {
         fragment.append(document.createTextNode(text.slice(lastIndex, start)));
       }
 
-      fragment.append(buildAnchorElement(cleanUrl));
+      fragment.append(buildAnchorElement(normalizeUrl(cleanUrl)));
 
       if (trailingText) {
         fragment.append(document.createTextNode(trailingText));
@@ -281,19 +359,28 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   const [plainText, setPlainText] = useState("");
   const [spellPopover, setSpellPopover] = useState<{ error: SpellError; rect: DOMRect } | null>(null);
-  const [pasteMenu, setPasteMenu] = useState<{ top: number; left: number; url: string; range: Range } | null>(null);
+  const [pasteMenu, setPasteMenu] = useState<{ bottom: number; left: number; url: string; range: Range } | null>(null);
   const pasteMenuRef = useRef<HTMLDivElement>(null);
+  const [embedMenu, setEmbedMenu] = useState<{ top: number; left: number; url: string; cardEl: HTMLElement } | null>(null);
+  const embedMenuRef = useRef<HTMLDivElement>(null);
+  const [expandedImage, setExpandedImage] = useState<string | null>(null);
+  const resizeStateRef = useRef<{ cardEl: HTMLElement; startX: number; startWidth: number; side: "left" | "right" } | null>(null);
 
-  // Close the "Colar como" menu on outside click / Escape
+  // Close the "Colar como" menu on outside click / Escape — dismissing without picking an
+  // option resumes the normal auto-save/auto-linkify pass we paused while it was open.
   useEffect(() => {
     if (!pasteMenu) return;
+    const dismiss = () => {
+      setPasteMenu(null);
+      handleInput();
+    };
     const onDocMouseDown = (e: MouseEvent) => {
       if (pasteMenuRef.current && !pasteMenuRef.current.contains(e.target as Node)) {
-        setPasteMenu(null);
+        dismiss();
       }
     };
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setPasteMenu(null);
+      if (e.key === "Escape") dismiss();
     };
     document.addEventListener("mousedown", onDocMouseDown);
     document.addEventListener("keydown", onKeyDown);
@@ -303,12 +390,49 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
     };
   }, [pasteMenu]);
 
+  // Close the "Exibir como" (embed format switcher) menu on outside click / Escape
+  useEffect(() => {
+    if (!embedMenu) return;
+    const onDocMouseDown = (e: MouseEvent) => {
+      if (embedMenuRef.current && !embedMenuRef.current.contains(e.target as Node)) {
+        setEmbedMenu(null);
+      }
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setEmbedMenu(null);
+    };
+    document.addEventListener("mousedown", onDocMouseDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onDocMouseDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [embedMenu]);
+
+  // Close the image lightbox on Escape
+  useEffect(() => {
+    if (!expandedImage) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setExpandedImage(null);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [expandedImage]);
+
   // Hover preview for link pills/cards inside the editor content
-  const [hoverPreview, setHoverPreview] = useState<{ top: number; left: number; url: string; data: LinkPreviewData | null | undefined } | null>(null);
+  const [hoverPreview, setHoverPreview] = useState<{ top: number; left: number; url: string; pillEl: HTMLElement; data: LinkPreviewData | null | undefined; minimal?: boolean } | null>(null);
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
   const handleEditorMouseOver = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const target = (e.target as HTMLElement).closest("[data-link-pill],[data-link-preview]") as HTMLElement | null;
+    const el = e.target as HTMLElement;
+    // The compact inline pill gets the full hover popup (rich preview + delete). A modern
+    // preview card shows everything inline already and has its own toolbar. But an older
+    // card saved before that toolbar existed has no way to remove it at all — give those a
+    // minimal delete-only popup too, matched by the absence of `.up-lp-toolbar`.
+    const pill = el.closest("[data-link-pill]") as HTMLElement | null;
+    const legacyCard = !pill ? (el.closest("[data-link-preview]") as HTMLElement | null) : null;
+    const isLegacyCard = !!legacyCard && !legacyCard.querySelector(".up-lp-toolbar");
+    const target = pill ?? (isLegacyCard ? legacyCard : null);
     if (!target) return;
     const url = target.getAttribute("data-preview-url");
     if (!url) return;
@@ -317,17 +441,36 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
       const rect = target.getBoundingClientRect();
       const editorRect = editorRef.current?.getBoundingClientRect();
       if (!editorRect) return;
-      setHoverPreview({ top: rect.bottom - editorRect.top + 6, left: rect.left - editorRect.left, url, data: undefined });
+      // No gap between the target and the popup below it — a gap creates a "dead zone" where
+      // the mouse is over neither element while moving down into the popup, closing it early.
+      const top = rect.bottom - editorRect.top;
+      const left = rect.left - editorRect.left;
+      if (isLegacyCard) {
+        setHoverPreview({ top, left, url, pillEl: target, data: null, minimal: true });
+        return;
+      }
+      setHoverPreview({ top, left, url, pillEl: target, data: undefined });
       const data = await fetchLinkPreview(url);
       setHoverPreview((prev) => (prev && prev.url === url ? { ...prev, data } : prev));
     }, 250);
   }, []);
 
+  /** Removes a link pill directly from its hover popup — the only affordance pills have,
+   * since single-clicking one opens the link instead of placing a cursor next to it. */
+  const handleDeletePill = useCallback((pillEl: HTMLElement) => {
+    pillEl.remove();
+    setHoverPreview(null);
+    handleInput();
+  }, []);
+
   const handleEditorMouseOut = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const related = e.relatedTarget as HTMLElement | null;
-    if (related?.closest?.("[data-link-pill],[data-link-preview],[data-link-hover-card]")) return;
+    if (related?.closest?.("[data-link-pill],[data-link-hover-card]")) return;
     if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
-    setHoverPreview(null);
+    // Small grace period instead of closing instantly — `relatedTarget` isn't always reliable
+    // (varies by input method), so this gives the popup's own onMouseEnter a chance to cancel
+    // the close if the pointer actually landed inside it (e.g. on the "Excluir" button).
+    hoverTimeoutRef.current = setTimeout(() => setHoverPreview(null), 250);
   }, []);
 
   const stripHtmlToPlain = (html: string) => {
@@ -383,14 +526,74 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
     const token = text.slice(start, end).trim();
     const { cleanUrl } = splitTrailingUrlPunctuation(token);
 
-    return new RegExp(`^${URL_REGEX_SOURCE}$`, "i").test(cleanUrl) ? cleanUrl : null;
+    return new RegExp(`^${URL_REGEX_SOURCE}$`, "i").test(cleanUrl) ? normalizeUrl(cleanUrl) : null;
   }, []);
 
   const handleEditorMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+
+    // Drag-to-resize a preview card from its left/right handle
+    const resizeHandle = target.closest("[data-resize]") as HTMLElement | null;
+    if (resizeHandle) {
+      e.preventDefault();
+      e.stopPropagation();
+      const cardEl = resizeHandle.closest("[data-link-preview]") as HTMLElement | null;
+      if (!cardEl) return;
+      const side = resizeHandle.getAttribute("data-resize") as "left" | "right";
+      resizeStateRef.current = { cardEl, startX: e.clientX, startWidth: cardEl.offsetWidth, side };
+      const onMove = (ev: MouseEvent) => {
+        const st = resizeStateRef.current;
+        if (!st) return;
+        const delta = ev.clientX - st.startX;
+        const signedDelta = st.side === "right" ? delta : -delta;
+        const maxWidth = (editorRef.current?.clientWidth ?? 800) - 8;
+        st.cardEl.style.width = `${Math.max(180, Math.min(maxWidth, st.startWidth + signedDelta))}px`;
+      };
+      const onUp = () => {
+        resizeStateRef.current = null;
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onUp);
+        handleInput();
+      };
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onUp);
+      return;
+    }
+
+    // Toolbar buttons on a preview card (copy link / open / expand / more options)
+    const actionBtn = target.closest("[data-action]") as HTMLElement | null;
+    if (actionBtn) {
+      const cardEl = actionBtn.closest("[data-link-preview]") as HTMLElement | null;
+      const url = cardEl?.getAttribute("data-preview-url");
+      if (cardEl && url) {
+        e.preventDefault();
+        e.stopPropagation();
+        const action = actionBtn.getAttribute("data-action");
+        if (action === "copy") {
+          navigator.clipboard?.writeText(url).then(
+            () => toast.success("Link copiado!"),
+            () => toast.error("Não foi possível copiar o link"),
+          );
+        } else if (action === "open") {
+          window.open(url, "_blank", "noopener,noreferrer");
+        } else if (action === "expand") {
+          const img = cardEl.querySelector("img");
+          if (img?.src) setExpandedImage(img.src);
+        } else if (action === "menu") {
+          const rect = actionBtn.getBoundingClientRect();
+          const editorRect = editorRef.current?.getBoundingClientRect();
+          if (editorRect) {
+            setEmbedMenu({ top: rect.bottom - editorRect.top + 6, left: Math.max(0, rect.right - editorRect.left - 208), url, cardEl });
+          }
+        }
+      }
+      return;
+    }
+
     // A click directly on an already-linkified <a> opens it right away — no modifier needed.
     // Clicks elsewhere (including on raw URL text not yet wrapped in <a>) still require
     // Ctrl/Cmd so normal cursor placement / text editing keeps working everywhere else.
-    const anchor = (e.target as HTMLElement).closest("a[href]");
+    const anchor = target.closest("a[href]");
     const href = anchor instanceof HTMLAnchorElement
       ? anchor.href
       : (e.ctrlKey || e.metaKey) ? getUrlFromPointer(e.clientX, e.clientY) : null;
@@ -431,26 +634,42 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
     if (!pastedText || !new RegExp(`^${URL_REGEX_SOURCE}$`, "i").test(pastedText)) {
       return;
     }
-
-    e.preventDefault();
-
-    const sel = window.getSelection();
-    const range = sel && sel.rangeCount > 0 ? sel.getRangeAt(0).cloneRange() : null;
+    const url = normalizeUrl(pastedText);
     const editorEl = editorRef.current;
-    if (!range || !editorEl) {
-      document.execCommand("insertHTML", false, buildAnchorHtml(pastedText));
-      handleInput();
-      return;
-    }
+    if (!editorEl) return;
 
-    const rangeRect = range.getBoundingClientRect();
-    const editorRect = editorEl.getBoundingClientRect();
-    const hasRect = rangeRect.width > 0 || rangeRect.height > 0 || rangeRect.top > 0;
-    setPasteMenu({
-      top: (hasRect ? rangeRect.top : editorRect.top) - editorRect.top + 22,
-      left: Math.max(0, (hasRect ? rangeRect.left : editorRect.left) - editorRect.left),
-      url: pastedText,
-      range,
+    // Let the browser paste the URL as plain text normally (so it's always visibly there),
+    // then locate exactly what was just inserted and offer to convert it via a menu that
+    // floats above it — never hiding or delaying the actual paste.
+    requestAnimationFrame(() => {
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0) return;
+      const caret = sel.getRangeAt(0);
+      const endNode = caret.startContainer;
+      const endOffset = caret.startOffset;
+      if (endNode.nodeType !== Node.TEXT_NODE || endOffset < pastedText.length) return;
+
+      const range = document.createRange();
+      range.setStart(endNode, endOffset - pastedText.length);
+      range.setEnd(endNode, endOffset);
+      if (range.toString() !== pastedText) return; // rich clipboard data landed differently — skip the menu, keep the paste
+
+      // Cancel the debounced auto-save/auto-linkify that the native paste's `input` event just
+      // queued — otherwise it can convert this exact text into a pill while the menu is still
+      // open, and picking an option afterwards inserts a second copy on top of it.
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+        debounceRef.current = undefined;
+      }
+
+      const rangeRect = range.getBoundingClientRect();
+      const editorRect = editorEl.getBoundingClientRect();
+      setPasteMenu({
+        bottom: editorRect.height - (rangeRect.top - editorRect.top) + 8,
+        left: Math.max(0, rangeRect.left - editorRect.left),
+        url,
+        range,
+      });
     });
   }, []);
 
@@ -465,14 +684,6 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
     if (!pasteMenu) return;
     restoreSelection(pasteMenu.range);
     document.execCommand("insertHTML", false, buildAnchorHtml(pasteMenu.url));
-    handleInput();
-    setPasteMenu(null);
-  }, [pasteMenu, restoreSelection, handleInput]);
-
-  const handlePasteAsPlainUrl = useCallback(() => {
-    if (!pasteMenu) return;
-    restoreSelection(pasteMenu.range);
-    document.execCommand("insertText", false, pasteMenu.url);
     handleInput();
     setPasteMenu(null);
   }, [pasteMenu, restoreSelection, handleInput]);
@@ -493,6 +704,19 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
     placeholder.outerHTML = data && (data.title || data.image) ? buildPreviewCardHtml(url, data) : buildAnchorHtml(url);
     handleInput();
   }, [pasteMenu, restoreSelection, handleInput]);
+
+  /** Converts (or deletes) an already-inserted preview card via its "..." menu. */
+  const handleEmbedConvert = useCallback((format: "pill" | "delete") => {
+    if (!embedMenu) return;
+    const { cardEl, url } = embedMenu;
+    setEmbedMenu(null);
+    if (format === "delete") {
+      cardEl.remove();
+    } else if (format === "pill") {
+      cardEl.outerHTML = buildAnchorHtml(url);
+    }
+    handleInput();
+  }, [embedMenu, handleInput]);
 
   // Show floating toolbar on selection
   const updateToolbarPosition = useCallback(() => {
@@ -710,6 +934,13 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
 
   return (
     <div className={cn("relative", className)}>
+      {/* Hover-reveal for preview card toolbar/resize handles (plain CSS — the card lives in raw editor HTML, not React) */}
+      <style>{`
+        .up-lp-toolbar, .up-lp-resize { opacity: 0; transition: opacity .12s ease; }
+        .up-lp-card:hover .up-lp-toolbar, .up-lp-card:hover .up-lp-resize { opacity: 1; }
+        .up-lp-toolbar button:hover { background: rgba(0,0,0,0.8) !important; }
+      `}</style>
+
       {/* Top-right status bar */}
       <div className="absolute top-1.5 right-1.5 z-40 flex items-center gap-1 rounded-lg border border-border/30 bg-muted/80 backdrop-blur-sm px-1.5 py-0.5">
         {/* Saved status */}
@@ -853,26 +1084,39 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
           onMouseEnter={() => { if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current); }}
           onMouseLeave={() => setHoverPreview(null)}
         >
-          {hoverPreview.data === undefined ? (
-            <div className="w-72 rounded-xl border border-white/10 bg-[#111214] p-3 text-[12px] text-white/60 shadow-2xl">
-              Carregando prévia…
-            </div>
-          ) : hoverPreview.data ? (
-            <LinkPreviewBody url={hoverPreview.url} data={hoverPreview.data} />
-          ) : (
-            <div className="w-72 rounded-xl border border-white/10 bg-[#111214] p-3 text-[12px] text-white/60 shadow-2xl">
-              Sem prévia disponível
-            </div>
-          )}
+          <div className="overflow-hidden rounded-xl shadow-2xl">
+            {hoverPreview.minimal ? null : hoverPreview.data === undefined ? (
+              <div className="w-72 border border-white/10 bg-[#111214] p-3 text-[12px] text-white/60">
+                Carregando prévia…
+              </div>
+            ) : hoverPreview.data ? (
+              <LinkPreviewBody url={hoverPreview.url} data={hoverPreview.data} />
+            ) : (
+              <div className="w-72 border border-white/10 bg-[#111214] p-3 text-[12px] text-white/60">
+                Sem prévia disponível
+              </div>
+            )}
+            <button
+              type="button"
+              onMouseDown={(e) => { e.preventDefault(); handleDeletePill(hoverPreview.pillEl); }}
+              className={cn(
+                "flex w-full items-center justify-center gap-1.5 bg-[#111214] py-2 text-[11px] font-semibold text-red-300 transition-colors hover:bg-red-500/10",
+                hoverPreview.minimal ? "w-40 rounded-lg border border-white/10" : "border-x border-b border-white/10",
+              )}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Excluir link
+            </button>
+          </div>
         </div>
       )}
 
-      {/* "Colar como" menu — shown right after pasting a bare URL */}
+      {/* "Colar como" menu — shown right after pasting a bare URL; floats above the pasted text so it never covers it */}
       {pasteMenu && (
         <div
           ref={pasteMenuRef}
-          className="absolute z-50 w-56 rounded-xl border border-white/10 shadow-2xl p-1 animate-in fade-in-0 slide-in-from-top-2 duration-150"
-          style={{ top: pasteMenu.top, left: pasteMenu.left, background: GRADIENT_MENU }}
+          className="absolute z-50 w-56 rounded-xl border border-white/10 shadow-2xl p-1 animate-in fade-in-0 slide-in-from-bottom-2 duration-150"
+          style={{ bottom: pasteMenu.bottom, left: pasteMenu.left, background: GRADIENT_MENU }}
         >
           <p className="px-2 py-1.5 text-[10px] text-white/50 font-semibold uppercase tracking-wider">Colar como</p>
           <button
@@ -892,14 +1136,65 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
             <span className="flex-1 text-left font-medium text-white/90">Pré-visualizar</span>
             <Check className="h-4 w-4 text-white" />
           </button>
+        </div>
+      )}
+
+      {/* "Exibir como" menu — opened from a preview card's "..." toolbar button */}
+      {embedMenu && (
+        <div
+          ref={embedMenuRef}
+          className="absolute z-50 w-56 rounded-xl border border-white/10 shadow-2xl p-1 animate-in fade-in-0 slide-in-from-top-2 duration-150"
+          style={{ top: embedMenu.top, left: embedMenu.left, background: GRADIENT_MENU }}
+        >
+          <p className="px-2 py-1.5 text-[10px] text-white/50 font-semibold uppercase tracking-wider">Exibir como</p>
           <button
             type="button"
-            onMouseDown={(e) => { e.preventDefault(); handlePasteAsPlainUrl(); }}
+            onMouseDown={(e) => { e.preventDefault(); handleEmbedConvert("pill"); }}
             className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-white/10"
           >
-            <CaseSensitive className="h-4 w-4 shrink-0 text-white/60" />
-            <span className="flex-1 text-left font-medium text-white/90">URL</span>
+            <Link2 className="h-4 w-4 shrink-0 text-white/60" />
+            <span className="flex-1 text-left font-medium text-white/90">Link em linha</span>
           </button>
+          <button
+            type="button"
+            onMouseDown={(e) => { e.preventDefault(); setEmbedMenu(null); }}
+            className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-white/10"
+          >
+            <GalleryHorizontal className="h-4 w-4 shrink-0 text-white/60" />
+            <span className="flex-1 text-left font-medium text-white/90">Pré-visualizar</span>
+            <Check className="h-4 w-4 text-white" />
+          </button>
+          <div className="my-1 h-px bg-white/10" />
+          <button
+            type="button"
+            onMouseDown={(e) => { e.preventDefault(); handleEmbedConvert("delete"); }}
+            className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-sm text-red-300 transition-colors hover:bg-red-500/10"
+          >
+            <Trash2 className="h-4 w-4 shrink-0" />
+            <span className="flex-1 text-left font-medium">Excluir</span>
+          </button>
+        </div>
+      )}
+
+      {/* Image lightbox — opened from a preview card's "expand" toolbar button */}
+      {expandedImage && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 p-6 animate-in fade-in-0 duration-150"
+          onClick={() => setExpandedImage(null)}
+        >
+          <button
+            type="button"
+            onClick={() => setExpandedImage(null)}
+            className="absolute top-4 right-4 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <img
+            src={expandedImage}
+            alt=""
+            className="max-h-full max-w-full rounded-lg object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
 
