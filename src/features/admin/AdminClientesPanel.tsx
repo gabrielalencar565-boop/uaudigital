@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { z } from "zod";
 import { buildAssigneesForClient, mergeClientAssignees } from "@/lib/role-stage-mapping";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { format, isValid } from "date-fns";
-import { Plus, Pencil, Trash2, Users, Filter, DollarSign, XCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, Filter, DollarSign, XCircle, ImagePlus } from "lucide-react";
+import { useSession } from "@/hooks/use-session";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -61,6 +62,7 @@ const SERVICE_OPTIONS = [
 
 const clientSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório").max(100),
+  logo_url: z.string().optional().or(z.literal("")),
   notes: z.string().max(500).optional().or(z.literal("")),
   monthly_value: z.coerce.number().min(0).default(0),
   contract_start: z.string().optional().or(z.literal("")),
@@ -80,6 +82,7 @@ type ClientFormValues = z.infer<typeof clientSchema>;
 
 const emptyDefaults: ClientFormValues = {
   name: "",
+  logo_url: "",
   notes: "",
   monthly_value: 0,
   contract_start: new Date().toISOString().slice(0, 10),
@@ -328,6 +331,7 @@ export function AdminClientesPanel() {
         await supabase
           .from("clients")
           .update({
+            logo_url: values.logo_url || null,
             paused_from: monthInputToDate(values.paused_from),
             resumed_from: monthInputToDate(values.resumed_from),
             ended_at: values.ended_at || null,
@@ -410,6 +414,7 @@ export function AdminClientesPanel() {
         .from("clients")
         .update({
           name: values.name,
+          logo_url: values.logo_url || null,
           notes: values.notes || null,
           monthly_value: values.monthly_value || 0,
           contract_start: values.contract_start || null,
@@ -562,6 +567,7 @@ export function AdminClientesPanel() {
     setEditClient(client);
     editForm.reset({
       name: client.name,
+      logo_url: client.logo_url ?? "",
       notes: client.notes ?? "",
       monthly_value: getFinValue(client) || Number(client.monthly_value ?? 0),
       contract_start: fc?.start ?? client.contract_start ?? new Date().toISOString().slice(0, 10),
@@ -914,6 +920,39 @@ function ClientFormDialog({
   const services = form.watch("services") ?? [];
   const endedAt = form.watch("ended_at") ?? "";
   const isEnded = !!endedAt;
+  const logoUrl = form.watch("logo_url");
+  const clientName = form.watch("name");
+  const { user } = useSession();
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+
+  const handleLogoFile = async (file: File) => {
+    if (!user) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Envie uma imagem");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Máximo 5MB");
+      return;
+    }
+    setUploadingLogo(true);
+    try {
+      const ext = (file.name.split(".").pop() || "png").toLowerCase();
+      const path = `client-logos/${crypto.randomUUID()}.${ext}`;
+      const up = await supabase.storage.from("app-assets").upload(path, file, {
+        upsert: true,
+        contentType: file.type,
+      });
+      if (up.error) throw up.error;
+      const pub = supabase.storage.from("app-assets").getPublicUrl(path);
+      form.setValue("logo_url", pub.data.publicUrl, { shouldDirty: true });
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao enviar foto");
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
 
   // Parse YYYY-MM-DD into parts
   const [ey, em, ed] = (() => {
@@ -1021,6 +1060,52 @@ function ClientFormDialog({
               {/* Identificação */}
               <section className="space-y-3">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Identificação</h3>
+                <div className="flex items-center gap-4">
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-tr from-purple-500 via-pink-500 to-orange-400 text-lg font-bold text-white">
+                    {logoUrl ? (
+                      <img src={logoUrl} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      clientName?.trim().charAt(0).toUpperCase() || "?"
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <input
+                      ref={logoInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleLogoFile(file);
+                        e.target.value = "";
+                      }}
+                    />
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={uploadingLogo}
+                        onClick={() => logoInputRef.current?.click()}
+                      >
+                        <ImagePlus className="mr-1.5 h-3.5 w-3.5" />
+                        {uploadingLogo ? "Enviando..." : logoUrl ? "Alterar foto" : "Adicionar foto"}
+                      </Button>
+                      {logoUrl && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs text-muted-foreground"
+                          onClick={() => form.setValue("logo_url", "", { shouldDirty: true })}
+                        >
+                          Remover
+                        </Button>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">Foto ou logo do cliente (máx. 5MB).</p>
+                  </div>
+                </div>
                 <div className="space-y-1.5">
                   <Label>Nome do Cliente *</Label>
                   <Input placeholder="Ex.: Empresa XYZ" {...form.register("name")} />

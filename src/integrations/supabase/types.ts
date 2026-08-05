@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.1"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -94,6 +94,78 @@ export type Database = {
           workspace_name?: string
         }
         Relationships: []
+      }
+      calendar_publications: {
+        Row: {
+          calendar_id: string
+          caption: string | null
+          client_feedback: string | null
+          client_note: string | null
+          client_responded_at: string | null
+          content_type: Database["public"]["Enums"]["publication_content_type"]
+          created_at: string
+          id: string
+          internal_note: string | null
+          order_index: number
+          publish_date: string | null
+          publish_time: string | null
+          status: Database["public"]["Enums"]["publication_status"]
+          task_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          calendar_id: string
+          caption?: string | null
+          client_feedback?: string | null
+          client_note?: string | null
+          client_responded_at?: string | null
+          content_type?: Database["public"]["Enums"]["publication_content_type"]
+          created_at?: string
+          id?: string
+          internal_note?: string | null
+          order_index?: number
+          publish_date?: string | null
+          publish_time?: string | null
+          status?: Database["public"]["Enums"]["publication_status"]
+          task_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          calendar_id?: string
+          caption?: string | null
+          client_feedback?: string | null
+          client_note?: string | null
+          client_responded_at?: string | null
+          content_type?: Database["public"]["Enums"]["publication_content_type"]
+          created_at?: string
+          id?: string
+          internal_note?: string | null
+          order_index?: number
+          publish_date?: string | null
+          publish_time?: string | null
+          status?: Database["public"]["Enums"]["publication_status"]
+          task_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_publications_calendar_id_fkey"
+            columns: ["calendar_id"]
+            isOneToOne: false
+            referencedRelation: "publication_calendars"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_publications_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: true
+            referencedRelation: "pm_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       chat_conversations: {
         Row: {
@@ -583,6 +655,7 @@ export type Database = {
           id: string
           is_active: boolean
           is_freelancer_sentinel: boolean
+          logo_url: string | null
           magic_due_date: string
           manager_id: string | null
           monthly_value: number
@@ -606,6 +679,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_freelancer_sentinel?: boolean
+          logo_url?: string | null
           magic_due_date: string
           manager_id?: string | null
           monthly_value?: number
@@ -629,6 +703,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_freelancer_sentinel?: boolean
+          logo_url?: string | null
           magic_due_date?: string
           manager_id?: string | null
           monthly_value?: number
@@ -951,6 +1026,32 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      drive_client_folders: {
+        Row: {
+          client_id: string
+          created_at: string
+          drive_folder_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          drive_folder_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          drive_folder_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drive_client_folders_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
         ]
@@ -1410,6 +1511,24 @@ export type Database = {
         }
         Relationships: []
       }
+      internal_ops_tokens: {
+        Row: {
+          created_at: string
+          name: string
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          name: string
+          token: string
+        }
+        Update: {
+          created_at?: string
+          name?: string
+          token?: string
+        }
+        Relationships: []
+      }
       magic2_client_links: {
         Row: {
           agenda_client_id: string
@@ -1782,43 +1901,55 @@ export type Database = {
       }
       pm_attachments: {
         Row: {
+          access_token: string | null
           category: string
           created_at: string
+          drive_file_id: string | null
+          drive_organized_at: string | null
           file_name: string
           file_size: number | null
           file_type: string | null
           id: string
           order_index: number
           public_url: string | null
-          storage_path: string
+          storage_path: string | null
+          storage_provider: string
           subtask_id: string | null
           task_id: string | null
           uploaded_by: string
         }
         Insert: {
+          access_token?: string | null
           category?: string
           created_at?: string
+          drive_file_id?: string | null
+          drive_organized_at?: string | null
           file_name: string
           file_size?: number | null
           file_type?: string | null
           id?: string
           order_index?: number
           public_url?: string | null
-          storage_path: string
+          storage_path?: string | null
+          storage_provider?: string
           subtask_id?: string | null
           task_id?: string | null
           uploaded_by: string
         }
         Update: {
+          access_token?: string | null
           category?: string
           created_at?: string
+          drive_file_id?: string | null
+          drive_organized_at?: string | null
           file_name?: string
           file_size?: number | null
           file_type?: string | null
           id?: string
           order_index?: number
           public_url?: string | null
-          storage_path?: string
+          storage_path?: string | null
+          storage_provider?: string
           subtask_id?: string | null
           task_id?: string | null
           uploaded_by?: string
@@ -2346,6 +2477,50 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      publication_calendars: {
+        Row: {
+          client_id: string
+          created_at: string
+          cycle_end: string
+          cycle_start: string
+          id: string
+          share_enabled: boolean
+          share_token: string
+          status: Database["public"]["Enums"]["calendar_status"]
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          cycle_end: string
+          cycle_start: string
+          id?: string
+          share_enabled?: boolean
+          share_token?: string
+          status?: Database["public"]["Enums"]["calendar_status"]
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          cycle_end?: string
+          cycle_start?: string
+          id?: string
+          share_enabled?: boolean
+          share_token?: string
+          status?: Database["public"]["Enums"]["calendar_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "publication_calendars_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       reward_levels: {
         Row: {
@@ -3397,6 +3572,13 @@ export type Database = {
         Args: { _template: string; _vars: Json }
         Returns: string
       }
+      calendar_cycle_bounds: {
+        Args: { _ref: string }
+        Returns: {
+          cycle_end: string
+          cycle_start: string
+        }[]
+      }
       chat_conversation_type: {
         Args: { _conv: string }
         Returns: Database["public"]["Enums"]["chat_conversation_type"]
@@ -3598,6 +3780,14 @@ export type Database = {
     Enums: {
       access_request_status: "pending" | "approved" | "rejected"
       app_role: "admin" | "collaborator" | "planner"
+      calendar_status:
+        | "em_montagem"
+        | "em_revisao_interna"
+        | "pronto_para_envio"
+        | "enviado_ao_cliente"
+        | "alteracoes_solicitadas"
+        | "aprovado"
+        | "arquivado"
       chat_conversation_type: "general" | "direct"
       crm_loss_reason:
         | "preco"
@@ -3668,6 +3858,20 @@ export type Database = {
         | "aprovado"
         | "concluido"
         | "bloqueado"
+      publication_content_type:
+        | "imagem"
+        | "carrossel"
+        | "reel"
+        | "video"
+        | "story"
+        | "outro"
+      publication_status:
+        | "rascunho"
+        | "aguardando_aprovacao"
+        | "aprovada"
+        | "alteracao_solicitada"
+        | "atualizada"
+        | "cancelada"
       reward_redemption_status:
         | "pendente"
         | "aprovado"
@@ -3814,6 +4018,15 @@ export const Constants = {
     Enums: {
       access_request_status: ["pending", "approved", "rejected"],
       app_role: ["admin", "collaborator", "planner"],
+      calendar_status: [
+        "em_montagem",
+        "em_revisao_interna",
+        "pronto_para_envio",
+        "enviado_ao_cliente",
+        "alteracoes_solicitadas",
+        "aprovado",
+        "arquivado",
+      ],
       chat_conversation_type: ["general", "direct"],
       crm_loss_reason: [
         "preco",
@@ -3891,6 +4104,22 @@ export const Constants = {
         "aprovado",
         "concluido",
         "bloqueado",
+      ],
+      publication_content_type: [
+        "imagem",
+        "carrossel",
+        "reel",
+        "video",
+        "story",
+        "outro",
+      ],
+      publication_status: [
+        "rascunho",
+        "aguardando_aprovacao",
+        "aprovada",
+        "alteracao_solicitada",
+        "atualizada",
+        "cancelada",
       ],
       reward_redemption_status: [
         "pendente",

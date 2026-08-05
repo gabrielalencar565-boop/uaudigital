@@ -36,6 +36,7 @@ export type MainTab =
 "tarefas" |
 "agenda_gestao" |
 "pauta_pessoas" |
+"calendario_publicacao" |
 "cronograma" |
 "fluxos" |
 "visao_do_dia" |
@@ -76,6 +77,7 @@ const NAV: NavEntry[] = [
 
 { key: "agenda_gestao", label: "Agenda", icon: CalendarDays },
 { key: "pauta_pessoas", label: "Pauta", icon: ClipboardList },
+{ key: "calendario_publicacao", label: "Calendário", icon: CalendarRange },
 { key: "visao_do_dia", label: "Visão do Dia", icon: Eye },
 { key: "magic2", label: "Magic Number", icon: Target },
 { key: "desempenho", label: "The Best", icon: Trophy },
