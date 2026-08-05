@@ -53,23 +53,27 @@ export function usePmAllChildTasks() {
     queryKey: ["pm_child_tasks_all"],
     queryFn: async () => {
       const pageSize = 1000;
+      const filtered = () => sb.from("pm_tasks").not("parent_task_id", "is", null).is("deleted_at", null);
+
+      const { count, error: countError } = await filtered().select("id", { count: "exact", head: true });
+      if (countError) throw countError;
+
+      const totalPages = Math.max(1, Math.ceil((count ?? 0) / pageSize));
+      const pages = await Promise.all(
+        Array.from({ length: totalPages }, (_, i) => {
+          const from = i * pageSize;
+          return filtered()
+            .select(PM_TASK_LIST_COLUMNS)
+            .order("created_at", { ascending: true })
+            .range(from, from + pageSize - 1);
+        }),
+      );
+
       const allRows: PmTask[] = [];
-
-      for (let from = 0; ; from += pageSize) {
-        const { data, error } = await sb
-          .from("pm_tasks")
-          .select(PM_TASK_LIST_COLUMNS)
-          .not("parent_task_id", "is", null)
-          .is("deleted_at", null)
-          .order("created_at", { ascending: true })
-          .range(from, from + pageSize - 1);
-
+      for (const { data, error } of pages) {
         if (error) throw error;
-        const rows = (data ?? []) as PmTask[];
-        allRows.push(...rows);
-        if (rows.length < pageSize) break;
+        allRows.push(...((data ?? []) as PmTask[]));
       }
-
       return allRows;
     },
   });
