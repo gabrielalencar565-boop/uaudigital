@@ -3,7 +3,7 @@ import {
   Bold, Italic, Underline, Strikethrough, List, ListOrdered,
   Wand2, Loader2, SpellCheck as SpellCheckIcon, ArrowUpRight, ArrowDownRight, Feather, Sparkles,
   Undo2, Redo2, Type, Heading1, Heading2, Heading3, Heading4, ChevronDown, Check,
-  Clock, Maximize2, CheckCircle2, AlertCircle,
+  Clock, Maximize2, CheckCircle2, AlertCircle, Link2, GalleryHorizontal, CaseSensitive,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +11,8 @@ import { toast } from "sonner";
 import { useSpellcheck, type SpellError } from "../hooks/use-spellcheck";
 import { SpellCheckOverlay } from "./SpellCheckOverlay";
 import { SpellSuggestionPopover } from "./SpellSuggestionPopover";
+import { LinkPreviewBody } from "@/components/LinkChip";
+import { fetchLinkPreview, detectPlatform, shortenUrl, type LinkPreviewData } from "@/lib/link-preview";
 
 const AI_ACTIONS = [
   { key: "improve", label: "Melhorar a escrita", icon: Sparkles },
@@ -50,18 +52,148 @@ function splitTrailingUrlPunctuation(url: string) {
   };
 }
 
-function buildAnchorHtml(url: string) {
-  const wrapper = document.createElement("div");
-  const { cleanUrl, trailingText } = splitTrailingUrlPunctuation(url.trim());
+// The editor forces `color: inherit !important` on every descendant (so pasted rich text
+// always follows the app's theme). Our pills/cards manage their own colors on purpose, so
+// we set `color` via `!important` inline — which, per the CSS cascade, still wins over an
+// `!important` rule in a stylesheet.
+function setImportantColor(el: HTMLElement, color: string) {
+  el.style.setProperty("color", color, "important");
+}
+
+/** Builds the actual <a> element for the compact dark "link pill" (icon + platform + shortened URL). */
+function buildAnchorElement(url: string): HTMLAnchorElement {
+  const platform = detectPlatform(url);
   const anchor = document.createElement("a");
-  anchor.href = cleanUrl;
+  anchor.href = url;
   anchor.target = "_blank";
   anchor.rel = "noopener noreferrer";
-  anchor.className = "text-blue-600 underline cursor-pointer hover:text-blue-700";
-  anchor.textContent = cleanUrl;
-  wrapper.append(anchor);
+  anchor.setAttribute("contenteditable", "false");
+  anchor.setAttribute("data-link-pill", "1");
+  anchor.setAttribute("data-preview-url", url);
+  Object.assign(anchor.style, {
+    display: "inline-flex", alignItems: "center", gap: "6px", background: "#1a1a1a",
+    borderRadius: "8px", padding: "5px 10px", textDecoration: "none", fontSize: "12.5px",
+    lineHeight: "1.3", maxWidth: "100%", verticalAlign: "middle", margin: "1px 2px",
+  } satisfies Partial<CSSStyleDeclaration>);
+  setImportantColor(anchor, "#fff");
+
+  const emojiSpan = document.createElement("span");
+  emojiSpan.textContent = platform.emoji;
+  const labelSpan = document.createElement("span");
+  labelSpan.style.fontWeight = "600";
+  labelSpan.textContent = platform.label;
+  setImportantColor(labelSpan, "#fff");
+  const urlSpan = document.createElement("span");
+  Object.assign(urlSpan.style, {
+    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "220px",
+  } satisfies Partial<CSSStyleDeclaration>);
+  setImportantColor(urlSpan, "#9aa0a6");
+  urlSpan.textContent = shortenUrl(url);
+
+  anchor.append(emojiSpan, labelSpan, urlSpan);
+  return anchor;
+}
+
+/** Compact dark pill: icon + platform name + shortened URL — the "Link em linha" / typed-URL format. */
+function buildAnchorHtml(url: string) {
+  const { cleanUrl, trailingText } = splitTrailingUrlPunctuation(url.trim());
+  const wrapper = document.createElement("span");
+  wrapper.append(buildAnchorElement(cleanUrl));
   if (trailingText) wrapper.append(document.createTextNode(trailingText));
   return wrapper.innerHTML;
+}
+
+function buildLoadingPlaceholderHtml(id: string) {
+  const span = document.createElement("span");
+  span.id = id;
+  span.setAttribute("contenteditable", "false");
+  Object.assign(span.style, {
+    display: "inline-flex", alignItems: "center", gap: "6px", borderRadius: "8px", background: "#1a1a1a",
+    padding: "6px 10px", margin: "1px 2px", fontSize: "12px",
+  } satisfies Partial<CSSStyleDeclaration>);
+  setImportantColor(span, "#9aa0a6");
+  span.textContent = "Carregando prévia…";
+  return span.outerHTML;
+}
+
+/** Rich Instagram-share-sheet-style card: avatar/initials + name + "Abrir" button, then a big image. */
+function buildPreviewCardHtml(url: string, data: LinkPreviewData) {
+  const platform = detectPlatform(url);
+  const name = data.site_name || platform.label;
+  const initials = (data.site_name || platform.label || "?").slice(0, 2).toUpperCase();
+
+  const card = document.createElement("a");
+  card.href = url;
+  card.target = "_blank";
+  card.rel = "noopener noreferrer";
+  card.setAttribute("contenteditable", "false");
+  card.setAttribute("data-link-preview", "1");
+  card.setAttribute("data-preview-url", url);
+  Object.assign(card.style, {
+    display: "block", width: "288px", maxWidth: "100%", borderRadius: "12px", overflow: "hidden",
+    textDecoration: "none", background: "#111214", border: "1px solid rgba(255,255,255,0.1)",
+    margin: "4px 2px",
+  } satisfies Partial<CSSStyleDeclaration>);
+  setImportantColor(card, "#fff");
+
+  const headerRow = document.createElement("div");
+  Object.assign(headerRow.style, { display: "flex", alignItems: "center", gap: "10px", padding: "10px 12px" } satisfies Partial<CSSStyleDeclaration>);
+
+  const avatar = document.createElement("span");
+  Object.assign(avatar.style, {
+    width: "36px", height: "36px", borderRadius: "999px", background: "rgba(255,255,255,0.1)",
+    display: "flex", alignItems: "center", justifyContent: "center", fontSize: "11px", fontWeight: "700",
+    flexShrink: "0",
+  } satisfies Partial<CSSStyleDeclaration>);
+  setImportantColor(avatar, "#fff");
+  avatar.textContent = initials;
+
+  const textCol = document.createElement("span");
+  Object.assign(textCol.style, { minWidth: "0", flex: "1", overflow: "hidden" } satisfies Partial<CSSStyleDeclaration>);
+  const nameSpan = document.createElement("span");
+  Object.assign(nameSpan.style, { display: "block", fontSize: "13px", fontWeight: "600", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } satisfies Partial<CSSStyleDeclaration>);
+  setImportantColor(nameSpan, "#fff");
+  nameSpan.textContent = name;
+  const urlSpan = document.createElement("span");
+  Object.assign(urlSpan.style, { display: "block", fontSize: "11px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } satisfies Partial<CSSStyleDeclaration>);
+  setImportantColor(urlSpan, "rgba(255,255,255,0.5)");
+  urlSpan.textContent = shortenUrl(url);
+  textCol.append(nameSpan, urlSpan);
+
+  const openBadge = document.createElement("span");
+  Object.assign(openBadge.style, {
+    flexShrink: "0", background: "rgba(255,255,255,0.15)", fontSize: "11px", fontWeight: "600",
+    padding: "6px 10px", borderRadius: "8px",
+  } satisfies Partial<CSSStyleDeclaration>);
+  setImportantColor(openBadge, "#fff");
+  openBadge.textContent = "Abrir";
+
+  headerRow.append(avatar, textCol, openBadge);
+  card.append(headerRow);
+
+  if (data.image) {
+    const imgWrap = document.createElement("div");
+    Object.assign(imgWrap.style, { width: "100%", aspectRatio: "1 / 1", background: "rgba(255,255,255,0.06)" } satisfies Partial<CSSStyleDeclaration>);
+    const img = document.createElement("img");
+    img.src = data.image;
+    img.alt = "";
+    Object.assign(img.style, { width: "100%", height: "100%", objectFit: "cover", display: "block" } satisfies Partial<CSSStyleDeclaration>);
+    imgWrap.append(img);
+    card.append(imgWrap);
+  }
+
+  if (data.title) {
+    const titleRow = document.createElement("div");
+    Object.assign(titleRow.style, { padding: "10px 12px", borderTop: "1px solid rgba(255,255,255,0.1)" } satisfies Partial<CSSStyleDeclaration>);
+    const titleSpan = document.createElement("span");
+    Object.assign(titleSpan.style, { fontSize: "12px", lineHeight: "1.5" } satisfies Partial<CSSStyleDeclaration>);
+    setImportantColor(titleSpan, "rgba(255,255,255,0.7)");
+    titleSpan.textContent = data.title;
+    titleRow.append(titleSpan);
+    card.append(titleRow);
+  }
+
+  return card.outerHTML;
 }
 
 function linkifyHtmlContent(html: string) {
@@ -101,13 +233,7 @@ function linkifyHtmlContent(html: string) {
         fragment.append(document.createTextNode(text.slice(lastIndex, start)));
       }
 
-      const anchor = document.createElement("a");
-      anchor.href = cleanUrl;
-      anchor.target = "_blank";
-      anchor.rel = "noopener noreferrer";
-      anchor.className = "text-blue-600 underline cursor-pointer hover:text-blue-700";
-      anchor.textContent = cleanUrl;
-      fragment.append(anchor);
+      fragment.append(buildAnchorElement(cleanUrl));
 
       if (trailingText) {
         fragment.append(document.createTextNode(trailingText));
@@ -155,6 +281,54 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   const [plainText, setPlainText] = useState("");
   const [spellPopover, setSpellPopover] = useState<{ error: SpellError; rect: DOMRect } | null>(null);
+  const [pasteMenu, setPasteMenu] = useState<{ top: number; left: number; url: string; range: Range } | null>(null);
+  const pasteMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close the "Colar como" menu on outside click / Escape
+  useEffect(() => {
+    if (!pasteMenu) return;
+    const onDocMouseDown = (e: MouseEvent) => {
+      if (pasteMenuRef.current && !pasteMenuRef.current.contains(e.target as Node)) {
+        setPasteMenu(null);
+      }
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPasteMenu(null);
+    };
+    document.addEventListener("mousedown", onDocMouseDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onDocMouseDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [pasteMenu]);
+
+  // Hover preview for link pills/cards inside the editor content
+  const [hoverPreview, setHoverPreview] = useState<{ top: number; left: number; url: string; data: LinkPreviewData | null | undefined } | null>(null);
+  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const handleEditorMouseOver = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const target = (e.target as HTMLElement).closest("[data-link-pill],[data-link-preview]") as HTMLElement | null;
+    if (!target) return;
+    const url = target.getAttribute("data-preview-url");
+    if (!url) return;
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    hoverTimeoutRef.current = setTimeout(async () => {
+      const rect = target.getBoundingClientRect();
+      const editorRect = editorRef.current?.getBoundingClientRect();
+      if (!editorRect) return;
+      setHoverPreview({ top: rect.bottom - editorRect.top + 6, left: rect.left - editorRect.left, url, data: undefined });
+      const data = await fetchLinkPreview(url);
+      setHoverPreview((prev) => (prev && prev.url === url ? { ...prev, data } : prev));
+    }, 250);
+  }, []);
+
+  const handleEditorMouseOut = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const related = e.relatedTarget as HTMLElement | null;
+    if (related?.closest?.("[data-link-pill],[data-link-preview],[data-link-hover-card]")) return;
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    setHoverPreview(null);
+  }, []);
 
   const stripHtmlToPlain = (html: string) => {
     const tmp = document.createElement("div");
@@ -259,9 +433,66 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
     }
 
     e.preventDefault();
-    document.execCommand("insertHTML", false, buildAnchorHtml(pastedText));
+
+    const sel = window.getSelection();
+    const range = sel && sel.rangeCount > 0 ? sel.getRangeAt(0).cloneRange() : null;
+    const editorEl = editorRef.current;
+    if (!range || !editorEl) {
+      document.execCommand("insertHTML", false, buildAnchorHtml(pastedText));
+      handleInput();
+      return;
+    }
+
+    const rangeRect = range.getBoundingClientRect();
+    const editorRect = editorEl.getBoundingClientRect();
+    const hasRect = rangeRect.width > 0 || rangeRect.height > 0 || rangeRect.top > 0;
+    setPasteMenu({
+      top: (hasRect ? rangeRect.top : editorRect.top) - editorRect.top + 22,
+      left: Math.max(0, (hasRect ? rangeRect.left : editorRect.left) - editorRect.left),
+      url: pastedText,
+      range,
+    });
+  }, []);
+
+  const restoreSelection = useCallback((range: Range) => {
+    const sel = window.getSelection();
+    if (!sel) return;
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }, []);
+
+  const handlePasteAsInlineLink = useCallback(() => {
+    if (!pasteMenu) return;
+    restoreSelection(pasteMenu.range);
+    document.execCommand("insertHTML", false, buildAnchorHtml(pasteMenu.url));
     handleInput();
-  }, [handleInput]);
+    setPasteMenu(null);
+  }, [pasteMenu, restoreSelection, handleInput]);
+
+  const handlePasteAsPlainUrl = useCallback(() => {
+    if (!pasteMenu) return;
+    restoreSelection(pasteMenu.range);
+    document.execCommand("insertText", false, pasteMenu.url);
+    handleInput();
+    setPasteMenu(null);
+  }, [pasteMenu, restoreSelection, handleInput]);
+
+  const handlePasteAsPreview = useCallback(async () => {
+    if (!pasteMenu) return;
+    const { url, range } = pasteMenu;
+    setPasteMenu(null);
+    restoreSelection(range);
+
+    const placeholderId = `link-preview-loading-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    document.execCommand("insertHTML", false, buildLoadingPlaceholderHtml(placeholderId));
+    handleInput();
+
+    const data = await fetchLinkPreview(url);
+    const placeholder = editorRef.current?.querySelector(`#${placeholderId}`);
+    if (!placeholder) return; // user edited/removed it before the fetch finished
+    placeholder.outerHTML = data && (data.title || data.image) ? buildPreviewCardHtml(url, data) : buildAnchorHtml(url);
+    handleInput();
+  }, [pasteMenu, restoreSelection, handleInput]);
 
   // Show floating toolbar on selection
   const updateToolbarPosition = useCallback(() => {
@@ -583,6 +814,8 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
         ref={editorRef}
         contentEditable
         onMouseDown={handleEditorMouseDown}
+        onMouseOver={handleEditorMouseOver}
+        onMouseOut={handleEditorMouseOut}
         onPaste={handleEditorPaste}
         onInput={handleInput}
         onBlur={() => {
@@ -610,6 +843,65 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
         style={{ minHeight }}
         suppressContentEditableWarning
       />
+
+      {/* Hover preview for link pills/cards */}
+      {hoverPreview && (
+        <div
+          data-link-hover-card="1"
+          className="absolute z-50 animate-in fade-in-0 duration-100"
+          style={{ top: hoverPreview.top, left: hoverPreview.left }}
+          onMouseEnter={() => { if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current); }}
+          onMouseLeave={() => setHoverPreview(null)}
+        >
+          {hoverPreview.data === undefined ? (
+            <div className="w-72 rounded-xl border border-white/10 bg-[#111214] p-3 text-[12px] text-white/60 shadow-2xl">
+              Carregando prévia…
+            </div>
+          ) : hoverPreview.data ? (
+            <LinkPreviewBody url={hoverPreview.url} data={hoverPreview.data} />
+          ) : (
+            <div className="w-72 rounded-xl border border-white/10 bg-[#111214] p-3 text-[12px] text-white/60 shadow-2xl">
+              Sem prévia disponível
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* "Colar como" menu — shown right after pasting a bare URL */}
+      {pasteMenu && (
+        <div
+          ref={pasteMenuRef}
+          className="absolute z-50 w-56 rounded-xl border border-white/10 shadow-2xl p-1 animate-in fade-in-0 slide-in-from-top-2 duration-150"
+          style={{ top: pasteMenu.top, left: pasteMenu.left, background: GRADIENT_MENU }}
+        >
+          <p className="px-2 py-1.5 text-[10px] text-white/50 font-semibold uppercase tracking-wider">Colar como</p>
+          <button
+            type="button"
+            onMouseDown={(e) => { e.preventDefault(); handlePasteAsInlineLink(); }}
+            className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-white/10"
+          >
+            <Link2 className="h-4 w-4 shrink-0 text-white/60" />
+            <span className="flex-1 text-left font-medium text-white/90">Link em linha</span>
+          </button>
+          <button
+            type="button"
+            onMouseDown={(e) => { e.preventDefault(); handlePasteAsPreview(); }}
+            className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-white/10"
+          >
+            <GalleryHorizontal className="h-4 w-4 shrink-0 text-white/60" />
+            <span className="flex-1 text-left font-medium text-white/90">Pré-visualizar</span>
+            <Check className="h-4 w-4 text-white" />
+          </button>
+          <button
+            type="button"
+            onMouseDown={(e) => { e.preventDefault(); handlePasteAsPlainUrl(); }}
+            className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-white/10"
+          >
+            <CaseSensitive className="h-4 w-4 shrink-0 text-white/60" />
+            <span className="flex-1 text-left font-medium text-white/90">URL</span>
+          </button>
+        </div>
+      )}
 
       {/* Spell check overlay */}
       <SpellCheckOverlay

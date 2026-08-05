@@ -14,6 +14,7 @@ import { stageLabel } from "../pm-constants";
 import type { PmComment } from "../pm-types";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { LinkChip } from "@/components/LinkChip";
 
 function initials(n: string) { return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join(""); }
 
@@ -54,6 +55,14 @@ async function fetchLinkPreview(url: string): Promise<LinkPreviewData | null> {
 function extractUrl(text: string): string | null {
   const match = text.match(/https?:\/\/[^\s]+/i);
   return match ? match[0] : null;
+}
+
+/** Splits text on URLs, rendering each as the same dark link chip used across the app. */
+function renderTextWithLinks(text: string) {
+  const parts = text.split(/(https?:\/\/[^\s]+)/i);
+  return parts.map((part, i) =>
+    /^https?:\/\//i.test(part) ? <LinkChip key={i} url={part} className="mx-0.5" /> : <span key={i}>{part}</span>
+  );
 }
 
 /* ── Important actions kept in the activity feed ── */
@@ -333,7 +342,7 @@ function CommentBubble({ c, membersMap, formatMentions, onOpenPreview, onDelete 
           </span>
         </div>
         {displayContent && (
-          <p className="mt-1 whitespace-pre-wrap text-[13px] text-foreground/90 leading-relaxed">{displayContent}</p>
+          <p className="mt-1 whitespace-pre-wrap text-[13px] text-foreground/90 leading-relaxed">{renderTextWithLinks(displayContent)}</p>
         )}
         {fileUrl && isImage && (
           <div className="mt-2">
