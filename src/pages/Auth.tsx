@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -119,7 +119,6 @@ function MasonryGallery({ avatars }: { avatars: string[] }) {
 /* ── Auth Page ── */
 export default function Auth() {
   const navigate = useNavigate();
-  const location = useLocation();
   const { user } = useSession();
   const appSettings = useAppSettings();
   
@@ -130,7 +129,9 @@ export default function Auth() {
     return bgImages.map((img: any) => img.url as string).filter(Boolean);
   }, [bgImages]);
 
-  const [mode, setMode] = useState<AuthMode>("login");
+  const [mode, setMode] = useState<AuthMode>(() =>
+    new URLSearchParams(window.location.search).get("mode") === "reset" ? "reset" : "login",
+  );
   const [rememberMe, setRememberMe] = useState(true);
   const [hasRecoverySession, setHasRecoverySession] = useState<boolean | null>(null);
 
@@ -148,14 +149,11 @@ export default function Auth() {
   });
 
   useEffect(() => {
-    if (user) navigate("/", { replace: true });
-  }, [user, navigate]);
-
-  useEffect(() => {
-    const qs = new URLSearchParams(location.search);
-    if (qs.get("mode") === "reset") setMode("reset");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // Recovery links log the user in (that's how Supabase lets them set a new
+    // password), so skip the auto-redirect while we're on the reset form —
+    // otherwise it hijacks the flow straight into the dashboard.
+    if (user && mode !== "reset") navigate("/", { replace: true });
+  }, [user, mode, navigate]);
 
   useEffect(() => {
     if (mode !== "reset") {
