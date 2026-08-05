@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from "react";
-import { LogOut, Moon, Pencil, Sun, Volume2 } from "lucide-react";
+import { ChevronDown, LogOut, Moon, Pencil, Sun, Volume2 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { WorkspaceDropdown } from "@/components/layout/WorkspaceDropdown";
 import { TaskSearchDropdown } from "@/components/layout/TaskSearchDropdown";
@@ -93,7 +93,7 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
         </div>
 
         {/* Right: Notifications + Profile */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
           <ChatBellButton />
           <NotificationsDropdown onOpenTask={onOpenTask} />
 
@@ -101,13 +101,18 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
           {/* Profile dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2 rounded-lg px-2 py-1.5 transition hover:bg-accent/50 focus:outline-none">
-                <Avatar className="h-7 w-7">
+              <button className="flex items-center gap-2.5 rounded-full py-1 pl-1.5 pr-2 lg:pr-3 transition hover:bg-accent/50 focus:outline-none">
+                <Avatar className="h-8 w-8">
                   <AvatarImage src={userAvatar ?? undefined} alt={userName} />
                   <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-semibold">
                     {userInitials}
                   </AvatarFallback>
                 </Avatar>
+                <div className="hidden lg:flex flex-col items-start leading-tight max-w-[140px]">
+                  <span className="truncate text-sm font-medium text-foreground">{userName}</span>
+                  <span className="truncate text-xs text-muted-foreground">{userRole}</span>
+                </div>
+                <ChevronDown className="hidden lg:block h-3.5 w-3.5 text-muted-foreground" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-64 rounded-xl p-2">

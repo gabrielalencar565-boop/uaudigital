@@ -177,10 +177,12 @@ export function UauSidebarShell({
           <Sidebar
             collapsible="none"
             className={cn(
-              "fixed left-0 top-[3.5rem] z-40 h-[calc(100svh-3.5rem)] border-r border-sidebar-border bg-sidebar",
+              "fixed left-0 top-[3.5rem] z-40 h-[calc(100svh-3.5rem)] relative overflow-hidden",
+              "border-r border-white/10 bg-sidebar/95 backdrop-blur-xl shadow-elevated",
               collapsed ? "w-16" : "w-56 xl:w-64"
             )}>
-            
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/10 via-transparent to-black/10" />
+
             {/* Header: logo + collapse toggle */}
             <div className={cn("px-3 pb-1 pt-3", collapsed && "px-2")}>
               <div className={cn("flex items-center gap-2", collapsed && "justify-center")}>
@@ -191,7 +193,7 @@ export function UauSidebarShell({
                   type="button"
                   onClick={() => setCollapsed((v) => !v)}
                   className={cn(
-                    "ml-auto inline-flex h-7 w-7 items-center justify-center rounded-md text-sidebar-foreground/70 transition hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                    "ml-auto inline-flex h-7 w-7 items-center justify-center rounded-md text-sidebar-foreground/70 transition hover:bg-white/10 hover:text-sidebar-foreground"
                   )}
                   aria-label={collapsed ? "Expandir" : "Recolher"}>
                   <PanelLeftClose className={cn("h-4 w-4 transition-transform", collapsed && "rotate-180")} />
@@ -199,7 +201,7 @@ export function UauSidebarShell({
               </div>
             </div>
 
-            <div className="mx-3 my-2 h-px bg-sidebar-foreground/15" />
+            <div className="mx-3 my-2 h-px bg-white/15" />
 
             <SidebarContent className="px-2">
               <SidebarMenu>
@@ -216,7 +218,7 @@ export function UauSidebarShell({
                           className={cn(
                             "h-10 gap-3 rounded-xl text-sidebar-foreground/80 transition-colors",
                             "hover:bg-sidebar-accent hover:text-sidebar-foreground",
-                            active && "bg-sidebar-accent text-sidebar-foreground font-semibold",
+                            active && "bg-white/15 text-white font-semibold shadow-[0_4px_18px_-4px_rgba(0,0,0,0.45)] ring-1 ring-white/10",
                             isRecompensas && "relative overflow-hidden",
                             collapsed && "justify-center"
                           )}>
@@ -257,7 +259,7 @@ export function UauSidebarShell({
                             }}
                             className={cn(
                               "h-10 gap-3 rounded-xl text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors flex-1",
-                              hasActiveChild && "bg-sidebar-accent text-sidebar-foreground font-semibold",
+                              hasActiveChild && "bg-white/15 text-white font-semibold shadow-[0_4px_18px_-4px_rgba(0,0,0,0.45)] ring-1 ring-white/10",
                               collapsed && "justify-center"
                             )}>
                             <entry.icon className="h-[18px] w-[18px] shrink-0" />
@@ -288,7 +290,7 @@ export function UauSidebarShell({
                                   key={child.key}
                                   onClick={() => onTabChange(child.key)}
                                   className={cn("flex w-full items-center gap-2.5 px-2.5 py-2 text-sm text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground rounded-xl",
-                                  active && "bg-sidebar-accent text-sidebar-foreground font-medium"
+                                  active && "bg-white/12 text-white font-medium shadow-[0_2px_10px_-2px_rgba(0,0,0,0.4)]"
                                   )}>
                                     <child.icon className="h-4 w-4 shrink-0" />
                                     <span>{child.label}</span>
@@ -311,7 +313,7 @@ export function UauSidebarShell({
                     onClick={() => onTabChange("configuracoes")}
                     className={cn(
                       "inline-flex h-10 items-center gap-3 rounded-xl px-3 text-sidebar-foreground/70 transition hover:bg-sidebar-accent hover:text-sidebar-foreground",
-                      tab === "configuracoes" && "bg-sidebar-accent text-sidebar-foreground font-semibold"
+                      tab === "configuracoes" && "bg-white/15 text-white font-semibold shadow-[0_4px_18px_-4px_rgba(0,0,0,0.45)] ring-1 ring-white/10"
                     )}
                     aria-label="Configurações"
                   >
