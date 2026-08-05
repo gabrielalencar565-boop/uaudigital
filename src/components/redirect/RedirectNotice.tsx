@@ -1,7 +1,19 @@
 import { ExternalLink } from "lucide-react";
+import { useEffect, useState } from "react";
+
+const ALLOWED_HOST = "uaudigital.lovable.app";
 
 export function RedirectNotice() {
+  const [isVisible, setIsVisible] = useState(false);
   const newUrl = "https://uaudigital.vercel.app/";
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setIsVisible(window.location.hostname === ALLOWED_HOST);
+    }
+  }, []);
+
+  if (!isVisible) return null;
 
   return (
     <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#181818] px-6 text-center">
@@ -38,3 +50,4 @@ export function RedirectNotice() {
     </div>
   );
 }
+
