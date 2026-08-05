@@ -420,7 +420,7 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
   }, [expandedImage]);
 
   // Hover preview for link pills/cards inside the editor content
-  const [hoverPreview, setHoverPreview] = useState<{ top: number; left: number; url: string; data: LinkPreviewData | null | undefined } | null>(null);
+  const [hoverPreview, setHoverPreview] = useState<{ top: number; left: number; url: string; pillEl: HTMLElement; data: LinkPreviewData | null | undefined } | null>(null);
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
   const handleEditorMouseOver = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -435,17 +435,30 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
       const rect = target.getBoundingClientRect();
       const editorRect = editorRef.current?.getBoundingClientRect();
       if (!editorRect) return;
-      setHoverPreview({ top: rect.bottom - editorRect.top + 6, left: rect.left - editorRect.left, url, data: undefined });
+      // No gap between the pill and the popup below it — a gap creates a "dead zone" where
+      // the mouse is over neither element while moving down into the popup, closing it early.
+      setHoverPreview({ top: rect.bottom - editorRect.top, left: rect.left - editorRect.left, url, pillEl: target, data: undefined });
       const data = await fetchLinkPreview(url);
       setHoverPreview((prev) => (prev && prev.url === url ? { ...prev, data } : prev));
     }, 250);
+  }, []);
+
+  /** Removes a link pill directly from its hover popup — the only affordance pills have,
+   * since single-clicking one opens the link instead of placing a cursor next to it. */
+  const handleDeletePill = useCallback((pillEl: HTMLElement) => {
+    pillEl.remove();
+    setHoverPreview(null);
+    handleInput();
   }, []);
 
   const handleEditorMouseOut = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const related = e.relatedTarget as HTMLElement | null;
     if (related?.closest?.("[data-link-pill],[data-link-hover-card]")) return;
     if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
-    setHoverPreview(null);
+    // Small grace period instead of closing instantly — `relatedTarget` isn't always reliable
+    // (varies by input method), so this gives the popup's own onMouseEnter a chance to cancel
+    // the close if the pointer actually landed inside it (e.g. on the "Excluir" button).
+    hoverTimeoutRef.current = setTimeout(() => setHoverPreview(null), 250);
   }, []);
 
   const stripHtmlToPlain = (html: string) => {
@@ -1059,17 +1072,27 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
           onMouseEnter={() => { if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current); }}
           onMouseLeave={() => setHoverPreview(null)}
         >
-          {hoverPreview.data === undefined ? (
-            <div className="w-72 rounded-xl border border-white/10 bg-[#111214] p-3 text-[12px] text-white/60 shadow-2xl">
-              Carregando prévia…
-            </div>
-          ) : hoverPreview.data ? (
-            <LinkPreviewBody url={hoverPreview.url} data={hoverPreview.data} />
-          ) : (
-            <div className="w-72 rounded-xl border border-white/10 bg-[#111214] p-3 text-[12px] text-white/60 shadow-2xl">
-              Sem prévia disponível
-            </div>
-          )}
+          <div className="overflow-hidden rounded-xl shadow-2xl">
+            {hoverPreview.data === undefined ? (
+              <div className="w-72 border border-white/10 bg-[#111214] p-3 text-[12px] text-white/60">
+                Carregando prévia…
+              </div>
+            ) : hoverPreview.data ? (
+              <LinkPreviewBody url={hoverPreview.url} data={hoverPreview.data} />
+            ) : (
+              <div className="w-72 border border-white/10 bg-[#111214] p-3 text-[12px] text-white/60">
+                Sem prévia disponível
+              </div>
+            )}
+            <button
+              type="button"
+              onMouseDown={(e) => { e.preventDefault(); handleDeletePill(hoverPreview.pillEl); }}
+              className="flex w-full items-center justify-center gap-1.5 border-x border-b border-white/10 bg-[#111214] py-2 text-[11px] font-semibold text-red-300 transition-colors hover:bg-red-500/10"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Excluir link
+            </button>
+          </div>
         </div>
       )}
 
