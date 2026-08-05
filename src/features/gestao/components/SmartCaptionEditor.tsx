@@ -3,7 +3,7 @@ import {
   Bold, Italic, Underline, Strikethrough, List, ListOrdered,
   Wand2, Loader2, SpellCheck as SpellCheckIcon, ArrowUpRight, ArrowDownRight, Feather, Sparkles,
   Undo2, Redo2, Type, Heading1, Heading2, Heading3, Heading4, ChevronDown, Check,
-  Clock, Maximize2, CheckCircle2, AlertCircle, Link2, GalleryHorizontal, CaseSensitive,
+  Clock, Maximize2, CheckCircle2, AlertCircle, Link2, GalleryHorizontal,
   ExternalLink, Trash2, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -13,7 +13,7 @@ import { useSpellcheck, type SpellError } from "../hooks/use-spellcheck";
 import { SpellCheckOverlay } from "./SpellCheckOverlay";
 import { SpellSuggestionPopover } from "./SpellSuggestionPopover";
 import { LinkPreviewBody } from "@/components/LinkChip";
-import { fetchLinkPreview, detectPlatform, shortenUrl, type LinkPreviewData } from "@/lib/link-preview";
+import { fetchLinkPreview, detectPlatform, shortenUrl, PLATFORM_ICON_PATHS, type LinkPreviewData, type IconChild } from "@/lib/link-preview";
 
 const AI_ACTIONS = [
   { key: "improve", label: "Melhorar a escrita", icon: Sparkles },
@@ -85,8 +85,8 @@ function buildAnchorElement(url: string): HTMLAnchorElement {
   } satisfies Partial<CSSStyleDeclaration>);
   setImportantColor(anchor, "#fff");
 
-  const emojiSpan = document.createElement("span");
-  emojiSpan.textContent = platform.emoji;
+  const icon = buildPlatformIconElement(platform.key);
+  Object.assign(icon.style, { flexShrink: "0" } satisfies Partial<CSSStyleDeclaration>);
   const labelSpan = document.createElement("span");
   labelSpan.style.fontWeight = "600";
   labelSpan.textContent = platform.label;
@@ -98,7 +98,7 @@ function buildAnchorElement(url: string): HTMLAnchorElement {
   setImportantColor(urlSpan, "#9aa0a6");
   urlSpan.textContent = shortenUrl(url);
 
-  anchor.append(emojiSpan, labelSpan, urlSpan);
+  anchor.append(icon, labelSpan, urlSpan);
   return anchor;
 }
 
@@ -124,8 +124,8 @@ function buildLoadingPlaceholderHtml(id: string) {
   return span.outerHTML;
 }
 
-/** Builds a small line-icon <svg> from a set of path/circle definitions (mirrors lucide icons). */
-function createSvgIcon(children: { tag: "path" | "circle"; attrs: Record<string, string> }[]): SVGSVGElement {
+/** Builds a small line-icon <svg> from a set of shape definitions (mirrors lucide icons). */
+function createSvgIcon(children: IconChild[]): SVGSVGElement {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.setAttribute("viewBox", "0 0 24 24");
   svg.setAttribute("width", "14");
@@ -135,12 +135,18 @@ function createSvgIcon(children: { tag: "path" | "circle"; attrs: Record<string,
   svg.setAttribute("stroke-width", "2");
   svg.setAttribute("stroke-linecap", "round");
   svg.setAttribute("stroke-linejoin", "round");
-  children.forEach(({ tag, attrs }) => {
+  children.forEach(({ tag, attrs, text }) => {
     const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
     Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
+    if (text) el.textContent = text;
     svg.append(el);
   });
   return svg;
+}
+
+/** The platform's brand-shaped icon (falls back to the generic globe if unrecognized). */
+function buildPlatformIconElement(platformKey: string): SVGSVGElement {
+  return createSvgIcon(PLATFORM_ICON_PATHS[platformKey] ?? PLATFORM_ICON_PATHS.web);
 }
 
 const TOOLBAR_ICON_PATHS = {
@@ -231,9 +237,9 @@ function buildPreviewCardElement(url: string, data: LinkPreviewData): HTMLDivEle
     // No OG image to use as a thumbnail — fall back to a compact name/url row.
     const fallback = document.createElement("div");
     Object.assign(fallback.style, { display: "flex", alignItems: "center", gap: "10px", padding: "16px" } satisfies Partial<CSSStyleDeclaration>);
-    const emoji = document.createElement("span");
-    emoji.style.fontSize = "22px";
-    emoji.textContent = platform.emoji;
+    const icon = buildPlatformIconElement(platform.key);
+    Object.assign(icon.style, { width: "22px", height: "22px", flexShrink: "0" } satisfies Partial<CSSStyleDeclaration>);
+    setImportantColor(icon, "#fff");
     const textCol = document.createElement("span");
     Object.assign(textCol.style, { minWidth: "0", flex: "1", overflow: "hidden" } satisfies Partial<CSSStyleDeclaration>);
     const nameSpan = document.createElement("span");
@@ -245,7 +251,7 @@ function buildPreviewCardElement(url: string, data: LinkPreviewData): HTMLDivEle
     setImportantColor(urlSpan, "rgba(255,255,255,0.5)");
     urlSpan.textContent = shortenUrl(url);
     textCol.append(nameSpan, urlSpan);
-    fallback.append(emoji, textCol);
+    fallback.append(icon, textCol);
     card.append(fallback);
   }
 
@@ -360,16 +366,21 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
   const [expandedImage, setExpandedImage] = useState<string | null>(null);
   const resizeStateRef = useRef<{ cardEl: HTMLElement; startX: number; startWidth: number; side: "left" | "right" } | null>(null);
 
-  // Close the "Colar como" menu on outside click / Escape
+  // Close the "Colar como" menu on outside click / Escape — dismissing without picking an
+  // option resumes the normal auto-save/auto-linkify pass we paused while it was open.
   useEffect(() => {
     if (!pasteMenu) return;
+    const dismiss = () => {
+      setPasteMenu(null);
+      handleInput();
+    };
     const onDocMouseDown = (e: MouseEvent) => {
       if (pasteMenuRef.current && !pasteMenuRef.current.contains(e.target as Node)) {
-        setPasteMenu(null);
+        dismiss();
       }
     };
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setPasteMenu(null);
+      if (e.key === "Escape") dismiss();
     };
     document.addEventListener("mousedown", onDocMouseDown);
     document.addEventListener("keydown", onKeyDown);
@@ -618,6 +629,14 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
       range.setEnd(endNode, endOffset);
       if (range.toString() !== pastedText) return; // rich clipboard data landed differently — skip the menu, keep the paste
 
+      // Cancel the debounced auto-save/auto-linkify that the native paste's `input` event just
+      // queued — otherwise it can convert this exact text into a pill while the menu is still
+      // open, and picking an option afterwards inserts a second copy on top of it.
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+        debounceRef.current = undefined;
+      }
+
       const rangeRect = range.getBoundingClientRect();
       const editorRect = editorEl.getBoundingClientRect();
       setPasteMenu({
@@ -644,14 +663,6 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
     setPasteMenu(null);
   }, [pasteMenu, restoreSelection, handleInput]);
 
-  const handlePasteAsPlainUrl = useCallback(() => {
-    if (!pasteMenu) return;
-    restoreSelection(pasteMenu.range);
-    document.execCommand("insertText", false, pasteMenu.url);
-    handleInput();
-    setPasteMenu(null);
-  }, [pasteMenu, restoreSelection, handleInput]);
-
   const handlePasteAsPreview = useCallback(async () => {
     if (!pasteMenu) return;
     const { url, range } = pasteMenu;
@@ -670,7 +681,7 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
   }, [pasteMenu, restoreSelection, handleInput]);
 
   /** Converts (or deletes) an already-inserted preview card via its "..." menu. */
-  const handleEmbedConvert = useCallback((format: "pill" | "url" | "delete") => {
+  const handleEmbedConvert = useCallback((format: "pill" | "delete") => {
     if (!embedMenu) return;
     const { cardEl, url } = embedMenu;
     setEmbedMenu(null);
@@ -678,8 +689,6 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
       cardEl.remove();
     } else if (format === "pill") {
       cardEl.outerHTML = buildAnchorHtml(url);
-    } else if (format === "url") {
-      cardEl.replaceWith(document.createTextNode(url));
     }
     handleInput();
   }, [embedMenu, handleInput]);
@@ -1089,14 +1098,6 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
             <span className="flex-1 text-left font-medium text-white/90">Pré-visualizar</span>
             <Check className="h-4 w-4 text-white" />
           </button>
-          <button
-            type="button"
-            onMouseDown={(e) => { e.preventDefault(); handlePasteAsPlainUrl(); }}
-            className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-white/10"
-          >
-            <CaseSensitive className="h-4 w-4 shrink-0 text-white/60" />
-            <span className="flex-1 text-left font-medium text-white/90">URL</span>
-          </button>
         </div>
       )}
 
@@ -1124,14 +1125,6 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
             <GalleryHorizontal className="h-4 w-4 shrink-0 text-white/60" />
             <span className="flex-1 text-left font-medium text-white/90">Pré-visualizar</span>
             <Check className="h-4 w-4 text-white" />
-          </button>
-          <button
-            type="button"
-            onMouseDown={(e) => { e.preventDefault(); handleEmbedConvert("url"); }}
-            className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-white/10"
-          >
-            <CaseSensitive className="h-4 w-4 shrink-0 text-white/60" />
-            <span className="flex-1 text-left font-medium text-white/90">URL</span>
           </button>
           <div className="my-1 h-px bg-white/10" />
           <button
