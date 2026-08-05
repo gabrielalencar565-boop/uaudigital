@@ -4,6 +4,7 @@ import {
   Wand2, Loader2, SpellCheck as SpellCheckIcon, ArrowUpRight, ArrowDownRight, Feather, Sparkles,
   Undo2, Redo2, Type, Heading1, Heading2, Heading3, Heading4, ChevronDown, Check,
   Clock, Maximize2, CheckCircle2, AlertCircle, Link2, GalleryHorizontal, CaseSensitive,
+  ExternalLink, Trash2, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -116,84 +117,148 @@ function buildLoadingPlaceholderHtml(id: string) {
   return span.outerHTML;
 }
 
-/** Rich Instagram-share-sheet-style card: avatar/initials + name + "Abrir" button, then a big image. */
-function buildPreviewCardHtml(url: string, data: LinkPreviewData) {
-  const platform = detectPlatform(url);
-  const name = data.site_name || platform.label;
-  const initials = (data.site_name || platform.label || "?").slice(0, 2).toUpperCase();
+/** Builds a small line-icon <svg> from a set of path/circle definitions (mirrors lucide icons). */
+function createSvgIcon(children: { tag: "path" | "circle"; attrs: Record<string, string> }[]): SVGSVGElement {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("width", "14");
+  svg.setAttribute("height", "14");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-width", "2");
+  svg.setAttribute("stroke-linecap", "round");
+  svg.setAttribute("stroke-linejoin", "round");
+  children.forEach(({ tag, attrs }) => {
+    const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
+    svg.append(el);
+  });
+  return svg;
+}
 
-  const card = document.createElement("a");
-  card.href = url;
-  card.target = "_blank";
-  card.rel = "noopener noreferrer";
+const TOOLBAR_ICON_PATHS = {
+  link: [
+    { tag: "path" as const, attrs: { d: "M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" } },
+    { tag: "path" as const, attrs: { d: "M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" } },
+  ],
+  externalLink: [
+    { tag: "path" as const, attrs: { d: "M15 3h6v6" } },
+    { tag: "path" as const, attrs: { d: "M10 14 21 3" } },
+    { tag: "path" as const, attrs: { d: "M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" } },
+  ],
+  expand: [
+    { tag: "path" as const, attrs: { d: "M15 3h6v6" } },
+    { tag: "path" as const, attrs: { d: "M9 21H3v-6" } },
+    { tag: "path" as const, attrs: { d: "m21 3-7 7" } },
+    { tag: "path" as const, attrs: { d: "m3 21 7-7" } },
+  ],
+  more: [
+    { tag: "circle" as const, attrs: { cx: "12", cy: "12", r: "1" } },
+    { tag: "circle" as const, attrs: { cx: "19", cy: "12", r: "1" } },
+    { tag: "circle" as const, attrs: { cx: "5", cy: "12", r: "1" } },
+  ],
+};
+
+function buildToolbarButton(action: string, iconKey: keyof typeof TOOLBAR_ICON_PATHS, title: string): HTMLButtonElement {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.title = title;
+  btn.setAttribute("data-action", action);
+  btn.setAttribute("contenteditable", "false");
+  Object.assign(btn.style, {
+    display: "inline-flex", alignItems: "center", justifyContent: "center", width: "24px", height: "24px",
+    borderRadius: "6px", background: "rgba(0,0,0,0.55)", border: "none", cursor: "pointer", padding: "0",
+  } satisfies Partial<CSSStyleDeclaration>);
+  setImportantColor(btn, "#fff");
+  btn.append(createSvgIcon(TOOLBAR_ICON_PATHS[iconKey]));
+  return btn;
+}
+
+function buildResizeHandle(side: "left" | "right"): HTMLDivElement {
+  const handle = document.createElement("div");
+  handle.className = "up-lp-resize";
+  handle.setAttribute("data-resize", side);
+  handle.setAttribute("contenteditable", "false");
+  Object.assign(handle.style, {
+    position: "absolute", top: "0", bottom: "0", [side]: "0", width: "10px", cursor: "ew-resize",
+  } satisfies Partial<CSSStyleDeclaration>);
+  const grip = document.createElement("div");
+  Object.assign(grip.style, {
+    position: "absolute", top: "50%", [side]: "3px", transform: "translateY(-50%)",
+    width: "4px", height: "32px", borderRadius: "2px", background: "rgba(255,255,255,0.6)",
+  } satisfies Partial<CSSStyleDeclaration>);
+  handle.append(grip);
+  return handle;
+}
+
+/**
+ * Image-first preview card (Notion-style embed): the OG image is the whole thumbnail (no
+ * caption shown by default), scrollable if taller than the card, with a hover-revealed
+ * top-right toolbar (copy link / open / expand / more) and side resize handles.
+ */
+function buildPreviewCardElement(url: string, data: LinkPreviewData): HTMLDivElement {
+  const platform = detectPlatform(url);
+  const card = document.createElement("div");
+  card.className = "up-lp-card";
   card.setAttribute("contenteditable", "false");
   card.setAttribute("data-link-preview", "1");
   card.setAttribute("data-preview-url", url);
   Object.assign(card.style, {
-    display: "block", width: "288px", maxWidth: "100%", borderRadius: "12px", overflow: "hidden",
-    textDecoration: "none", background: "#111214", border: "1px solid rgba(255,255,255,0.1)",
-    margin: "4px 2px",
+    position: "relative", display: "block", width: "320px", maxWidth: "100%", borderRadius: "12px",
+    overflow: "hidden", background: "#111214", border: "1px solid rgba(255,255,255,0.1)", margin: "6px 2px",
   } satisfies Partial<CSSStyleDeclaration>);
-  setImportantColor(card, "#fff");
-
-  const headerRow = document.createElement("div");
-  Object.assign(headerRow.style, { display: "flex", alignItems: "center", gap: "10px", padding: "10px 12px" } satisfies Partial<CSSStyleDeclaration>);
-
-  const avatar = document.createElement("span");
-  Object.assign(avatar.style, {
-    width: "36px", height: "36px", borderRadius: "999px", background: "rgba(255,255,255,0.1)",
-    display: "flex", alignItems: "center", justifyContent: "center", fontSize: "11px", fontWeight: "700",
-    flexShrink: "0",
-  } satisfies Partial<CSSStyleDeclaration>);
-  setImportantColor(avatar, "#fff");
-  avatar.textContent = initials;
-
-  const textCol = document.createElement("span");
-  Object.assign(textCol.style, { minWidth: "0", flex: "1", overflow: "hidden" } satisfies Partial<CSSStyleDeclaration>);
-  const nameSpan = document.createElement("span");
-  Object.assign(nameSpan.style, { display: "block", fontSize: "13px", fontWeight: "600", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } satisfies Partial<CSSStyleDeclaration>);
-  setImportantColor(nameSpan, "#fff");
-  nameSpan.textContent = name;
-  const urlSpan = document.createElement("span");
-  Object.assign(urlSpan.style, { display: "block", fontSize: "11px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } satisfies Partial<CSSStyleDeclaration>);
-  setImportantColor(urlSpan, "rgba(255,255,255,0.5)");
-  urlSpan.textContent = shortenUrl(url);
-  textCol.append(nameSpan, urlSpan);
-
-  const openBadge = document.createElement("span");
-  Object.assign(openBadge.style, {
-    flexShrink: "0", background: "rgba(255,255,255,0.15)", fontSize: "11px", fontWeight: "600",
-    padding: "6px 10px", borderRadius: "8px",
-  } satisfies Partial<CSSStyleDeclaration>);
-  setImportantColor(openBadge, "#fff");
-  openBadge.textContent = "Abrir";
-
-  headerRow.append(avatar, textCol, openBadge);
-  card.append(headerRow);
 
   if (data.image) {
     const imgWrap = document.createElement("div");
-    Object.assign(imgWrap.style, { width: "100%", aspectRatio: "1 / 1", background: "rgba(255,255,255,0.06)" } satisfies Partial<CSSStyleDeclaration>);
+    Object.assign(imgWrap.style, {
+      width: "100%", maxHeight: "360px", overflowY: "auto", background: "rgba(255,255,255,0.06)",
+    } satisfies Partial<CSSStyleDeclaration>);
     const img = document.createElement("img");
     img.src = data.image;
     img.alt = "";
-    Object.assign(img.style, { width: "100%", height: "100%", objectFit: "cover", display: "block" } satisfies Partial<CSSStyleDeclaration>);
+    img.draggable = false;
+    Object.assign(img.style, { width: "100%", height: "auto", display: "block" } satisfies Partial<CSSStyleDeclaration>);
     imgWrap.append(img);
     card.append(imgWrap);
+  } else {
+    // No OG image to use as a thumbnail — fall back to a compact name/url row.
+    const fallback = document.createElement("div");
+    Object.assign(fallback.style, { display: "flex", alignItems: "center", gap: "10px", padding: "16px" } satisfies Partial<CSSStyleDeclaration>);
+    const emoji = document.createElement("span");
+    emoji.style.fontSize = "22px";
+    emoji.textContent = platform.emoji;
+    const textCol = document.createElement("span");
+    Object.assign(textCol.style, { minWidth: "0", flex: "1", overflow: "hidden" } satisfies Partial<CSSStyleDeclaration>);
+    const nameSpan = document.createElement("span");
+    Object.assign(nameSpan.style, { display: "block", fontSize: "13px", fontWeight: "600" } satisfies Partial<CSSStyleDeclaration>);
+    setImportantColor(nameSpan, "#fff");
+    nameSpan.textContent = data.site_name || platform.label;
+    const urlSpan = document.createElement("span");
+    Object.assign(urlSpan.style, { display: "block", fontSize: "11px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } satisfies Partial<CSSStyleDeclaration>);
+    setImportantColor(urlSpan, "rgba(255,255,255,0.5)");
+    urlSpan.textContent = shortenUrl(url);
+    textCol.append(nameSpan, urlSpan);
+    fallback.append(emoji, textCol);
+    card.append(fallback);
   }
 
-  if (data.title) {
-    const titleRow = document.createElement("div");
-    Object.assign(titleRow.style, { padding: "10px 12px", borderTop: "1px solid rgba(255,255,255,0.1)" } satisfies Partial<CSSStyleDeclaration>);
-    const titleSpan = document.createElement("span");
-    Object.assign(titleSpan.style, { fontSize: "12px", lineHeight: "1.5" } satisfies Partial<CSSStyleDeclaration>);
-    setImportantColor(titleSpan, "rgba(255,255,255,0.7)");
-    titleSpan.textContent = data.title;
-    titleRow.append(titleSpan);
-    card.append(titleRow);
-  }
+  const toolbar = document.createElement("div");
+  toolbar.className = "up-lp-toolbar";
+  toolbar.setAttribute("contenteditable", "false");
+  Object.assign(toolbar.style, { position: "absolute", top: "8px", right: "8px", display: "flex", gap: "4px" } satisfies Partial<CSSStyleDeclaration>);
+  toolbar.append(
+    buildToolbarButton("copy", "link", "Copiar link"),
+    buildToolbarButton("open", "externalLink", "Abrir link"),
+    buildToolbarButton("expand", "expand", "Expandir"),
+    buildToolbarButton("menu", "more", "Mais opções"),
+  );
+  card.append(toolbar, buildResizeHandle("left"), buildResizeHandle("right"));
 
-  return card.outerHTML;
+  return card;
+}
+
+function buildPreviewCardHtml(url: string, data: LinkPreviewData) {
+  return buildPreviewCardElement(url, data).outerHTML;
 }
 
 function linkifyHtmlContent(html: string) {
@@ -283,6 +348,10 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
   const [spellPopover, setSpellPopover] = useState<{ error: SpellError; rect: DOMRect } | null>(null);
   const [pasteMenu, setPasteMenu] = useState<{ top: number; left: number; url: string; range: Range } | null>(null);
   const pasteMenuRef = useRef<HTMLDivElement>(null);
+  const [embedMenu, setEmbedMenu] = useState<{ top: number; left: number; url: string; cardEl: HTMLElement } | null>(null);
+  const embedMenuRef = useRef<HTMLDivElement>(null);
+  const [expandedImage, setExpandedImage] = useState<string | null>(null);
+  const resizeStateRef = useRef<{ cardEl: HTMLElement; startX: number; startWidth: number; side: "left" | "right" } | null>(null);
 
   // Close the "Colar como" menu on outside click / Escape
   useEffect(() => {
@@ -303,12 +372,43 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
     };
   }, [pasteMenu]);
 
+  // Close the "Exibir como" (embed format switcher) menu on outside click / Escape
+  useEffect(() => {
+    if (!embedMenu) return;
+    const onDocMouseDown = (e: MouseEvent) => {
+      if (embedMenuRef.current && !embedMenuRef.current.contains(e.target as Node)) {
+        setEmbedMenu(null);
+      }
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setEmbedMenu(null);
+    };
+    document.addEventListener("mousedown", onDocMouseDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onDocMouseDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [embedMenu]);
+
+  // Close the image lightbox on Escape
+  useEffect(() => {
+    if (!expandedImage) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setExpandedImage(null);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [expandedImage]);
+
   // Hover preview for link pills/cards inside the editor content
   const [hoverPreview, setHoverPreview] = useState<{ top: number; left: number; url: string; data: LinkPreviewData | null | undefined } | null>(null);
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
   const handleEditorMouseOver = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const target = (e.target as HTMLElement).closest("[data-link-pill],[data-link-preview]") as HTMLElement | null;
+    // Only the compact inline pill gets the hover popup — the full preview card already
+    // shows everything inline, so hovering it reveals its own toolbar/resize handles instead.
+    const target = (e.target as HTMLElement).closest("[data-link-pill]") as HTMLElement | null;
     if (!target) return;
     const url = target.getAttribute("data-preview-url");
     if (!url) return;
@@ -325,7 +425,7 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
 
   const handleEditorMouseOut = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const related = e.relatedTarget as HTMLElement | null;
-    if (related?.closest?.("[data-link-pill],[data-link-preview],[data-link-hover-card]")) return;
+    if (related?.closest?.("[data-link-pill],[data-link-hover-card]")) return;
     if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
     setHoverPreview(null);
   }, []);
@@ -387,10 +487,70 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
   }, []);
 
   const handleEditorMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+
+    // Drag-to-resize a preview card from its left/right handle
+    const resizeHandle = target.closest("[data-resize]") as HTMLElement | null;
+    if (resizeHandle) {
+      e.preventDefault();
+      e.stopPropagation();
+      const cardEl = resizeHandle.closest("[data-link-preview]") as HTMLElement | null;
+      if (!cardEl) return;
+      const side = resizeHandle.getAttribute("data-resize") as "left" | "right";
+      resizeStateRef.current = { cardEl, startX: e.clientX, startWidth: cardEl.offsetWidth, side };
+      const onMove = (ev: MouseEvent) => {
+        const st = resizeStateRef.current;
+        if (!st) return;
+        const delta = ev.clientX - st.startX;
+        const signedDelta = st.side === "right" ? delta : -delta;
+        const maxWidth = (editorRef.current?.clientWidth ?? 800) - 8;
+        st.cardEl.style.width = `${Math.max(180, Math.min(maxWidth, st.startWidth + signedDelta))}px`;
+      };
+      const onUp = () => {
+        resizeStateRef.current = null;
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onUp);
+        handleInput();
+      };
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onUp);
+      return;
+    }
+
+    // Toolbar buttons on a preview card (copy link / open / expand / more options)
+    const actionBtn = target.closest("[data-action]") as HTMLElement | null;
+    if (actionBtn) {
+      const cardEl = actionBtn.closest("[data-link-preview]") as HTMLElement | null;
+      const url = cardEl?.getAttribute("data-preview-url");
+      if (cardEl && url) {
+        e.preventDefault();
+        e.stopPropagation();
+        const action = actionBtn.getAttribute("data-action");
+        if (action === "copy") {
+          navigator.clipboard?.writeText(url).then(
+            () => toast.success("Link copiado!"),
+            () => toast.error("Não foi possível copiar o link"),
+          );
+        } else if (action === "open") {
+          window.open(url, "_blank", "noopener,noreferrer");
+        } else if (action === "expand") {
+          const img = cardEl.querySelector("img");
+          if (img?.src) setExpandedImage(img.src);
+        } else if (action === "menu") {
+          const rect = actionBtn.getBoundingClientRect();
+          const editorRect = editorRef.current?.getBoundingClientRect();
+          if (editorRect) {
+            setEmbedMenu({ top: rect.bottom - editorRect.top + 6, left: Math.max(0, rect.right - editorRect.left - 208), url, cardEl });
+          }
+        }
+      }
+      return;
+    }
+
     // A click directly on an already-linkified <a> opens it right away — no modifier needed.
     // Clicks elsewhere (including on raw URL text not yet wrapped in <a>) still require
     // Ctrl/Cmd so normal cursor placement / text editing keeps working everywhere else.
-    const anchor = (e.target as HTMLElement).closest("a[href]");
+    const anchor = target.closest("a[href]");
     const href = anchor instanceof HTMLAnchorElement
       ? anchor.href
       : (e.ctrlKey || e.metaKey) ? getUrlFromPointer(e.clientX, e.clientY) : null;
@@ -493,6 +653,21 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
     placeholder.outerHTML = data && (data.title || data.image) ? buildPreviewCardHtml(url, data) : buildAnchorHtml(url);
     handleInput();
   }, [pasteMenu, restoreSelection, handleInput]);
+
+  /** Converts (or deletes) an already-inserted preview card via its "..." menu. */
+  const handleEmbedConvert = useCallback((format: "pill" | "url" | "delete") => {
+    if (!embedMenu) return;
+    const { cardEl, url } = embedMenu;
+    setEmbedMenu(null);
+    if (format === "delete") {
+      cardEl.remove();
+    } else if (format === "pill") {
+      cardEl.outerHTML = buildAnchorHtml(url);
+    } else if (format === "url") {
+      cardEl.replaceWith(document.createTextNode(url));
+    }
+    handleInput();
+  }, [embedMenu, handleInput]);
 
   // Show floating toolbar on selection
   const updateToolbarPosition = useCallback(() => {
@@ -710,6 +885,13 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
 
   return (
     <div className={cn("relative", className)}>
+      {/* Hover-reveal for preview card toolbar/resize handles (plain CSS — the card lives in raw editor HTML, not React) */}
+      <style>{`
+        .up-lp-toolbar, .up-lp-resize { opacity: 0; transition: opacity .12s ease; }
+        .up-lp-card:hover .up-lp-toolbar, .up-lp-card:hover .up-lp-resize { opacity: 1; }
+        .up-lp-toolbar button:hover { background: rgba(0,0,0,0.8) !important; }
+      `}</style>
+
       {/* Top-right status bar */}
       <div className="absolute top-1.5 right-1.5 z-40 flex items-center gap-1 rounded-lg border border-border/30 bg-muted/80 backdrop-blur-sm px-1.5 py-0.5">
         {/* Saved status */}
@@ -900,6 +1082,73 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
             <CaseSensitive className="h-4 w-4 shrink-0 text-white/60" />
             <span className="flex-1 text-left font-medium text-white/90">URL</span>
           </button>
+        </div>
+      )}
+
+      {/* "Exibir como" menu — opened from a preview card's "..." toolbar button */}
+      {embedMenu && (
+        <div
+          ref={embedMenuRef}
+          className="absolute z-50 w-56 rounded-xl border border-white/10 shadow-2xl p-1 animate-in fade-in-0 slide-in-from-top-2 duration-150"
+          style={{ top: embedMenu.top, left: embedMenu.left, background: GRADIENT_MENU }}
+        >
+          <p className="px-2 py-1.5 text-[10px] text-white/50 font-semibold uppercase tracking-wider">Exibir como</p>
+          <button
+            type="button"
+            onMouseDown={(e) => { e.preventDefault(); handleEmbedConvert("pill"); }}
+            className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-white/10"
+          >
+            <Link2 className="h-4 w-4 shrink-0 text-white/60" />
+            <span className="flex-1 text-left font-medium text-white/90">Link em linha</span>
+          </button>
+          <button
+            type="button"
+            onMouseDown={(e) => { e.preventDefault(); setEmbedMenu(null); }}
+            className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-white/10"
+          >
+            <GalleryHorizontal className="h-4 w-4 shrink-0 text-white/60" />
+            <span className="flex-1 text-left font-medium text-white/90">Pré-visualizar</span>
+            <Check className="h-4 w-4 text-white" />
+          </button>
+          <button
+            type="button"
+            onMouseDown={(e) => { e.preventDefault(); handleEmbedConvert("url"); }}
+            className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-white/10"
+          >
+            <CaseSensitive className="h-4 w-4 shrink-0 text-white/60" />
+            <span className="flex-1 text-left font-medium text-white/90">URL</span>
+          </button>
+          <div className="my-1 h-px bg-white/10" />
+          <button
+            type="button"
+            onMouseDown={(e) => { e.preventDefault(); handleEmbedConvert("delete"); }}
+            className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-sm text-red-300 transition-colors hover:bg-red-500/10"
+          >
+            <Trash2 className="h-4 w-4 shrink-0" />
+            <span className="flex-1 text-left font-medium">Excluir</span>
+          </button>
+        </div>
+      )}
+
+      {/* Image lightbox — opened from a preview card's "expand" toolbar button */}
+      {expandedImage && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 p-6 animate-in fade-in-0 duration-150"
+          onClick={() => setExpandedImage(null)}
+        >
+          <button
+            type="button"
+            onClick={() => setExpandedImage(null)}
+            className="absolute top-4 right-4 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <img
+            src={expandedImage}
+            alt=""
+            className="max-h-full max-w-full rounded-lg object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
 
