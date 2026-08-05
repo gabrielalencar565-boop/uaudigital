@@ -43,7 +43,14 @@ const TOOLBAR_BUTTONS = [
 
 const GRADIENT_TOOLBAR = "linear-gradient(135deg, hsl(263 70% 50%), hsl(263 70% 36%))";
 const GRADIENT_MENU = "linear-gradient(160deg, hsl(263 70% 42%), hsl(263 70% 30%))";
-const URL_REGEX_SOURCE = String.raw`https?:\/\/[^\s<>"']+`;
+// Matches either a full "https://…" URL or a bare "www.…" domain (no protocol) —
+// links copied without "https://" (common from some apps/share sheets) still get detected.
+const URL_REGEX_SOURCE = String.raw`(?:https?:\/\/[^\s<>"']+|www\.[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}[^\s<>"']*)`;
+
+/** Ensures a matched URL has a protocol — "www.…" matches need "https://" prepended before use as an href. */
+function normalizeUrl(url: string) {
+  return /^https?:\/\//i.test(url) ? url : `https://${url}`;
+}
 
 function splitTrailingUrlPunctuation(url: string) {
   const match = url.match(/^(.*?)([.,;:!?\)\]]+)$/);
@@ -298,7 +305,7 @@ function linkifyHtmlContent(html: string) {
         fragment.append(document.createTextNode(text.slice(lastIndex, start)));
       }
 
-      fragment.append(buildAnchorElement(cleanUrl));
+      fragment.append(buildAnchorElement(normalizeUrl(cleanUrl)));
 
       if (trailingText) {
         fragment.append(document.createTextNode(trailingText));
@@ -483,7 +490,7 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
     const token = text.slice(start, end).trim();
     const { cleanUrl } = splitTrailingUrlPunctuation(token);
 
-    return new RegExp(`^${URL_REGEX_SOURCE}$`, "i").test(cleanUrl) ? cleanUrl : null;
+    return new RegExp(`^${URL_REGEX_SOURCE}$`, "i").test(cleanUrl) ? normalizeUrl(cleanUrl) : null;
   }, []);
 
   const handleEditorMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -591,6 +598,7 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
     if (!pastedText || !new RegExp(`^${URL_REGEX_SOURCE}$`, "i").test(pastedText)) {
       return;
     }
+    const url = normalizeUrl(pastedText);
 
     e.preventDefault();
 
@@ -598,7 +606,7 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
     const range = sel && sel.rangeCount > 0 ? sel.getRangeAt(0).cloneRange() : null;
     const editorEl = editorRef.current;
     if (!range || !editorEl) {
-      document.execCommand("insertHTML", false, buildAnchorHtml(pastedText));
+      document.execCommand("insertHTML", false, buildAnchorHtml(url));
       handleInput();
       return;
     }
@@ -609,7 +617,7 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
     setPasteMenu({
       top: (hasRect ? rangeRect.top : editorRect.top) - editorRect.top + 22,
       left: Math.max(0, (hasRect ? rangeRect.left : editorRect.left) - editorRect.left),
-      url: pastedText,
+      url,
       range,
     });
   }, []);
