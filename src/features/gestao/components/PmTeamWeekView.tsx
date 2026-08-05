@@ -20,7 +20,8 @@ import { cn } from "@/lib/utils";
 import { useTasks, useTeamMembers } from "@/features/data/queries";
 import { useTaskAssigneesByMonth } from "@/features/data/task-assignees-queries";
 import { useUpdatePmTask } from "../hooks/use-pm-data";
-import { getStageCircleColor, stageLabel } from "../pm-constants";
+import { getStageCircleColor, stageLabel, isHexColor, TAG_COLORS } from "../pm-constants";
+import { usePeriodicStages, type PeriodicStage } from "../hooks/use-periodic-stages";
 import type { PmTask } from "../pm-types";
 
 const WEEKDAY_FULL = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
@@ -92,7 +93,7 @@ function isTaskDone(t: PmTask) {
   return t.status_global === "concluido" || t.stage_current === "entrega";
 }
 
-function TaskCard({ task, clientsMap, todayKey, minimal, onClick, dragHandleProps, isDragging }: {
+function TaskCard({ task, clientsMap, todayKey, minimal, onClick, dragHandleProps, isDragging, periodicStages }: {
   task: PmTask;
   clientsMap: Record<string, string>;
   todayKey: string;
@@ -100,8 +101,18 @@ function TaskCard({ task, clientsMap, todayKey, minimal, onClick, dragHandleProp
   onClick: () => void;
   dragHandleProps?: { listeners?: any; attributes?: any; setActivatorNodeRef?: (el: HTMLElement | null) => void };
   isDragging?: boolean;
+  periodicStages?: PeriodicStage[];
 }) {
+  const periodic = task.periodic_stage_key ? periodicStages?.find((p) => p.key === task.periodic_stage_key) ?? null : null;
+  const stageLabelText = periodic ? periodic.label : stageLabel(task.stage_current);
   const color = getStageCircleColor(task.stage_current);
+  const periodicIsHex = periodic?.color_key ? isHexColor(periodic.color_key) : false;
+  const pillClassName = periodic
+    ? periodicIsHex
+      ? ""
+      : (TAG_COLORS.find((c) => c.key === periodic.color_key)?.dot ?? "bg-black")
+    : color.bg;
+  const pillStyle = periodic && periodicIsHex ? { backgroundColor: periodic.color_key! } : undefined;
   const done = isTaskDone(task);
   const overdue = !done && !!task.due_date && task.due_date < todayKey;
   const draggable = !task.id.startsWith("legacy_");
@@ -136,17 +147,20 @@ function TaskCard({ task, clientsMap, todayKey, minimal, onClick, dragHandleProp
         <button type="button" onClick={onClick} className="min-w-0 flex-1 text-left" title={`${task.title} — ${clientsMap[task.client_id] ?? ""}`}>
           {minimal ? (
             <span className={cn("flex items-center gap-1.5 truncate font-medium", done && "line-through")}>
-              <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", done ? "bg-success-foreground" : overdue ? "bg-destructive-foreground" : color.bg)} />
+              <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", pillClassName)} style={pillStyle} />
               <span className="truncate">{task.title}</span>
             </span>
           ) : (
             <>
-              <span className="flex items-center gap-1">
-                <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", done ? "bg-success-foreground" : overdue ? "bg-destructive-foreground" : color.bg)} />
-                <span className={cn("truncate font-medium", done && "line-through")}>{clientsMap[task.client_id] ?? task.title}</span>
+              <span
+                className={cn("mb-0.5 inline-block max-w-full truncate rounded px-1 py-0.5 text-[9px] font-semibold leading-none text-white", pillClassName)}
+                style={pillStyle}
+              >
+                {stageLabelText}
               </span>
+              <span className={cn("block truncate font-medium", done && "line-through")}>{task.title}</span>
               <span className={cn("block truncate", done || overdue ? "text-current/80" : "text-muted-foreground/70")}>
-                {stageLabel(task.stage_current)}
+                {clientsMap[task.client_id] ?? ""}
               </span>
             </>
           )}
@@ -172,7 +186,7 @@ function DraggableTaskCard(props: Omit<Parameters<typeof TaskCard>[0], "dragHand
   );
 }
 
-function DayCell({ id, userId, dayKey, tasksInCell, clientsMap, todayKey, minimal, onTaskClick, onAddClick }: {
+function DayCell({ id, userId, dayKey, tasksInCell, clientsMap, todayKey, minimal, onTaskClick, onAddClick, periodicStages }: {
   id: string;
   userId: string;
   dayKey: string;
@@ -182,6 +196,7 @@ function DayCell({ id, userId, dayKey, tasksInCell, clientsMap, todayKey, minima
   minimal: boolean;
   onTaskClick: (t: PmTask) => void;
   onAddClick: (userId: string, dayKey: string) => void;
+  periodicStages?: PeriodicStage[];
 }) {
   const { setNodeRef, isOver } = useDroppable({ id });
 
@@ -194,7 +209,7 @@ function DayCell({ id, userId, dayKey, tasksInCell, clientsMap, todayKey, minima
       )}
     >
       {tasksInCell.map((t) => (
-        <DraggableTaskCard key={t.id} task={t} clientsMap={clientsMap} todayKey={todayKey} minimal={minimal} onClick={() => onTaskClick(t)} />
+        <DraggableTaskCard key={t.id} task={t} clientsMap={clientsMap} todayKey={todayKey} minimal={minimal} onClick={() => onTaskClick(t)} periodicStages={periodicStages} />
       ))}
       <button
         type="button"
@@ -243,6 +258,7 @@ export function PmTeamWeekView({ tasks, clientsMap, membersMap, clients, current
   const [activeTask, setActiveTask] = useState<PmTask | null>(null);
   const updateTask = useUpdatePmTask();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const { data: periodicStages = [] } = usePeriodicStages();
 
   const [search, setSearch] = useState("");
   const [selectedDays, setSelectedDays] = useState<number[]>(() => loadPrefs().selectedDays);
@@ -646,6 +662,7 @@ export function PmTeamWeekView({ tasks, clientsMap, membersMap, clients, current
                                     minimal={minimal}
                                     onTaskClick={onTaskClick}
                                     onAddClick={onAddClick}
+                                    periodicStages={periodicStages}
                                   />
                                 </div>
                               );
@@ -662,7 +679,7 @@ export function PmTeamWeekView({ tasks, clientsMap, membersMap, clients, current
           <DragOverlay>
             {activeTask && (
               <div className="w-[200px]">
-                <TaskCard task={activeTask} clientsMap={clientsMap} todayKey={todayKey} minimal={minimal} onClick={() => {}} />
+                <TaskCard task={activeTask} clientsMap={clientsMap} todayKey={todayKey} minimal={minimal} onClick={() => {}} periodicStages={periodicStages} />
               </div>
             )}
           </DragOverlay>
