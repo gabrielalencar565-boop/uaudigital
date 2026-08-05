@@ -420,13 +420,19 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
   }, [expandedImage]);
 
   // Hover preview for link pills/cards inside the editor content
-  const [hoverPreview, setHoverPreview] = useState<{ top: number; left: number; url: string; pillEl: HTMLElement; data: LinkPreviewData | null | undefined } | null>(null);
+  const [hoverPreview, setHoverPreview] = useState<{ top: number; left: number; url: string; pillEl: HTMLElement; data: LinkPreviewData | null | undefined; minimal?: boolean } | null>(null);
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
   const handleEditorMouseOver = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    // Only the compact inline pill gets the hover popup — the full preview card already
-    // shows everything inline, so hovering it reveals its own toolbar/resize handles instead.
-    const target = (e.target as HTMLElement).closest("[data-link-pill]") as HTMLElement | null;
+    const el = e.target as HTMLElement;
+    // The compact inline pill gets the full hover popup (rich preview + delete). A modern
+    // preview card shows everything inline already and has its own toolbar. But an older
+    // card saved before that toolbar existed has no way to remove it at all — give those a
+    // minimal delete-only popup too, matched by the absence of `.up-lp-toolbar`.
+    const pill = el.closest("[data-link-pill]") as HTMLElement | null;
+    const legacyCard = !pill ? (el.closest("[data-link-preview]") as HTMLElement | null) : null;
+    const isLegacyCard = !!legacyCard && !legacyCard.querySelector(".up-lp-toolbar");
+    const target = pill ?? (isLegacyCard ? legacyCard : null);
     if (!target) return;
     const url = target.getAttribute("data-preview-url");
     if (!url) return;
@@ -435,9 +441,15 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
       const rect = target.getBoundingClientRect();
       const editorRect = editorRef.current?.getBoundingClientRect();
       if (!editorRect) return;
-      // No gap between the pill and the popup below it — a gap creates a "dead zone" where
+      // No gap between the target and the popup below it — a gap creates a "dead zone" where
       // the mouse is over neither element while moving down into the popup, closing it early.
-      setHoverPreview({ top: rect.bottom - editorRect.top, left: rect.left - editorRect.left, url, pillEl: target, data: undefined });
+      const top = rect.bottom - editorRect.top;
+      const left = rect.left - editorRect.left;
+      if (isLegacyCard) {
+        setHoverPreview({ top, left, url, pillEl: target, data: null, minimal: true });
+        return;
+      }
+      setHoverPreview({ top, left, url, pillEl: target, data: undefined });
       const data = await fetchLinkPreview(url);
       setHoverPreview((prev) => (prev && prev.url === url ? { ...prev, data } : prev));
     }, 250);
@@ -1073,7 +1085,7 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
           onMouseLeave={() => setHoverPreview(null)}
         >
           <div className="overflow-hidden rounded-xl shadow-2xl">
-            {hoverPreview.data === undefined ? (
+            {hoverPreview.minimal ? null : hoverPreview.data === undefined ? (
               <div className="w-72 border border-white/10 bg-[#111214] p-3 text-[12px] text-white/60">
                 Carregando prévia…
               </div>
@@ -1087,7 +1099,10 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
             <button
               type="button"
               onMouseDown={(e) => { e.preventDefault(); handleDeletePill(hoverPreview.pillEl); }}
-              className="flex w-full items-center justify-center gap-1.5 border-x border-b border-white/10 bg-[#111214] py-2 text-[11px] font-semibold text-red-300 transition-colors hover:bg-red-500/10"
+              className={cn(
+                "flex w-full items-center justify-center gap-1.5 bg-[#111214] py-2 text-[11px] font-semibold text-red-300 transition-colors hover:bg-red-500/10",
+                hoverPreview.minimal ? "w-40 rounded-lg border border-white/10" : "border-x border-b border-white/10",
+              )}
             >
               <Trash2 className="h-3.5 w-3.5" />
               Excluir link
