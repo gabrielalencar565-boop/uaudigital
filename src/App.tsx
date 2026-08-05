@@ -92,6 +92,7 @@ const App = () => {
         </TooltipProvider>
       </QueryClientProvider>
     </ThemeProvider>
+    </>
   );
 };
 
