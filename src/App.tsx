@@ -50,7 +50,13 @@ function AppRoutes() {
 
 const App = () => {
   const [queryClient] = useState(() => createQueryClient());
-  const [showSplash, setShowSplash] = useState(true);
+  const [showSplash, setShowSplash] = useState(() => {
+    try {
+      return sessionStorage.getItem("uau-splash-shown") !== "1";
+    } catch {
+      return true;
+    }
+  });
 
 
   // Safety-net: evita "tela branca" por erros assíncronos não tratados em alguns aparelhos.
@@ -84,7 +90,18 @@ const App = () => {
           <BrowserRouter>
             <AppRoutes />
           </BrowserRouter>
-          {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
+          {showSplash && (
+            <SplashScreen
+              onFinish={() => {
+                try {
+                  sessionStorage.setItem("uau-splash-shown", "1");
+                } catch {
+                  /* noop */
+                }
+                setShowSplash(false);
+              }}
+            />
+          )}
 
           
         </TooltipProvider>

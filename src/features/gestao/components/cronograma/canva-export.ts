@@ -1,6 +1,5 @@
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import * as XLSX from "xlsx";
 import type { CronogramaPost } from "./types";
 
 const POST_TYPE_LABELS: Record<string, string> = {
@@ -43,6 +42,7 @@ export interface CanvaExportInput {
 }
 
 export async function downloadCanvaPackage({ clientName, posts, monthRef }: CanvaExportInput) {
+  const XLSX = await import("xlsx");
   const wb = XLSX.utils.book_new();
 
   // ── Sheet 1: Resumo ──

@@ -1,27 +1,10 @@
-import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type ChangeEvent, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, Controller } from "react-hook-form";
-import { Camera, Crop, ImagePlus } from "lucide-react";
+import { Camera, Crop, ImagePlus, Loader2 } from "lucide-react";
 
 import { UauSidebarShell, type MainTab } from "@/components/layout/UauSidebarShell";
-import { PerformancePanel } from "@/features/performance/PerformancePanel";
-import { Magic2Panel } from "@/features/magic2/Magic2Panel";
-import { DayViewPanel } from "@/features/dayview/DayViewPanel";
-import { MeuPainelPanel } from "@/features/meu-painel/MeuPainelPanel";
-import { AdminContainer } from "@/features/admin/AdminContainer";
-import { FinanceiroPanel } from "@/features/financeiro/FinanceiroPanel";
-import { FinMetasTab } from "@/features/financeiro/components/FinMetasTab";
-
-import { FinReceitasDespesasTab } from "@/features/financeiro/components/FinReceitasDespesasTab";
-import { FinDespesasDetalhadasTab } from "@/features/financeiro/components/FinDespesasDetalhadasTab";
-import { FinLancamentosTab } from "@/features/financeiro/components/FinLancamentosTab";
-import { GestaoPanel } from "@/features/gestao/GestaoPanel";
-
-import { ProjetosPanel } from "@/features/projetos/ProjetosPanel";
-import { RecompensasPanel } from "@/features/recompensas/RecompensasPanel";
-import { ConversasPanel } from "@/features/conversas/ConversasPanel";
-import { ComercialPanel } from "@/features/admin/comercial/ComercialPanel";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +18,31 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ROLE_OPTIONS } from "@/lib/role-options";
 import { AvatarCropDialog } from "@/features/meu-painel/components/AvatarCropDialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
+// Painéis carregados sob demanda (só o que a aba ativa precisa entra no bundle inicial).
+const PerformancePanel = lazy(() => import("@/features/performance/PerformancePanel").then((m) => ({ default: m.PerformancePanel })));
+const Magic2Panel = lazy(() => import("@/features/magic2/Magic2Panel").then((m) => ({ default: m.Magic2Panel })));
+const DayViewPanel = lazy(() => import("@/features/dayview/DayViewPanel").then((m) => ({ default: m.DayViewPanel })));
+const MeuPainelPanel = lazy(() => import("@/features/meu-painel/MeuPainelPanel").then((m) => ({ default: m.MeuPainelPanel })));
+const AdminContainer = lazy(() => import("@/features/admin/AdminContainer").then((m) => ({ default: m.AdminContainer })));
+const FinanceiroPanel = lazy(() => import("@/features/financeiro/FinanceiroPanel").then((m) => ({ default: m.FinanceiroPanel })));
+const FinMetasTab = lazy(() => import("@/features/financeiro/components/FinMetasTab").then((m) => ({ default: m.FinMetasTab })));
+const FinReceitasDespesasTab = lazy(() => import("@/features/financeiro/components/FinReceitasDespesasTab").then((m) => ({ default: m.FinReceitasDespesasTab })));
+const FinDespesasDetalhadasTab = lazy(() => import("@/features/financeiro/components/FinDespesasDetalhadasTab").then((m) => ({ default: m.FinDespesasDetalhadasTab })));
+const FinLancamentosTab = lazy(() => import("@/features/financeiro/components/FinLancamentosTab").then((m) => ({ default: m.FinLancamentosTab })));
+const GestaoPanel = lazy(() => import("@/features/gestao/GestaoPanel").then((m) => ({ default: m.GestaoPanel })));
+const ProjetosPanel = lazy(() => import("@/features/projetos/ProjetosPanel").then((m) => ({ default: m.ProjetosPanel })));
+const RecompensasPanel = lazy(() => import("@/features/recompensas/RecompensasPanel").then((m) => ({ default: m.RecompensasPanel })));
+const ConversasPanel = lazy(() => import("@/features/conversas/ConversasPanel").then((m) => ({ default: m.ConversasPanel })));
+const ComercialPanel = lazy(() => import("@/features/admin/comercial/ComercialPanel").then((m) => ({ default: m.ComercialPanel })));
+
+function PanelLoadingFallback() {
+  return (
+    <div className="flex min-h-[50vh] items-center justify-center">
+      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+    </div>
+  );
+}
 
 function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join("");
@@ -347,7 +355,7 @@ const Index = () => {
         }
       }}
     >
-      {renderContent()}
+      <Suspense fallback={<PanelLoadingFallback />}>{renderContent()}</Suspense>
     </UauSidebarShell>
   );
 };
