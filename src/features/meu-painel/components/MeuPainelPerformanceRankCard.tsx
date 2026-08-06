@@ -52,7 +52,7 @@ export function MeuPainelPerformanceRankCard({
       className="relative w-full overflow-hidden rounded-2xl transition-all duration-500 ease-out"
       style={{
         border: `1px solid ${style?.border ?? "hsl(var(--border))"}`,
-        boxShadow: hovered ? (style?.hoverShadow ?? "0 12px 32px -8px hsl(var(--primary) / 0.18)") : (style?.shadow ?? "var(--shadow-elevated)"),
+        boxShadow: hovered ? (style?.hoverShadow ?? "0 12px 32px -8px hsl(var(--primary) / 0.18)") : (style?.shadow ?? "none"),
         transform: hovered ? "translateY(-6px) scale(1.01)" : "translateY(0) scale(1)",
       }}
       onMouseEnter={() => setHovered(true)}
@@ -69,7 +69,7 @@ export function MeuPainelPerformanceRankCard({
           }}
         />
       ) : (
-        <div className="absolute inset-0 -z-10 bg-card/70 backdrop-blur-md" />
+        <div className="absolute inset-0 -z-10 bg-card" />
       )}
 
       {/* Glow overlay on hover */}

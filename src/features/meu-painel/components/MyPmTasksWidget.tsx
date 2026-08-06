@@ -371,7 +371,7 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
 
   if (myTasks.length === 0 && !pmTasksQ.isLoading) {
     return (
-      <Card className="rounded-2xl uau-surface border-border/40">
+      <Card className="rounded-2xl border border-border bg-card shadow-sm">
         <CardHeader className="px-5 pt-4 pb-3">
           <div className="flex items-center gap-2">
             <ListChecks className="h-5 w-5 text-muted-foreground" />
@@ -472,7 +472,7 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
         </div>
       )}
 
-      <Card className="uau-surface border-border/40">
+      <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Atribuídas a mim</CardTitle>
         </CardHeader>
@@ -484,7 +484,7 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
               <button type="button" className="flex w-full items-center gap-2 px-4 py-2 text-left hover:bg-accent/20">
                 <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", !openOverdue && "-rotate-90")} />
                 <span className="text-sm font-semibold text-destructive">Em atraso</span>
-                <span className="inline-flex items-center rounded-full bg-spotlight-sheen px-1.5 py-0.5 text-[11px] font-semibold text-white shadow-glow tabular-nums">{groups.overdue.length}</span>
+                <span className="text-xs text-muted-foreground">{groups.overdue.length}</span>
               </button>
             </CollapsibleTrigger>
             <CollapsibleContent>

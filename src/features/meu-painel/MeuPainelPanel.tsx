@@ -504,7 +504,7 @@ export function MeuPainelPanel() {
 function CollapsibleWidget({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="rounded-2xl overflow-hidden uau-surface border border-border/40 transition-all duration-300">
+    <div className="rounded-2xl border border-border bg-card overflow-hidden transition-all duration-300">
       <button
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center justify-between gap-2 px-4 py-3 hover:bg-muted/40 transition-colors"

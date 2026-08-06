@@ -32,7 +32,10 @@ export function MetricSparkCard({ label, value, prevValue, icon, accentClass = "
   }, [sparkData]);
 
   return (
-    <div className="group relative overflow-hidden rounded-2xl border border-border/40 p-4 uau-surface uau-hover-lift">
+    <div
+      className="group relative overflow-hidden rounded-2xl border border-border/40 p-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/5"
+      style={{ background: "hsl(var(--card))", backdropFilter: "blur(12px)" }}
+    >
       {/* Sparkline background */}
       {sparkPath && (
         <svg
