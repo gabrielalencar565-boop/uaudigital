@@ -108,7 +108,10 @@ function AttachmentThumbnail({ url, name, isKnownImage, isPdf, onClick }: { url:
     let cancelled = false;
     renderPdfThumbnail(url)
       .then((dataUrl) => { if (!cancelled) setPdfThumbUrl(dataUrl); })
-      .catch(() => { if (!cancelled) setPdfThumbFailed(true); });
+      .catch((err) => {
+        console.error("[pdf-thumbnail] falha ao renderizar", name, err);
+        if (!cancelled) setPdfThumbFailed(true);
+      });
     return () => { cancelled = true; };
   }, [url, isPdf]);
 
