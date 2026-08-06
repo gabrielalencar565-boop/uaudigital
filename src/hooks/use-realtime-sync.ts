@@ -44,6 +44,7 @@ type RealtimeTable =
   | "financial_goals"
   | "financial_transactions"
   | "financial_credit_cards"
+  | "financial_opening_balances"
   | "mrr_movements"
   | "squads"
   | "squad_members"
@@ -66,14 +67,15 @@ const TABLE_TO_QUERY_KEYS: Record<RealtimeTable, string[][]> = {
     ["all_my_pending_tasks"],
     ["overdue_tasks_for_dayview"],
     ["overdue_task_assignees_for_dayview"],
+    ["agenda_tasks_overview"],
   ],
-  clients: [["clients"], ["clients_all"], ["clients_admin_all"]],
+  clients: [["clients"], ["clients_all"], ["clients_admin_all"], ["active_client_ids"]],
   client_cycles: [["client_cycles"]],
   task_assignees: [["task_assignees"], ["task_assignees_month"], ["overdue_task_assignees_for_dayview"], ["tasks"], ["performance_scores"]],
-  magic2_cycles: [["magic2"], ["client_contract_months"]],
-  magic2_cycle_stages: [["magic2"]],
-  magic2_clients: [["magic2"]],
-  magic2_client_links: [["magic2"]],
+  magic2_cycles: [["magic2"], ["client_contract_months"], ["magic2_squad_speed_v2"]],
+  magic2_cycle_stages: [["magic2"], ["magic2_squad_speed_v2"]],
+  magic2_clients: [["magic2"], ["magic2_squad_speed_v2"]],
+  magic2_client_links: [["magic2"], ["magic2_squad_speed_v2"]],
   user_roles: [["user_roles"], ["user_roles_batch"], ["admin_users"]],
   access_requests: [["admin_users"]],
   team_members: [["team_members"], ["admin_users"]],
@@ -81,16 +83,19 @@ const TABLE_TO_QUERY_KEYS: Record<RealtimeTable, string[][]> = {
   performance_scores: [
     ["performance_scores"],
     ["performance_scores_annual"],
+    ["performance_scores_team_avg"],
     ["my_monthly_rank"],
     ["my_annual_rank"],
+    ["my_qualitative_scores"],
+    ["my_qualitative_annual"],
   ],
   task_deadline_overrides: [["deadline_report_overrides"], ["performance_scores"]],
   task_activity_log: [["task_activity_log"]],
   cleaning_categories: [["cleaning_categories"]],
   cleaning_schedules: [["cleaning_schedules"]],
   cleaning_completions: [["cleaning_completions"]],
-  pm_tasks: [["pm_tasks"], ["pm_child_tasks"], ["pm_child_tasks_all"], ["notifications_assigned"], ["all_pending_pm_tasks_for_podium"], ["all_my_pending_tasks"], ["pm_tasks_for_dayview"], ["overdue_pm_tasks_for_dayview"], ["pm_child_count_for_dayview_v2"]],
-  pm_subtasks: [["pm_subtasks"], ["pm_subtasks_all"]],
+  pm_tasks: [["pm_tasks"], ["pm_child_tasks"], ["pm_child_tasks_all"], ["notifications_assigned"], ["all_pending_pm_tasks_for_podium"], ["all_my_pending_tasks"], ["pm_tasks_for_dayview"], ["overdue_pm_tasks_for_dayview"], ["pm_child_count_for_dayview_v2"], ["pm_tasks_overview"]],
+  pm_subtasks: [["pm_subtasks"], ["pm_subtasks_all"], ["pm_subtasks_for_podium"]],
   pm_comments: [["pm_comments"], ["notifications_mentions"]],
   pm_attachments: [["pm_attachments"]],
   pm_activity_log: [["pm_activity_log"]],
@@ -104,13 +109,14 @@ const TABLE_TO_QUERY_KEYS: Record<RealtimeTable, string[][]> = {
   app_settings: [["app_settings"]],
   health_scores: [["health_scores"]],
   health_score_tokens: [["health_score_tokens"]],
-  financial_clients: [["financial_clients"]],
-  financial_expenses: [["financial_expenses"]],
-  financial_revenues: [["financial_revenues"]],
-  financial_goals: [["financial_goals"]],
-  financial_transactions: [["financial_transactions"]],
-  financial_credit_cards: [["financial_credit_cards"]],
-  mrr_movements: [["mrr_movements"]],
+  financial_clients: [["fin-clients"]],
+  financial_expenses: [["fin-expenses"], ["fin-expenses-year"]],
+  financial_revenues: [["fin-revenues"], ["fin-revenues-year"]],
+  financial_goals: [["fin-goals"]],
+  financial_transactions: [["fin-transactions"], ["fin-transactions-year"]],
+  financial_credit_cards: [["fin-cards"]],
+  financial_opening_balances: [["fin-opening-balances"]],
+  mrr_movements: [["mrr-movements"]],
   squads: [["squads"]],
   squad_members: [["squad_members"]],
   client_squads: [["client_squads"]],
@@ -132,8 +138,26 @@ const CORE_TABLES: RealtimeTable[] = [
 
 // PR-A: tabelas raramente alteradas foram removidas da publicação supabase_realtime no banco.
 // Mantemos no client apenas o que realmente recebe eventos.
+// Dashboards (Financeiro, Squads, Magic2, Desempenho) precisam ficar "ao vivo" mesmo fora
+// da aba onde antes eram assinadas sob demanda — por isso entram aqui, não só no DayView.
 const SECONDARY_TABLES: RealtimeTable[] = [
   "user_roles",
+  "financial_clients",
+  "financial_expenses",
+  "financial_revenues",
+  "financial_goals",
+  "financial_transactions",
+  "financial_credit_cards",
+  "financial_opening_balances",
+  "mrr_movements",
+  "performance_scores",
+  "magic2_cycles",
+  "magic2_cycle_stages",
+  "magic2_clients",
+  "magic2_client_links",
+  "squads",
+  "client_cycles",
+  "client_cycle_stages",
 ];
 
 const CORE_TABLE_SET = new Set<RealtimeTable>(CORE_TABLES);

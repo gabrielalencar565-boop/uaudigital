@@ -14,7 +14,6 @@ import { useFinTransactions, useUpsertFinTransaction, useDeleteFinTransaction, u
 import { format } from "date-fns";
 import { FinMonthYearSelector } from "./FinMonthYearSelector";
 import { FinMetricCard } from "./FinMetricCard";
-import * as XLSX from "xlsx";
 import { toast } from "sonner";
 
 type CSVRow = { date: string; description: string; amount: number; type: "entrada" | "saida" };
@@ -278,7 +277,8 @@ export function FinLancamentosTab() {
     return () => window.removeEventListener("keydown", handler);
   }, [handleUndo, handleRedo]);
 
-  const parseXlsx = (data: ArrayBuffer): CSVRow[] => {
+  const parseXlsx = async (data: ArrayBuffer): Promise<CSVRow[]> => {
+    const XLSX = await import("xlsx");
     const wb = XLSX.read(data, { type: "array" });
     const ws = wb.Sheets[wb.SheetNames[0]];
     const raw: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
@@ -332,7 +332,7 @@ export function FinLancamentosTab() {
     const isXlsx = file.name.endsWith(".xlsx") || file.name.endsWith(".xls");
     if (isXlsx) {
       const reader = new FileReader();
-      reader.onload = (ev) => { const parsed = parseXlsx(ev.target?.result as ArrayBuffer); if (parsed.length === 0) { toast.error("Nenhum lançamento encontrado."); return; } setCsvRows(parsed); setCsvDialogOpen(true); };
+      reader.onload = async (ev) => { const parsed = await parseXlsx(ev.target?.result as ArrayBuffer); if (parsed.length === 0) { toast.error("Nenhum lançamento encontrado."); return; } setCsvRows(parsed); setCsvDialogOpen(true); };
       reader.readAsArrayBuffer(file);
     } else {
       const reader = new FileReader();
