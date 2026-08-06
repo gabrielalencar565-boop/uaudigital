@@ -42,22 +42,17 @@ function sanitizeRichDescriptionHtml(html: string): string {
   const template = document.createElement("template");
   template.innerHTML = html;
 
+  // Nenhum comando desta toolbar depende de style inline (negrito/itálico/títulos/listas
+  // usam tags semânticas), então removemos o atributo inteiro — conteúdo colado de fora
+  // (Google Docs, páginas com Tailwind, etc.) costuma trazer dezenas de propriedades/variáveis
+  // CSS irrelevantes por elemento, inflando a descrição sem nenhum ganho visual real.
   template.content.querySelectorAll<HTMLElement>("*").forEach((el) => {
-    el.style.removeProperty("color");
-    el.style.removeProperty("background");
-    el.style.removeProperty("background-color");
-    el.style.removeProperty("background-image");
-    el.style.removeProperty("-webkit-text-fill-color");
-    el.style.removeProperty("box-shadow");
+    el.removeAttribute("style");
     el.removeAttribute("bgcolor");
 
     if (el.tagName.toLowerCase() === "font") {
       el.removeAttribute("color");
       el.removeAttribute("face");
-    }
-
-    if (!el.getAttribute("style")?.trim()) {
-      el.removeAttribute("style");
     }
   });
 
