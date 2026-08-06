@@ -101,7 +101,15 @@ export function PmImageViewer({ images, initialIndex, open, onClose }: Props) {
               <ChevronLeft className="h-6 w-6" />
             </button>
           )}
-          <ViewerImage url={current.url} name={current.name} />
+          {/\.pdf$/i.test(current.name) ? (
+            <iframe
+              src={current.url}
+              title={current.name}
+              className="w-full h-full bg-white rounded"
+            />
+          ) : (
+            <ViewerImage url={current.url} name={current.name} />
+          )}
           {hasNext && (
             <button
               onClick={() => setIndex((i) => i + 1)}

@@ -45,7 +45,7 @@ interface Props {
   currentCoverUrl?: string | null;
 }
 
-function AttachmentThumbnail({ url, name, isKnownImage, onClick }: { url: string; name: string; isKnownImage: boolean; onClick?: () => void }) {
+function AttachmentThumbnail({ url, name, isKnownImage, isPdf, onClick }: { url: string; name: string; isKnownImage: boolean; isPdf?: boolean; onClick?: () => void }) {
   const [failed, setFailed] = useState(false);
   const [convertedUrl, setConvertedUrl] = useState<string | null>(null);
   const isHeicFile = /\.heic$/i.test(name);
@@ -68,6 +68,17 @@ function AttachmentThumbnail({ url, name, isKnownImage, onClick }: { url: string
     })();
     return () => { cancelled = true; };
   }, [url, isHeicFile]);
+
+  if (isPdf) {
+    return (
+      <div
+        className="w-full aspect-[4/3] flex items-center justify-center overflow-hidden rounded-t-md bg-red-500/10 cursor-pointer"
+        onClick={onClick}
+      >
+        <FileText className="h-7 w-7 text-red-500/70" />
+      </div>
+    );
+  }
 
   if (failed) {
     return (
@@ -167,6 +178,7 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
 
   const isImage = (type: string | null) => type?.startsWith("image/");
   const isHeic = (name: string) => /\.heic$/i.test(name);
+  const isPdf = (type: string | null, name: string) => type === "application/pdf" || /\.pdf$/i.test(name);
 
   const copyUrl = (url: string) => {
     navigator.clipboard.writeText(url);
@@ -246,7 +258,7 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
   const finals = attachments.filter(a => a.category === "final");
 
   const openViewer = (att: PmAttachment, list: PmAttachment[]) => {
-    const images = list.filter(a => (isImage(a.file_type) || isHeic(a.file_name)) && a.public_url)
+    const images = list.filter(a => (isImage(a.file_type) || isHeic(a.file_name) || isPdf(a.file_type, a.file_name)) && a.public_url)
       .map(a => ({ url: a.public_url!, name: a.file_name }));
     const idx = images.findIndex(i => i.url === att.public_url);
     setViewerImages(images);
@@ -366,6 +378,7 @@ function CategorySection(props: CategorySectionProps) {
 
   const isImage = (type: string | null) => type?.startsWith("image/");
   const isHeic = (name: string) => /\.heic$/i.test(name);
+  const isPdf = (type: string | null, name: string) => type === "application/pdf" || /\.pdf$/i.test(name);
 
   const handleSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -468,7 +481,8 @@ function CategorySection(props: CategorySectionProps) {
                       url={att.public_url}
                       name={att.file_name}
                       isKnownImage={!!isImg || isHeic(att.file_name)}
-                      onClick={() => (isImg || isHeic(att.file_name)) ? onOpenViewer(att) : undefined}
+                      isPdf={isPdf(att.file_type, att.file_name)}
+                      onClick={() => (isImg || isHeic(att.file_name) || isPdf(att.file_type, att.file_name)) ? onOpenViewer(att) : undefined}
                     />
                   ) : (
                     <div className="w-full aspect-[4/3] flex items-center justify-center overflow-hidden rounded-t-md bg-muted/50">
