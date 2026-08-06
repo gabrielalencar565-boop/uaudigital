@@ -19,6 +19,38 @@ const sb = supabase as any;
 
 type AttachmentCategory = "material" | "final";
 
+// Lazy-loaded once and shared across every PDF thumbnail on the page (avoids
+// re-importing pdfjs-dist + configuring its worker for each attachment).
+let pdfjsPromise: Promise<typeof import("pdfjs-dist")> | null = null;
+async function loadPdfjs() {
+  if (!pdfjsPromise) {
+    pdfjsPromise = (async () => {
+      const pdfjsLib = await import("pdfjs-dist");
+      const workerUrl = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
+      pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
+      return pdfjsLib;
+    })();
+  }
+  return pdfjsPromise;
+}
+
+/** Renders page 1 of a PDF to a small JPEG data URL, for use as a thumbnail image. */
+async function renderPdfThumbnail(url: string, targetWidth = 260): Promise<string> {
+  const pdfjsLib = await loadPdfjs();
+  const res = await fetch(url);
+  const buf = await res.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+  const page = await pdf.getPage(1);
+  const baseViewport = page.getViewport({ scale: 1 });
+  const viewport = page.getViewport({ scale: targetWidth / baseViewport.width });
+  const canvas = document.createElement("canvas");
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  const ctx = canvas.getContext("2d")!;
+  await page.render({ canvasContext: ctx, viewport }).promise;
+  return canvas.toDataURL("image/jpeg", 0.82);
+}
+
 function initials(n: string) {
   return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
 }
@@ -48,6 +80,8 @@ interface Props {
 function AttachmentThumbnail({ url, name, isKnownImage, isPdf, onClick }: { url: string; name: string; isKnownImage: boolean; isPdf?: boolean; onClick?: () => void }) {
   const [failed, setFailed] = useState(false);
   const [convertedUrl, setConvertedUrl] = useState<string | null>(null);
+  const [pdfThumbUrl, setPdfThumbUrl] = useState<string | null>(null);
+  const [pdfThumbFailed, setPdfThumbFailed] = useState(false);
   const isHeicFile = /\.heic$/i.test(name);
 
   useEffect(() => {
@@ -69,13 +103,40 @@ function AttachmentThumbnail({ url, name, isKnownImage, isPdf, onClick }: { url:
     return () => { cancelled = true; };
   }, [url, isHeicFile]);
 
+  useEffect(() => {
+    if (!isPdf) return;
+    let cancelled = false;
+    renderPdfThumbnail(url)
+      .then((dataUrl) => { if (!cancelled) setPdfThumbUrl(dataUrl); })
+      .catch(() => { if (!cancelled) setPdfThumbFailed(true); });
+    return () => { cancelled = true; };
+  }, [url, isPdf]);
+
   if (isPdf) {
+    if (pdfThumbUrl) {
+      return (
+        <div
+          className="w-full aspect-[4/3] overflow-hidden rounded-t-md bg-white cursor-pointer"
+          onClick={onClick}
+        >
+          <img
+            src={pdfThumbUrl}
+            alt={name}
+            className="w-full h-full object-cover object-top transition group-hover:scale-105"
+          />
+        </div>
+      );
+    }
     return (
       <div
         className="w-full aspect-[4/3] flex items-center justify-center overflow-hidden rounded-t-md bg-red-500/10 cursor-pointer"
         onClick={onClick}
       >
-        <FileText className="h-7 w-7 text-red-500/70" />
+        {pdfThumbFailed ? (
+          <FileText className="h-7 w-7 text-red-500/70" />
+        ) : (
+          <Loader2 className="h-5 w-5 animate-spin text-red-500/50" />
+        )}
       </div>
     );
   }
