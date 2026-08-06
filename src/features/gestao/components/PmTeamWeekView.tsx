@@ -26,7 +26,8 @@ import type { PmTask } from "../pm-types";
 
 const WEEKDAY_FULL = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
 const WEEKDAY_SHORT = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-const WEEKDAYS_DEFAULT = [1, 2, 3, 4, 5];
+const WEEKDAYS_DEFAULT = [1, 2, 3, 4, 5, 6]; // Seg–Sáb fixo por padrão
+const WEEKDAYS_BUSINESS = [1, 2, 3, 4, 5]; // Seg–Sex, usado só pelo atalho "Dias úteis"
 const PREFS_KEY = "pauta_prefs_v1";
 
 const BAR_GRADIENT = "linear-gradient(90deg, #4C1D95 0%, #6D28D9 45%, #7C3AED 100%)";
@@ -410,7 +411,36 @@ export function PmTeamWeekView({ tasks, clientsMap, membersMap, clients, current
     const idx = weeks.findIndex((weekDays) => weekDays.some((d) => format(d, "yyyy-MM-dd") === todayKey));
     return idx === -1 ? [] : [`week-${idx}`];
   }, [weeks, todayKey]);
-  const accordionKey = `${anchorKey(cursor)}_${selectedDays.join("")}_${myTasksOnly}_${filterCollaborators.size}_${filterClients.size}_${filterRoles.size}_${search}`;
+
+  // Weeks that contain at least one task assigned to the current user — expanded
+  // automatically when "Minhas tarefas" is on, so tasks from other weeks aren't hidden
+  // behind a collapsed accordion section.
+  const myTaskWeekValues = useMemo(() => {
+    if (!myTasksOnly || !currentUserId) return [];
+    const result: string[] = [];
+    weeks.forEach((weekDays, weekIdx) => {
+      const hasTask = weekDays.some((d) => {
+        const list = tasksByPersonDay.get(`${currentUserId}_${format(d, "yyyy-MM-dd")}`);
+        return !!list && list.length > 0;
+      });
+      if (hasTask) result.push(`week-${weekIdx}`);
+    });
+    return result;
+  }, [myTasksOnly, currentUserId, weeks, tasksByPersonDay]);
+
+  // Which weeks are expanded — controlled state so toggling a filter (search, "Minhas
+  // tarefas", collaborator/client/role filters) never collapses weeks the user already
+  // opened. Only navigating to a different month/cycle resets back to the current week.
+  const [openWeeks, setOpenWeeks] = useState<string[]>(() => currentWeekValue);
+  const cursorAnchorKey = anchorKey(cursor);
+  useEffect(() => {
+    setOpenWeeks(currentWeekValue);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cursorAnchorKey]);
+  useEffect(() => {
+    if (myTaskWeekValues.length === 0) return;
+    setOpenWeeks((prev) => Array.from(new Set([...prev, ...myTaskWeekValues])));
+  }, [myTaskWeekValues]);
 
   const cycleOptions = useMemo(() => {
     const base = anchorForDate(new Date());
@@ -528,7 +558,7 @@ export function PmTeamWeekView({ tasks, clientsMap, membersMap, clients, current
                 ))}
                 <div className="flex flex-wrap gap-1 pt-1 border-t mt-1">
                   <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setSelectedDays([0, 1, 2, 3, 4, 5, 6])}>Selecionar todos</Button>
-                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setSelectedDays(WEEKDAYS_DEFAULT)}>Dias úteis</Button>
+                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setSelectedDays(WEEKDAYS_BUSINESS)}>Dias úteis</Button>
                   <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setSelectedDays([])}>Limpar seleção</Button>
                 </div>
               </PopoverContent>
@@ -607,7 +637,7 @@ export function PmTeamWeekView({ tasks, clientsMap, membersMap, clients, current
         </div>
 
         <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-          <Accordion key={accordionKey} type="multiple" defaultValue={currentWeekValue} className="space-y-3">
+          <Accordion type="multiple" value={openWeeks} onValueChange={setOpenWeeks} className="space-y-3">
             {weeks.map((weekDays, weekIdx) => {
               const visibleDays = weekDays.filter((d) => selectedDays.includes(d.getDay()));
               if (visibleDays.length === 0) return null;
