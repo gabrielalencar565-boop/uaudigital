@@ -150,7 +150,7 @@ export function TaskSearchDropdown({ onSelectTask }: TaskSearchDropdownProps) {
 
   return (
     <div ref={containerRef} className="relative hidden sm:block">
-      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none z-10" />
+      <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground pointer-events-none z-10" />
       <input
         ref={inputRef}
         type="text"
@@ -158,10 +158,7 @@ export function TaskSearchDropdown({ onSelectTask }: TaskSearchDropdownProps) {
         onChange={(e) => setSearch(e.target.value)}
         onFocus={() => setFocused(true)}
         placeholder="Pesquisar tarefa..."
-        className={cn(
-          "h-9 w-64 lg:w-72 rounded-full border bg-muted/40 backdrop-blur-sm pl-9 pr-14 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none transition",
-          focused ? "border-primary/40 shadow-glow bg-background/80" : "border-border/60"
-        )}
+        className="h-8 w-56 rounded-full border border-border/50 bg-muted/30 pl-9 pr-14 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/30 transition"
       />
       {search ? (
         <button
@@ -179,7 +176,7 @@ export function TaskSearchDropdown({ onSelectTask }: TaskSearchDropdownProps) {
 
       {/* Results dropdown */}
       {showResults && (
-        <div className="uau-surface fixed mt-1.5 w-[420px] max-h-[70vh] overflow-y-auto rounded-2xl z-[9999]" style={{ top: containerRef.current ? containerRef.current.getBoundingClientRect().bottom + 4 : 60, left: containerRef.current ? containerRef.current.getBoundingClientRect().left : 0 }}>
+        <div className="fixed mt-1.5 w-[420px] max-h-[70vh] overflow-y-auto rounded-xl border border-border bg-popover shadow-xl z-[9999]" style={{ top: containerRef.current ? containerRef.current.getBoundingClientRect().bottom + 4 : 60, left: containerRef.current ? containerRef.current.getBoundingClientRect().left : 0 }}>
           {results.length === 0 ? (
             <div className="px-4 py-6 text-center text-sm text-muted-foreground">
               Nenhuma tarefa encontrada.
