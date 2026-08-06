@@ -154,7 +154,7 @@ export function MentionsWidget({ onOpenTask }: MentionsWidgetProps) {
   };
 
   return (
-    <Card>
+    <Card className="uau-surface border-border/40">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-sm">
           <AtSign className="h-4 w-4 text-primary" />
