@@ -126,7 +126,7 @@ function TaskCard({ task, clientsMap, todayKey, minimal, onClick, dragHandleProp
         done
           ? "bg-success border-success text-success-foreground"
           : overdue
-          ? "bg-spotlight-sheen border-transparent text-white shadow-glow hover:brightness-110"
+          ? "bg-destructive border-destructive text-destructive-foreground"
           : "border-border/30 hover:bg-muted/60",
         isDragging && "opacity-40",
       )}

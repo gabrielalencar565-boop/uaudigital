@@ -917,7 +917,7 @@ export function DayViewPanel() {
       const taskItemClass = variant === "completed"
         ? "flex items-center gap-1.5 rounded-md border border-success bg-success cursor-pointer hover:bg-success/90 transition-colors min-w-0 px-2 py-1"
         : variant === "overdue"
-        ? "flex items-center gap-1.5 rounded-md border border-transparent bg-spotlight-sheen shadow-glow cursor-pointer hover:brightness-110 transition-[filter] min-w-0 px-2 py-1"
+        ? "flex items-center gap-1.5 rounded-md border border-destructive bg-destructive cursor-pointer hover:bg-destructive/90 transition-colors min-w-0 px-2 py-1"
         : isAlteracoesPending
         ? "flex items-center gap-1.5 rounded-md border border-amber-500 bg-amber-500 cursor-pointer hover:bg-amber-600 transition-colors min-w-0 px-2 py-1"
         : "flex items-center gap-1.5 rounded-md border border-border bg-card cursor-pointer hover:bg-accent/50 transition-colors min-w-0 px-2 py-1";
