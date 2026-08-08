@@ -1,5 +1,7 @@
 // Uploads a file to Google Drive (used for pm_attachments — client photos/videos —
-// to avoid consuming Supabase Storage quota) and returns a public link.
+// to avoid consuming Supabase Storage quota). Files are kept private (owner-only);
+// access is granted via an opaque per-file capability token served by drive-file-proxy,
+// never via Drive's own "anyone with link" sharing.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -11,7 +13,8 @@ const corsHeaders = {
 const CLIENT_ID = Deno.env.get("GOOGLE_DRIVE_CLIENT_ID")!;
 const CLIENT_SECRET = Deno.env.get("GOOGLE_DRIVE_CLIENT_SECRET")!;
 const REFRESH_TOKEN = Deno.env.get("GOOGLE_DRIVE_REFRESH_TOKEN")!;
-const FOLDER_ID = Deno.env.get("GOOGLE_DRIVE_FOLDER_ID")!;
+const ROOT_FOLDER_ID = Deno.env.get("GOOGLE_DRIVE_FOLDER_ID")!;
+const PROXY_BASE = `${Deno.env.get("SUPABASE_URL")}/functions/v1/drive-file-proxy`;
 
 async function getAccessToken(): Promise<string> {
   const res = await fetch("https://oauth2.googleapis.com/token", {
@@ -29,9 +32,47 @@ async function getAccessToken(): Promise<string> {
   return data.access_token;
 }
 
-async function uploadToDrive(accessToken: string, fileName: string, mimeType: string, bytes: Uint8Array): Promise<string> {
+function escapeDriveQueryValue(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+}
+
+async function findOrCreateClientFolder(accessToken: string, admin: ReturnType<typeof createClient>, clientId: string): Promise<string> {
+  const { data: existing } = await admin
+    .from("drive_client_folders")
+    .select("drive_folder_id")
+    .eq("client_id", clientId)
+    .maybeSingle();
+  if (existing) return existing.drive_folder_id;
+
+  const { data: client } = await admin.from("clients").select("name").eq("id", clientId).maybeSingle();
+  const name = client?.name || clientId;
+  const q = `name='${escapeDriveQueryValue(name)}' and mimeType='application/vnd.google-apps.folder' and '${ROOT_FOLDER_ID}' in parents and trashed=false`;
+
+  const searchRes = await fetch(
+    `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name)`,
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  );
+  const searchData = await searchRes.json();
+  let folderId: string;
+  if (searchData.files?.length > 0) {
+    folderId = searchData.files[0].id;
+  } else {
+    const createRes = await fetch("https://www.googleapis.com/drive/v3/files?fields=id", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ name, mimeType: "application/vnd.google-apps.folder", parents: [ROOT_FOLDER_ID] }),
+    });
+    if (!createRes.ok) throw new Error(`folder create failed: ${await createRes.text()}`);
+    folderId = (await createRes.json()).id;
+  }
+
+  await admin.from("drive_client_folders").upsert({ client_id: clientId, drive_folder_id: folderId });
+  return folderId;
+}
+
+async function uploadToDrive(accessToken: string, fileName: string, mimeType: string, bytes: Uint8Array, parentId: string): Promise<string> {
   const boundary = "uaudigital-drive-upload-boundary";
-  const metadata = JSON.stringify({ name: fileName, parents: [FOLDER_ID] });
+  const metadata = JSON.stringify({ name: fileName, parents: [parentId] });
 
   const encoder = new TextEncoder();
   const preamble = encoder.encode(
@@ -61,16 +102,10 @@ async function uploadToDrive(accessToken: string, fileName: string, mimeType: st
   return data.id;
 }
 
-async function makePublic(accessToken: string, fileId: string) {
-  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ role: "reader", type: "anyone" }),
-  });
-  if (!res.ok) throw new Error(`permission update failed: ${await res.text()}`);
+function randomToken(): string {
+  const bytes = new Uint8Array(24);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 Deno.serve(async (req) => {
@@ -85,7 +120,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Verify caller has a valid Supabase session (any authenticated user).
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
@@ -99,8 +133,14 @@ Deno.serve(async (req) => {
       });
     }
 
+    const admin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+
     const formData = await req.formData();
     const file = formData.get("file");
+    const taskId = formData.get("task_id");
     if (!(file instanceof File)) {
       return new Response(JSON.stringify({ error: "file field required" }), {
         status: 400,
@@ -108,15 +148,24 @@ Deno.serve(async (req) => {
       });
     }
 
-    const bytes = new Uint8Array(await file.arrayBuffer());
     const accessToken = await getAccessToken();
-    const fileId = await uploadToDrive(accessToken, file.name, file.type || "application/octet-stream", bytes);
-    await makePublic(accessToken, fileId);
 
-    const publicUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
+    let parentId = ROOT_FOLDER_ID;
+    if (typeof taskId === "string" && taskId) {
+      const { data: task } = await admin.from("pm_tasks").select("client_id").eq("id", taskId).maybeSingle();
+      if (task?.client_id) {
+        parentId = await findOrCreateClientFolder(accessToken, admin, task.client_id);
+      }
+    }
+
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const fileId = await uploadToDrive(accessToken, file.name, file.type || "application/octet-stream", bytes, parentId);
+
+    const token = randomToken();
+    const publicUrl = `${PROXY_BASE}/${fileId}?t=${token}`;
 
     return new Response(
-      JSON.stringify({ drive_file_id: fileId, public_url: publicUrl }),
+      JSON.stringify({ drive_file_id: fileId, public_url: publicUrl, access_token: token }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (e) {
