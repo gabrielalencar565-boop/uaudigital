@@ -657,8 +657,10 @@ export function useUploadPmAttachment() {
         file_name: file.name,
         file_type: file.type,
         file_size: file.size,
-        storage_path: driveData.storage_path ?? driveData.drive_file_id ?? null,
+        storage_provider: "drive",
+        drive_file_id: driveData.drive_file_id,
         public_url: driveData.public_url,
+        access_token: driveData.access_token,
         category: category ?? "material",
       }).select().single();
       if (error) throw error;
