@@ -676,6 +676,94 @@ export function useUploadPmAttachment() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pm_attachments"] });
+      qc.invalidateQueries({ queryKey: ["pm_attachments_for_calendar"] });
+      qc.invalidateQueries({ queryKey: ["cover_candidates"] });
+      qc.invalidateQueries({ queryKey: ["pm_activity_log"] });
+    },
+  });
+}
+
+// Video-only upload path. A direct browser→Google Drive upload was tried first but
+// Google's resumable-upload endpoint rejects cross-origin PUTs from a plain browser
+// (it's CORS-locked to the origins registered on the Drive OAuth client, which this
+// project's client isn't). So instead the file streams through our Edge Function —
+// but as a true pass-through relay (req.body piped straight into the outgoing PUT to
+// Drive), never buffered whole in memory like the small-file path does. This keeps
+// the original goal (no memory/time ceiling tied to file size) without needing any
+// Google Cloud config change.
+export function useUploadPmAttachmentResumable() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (
+      { task_id, file, category, onProgress }:
+      { task_id: string; file: File; category?: "material" | "final"; onProgress?: (pct: number) => void },
+    ) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Não autenticado");
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Não autenticado");
+
+      const mimeType = file.type || "application/octet-stream";
+      const functionsUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/drive-upload`;
+      const params = new URLSearchParams({
+        mode: "stream",
+        task_id,
+        file_name: file.name,
+        mime_type: mimeType,
+        file_size: String(file.size),
+      });
+
+      const driveData = await new Promise<{ drive_file_id: string; public_url: string; access_token: string }>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", `${functionsUrl}?${params.toString()}`, true);
+        xhr.setRequestHeader("Authorization", `Bearer ${session.access_token}`);
+        xhr.setRequestHeader("apikey", import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
+        xhr.setRequestHeader("Content-Type", mimeType);
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded / e.total) * 100));
+        };
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              resolve(JSON.parse(xhr.responseText));
+            } catch {
+              reject(new Error("Resposta inválida do servidor"));
+            }
+          } else {
+            reject(new Error(`Upload falhou (status ${xhr.status}): ${xhr.responseText.slice(0, 200)}`));
+          }
+        };
+        xhr.onerror = () => reject(new Error("Erro de rede durante o upload"));
+        xhr.send(file);
+      });
+
+      const { data, error } = await sb.from("pm_attachments").insert({
+        task_id,
+        uploaded_by: user.id,
+        file_name: file.name,
+        file_type: mimeType,
+        file_size: file.size,
+        storage_provider: "drive",
+        drive_file_id: driveData.drive_file_id,
+        public_url: driveData.public_url,
+        access_token: driveData.access_token,
+        category: category ?? "material",
+      }).select().single();
+      if (error) throw error;
+
+      await sb.from("pm_activity_log").insert({
+        entity_type: "attachment",
+        entity_id: task_id,
+        action: "file_added",
+        metadata: { task_id, file_name: file.name },
+        created_by: user.id,
+      });
+      return data as PmAttachment;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["pm_attachments"] });
+      qc.invalidateQueries({ queryKey: ["pm_attachments_for_calendar"] });
+      qc.invalidateQueries({ queryKey: ["cover_candidates"] });
       qc.invalidateQueries({ queryKey: ["pm_activity_log"] });
     },
   });
@@ -812,6 +900,8 @@ export function useMergePdfTasks() {
       qc.invalidateQueries({ queryKey: ["pm_child_tasks"] });
       qc.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
       qc.invalidateQueries({ queryKey: ["pm_attachments"] });
+      qc.invalidateQueries({ queryKey: ["pm_attachments_for_calendar"] });
+      qc.invalidateQueries({ queryKey: ["cover_candidates"] });
       qc.invalidateQueries({ queryKey: ["pm_comments"] });
       qc.invalidateQueries({ queryKey: ["pm_attachments_batch"] });
     },

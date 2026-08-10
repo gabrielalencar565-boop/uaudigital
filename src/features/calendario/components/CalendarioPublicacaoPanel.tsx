@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { addDays, format, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Film, LayoutGrid, List, Grid3x3, Image as ImageIcon, Link2, Copy, RefreshCw } from "lucide-react";
+import { ChevronLeft, ChevronRight, Film, LayoutGrid, List, Grid3x3, Image as ImageIcon, Link2, Copy, RefreshCw, ArrowUpRight, UserRound, CircleDashed, Clock, AlertTriangle, CheckCircle2, CalendarDays, Bookmark, Play } from "lucide-react";
+import { TAG_COLORS } from "@/features/gestao/pm-constants";
 import { DndContext, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -14,12 +15,14 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { useClients } from "@/features/data/queries";
+import { useClients, useTeamMembers } from "@/features/data/queries";
+import { useDefaultFlowWithDates, getFixedAssignee } from "@/features/gestao/components/PmStageFlowConfig";
+import { useSession } from "@/hooks/use-session";
 import {
-  useCalendarPublications, useCalendarsForClient, useCalendarsForCycle, useTaskAttachmentsMap, useUpdateCalendarPublication, useUpdateCalendarShare, useUpdateCalendarStatus,
+  useCalendarPublications, useCalendarsForClient, useCalendarsForCycle, useCapaTaskIds, useCoverAttachmentsById, useTaskAttachmentsMap, useUpdateCalendarPublication, useUpdateCalendarShare, useUpdateCalendarStatus,
 } from "../hooks/use-calendar-data";
-import { CALENDAR_STATUS_LABELS, CONTENT_TYPE_LABELS, type CalendarPublication, type CalendarStatus } from "../calendar-types";
-import { PublicationCard } from "./PublicationCard";
+import { CALENDAR_STATUS_LABELS, CONTENT_TYPE_LABELS, PUBLICATION_STATUS_LABELS, type CalendarPublication, type CalendarStatus } from "../calendar-types";
+import { PublicationCard, CONTENT_TYPE_ICON, getContentTypeColor } from "./PublicationCard";
 import { PublicationPreviewPanel } from "./PublicationPreviewPanel";
 
 interface Props {
@@ -44,17 +47,24 @@ const UNSCHEDULED_ID = "unscheduled";
 
 // Collapses the 7 calendar_status values into the 4 buckets shown on the
 // client card in the sidebar, each with its own color.
-const CLIENT_CARD_STATUS: Record<string, { label: string; className: string }> = {
-  em_montagem: { label: "Incompleto", className: "bg-slate-200 text-slate-600" },
-  em_revisao_interna: { label: "Incompleto", className: "bg-slate-200 text-slate-600" },
-  pronto_para_envio: { label: "Aguardando aprovação", className: "bg-amber-500/15 text-amber-600" },
-  enviado_ao_cliente: { label: "Aguardando aprovação", className: "bg-amber-500/15 text-amber-600" },
-  alteracoes_solicitadas: { label: "Com alteração", className: "bg-destructive/15 text-destructive" },
-  aprovado: { label: "Aprovado", className: "bg-success/15 text-success" },
-  arquivado: { label: "Incompleto", className: "bg-slate-200 text-slate-600" },
+const CLIENT_CARD_STATUS: Record<string, { key: string; label: string; className: string }> = {
+  em_montagem: { key: "incompleto", label: "Incompleto", className: "bg-muted text-muted-foreground" },
+  em_revisao_interna: { key: "incompleto", label: "Incompleto", className: "bg-muted text-muted-foreground" },
+  pronto_para_envio: { key: "aguardando", label: "Aguardando aprovação", className: "bg-amber-500/15 text-amber-600 dark:text-amber-400" },
+  enviado_ao_cliente: { key: "aguardando", label: "Aguardando aprovação", className: "bg-amber-500/15 text-amber-600 dark:text-amber-400" },
+  alteracoes_solicitadas: { key: "alteracao", label: "Com alteração", className: "bg-destructive/15 text-destructive" },
+  aprovado: { key: "aprovado", label: "Aprovado", className: "bg-success/15 text-success" },
+  arquivado: { key: "incompleto", label: "Incompleto", className: "bg-muted text-muted-foreground" },
 };
 
-function DraggablePublication({ publication, thumbnailUrl, onClick }: { publication: CalendarPublication; thumbnailUrl?: string | null; onClick: () => void }) {
+const STATUS_FILTERS: { key: string; label: string; icon: typeof CircleDashed }[] = [
+  { key: "incompleto", label: "Incompleto", icon: CircleDashed },
+  { key: "aguardando", label: "Aguardando aprovação", icon: Clock },
+  { key: "alteracao", label: "Com alteração", icon: AlertTriangle },
+  { key: "aprovado", label: "Aprovado", icon: CheckCircle2 },
+];
+
+function DraggablePublication({ publication, images, onClick, isCapa }: { publication: CalendarPublication; images?: string[]; onClick: () => void; isCapa?: boolean }) {
   const { setNodeRef, listeners, attributes, setActivatorNodeRef, transform, isDragging } = useDraggable({
     id: publication.id,
     data: { publication },
@@ -64,11 +74,127 @@ function DraggablePublication({ publication, thumbnailUrl, onClick }: { publicat
     <div ref={setNodeRef} style={style}>
       <PublicationCard
         publication={publication}
-        thumbnailUrl={thumbnailUrl}
+        images={images}
         onClick={onClick}
         dragHandleProps={{ listeners, attributes, setActivatorNodeRef }}
         isDragging={isDragging}
+        isCapa={isCapa}
       />
+    </div>
+  );
+}
+
+function ListPublicationCard({ publication: p, idx, images, onClick, isCapa, hasVideo }: { publication: CalendarPublication; idx: number; images: string[]; onClick: () => void; isCapa?: boolean; hasVideo?: boolean }) {
+  const [slide, setSlide] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const Icon = isCapa ? Bookmark : CONTENT_TYPE_ICON[p.content_type];
+  const label = isCapa ? "Capa" : CONTENT_TYPE_LABELS[p.content_type];
+  const typeColor = isCapa
+    ? { bg: TAG_COLORS.find((c) => c.key === "indigo")!.dot, text: "text-white" }
+    : getContentTypeColor(p.content_type);
+  const hasMultiple = images.length > 1;
+
+  useEffect(() => {
+    if (!hasMultiple || paused) return;
+    const id = setInterval(() => setSlide((s) => (s + 1) % images.length), 3000);
+    return () => clearInterval(id);
+  }, [hasMultiple, paused, images.length]);
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => e.key === "Enter" && onClick()}
+      className="group grid cursor-pointer overflow-hidden rounded-3xl border border-border/40 bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-elevated sm:grid-cols-[240px_1fr]"
+    >
+      <div
+        className="relative flex items-center justify-center bg-muted/30 p-3 sm:border-r sm:border-border/30"
+        onMouseEnter={() => setPaused(true)}
+        onMouseLeave={() => setPaused(false)}
+      >
+        {hasMultiple ? (
+          <div className="h-72 w-full overflow-hidden rounded-2xl bg-background">
+            <div
+              className="flex h-full transition-transform duration-500 ease-out"
+              style={{ transform: `translateX(-${slide * 100}%)` }}
+            >
+              {images.map((url, i) => (
+                <img key={i} src={url} alt="" className="h-full w-full shrink-0 object-contain" />
+              ))}
+            </div>
+          </div>
+        ) : images[0] ? (
+          <img src={images[0]} alt="" className="h-auto max-h-72 w-auto max-w-full rounded-2xl object-contain" />
+        ) : (
+          <div className="flex aspect-square w-full items-center justify-center rounded-2xl bg-muted">
+            <Icon className="h-8 w-8 text-muted-foreground" />
+          </div>
+        )}
+        {hasVideo && (
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-2xl bg-black/35">
+            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/90 shadow-md">
+              <Play className="h-5 w-5 fill-black text-black" />
+            </span>
+            <span className="rounded-full bg-black/60 px-2.5 py-1 text-xs font-medium text-white">Assista o vídeo</span>
+          </div>
+        )}
+        {hasMultiple && (
+          <>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setSlide((s) => (s - 1 + images.length) % images.length); }}
+              className="absolute left-4 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-background/90 text-foreground shadow-md backdrop-blur transition-opacity opacity-0 group-hover:opacity-100"
+              aria-label="Imagem anterior"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setSlide((s) => (s + 1) % images.length); }}
+              className="absolute right-4 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-background/90 text-foreground shadow-md backdrop-blur transition-opacity opacity-0 group-hover:opacity-100"
+              aria-label="Próxima imagem"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+            <span className="pointer-events-none absolute bottom-2 right-2 rounded-full bg-background/90 px-2 py-0.5 text-[10px] font-semibold text-foreground backdrop-blur">
+              {slide + 1}/{images.length}
+            </span>
+          </>
+        )}
+      </div>
+
+      <div className="flex min-w-0 flex-col gap-2 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold", typeColor.bg, typeColor.text)}>
+            <Icon className="h-3.5 w-3.5" />
+            {label}
+          </span>
+          <Badge variant="outline" className="shrink-0 rounded-full text-[10px]">{PUBLICATION_STATUS_LABELS[p.status]}</Badge>
+        </div>
+
+        <h3 className="text-lg font-semibold tracking-tight">Post {idx + 1}</h3>
+
+        {p.caption && (
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Legenda</p>
+            <p className="whitespace-pre-wrap text-sm text-foreground/90">{p.caption}</p>
+          </div>
+        )}
+
+        <div className="mt-auto flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-button-sheen px-3 py-1.5 text-xs font-semibold text-white shadow-glow">
+            <CalendarDays className="h-3.5 w-3.5" />
+            {p.publish_date ? format(new Date(`${p.publish_date}T00:00:00`), "dd/MM/yy") : "Sem data"}
+          </span>
+          {p.publish_time && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-button-sheen px-3 py-1.5 text-xs font-semibold text-white shadow-glow">
+              <Clock className="h-3.5 w-3.5" />
+              {p.publish_time.slice(0, 5)}
+            </span>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -90,9 +216,31 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   const clientsQ = useClients();
+  const sortedClients = useMemo(
+    () => [...(clientsQ.data ?? [])].sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
+    [clientsQ.data],
+  );
   const selectedClient = clientsQ.data?.find((c) => c.id === clientId);
   const clientName = selectedClient?.name ?? "Cliente";
   const clientLogoUrl = selectedClient?.logo_url ?? null;
+
+  // "Social" responsável por cliente: vem do assignee fixo da etapa "planejamento".
+  const teamMembersQ = useTeamMembers();
+  const teamMemberById = useMemo(() => {
+    const map = new Map<string, { display_name: string; avatar_url: string | null }>();
+    for (const m of teamMembersQ.data ?? []) map.set(m.user_id, m);
+    return map;
+  }, [teamMembersQ.data]);
+  const { stageAssignees } = useDefaultFlowWithDates();
+  const responsibleByClientId = useMemo(() => {
+    const map = new Map<string, { display_name: string; avatar_url: string | null }>();
+    for (const c of sortedClients) {
+      const userId = getFixedAssignee(stageAssignees, "planejamento", c.id);
+      const member = userId ? teamMemberById.get(userId) : undefined;
+      if (member) map.set(c.id, member);
+    }
+    return map;
+  }, [sortedClients, stageAssignees, teamMemberById]);
   const calendarsQ = useCalendarsForClient(clientId);
   const cycleStartKey = format(cycleStart(cursor), "yyyy-MM-dd");
   const calendar = useMemo(() => (calendarsQ.data ?? []).find((c) => c.cycle_start === cycleStartKey) ?? null, [calendarsQ.data, cycleStartKey]);
@@ -105,17 +253,101 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
     return map;
   }, [cycleCalendarsQ.data]);
 
+  // Filtros da grade de clientes: "Meus" (responsável = eu) + status do ciclo.
+  const { user } = useSession();
+  const [onlyMine, setOnlyMine] = useState(false);
+  const [activeStatusFilters, setActiveStatusFilters] = useState<Set<string>>(new Set());
+  const toggleStatusFilter = (key: string) => {
+    setActiveStatusFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+  const filteredClients = useMemo(() => {
+    return sortedClients.filter((c) => {
+      if (onlyMine) {
+        const responsibleId = getFixedAssignee(stageAssignees, "planejamento", c.id);
+        if (!responsibleId || responsibleId !== user?.id) return false;
+      }
+      if (activeStatusFilters.size > 0) {
+        const cal = calendarByClientId.get(c.id);
+        const bucketKey = cal ? CLIENT_CARD_STATUS[cal.status]?.key ?? "incompleto" : null;
+        if (!bucketKey || !activeStatusFilters.has(bucketKey)) return false;
+      }
+      return true;
+    });
+  }, [sortedClients, onlyMine, user?.id, stageAssignees, activeStatusFilters, calendarByClientId]);
+
   const publicationsQ = useCalendarPublications(calendar?.id ?? null);
   const publications = publicationsQ.data ?? [];
   const taskIds = useMemo(() => publications.map((p) => p.task_id), [publications]);
   const attachmentsQ = useTaskAttachmentsMap(taskIds);
+  const coverAttachmentIds = useMemo(
+    () => [...new Set(publications.map((p) => p.cover_attachment_id).filter((id): id is string => !!id))],
+    [publications],
+  );
+  const coverAttachmentsQ = useCoverAttachmentsById(coverAttachmentIds);
+  const capaTaskIdsQ = useCapaTaskIds(taskIds);
+  const isCapaTask = (taskId: string) => capaTaskIdsQ.data?.has(taskId) ?? false;
 
   const updatePublication = useUpdateCalendarPublication();
   const updateCalendarStatus = useUpdateCalendarStatus();
   const updateCalendarShare = useUpdateCalendarShare();
 
-  const mediaFor = (taskId: string) => attachmentsQ.data?.get(taskId) ?? [];
+  const publicationByTask = useMemo(() => {
+    const map = new Map<string, CalendarPublication>();
+    for (const p of publications) map.set(p.task_id, p);
+    return map;
+  }, [publications]);
+
+  // Puts the publication's chosen cover attachment (if any) first in the list, so every
+  // consumer that just reads "the first image" (thumbnailFor, imagesFor, the Feed grid)
+  // automatically shows the cover without needing its own cover-aware logic. The cover
+  // may belong to a different task entirely (e.g. chosen from a sibling "Capa" task
+  // during the PDF stage), so when it's not found in this task's own attachments, it's
+  // looked up via coverAttachmentsQ and prepended instead.
+  const mediaFor = (taskId: string) => {
+    const list = attachmentsQ.data?.get(taskId) ?? [];
+    const coverId = publicationByTask.get(taskId)?.cover_attachment_id;
+    if (!coverId) return list;
+    const idx = list.findIndex((m) => m.id === coverId);
+    if (idx === 0) return list;
+    if (idx > 0) {
+      const reordered = [...list];
+      const [cover] = reordered.splice(idx, 1);
+      reordered.unshift(cover);
+      return reordered;
+    }
+    const external = coverAttachmentsQ.data?.get(coverId);
+    return external ? [external, ...list] : list;
+  };
   const thumbnailFor = (taskId: string) => mediaFor(taskId).find((m) => m.type?.startsWith("image/"))?.url ?? null;
+
+  // A "Capa" holding-task (see useCoverCandidates) whose image is currently pinned as
+  // some *other* publication's cover is "in use" — hide it from "Publicações sem data"
+  // so it doesn't clutter the unscheduled pile while claimed. It reappears there the
+  // moment it's unpinned (cover_attachment_id no longer points at one of its attachments).
+  const hiddenFromUnscheduled = useMemo(() => {
+    const hidden = new Set<string>();
+    for (const p of publications) {
+      const ownAttachmentIds = new Set((attachmentsQ.data?.get(p.task_id) ?? []).map((a) => a.id));
+      const usedByOther = publications.some(
+        (other) => other.id !== p.id && other.cover_attachment_id && ownAttachmentIds.has(other.cover_attachment_id),
+      );
+      if (usedByOther) hidden.add(p.task_id);
+    }
+    return hidden;
+  }, [publications, attachmentsQ.data]);
+  // Only "carrossel" posts are meant to page through every image — for every other
+  // content type (reel, vídeo, imagem...) the card should show just the one cover
+  // image as a static thumbnail, even if the task has other image attachments
+  // (e.g. an auto-generated video poster alongside a manually chosen cover).
+  const imagesFor = (p: CalendarPublication) => {
+    const imgs = mediaFor(p.task_id).filter((m) => m.type?.startsWith("image/")).map((m) => m.url);
+    return p.content_type === "carrossel" ? imgs : imgs.slice(0, 1);
+  };
 
   const byDay = useMemo(() => {
     const map = new Map<string, CalendarPublication[]>();
@@ -205,8 +437,23 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* Top: cycle nav + horizontal scrollable client strip */}
-      <div className="space-y-2">
+      {/* Top: back/title + filters + cycle nav */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {clientId ? (
+          <button
+            type="button"
+            onClick={() => setClientId(null)}
+            className="flex items-center gap-1.5 rounded-full py-1.5 pl-1.5 pr-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <ChevronLeft className="h-4 w-4" /> Voltar para clientes
+          </button>
+        ) : (
+          <div>
+            <h2 className="text-2xl font-semibold tracking-tight">Cronograma</h2>
+            <p className="text-sm text-muted-foreground">Calendário de publicação por cliente.</p>
+          </div>
+        )}
+
         <div className="flex w-fit items-center gap-1 rounded-2xl border border-border/30 bg-muted/20 p-2">
           <button type="button" onClick={() => setCursor((a) => new Date(a.getFullYear(), a.getMonth() - 1, 1))} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg hover:bg-muted">
             <ChevronLeft className="h-3.5 w-3.5" />
@@ -218,49 +465,102 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
             <ChevronRight className="h-3.5 w-3.5" />
           </button>
         </div>
+      </div>
 
-        <div className="flex gap-2 overflow-x-auto pb-2">
-          {(clientsQ.data ?? []).map((c) => {
+      {!clientId && (
+        <div className="flex items-center gap-1 rounded-full border border-border/30 bg-muted/20 p-1 w-fit">
+          {[
+            { key: "mine", label: "Meus", icon: UserRound, active: onlyMine, onClick: () => setOnlyMine((v) => !v) },
+            ...STATUS_FILTERS.map((f) => ({ ...f, active: activeStatusFilters.has(f.key), onClick: () => toggleStatusFilter(f.key) })),
+          ].map(({ key, label, icon: Icon, active, onClick }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={onClick}
+              title={label}
+              aria-label={label}
+              aria-pressed={active}
+              className={cn(
+                "flex h-6 shrink-0 items-center gap-1.5 rounded-full text-xs font-medium transition-all",
+                active
+                  ? "bg-primary px-2.5 text-primary-foreground shadow-glow"
+                  : "w-6 justify-center text-muted-foreground hover:bg-muted hover:text-foreground",
+              )}
+            >
+              <Icon className="h-3.5 w-3.5 shrink-0" />
+              {active && <span className="whitespace-nowrap">{label}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Client grid — hidden once a client is open, so the calendar takes over the full view */}
+      {!clientId && filteredClients.length === 0 && (
+        <div className="rounded-2xl border border-dashed border-border/40 p-10 text-center text-sm text-muted-foreground">
+          Nenhum cliente encontrado com esses filtros.
+        </div>
+      )}
+
+      {!clientId && filteredClients.length > 0 && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          {filteredClients.map((c) => {
             const cal = calendarByClientId.get(c.id);
             const statusMeta = cal ? CLIENT_CARD_STATUS[cal.status] ?? CLIENT_CARD_STATUS.em_montagem : null;
             const initial = c.name.trim().charAt(0).toUpperCase() || "?";
+            const responsible = responsibleByClientId.get(c.id);
             return (
               <button
                 key={c.id}
                 type="button"
                 onClick={() => setClientId(c.id)}
-                className={cn(
-                  "flex w-56 shrink-0 items-center gap-2.5 rounded-2xl border border-border/30 bg-card p-3 text-left shadow-sm transition-all hover:shadow-md",
-                  clientId === c.id && "border-primary/50 ring-1 ring-primary/30",
-                )}
+                className="group relative flex flex-col gap-4 rounded-3xl border border-border/40 bg-card p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-elevated"
               >
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-tr from-purple-500 via-pink-500 to-orange-400 text-sm font-bold text-white">
-                  {c.logo_url ? (
-                    <img src={c.logo_url} alt="" className="h-full w-full object-cover" />
-                  ) : (
-                    initial
-                  )}
-                </span>
-                <span className="flex min-w-0 flex-1 flex-col gap-1">
-                  <span className="truncate text-sm font-semibold">{c.name}</span>
-                  {statusMeta && (
-                    <span
-                      className={cn(
-                        "w-fit rounded-md px-2 py-0.5 text-[10px] font-semibold",
-                        statusMeta.className,
-                      )}
-                    >
-                      {statusMeta.label}
-                    </span>
-                  )}
-                </span>
+                <div className="flex items-start justify-between">
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-tr from-purple-500 via-pink-500 to-orange-400 text-sm font-bold text-white ring-2 ring-background">
+                    {c.logo_url ? (
+                      <img src={c.logo_url} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      initial
+                    )}
+                  </span>
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border/50 text-muted-foreground transition-all group-hover:border-primary/50 group-hover:bg-primary/5 group-hover:text-primary">
+                    <ArrowUpRight className="h-3.5 w-3.5" />
+                  </span>
+                </div>
+                <div className="flex min-w-0 flex-col gap-1">
+                  <span className="truncate text-base font-semibold leading-tight">{c.name}</span>
+                  {c.plan_name && <span className="truncate text-xs text-muted-foreground">{c.plan_name}</span>}
+                </div>
+                {statusMeta && (
+                  <span
+                    className={cn(
+                      "w-fit rounded-full px-2.5 py-1 text-[11px] font-semibold",
+                      statusMeta.className,
+                    )}
+                  >
+                    {statusMeta.label}
+                  </span>
+                )}
+                {responsible && (
+                  <span
+                    className="absolute bottom-3 right-3 flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-[10px] font-bold text-muted-foreground ring-2 ring-card"
+                    title={responsible.display_name}
+                  >
+                    {responsible.avatar_url ? (
+                      <img src={responsible.avatar_url} alt={responsible.display_name} className="h-full w-full object-cover" />
+                    ) : (
+                      responsible.display_name.trim().charAt(0).toUpperCase() || "?"
+                    )}
+                  </span>
+                )}
               </button>
             );
           })}
         </div>
-      </div>
+      )}
 
-      {/* Bottom: selected client's calendar, full width */}
+      {/* Selected client's calendar, full view */}
+      {clientId && (
       <div className="space-y-4">
       {calendar && (
         <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/30 bg-muted/20 p-3">
@@ -327,13 +627,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
         </div>
       )}
 
-      {!clientId && (
-        <div className="rounded-2xl border border-dashed border-border/40 p-10 text-center text-sm text-muted-foreground">
-          Selecione um cliente na lista ao lado para ver o calendário de publicação.
-        </div>
-      )}
-
-      {clientId && !calendar && (
+      {!calendar && (
         <div className="rounded-2xl border border-dashed border-border/40 p-10 text-center text-sm text-muted-foreground">
           Nenhum calendário para esse cliente neste ciclo ainda — ele é criado automaticamente assim que uma tarefa chegar na etapa "PDF".
         </div>
@@ -353,14 +647,18 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
               <DropZone id={UNSCHEDULED_ID} className="space-y-2 rounded-2xl border border-dashed border-border/40 p-3">
                 <p className="text-xs font-semibold uppercase text-muted-foreground">Publicações sem data</p>
                 <div className="flex flex-wrap gap-2">
-                  {(byDay.get(UNSCHEDULED_ID) ?? []).length === 0 && (
-                    <p className="text-xs text-muted-foreground/60">Nenhuma — arraste uma publicação aqui para tirar a data.</p>
-                  )}
-                  {(byDay.get(UNSCHEDULED_ID) ?? []).map((p) => (
-                    <div key={p.id} className="w-56">
-                      <DraggablePublication publication={p} thumbnailUrl={thumbnailFor(p.task_id)} onClick={() => setSelectedId(p.id)} />
-                    </div>
-                  ))}
+                  {(() => {
+                    const unscheduled = (byDay.get(UNSCHEDULED_ID) ?? []).filter((p) => !hiddenFromUnscheduled.has(p.task_id));
+                    return unscheduled.length === 0 ? (
+                      <p className="text-xs text-muted-foreground/60">Nenhuma — arraste uma publicação aqui para tirar a data.</p>
+                    ) : (
+                      unscheduled.map((p) => (
+                        <div key={p.id} className="w-28">
+                          <DraggablePublication publication={p} images={imagesFor(p)} onClick={() => setSelectedId(p.id)} isCapa={isCapaTask(p.task_id)} />
+                        </div>
+                      ))
+                    );
+                  })()}
                 </div>
               </DropZone>
 
@@ -396,7 +694,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
                             {format(d, "d")}
                           </div>
                           {dayPubs.map((p) => (
-                            <DraggablePublication key={p.id} publication={p} thumbnailUrl={thumbnailFor(p.task_id)} onClick={() => setSelectedId(p.id)} />
+                            <DraggablePublication key={p.id} publication={p} images={imagesFor(p)} onClick={() => setSelectedId(p.id)} isCapa={isCapaTask(p.task_id)} />
                           ))}
                         </DropZone>
                       );
@@ -404,32 +702,28 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
                   </div>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  {publications.length === 0 && (
-                    <p className="text-sm text-muted-foreground">Nenhuma publicação neste ciclo ainda.</p>
-                  )}
-                  {listOrder.map((p) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => setSelectedId(p.id)}
-                      className="flex w-full items-center gap-3 rounded-xl border border-border/30 bg-card px-3 py-2 text-left hover:bg-muted/40"
-                    >
-                      {thumbnailFor(p.task_id) ? (
-                        <img src={thumbnailFor(p.task_id)!} alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover" />
-                      ) : (
-                        <span className="h-10 w-10 shrink-0 rounded-lg bg-muted" />
-                      )}
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-medium">{CONTENT_TYPE_LABELS[p.content_type]}</span>
-                        <span className="block truncate text-xs text-muted-foreground">
-                          {p.publish_date ? format(new Date(`${p.publish_date}T00:00:00`), "dd/MM") : "sem data"}
-                          {p.publish_time ? ` às ${p.publish_time.slice(0, 5)}` : ""}
-                        </span>
-                      </span>
-                      <Badge variant="outline" className="shrink-0 rounded-full text-[10px]">{p.status.replace(/_/g, " ")}</Badge>
-                    </button>
-                  ))}
+                <div className="space-y-3">
+                  {(() => {
+                    const scheduled = listOrder.filter((p) => p.publish_date);
+                    if (scheduled.length === 0) {
+                      return (
+                        <p className="text-sm text-muted-foreground">
+                          {publications.length === 0 ? "Nenhuma publicação neste ciclo ainda." : "Nenhuma publicação com data ainda."}
+                        </p>
+                      );
+                    }
+                    return scheduled.map((p, idx) => (
+                      <ListPublicationCard
+                        key={p.id}
+                        publication={p}
+                        idx={idx}
+                        images={imagesFor(p)}
+                        onClick={() => setSelectedId(p.id)}
+                        isCapa={isCapaTask(p.task_id)}
+                        hasVideo={mediaFor(p.task_id).some((m) => m.type?.startsWith("video/"))}
+                      />
+                    ));
+                  })()}
                 </div>
               )}
             </DndContext>
@@ -500,10 +794,11 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
         </>
       )}
       </div>
+      )}
 
       <PublicationPreviewPanel
         publication={selected}
-        media={selected ? mediaFor(selected.task_id) : []}
+        media={selected ? (attachmentsQ.data?.get(selected.task_id) ?? []) : []}
         clientName={clientName}
         clientLogoUrl={clientLogoUrl}
         onClose={() => setSelectedId(null)}

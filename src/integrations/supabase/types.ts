@@ -3859,12 +3859,13 @@ export type Database = {
         | "concluido"
         | "bloqueado"
       publication_content_type:
-        | "imagem"
         | "carrossel"
         | "reel"
         | "video"
         | "story"
         | "outro"
+        | "post"
+        | "foto"
       publication_status:
         | "rascunho"
         | "aguardando_aprovacao"
@@ -4106,12 +4107,13 @@ export const Constants = {
         "bloqueado",
       ],
       publication_content_type: [
-        "imagem",
         "carrossel",
         "reel",
         "video",
         "story",
         "outro",
+        "post",
+        "foto",
       ],
       publication_status: [
         "rascunho",

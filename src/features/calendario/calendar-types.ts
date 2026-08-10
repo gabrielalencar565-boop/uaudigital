@@ -30,6 +30,7 @@ export interface CalendarPublication {
   client_note: string | null;
   client_feedback: string | null;
   client_responded_at: string | null;
+  cover_attachment_id: string | null;
   order_index: number;
   created_at: string;
   updated_at: string;
@@ -55,10 +56,11 @@ export const PUBLICATION_STATUS_LABELS: Record<PublicationStatus, string> = {
 };
 
 export const CONTENT_TYPE_LABELS: Record<PublicationContentType, string> = {
-  imagem: "Imagem",
   carrossel: "Carrossel",
-  reel: "Reel",
+  reel: "Reels",
   video: "Vídeo",
-  story: "Story",
+  story: "Stories",
   outro: "Outro",
+  post: "Post",
+  foto: "Foto",
 };

@@ -77,7 +77,7 @@ const NAV: NavEntry[] = [
 
 { key: "agenda_gestao", label: "Agenda", icon: CalendarDays },
 { key: "pauta_pessoas", label: "Pauta", icon: ClipboardList },
-{ key: "calendario_publicacao", label: "Calendário", icon: CalendarRange },
+{ key: "calendario_publicacao", label: "Cronograma", icon: CalendarRange },
 { key: "visao_do_dia", label: "Visão do Dia", icon: Eye },
 { key: "magic2", label: "Magic Number", icon: Target },
 { key: "desempenho", label: "The Best", icon: Trophy },
@@ -216,7 +216,7 @@ export function UauSidebarShell({
                           className={cn(
                             "h-10 gap-3 rounded-xl text-sidebar-foreground/80 transition-colors",
                             "hover:bg-sidebar-accent hover:text-sidebar-foreground",
-                            active && "bg-sidebar-accent text-sidebar-foreground font-semibold",
+                            active && "bg-button-sheen bg-[length:200%_200%] animate-shine text-white font-semibold shadow-glow",
                             isRecompensas && "relative overflow-hidden",
                             collapsed && "justify-center"
                           )}>
@@ -257,7 +257,7 @@ export function UauSidebarShell({
                             }}
                             className={cn(
                               "h-10 gap-3 rounded-xl text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors flex-1",
-                              hasActiveChild && "bg-sidebar-accent text-sidebar-foreground font-semibold",
+                              hasActiveChild && "bg-button-sheen bg-[length:200%_200%] animate-shine text-white font-semibold shadow-glow",
                               collapsed && "justify-center"
                             )}>
                             <entry.icon className="h-[18px] w-[18px] shrink-0" />
@@ -288,7 +288,7 @@ export function UauSidebarShell({
                                   key={child.key}
                                   onClick={() => onTabChange(child.key)}
                                   className={cn("flex w-full items-center gap-2.5 px-2.5 py-2 text-sm text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground rounded-xl",
-                                  active && "bg-sidebar-accent text-sidebar-foreground font-medium"
+                                  active && "bg-button-sheen bg-[length:200%_200%] animate-shine text-white font-medium shadow-glow"
                                   )}>
                                     <child.icon className="h-4 w-4 shrink-0" />
                                     <span>{child.label}</span>
@@ -311,7 +311,7 @@ export function UauSidebarShell({
                     onClick={() => onTabChange("configuracoes")}
                     className={cn(
                       "inline-flex h-10 items-center gap-3 rounded-xl px-3 text-sidebar-foreground/70 transition hover:bg-sidebar-accent hover:text-sidebar-foreground",
-                      tab === "configuracoes" && "bg-sidebar-accent text-sidebar-foreground font-semibold"
+                      tab === "configuracoes" && "bg-button-sheen bg-[length:200%_200%] animate-shine text-white font-semibold shadow-glow"
                     )}
                     aria-label="Configurações"
                   >

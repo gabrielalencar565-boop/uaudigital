@@ -9,9 +9,9 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground shadow-sm hover:brightness-110 active:brightness-95",
+        default: "bg-button-sheen bg-[length:200%_200%] animate-shine text-primary-foreground shadow-sm hover:brightness-110 active:brightness-95",
         hero:
-          "bg-primary text-primary-foreground shadow-glow hover:brightness-110 active:brightness-95",
+          "bg-button-sheen bg-[length:200%_200%] animate-shine text-primary-foreground shadow-glow hover:brightness-110 active:brightness-95",
         brand:
           "bg-brand text-white shadow-glow hover:brightness-110 active:brightness-95",
         destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",

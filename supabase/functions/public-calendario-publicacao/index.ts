@@ -43,43 +43,69 @@ Deno.serve(async (req) => {
 
   try {
     if (action === "load") {
-      const { data: client } = await admin.from("clients").select("name").eq("id", calendar.client_id).maybeSingle();
+      const { data: client } = await admin.from("clients").select("name, logo_url").eq("id", calendar.client_id).maybeSingle();
 
       const { data: pubs } = await admin
         .from("calendar_publications")
-        .select("id, task_id, title, content_type, caption, publish_date, publish_time, status, client_note, client_feedback, order_index")
+        .select("id, task_id, title, content_type, caption, publish_date, publish_time, status, client_note, client_feedback, order_index, cover_attachment_id")
         .eq("calendar_id", calendar.id)
         .neq("status", "cancelada")
         .order("order_index", { ascending: true });
 
       const taskIds = [...new Set((pubs ?? []).map((p: any) => p.task_id))];
-      const byTask = new Map<string, { url: string; type: string | null }[]>();
+      const byTask = new Map<string, { id: string; url: string; type: string | null }[]>();
       if (taskIds.length > 0) {
         const { data: atts } = await admin
           .from("pm_attachments")
-          .select("task_id, public_url, file_type, order_index")
+          .select("id, task_id, public_url, file_type, order_index")
           .in("task_id", taskIds)
           .order("order_index", { ascending: true });
         for (const a of (atts ?? []) as any[]) {
           if (!a.public_url) continue;
           const list = byTask.get(a.task_id) ?? [];
-          list.push({ url: a.public_url, type: a.file_type });
+          list.push({ id: a.id, url: a.public_url, type: a.file_type });
           byTask.set(a.task_id, list);
         }
       }
 
+      // A cover_attachment_id can point at an attachment from a *different* task (e.g.
+      // chosen from a sibling "Capa" task during the PDF stage), so it may not be in
+      // byTask at all. Fetch any such covers separately so they still resolve below.
+      const coverIds = [...new Set((pubs ?? []).map((p: any) => p.cover_attachment_id).filter(Boolean))];
+      const coverById = new Map<string, { id: string; url: string; type: string | null }>();
+      if (coverIds.length > 0) {
+        const { data: coverAtts } = await admin
+          .from("pm_attachments")
+          .select("id, public_url, file_type")
+          .in("id", coverIds);
+        for (const a of (coverAtts ?? []) as any[]) {
+          if (a.public_url) coverById.set(a.id, { id: a.id, url: a.public_url, type: a.file_type });
+        }
+      }
+
+      // Puts the publication's chosen cover attachment first, so the public page's
+      // existing "just show media[0]" logic picks it up with no changes on its side.
+      // The `id` is stripped afterward — it's only needed to locate the cover here.
       return json({
         clientName: client?.name ?? "Cliente",
+        clientLogoUrl: client?.logo_url ?? null,
         calendar: {
           cycleStart: calendar.cycle_start,
           cycleEnd: calendar.cycle_end,
           status: calendar.status,
           updatedAt: calendar.updated_at,
         },
-        publications: (pubs ?? []).map(({ task_id, ...p }: any) => ({
-          ...p,
-          media: byTask.get(task_id) ?? [],
-        })),
+        publications: (pubs ?? []).map(({ task_id, cover_attachment_id, ...p }: any) => {
+          const media = byTask.get(task_id) ?? [];
+          const idx = cover_attachment_id ? media.findIndex((m) => m.id === cover_attachment_id) : -1;
+          let ordered = media;
+          if (idx > 0) {
+            ordered = [media[idx], ...media.slice(0, idx), ...media.slice(idx + 1)];
+          } else if (idx === -1 && cover_attachment_id && coverById.has(cover_attachment_id)) {
+            ordered = [coverById.get(cover_attachment_id)!, ...media];
+          }
+          return { ...p, media: ordered.map(({ id, ...m }) => m) };
+        }),
       });
     }
 
