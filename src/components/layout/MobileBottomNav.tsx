@@ -102,8 +102,8 @@ export function MobileBottomNav({ tab, onTabChange, isAdmin }: Props) {
           style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 5.5rem)" }}
         >
           <div
-            className="pointer-events-auto mx-4 flex items-center gap-1.5 overflow-x-auto rounded-full px-2 py-1.5 shadow-lg backdrop-blur-md no-scrollbar"
-            style={{ background: "hsla(263, 60%, 35%, 0.85)" }}
+            className="pointer-events-auto mx-4 flex items-center gap-1.5 overflow-x-auto rounded-full px-2 py-1.5 shadow-lg backdrop-blur-md dark:border dark:border-white/10 no-scrollbar"
+            style={{ background: "var(--mobilenav-subbar-background)" }}
           >
             {currentSubTabs.map((sub) => {
               const isActive = tab === sub.key;
@@ -114,7 +114,7 @@ export function MobileBottomNav({ tab, onTabChange, isAdmin }: Props) {
                   className={cn(
                     "flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all whitespace-nowrap",
                     isActive
-                      ? "bg-white/25 text-white"
+                      ? "bg-white/25 text-white dark:bg-button-sheen dark:shadow-glow"
                       : "text-white/60 hover:text-white/90 active:scale-95"
                   )}
                 >
@@ -133,8 +133,8 @@ export function MobileBottomNav({ tab, onTabChange, isAdmin }: Props) {
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
         <div
-          className="pointer-events-auto mx-4 flex h-16 w-[calc(100%-2rem)] items-center justify-around rounded-full px-2 shadow-2xl"
-          style={{ background: "hsl(263 70% 50%)" }}
+          className="pointer-events-auto mx-4 flex h-16 w-[calc(100%-2rem)] items-center justify-around rounded-full px-2 shadow-2xl backdrop-blur-xl dark:border dark:border-white/10"
+          style={{ background: "var(--mobilenav-background)" }}
         >
           {filteredBottomTabs.map((item) => {
             const active = activeKey === item.key;
@@ -147,7 +147,7 @@ export function MobileBottomNav({ tab, onTabChange, isAdmin }: Props) {
                 className={cn(
                   "flex flex-col items-center justify-center gap-0.5 rounded-full px-3 py-1.5 transition-all min-w-[3rem]",
                   active || isExpanded
-                    ? "bg-white/20 text-white scale-105"
+                    ? "bg-white/20 text-white scale-105 dark:bg-button-sheen dark:shadow-glow"
                     : "text-white/60 hover:text-white/90 active:scale-95"
                 )}
                 aria-label={item.label}

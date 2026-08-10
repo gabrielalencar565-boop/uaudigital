@@ -85,7 +85,7 @@ All colors MUST be HSL.
     --radius: 0.75rem;
 
     --shadow-elevated: 0 18px 45px -24px hsl(228 36% 2% / 0.65);
-    --shadow-glow: 0 0 0 1px hsl(var(--primary) / 0.22), 0 16px 60px -18px hsl(var(--primary) / 0.35);
+    --shadow-glow: 0 0 0 1px hsl(263 70% 50% / 0.22), 0 16px 60px -18px hsl(263 70% 50% / 0.35);
 
     /* Light hero background (single identity for the whole app) */
     --gradient-hero: radial-gradient(900px circle at var(--spotlight-x, 30%) var(--spotlight-y, 30%), hsl(var(--brand) / 0.14), transparent 45%),
@@ -98,6 +98,18 @@ All colors MUST be HSL.
     --auth-gradient-from: 266 56% 39%;
     --auth-gradient-to: 44 100% 50%;
     --gradient-auth-title: linear-gradient(90deg, hsl(var(--auth-gradient-from)), hsl(var(--auth-gradient-to)));
+
+    /* Degradê reservado para pontos estratégicos: botões principais, itens ativos */
+    --gradient-button: linear-gradient(135deg, hsl(263 70% 55%), hsl(266 56% 39%));
+
+    /* Pódio (1º/2º lugar) — modo claro mantém dourado/prata metálico tradicional */
+    --gradient-podium-1: linear-gradient(135deg, #F5D76E, #D4A843, #FFFBE6, #C9973E, #F5D76E);
+    --gradient-podium-2: linear-gradient(135deg, #E8E8E8, #B8B8B8, #F5F5F5, #A8A8A8, #E8E8E8);
+    --gradient-podium-3: linear-gradient(135deg, #E2A76F, #C27E3A, #F0D0A8, #A86B2D, #E2A76F);
+
+    /* Mobile bottom nav — mantém o pill roxo sólido igual sempre foi no claro */
+    --mobilenav-background: hsl(263 70% 50%);
+    --mobilenav-subbar-background: hsla(263, 60%, 35%, 0.85);
 
     /* Sidebar — purple brand #6932c9 */
     --sidebar-background: 263 70% 50%;
@@ -131,15 +143,15 @@ All colors MUST be HSL.
   .dark {
     /* ── Premium SaaS Dark Theme ── */
     /* Deep charcoal, never pure black */
-    --background: 0 0% 9.4%;
+    --background: 0 0% 7%;
     --foreground: 220 20% 93%;
 
     /* Cards: lighter layer for depth — neutral black, no blue tint */
-    --card: 0 0% 10%;
+    --card: 0 0% 10.5%;
     --card-foreground: 0 0% 93%;
 
     /* Popovers: slightly elevated — neutral black, no blue tint */
-    --popover: 0 0% 11%;
+    --popover: 0 0% 12%;
     --popover-foreground: 0 0% 93%;
 
     /* Primary: vibrant purple */
@@ -185,16 +197,20 @@ All colors MUST be HSL.
     --chart-4: 40 90% 62%;
     --chart-5: 350 90% 64%;
 
-    /* Sidebar — same purple as light mode */
-    --sidebar-background: 263 70% 50%;
-    --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 0 0% 100%;
-    --sidebar-primary-foreground: 263 70% 50%;
-    --sidebar-accent: 263 70% 42%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 263 70% 38%;
-    --sidebar-ring: 0 0% 100%;
-    --sidebar: 263 70% 50%;
+    /* Mobile bottom nav — mesmo tratamento preto premium da sidebar; roxo só no item ativo */
+    --mobilenav-background: hsla(0, 0%, 7%, 0.92);
+    --mobilenav-subbar-background: hsla(0, 0%, 9%, 0.92);
+
+    /* Sidebar — preto premium; roxo fica reservado ao item ativo (ponto estratégico) */
+    --sidebar-background: 0 0% 5%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 253 90% 68%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 14%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 0 0% 15%;
+    --sidebar-ring: 253 90% 68%;
+    --sidebar: 0 0% 5%;
 
     /* Shadows – soft depth, not harsh */
     --shadow-2xs: 0 1px 2px 0px hsl(0 0% 0% / 0.15);
@@ -213,6 +229,14 @@ All colors MUST be HSL.
       radial-gradient(800px circle at 80% 20%, hsl(220 80% 60% / 0.04), transparent 40%),
       linear-gradient(180deg, hsl(var(--background)), hsl(225 22% 5%));
     --gradient-panel: linear-gradient(135deg, hsl(253 90% 68% / 0.04), hsl(220 80% 60% / 0.03));
+    --gradient-button: linear-gradient(135deg, hsl(253 90% 68%), hsl(263 70% 42%));
+
+    /* Pódio (1º/2º lugar) — dourado/prata metálico não combina com dark premium;
+       1º ganha o degradê vibrante de destaque (laranja→rosa→roxo da marca),
+       2º vira um cinza-grafite sóbrio, igual aos demais cards do tema. */
+    --gradient-podium-1: var(--gradient-button);
+    --gradient-podium-2: linear-gradient(135deg, hsl(0 0% 16%), hsl(0 0% 11%));
+    --gradient-podium-3: linear-gradient(135deg, hsl(0 0% 16%), hsl(0 0% 11%));
 
     /* Stage colors (dark — softer, translucent feel) */
     --stage-planejamento: 214 80% 58%;

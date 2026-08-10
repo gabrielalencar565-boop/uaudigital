@@ -58,19 +58,92 @@ export function useTaskAttachmentsMap(taskIds: string[]) {
     queryFn: async () => {
       const { data, error } = await sb
         .from("pm_attachments")
-        .select("task_id, public_url, file_type, order_index")
+        .select("id, task_id, public_url, file_type, order_index")
         .in("task_id", taskIds)
         .order("order_index", { ascending: true })
         .order("created_at", { ascending: true });
       if (error) throw error;
-      const map = new Map<string, { url: string; type: string | null }[]>();
-      for (const row of (data ?? []) as { task_id: string; public_url: string | null; file_type: string | null }[]) {
+      const map = new Map<string, { id: string; url: string; type: string | null }[]>();
+      for (const row of (data ?? []) as { id: string; task_id: string; public_url: string | null; file_type: string | null }[]) {
         if (!row.public_url) continue;
         const prev = map.get(row.task_id) ?? [];
-        prev.push({ url: row.public_url, type: row.file_type });
+        prev.push({ id: row.id, url: row.public_url, type: row.file_type });
         map.set(row.task_id, prev);
       }
       return map;
+    },
+  });
+}
+
+// Tasks tagged "Capa" (see useCoverCandidates) are just holding-cells for cover art —
+// their own content_type is 'outro' by default, but the calendar cards should badge
+// them as "Capa" instead so they're recognizable at a glance among real posts.
+export function useCapaTaskIds(taskIds: string[]) {
+  return useQuery({
+    enabled: taskIds.length > 0,
+    queryKey: ["capa_task_ids", taskIds],
+    queryFn: async (): Promise<Set<string>> => {
+      const { data, error } = await sb.from("pm_tasks").select("id, tags").in("id", taskIds);
+      if (error) throw error;
+      const capaIds = ((data ?? []) as { id: string; tags: string[] | null }[])
+        .filter((t) => (t.tags ?? []).some((tag) => tag.split(":")[0].trim().toLowerCase() === "capa"))
+        .map((t) => t.id);
+      return new Set(capaIds);
+    },
+  });
+}
+
+// A publication's cover_attachment_id can point at an attachment that belongs to a
+// *different* task (e.g. picked from a sibling "Capa" task during the PDF stage — see
+// useCoverCandidates below), so it won't be in that task's own useTaskAttachmentsMap
+// entry. This fetches those specific attachments directly by id so mediaFor() can still
+// resolve and show them as the thumbnail everywhere.
+export function useCoverAttachmentsById(ids: string[]) {
+  return useQuery({
+    enabled: ids.length > 0,
+    queryKey: ["cover_attachments_by_id", ids],
+    queryFn: async () => {
+      const { data, error } = await sb.from("pm_attachments").select("id, public_url, file_type").in("id", ids);
+      if (error) throw error;
+      const map = new Map<string, { id: string; url: string; type: string | null }>();
+      for (const row of (data ?? []) as { id: string; public_url: string | null; file_type: string | null }[]) {
+        if (!row.public_url) continue;
+        map.set(row.id, { id: row.id, url: row.public_url, type: row.file_type });
+      }
+      return map;
+    },
+  });
+}
+
+// During the "PDF" production stage, the design team often splits a batch into sibling
+// tasks under one parent (one per post + a dedicated one tagged "Capa" holding candidate
+// cover art). This surfaces that sibling's image attachments as extra cover options,
+// alongside the post's own attachments, when picking a Reel's cover.
+export function useCoverCandidates(taskId: string | null) {
+  return useQuery({
+    enabled: !!taskId,
+    queryKey: ["cover_candidates", taskId],
+    queryFn: async (): Promise<{ id: string; url: string; type: string | null }[]> => {
+      const { data: task } = await sb.from("pm_tasks").select("parent_task_id").eq("id", taskId).maybeSingle();
+      if (!task?.parent_task_id) return [];
+
+      const { data: siblings } = await sb
+        .from("pm_tasks")
+        .select("id, tags")
+        .eq("parent_task_id", task.parent_task_id);
+      const capaTaskIds = ((siblings ?? []) as { id: string; tags: string[] | null }[])
+        .filter((s) => s.id !== taskId && (s.tags ?? []).some((t) => t.split(":")[0].trim().toLowerCase() === "capa"))
+        .map((s) => s.id);
+      if (capaTaskIds.length === 0) return [];
+
+      const { data: atts } = await sb
+        .from("pm_attachments")
+        .select("id, public_url, file_type")
+        .in("task_id", capaTaskIds)
+        .order("created_at", { ascending: true });
+      return ((atts ?? []) as { id: string; public_url: string | null; file_type: string | null }[])
+        .filter((a) => a.public_url && a.file_type?.startsWith("image/"))
+        .map((a) => ({ id: a.id, url: a.public_url as string, type: a.file_type }));
     },
   });
 }

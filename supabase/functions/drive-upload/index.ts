@@ -36,6 +36,25 @@ function escapeDriveQueryValue(value: string): string {
   return value.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
 }
 
+async function findOrCreateFolder(accessToken: string, parentId: string, name: string): Promise<string> {
+  const q = `name='${escapeDriveQueryValue(name)}' and mimeType='application/vnd.google-apps.folder' and '${parentId}' in parents and trashed=false`;
+
+  const searchRes = await fetch(
+    `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name)`,
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  );
+  const searchData = await searchRes.json();
+  if (searchData.files?.length > 0) return searchData.files[0].id;
+
+  const createRes = await fetch("https://www.googleapis.com/drive/v3/files?fields=id", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ name, mimeType: "application/vnd.google-apps.folder", parents: [parentId] }),
+  });
+  if (!createRes.ok) throw new Error(`folder create failed: ${await createRes.text()}`);
+  return (await createRes.json()).id;
+}
+
 async function findOrCreateClientFolder(accessToken: string, admin: ReturnType<typeof createClient>, clientId: string): Promise<string> {
   const { data: existing } = await admin
     .from("drive_client_folders")
@@ -46,28 +65,39 @@ async function findOrCreateClientFolder(accessToken: string, admin: ReturnType<t
 
   const { data: client } = await admin.from("clients").select("name").eq("id", clientId).maybeSingle();
   const name = client?.name || clientId;
-  const q = `name='${escapeDriveQueryValue(name)}' and mimeType='application/vnd.google-apps.folder' and '${ROOT_FOLDER_ID}' in parents and trashed=false`;
-
-  const searchRes = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name)`,
-    { headers: { Authorization: `Bearer ${accessToken}` } },
-  );
-  const searchData = await searchRes.json();
-  let folderId: string;
-  if (searchData.files?.length > 0) {
-    folderId = searchData.files[0].id;
-  } else {
-    const createRes = await fetch("https://www.googleapis.com/drive/v3/files?fields=id", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ name, mimeType: "application/vnd.google-apps.folder", parents: [ROOT_FOLDER_ID] }),
-    });
-    if (!createRes.ok) throw new Error(`folder create failed: ${await createRes.text()}`);
-    folderId = (await createRes.json()).id;
-  }
+  const folderId = await findOrCreateFolder(accessToken, ROOT_FOLDER_ID, name);
 
   await admin.from("drive_client_folders").upsert({ client_id: clientId, drive_folder_id: folderId });
   return folderId;
+}
+
+const MONTH_NAMES_PT = [
+  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+];
+
+// Resolves the Drive folder a new attachment should land in: Cliente / Ano / Mês / Vídeos|Posts.
+// The date is the publication's scheduled date (calendar_publications.publish_date) when the
+// task has one; most tasks predate the Cronograma feature and won't, so this falls back to
+// today's date.
+async function resolveTargetFolder(accessToken: string, admin: ReturnType<typeof createClient>, taskId: string, mimeType: string): Promise<string> {
+  const { data: task } = await admin.from("pm_tasks").select("client_id").eq("id", taskId).maybeSingle();
+  if (!task?.client_id) return ROOT_FOLDER_ID;
+
+  const clientFolderId = await findOrCreateClientFolder(accessToken, admin, task.client_id);
+
+  const { data: pub } = await admin
+    .from("calendar_publications")
+    .select("publish_date")
+    .eq("task_id", taskId)
+    .maybeSingle();
+  const date = pub?.publish_date ? new Date(`${pub.publish_date}T00:00:00Z`) : new Date();
+  const yearFolderId = await findOrCreateFolder(accessToken, clientFolderId, String(date.getUTCFullYear()));
+  const monthName = `${String(date.getUTCMonth() + 1).padStart(2, "0")} ${MONTH_NAMES_PT[date.getUTCMonth()]}`;
+  const monthFolderId = await findOrCreateFolder(accessToken, yearFolderId, monthName);
+
+  const typeName = mimeType.startsWith("video/") ? "Vídeos" : "Posts";
+  return findOrCreateFolder(accessToken, monthFolderId, typeName);
 }
 
 async function uploadToDrive(accessToken: string, fileName: string, mimeType: string, bytes: Uint8Array, parentId: string): Promise<string> {
@@ -108,6 +138,26 @@ function randomToken(): string {
   return Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+// Opens a Google Drive resumable upload session and returns the session URI the
+// browser should PUT bytes to directly — used for video, where funnelling the
+// whole file through this Edge Function (memory/time limited) would be unsafe.
+async function initResumableUpload(accessToken: string, fileName: string, mimeType: string, fileSize: number, parentId: string): Promise<string> {
+  const res = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json; charset=UTF-8",
+      "X-Upload-Content-Type": mimeType,
+      "X-Upload-Content-Length": String(fileSize),
+    },
+    body: JSON.stringify({ name: fileName, parents: [parentId] }),
+  });
+  if (!res.ok) throw new Error(`resumable init failed: ${await res.text()}`);
+  const location = res.headers.get("Location");
+  if (!location) throw new Error("resumable init: missing Location header");
+  return location;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -138,6 +188,61 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
+    // Streaming relay (video): the browser POSTs the raw file as the request body
+    // (metadata in the query string, since a streamed binary body can't carry JSON
+    // alongside it) and this function pipes req.body straight into the outgoing PUT
+    // to Drive's resumable session — at no point is the whole file held in memory,
+    // so file size isn't bounded by this function's memory ceiling. A true
+    // browser→Drive direct upload was tried first but Google's resumable endpoint
+    // is CORS-locked to this OAuth client's registered origins (none registered),
+    // so the browser can only ever reach it through here.
+    const url = new URL(req.url);
+    if (url.searchParams.get("mode") === "stream") {
+      const taskId = url.searchParams.get("task_id") ?? "";
+      const fileName = url.searchParams.get("file_name") ?? "upload.bin";
+      const mimeType = url.searchParams.get("mime_type") || "application/octet-stream";
+      const fileSize = Number(url.searchParams.get("file_size") ?? "0");
+
+      if (!fileSize || !req.body) {
+        return new Response(JSON.stringify({ error: "file_size required and body must be present" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const accessToken = await getAccessToken();
+      const parentId = taskId
+        ? await resolveTargetFolder(accessToken, admin, taskId, mimeType)
+        : ROOT_FOLDER_ID;
+
+      const uploadUrl = await initResumableUpload(accessToken, fileName, mimeType, fileSize, parentId);
+
+      const putRes = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": mimeType, "Content-Length": String(fileSize) },
+        body: req.body,
+        // Required by the Fetch spec whenever the body is a stream instead of a
+        // fully-buffered value — tells the runtime not to wait for it to finish
+        // before starting the request.
+        duplex: "half",
+      } as RequestInit);
+
+      if (!putRes.ok) {
+        return new Response(JSON.stringify({ error: `drive upload failed: ${await putRes.text()}` }), {
+          status: 502,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const driveFile = await putRes.json();
+      const token = randomToken();
+      const publicUrl = `${PROXY_BASE}/${driveFile.id}?t=${token}`;
+      return new Response(
+        JSON.stringify({ drive_file_id: driveFile.id, public_url: publicUrl, access_token: token }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // ── Small-file path (images/PDFs): whole file relayed through this function, unchanged ──
     const formData = await req.formData();
     const file = formData.get("file");
     const taskId = formData.get("task_id");
@@ -149,17 +254,14 @@ Deno.serve(async (req) => {
     }
 
     const accessToken = await getAccessToken();
+    const mimeType = file.type || "application/octet-stream";
 
-    let parentId = ROOT_FOLDER_ID;
-    if (typeof taskId === "string" && taskId) {
-      const { data: task } = await admin.from("pm_tasks").select("client_id").eq("id", taskId).maybeSingle();
-      if (task?.client_id) {
-        parentId = await findOrCreateClientFolder(accessToken, admin, task.client_id);
-      }
-    }
+    const parentId = typeof taskId === "string" && taskId
+      ? await resolveTargetFolder(accessToken, admin, taskId, mimeType)
+      : ROOT_FOLDER_ID;
 
     const bytes = new Uint8Array(await file.arrayBuffer());
-    const fileId = await uploadToDrive(accessToken, file.name, file.type || "application/octet-stream", bytes, parentId);
+    const fileId = await uploadToDrive(accessToken, file.name, mimeType, bytes, parentId);
 
     const token = randomToken();
     const publicUrl = `${PROXY_BASE}/${fileId}?t=${token}`;

@@ -158,7 +158,7 @@ export function TaskSearchDropdown({ onSelectTask }: TaskSearchDropdownProps) {
         onChange={(e) => setSearch(e.target.value)}
         onFocus={() => setFocused(true)}
         placeholder="Pesquisar tarefa..."
-        className="h-8 w-56 rounded-full border border-border/50 bg-muted/30 pl-9 pr-14 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/30 transition"
+        className="h-8 w-56 rounded-full border border-border/50 bg-muted/30 pl-9 pr-14 text-sm text-foreground placeholder:text-muted-foreground transition focus:outline-none focus:border-primary/40 focus:bg-background/60 focus:shadow-glow"
       />
       {search ? (
         <button

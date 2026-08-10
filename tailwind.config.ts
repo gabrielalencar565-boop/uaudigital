@@ -114,7 +114,8 @@ export default {
   		},
   		backgroundImage: {
   			'hero-sheen': 'var(--gradient-hero)',
-  			'panel-sheen': 'var(--gradient-panel)'
+  			'panel-sheen': 'var(--gradient-panel)',
+  			'button-sheen': 'var(--gradient-button)'
   		},
   		fontFamily: {
   			sans: [

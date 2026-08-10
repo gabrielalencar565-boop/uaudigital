@@ -10,32 +10,35 @@ function getRankDisplay(rank: number | null, medal: string | null): {icon: strin
 }
 
 function getRankStyle(rank: number | null) {
+  // Gradientes vêm de tokens (--gradient-podium-1/2) que já trocam sozinhos por tema:
+  // claro mantém dourado/prata/bronze metálico; escuro vira roxo (1º) ou grafite (2º/3º),
+  // consistente com o pódio de "The Best".
   if (rank === 1)
     return {
-      gradient: "linear-gradient(135deg, #F5D76E, #D4A843, #FFFBE6, #C9973E, #F5D76E)",
+      gradient: "var(--gradient-podium-1)",
       border: "rgba(212,168,67,0.5)",
       shadow: "0 4px 20px -4px rgba(212,168,67,0.3)",
       hoverShadow: "0 12px 32px -4px rgba(212,168,67,0.5), 0 0 20px -2px rgba(245,215,110,0.3)",
       glow: "rgba(245,215,110,0.4)",
-      text: "text-amber-900",
+      text: "text-amber-900 dark:text-white",
     };
   if (rank === 2)
     return {
-      gradient: "linear-gradient(135deg, #E8E8E8, #B8B8B8, #F5F5F5, #A8A8A8, #E8E8E8)",
+      gradient: "var(--gradient-podium-2)",
       border: "rgba(180,180,180,0.5)",
       shadow: "0 4px 20px -4px rgba(160,160,160,0.25)",
       hoverShadow: "0 12px 32px -4px rgba(160,160,160,0.45), 0 0 20px -2px rgba(220,220,220,0.3)",
       glow: "rgba(200,200,200,0.4)",
-      text: "text-gray-700",
+      text: "text-gray-700 dark:text-foreground",
     };
   if (rank === 3)
     return {
-      gradient: "linear-gradient(135deg, #E2A76F, #C27E3A, #F0D0A8, #A86B2D, #E2A76F)",
+      gradient: "var(--gradient-podium-3)",
       border: "rgba(194,126,58,0.4)",
       shadow: "0 4px 20px -4px rgba(178,111,47,0.25)",
       hoverShadow: "0 12px 32px -4px rgba(178,111,47,0.45), 0 0 20px -2px rgba(226,167,111,0.3)",
       glow: "rgba(226,167,111,0.4)",
-      text: "text-orange-900",
+      text: "text-orange-900 dark:text-foreground",
     };
   return null;
 }

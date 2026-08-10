@@ -265,21 +265,27 @@ const TOTAL_POINTS = 27;
  
   const podiumStyle = (idx: number) => {
     if (idx === 0) return {
-      background: "linear-gradient(135deg, #F5D76E, #D4A843, #FFFBE6, #C9973E, #F5D76E)",
+      background: "var(--gradient-podium-1)",
       backgroundSize: "300% 300%",
       animation: "gradientFlow 20s ease-in-out infinite",
-      border: "1px solid rgba(212,168,67,0.5)",
-      boxShadow: "0 4px 20px -4px rgba(212,168,67,0.3)",
+      border: "1px solid hsl(var(--primary) / 0.35)",
+      boxShadow: "var(--shadow-glow)",
     };
     if (idx === 1) return {
-      background: "linear-gradient(135deg, #E8E8E8, #B8B8B8, #F5F5F5, #A8A8A8, #E8E8E8)",
+      background: "var(--gradient-podium-2)",
       backgroundSize: "300% 300%",
       animation: "gradientFlow 20s ease-in-out infinite",
-      border: "1px solid rgba(180,180,180,0.5)",
-      boxShadow: "0 4px 20px -4px rgba(160,160,160,0.25)",
+      border: "1px solid hsl(var(--border))",
+      boxShadow: "var(--shadow-elevated)",
     };
     return {};
   };
+
+  // Texto escuro específico p/ pódio no tema claro: os fundos dourado/prata são claros,
+  // então as cores padrão do app (cinza claro/branco) ficam ilegíveis ali. No tema escuro
+  // os fundos do pódio (degradê vibrante + grafite) já combinam com o texto claro padrão.
+  const podiumTextClass = (idx: number) => (idx === 0 ? "text-amber-900 dark:text-white" : idx === 1 ? "text-gray-700 dark:text-foreground" : "text-foreground");
+  const podiumMutedTextClass = (idx: number) => (idx === 0 ? "text-amber-900/60 dark:text-white/70" : idx === 1 ? "text-gray-700/60 dark:text-muted-foreground" : "text-muted-foreground");
 
   const podiumMedal = (idx: number) => {
     if (idx === 0) return "🥇";
@@ -355,7 +361,7 @@ const TOTAL_POINTS = 27;
                         </div>
                       </div>
 
-                      <div className={`${isFirst ? "text-6xl" : "text-5xl"} font-semibold leading-none tracking-tight text-muted-foreground`}>
+                      <div className={`${isFirst ? "text-6xl" : "text-5xl"} font-semibold leading-none tracking-tight ${podiumMutedTextClass(realIdx)}`}>
                         {position}
                       </div>
 
@@ -364,10 +370,10 @@ const TOTAL_POINTS = 27;
                       </div>
 
                       <div className="mt-4 space-y-2">
-                        <p className={`${isFirst ? "text-2xl" : "text-xl"} font-semibold`}>{member?.display_name ?? row.user_id}</p>
+                        <p className={`${isFirst ? "text-2xl" : "text-xl"} font-semibold ${podiumTextClass(realIdx)}`}>{member?.display_name ?? row.user_id}</p>
                         <div className="flex items-baseline justify-center gap-2">
-                          <AnimatedNumber value={row.total} className={`${isFirst ? "text-5xl" : "text-4xl"} font-bold text-primary`} />
-                          <span className="text-base text-muted-foreground">pts</span>
+                          <AnimatedNumber value={row.total} className={`${isFirst ? "text-5xl" : "text-4xl"} font-bold ${realIdx === 0 ? "text-primary dark:text-white" : "text-primary"}`} />
+                          <span className={`text-base ${podiumMutedTextClass(realIdx)}`}>pts</span>
                         </div>
                       </div>
                     </CardContent>

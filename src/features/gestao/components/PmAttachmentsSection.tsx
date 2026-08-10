@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
-import { useUploadPmAttachment } from "../hooks/use-pm-data";
+import { useUploadPmAttachment, useUploadPmAttachmentResumable } from "../hooks/use-pm-data";
 import type { PmAttachment } from "../pm-types";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -49,6 +49,44 @@ async function renderPdfThumbnail(url: string, targetWidth = 260): Promise<strin
   const ctx = canvas.getContext("2d")!;
   await page.render({ canvasContext: ctx, viewport }).promise;
   return canvas.toDataURL("image/jpeg", 0.82);
+}
+
+/** Extracts an early frame from a local video file as a small JPEG blob, for use as a poster thumbnail. */
+async function renderVideoPoster(file: File, targetWidth = 260): Promise<Blob> {
+  const url = URL.createObjectURL(file);
+  try {
+    const video = document.createElement("video");
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = "auto";
+    video.src = url;
+
+    await new Promise<void>((resolve, reject) => {
+      video.onloadedmetadata = () => resolve();
+      video.onerror = () => reject(new Error("falha ao carregar vídeo"));
+    });
+
+    // Skip pure-black opening frames on very short clips; clamp to the clip's own duration.
+    video.currentTime = Math.min(1, (video.duration || 0) * 0.1);
+
+    await new Promise<void>((resolve, reject) => {
+      video.onseeked = () => resolve();
+      video.onerror = () => reject(new Error("falha ao buscar frame do vídeo"));
+    });
+
+    const scale = targetWidth / video.videoWidth;
+    const canvas = document.createElement("canvas");
+    canvas.width = targetWidth;
+    canvas.height = Math.round(video.videoHeight * scale);
+    const ctx = canvas.getContext("2d")!;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.82));
+    if (!blob) throw new Error("falha ao gerar miniatura do vídeo");
+    return blob;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 function initials(n: string) {
@@ -177,6 +215,7 @@ function AttachmentThumbnail({ url, name, isKnownImage, isPdf, onClick }: { url:
 
 export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCover, currentCoverUrl }: Props) {
   const upload = useUploadPmAttachment();
+  const uploadResumable = useUploadPmAttachmentResumable();
   const queryClient = useQueryClient();
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
@@ -189,21 +228,40 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
   const doUpload = useCallback(async (file: File, category: AttachmentCategory) => {
     if (file.size > 1024 * 1024 * 1024) { toast.error("Arquivo muito grande (máx 1GB)"); return; }
 
+    const isVideo = file.type.startsWith("video/");
     const uploadEntry: UploadingFile = { name: file.name, size: file.size, progress: 0, category };
     setUploadingFiles(prev => [...prev, uploadEntry]);
 
-    const interval = setInterval(() => {
-      setUploadingFiles(prev =>
-        prev.map(f => f.name === file.name && f.category === category && f.progress < 90
-          ? { ...f, progress: Math.min(f.progress + (file.size > 10 * 1024 * 1024 ? 2 : 15), 90) }
-          : f
-        )
-      );
-    }, 300);
+    // Video reports real progress from the direct-to-Drive PUT; everything else keeps
+    // the simulated ramp (the whole request/response happens too fast to sample).
+    let interval: ReturnType<typeof setInterval> | null = null;
+    if (!isVideo) {
+      interval = setInterval(() => {
+        setUploadingFiles(prev =>
+          prev.map(f => f.name === file.name && f.category === category && f.progress < 90
+            ? { ...f, progress: Math.min(f.progress + (file.size > 10 * 1024 * 1024 ? 2 : 15), 90) }
+            : f
+          )
+        );
+      }, 300);
+    }
 
     try {
-      await upload.mutateAsync({ task_id: taskId, file, category });
-      clearInterval(interval);
+      if (isVideo) {
+        await uploadResumable.mutateAsync({
+          task_id: taskId,
+          file,
+          category,
+          onProgress: (pct) => {
+            setUploadingFiles(prev =>
+              prev.map(f => f.name === file.name && f.category === category ? { ...f, progress: Math.min(pct, 99) } : f)
+            );
+          },
+        });
+      } else {
+        await upload.mutateAsync({ task_id: taskId, file, category });
+      }
+      if (interval) clearInterval(interval);
       setUploadingFiles(prev =>
         prev.map(f => f.name === file.name && f.category === category ? { ...f, progress: 100 } : f)
       );
@@ -211,12 +269,23 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
         setUploadingFiles(prev => prev.filter(f => !(f.name === file.name && f.category === category)));
       }, 800);
       toast.success("Arquivo anexado!");
+
+      if (isVideo) {
+        try {
+          const posterBlob = await renderVideoPoster(file);
+          const posterName = `${file.name.replace(/\.[^.]+$/, "")}-poster.jpg`;
+          const posterFile = new File([posterBlob], posterName, { type: "image/jpeg" });
+          await upload.mutateAsync({ task_id: taskId, file: posterFile, category });
+        } catch (posterErr) {
+          console.error("[video-poster] falha ao gerar miniatura", posterErr);
+        }
+      }
     } catch (err: any) {
-      clearInterval(interval);
+      if (interval) clearInterval(interval);
       setUploadingFiles(prev => prev.filter(f => !(f.name === file.name && f.category === category)));
       toast.error(err?.message ?? "Erro ao enviar arquivo");
     }
-  }, [taskId, upload]);
+  }, [taskId, upload, uploadResumable]);
 
   const handleDeleteAttachment = async (att: PmAttachment) => {
     try {
@@ -224,6 +293,8 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
       if (storageErr) console.warn("Storage delete error:", storageErr);
       await sb.from("pm_attachments").delete().eq("id", att.id);
       queryClient.invalidateQueries({ queryKey: ["pm_attachments"] });
+      queryClient.invalidateQueries({ queryKey: ["pm_attachments_for_calendar"] });
+      queryClient.invalidateQueries({ queryKey: ["cover_candidates"] });
       toast.success("Anexo excluído!");
     } catch (err: any) {
       toast.error(err?.message ?? "Erro ao excluir anexo");
@@ -234,6 +305,8 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
     try {
       await sb.from("pm_attachments").update({ category: target }).eq("id", att.id);
       queryClient.invalidateQueries({ queryKey: ["pm_attachments"] });
+      queryClient.invalidateQueries({ queryKey: ["pm_attachments_for_calendar"] });
+      queryClient.invalidateQueries({ queryKey: ["cover_candidates"] });
       toast.success(target === "final" ? "Movido para Conteúdo Final" : "Movido para Materiais de Produção");
     } catch (err: any) {
       toast.error(err?.message ?? "Erro ao mover anexo");
@@ -260,6 +333,8 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
     try {
       await sb.from("pm_attachments").update({ file_name: trimmed }).eq("id", attId);
       queryClient.invalidateQueries({ queryKey: ["pm_attachments"] });
+      queryClient.invalidateQueries({ queryKey: ["pm_attachments_for_calendar"] });
+      queryClient.invalidateQueries({ queryKey: ["cover_candidates"] });
       toast.success("Nome atualizado!");
     } catch (err: any) {
       toast.error(err?.message ?? "Erro ao renomear");
