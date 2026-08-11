@@ -107,6 +107,14 @@ export function PmImageViewer({ images, initialIndex, open, onClose }: Props) {
               title={current.name}
               className="w-full h-full bg-white rounded"
             />
+          ) : /\.(mp4|mov|webm|avi|mkv)$/i.test(current.name) ? (
+            <video
+              key={current.url}
+              src={current.url}
+              controls
+              autoPlay
+              className="max-w-full max-h-full"
+            />
           ) : (
             <ViewerImage url={current.url} name={current.name} />
           )}

@@ -16,8 +16,30 @@ const REFRESH_TOKEN = Deno.env.get("GOOGLE_DRIVE_REFRESH_TOKEN")!;
 const ROOT_FOLDER_ID = Deno.env.get("GOOGLE_DRIVE_FOLDER_ID")!;
 const PROXY_BASE = `${Deno.env.get("SUPABASE_URL")}/functions/v1/drive-file-proxy`;
 
+// Control-plane calls (auth, folder search/create, resumable-session init) should
+// normally resolve in well under a second. When Google's API is slow or a request
+// just hangs, leaving them unbounded means the whole function silently sits there
+// until Supabase's own platform timeout kills it 150s+ later — which the browser
+// only ever sees as a bare "network error", with no clue what actually stalled.
+// A tight timeout here turns that into a fast, specific failure the client can
+// retry (see uploadWithRetry in PmAttachmentsSection.tsx) instead of a long hang.
+const CONTROL_CALL_TIMEOUT_MS = 20_000;
+
+async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs = CONTROL_CALL_TIMEOUT_MS): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } catch (e) {
+    if (controller.signal.aborted) throw new Error(`request to ${url} timed out after ${timeoutMs}ms`);
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function getAccessToken(): Promise<string> {
-  const res = await fetch("https://oauth2.googleapis.com/token", {
+  const res = await fetchWithTimeout("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
@@ -36,23 +58,50 @@ function escapeDriveQueryValue(value: string): string {
   return value.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
 }
 
-async function findOrCreateFolder(accessToken: string, parentId: string, name: string): Promise<string> {
+// resolveTargetFolder walks Cliente/Ano/Mês/Tipo for every single upload — without
+// caching that's 3 extra live Drive search-then-maybe-create round-trips (year, month,
+// type) on top of the client-folder lookup, every time. Under normal Drive API latency
+// that's a few seconds; under any slowness/rate-limiting it stacks up fast and has been
+// observed pushing requests past Supabase's function timeout (a video upload that hangs
+// here surfaces to the browser as a generic "network error during upload"). Caching each
+// (parent, name) -> folder id pair in drive_folder_cache means only the FIRST upload to a
+// given client/month/type pays for the live lookup; everything after is a single DB read.
+async function findOrCreateFolder(
+  accessToken: string,
+  admin: ReturnType<typeof createClient>,
+  parentId: string,
+  name: string,
+): Promise<string> {
+  const { data: cached } = await admin
+    .from("drive_folder_cache")
+    .select("drive_folder_id")
+    .eq("parent_id", parentId)
+    .eq("name", name)
+    .maybeSingle();
+  if (cached) return cached.drive_folder_id;
+
   const q = `name='${escapeDriveQueryValue(name)}' and mimeType='application/vnd.google-apps.folder' and '${parentId}' in parents and trashed=false`;
 
-  const searchRes = await fetch(
+  const searchRes = await fetchWithTimeout(
     `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name)`,
     { headers: { Authorization: `Bearer ${accessToken}` } },
   );
   const searchData = await searchRes.json();
-  if (searchData.files?.length > 0) return searchData.files[0].id;
+  let folderId: string;
+  if (searchData.files?.length > 0) {
+    folderId = searchData.files[0].id;
+  } else {
+    const createRes = await fetchWithTimeout("https://www.googleapis.com/drive/v3/files?fields=id", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ name, mimeType: "application/vnd.google-apps.folder", parents: [parentId] }),
+    });
+    if (!createRes.ok) throw new Error(`folder create failed: ${await createRes.text()}`);
+    folderId = (await createRes.json()).id;
+  }
 
-  const createRes = await fetch("https://www.googleapis.com/drive/v3/files?fields=id", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ name, mimeType: "application/vnd.google-apps.folder", parents: [parentId] }),
-  });
-  if (!createRes.ok) throw new Error(`folder create failed: ${await createRes.text()}`);
-  return (await createRes.json()).id;
+  await admin.from("drive_folder_cache").upsert({ parent_id: parentId, name, drive_folder_id: folderId });
+  return folderId;
 }
 
 async function findOrCreateClientFolder(accessToken: string, admin: ReturnType<typeof createClient>, clientId: string): Promise<string> {
@@ -65,7 +114,7 @@ async function findOrCreateClientFolder(accessToken: string, admin: ReturnType<t
 
   const { data: client } = await admin.from("clients").select("name").eq("id", clientId).maybeSingle();
   const name = client?.name || clientId;
-  const folderId = await findOrCreateFolder(accessToken, ROOT_FOLDER_ID, name);
+  const folderId = await findOrCreateFolder(accessToken, admin, ROOT_FOLDER_ID, name);
 
   await admin.from("drive_client_folders").upsert({ client_id: clientId, drive_folder_id: folderId });
   return folderId;
@@ -92,12 +141,12 @@ async function resolveTargetFolder(accessToken: string, admin: ReturnType<typeof
     .eq("task_id", taskId)
     .maybeSingle();
   const date = pub?.publish_date ? new Date(`${pub.publish_date}T00:00:00Z`) : new Date();
-  const yearFolderId = await findOrCreateFolder(accessToken, clientFolderId, String(date.getUTCFullYear()));
+  const yearFolderId = await findOrCreateFolder(accessToken, admin, clientFolderId, String(date.getUTCFullYear()));
   const monthName = `${String(date.getUTCMonth() + 1).padStart(2, "0")} ${MONTH_NAMES_PT[date.getUTCMonth()]}`;
-  const monthFolderId = await findOrCreateFolder(accessToken, yearFolderId, monthName);
+  const monthFolderId = await findOrCreateFolder(accessToken, admin, yearFolderId, monthName);
 
   const typeName = mimeType.startsWith("video/") ? "Vídeos" : "Posts";
-  return findOrCreateFolder(accessToken, monthFolderId, typeName);
+  return findOrCreateFolder(accessToken, admin, monthFolderId, typeName);
 }
 
 async function uploadToDrive(accessToken: string, fileName: string, mimeType: string, bytes: Uint8Array, parentId: string): Promise<string> {
@@ -142,7 +191,7 @@ function randomToken(): string {
 // browser should PUT bytes to directly — used for video, where funnelling the
 // whole file through this Edge Function (memory/time limited) would be unsafe.
 async function initResumableUpload(accessToken: string, fileName: string, mimeType: string, fileSize: number, parentId: string): Promise<string> {
-  const res = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable", {
+  const res = await fetchWithTimeout("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,

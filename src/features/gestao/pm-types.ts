@@ -70,6 +70,7 @@ export interface PmAttachment {
   public_url: string | null;
   created_at: string;
   category?: "material" | "final";
+  drive_file_id?: string | null;
 }
 
 export interface PmProject {

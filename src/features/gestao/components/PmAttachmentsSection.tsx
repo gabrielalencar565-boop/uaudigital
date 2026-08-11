@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { format } from "date-fns";
-import { Upload, FileText, Download, MoreHorizontal, Link2, ImagePlus, GripVertical, Trash2, Loader2, Pencil, ArrowRightLeft, Target, Rocket, ChevronDown } from "lucide-react";
+import { Upload, FileText, Download, MoreHorizontal, Link2, ImagePlus, GripVertical, Trash2, Loader2, Pencil, ArrowRightLeft, Target, Rocket, ChevronDown, Play, FileVideo } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -14,6 +14,7 @@ import { PmImageViewer } from "./PmImageViewer";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+import { addGlobalUpload, updateGlobalUpload, removeGlobalUpload } from "@/lib/upload-tray-store";
 
 const sb = supabase as any;
 
@@ -66,8 +67,11 @@ async function renderVideoPoster(file: File, targetWidth = 260): Promise<Blob> {
       video.onerror = () => reject(new Error("falha ao carregar vídeo"));
     });
 
-    // Skip pure-black opening frames on very short clips; clamp to the clip's own duration.
-    video.currentTime = Math.min(1, (video.duration || 0) * 0.1);
+    // Skip pure-black/fade-in opening frames (common on downloaded Reels): aim for
+    // 10% in, but never less than 0.5s (too close to a fade-in) or more than 3s
+    // (still clamped to the clip's own duration for very short clips).
+    const duration = video.duration || 0;
+    video.currentTime = Math.min(duration, Math.max(Math.min(0.5, duration), Math.min(3, duration * 0.1)));
 
     await new Promise<void>((resolve, reject) => {
       video.onseeked = () => resolve();
@@ -86,6 +90,16 @@ async function renderVideoPoster(file: File, targetWidth = 260): Promise<Blob> {
     return blob;
   } finally {
     URL.revokeObjectURL(url);
+  }
+}
+
+async function uploadWithRetry<T>(attempt: () => Promise<T>, retries = 2, delayMs = 2000): Promise<T> {
+  try {
+    return await attempt();
+  } catch (err) {
+    if (retries <= 0) throw err;
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+    return uploadWithRetry(attempt, retries - 1, delayMs * 1.5);
   }
 }
 
@@ -115,12 +129,31 @@ interface Props {
   currentCoverUrl?: string | null;
 }
 
-function AttachmentThumbnail({ url, name, isKnownImage, isPdf, onClick }: { url: string; name: string; isKnownImage: boolean; isPdf?: boolean; onClick?: () => void }) {
+function AttachmentThumbnail({ url, name, isKnownImage, isPdf, isVideo, posterUrl, onClick }: { url: string; name: string; isKnownImage: boolean; isPdf?: boolean; isVideo?: boolean; posterUrl?: string; onClick?: () => void }) {
   const [failed, setFailed] = useState(false);
   const [convertedUrl, setConvertedUrl] = useState<string | null>(null);
   const [pdfThumbUrl, setPdfThumbUrl] = useState<string | null>(null);
   const [pdfThumbFailed, setPdfThumbFailed] = useState(false);
   const isHeicFile = /\.heic$/i.test(name);
+
+  if (isVideo) {
+    return (
+      <div className="relative w-full aspect-[4/3] overflow-hidden rounded-t-md bg-muted cursor-pointer" onClick={onClick}>
+        {posterUrl ? (
+          <img src={posterUrl} alt={name} className="h-full w-full object-cover transition group-hover:scale-105" />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center">
+            <FileVideo className="h-6 w-6 text-muted-foreground/40" />
+          </div>
+        )}
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/25">
+          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-white/90">
+            <Play className="h-3.5 w-3.5 fill-black text-black" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   useEffect(() => {
     if (!isHeicFile) return;
@@ -232,41 +265,51 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
     const uploadEntry: UploadingFile = { name: file.name, size: file.size, progress: 0, category };
     setUploadingFiles(prev => [...prev, uploadEntry]);
 
+    // Mirrors this upload's lifecycle into the global tray store (src/lib/upload-tray-store.ts)
+    // so progress stays visible in the bottom-right corner even after this dialog closes —
+    // the XHR/fetch itself already isn't tied to this component's lifecycle, only the
+    // progress UI was, until now.
+    const globalId = `${taskId}-${file.name}-${Date.now()}`;
+    addGlobalUpload({ id: globalId, taskId, fileName: file.name, fileSize: file.size, progress: 0, status: "uploading" });
+
+    const applyProgress = (pct: number) => {
+      setUploadingFiles(prev =>
+        prev.map(f => f.name === file.name && f.category === category ? { ...f, progress: pct } : f)
+      );
+      updateGlobalUpload(globalId, { progress: pct });
+    };
+
     // Video reports real progress from the direct-to-Drive PUT; everything else keeps
     // the simulated ramp (the whole request/response happens too fast to sample).
     let interval: ReturnType<typeof setInterval> | null = null;
+    let simulatedProgress = 0;
     if (!isVideo) {
       interval = setInterval(() => {
-        setUploadingFiles(prev =>
-          prev.map(f => f.name === file.name && f.category === category && f.progress < 90
-            ? { ...f, progress: Math.min(f.progress + (file.size > 10 * 1024 * 1024 ? 2 : 15), 90) }
-            : f
-          )
-        );
+        simulatedProgress = Math.min(simulatedProgress + (file.size > 10 * 1024 * 1024 ? 2 : 15), 90);
+        applyProgress(simulatedProgress);
       }, 300);
     }
 
     try {
       if (isVideo) {
-        await uploadResumable.mutateAsync({
+        // Large videos over a shaky connection are the one path prone to a mid-stream
+        // network drop ("Erro de rede durante o upload") — worth a couple of automatic
+        // retries before making the user restart the whole upload by hand.
+        await uploadWithRetry(() => uploadResumable.mutateAsync({
           task_id: taskId,
           file,
           category,
-          onProgress: (pct) => {
-            setUploadingFiles(prev =>
-              prev.map(f => f.name === file.name && f.category === category ? { ...f, progress: Math.min(pct, 99) } : f)
-            );
-          },
-        });
+          onProgress: (pct) => applyProgress(Math.min(pct, 99)),
+        }));
       } else {
         await upload.mutateAsync({ task_id: taskId, file, category });
       }
       if (interval) clearInterval(interval);
-      setUploadingFiles(prev =>
-        prev.map(f => f.name === file.name && f.category === category ? { ...f, progress: 100 } : f)
-      );
+      applyProgress(100);
+      updateGlobalUpload(globalId, { status: "success" });
       setTimeout(() => {
         setUploadingFiles(prev => prev.filter(f => !(f.name === file.name && f.category === category)));
+        removeGlobalUpload(globalId);
       }, 800);
       toast.success("Arquivo anexado!");
 
@@ -283,6 +326,7 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
     } catch (err: any) {
       if (interval) clearInterval(interval);
       setUploadingFiles(prev => prev.filter(f => !(f.name === file.name && f.category === category)));
+      updateGlobalUpload(globalId, { status: "error", errorMessage: err?.message ?? "Erro ao enviar arquivo" });
       toast.error(err?.message ?? "Erro ao enviar arquivo");
     }
   }, [taskId, upload, uploadResumable]);
@@ -291,6 +335,10 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
     try {
       const { error: storageErr } = await supabase.storage.from("pm-attachments").remove([att.storage_path]);
       if (storageErr) console.warn("Storage delete error:", storageErr);
+      if (att.drive_file_id) {
+        const { error: driveErr } = await supabase.functions.invoke("drive-delete", { body: { drive_file_id: att.drive_file_id } });
+        if (driveErr) console.warn("Drive delete error:", driveErr);
+      }
       await sb.from("pm_attachments").delete().eq("id", att.id);
       queryClient.invalidateQueries({ queryKey: ["pm_attachments"] });
       queryClient.invalidateQueries({ queryKey: ["pm_attachments_for_calendar"] });
@@ -393,11 +441,27 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
     }
   };
 
-  const materials = attachments.filter(a => (a.category ?? "material") === "material");
-  const finals = attachments.filter(a => a.category === "final");
+  // Video uploads auto-generate a "{name}-poster.jpg" sibling (see renderVideoPoster)
+  // purely to serve as a thumbnail elsewhere (Cronograma cards). Surfacing it as its
+  // own card here too just reads as a mystery extra file, so it's used as the video's
+  // own thumbnail instead and hidden from the grid/count.
+  const videoPosterMap = new Map<string, PmAttachment>();
+  const posterAttachmentIds = new Set<string>();
+  for (const att of attachments) {
+    if (!att.file_type?.startsWith("video/")) continue;
+    const posterName = `${att.file_name.replace(/\.[^.]+$/, "")}-poster.jpg`;
+    const poster = attachments.find(p => p.category === att.category && p.file_name === posterName && p.file_type?.startsWith("image/"));
+    if (poster) {
+      videoPosterMap.set(att.id, poster);
+      posterAttachmentIds.add(poster.id);
+    }
+  }
+
+  const materials = attachments.filter(a => (a.category ?? "material") === "material" && !posterAttachmentIds.has(a.id));
+  const finals = attachments.filter(a => a.category === "final" && !posterAttachmentIds.has(a.id));
 
   const openViewer = (att: PmAttachment, list: PmAttachment[]) => {
-    const images = list.filter(a => (isImage(a.file_type) || isHeic(a.file_name) || isPdf(a.file_type, a.file_name)) && a.public_url)
+    const images = list.filter(a => (isImage(a.file_type) || isHeic(a.file_name) || isPdf(a.file_type, a.file_name) || a.file_type?.startsWith("video/")) && a.public_url)
       .map(a => ({ url: a.public_url!, name: a.file_name }));
     const idx = images.findIndex(i => i.url === att.public_url);
     setViewerImages(images);
@@ -423,6 +487,7 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
         icon={<Target className="h-4 w-4 text-amber-500" />}
         accentClass="border-amber-500/30"
         list={materials}
+        posterMap={videoPosterMap}
         uploadingFiles={uploadingFiles.filter(u => u.category === "material")}
         onUpload={(file) => doUpload(file, "material")}
         onDelete={handleDeleteAttachment}
@@ -449,6 +514,7 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
         icon={<Rocket className="h-4 w-4 text-emerald-500" />}
         accentClass="border-emerald-500/30"
         list={finals}
+        posterMap={videoPosterMap}
         uploadingFiles={uploadingFiles.filter(u => u.category === "final")}
         onUpload={(file) => doUpload(file, "final")}
         onDelete={handleDeleteAttachment}
@@ -485,6 +551,7 @@ interface CategorySectionProps {
   icon: React.ReactNode;
   accentClass: string;
   list: PmAttachment[];
+  posterMap: Map<string, PmAttachment>;
   uploadingFiles: UploadingFile[];
   onUpload: (file: File) => void | Promise<void>;
   onDelete: (att: PmAttachment) => void;
@@ -506,7 +573,7 @@ interface CategorySectionProps {
 
 function CategorySection(props: CategorySectionProps) {
   const {
-    title, subtitle, icon, accentClass, list, uploadingFiles, onUpload, onDelete,
+    title, subtitle, icon, accentClass, list, posterMap, uploadingFiles, onUpload, onDelete,
     onRenameStart, onRenameCommit, renamingId, renameDraft, setRenameDraft, setRenamingId,
     onCopyUrl, onDownload, onSetCover, currentCoverUrl, membersMap, onMove, moveLabel, onOpenViewer,
   } = props;
@@ -605,6 +672,8 @@ function CategorySection(props: CategorySectionProps) {
             {list.map((att) => {
               const isCover = currentCoverUrl === att.public_url;
               const isImg = isImage(att.file_type);
+              const isVid = att.file_type?.startsWith("video/") ?? false;
+              const poster = posterMap.get(att.id);
               const uploader = membersMap[att.uploaded_by];
 
               return (
@@ -621,7 +690,9 @@ function CategorySection(props: CategorySectionProps) {
                       name={att.file_name}
                       isKnownImage={!!isImg || isHeic(att.file_name)}
                       isPdf={isPdf(att.file_type, att.file_name)}
-                      onClick={() => (isImg || isHeic(att.file_name) || isPdf(att.file_type, att.file_name)) ? onOpenViewer(att) : undefined}
+                      isVideo={isVid}
+                      posterUrl={poster?.public_url ?? undefined}
+                      onClick={() => (isImg || isHeic(att.file_name) || isPdf(att.file_type, att.file_name) || isVid) ? onOpenViewer(att) : undefined}
                     />
                   ) : (
                     <div className="w-full aspect-[4/3] flex items-center justify-center overflow-hidden rounded-t-md bg-muted/50">
