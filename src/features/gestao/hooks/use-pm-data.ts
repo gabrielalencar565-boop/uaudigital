@@ -375,11 +375,17 @@ export function useUpdatePmTask() {
         invalidatePerformanceQueries();
       }
     },
-    onSettled: () => {
+    onSettled: (_data, _error, variables) => {
       qc.invalidateQueries({ queryKey: ["pm_tasks"] });
       qc.invalidateQueries({ queryKey: ["pm_child_tasks"] });
       qc.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
       qc.invalidateQueries({ queryKey: ["pm_activity_log"] });
+      // Tag/post_type changes resync calendar_publications.content_type server-side
+      // (see pm_task_tags_resync_calendar trigger) — the Cronograma's own cache
+      // needs telling too, or it keeps showing the content_type from its last fetch.
+      if (Object.prototype.hasOwnProperty.call(variables, "tags") || Object.prototype.hasOwnProperty.call(variables, "post_type")) {
+        qc.invalidateQueries({ queryKey: ["calendar_publications"] });
+      }
     },
   });
 }

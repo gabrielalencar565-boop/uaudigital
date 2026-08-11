@@ -3,7 +3,7 @@ import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, ExternalLink, Heart, MessageCircle, Send, Bookmark, Trash2, X, ImagePlus, Loader2, CalendarDays, Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight, ExternalLink, Heart, MessageCircle, Send, Bookmark, Trash2, X, ImagePlus, Loader2, CalendarDays, Clock, Camera } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { CONTENT_TYPE_LABELS, PUBLICATION_STATUS_LABELS, type CalendarPublication, type PublicationContentType, type PublicationStatus } from "../calendar-types";
 import { useCoverCandidates, useRemoveCalendarPublication, useUpdateCalendarPublication } from "../hooks/use-calendar-data";
 import { useUploadPmAttachment } from "@/features/gestao/hooks/use-pm-data";
+import { PmImageViewer } from "@/features/gestao/components/PmImageViewer";
 
 const sb = supabase as any;
 
@@ -61,8 +62,12 @@ export function PublicationPreviewPanel({ publication, media, clientName, client
   const [captionExpanded, setCaptionExpanded] = useState(false);
   const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
   const [coverDragActive, setCoverDragActive] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
   const [dateOpen, setDateOpen] = useState(false);
   const [timeOpen, setTimeOpen] = useState(false);
+  const [frameDialogOpen, setFrameDialogOpen] = useState(false);
+  const [capturingFrame, setCapturingFrame] = useState(false);
+  const frameVideoRef = useRef<HTMLVideoElement>(null);
   const timeListRef = useRef<HTMLDivElement>(null);
   const timeButtonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 
@@ -108,16 +113,57 @@ export function PublicationPreviewPanel({ publication, media, clientName, client
   };
 
   const deleteCoverImage = async (imgId: string) => {
-    const { error } = await sb.from("pm_attachments").delete().eq("id", imgId);
+    const { data, error } = await sb.from("pm_attachments").delete().eq("id", imgId).select("drive_file_id").maybeSingle();
     if (error) {
       toast.error("Erro ao excluir imagem");
       return;
+    }
+    if (data?.drive_file_id) {
+      const { error: driveErr } = await supabase.functions.invoke("drive-delete", { body: { drive_file_id: data.drive_file_id } });
+      if (driveErr) console.warn("Drive delete error:", driveErr);
     }
     if (publication.cover_attachment_id === imgId) save({ cover_attachment_id: null });
     qc.invalidateQueries({ queryKey: ["pm_attachments_for_calendar"] });
     qc.invalidateQueries({ queryKey: ["cover_candidates"] });
     qc.invalidateQueries({ queryKey: ["cover_attachments_by_id"] });
     toast.success("Imagem excluída");
+  };
+
+  // Grabs whatever frame the video is paused on and uploads it as a new cover
+  // image attachment — lets picking the cover be "pause where it looks good"
+  // instead of relying on the auto-generated poster (which can land on a black
+  // or fade-in frame, see renderVideoPoster in PmAttachmentsSection.tsx).
+  const captureVideoFrame = async () => {
+    const video = frameVideoRef.current;
+    if (!video || !video.videoWidth) return;
+    setCapturingFrame(true);
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("canvas context indisponível");
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
+      if (!blob) throw new Error("falha ao gerar imagem");
+      const file = new File([blob], `capa-video-${Date.now()}.jpg`, { type: "image/jpeg" });
+      uploadCover.mutate(
+        { task_id: publication.task_id, file, category: "final" },
+        {
+          onSuccess: (att) => {
+            save({ cover_attachment_id: att.id });
+            setFrameDialogOpen(false);
+            toast.success("Capa atualizada com o quadro escolhido");
+          },
+          onError: () => toast.error("Erro ao salvar a capa"),
+        },
+      );
+    } catch (e) {
+      console.error(e);
+      toast.error("Não foi possível capturar esse quadro. Tente pausar em outro ponto.");
+    } finally {
+      setCapturingFrame(false);
+    }
   };
 
   const images = media.filter((m) => m.type?.startsWith("image/"));
@@ -181,7 +227,9 @@ export function PublicationPreviewPanel({ publication, media, clientName, client
               <div className={cn("relative w-full bg-black/5 group px-3", isStory && "flex justify-center")}>
                 {isStory ? (
                   images[0] ? (
-                    <img src={images[0].url} alt="" className="aspect-[9/16] max-h-[68vh] rounded-xl object-cover" />
+                    <button type="button" onClick={() => setViewerOpen(true)} className="block">
+                      <img src={images[0].url} alt="" className="aspect-[9/16] max-h-[68vh] cursor-zoom-in rounded-xl object-cover" />
+                    </button>
                   ) : (
                     <div className="flex aspect-[9/16] max-h-[68vh] w-full items-center justify-center rounded-xl bg-muted text-xs text-muted-foreground">Sem mídia</div>
                   )
@@ -189,7 +237,9 @@ export function PublicationPreviewPanel({ publication, media, clientName, client
                   <video src={videos[0].url} controls className="mx-auto block h-auto max-h-[68vh] w-auto max-w-full rounded-xl object-contain" />
                 ) : images.length > 0 ? (
                   <>
-                    <img src={images[carouselIndex]?.url ?? images[0].url} alt="" className="max-h-[68vh] w-full rounded-xl object-cover" />
+                    <button type="button" onClick={() => setViewerOpen(true)} className="block w-full">
+                      <img src={images[carouselIndex]?.url ?? images[0].url} alt="" className="max-h-[68vh] w-full cursor-zoom-in rounded-xl object-cover" />
+                    </button>
                     {isCarousel && (
                       <>
                         <div className="absolute top-3 right-3 rounded-full bg-black/60 px-2 py-0.5 text-xs font-medium text-white">
@@ -265,7 +315,7 @@ export function PublicationPreviewPanel({ publication, media, clientName, client
                 </Select>
               </div>
 
-              {publication.content_type === "reel" && (() => {
+              {(publication.content_type === "reel" || publication.content_type === "video") && (() => {
                 const ownIds = new Set(images.map((img) => img.id));
                 const allCandidates = coverCandidatesQ.data ?? [];
                 const coverId = publication.cover_attachment_id;
@@ -327,7 +377,7 @@ export function PublicationPreviewPanel({ publication, media, clientName, client
                 return (
                   <div className="space-y-3">
                     <div className="space-y-1.5">
-                      <Label>Capa do Reel</Label>
+                      <Label>Capa do {publication.content_type === "reel" ? "Reel" : "Vídeo"}</Label>
                       <div
                         onDragOver={(e) => { e.preventDefault(); setCoverDragActive(true); }}
                         onDragLeave={() => setCoverDragActive(false)}
@@ -344,6 +394,16 @@ export function PublicationPreviewPanel({ publication, media, clientName, client
                       >
                         {pinnedCandidate && renderCoverThumb(pinnedCandidate, false)}
                         {images.map((img) => renderCoverThumb(img, true))}
+                        {hasVideo && (
+                          <button
+                            type="button"
+                            onClick={() => setFrameDialogOpen(true)}
+                            className="flex h-16 w-16 shrink-0 flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-border text-muted-foreground transition hover:border-primary hover:text-primary"
+                          >
+                            <Camera className="h-4 w-4" />
+                            <span className="text-[9px] font-medium">Do vídeo</span>
+                          </button>
+                        )}
                         <button
                           type="button"
                           disabled={uploadCover.isPending}
@@ -565,6 +625,37 @@ export function PublicationPreviewPanel({ publication, media, clientName, client
               </div>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <PmImageViewer
+        images={images.map((img, i) => ({ url: img.url, name: `Imagem ${i + 1}` }))}
+        initialIndex={carouselIndex}
+        open={viewerOpen}
+        onClose={() => setViewerOpen(false)}
+      />
+
+      <Dialog open={frameDialogOpen} onOpenChange={setFrameDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogTitle>Escolher quadro do vídeo</DialogTitle>
+          <DialogDescription>
+            Pause o vídeo no take que quiser e use esse quadro como capa.
+          </DialogDescription>
+          {videos[0] && (
+            <video
+              ref={frameVideoRef}
+              key={videos[0].url}
+              src={videos[0].url}
+              crossOrigin="anonymous"
+              controls
+              playsInline
+              className="w-full rounded-lg bg-black"
+            />
+          )}
+          <Button onClick={captureVideoFrame} disabled={capturingFrame} className="w-full gap-2">
+            {capturingFrame ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+            Usar este quadro como capa
+          </Button>
         </DialogContent>
       </Dialog>
 

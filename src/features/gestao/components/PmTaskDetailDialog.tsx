@@ -52,6 +52,14 @@ function initials(n: string) {
   return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
 }
 
+// Mirrors randomToken() in supabase/functions/drive-upload/index.ts — used when cloning
+// a Drive-backed attachment row so the copy gets its own access_token instead of
+// colliding with the original's.
+function randomToken(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(24));
+  return Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 interface Props {
   task: PmTask | null;
   open: boolean;
@@ -541,22 +549,35 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
       // Copy attachments AND comments in background (fire-and-forget to avoid blocking UI)
       const copyAttachmentsAndComments = async () => {
         // --- Attachments ---
+        // A Drive-backed row's access_token is a per-row capability credential that
+        // drive-file-proxy looks up together with drive_file_id — copying it verbatim
+        // means two rows now share one (drive_file_id, access_token) pair, which makes
+        // that lookup ambiguous and the proxy starts 404ing for both copies. The
+        // underlying Drive file can be shared fine; each DB row just needs its own token.
+        const cloneAttachmentRow = (att: any) => {
+          const { id: _id, created_at: _ca, ...rest } = att;
+          if (rest.storage_provider === "drive" && rest.drive_file_id) {
+            const token = randomToken();
+            rest.access_token = token;
+            rest.public_url = `https://bzzubzjbsjwuvchuhklr.supabase.co/functions/v1/drive-file-proxy/${rest.drive_file_id}?t=${token}`;
+          }
+          return rest;
+        };
+
         const { data: existingAtts } = await sb.from("pm_attachments").select("*").eq("task_id", task.id);
         if (existingAtts?.length) {
-          await Promise.all(existingAtts.map((att: any) => {
-            const { id: _id, created_at: _ca, ...rest } = att;
-            return sb.from("pm_attachments").insert({ ...rest, task_id: targetTaskId });
-          }));
+          await Promise.all(existingAtts.map((att: any) =>
+            sb.from("pm_attachments").insert({ ...cloneAttachmentRow(att), task_id: targetTaskId })
+          ));
         }
         const oldChildIds = Object.keys(childIdMap);
         if (oldChildIds.length > 0) {
           const { data: childAtts } = await sb.from("pm_attachments").select("*").in("task_id", oldChildIds);
           if (childAtts?.length) {
             await Promise.all(childAtts.map((att: any) => {
-              const { id: _id, created_at: _ca, task_id: oldTaskId, ...rest } = att;
-              const newTaskId = childIdMap[oldTaskId];
+              const newTaskId = childIdMap[att.task_id];
               if (!newTaskId) return Promise.resolve();
-              return sb.from("pm_attachments").insert({ ...rest, task_id: newTaskId });
+              return sb.from("pm_attachments").insert({ ...cloneAttachmentRow(att), task_id: newTaskId });
             }));
           }
         }
@@ -913,6 +934,13 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
             const { id: _id, created_at: _ca, task_id: oldTid, ...rest } = att;
             const newTid = oldTid === task.id ? targetTaskId : childIdMap[oldTid];
             if (!newTid) return Promise.resolve();
+            // See cloneAttachmentRow above: a copied Drive-backed row needs its own
+            // access_token, or it collides with the original and both start 404ing.
+            if (rest.storage_provider === "drive" && rest.drive_file_id) {
+              const token = randomToken();
+              rest.access_token = token;
+              rest.public_url = `https://bzzubzjbsjwuvchuhklr.supabase.co/functions/v1/drive-file-proxy/${rest.drive_file_id}?t=${token}`;
+            }
             return sbx.from("pm_attachments").insert({ ...rest, task_id: newTid });
           }));
         }

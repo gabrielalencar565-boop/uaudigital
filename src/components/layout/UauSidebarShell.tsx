@@ -15,6 +15,7 @@ import { useOnlinePresence } from "@/hooks/use-online-presence";
 import { useTeamActivity } from "@/hooks/use-team-activity";
 import { useTaskViewersPresence } from "@/hooks/use-task-viewers";
 import { TopBar } from "@/components/layout/TopBar";
+import { GlobalUploadTray } from "@/components/layout/GlobalUploadTray";
 import { EditProfileDialog } from "@/features/meu-painel/components/EditProfileDialog";
 import { usePmTasks } from "@/features/gestao/hooks/use-pm-data";
 import { PmTaskDetailDialog } from "@/features/gestao/components/PmTaskDetailDialog";
@@ -348,6 +349,7 @@ export function UauSidebarShell({
 
         <EditProfileDialog open={editProfileOpen} onOpenChange={setEditProfileOpen} />
         <NotifTaskDialogWrapper taskId={notifTaskId} onClose={() => setNotifTaskId(null)} isAdmin={isAdmin ?? false} />
+        <GlobalUploadTray />
       </div>
     </SidebarProvider>);
 
