@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { PmImageViewer } from "./PmImageViewer";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { addGlobalUpload, updateGlobalUpload, removeGlobalUpload } from "@/lib/upload-tray-store";
@@ -257,10 +258,9 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
   const [downloadingAll, setDownloadingAll] = useState(false);
+  const [duplicateConflict, setDuplicateConflict] = useState<{ file: File; category: AttachmentCategory; existing: PmAttachment; resolve: () => void } | null>(null);
 
-  const doUpload = useCallback(async (file: File, category: AttachmentCategory) => {
-    if (file.size > 1024 * 1024 * 1024) { toast.error("Arquivo muito grande (máx 1GB)"); return; }
-
+  const performUpload = useCallback(async (file: File, category: AttachmentCategory) => {
     const isVideo = file.type.startsWith("video/");
     const uploadEntry: UploadingFile = { name: file.name, size: file.size, progress: 0, category };
     setUploadingFiles(prev => [...prev, uploadEntry]);
@@ -330,6 +330,50 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
       toast.error(err?.message ?? "Erro ao enviar arquivo");
     }
   }, [taskId, upload, uploadResumable]);
+
+  // Attaching a file whose name matches one already here is ambiguous — could be an
+  // updated version meant to replace it, or a genuinely different file that happens to
+  // share a name. Ask instead of silently doing either.
+  const doUpload = useCallback((file: File, category: AttachmentCategory): Promise<void> => {
+    if (file.size > 1024 * 1024 * 1024) { toast.error("Arquivo muito grande (máx 1GB)"); return Promise.resolve(); }
+    const existing = attachments.find(a => a.category === category && a.file_name.toLowerCase() === file.name.toLowerCase());
+    if (!existing) return performUpload(file, category);
+    return new Promise<void>((resolve) => setDuplicateConflict({ file, category, existing, resolve }));
+  }, [attachments, performUpload]);
+
+  const nextAvailableName = (name: string, category: AttachmentCategory) => {
+    const dot = name.lastIndexOf(".");
+    const base = dot > 0 ? name.slice(0, dot) : name;
+    const ext = dot > 0 ? name.slice(dot) : "";
+    const existingNames = new Set(attachments.filter(a => a.category === category).map(a => a.file_name));
+    let n = 2;
+    while (existingNames.has(`${base} (${n})${ext}`)) n++;
+    return `${base} (${n})${ext}`;
+  };
+
+  const resolveDuplicateReplace = async () => {
+    if (!duplicateConflict) return;
+    const { file, category, existing, resolve } = duplicateConflict;
+    setDuplicateConflict(null);
+    await handleDeleteAttachment(existing);
+    await performUpload(file, category);
+    resolve();
+  };
+
+  const resolveDuplicateKeepBoth = async () => {
+    if (!duplicateConflict) return;
+    const { file, category, resolve } = duplicateConflict;
+    setDuplicateConflict(null);
+    const renamed = new File([file], nextAvailableName(file.name, category), { type: file.type });
+    await performUpload(renamed, category);
+    resolve();
+  };
+
+  const resolveDuplicateCancel = () => {
+    if (!duplicateConflict) return;
+    duplicateConflict.resolve();
+    setDuplicateConflict(null);
+  };
 
   const handleDeleteAttachment = async (att: PmAttachment) => {
     try {
@@ -450,10 +494,15 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
   for (const att of attachments) {
     if (!att.file_type?.startsWith("video/")) continue;
     const posterName = `${att.file_name.replace(/\.[^.]+$/, "")}-poster.jpg`;
-    const poster = attachments.find(p => p.category === att.category && p.file_name === posterName && p.file_type?.startsWith("image/"));
-    if (poster) {
-      videoPosterMap.set(att.id, poster);
-      posterAttachmentIds.add(poster.id);
+    // A retried upload (e.g. during a network hiccup) can leave more than one poster
+    // behind for the same video — hide every match, not just the first, or the extras
+    // resurface as their own mystery card. The most recent one is the best guess at
+    // which frame actually matches what ended up as the final video.
+    const posters = attachments.filter(p => p.category === att.category && p.file_name === posterName && p.file_type?.startsWith("image/"));
+    if (posters.length > 0) {
+      const latest = posters.reduce((a, b) => (a.created_at > b.created_at ? a : b));
+      videoPosterMap.set(att.id, latest);
+      for (const p of posters) posterAttachmentIds.add(p.id);
     }
   }
 
@@ -540,6 +589,22 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
         initialIndex={viewerIndex}
         images={viewerImages}
       />
+
+      <AlertDialog open={!!duplicateConflict} onOpenChange={(v) => { if (!v) resolveDuplicateCancel(); }}>
+        <AlertDialogContent className="z-[200]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Já existe um arquivo com esse nome</AlertDialogTitle>
+            <AlertDialogDescription>
+              "{duplicateConflict?.file.name}" já está anexado aqui. Quer substituir o arquivo existente ou manter os dois?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={resolveDuplicateCancel}>Cancelar</AlertDialogCancel>
+            <Button variant="outline" onClick={resolveDuplicateKeepBoth}>Manter os dois</Button>
+            <AlertDialogAction onClick={resolveDuplicateReplace}>Substituir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
