@@ -378,7 +378,11 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
   }), [publications]);
 
   // Feed: chronological reading order (most recent first), excluding stories
-  // and anything missing what it needs to actually appear in a real feed.
+  // and anything missing what it needs to actually appear in a real feed. Only the
+  // date is required — a card scheduled by dragging onto the calendar only gets a
+  // date, not a time, and making time mandatory too just made those cards vanish
+  // into "outsideFeed" with no obvious reason. Time still refines same-day ordering
+  // when it's set; it just isn't a gate anymore.
   const { feedItems, outsideFeed } = useMemo(() => {
     const feed: CalendarPublication[] = [];
     const outside: { publication: CalendarPublication; reason: string }[] = [];
@@ -391,17 +395,13 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
         outside.push({ publication: p, reason: "Data não definida" });
         continue;
       }
-      if (!p.publish_time) {
-        outside.push({ publication: p, reason: "Horário não definido" });
-        continue;
-      }
       if (mediaFor(p.task_id).length === 0) {
         outside.push({ publication: p, reason: "Arquivo final não selecionado" });
         continue;
       }
       feed.push(p);
     }
-    feed.sort((a, b) => `${b.publish_date}T${b.publish_time}`.localeCompare(`${a.publish_date}T${a.publish_time}`));
+    feed.sort((a, b) => `${b.publish_date}T${b.publish_time ?? "00:00"}`.localeCompare(`${a.publish_date}T${a.publish_time ?? "00:00"}`));
     return { feedItems: feed, outsideFeed: outside };
   }, [publications, attachmentsQ.data]);
 
