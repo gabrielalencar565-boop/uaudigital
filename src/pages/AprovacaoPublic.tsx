@@ -316,9 +316,11 @@ export default function AprovacaoPublic() {
   );
 
   const feedItems = useMemo(() => {
+    // Only the date is required (mirrors the internal Cronograma's Feed) — a card
+    // scheduled by dragging onto the calendar only gets a date, not a time.
     return publications
-      .filter((p) => p.content_type !== "story" && p.publish_date && p.publish_time && p.media.length > 0)
-      .sort((a, b) => `${b.publish_date}T${b.publish_time}`.localeCompare(`${a.publish_date}T${a.publish_time}`));
+      .filter((p) => p.content_type !== "story" && p.publish_date && p.media.length > 0)
+      .sort((a, b) => `${b.publish_date}T${b.publish_time ?? "00:00"}`.localeCompare(`${a.publish_date}T${a.publish_time ?? "00:00"}`));
   }, [publications]);
 
   const navList = view === "feed" ? feedItems : listOrder;
@@ -358,41 +360,43 @@ export default function AprovacaoPublic() {
 
   return (
     <div className="min-h-screen bg-background pb-16">
-      <header className="border-b border-border/40 bg-card px-4 py-4 sm:px-8">
-        <div className="mx-auto flex max-w-6xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-2">
+      <header className="border-b border-border/40 bg-card px-4 py-6 sm:px-8">
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-4">
             {appLogoUrl ? (
-              <img src={appLogoUrl} alt="Uau Digital" className="h-7 w-auto max-w-[160px] object-contain" />
+              <img src={appLogoUrl} alt="Uau Digital" className="h-6 w-auto max-w-[140px] object-contain opacity-80" />
             ) : (
-              <p className="text-lg font-bold"><span className="text-primary">uaü</span> digital</p>
+              <p className="text-sm font-bold opacity-80"><span className="text-primary">uaü</span> digital</p>
             )}
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-tr from-purple-500 via-pink-500 to-orange-400">
-                {clientLogoUrl ? (
-                  <img src={clientLogoUrl} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  <span className="text-sm font-bold text-white">{clientName?.charAt(0)?.toUpperCase() || "C"}</span>
-                )}
-              </div>
-              <h1 className="text-xl font-bold">{clientName}</h1>
-            </div>
-            <p className="text-sm text-muted-foreground capitalize">
-              {format(parseISO(calendarInfo.cycleStart), "dd/MM")} a {format(parseISO(calendarInfo.cycleEnd), "dd/MM/yyyy")}
-            </p>
           </div>
-          <div className="flex flex-col items-start gap-1 sm:items-end">
-            <Badge className={cn("rounded-full", statusMeta.className)} variant="secondary">{statusMeta.label}</Badge>
-            <p className="text-xs text-muted-foreground">Atualizado em {format(parseISO(calendarInfo.updatedAt), "dd/MM/yyyy 'às' HH:mm")}</p>
+          <div className="flex items-center gap-4 sm:gap-5">
+            <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-tr from-purple-500 via-pink-500 to-orange-400 sm:h-24 sm:w-24">
+              {clientLogoUrl ? (
+                <img src={clientLogoUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <span className="text-2xl font-bold text-white sm:text-3xl">{clientName?.charAt(0)?.toUpperCase() || "C"}</span>
+              )}
+            </div>
+            <div className="min-w-0 flex-1 space-y-1">
+              <h1 className="truncate text-2xl font-bold sm:text-3xl">{clientName}</h1>
+              <p className="text-sm text-muted-foreground capitalize">
+                {format(parseISO(calendarInfo.cycleStart), "dd/MM")} a {format(parseISO(calendarInfo.cycleEnd), "dd/MM/yyyy")}
+              </p>
+              <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                <Badge className={cn("rounded-full", statusMeta.className)} variant="secondary">{statusMeta.label}</Badge>
+                <span className="text-xs text-muted-foreground">Atualizado em {format(parseISO(calendarInfo.updatedAt), "dd/MM/yyyy 'às' HH:mm")}</span>
+              </div>
+            </div>
           </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-8">
         {canApproveAll && (
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3">
-            <p className="text-sm font-medium">Revisou tudo? Aprove o ciclo inteiro de uma vez.</p>
-            <Button size="sm" className="gap-1.5 rounded-full" onClick={() => setConfirmApproveAll(true)}>
-              <Check className="h-3.5 w-3.5" /> Aprovar todas as publicações
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 sm:gap-3 sm:rounded-2xl sm:px-4 sm:py-3">
+            <p className="text-xs font-medium sm:text-sm">Revisou tudo? Aprove o ciclo inteiro de uma vez.</p>
+            <Button size="sm" className="h-7 gap-1.5 rounded-full px-2.5 text-xs sm:h-9 sm:px-3 sm:text-sm" onClick={() => setConfirmApproveAll(true)}>
+              <Check className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> Aprovar todas as publicações
             </Button>
           </div>
         )}
@@ -547,10 +551,11 @@ export default function AprovacaoPublic() {
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-3 gap-0.5 overflow-hidden rounded-2xl border border-border/40 bg-card">
+          <div className="mx-auto grid max-w-md grid-cols-3 gap-0.5 overflow-hidden rounded-2xl border border-border/40 bg-card sm:max-w-none">
             {feedItems.length === 0 && <p className="col-span-3 p-8 text-center text-sm text-muted-foreground">Nada pronto para mostrar ainda.</p>}
             {feedItems.map((p) => (
-              <button key={p.id} type="button" onClick={() => setSelectedId(p.id)} className="group relative aspect-square bg-muted">
+              // Instagram's feed post ratio (1080x1350 = 4:5), not the profile grid's square crop.
+              <button key={p.id} type="button" onClick={() => setSelectedId(p.id)} className="group relative aspect-[4/5] bg-muted">
                 {firstImageUrl(p) ? <img src={firstImageUrl(p)!} alt="" className="h-full w-full object-cover" /> : <ImageIcon className="m-auto h-6 w-6 text-muted-foreground" />}
                 {(p.content_type === "reel" || p.content_type === "video") && <Film className="absolute right-1.5 top-1.5 h-3.5 w-3.5 text-white drop-shadow" />}
                 {p.content_type === "carrossel" && <LayoutGrid className="absolute right-1.5 top-1.5 h-3.5 w-3.5 text-white drop-shadow" />}
