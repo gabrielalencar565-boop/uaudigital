@@ -47,6 +47,7 @@ export type Database = {
       app_settings: {
         Row: {
           id: number
+          link_preview_image_url: string | null
           login_bg_images: Json
           login_bg_object_fit: string
           login_bg_opacity: number
@@ -63,6 +64,7 @@ export type Database = {
         }
         Insert: {
           id?: number
+          link_preview_image_url?: string | null
           login_bg_images?: Json
           login_bg_object_fit?: string
           login_bg_opacity?: number
@@ -79,6 +81,7 @@ export type Database = {
         }
         Update: {
           id?: number
+          link_preview_image_url?: string | null
           login_bg_images?: Json
           login_bg_object_fit?: string
           login_bg_opacity?: number
@@ -103,6 +106,7 @@ export type Database = {
           client_note: string | null
           client_responded_at: string | null
           content_type: Database["public"]["Enums"]["publication_content_type"]
+          cover_attachment_id: string | null
           created_at: string
           id: string
           internal_note: string | null
@@ -121,6 +125,7 @@ export type Database = {
           client_note?: string | null
           client_responded_at?: string | null
           content_type?: Database["public"]["Enums"]["publication_content_type"]
+          cover_attachment_id?: string | null
           created_at?: string
           id?: string
           internal_note?: string | null
@@ -139,6 +144,7 @@ export type Database = {
           client_note?: string | null
           client_responded_at?: string | null
           content_type?: Database["public"]["Enums"]["publication_content_type"]
+          cover_attachment_id?: string | null
           created_at?: string
           id?: string
           internal_note?: string | null
@@ -156,6 +162,13 @@ export type Database = {
             columns: ["calendar_id"]
             isOneToOne: false
             referencedRelation: "publication_calendars"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_publications_cover_attachment_id_fkey"
+            columns: ["cover_attachment_id"]
+            isOneToOne: false
+            referencedRelation: "pm_attachments"
             referencedColumns: ["id"]
           },
           {
@@ -1055,6 +1068,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      drive_folder_cache: {
+        Row: {
+          created_at: string
+          drive_folder_id: string
+          name: string
+          parent_id: string
+        }
+        Insert: {
+          created_at?: string
+          drive_folder_id: string
+          name: string
+          parent_id: string
+        }
+        Update: {
+          created_at?: string
+          drive_folder_id?: string
+          name?: string
+          parent_id?: string
+        }
+        Relationships: []
       }
       financial_clients: {
         Row: {
@@ -3674,6 +3708,10 @@ export type Database = {
         Args: { _pm_task_id: string }
         Returns: undefined
       }
+      pm_resolve_content_type: {
+        Args: { p_post_type: string; p_tags: string[] }
+        Returns: Database["public"]["Enums"]["publication_content_type"]
+      }
       pm_resync_correction: {
         Args: { _completed_stage: string; _pm_task_id: string }
         Returns: undefined
@@ -3782,12 +3820,9 @@ export type Database = {
       app_role: "admin" | "collaborator" | "planner"
       calendar_status:
         | "em_montagem"
-        | "em_revisao_interna"
-        | "pronto_para_envio"
         | "enviado_ao_cliente"
-        | "alteracoes_solicitadas"
         | "aprovado"
-        | "arquivado"
+        | "alteracoes_solicitadas"
       chat_conversation_type: "general" | "direct"
       crm_loss_reason:
         | "preco"
@@ -3867,12 +3902,9 @@ export type Database = {
         | "post"
         | "foto"
       publication_status:
-        | "rascunho"
         | "aguardando_aprovacao"
-        | "aprovada"
         | "alteracao_solicitada"
-        | "atualizada"
-        | "cancelada"
+        | "aprovada"
       reward_redemption_status:
         | "pendente"
         | "aprovado"
@@ -4021,12 +4053,9 @@ export const Constants = {
       app_role: ["admin", "collaborator", "planner"],
       calendar_status: [
         "em_montagem",
-        "em_revisao_interna",
-        "pronto_para_envio",
         "enviado_ao_cliente",
-        "alteracoes_solicitadas",
         "aprovado",
-        "arquivado",
+        "alteracoes_solicitadas",
       ],
       chat_conversation_type: ["general", "direct"],
       crm_loss_reason: [
@@ -4116,12 +4145,9 @@ export const Constants = {
         "foto",
       ],
       publication_status: [
-        "rascunho",
         "aguardando_aprovacao",
-        "aprovada",
         "alteracao_solicitada",
-        "atualizada",
-        "cancelada",
+        "aprovada",
       ],
       reward_redemption_status: [
         "pendente",

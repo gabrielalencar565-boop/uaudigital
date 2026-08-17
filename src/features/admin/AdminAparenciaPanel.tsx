@@ -315,6 +315,39 @@ export function AdminAparenciaPanel() {
     }
   };
 
+  /* ── Miniatura de link compartilhado (WhatsApp e redes) ── */
+  const linkPreviewImageUrl = appSettingsQ.data?.link_preview_image_url ?? null;
+  const [uploadingLinkPreview, setUploadingLinkPreview] = useState(false);
+
+  const handleLinkPreviewUpload = async (file: File) => {
+    if (!user) return;
+    if (!file.type.startsWith("image/")) { toast.error("Envie uma imagem"); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error("Máximo 5MB"); return; }
+    setUploadingLinkPreview(true);
+    try {
+      const ext = (file.name.split(".").pop() || "png").toLowerCase();
+      const path = `link-preview/${crypto.randomUUID()}.${ext}`;
+      const up = await supabase.storage.from("app-assets").upload(path, file, { upsert: true, contentType: file.type });
+      if (up.error) throw up.error;
+      const pub = supabase.storage.from("app-assets").getPublicUrl(path);
+      await updateAppSettings.mutateAsync({ link_preview_image_url: pub.data.publicUrl } as any);
+      toast.success("Miniatura de link atualizada!");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao enviar imagem");
+    } finally {
+      setUploadingLinkPreview(false);
+    }
+  };
+
+  const handleRemoveLinkPreview = async () => {
+    try {
+      await updateAppSettings.mutateAsync({ link_preview_image_url: null } as any);
+      toast.success("Miniatura de link removida");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao remover imagem");
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Logo do Login */}
@@ -469,6 +502,58 @@ export function AdminAparenciaPanel() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Miniatura de link compartilhado */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Images className="h-5 w-5" />
+            Miniatura de Link (WhatsApp e redes)
+          </CardTitle>
+          <CardDescription>
+            Imagem que aparece quando um link do sistema (como o link de aprovação do cliente) é colado no WhatsApp ou em outras redes.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-6">
+            <div className="flex h-32 w-56 items-center justify-center rounded-xl border-2 border-dashed border-border bg-muted/30">
+              {linkPreviewImageUrl ? (
+                <img src={linkPreviewImageUrl} alt="Miniatura de link" className="h-full w-full rounded-[10px] object-cover" />
+              ) : (
+                <span className="text-xs text-muted-foreground">Sem imagem</span>
+              )}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="gap-2"
+              disabled={uploadingLinkPreview}
+              onClick={() => {
+                const input = document.createElement("input");
+                input.type = "file";
+                input.accept = "image/*";
+                input.onchange = async () => {
+                  const f = input.files?.[0];
+                  if (f) await handleLinkPreviewUpload(f);
+                };
+                input.click();
+              }}
+            >
+              <Plus className="h-4 w-4" />
+              {uploadingLinkPreview ? "Enviando..." : linkPreviewImageUrl ? "Trocar imagem" : "Enviar imagem"}
+            </Button>
+            {linkPreviewImageUrl && (
+              <Button variant="destructive" size="sm" className="gap-2" onClick={handleRemoveLinkPreview}>
+                <Trash2 className="h-4 w-4" />
+                Remover
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Preview masonry — replica do login */}
       <Card>
         <CardHeader>
