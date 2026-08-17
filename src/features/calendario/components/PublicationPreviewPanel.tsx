@@ -119,7 +119,7 @@ export function PublicationPreviewPanel({ publication, media, clientName, client
       return;
     }
     if (data?.drive_file_id) {
-      const { error: driveErr } = await supabase.functions.invoke("drive-delete", { body: { drive_file_id: data.drive_file_id } });
+      const { error: driveErr } = await supabase.functions.invoke("drive-delete", { body: { drive_file_id: data.drive_file_id, attachment_id: imgId } });
       if (driveErr) console.warn("Drive delete error:", driveErr);
     }
     if (publication.cover_attachment_id === imgId) save({ cover_attachment_id: null });

@@ -742,7 +742,8 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
                   const isCarousel = p.content_type === "carrossel" && images.length > 1;
                   const isVideoish = p.content_type === "reel" || p.content_type === "video";
                   return (
-                    <button key={p.id} type="button" onClick={() => setSelectedId(p.id)} className="group relative aspect-square bg-muted">
+                    // Instagram's feed post ratio (1080x1350 = 4:5), mirrors the public preview's Feed.
+                    <button key={p.id} type="button" onClick={() => setSelectedId(p.id)} className="group relative aspect-[4/5] bg-muted">
                       {thumb ? (
                         <img src={thumb} alt="" className="h-full w-full object-cover transition-opacity group-hover:opacity-90" />
                       ) : (
@@ -755,10 +756,6 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
                       {isCarousel && (
                         <span className="absolute right-1.5 bottom-1.5 rounded bg-black/60 px-1 text-[9px] font-medium text-white">{images.length}p</span>
                       )}
-                      <span className={cn(
-                        "absolute left-1.5 top-1.5 h-1.5 w-1.5 rounded-full",
-                        p.status === "aprovada" ? "bg-success" : p.status === "alteracao_solicitada" ? "bg-destructive" : "bg-amber-400",
-                      )} />
                     </button>
                   );
                 })}
