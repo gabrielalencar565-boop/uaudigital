@@ -39,10 +39,6 @@ function cycleStart(anchor: Date) {
   const end = cycleEnd(anchor);
   return new Date(end.getFullYear(), end.getMonth() - 1, 28);
 }
-function cycleNumber(anchor: Date) {
-  return anchor.getMonth() + 1;
-}
-
 const UNSCHEDULED_ID = "unscheduled";
 
 // Collapses the 7 calendar_status values into the 4 buckets shown on the
@@ -433,7 +429,9 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
   };
 
   const todayKey = format(new Date(), "yyyy-MM-dd");
-  const cycleMonthLabel = format(cycleEnd(cursor), "MMMM", { locale: ptBR });
+  const cycleMonthRaw = format(cycleEnd(cursor), "MMMM", { locale: ptBR });
+  const cycleMonthLabel = cycleMonthRaw.charAt(0).toUpperCase() + cycleMonthRaw.slice(1);
+  const cycleRangeLabel = `${format(cycleStart(cursor), "dd/MM")} a ${format(cycleEnd(cursor), "dd/MM")}`;
 
   return (
     <div className="space-y-4">
@@ -458,8 +456,8 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
           <button type="button" onClick={() => setCursor((a) => new Date(a.getFullYear(), a.getMonth() - 1, 1))} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg hover:bg-muted">
             <ChevronLeft className="h-3.5 w-3.5" />
           </button>
-          <span className="flex-1 truncate text-center text-xs font-medium capitalize">
-            Ciclo {cycleNumber(cursor)} · {cycleMonthLabel}
+          <span className="flex-1 truncate text-center text-xs font-medium">
+            {cycleMonthLabel} ({cycleRangeLabel})
           </span>
           <button type="button" onClick={() => setCursor((a) => new Date(a.getFullYear(), a.getMonth() + 1, 1))} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg hover:bg-muted">
             <ChevronRight className="h-3.5 w-3.5" />
