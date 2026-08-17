@@ -55,10 +55,33 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { drive_file_id } = await req.json();
+    const { drive_file_id, attachment_id } = await req.json();
     if (!drive_file_id || typeof drive_file_id !== "string") {
       return new Response(JSON.stringify({ error: "drive_file_id required" }), {
         status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Task-cloning can leave multiple pm_attachments rows pointing at the same
+    // physical Drive file (only the access_token differs). Deleting the real file
+    // out from under a sibling row would permanently 404 it, so if another row
+    // still references this drive_file_id, only drop the one being removed here —
+    // the caller deletes its own pm_attachments row right after this call returns.
+    const admin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+    let othersQuery = admin
+      .from("pm_attachments")
+      .select("id", { count: "exact", head: true })
+      .eq("drive_file_id", drive_file_id);
+    if (attachment_id && typeof attachment_id === "string") {
+      othersQuery = othersQuery.neq("id", attachment_id);
+    }
+    const { count: othersCount } = await othersQuery;
+    if (othersCount && othersCount > 0) {
+      return new Response(JSON.stringify({ ok: true, skipped: "shared_with_other_rows" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

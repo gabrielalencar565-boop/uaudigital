@@ -380,7 +380,7 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
       const { error: storageErr } = await supabase.storage.from("pm-attachments").remove([att.storage_path]);
       if (storageErr) console.warn("Storage delete error:", storageErr);
       if (att.drive_file_id) {
-        const { error: driveErr } = await supabase.functions.invoke("drive-delete", { body: { drive_file_id: att.drive_file_id } });
+        const { error: driveErr } = await supabase.functions.invoke("drive-delete", { body: { drive_file_id: att.drive_file_id, attachment_id: att.id } });
         if (driveErr) console.warn("Drive delete error:", driveErr);
       }
       await sb.from("pm_attachments").delete().eq("id", att.id);
