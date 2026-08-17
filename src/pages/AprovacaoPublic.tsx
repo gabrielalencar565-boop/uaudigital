@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useTheme } from "next-themes";
-import { format, parseISO, addDays, startOfWeek } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   Loader2, CalendarX, LayoutGrid, Grid3x3, List, X, Check, MessageSquareWarning, Film, Image as ImageIcon, Camera, Smartphone, File, Clock, CalendarDays, ChevronLeft, ChevronRight, Images, Aperture, Play, Heart, MessageCircle, Send, Bookmark,
@@ -51,21 +51,16 @@ function VideoBadge() {
 }
 
 const STATUS_META: Record<string, { label: string; shortLabel: string; className: string }> = {
-  rascunho: { label: "Em preparação", shortLabel: "Em preparo", className: "bg-muted text-muted-foreground" },
   aguardando_aprovacao: { label: "Aguardando sua aprovação", shortLabel: "Aguardando", className: "bg-amber-500/15 text-amber-600" },
   aprovada: { label: "Aprovada", shortLabel: "Aprovada", className: "bg-emerald-500/15 text-emerald-600" },
   alteracao_solicitada: { label: "Alteração solicitada", shortLabel: "Alteração", className: "bg-red-500/15 text-red-600" },
-  atualizada: { label: "Atualizada", shortLabel: "Atualizada", className: "bg-blue-500/15 text-blue-600" },
 };
 
 const CALENDAR_STATUS_META: Record<string, { label: string; className: string }> = {
   em_montagem: { label: "Em montagem", className: "bg-muted text-muted-foreground" },
-  em_revisao_interna: { label: "Em revisão interna", className: "bg-muted text-muted-foreground" },
-  pronto_para_envio: { label: "Pronto para envio", className: "bg-amber-500/15 text-amber-600" },
   enviado_ao_cliente: { label: "Aguardando sua aprovação", className: "bg-amber-500/15 text-amber-600" },
   alteracoes_solicitadas: { label: "Alterações solicitadas", className: "bg-red-500/15 text-red-600" },
   aprovado: { label: "Aprovado", className: "bg-emerald-500/15 text-emerald-600" },
-  arquivado: { label: "Arquivado", className: "bg-muted text-muted-foreground" },
 };
 
 interface PublicationData {
@@ -233,7 +228,7 @@ export default function AprovacaoPublic() {
   const [clientLogoUrl, setClientLogoUrl] = useState<string | null>(null);
   const [calendarInfo, setCalendarInfo] = useState<{ cycleStart: string; cycleEnd: string; status: string; updatedAt: string } | null>(null);
   const [publications, setPublications] = useState<PublicationData[]>([]);
-  const [view, setView] = useState<"calendario" | "lista" | "feed">("calendario");
+  const [view, setView] = useState<"lista" | "feed">("feed");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [feedbackText, setFeedbackText] = useState("");
   const [confirmApproveAll, setConfirmApproveAll] = useState(false);
@@ -287,28 +282,6 @@ export default function AprovacaoPublic() {
       setConfirmApproveAll(false);
     }
   };
-
-  const byDay = useMemo(() => {
-    const map = new Map<string, PublicationData[]>();
-    for (const p of publications) {
-      if (!p.publish_date) continue;
-      map.set(p.publish_date, [...(map.get(p.publish_date) ?? []), p]);
-    }
-    return map;
-  }, [publications]);
-
-  const days = useMemo(() => {
-    if (!calendarInfo) return [];
-    const start = startOfWeek(parseISO(calendarInfo.cycleStart), { weekStartsOn: 0 });
-    const end = parseISO(calendarInfo.cycleEnd);
-    const out: Date[] = [];
-    let d = start;
-    while (d <= end) {
-      out.push(d);
-      d = addDays(d, 1);
-    }
-    return out;
-  }, [calendarInfo]);
 
   const listOrder = useMemo(
     () => publications.filter((p) => p.publish_date).sort((a, b) => (a.publish_date! > b.publish_date! ? 1 : -1)),
@@ -404,13 +377,6 @@ export default function AprovacaoPublic() {
         <div className="mb-4 flex items-center gap-2 rounded-full border border-border/40 bg-card p-1 w-fit">
           <button
             type="button"
-            onClick={() => setView("calendario")}
-            className={cn("flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium", view === "calendario" ? "bg-primary text-primary-foreground" : "text-muted-foreground")}
-          >
-            <LayoutGrid className="h-3.5 w-3.5" /> Calendário
-          </button>
-          <button
-            type="button"
             onClick={() => setView("lista")}
             className={cn("flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium", view === "lista" ? "bg-primary text-primary-foreground" : "text-muted-foreground")}
           >
@@ -425,121 +391,7 @@ export default function AprovacaoPublic() {
           </button>
         </div>
 
-        {view === "calendario" ? (
-          <>
-            {/* Mobile: vertical agenda, one section per day with content, big thumbnails */}
-            <div className="space-y-4 sm:hidden">
-              {days.filter((d) => (byDay.get(format(d, "yyyy-MM-dd")) ?? []).length > 0).length === 0 && (
-                <p className="rounded-2xl border border-border/40 bg-card p-8 text-center text-sm text-muted-foreground">Nada programado ainda.</p>
-              )}
-              {days.map((d) => {
-                const key = format(d, "yyyy-MM-dd");
-                const dayPubs = byDay.get(key) ?? [];
-                if (dayPubs.length === 0) return null;
-                return (
-                  <div key={key} className="overflow-hidden rounded-2xl border border-border/40 bg-card">
-                    <p className="border-b border-border/40 bg-muted/40 px-3 py-2 text-sm font-semibold capitalize text-foreground">
-                      {format(d, "EEEE, d 'de' MMMM", { locale: ptBR })}
-                    </p>
-                    <div className="divide-y divide-border/40">
-                      {dayPubs.map((p) => {
-                        const ContentIcon = CONTENT_TYPE_ICON[p.content_type] ?? File;
-                        const hasVideo = p.media.some((m) => m.type?.startsWith("video/"));
-                        return (
-                          <button key={p.id} type="button" onClick={() => setSelectedId(p.id)} className="flex w-full items-center gap-3 p-3 text-left active:bg-muted/40">
-                            <span className="relative h-24 w-24 shrink-0">
-                              {firstImageUrl(p) ? (
-                                <img src={firstImageUrl(p)!} alt="" className="h-24 w-24 rounded-xl object-cover" />
-                              ) : (
-                                <span className="flex h-24 w-24 items-center justify-center rounded-xl bg-muted"><ImageIcon className="h-7 w-7 text-muted-foreground" /></span>
-                              )}
-                              {hasVideo && (
-                                <span className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/35">
-                                  <Play className="h-6 w-6 fill-white text-white" />
-                                </span>
-                              )}
-                            </span>
-                            <span className="min-w-0 flex-1 space-y-1.5">
-                              <Badge className={cn("rounded-full text-[10px]", (STATUS_META[p.status] ?? {}).className)} variant="secondary">
-                                {(STATUS_META[p.status] ?? { label: p.status }).label}
-                              </Badge>
-                              <span className="flex items-center gap-1.5 text-sm font-medium">
-                                <Clock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                                {p.publish_time ? p.publish_time.slice(0, 5) : "Sem horário"}
-                              </span>
-                              <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                <ContentIcon className="h-3.5 w-3.5 shrink-0" />
-                                {CONTENT_TYPE_LABELS[p.content_type] ?? p.content_type}
-                              </span>
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Desktop / tablet: 7-column grid, same visual language as the internal Agenda */}
-            <div className="hidden space-y-2 sm:block">
-              <div className="grid grid-cols-7 gap-2 text-center text-xs font-semibold text-muted-foreground">
-                {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((d) => (
-                  <div key={d} className="px-2 py-1">{d}</div>
-                ))}
-              </div>
-              <div className="grid grid-cols-7 gap-2">
-                {days.map((d, i) => {
-                  const key = format(d, "yyyy-MM-dd");
-                  const dayPubs = byDay.get(key) ?? [];
-                  return (
-                    <div key={i} className="calendar-card-hover min-h-[190px] space-y-1.5 rounded-xl border border-border/40 bg-card/20 p-2 transition">
-                      <div className="flex h-6 w-6 items-center justify-center rounded-full border border-border/60 bg-background/60 text-[11px] text-muted-foreground">
-                        {format(d, "d")}
-                      </div>
-                      {dayPubs.map((p) => {
-                        const ContentIcon = CONTENT_TYPE_ICON[p.content_type] ?? File;
-                        const statusMeta = STATUS_META[p.status] ?? { shortLabel: p.status, className: "bg-muted text-muted-foreground" };
-                        const hasVideo = p.media.some((m) => m.type?.startsWith("video/"));
-                        return (
-                          <button
-                            key={p.id}
-                            type="button"
-                            onClick={() => setSelectedId(p.id)}
-                            className="block w-full overflow-hidden rounded-lg border border-border/40 bg-card text-left transition-colors hover:border-primary/40"
-                          >
-                            <span className="relative block aspect-square w-full">
-                              {firstImageUrl(p) ? (
-                                <img src={firstImageUrl(p)!} alt="" className="h-full w-full object-cover" />
-                              ) : (
-                                <span className="flex h-full w-full items-center justify-center bg-muted"><ImageIcon className="h-5 w-5 text-muted-foreground" /></span>
-                              )}
-                              {hasVideo && (
-                                <span className="absolute inset-0 flex items-center justify-center bg-black/35">
-                                  <Play className="h-4 w-4 fill-white text-white" />
-                                </span>
-                              )}
-                            </span>
-                            <span className="block space-y-1 p-1.5">
-                              <span className={cn("inline-flex w-fit items-center rounded-full px-1.5 py-0.5 text-[9px] font-semibold", statusMeta.className)}>
-                                {statusMeta.shortLabel}
-                              </span>
-                              <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                                <ContentIcon className="h-3 w-3 shrink-0" />
-                                <span className="truncate">{CONTENT_TYPE_LABELS[p.content_type] ?? p.content_type}</span>
-                                {p.publish_time && <span className="shrink-0">· {p.publish_time.slice(0, 5)}</span>}
-                              </span>
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </>
-        ) : view === "lista" ? (
+        {view === "lista" ? (
           <div className="space-y-3">
             {listOrder.length === 0 && (
               <p className="rounded-2xl border border-border/40 bg-card p-8 text-center text-sm text-muted-foreground">
@@ -553,14 +405,20 @@ export default function AprovacaoPublic() {
         ) : (
           <div className="mx-auto grid max-w-md grid-cols-3 gap-0.5 overflow-hidden rounded-2xl border border-border/40 bg-card sm:max-w-none">
             {feedItems.length === 0 && <p className="col-span-3 p-8 text-center text-sm text-muted-foreground">Nada pronto para mostrar ainda.</p>}
-            {feedItems.map((p) => (
-              // Instagram's feed post ratio (1080x1350 = 4:5), not the profile grid's square crop.
-              <button key={p.id} type="button" onClick={() => setSelectedId(p.id)} className="group relative aspect-[4/5] bg-muted">
-                {firstImageUrl(p) ? <img src={firstImageUrl(p)!} alt="" className="h-full w-full object-cover" /> : <ImageIcon className="m-auto h-6 w-6 text-muted-foreground" />}
-                {(p.content_type === "reel" || p.content_type === "video") && <Film className="absolute right-1.5 top-1.5 h-3.5 w-3.5 text-white drop-shadow" />}
-                {p.content_type === "carrossel" && <LayoutGrid className="absolute right-1.5 top-1.5 h-3.5 w-3.5 text-white drop-shadow" />}
-              </button>
-            ))}
+            {feedItems.map((p) => {
+              const ContentIcon = CONTENT_TYPE_ICON[p.content_type] ?? File;
+              const contentTypeColor = getContentTypeColor(p.content_type);
+              return (
+                // Instagram's feed post ratio (1080x1350 = 4:5), not the profile grid's square crop.
+                <button key={p.id} type="button" onClick={() => setSelectedId(p.id)} className="group relative aspect-[4/5] bg-muted">
+                  {firstImageUrl(p) ? <img src={firstImageUrl(p)!} alt="" className="h-full w-full object-cover" /> : <ImageIcon className="m-auto h-6 w-6 text-muted-foreground" />}
+                  <span className={cn("absolute left-1.5 top-1.5 inline-flex items-center gap-1 truncate rounded-md px-1.5 py-0.5 text-[9px] font-semibold shadow-sm", contentTypeColor.bg, contentTypeColor.text)}>
+                    <ContentIcon className="h-3 w-3 shrink-0" />
+                    <span className="truncate">{CONTENT_TYPE_LABELS[p.content_type] ?? p.content_type}</span>
+                  </span>
+                </button>
+              );
+            })}
           </div>
         )}
       </main>

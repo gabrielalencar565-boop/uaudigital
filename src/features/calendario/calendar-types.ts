@@ -38,21 +38,15 @@ export interface CalendarPublication {
 
 export const CALENDAR_STATUS_LABELS: Record<CalendarStatus, string> = {
   em_montagem: "Em montagem",
-  em_revisao_interna: "Em revisão interna",
-  pronto_para_envio: "Pronto para envio",
   enviado_ao_cliente: "Enviado ao cliente",
   alteracoes_solicitadas: "Alterações solicitadas",
   aprovado: "Aprovado",
-  arquivado: "Arquivado",
 };
 
 export const PUBLICATION_STATUS_LABELS: Record<PublicationStatus, string> = {
-  rascunho: "Rascunho",
   aguardando_aprovacao: "Aguardando aprovação",
   aprovada: "Aprovada",
   alteracao_solicitada: "Alteração solicitada",
-  atualizada: "Atualizada",
-  cancelada: "Cancelada",
 };
 
 export const CONTENT_TYPE_LABELS: Record<PublicationContentType, string> = {

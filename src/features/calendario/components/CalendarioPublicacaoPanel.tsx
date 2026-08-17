@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { addDays, format, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Film, LayoutGrid, List, Grid3x3, Image as ImageIcon, Link2, Copy, RefreshCw, ArrowUpRight, UserRound, CircleDashed, Clock, AlertTriangle, CheckCircle2, CalendarDays, Bookmark, Play } from "lucide-react";
+import { ChevronLeft, ChevronRight, Film, LayoutGrid, List, Grid3x3, Image as ImageIcon, Link2, Copy, RefreshCw, ArrowUpRight, UserRound, CircleDashed, Clock, AlertTriangle, CheckCircle2, Check, CalendarDays, Bookmark, Play } from "lucide-react";
 import { TAG_COLORS } from "@/features/gestao/pm-constants";
 import { DndContext, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
@@ -13,13 +13,14 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useClients, useTeamMembers } from "@/features/data/queries";
 import { useDefaultFlowWithDates, getFixedAssignee } from "@/features/gestao/components/PmStageFlowConfig";
 import { useSession } from "@/hooks/use-session";
 import {
-  useCalendarPublications, useCalendarsForClient, useCalendarsForCycle, useCapaTaskIds, useCoverAttachmentsById, useTaskAttachmentsMap, useUpdateCalendarPublication, useUpdateCalendarShare, useUpdateCalendarStatus,
+  useCalendarPublications, useCalendarsForClient, useCalendarsForCycle, useCapaTaskIds, useCoverAttachmentsById, usePublishCycle, useTaskAttachmentsMap, useUpdateCalendarPublication, useUpdateCalendarShare, useUpdateCalendarStatus,
 } from "../hooks/use-calendar-data";
 import { CALENDAR_STATUS_LABELS, CONTENT_TYPE_LABELS, PUBLICATION_STATUS_LABELS, type CalendarPublication, type CalendarStatus } from "../calendar-types";
 import { PublicationCard, CONTENT_TYPE_ICON, getContentTypeColor } from "./PublicationCard";
@@ -41,22 +42,20 @@ function cycleStart(anchor: Date) {
 }
 const UNSCHEDULED_ID = "unscheduled";
 
-// Collapses the 7 calendar_status values into the 4 buckets shown on the
-// client card in the sidebar, each with its own color.
+// Maps the 4 calendar_status values to the badge shown on the client card in the
+// sidebar — label matches CALENDAR_STATUS_LABELS exactly, key is just the status
+// itself, used to match against STATUS_FILTERS below.
 const CLIENT_CARD_STATUS: Record<string, { key: string; label: string; className: string }> = {
-  em_montagem: { key: "incompleto", label: "Incompleto", className: "bg-muted text-muted-foreground" },
-  em_revisao_interna: { key: "incompleto", label: "Incompleto", className: "bg-muted text-muted-foreground" },
-  pronto_para_envio: { key: "aguardando", label: "Aguardando aprovação", className: "bg-amber-500/15 text-amber-600 dark:text-amber-400" },
-  enviado_ao_cliente: { key: "aguardando", label: "Aguardando aprovação", className: "bg-amber-500/15 text-amber-600 dark:text-amber-400" },
-  alteracoes_solicitadas: { key: "alteracao", label: "Com alteração", className: "bg-destructive/15 text-destructive" },
+  em_montagem: { key: "em_montagem", label: "Em montagem", className: "bg-muted text-muted-foreground" },
+  enviado_ao_cliente: { key: "enviado_ao_cliente", label: "Enviado ao cliente", className: "bg-amber-500/15 text-amber-600 dark:text-amber-400" },
+  alteracoes_solicitadas: { key: "alteracoes_solicitadas", label: "Alterações solicitadas", className: "bg-destructive/15 text-destructive" },
   aprovado: { key: "aprovado", label: "Aprovado", className: "bg-success/15 text-success" },
-  arquivado: { key: "incompleto", label: "Incompleto", className: "bg-muted text-muted-foreground" },
 };
 
 const STATUS_FILTERS: { key: string; label: string; icon: typeof CircleDashed }[] = [
-  { key: "incompleto", label: "Incompleto", icon: CircleDashed },
-  { key: "aguardando", label: "Aguardando aprovação", icon: Clock },
-  { key: "alteracao", label: "Com alteração", icon: AlertTriangle },
+  { key: "em_montagem", label: "Em montagem", icon: CircleDashed },
+  { key: "enviado_ao_cliente", label: "Enviado ao cliente", icon: Clock },
+  { key: "alteracoes_solicitadas", label: "Alterações solicitadas", icon: AlertTriangle },
   { key: "aprovado", label: "Aprovado", icon: CheckCircle2 },
 ];
 
@@ -278,6 +277,12 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
 
   const publicationsQ = useCalendarPublications(calendar?.id ?? null);
   const publications = publicationsQ.data ?? [];
+  // Only approved publications are eligible to be concluded — a post still awaiting
+  // review or with changes requested shouldn't have its task closed out yet.
+  const publishablePublications = useMemo(
+    () => publications.filter((p) => p.status === "aprovada"),
+    [publications],
+  );
   const taskIds = useMemo(() => publications.map((p) => p.task_id), [publications]);
   const attachmentsQ = useTaskAttachmentsMap(taskIds);
   const coverAttachmentIds = useMemo(
@@ -291,6 +296,9 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
   const updatePublication = useUpdateCalendarPublication();
   const updateCalendarStatus = useUpdateCalendarStatus();
   const updateCalendarShare = useUpdateCalendarShare();
+  const publishCycle = usePublishCycle();
+  const [publishConfirmOpen, setPublishConfirmOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const publicationByTask = useMemo(() => {
     const map = new Map<string, CalendarPublication>();
@@ -415,6 +423,31 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
     const nextIndex = direction === "prev" ? navIndex - 1 : navIndex + 1;
     if (nextIndex < 0 || nextIndex >= navList.length) return;
     setSelectedId(navList[nextIndex].id);
+  };
+
+  const handleConfirmPublish = () => {
+    if (!calendar) return;
+    const taskIdsToComplete = [...new Set(publishablePublications.map((p) => p.task_id))];
+    publishCycle.mutate(
+      { calendarId: calendar.id, taskIds: taskIdsToComplete },
+      {
+        onSuccess: () => {
+          toast.success(`${taskIdsToComplete.length} tarefa${taskIdsToComplete.length > 1 ? "s" : ""} marcada${taskIdsToComplete.length > 1 ? "s" : ""} como concluída${taskIdsToComplete.length > 1 ? "s" : ""}!`);
+          // Concluir is often the last step before handing the cycle off to the
+          // client, so surface the share link right away instead of making the
+          // team separately click "Compartilhar" — enabling it first if it's off.
+          const shareUrl = `${window.location.origin}/aprovacao/${calendar.share_token}`;
+          navigator.clipboard.writeText(shareUrl);
+          toast.success("Link do cliente copiado!");
+          if (!calendar.share_enabled) {
+            updateCalendarShare.mutate({ id: calendar.id, clientId: clientId!, share_enabled: true });
+          }
+          setShareOpen(true);
+        },
+        onError: (e: any) => toast.error(e?.message ?? "Erro ao concluir o ciclo"),
+      },
+    );
+    setPublishConfirmOpen(false);
   };
 
   const handleDragEnd = (e: DragEndEvent) => {
@@ -571,7 +604,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
             </SelectContent>
           </Select>
 
-          <Popover>
+          <Popover open={shareOpen} onOpenChange={setShareOpen}>
             <PopoverTrigger asChild>
               <Button variant="outline" size="sm" className="h-9 gap-1.5 rounded-full">
                 <Link2 className="h-3.5 w-3.5" /> Compartilhar
@@ -614,6 +647,16 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
               )}
             </PopoverContent>
           </Popover>
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 gap-1.5 rounded-full"
+            disabled={publishablePublications.length === 0}
+            onClick={() => setPublishConfirmOpen(true)}
+          >
+            <Check className="h-3.5 w-3.5" /> Concluir
+          </Button>
 
           <Tabs value={view} onValueChange={(v) => setView(v as any)} className="ml-auto">
             <TabsList className="h-9 rounded-full">
@@ -802,6 +845,21 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
         hasPrev={navIndex > 0}
         hasNext={navIndex >= 0 && navIndex < navList.length - 1}
       />
+
+      <AlertDialog open={publishConfirmOpen} onOpenChange={setPublishConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Concluir este ciclo?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {publishablePublications.length === 1 ? "A tarefa de origem da publicação aprovada será marcada" : `As tarefas de origem das ${publishablePublications.length} publicações aprovadas serão marcadas`} como concluída{publishablePublications.length === 1 ? "" : "s"}. Use só depois de já ter postado tudo de verdade.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmPublish}>Concluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

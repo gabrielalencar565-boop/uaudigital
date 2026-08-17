@@ -162,6 +162,28 @@ export function useUpdateCalendarPublication() {
   });
 }
 
+// Bulk "Concluir" action for a whole cycle: marks each underlying task as concluído in
+// one stroke — the team clicks once after actually posting everything live instead of
+// doing it post by post. The publication's own approval status (aguardando_aprovacao /
+// alteracao_solicitada / aprovada) is untouched; it already reflects the client review,
+// concluding is purely about closing out the team's task.
+export function usePublishCycle() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ calendarId, taskIds }: { calendarId: string; taskIds: string[] }) => {
+      if (taskIds.length > 0) {
+        const { error: taskError } = await sb.from("pm_tasks").update({ status_global: "concluido" }).in("id", taskIds);
+        if (taskError) throw taskError;
+      }
+      return { calendarId };
+    },
+    onSuccess: ({ calendarId }) => {
+      qc.invalidateQueries({ queryKey: ["calendar_publications", calendarId] });
+      qc.invalidateQueries({ queryKey: ["pm_tasks"] });
+    },
+  });
+}
+
 export function useRemoveCalendarPublication() {
   const qc = useQueryClient();
   return useMutation({
