@@ -453,7 +453,7 @@ export default function AprovacaoPublic() {
         const statusMeta = STATUS_META[selected.status] ?? { label: selected.status, shortLabel: selected.status, className: "bg-muted text-muted-foreground" };
 
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={() => setSelectedId(null)}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xl" onClick={() => setSelectedId(null)}>
             <div
               className="relative flex max-h-[90vh] w-full max-w-5xl flex-col overflow-y-auto overflow-x-hidden overscroll-contain rounded-2xl border-black/10 bg-white/80 shadow-2xl backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.07] sm:border"
               onClick={(e) => e.stopPropagation()}
