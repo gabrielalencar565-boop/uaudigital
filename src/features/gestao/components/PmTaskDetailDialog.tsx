@@ -2,13 +2,14 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Calendar, UserCircle, Flag, X, ChevronRight, ArrowLeft, Trash2, Combine,
-  Layers, Tag, MessageSquare, Plus, Check, CheckCircle2, RotateCcw, Paperclip, ListTodo, FileText, Pencil, Lock
+  Layers, Tag, MessageSquare, Plus, Check, CheckCircle2, RotateCcw, Paperclip, ListTodo, FileText, Pencil, Lock,
+  Image as ImageIcon,
 } from "lucide-react";
 import { useSession } from "@/hooks/use-session";
 import { useRole } from "@/hooks/use-role";
 import { addDays, format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -47,6 +48,7 @@ import { broadcastTeamActivity } from "@/hooks/use-team-activity";
 import { setViewingTask } from "@/hooks/use-task-viewers";
 import { LateAppealDialog } from "@/features/tasks/LateAppealDialog";
 import { isTaskLate } from "@/features/tasks/is-task-late";
+import { useTaskAttachmentsMap } from "@/features/calendario/hooks/use-calendar-data";
 
 function initials(n: string) {
   return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
@@ -383,6 +385,8 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
   const createTask = useCreatePmTask();
   const syncStage = usePmSyncStageCompletion();
   const queryClient = useQueryClient();
+  const [incompleteDialogItems, setIncompleteDialogItems] = useState<{ task: PmTask; missing: string[] }[] | null>(null);
+  const incompleteThumbsQ = useTaskAttachmentsMap((incompleteDialogItems ?? []).map((i) => i.task.id));
   const { flowConfig, transitionDates, stageAssignees } = useDefaultFlowWithDates();
 
   const allAssigneeIds = [
@@ -1089,8 +1093,9 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
   const blockedByIncompleteCalendar = async (checkTask: PmTask, children: PmTask[] = []) => {
     if (checkTask.stage_current !== "pdf") return false;
     const sb = supabase as any;
-    const pdfChildIds = children.filter((c) => c.stage_current === "pdf").map((c) => c.id);
-    const idsToCheck = pdfChildIds.length > 0 ? pdfChildIds : [checkTask.id];
+    const pdfChildren = children.filter((c) => c.stage_current === "pdf");
+    const candidates = pdfChildren.length > 0 ? pdfChildren : [checkTask];
+    const idsToCheck = candidates.map((c) => c.id);
 
     const { data: pubs } = await sb
       .from("calendar_publications")
@@ -1099,22 +1104,21 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
     if (!pubs || pubs.length === 0) return false;
 
     const incomplete = (pubs as { task_id: string; caption: string | null; publish_date: string | null; publish_time: string | null }[])
-      .filter((p) => !p.publish_date || !p.publish_time || !p.caption?.trim());
+      .filter((p) => !p.publish_date || !p.publish_time || !p.caption?.trim())
+      .map((p) => {
+        const missing: string[] = [];
+        if (!p.publish_date) missing.push("Data");
+        if (!p.publish_time) missing.push("Horário");
+        if (!p.caption?.trim()) missing.push("Legenda");
+        const t = candidates.find((c) => c.id === p.task_id);
+        return t ? { task: t, missing } : null;
+      })
+      .filter((x): x is { task: PmTask; missing: string[] } => x !== null);
     if (incomplete.length === 0) return false;
 
-    if (incomplete.length === 1 && idsToCheck.length === 1) {
-      const missing: string[] = [];
-      if (!incomplete[0].publish_date) missing.push("Data");
-      if (!incomplete[0].publish_time) missing.push("Horário");
-      if (!incomplete[0].caption?.trim()) missing.push("Legenda");
-      toast.error(`Ciclo incompleto — complete no Cronograma antes de concluir: ${missing.join(", ")}.`);
-    } else {
-      toast.error(
-        incomplete.length === 1
-          ? "Ciclo incompleto — 1 publicação do Cronograma ainda precisa de data, horário e/ou legenda antes de concluir."
-          : `Ciclo incompleto — ${incomplete.length} publicações do Cronograma ainda precisam de data, horário e/ou legenda antes de concluir.`
-      );
-    }
+    // Mirrors the Cronograma's own "Ciclo incompleto" dialog (same title/copy/behavior)
+    // so the team sees one consistent message regardless of where they tried to conclude.
+    setIncompleteDialogItems(incomplete);
     return true;
   };
 
@@ -2421,6 +2425,43 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
         onClose={() => setLateAppeal({ open: false, action: null })}
         onConfirm={async () => { const a = lateAppeal.action; if (a) await a(); }}
       />
+
+      <Dialog open={!!incompleteDialogItems} onOpenChange={(v) => { if (!v) setIncompleteDialogItems(null); }}>
+        <DialogContent className="z-[200]" overlayClassName="z-[200]">
+          <DialogHeader>
+            <DialogTitle>Ciclo incompleto</DialogTitle>
+            <DialogDescription>
+              {(incompleteDialogItems?.length ?? 0) === 1 ? "1 publicação" : `${incompleteDialogItems?.length ?? 0} publicações`} ainda {(incompleteDialogItems?.length ?? 0) === 1 ? "precisa" : "precisam"} de data, horário e/ou legenda antes de concluir. Clique numa publicação para abrir e completar.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-80 space-y-1.5 overflow-y-auto">
+            {incompleteDialogItems?.map(({ task: t, missing }) => {
+              const thumb = incompleteThumbsQ.data?.get(t.id)?.find((m) => m.type?.startsWith("image/"))?.url ?? null;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => {
+                    setIncompleteDialogItems(null);
+                    if (t.id !== task.id) onSelectSubtask(t);
+                  }}
+                  className="flex w-full items-center gap-3 rounded-lg border border-border/50 px-3 py-2 text-left text-sm hover:bg-accent/50"
+                >
+                  {thumb ? (
+                    <img src={thumb} alt="" className="h-9 w-9 shrink-0 rounded-md object-cover" />
+                  ) : (
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                      <ImageIcon className="h-4 w-4" />
+                    </span>
+                  )}
+                  <span className="min-w-0 flex-1 truncate">{t.title || "Sem título"}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">{missing.join(", ")}</span>
+                </button>
+              );
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
