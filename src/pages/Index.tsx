@@ -81,6 +81,12 @@ const Index = () => {
     return () => window.removeEventListener("open-appeal-review", handler);
   }, []);
 
+  useEffect(() => {
+    const handler = () => setTab("calendario_publicacao");
+    window.addEventListener("open-calendario-publicacao", handler);
+    return () => window.removeEventListener("open-calendario-publicacao", handler);
+  }, []);
+
   const form = useForm<ProfileValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: { full_name: "", role_title: "" },

@@ -19,6 +19,8 @@ import { useSession } from "@/hooks/use-session";
 import { useRole } from "@/hooks/use-role";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { openTaskInCalendario } from "@/features/calendario/open-in-calendario";
+import { getPendingCalendarioFocus, subscribePendingCalendarioFocus, type CalendarioFocusRequest } from "@/lib/pending-calendario-focus-store";
 import { usePmTasks, usePmAllChildTasks, useUpdatePmTask, useDeletePmTask } from "./hooks/use-pm-data";
 import { useDeleteTask, useTasks, useTeamMembers } from "@/features/data/queries";
 import { useTaskAssigneesByMonth } from "@/features/data/task-assignees-queries";
@@ -98,6 +100,12 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
   const { data: periodicStages = [] } = usePeriodicStages();
 
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [calendarFocusRequest, setCalendarFocusRequest] = useState<CalendarioFocusRequest | null>(() => getPendingCalendarioFocus());
+  useEffect(() => subscribePendingCalendarioFocus((v) => { if (v) setCalendarFocusRequest(v); }), []);
+  const openTaskInCalendarioAndClose = (taskId: string) => {
+    setSelectedTaskId(null);
+    openTaskInCalendario(taskId);
+  };
   const [createOpen, setCreateOpen] = useState(false);
   const [createDefaultStatus, setCreateDefaultStatus] = useState<string | undefined>();
   const [createDefaultAssignee, setCreateDefaultAssignee] = useState<string | undefined>();
@@ -385,7 +393,11 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
 
         }
         {effectiveView === "calendario" &&
-        <CalendarioPublicacaoPanel onOpenTask={(taskId) => setSelectedTaskId(taskId)} />
+        <CalendarioPublicacaoPanel
+          onOpenTask={(taskId) => setSelectedTaskId(taskId)}
+          focusRequest={calendarFocusRequest}
+          onFocusHandled={() => setCalendarFocusRequest(null)}
+        />
         }
         {effectiveView === "pauta" &&
         <PmPautaView
@@ -427,7 +439,8 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
         clientsMap={clientsMap}
         membersMap={membersMap}
         members={membersList}
-        isAdmin={isAdmin} />
+        isAdmin={isAdmin}
+        onOpenInCalendario={openTaskInCalendarioAndClose} />
       
 
       {/* Create task dialog */}

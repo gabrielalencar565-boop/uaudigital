@@ -70,9 +70,10 @@ interface Props {
   membersMap: Record<string, { name: string; avatar?: string }>;
   members: { id: string; name: string }[];
   isAdmin: boolean;
+  onOpenInCalendario?: (taskId: string) => void;
 }
 
-export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap, members, isAdmin }: Props) {
+export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap, members, isAdmin, onOpenInCalendario }: Props) {
   const [taskStack, setTaskStack] = useState<string[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -262,7 +263,7 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
 
           {/* CENTER: Task detail */}
           <div className="flex-1 overflow-y-auto min-h-0">
-            <TaskContentView task={currentTask} parentTask={resolvedRootTask} childTasks={childTasks} attachments={attachments} membersMap={membersMap} members={members} isAdmin={isAdmin} onSelectSubtask={handleSelectSubtask} activeSubtaskId={null} onClose={handleClose} clientsMap={clientsMap} allTags={allTags} parentStageCurrent={isSubtaskView ? resolvedRootTask.stage_current : undefined} globalTags={globalTagsQ.data ?? []} onEditTask={(taskId) => setTaskStack(prev => [...prev, taskId])} />
+            <TaskContentView task={currentTask} parentTask={resolvedRootTask} childTasks={childTasks} attachments={attachments} membersMap={membersMap} members={members} isAdmin={isAdmin} onSelectSubtask={handleSelectSubtask} activeSubtaskId={null} onClose={handleClose} clientsMap={clientsMap} allTags={allTags} parentStageCurrent={isSubtaskView ? resolvedRootTask.stage_current : undefined} globalTags={globalTagsQ.data ?? []} onEditTask={(taskId) => setTaskStack(prev => [...prev, taskId])} onOpenInCalendario={onOpenInCalendario} />
           </div>
 
           {/* RIGHT: Comments sidebar (hidden on mobile) */}
@@ -372,7 +373,7 @@ function StageCircle({ stageKey, size = "md" }: { stageKey: string; size?: "xs" 
 
 // ─── Task Content View ───
 
-function TaskContentView({ task, parentTask, childTasks, attachments, membersMap, members, isAdmin, onSelectSubtask, activeSubtaskId, onClose, clientsMap, allTags, parentStageCurrent, globalTags, onEditTask }: {
+function TaskContentView({ task, parentTask, childTasks, attachments, membersMap, members, isAdmin, onSelectSubtask, activeSubtaskId, onClose, clientsMap, allTags, parentStageCurrent, globalTags, onEditTask, onOpenInCalendario }: {
   task: PmTask; parentTask: PmTask; childTasks: PmTask[]; attachments: any[];
   membersMap: Record<string, { name: string; avatar?: string }>; members: { id: string; name: string }[];
   isAdmin: boolean; onSelectSubtask: (sub: PmTask) => void; activeSubtaskId: string | null;
@@ -380,6 +381,7 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
   parentStageCurrent?: string;
   globalTags: { id: string; name: string; color_key: string; created_by: string; created_at: string }[];
   onEditTask?: (taskId: string) => void;
+  onOpenInCalendario?: (taskId: string) => void;
 }) {
   const updateTask = useUpdatePmTask();
   const createTask = useCreatePmTask();
@@ -2443,7 +2445,8 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
                   type="button"
                   onClick={() => {
                     setIncompleteDialogItems(null);
-                    if (t.id !== task.id) onSelectSubtask(t);
+                    if (onOpenInCalendario) onOpenInCalendario(t.id);
+                    else if (t.id !== task.id) onSelectSubtask(t);
                   }}
                   className="flex w-full items-center gap-3 rounded-lg border border-border/50 px-3 py-2 text-left text-sm hover:bg-accent/50"
                 >

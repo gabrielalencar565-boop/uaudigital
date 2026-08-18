@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { addDays, format, startOfWeek } from "date-fns";
+import { addDays, format, parseISO, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, Film, LayoutGrid, List, Grid3x3, Image as ImageIcon, Link2, Copy, RefreshCw, ArrowUpRight, UserRound, CircleDashed, Clock, AlertTriangle, CheckCircle2, Check, CalendarDays, Bookmark, Play } from "lucide-react";
 import { TAG_COLORS } from "@/features/gestao/pm-constants";
@@ -30,6 +30,8 @@ import { PublicationPreviewPanel } from "./PublicationPreviewPanel";
 
 interface Props {
   onOpenTask: (taskId: string) => void;
+  focusRequest?: { clientId: string; cycleStart: string; publicationId: string } | null;
+  onFocusHandled?: () => void;
 }
 
 function anchorForDate(d: Date) {
@@ -205,11 +207,23 @@ function DropZone({ id, children, className }: { id: string; children: React.Rea
   );
 }
 
-export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
+export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHandled }: Props) {
   const [clientId, setClientId] = useState<string | null>(null);
   const [cursor, setCursor] = useState(() => anchorForDate(new Date()));
   const [view, setView] = useState<"calendario" | "lista" | "feed">("calendario");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // Deep-link from elsewhere in the app (e.g. the Agenda's "Ciclo incompleto" dialog):
+  // jump straight to a client's cycle and open one publication, instead of making the
+  // team re-navigate the client list + month picker by hand.
+  useEffect(() => {
+    if (!focusRequest) return;
+    const cycleStartDate = parseISO(focusRequest.cycleStart);
+    setClientId(focusRequest.clientId);
+    setCursor(new Date(cycleStartDate.getFullYear(), cycleStartDate.getMonth() + 1, 1));
+    setSelectedId(focusRequest.publicationId);
+    onFocusHandled?.();
+  }, [focusRequest, onFocusHandled]);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   const clientsQ = useClients();
