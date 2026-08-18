@@ -1078,6 +1078,30 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
   const handleConcluido = async () => {
     if (isDone) return;
     const completedStage = task.stage_current;
+
+    // The PDF stage is when the trigger links this task to a calendar_publications
+    // row (see pm_task_pdf_stage_to_calendar) — don't let the team mark the PDF
+    // step done until that entry actually has date/time/caption set, or it silently
+    // completes the task while the Cronograma still shows it as incomplete.
+    if (completedStage === "pdf") {
+      const sb = supabase as any;
+      const { data: pub } = await sb
+        .from("calendar_publications")
+        .select("caption, publish_date, publish_time")
+        .eq("task_id", task.id)
+        .maybeSingle();
+      if (pub) {
+        const missing: string[] = [];
+        if (!pub.publish_date) missing.push("Data");
+        if (!pub.publish_time) missing.push("Horário");
+        if (!pub.caption?.trim()) missing.push("Legenda");
+        if (missing.length > 0) {
+          toast.error(`Ciclo incompleto — complete no Cronograma antes de concluir: ${missing.join(", ")}.`);
+          return;
+        }
+      }
+    }
+
     notifyTaskCompletion();
 
     // ═══ CAPTAÇÃO: just mark as done, no stage advancement ═══

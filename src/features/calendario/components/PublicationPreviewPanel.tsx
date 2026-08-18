@@ -101,6 +101,14 @@ export function PublicationPreviewPanel({ publication, media, clientName, client
   // mark the task complete in Gestão after posting. The publication's own approval
   // status (aguardando_aprovacao / alteracao_solicitada / aprovada) is untouched.
   const handlePublish = async () => {
+    const missing: string[] = [];
+    if (!publication.publish_date) missing.push("Data");
+    if (!publication.publish_time) missing.push("Horário");
+    if (!publication.caption?.trim()) missing.push("Legenda");
+    if (missing.length > 0) {
+      toast.error(`Ciclo incompleto — falta ${missing.join(", ")} antes de concluir.`);
+      return;
+    }
     setPublishing(true);
     try {
       const { error } = await sb.from("pm_tasks").update({ status_global: "concluido" }).eq("id", publication.task_id);
