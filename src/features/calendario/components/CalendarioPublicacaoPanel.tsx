@@ -474,7 +474,9 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
       { calendarId: calendar.id, taskIds: taskIdsToComplete },
       {
         onSuccess: () => {
-          toast.success(`${taskIdsToComplete.length} tarefa${taskIdsToComplete.length > 1 ? "s" : ""} marcada${taskIdsToComplete.length > 1 ? "s" : ""} como concluída${taskIdsToComplete.length > 1 ? "s" : ""}!`);
+          if (taskIdsToComplete.length > 0) {
+            toast.success(`${taskIdsToComplete.length} tarefa${taskIdsToComplete.length > 1 ? "s" : ""} marcada${taskIdsToComplete.length > 1 ? "s" : ""} como concluída${taskIdsToComplete.length > 1 ? "s" : ""}!`);
+          }
           // Concluir is often the last step before handing the cycle off to the
           // client, so surface the share link right away instead of making the
           // team separately click "Compartilhar" — enabling it first if it's off.
@@ -715,30 +717,20 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
               <Check className="h-3.5 w-3.5" /> Concluído
             </Button>
           ) : (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="inline-flex">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-9 gap-1.5 rounded-full"
-                    disabled={cycleReadyToConclude && publishablePublications.length === 0}
-                    onClick={() => {
-                      if (!cycleReadyToConclude) {
-                        setIncompleteDialogOpen(true);
-                      } else {
-                        setPublishConfirmOpen(true);
-                      }
-                    }}
-                  >
-                    <Check className="h-3.5 w-3.5" /> Concluir
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              {cycleReadyToConclude && publishablePublications.length === 0 && (
-                <TooltipContent>Nenhuma publicação aprovada ainda.</TooltipContent>
-              )}
-            </Tooltip>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 gap-1.5 rounded-full"
+              onClick={() => {
+                if (!cycleReadyToConclude) {
+                  setIncompleteDialogOpen(true);
+                } else {
+                  setPublishConfirmOpen(true);
+                }
+              }}
+            >
+              <Check className="h-3.5 w-3.5" /> Concluir
+            </Button>
           )}
 
           <Tabs value={view} onValueChange={(v) => setView(v as any)} className="ml-auto">
@@ -934,7 +926,10 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
           <AlertDialogHeader>
             <AlertDialogTitle>Concluir este ciclo?</AlertDialogTitle>
             <AlertDialogDescription>
-              {publishablePublications.length === 1 ? "A tarefa de origem da publicação aprovada será marcada" : `As tarefas de origem das ${publishablePublications.length} publicações aprovadas serão marcadas`} como concluída{publishablePublications.length === 1 ? "" : "s"}. Use só depois de já ter postado tudo de verdade.
+              {publishablePublications.length > 0 && (
+                <>{publishablePublications.length === 1 ? "A tarefa de origem da publicação aprovada será marcada como concluída. " : `As tarefas de origem das ${publishablePublications.length} publicações aprovadas serão marcadas como concluídas. `}</>
+              )}
+              O ciclo vai para "Enviado ao cliente" e o link de aprovação será compartilhado.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
