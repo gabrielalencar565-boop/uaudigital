@@ -805,7 +805,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
 
           {view === "feed" && (
             <div className="space-y-4">
-              <div className="grid grid-cols-3 gap-0.5 overflow-hidden rounded-xl border border-border/30">
+              <div className="grid grid-cols-3 gap-1.5">
                 {feedItems.length === 0 && (
                   <p className="col-span-3 p-6 text-center text-sm text-muted-foreground">Nenhuma publicação pronta para o feed ainda.</p>
                 )}
@@ -817,7 +817,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
                   const isVideoish = p.content_type === "reel" || p.content_type === "video";
                   return (
                     // Instagram's feed post ratio (1080x1350 = 4:5), mirrors the public preview's Feed.
-                    <button key={p.id} type="button" onClick={() => setSelectedId(p.id)} className="group relative aspect-[4/5] bg-muted">
+                    <button key={p.id} type="button" onClick={() => setSelectedId(p.id)} className="group relative aspect-[4/5] overflow-hidden rounded-lg bg-muted">
                       {thumb ? (
                         <img src={thumb} alt="" className="h-full w-full object-cover transition-opacity group-hover:opacity-90" />
                       ) : (
