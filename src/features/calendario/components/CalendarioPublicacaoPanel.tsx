@@ -22,7 +22,7 @@ import { useClients, useTeamMembers } from "@/features/data/queries";
 import { useDefaultFlowWithDates, getFixedAssignee } from "@/features/gestao/components/PmStageFlowConfig";
 import { useSession } from "@/hooks/use-session";
 import {
-  useCalendarPublications, useCalendarsForClient, useCalendarsForCycle, useCapaTaskIds, useCoverAttachmentsById, usePublishCycle, useTaskAttachmentsMap, useUpdateCalendarPublication, useUpdateCalendarShare, useUpdateCalendarStatus,
+  useCalendarPublications, useCalendarsForClient, useCalendarsForCycle, useCapaTaskIds, useCoverAttachmentsById, usePublishCycle, useUnpublishCycle, useTaskAttachmentsMap, useTaskCompletionMap, useUpdateCalendarPublication, useUpdateCalendarShare, useUpdateCalendarStatus,
 } from "../hooks/use-calendar-data";
 import { CALENDAR_STATUS_LABELS, CONTENT_TYPE_LABELS, PUBLICATION_STATUS_LABELS, type CalendarPublication, type CalendarStatus } from "../calendar-types";
 import { PublicationCard, CONTENT_TYPE_ICON, getContentTypeColor } from "./PublicationCard";
@@ -317,6 +317,16 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
   const [incompleteDialogOpen, setIncompleteDialogOpen] = useState(false);
   const taskIds = useMemo(() => publications.map((p) => p.task_id), [publications]);
   const attachmentsQ = useTaskAttachmentsMap(taskIds);
+  // "Concluído" (green, unmark-able) once every approved publication's task has
+  // actually been closed out — not just approved by the client.
+  const approvedTaskIds = useMemo(
+    () => [...new Set(publishablePublications.map((p) => p.task_id))],
+    [publishablePublications],
+  );
+  const taskCompletionQ = useTaskCompletionMap(approvedTaskIds);
+  const cycleConcluded = approvedTaskIds.length > 0 && approvedTaskIds.every((id) => taskCompletionQ.data?.has(id));
+  const unpublishCycle = useUnpublishCycle();
+  const [unpublishConfirmOpen, setUnpublishConfirmOpen] = useState(false);
   const coverAttachmentIds = useMemo(
     () => [...new Set(publications.map((p) => p.cover_attachment_id).filter((id): id is string => !!id))],
     [publications],
@@ -483,6 +493,18 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
       },
     );
     setPublishConfirmOpen(false);
+  };
+
+  const handleUnpublish = () => {
+    if (!calendar) return;
+    unpublishCycle.mutate(
+      { calendarId: calendar.id, taskIds: approvedTaskIds },
+      {
+        onSuccess: () => toast.success("Conclusão desmarcada."),
+        onError: (e: any) => toast.error(e?.message ?? "Erro ao desmarcar"),
+      },
+    );
+    setUnpublishConfirmOpen(false);
   };
 
   const handleDragEnd = (e: DragEndEvent) => {
@@ -683,30 +705,41 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
             </PopoverContent>
           </Popover>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="inline-flex">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-9 gap-1.5 rounded-full"
-                  disabled={cycleReadyToConclude && publishablePublications.length === 0}
-                  onClick={() => {
-                    if (!cycleReadyToConclude) {
-                      setIncompleteDialogOpen(true);
-                    } else {
-                      setPublishConfirmOpen(true);
-                    }
-                  }}
-                >
-                  <Check className="h-3.5 w-3.5" /> Concluir
-                </Button>
-              </span>
-            </TooltipTrigger>
-            {cycleReadyToConclude && publishablePublications.length === 0 && (
-              <TooltipContent>Nenhuma publicação aprovada ainda.</TooltipContent>
-            )}
-          </Tooltip>
+          {cycleConcluded ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 gap-1.5 rounded-full border-emerald-500/40 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 hover:text-emerald-600"
+              onClick={() => setUnpublishConfirmOpen(true)}
+            >
+              <Check className="h-3.5 w-3.5" /> Concluído
+            </Button>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="inline-flex">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 gap-1.5 rounded-full"
+                    disabled={cycleReadyToConclude && publishablePublications.length === 0}
+                    onClick={() => {
+                      if (!cycleReadyToConclude) {
+                        setIncompleteDialogOpen(true);
+                      } else {
+                        setPublishConfirmOpen(true);
+                      }
+                    }}
+                  >
+                    <Check className="h-3.5 w-3.5" /> Concluir
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              {cycleReadyToConclude && publishablePublications.length === 0 && (
+                <TooltipContent>Nenhuma publicação aprovada ainda.</TooltipContent>
+              )}
+            </Tooltip>
+          )}
 
           <Tabs value={view} onValueChange={(v) => setView(v as any)} className="ml-auto">
             <TabsList className="h-9 rounded-full">
@@ -907,6 +940,21 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmPublish}>Concluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={unpublishConfirmOpen} onOpenChange={setUnpublishConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Desmarcar conclusão deste ciclo?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {approvedTaskIds.length === 1 ? "A tarefa voltará" : `As ${approvedTaskIds.length} tarefas voltarão`} para pendente — na Agenda também, já que é a mesma tarefa.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleUnpublish}>Desmarcar</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

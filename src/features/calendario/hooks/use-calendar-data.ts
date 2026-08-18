@@ -203,6 +203,47 @@ export function usePublishCycle() {
     onSuccess: ({ calendarId }) => {
       qc.invalidateQueries({ queryKey: ["calendar_publications", calendarId] });
       qc.invalidateQueries({ queryKey: ["pm_tasks"] });
+      qc.invalidateQueries({ queryKey: ["pm_task_status_for_calendar"] });
+    },
+  });
+}
+
+// Reverses usePublishCycle — same tasks, back to backlog. Since the Agenda reads this
+// same status_global column directly, unmarking here immediately unmarks it there too;
+// no separate sync needed.
+export function useUnpublishCycle() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ calendarId, taskIds }: { calendarId: string; taskIds: string[] }) => {
+      if (taskIds.length > 0) {
+        const { error: taskError } = await sb.from("pm_tasks").update({ status_global: "backlog" }).in("id", taskIds);
+        if (taskError) throw taskError;
+      }
+      return { calendarId };
+    },
+    onSuccess: ({ calendarId }) => {
+      qc.invalidateQueries({ queryKey: ["calendar_publications", calendarId] });
+      qc.invalidateQueries({ queryKey: ["pm_tasks"] });
+      qc.invalidateQueries({ queryKey: ["pm_task_status_for_calendar"] });
+    },
+  });
+}
+
+// Which of these tasks are already marked concluído — used to render the bulk
+// "Concluir" button as done (green, with an option to unmark) once every approved
+// publication's task has actually been closed out.
+export function useTaskCompletionMap(taskIds: string[]) {
+  return useQuery({
+    enabled: taskIds.length > 0,
+    queryKey: ["pm_task_status_for_calendar", taskIds],
+    queryFn: async (): Promise<Set<string>> => {
+      const { data, error } = await sb.from("pm_tasks").select("id, status_global").in("id", taskIds);
+      if (error) throw error;
+      const done = new Set<string>();
+      for (const row of (data ?? []) as { id: string; status_global: string }[]) {
+        if (row.status_global === "concluido") done.add(row.id);
+      }
+      return done;
     },
   });
 }
