@@ -1134,6 +1134,9 @@ function ClientFormDialog({
                   <div className="space-y-1.5">
                     <Label>Duração (meses)</Label>
                     <Input type="number" step="1" min="0" max="240" {...form.register("contract_months")} />
+                    <p className="text-[11px] text-muted-foreground">
+                      Use <strong>0</strong> para não aparecer no Magic Number.
+                    </p>
                   </div>
                   <div className="space-y-1.5">
                     <Label>Dia de pagamento</Label>
