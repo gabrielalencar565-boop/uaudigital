@@ -75,6 +75,26 @@ export function useTaskAttachmentsMap(taskIds: string[]) {
   });
 }
 
+// Persists a new drag-and-drop order for a carrossel's pages — order_index defaults to
+// 0 for every attachment (never set anywhere else), so writing 0..N-1 here makes it the
+// authoritative sort key going forward, ahead of the created_at fallback in
+// useTaskAttachmentsMap's query above.
+export function useReorderCarouselImages() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ orderedIds }: { orderedIds: string[] }) => {
+      const results = await Promise.all(
+        orderedIds.map((id, index) => sb.from("pm_attachments").update({ order_index: index }).eq("id", id)),
+      );
+      const failed = results.find((r) => r.error);
+      if (failed?.error) throw failed.error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["pm_attachments_for_calendar"] });
+    },
+  });
+}
+
 // Tasks tagged "Capa" (see useCoverCandidates) are just holding-cells for cover art —
 // their own content_type is 'outro' by default, but the calendar cards should badge
 // them as "Capa" instead so they're recognizable at a glance among real posts.
