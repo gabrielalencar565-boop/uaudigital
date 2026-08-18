@@ -16,7 +16,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/h
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { CONTENT_TYPE_LABELS, PUBLICATION_STATUS_LABELS, type CalendarPublication, type PublicationContentType, type PublicationStatus } from "../calendar-types";
-import { useCoverCandidates, useRemoveCalendarPublication, useUpdateCalendarPublication } from "../hooks/use-calendar-data";
+import { useCoverCandidates, useRemoveCalendarPublication, useReorderCarouselImages, useUpdateCalendarPublication } from "../hooks/use-calendar-data";
 import { useUploadPmAttachment } from "@/features/gestao/hooks/use-pm-data";
 import { PmImageViewer } from "@/features/gestao/components/PmImageViewer";
 
@@ -53,6 +53,7 @@ export function PublicationPreviewPanel({ publication, media, clientName, client
   const updatePublication = useUpdateCalendarPublication();
   const removePublication = useRemoveCalendarPublication();
   const uploadCover = useUploadPmAttachment();
+  const reorderCarousel = useReorderCarouselImages();
   const coverCandidatesQ = useCoverCandidates(publication?.task_id ?? null);
   const coverFileInputRef = useRef<HTMLInputElement>(null);
   const [caption, setCaption] = useState("");
@@ -68,6 +69,8 @@ export function PublicationPreviewPanel({ publication, media, clientName, client
   const [frameDialogOpen, setFrameDialogOpen] = useState(false);
   const [capturingFrame, setCapturingFrame] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [dragImageIndex, setDragImageIndex] = useState<number | null>(null);
+  const [dragOverImageIndex, setDragOverImageIndex] = useState<number | null>(null);
   const frameVideoRef = useRef<HTMLVideoElement>(null);
   const timeListRef = useRef<HTMLDivElement>(null);
   const timeButtonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
@@ -187,6 +190,23 @@ export function PublicationPreviewPanel({ publication, media, clientName, client
   const images = media.filter((m) => m.type?.startsWith("image/"));
   const videos = media.filter((m) => m.type?.startsWith("video/"));
   const isCarousel = publication.content_type === "carrossel" && images.length > 1;
+
+  const handleReorderDrop = (targetIndex: number) => {
+    if (dragImageIndex === null || dragImageIndex === targetIndex) {
+      setDragImageIndex(null);
+      setDragOverImageIndex(null);
+      return;
+    }
+    const reordered = [...images];
+    const [moved] = reordered.splice(dragImageIndex, 1);
+    reordered.splice(targetIndex, 0, moved);
+    reorderCarousel.mutate(
+      { orderedIds: reordered.map((img) => img.id) },
+      { onError: (e: any) => toast.error(e?.message ?? "Erro ao reordenar o carrossel") },
+    );
+    setDragImageIndex(null);
+    setDragOverImageIndex(null);
+  };
   const isStory = publication.content_type === "story";
   const hasVideo = (publication.content_type === "reel" || publication.content_type === "video") && videos.length > 0;
 
@@ -332,6 +352,42 @@ export function PublicationPreviewPanel({ publication, media, clientName, client
                   </SelectContent>
                 </Select>
               </div>
+
+              {isCarousel && (
+                <div className="space-y-1.5">
+                  <Label>Ordem das páginas do carrossel</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {images.map((img, idx) => (
+                      <HoverCard key={img.id} openDelay={200} closeDelay={0}>
+                        <HoverCardTrigger asChild>
+                          <div
+                            draggable
+                            onDragStart={() => setDragImageIndex(idx)}
+                            onDragOver={(e) => { e.preventDefault(); setDragOverImageIndex(idx); }}
+                            onDragLeave={() => setDragOverImageIndex((i) => (i === idx ? null : i))}
+                            onDrop={(e) => { e.preventDefault(); handleReorderDrop(idx); }}
+                            onDragEnd={() => { setDragImageIndex(null); setDragOverImageIndex(null); }}
+                            className={cn(
+                              "relative h-16 w-16 shrink-0 cursor-grab overflow-hidden rounded-lg border-2 transition active:cursor-grabbing",
+                              dragImageIndex === idx ? "opacity-40" : "opacity-100",
+                              dragOverImageIndex === idx && dragImageIndex !== idx ? "border-primary" : "border-transparent",
+                            )}
+                          >
+                            <img src={img.url} alt="" className="pointer-events-none h-full w-full object-cover" />
+                            <span className="pointer-events-none absolute left-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-black/70 text-[9px] font-semibold text-white">
+                              {idx + 1}
+                            </span>
+                          </div>
+                        </HoverCardTrigger>
+                        <HoverCardContent side="top" className="w-auto overflow-hidden rounded-md p-0">
+                          <img src={img.url} alt="" className="max-h-80 max-w-80 object-contain" />
+                        </HoverCardContent>
+                      </HoverCard>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Arraste as miniaturas para mudar a ordem das páginas.</p>
+                </div>
+              )}
 
               {(publication.content_type === "reel" || publication.content_type === "video") && (() => {
                 const ownIds = new Set(images.map((img) => img.id));
