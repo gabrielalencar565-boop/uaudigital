@@ -373,15 +373,6 @@ export default function AprovacaoPublic() {
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-8">
-        {canApproveAll && (
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 sm:gap-3 sm:rounded-2xl sm:px-4 sm:py-3">
-            <p className="text-xs font-medium sm:text-sm">Revisou tudo? Aprove o ciclo inteiro de uma vez.</p>
-            <Button size="sm" className="h-7 gap-1.5 rounded-full px-2.5 text-xs sm:h-9 sm:px-3 sm:text-sm" onClick={() => setConfirmApproveAll(true)}>
-              <Check className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> Aprovar todas as publicações
-            </Button>
-          </div>
-        )}
-
         <div className="mb-4 flex items-center gap-2 rounded-full border border-border/40 bg-card p-1 w-fit">
           <button
             type="button"
@@ -427,6 +418,15 @@ export default function AprovacaoPublic() {
                 </button>
               );
             })}
+          </div>
+        )}
+
+        {canApproveAll && (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 sm:gap-3 sm:rounded-2xl sm:px-4 sm:py-3">
+            <p className="text-xs font-medium sm:text-sm">Revisou tudo? Aprove o ciclo inteiro de uma vez.</p>
+            <Button size="sm" className="h-7 gap-1.5 rounded-full px-2.5 text-xs sm:h-9 sm:px-3 sm:text-sm" onClick={() => setConfirmApproveAll(true)}>
+              <Check className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> Aprovar todas as publicações
+            </Button>
           </div>
         )}
       </main>
