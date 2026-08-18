@@ -339,7 +339,6 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
   const updateCalendarStatus = useUpdateCalendarStatus();
   const updateCalendarShare = useUpdateCalendarShare();
   const publishCycle = usePublishCycle();
-  const [publishConfirmOpen, setPublishConfirmOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
 
   const publicationByTask = useMemo(() => {
@@ -494,7 +493,6 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
         onError: (e: any) => toast.error(e?.message ?? "Erro ao concluir o ciclo"),
       },
     );
-    setPublishConfirmOpen(false);
   };
 
   const handleUnpublish = () => {
@@ -725,7 +723,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                 if (!cycleReadyToConclude) {
                   setIncompleteDialogOpen(true);
                 } else {
-                  setPublishConfirmOpen(true);
+                  handleConfirmPublish();
                 }
               }}
             >
@@ -920,24 +918,6 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
         hasPrev={navIndex > 0}
         hasNext={navIndex >= 0 && navIndex < navList.length - 1}
       />
-
-      <AlertDialog open={publishConfirmOpen} onOpenChange={setPublishConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Concluir este ciclo?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {publishablePublications.length > 0 && (
-                <>{publishablePublications.length === 1 ? "A tarefa de origem da publicação aprovada será marcada como concluída. " : `As tarefas de origem das ${publishablePublications.length} publicações aprovadas serão marcadas como concluídas. `}</>
-              )}
-              O ciclo vai para "Enviado ao cliente" e o link de aprovação será compartilhado.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmPublish}>Concluir</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       <AlertDialog open={unpublishConfirmOpen} onOpenChange={setUnpublishConfirmOpen}>
         <AlertDialogContent>

@@ -35,6 +35,7 @@ export function getContentTypeColor(contentType: CalendarPublication["content_ty
 }
 
 const STATUS_PILL: Record<CalendarPublication["status"], { label: string; className: string }> = {
+  em_montagem: { label: "EM MONTAGEM", className: "bg-muted text-muted-foreground" },
   aguardando_aprovacao: { label: "AGUARDANDO", className: "bg-amber-500/15 text-amber-600" },
   aprovada: { label: "APROVADA", className: "bg-success/15 text-success" },
   alteracao_solicitada: { label: "ALTERAÇÃO", className: "bg-destructive/15 text-destructive" },
