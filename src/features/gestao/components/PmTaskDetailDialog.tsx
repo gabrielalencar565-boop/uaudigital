@@ -1081,21 +1081,40 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
   // the task while the Cronograma still shows the cycle as incomplete. Shared by the
   // parent-task "Concluir" flow (handleConcluido) and the subtask quick-complete
   // buttons below, since both can mark a pdf-stage task as concluído.
-  const blockedByIncompleteCalendar = async (checkTask: PmTask) => {
+  //
+  // A parent task with children (e.g. "[Cliente] - PDF - Mês") never gets its own
+  // calendar_publications row — the trigger skips it and links each child instead
+  // (see pm_task_pdf_stage_to_calendar). So concluding the parent has to check every
+  // pdf-stage child's calendar entry, not the parent's own (nonexistent) one.
+  const blockedByIncompleteCalendar = async (checkTask: PmTask, children: PmTask[] = []) => {
     if (checkTask.stage_current !== "pdf") return false;
     const sb = supabase as any;
-    const { data: pub } = await sb
+    const pdfChildIds = children.filter((c) => c.stage_current === "pdf").map((c) => c.id);
+    const idsToCheck = pdfChildIds.length > 0 ? pdfChildIds : [checkTask.id];
+
+    const { data: pubs } = await sb
       .from("calendar_publications")
-      .select("caption, publish_date, publish_time")
-      .eq("task_id", checkTask.id)
-      .maybeSingle();
-    if (!pub) return false;
-    const missing: string[] = [];
-    if (!pub.publish_date) missing.push("Data");
-    if (!pub.publish_time) missing.push("Horário");
-    if (!pub.caption?.trim()) missing.push("Legenda");
-    if (missing.length === 0) return false;
-    toast.error(`Ciclo incompleto — complete no Cronograma antes de concluir: ${missing.join(", ")}.`);
+      .select("task_id, caption, publish_date, publish_time")
+      .in("task_id", idsToCheck);
+    if (!pubs || pubs.length === 0) return false;
+
+    const incomplete = (pubs as { task_id: string; caption: string | null; publish_date: string | null; publish_time: string | null }[])
+      .filter((p) => !p.publish_date || !p.publish_time || !p.caption?.trim());
+    if (incomplete.length === 0) return false;
+
+    if (incomplete.length === 1 && idsToCheck.length === 1) {
+      const missing: string[] = [];
+      if (!incomplete[0].publish_date) missing.push("Data");
+      if (!incomplete[0].publish_time) missing.push("Horário");
+      if (!incomplete[0].caption?.trim()) missing.push("Legenda");
+      toast.error(`Ciclo incompleto — complete no Cronograma antes de concluir: ${missing.join(", ")}.`);
+    } else {
+      toast.error(
+        incomplete.length === 1
+          ? "Ciclo incompleto — 1 publicação do Cronograma ainda precisa de data, horário e/ou legenda antes de concluir."
+          : `Ciclo incompleto — ${incomplete.length} publicações do Cronograma ainda precisam de data, horário e/ou legenda antes de concluir.`
+      );
+    }
     return true;
   };
 
@@ -1103,7 +1122,7 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
     if (isDone) return;
     const completedStage = task.stage_current;
 
-    if (await blockedByIncompleteCalendar(task)) return;
+    if (await blockedByIncompleteCalendar(task, childTasks)) return;
 
     notifyTaskCompletion();
 
