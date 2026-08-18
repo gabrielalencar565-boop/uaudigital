@@ -540,14 +540,7 @@ export default function AprovacaoPublic() {
                   </div>
 
                   <div className="space-y-1 px-3 pb-3">
-                    <div>
-                      <span className="mr-1 text-sm font-semibold">{clientName}</span>
-                      {selected.caption ? (
-                        <span className="whitespace-pre-line text-sm text-foreground/80">{selected.caption}</span>
-                      ) : (
-                        <span className="text-sm italic text-muted-foreground">sem legenda</span>
-                      )}
-                    </div>
+                    <span className="text-sm font-semibold">{clientName}</span>
                     {selected.publish_date && (
                       <p className="text-[11px] uppercase text-muted-foreground">
                         Publicação prevista para: {format(parseISO(selected.publish_date), "dd/MM/yyyy")}{selected.publish_time ? ` às ${selected.publish_time.slice(0, 5)}` : ""}
