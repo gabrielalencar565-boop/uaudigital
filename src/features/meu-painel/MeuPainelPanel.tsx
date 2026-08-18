@@ -21,6 +21,7 @@ import { useNow } from "@/hooks/use-now";
 import { MentionsWidget } from "@/features/meu-painel/components/MentionsWidget";
 import { MyPmTasksWidget } from "@/features/meu-painel/components/MyPmTasksWidget";
 import { PmTaskDetailDialog } from "@/features/gestao/components/PmTaskDetailDialog";
+import { openTaskInCalendario } from "@/features/calendario/open-in-calendario";
 import { usePmTasks } from "@/features/gestao/hooks/use-pm-data";
 import { useQuery } from "@tanstack/react-query";
 import { ProductivityWidget } from "@/features/meu-painel/components/ProductivityWidget";
@@ -554,6 +555,6 @@ function PmTaskDetailDialogWrapper({ taskId, onClose, isAdmin }: { taskId: strin
   const membersList = useMemo(() => (membersQ.data ?? []).map((m) => ({ id: m.user_id, name: m.display_name })), [membersQ.data]);
 
   return (
-    <PmTaskDetailDialog task={task} open={!!taskId} onClose={onClose} clientsMap={clientsMap} membersMap={membersMap} members={membersList} isAdmin={isAdmin} />
+    <PmTaskDetailDialog task={task} open={!!taskId} onClose={onClose} clientsMap={clientsMap} membersMap={membersMap} members={membersList} isAdmin={isAdmin} onOpenInCalendario={(taskId) => { onClose(); openTaskInCalendario(taskId); }} />
   );
 }

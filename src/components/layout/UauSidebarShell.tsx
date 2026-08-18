@@ -19,6 +19,7 @@ import { GlobalUploadTray } from "@/components/layout/GlobalUploadTray";
 import { EditProfileDialog } from "@/features/meu-painel/components/EditProfileDialog";
 import { usePmTasks } from "@/features/gestao/hooks/use-pm-data";
 import { PmTaskDetailDialog } from "@/features/gestao/components/PmTaskDetailDialog";
+import { openTaskInCalendario } from "@/features/calendario/open-in-calendario";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -397,7 +398,8 @@ function NotifTaskDialogWrapper({ taskId, onClose, isAdmin }: {taskId: string | 
       clientsMap={clientsMap}
       membersMap={membersMap}
       members={membersList}
-      isAdmin={isAdmin} />);
+      isAdmin={isAdmin}
+      onOpenInCalendario={(taskId) => { onClose(); openTaskInCalendario(taskId); }} />);
 
 
 }

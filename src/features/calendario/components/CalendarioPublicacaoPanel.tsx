@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { addDays, format, startOfWeek } from "date-fns";
+import { addDays, format, parseISO, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, Film, LayoutGrid, List, Grid3x3, Image as ImageIcon, Link2, Copy, RefreshCw, ArrowUpRight, UserRound, CircleDashed, Clock, AlertTriangle, CheckCircle2, Check, CalendarDays, Bookmark, Play } from "lucide-react";
 import { TAG_COLORS } from "@/features/gestao/pm-constants";
@@ -22,7 +22,7 @@ import { useClients, useTeamMembers } from "@/features/data/queries";
 import { useDefaultFlowWithDates, getFixedAssignee } from "@/features/gestao/components/PmStageFlowConfig";
 import { useSession } from "@/hooks/use-session";
 import {
-  useCalendarPublications, useCalendarsForClient, useCalendarsForCycle, useCapaTaskIds, useCoverAttachmentsById, usePublishCycle, useTaskAttachmentsMap, useUpdateCalendarPublication, useUpdateCalendarShare, useUpdateCalendarStatus,
+  useCalendarPublications, useCalendarsForClient, useCalendarsForCycle, useCapaTaskIds, useCoverAttachmentsById, usePublishCycle, useUnpublishCycle, useTaskAttachmentsMap, useTaskCompletionMap, useUpdateCalendarPublication, useUpdateCalendarShare, useUpdateCalendarStatus,
 } from "../hooks/use-calendar-data";
 import { CALENDAR_STATUS_LABELS, CONTENT_TYPE_LABELS, PUBLICATION_STATUS_LABELS, type CalendarPublication, type CalendarStatus } from "../calendar-types";
 import { PublicationCard, CONTENT_TYPE_ICON, getContentTypeColor } from "./PublicationCard";
@@ -30,6 +30,8 @@ import { PublicationPreviewPanel } from "./PublicationPreviewPanel";
 
 interface Props {
   onOpenTask: (taskId: string) => void;
+  focusRequest?: { clientId: string; cycleStart: string; publicationId: string } | null;
+  onFocusHandled?: () => void;
 }
 
 function anchorForDate(d: Date) {
@@ -205,11 +207,23 @@ function DropZone({ id, children, className }: { id: string; children: React.Rea
   );
 }
 
-export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
+export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHandled }: Props) {
   const [clientId, setClientId] = useState<string | null>(null);
   const [cursor, setCursor] = useState(() => anchorForDate(new Date()));
   const [view, setView] = useState<"calendario" | "lista" | "feed">("calendario");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // Deep-link from elsewhere in the app (e.g. the Agenda's "Ciclo incompleto" dialog):
+  // jump straight to a client's cycle and open one publication, instead of making the
+  // team re-navigate the client list + month picker by hand.
+  useEffect(() => {
+    if (!focusRequest) return;
+    const cycleStartDate = parseISO(focusRequest.cycleStart);
+    setClientId(focusRequest.clientId);
+    setCursor(new Date(cycleStartDate.getFullYear(), cycleStartDate.getMonth() + 1, 1));
+    setSelectedId(focusRequest.publicationId);
+    onFocusHandled?.();
+  }, [focusRequest, onFocusHandled]);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   const clientsQ = useClients();
@@ -303,6 +317,16 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
   const [incompleteDialogOpen, setIncompleteDialogOpen] = useState(false);
   const taskIds = useMemo(() => publications.map((p) => p.task_id), [publications]);
   const attachmentsQ = useTaskAttachmentsMap(taskIds);
+  // "Concluído" (green, unmark-able) once every approved publication's task has
+  // actually been closed out — not just approved by the client.
+  const approvedTaskIds = useMemo(
+    () => [...new Set(publishablePublications.map((p) => p.task_id))],
+    [publishablePublications],
+  );
+  const taskCompletionQ = useTaskCompletionMap(approvedTaskIds);
+  const cycleConcluded = approvedTaskIds.length > 0 && approvedTaskIds.every((id) => taskCompletionQ.data?.has(id));
+  const unpublishCycle = useUnpublishCycle();
+  const [unpublishConfirmOpen, setUnpublishConfirmOpen] = useState(false);
   const coverAttachmentIds = useMemo(
     () => [...new Set(publications.map((p) => p.cover_attachment_id).filter((id): id is string => !!id))],
     [publications],
@@ -450,7 +474,9 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
       { calendarId: calendar.id, taskIds: taskIdsToComplete },
       {
         onSuccess: () => {
-          toast.success(`${taskIdsToComplete.length} tarefa${taskIdsToComplete.length > 1 ? "s" : ""} marcada${taskIdsToComplete.length > 1 ? "s" : ""} como concluída${taskIdsToComplete.length > 1 ? "s" : ""}!`);
+          if (taskIdsToComplete.length > 0) {
+            toast.success(`${taskIdsToComplete.length} tarefa${taskIdsToComplete.length > 1 ? "s" : ""} marcada${taskIdsToComplete.length > 1 ? "s" : ""} como concluída${taskIdsToComplete.length > 1 ? "s" : ""}!`);
+          }
           // Concluir is often the last step before handing the cycle off to the
           // client, so surface the share link right away instead of making the
           // team separately click "Compartilhar" — enabling it first if it's off.
@@ -460,12 +486,27 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
           if (!calendar.share_enabled) {
             updateCalendarShare.mutate({ id: calendar.id, clientId: clientId!, share_enabled: true });
           }
+          if (calendar.status === "em_montagem") {
+            updateCalendarStatus.mutate({ id: calendar.id, status: "enviado_ao_cliente", clientId: clientId! });
+          }
           setShareOpen(true);
         },
         onError: (e: any) => toast.error(e?.message ?? "Erro ao concluir o ciclo"),
       },
     );
     setPublishConfirmOpen(false);
+  };
+
+  const handleUnpublish = () => {
+    if (!calendar) return;
+    unpublishCycle.mutate(
+      { calendarId: calendar.id, taskIds: approvedTaskIds },
+      {
+        onSuccess: () => toast.success("Conclusão desmarcada."),
+        onError: (e: any) => toast.error(e?.message ?? "Erro ao desmarcar"),
+      },
+    );
+    setUnpublishConfirmOpen(false);
   };
 
   const handleDragEnd = (e: DragEndEvent) => {
@@ -666,30 +707,31 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
             </PopoverContent>
           </Popover>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="inline-flex">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-9 gap-1.5 rounded-full"
-                  disabled={cycleReadyToConclude && publishablePublications.length === 0}
-                  onClick={() => {
-                    if (!cycleReadyToConclude) {
-                      setIncompleteDialogOpen(true);
-                    } else {
-                      setPublishConfirmOpen(true);
-                    }
-                  }}
-                >
-                  <Check className="h-3.5 w-3.5" /> Concluir
-                </Button>
-              </span>
-            </TooltipTrigger>
-            {cycleReadyToConclude && publishablePublications.length === 0 && (
-              <TooltipContent>Nenhuma publicação aprovada ainda.</TooltipContent>
-            )}
-          </Tooltip>
+          {cycleConcluded ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 gap-1.5 rounded-full border-emerald-500/40 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 hover:text-emerald-600"
+              onClick={() => setUnpublishConfirmOpen(true)}
+            >
+              <Check className="h-3.5 w-3.5" /> Concluído
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 gap-1.5 rounded-full"
+              onClick={() => {
+                if (!cycleReadyToConclude) {
+                  setIncompleteDialogOpen(true);
+                } else {
+                  setPublishConfirmOpen(true);
+                }
+              }}
+            >
+              <Check className="h-3.5 w-3.5" /> Concluir
+            </Button>
+          )}
 
           <Tabs value={view} onValueChange={(v) => setView(v as any)} className="ml-auto">
             <TabsList className="h-9 rounded-full">
@@ -884,12 +926,30 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
           <AlertDialogHeader>
             <AlertDialogTitle>Concluir este ciclo?</AlertDialogTitle>
             <AlertDialogDescription>
-              {publishablePublications.length === 1 ? "A tarefa de origem da publicação aprovada será marcada" : `As tarefas de origem das ${publishablePublications.length} publicações aprovadas serão marcadas`} como concluída{publishablePublications.length === 1 ? "" : "s"}. Use só depois de já ter postado tudo de verdade.
+              {publishablePublications.length > 0 && (
+                <>{publishablePublications.length === 1 ? "A tarefa de origem da publicação aprovada será marcada como concluída. " : `As tarefas de origem das ${publishablePublications.length} publicações aprovadas serão marcadas como concluídas. `}</>
+              )}
+              O ciclo vai para "Enviado ao cliente" e o link de aprovação será compartilhado.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmPublish}>Concluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={unpublishConfirmOpen} onOpenChange={setUnpublishConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Desmarcar conclusão deste ciclo?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {approvedTaskIds.length === 1 ? "A tarefa voltará" : `As ${approvedTaskIds.length} tarefas voltarão`} para pendente — na Agenda também, já que é a mesma tarefa.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleUnpublish}>Desmarcar</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

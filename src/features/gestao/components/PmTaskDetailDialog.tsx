@@ -2,13 +2,14 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Calendar, UserCircle, Flag, X, ChevronRight, ArrowLeft, Trash2, Combine,
-  Layers, Tag, MessageSquare, Plus, Check, CheckCircle2, RotateCcw, Paperclip, ListTodo, FileText, Pencil, Lock
+  Layers, Tag, MessageSquare, Plus, Check, CheckCircle2, RotateCcw, Paperclip, ListTodo, FileText, Pencil, Lock,
+  Image as ImageIcon,
 } from "lucide-react";
 import { useSession } from "@/hooks/use-session";
 import { useRole } from "@/hooks/use-role";
 import { addDays, format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -47,6 +48,7 @@ import { broadcastTeamActivity } from "@/hooks/use-team-activity";
 import { setViewingTask } from "@/hooks/use-task-viewers";
 import { LateAppealDialog } from "@/features/tasks/LateAppealDialog";
 import { isTaskLate } from "@/features/tasks/is-task-late";
+import { useTaskAttachmentsMap } from "@/features/calendario/hooks/use-calendar-data";
 
 function initials(n: string) {
   return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
@@ -68,9 +70,10 @@ interface Props {
   membersMap: Record<string, { name: string; avatar?: string }>;
   members: { id: string; name: string }[];
   isAdmin: boolean;
+  onOpenInCalendario?: (taskId: string) => void;
 }
 
-export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap, members, isAdmin }: Props) {
+export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap, members, isAdmin, onOpenInCalendario }: Props) {
   const [taskStack, setTaskStack] = useState<string[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -260,7 +263,7 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
 
           {/* CENTER: Task detail */}
           <div className="flex-1 overflow-y-auto min-h-0">
-            <TaskContentView task={currentTask} parentTask={resolvedRootTask} childTasks={childTasks} attachments={attachments} membersMap={membersMap} members={members} isAdmin={isAdmin} onSelectSubtask={handleSelectSubtask} activeSubtaskId={null} onClose={handleClose} clientsMap={clientsMap} allTags={allTags} parentStageCurrent={isSubtaskView ? resolvedRootTask.stage_current : undefined} globalTags={globalTagsQ.data ?? []} onEditTask={(taskId) => setTaskStack(prev => [...prev, taskId])} />
+            <TaskContentView task={currentTask} parentTask={resolvedRootTask} childTasks={childTasks} attachments={attachments} membersMap={membersMap} members={members} isAdmin={isAdmin} onSelectSubtask={handleSelectSubtask} activeSubtaskId={null} onClose={handleClose} clientsMap={clientsMap} allTags={allTags} parentStageCurrent={isSubtaskView ? resolvedRootTask.stage_current : undefined} globalTags={globalTagsQ.data ?? []} onEditTask={(taskId) => setTaskStack(prev => [...prev, taskId])} onOpenInCalendario={onOpenInCalendario} />
           </div>
 
           {/* RIGHT: Comments sidebar (hidden on mobile) */}
@@ -370,7 +373,7 @@ function StageCircle({ stageKey, size = "md" }: { stageKey: string; size?: "xs" 
 
 // ─── Task Content View ───
 
-function TaskContentView({ task, parentTask, childTasks, attachments, membersMap, members, isAdmin, onSelectSubtask, activeSubtaskId, onClose, clientsMap, allTags, parentStageCurrent, globalTags, onEditTask }: {
+function TaskContentView({ task, parentTask, childTasks, attachments, membersMap, members, isAdmin, onSelectSubtask, activeSubtaskId, onClose, clientsMap, allTags, parentStageCurrent, globalTags, onEditTask, onOpenInCalendario }: {
   task: PmTask; parentTask: PmTask; childTasks: PmTask[]; attachments: any[];
   membersMap: Record<string, { name: string; avatar?: string }>; members: { id: string; name: string }[];
   isAdmin: boolean; onSelectSubtask: (sub: PmTask) => void; activeSubtaskId: string | null;
@@ -378,11 +381,14 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
   parentStageCurrent?: string;
   globalTags: { id: string; name: string; color_key: string; created_by: string; created_at: string }[];
   onEditTask?: (taskId: string) => void;
+  onOpenInCalendario?: (taskId: string) => void;
 }) {
   const updateTask = useUpdatePmTask();
   const createTask = useCreatePmTask();
   const syncStage = usePmSyncStageCompletion();
   const queryClient = useQueryClient();
+  const [incompleteDialogItems, setIncompleteDialogItems] = useState<{ task: PmTask; missing: string[] }[] | null>(null);
+  const incompleteThumbsQ = useTaskAttachmentsMap((incompleteDialogItems ?? []).map((i) => i.task.id));
   const { flowConfig, transitionDates, stageAssignees } = useDefaultFlowWithDates();
 
   const allAssigneeIds = [
@@ -1075,9 +1081,55 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
     await processSplitQueue(remaining, snapshotDueDate, nextDueDate, clientName, monthLabel, deferredCompletion);
   };
 
+  // The PDF stage is when the trigger links a task to a calendar_publications row
+  // (see pm_task_pdf_stage_to_calendar) — don't let the team mark the PDF step done
+  // until that entry actually has date/time/caption set, or it silently completes
+  // the task while the Cronograma still shows the cycle as incomplete. Shared by the
+  // parent-task "Concluir" flow (handleConcluido) and the subtask quick-complete
+  // buttons below, since both can mark a pdf-stage task as concluído.
+  //
+  // A parent task with children (e.g. "[Cliente] - PDF - Mês") never gets its own
+  // calendar_publications row — the trigger skips it and links each child instead
+  // (see pm_task_pdf_stage_to_calendar). So concluding the parent has to check every
+  // pdf-stage child's calendar entry, not the parent's own (nonexistent) one.
+  const blockedByIncompleteCalendar = async (checkTask: PmTask, children: PmTask[] = []) => {
+    if (checkTask.stage_current !== "pdf") return false;
+    const sb = supabase as any;
+    const pdfChildren = children.filter((c) => c.stage_current === "pdf");
+    const candidates = pdfChildren.length > 0 ? pdfChildren : [checkTask];
+    const idsToCheck = candidates.map((c) => c.id);
+
+    const { data: pubs } = await sb
+      .from("calendar_publications")
+      .select("task_id, caption, publish_date, publish_time")
+      .in("task_id", idsToCheck);
+    if (!pubs || pubs.length === 0) return false;
+
+    const incomplete = (pubs as { task_id: string; caption: string | null; publish_date: string | null; publish_time: string | null }[])
+      .filter((p) => !p.publish_date || !p.publish_time || !p.caption?.trim())
+      .map((p) => {
+        const missing: string[] = [];
+        if (!p.publish_date) missing.push("Data");
+        if (!p.publish_time) missing.push("Horário");
+        if (!p.caption?.trim()) missing.push("Legenda");
+        const t = candidates.find((c) => c.id === p.task_id);
+        return t ? { task: t, missing } : null;
+      })
+      .filter((x): x is { task: PmTask; missing: string[] } => x !== null);
+    if (incomplete.length === 0) return false;
+
+    // Mirrors the Cronograma's own "Ciclo incompleto" dialog (same title/copy/behavior)
+    // so the team sees one consistent message regardless of where they tried to conclude.
+    setIncompleteDialogItems(incomplete);
+    return true;
+  };
+
   const handleConcluido = async () => {
     if (isDone) return;
     const completedStage = task.stage_current;
+
+    if (await blockedByIncompleteCalendar(task, childTasks)) return;
+
     notifyTaskCompletion();
 
     // ═══ CAPTAÇÃO: just mark as done, no stage advancement ═══
@@ -2049,6 +2101,7 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
                   <RotateCcw className="h-3.5 w-3.5" /> {resolvedTaskPostType === "video" ? "ALT/VDO" : resolvedTaskPostType === "design" ? "ALT/DSG" : resolvedTaskPostType === "planejamento" ? "ALT/PLAN" : "Em Alteração"}
                 </div>
                 <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={() => runWithLateCheck(async () => {
+                  if (await blockedByIncompleteCalendar(task)) return;
                   notifyTaskCompletion();
                   updateTask.mutate({ id: task.id, status_global: "concluido" });
                   const { data: { user: u } } = await supabase.auth.getUser();
@@ -2061,6 +2114,7 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
             ) : (
               <>
                 <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={() => runWithLateCheck(async () => {
+                  if (await blockedByIncompleteCalendar(task)) return;
                   notifyTaskCompletion();
                   updateTask.mutate({ id: task.id, status_global: "concluido" });
                   const { data: { user: u } } = await supabase.auth.getUser();
@@ -2373,6 +2427,44 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
         onClose={() => setLateAppeal({ open: false, action: null })}
         onConfirm={async () => { const a = lateAppeal.action; if (a) await a(); }}
       />
+
+      <Dialog open={!!incompleteDialogItems} onOpenChange={(v) => { if (!v) setIncompleteDialogItems(null); }}>
+        <DialogContent className="z-[200]" overlayClassName="z-[200]">
+          <DialogHeader>
+            <DialogTitle>Ciclo incompleto</DialogTitle>
+            <DialogDescription>
+              {(incompleteDialogItems?.length ?? 0) === 1 ? "1 publicação" : `${incompleteDialogItems?.length ?? 0} publicações`} ainda {(incompleteDialogItems?.length ?? 0) === 1 ? "precisa" : "precisam"} de data, horário e/ou legenda antes de concluir. Clique numa publicação para abrir e completar.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-80 space-y-1.5 overflow-y-auto">
+            {incompleteDialogItems?.map(({ task: t, missing }) => {
+              const thumb = incompleteThumbsQ.data?.get(t.id)?.find((m) => m.type?.startsWith("image/"))?.url ?? null;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => {
+                    setIncompleteDialogItems(null);
+                    if (onOpenInCalendario) onOpenInCalendario(t.id);
+                    else if (t.id !== task.id) onSelectSubtask(t);
+                  }}
+                  className="flex w-full items-center gap-3 rounded-lg border border-border/50 px-3 py-2 text-left text-sm hover:bg-accent/50"
+                >
+                  {thumb ? (
+                    <img src={thumb} alt="" className="h-9 w-9 shrink-0 rounded-md object-cover" />
+                  ) : (
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                      <ImageIcon className="h-4 w-4" />
+                    </span>
+                  )}
+                  <span className="min-w-0 flex-1 truncate">{t.title || "Sem título"}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">{missing.join(", ")}</span>
+                </button>
+              );
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

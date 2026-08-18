@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PmTaskDetailDialog } from "@/features/gestao/components/PmTaskDetailDialog";
+import { openTaskInCalendario } from "@/features/calendario/open-in-calendario";
 import { usePmTasks } from "@/features/gestao/hooks/use-pm-data";
 import { differenceInCalendarDays, format, getDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -1368,6 +1369,6 @@ function PmTaskDetailDialogDayView({ taskId, onClose }: { taskId: string; onClos
   const isAdmin = roleData?.role === "admin";
 
   return (
-    <PmTaskDetailDialog task={task} open={!!task} onClose={onClose} clientsMap={clientsMap} membersMap={membersMap} members={membersList} isAdmin={isAdmin} />
+    <PmTaskDetailDialog task={task} open={!!task} onClose={onClose} clientsMap={clientsMap} membersMap={membersMap} members={membersList} isAdmin={isAdmin} onOpenInCalendario={(taskId) => { onClose(); openTaskInCalendario(taskId); }} />
   );
 }

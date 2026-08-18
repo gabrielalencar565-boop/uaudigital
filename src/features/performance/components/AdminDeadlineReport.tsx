@@ -20,7 +20,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { usePmTasks } from "@/features/gestao/hooks/use-pm-data";
-import { PmTaskDetailDialog } from "@/features/gestao/components/PmTaskDetailDialog";  
+import { PmTaskDetailDialog } from "@/features/gestao/components/PmTaskDetailDialog";
+import { openTaskInCalendario } from "@/features/calendario/open-in-calendario";  
 import { useTeamMembers } from "@/features/data/queries";
 import { useQuery as useQ } from "@tanstack/react-query";
 import { useRole } from "@/hooks/use-role";
@@ -1124,6 +1125,7 @@ export function AdminDeadlineReport({
           membersMap={membersMap}
           members={membersList}
           isAdmin={role.isAdmin}
+          onOpenInCalendario={(taskId) => { setPmTaskToOpen(null); openTaskInCalendario(taskId); }}
         />
       )}
     </div>
