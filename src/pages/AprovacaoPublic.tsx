@@ -406,15 +406,11 @@ export default function AprovacaoPublic() {
             {feedItems.length === 0 && <p className="col-span-3 p-8 text-center text-sm text-muted-foreground">Nada pronto para mostrar ainda.</p>}
             {feedItems.map((p) => {
               const ContentIcon = CONTENT_TYPE_ICON[p.content_type] ?? File;
-              const contentTypeColor = getContentTypeColor(p.content_type);
               return (
                 // Instagram's feed post ratio (1080x1350 = 4:5), not the profile grid's square crop.
                 <button key={p.id} type="button" onClick={() => setSelectedId(p.id)} className="group relative aspect-[4/5] overflow-hidden rounded-lg bg-muted">
                   {firstImageUrl(p) ? <img src={firstImageUrl(p)!} alt="" className="h-full w-full object-cover" /> : <ImageIcon className="m-auto h-6 w-6 text-muted-foreground" />}
-                  <span className={cn("absolute left-1.5 top-1.5 inline-flex items-center gap-1 truncate rounded-md px-1.5 py-0.5 text-[9px] font-semibold shadow-sm", contentTypeColor.bg, contentTypeColor.text)}>
-                    <ContentIcon className="h-3 w-3 shrink-0" />
-                    <span className="truncate">{CONTENT_TYPE_LABELS[p.content_type] ?? p.content_type}</span>
-                  </span>
+                  <ContentIcon className="absolute left-1.5 top-1.5 h-4 w-4 text-white drop-shadow" />
                 </button>
               );
             })}
