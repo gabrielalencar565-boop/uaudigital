@@ -422,9 +422,12 @@ export default function AprovacaoPublic() {
         )}
 
         {canApproveAll && (
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 sm:gap-3 sm:rounded-2xl sm:px-4 sm:py-3">
-            <p className="text-xs font-medium sm:text-sm">Revisou tudo? Aprove o ciclo inteiro de uma vez.</p>
-            <Button size="sm" className="h-7 gap-1.5 rounded-full px-2.5 text-xs sm:h-9 sm:px-3 sm:text-sm" onClick={() => setConfirmApproveAll(true)}>
+          <div className="mt-4 flex flex-col items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-5 text-center sm:gap-4 sm:rounded-2xl sm:py-6">
+            <div>
+              <p className="text-base font-bold sm:text-lg">Revisou tudo?</p>
+              <p className="text-xs font-light text-muted-foreground sm:text-sm">Aprove o ciclo inteiro de uma vez.</p>
+            </div>
+            <Button size="sm" className="h-8 gap-1.5 rounded-full px-3 text-xs sm:h-9 sm:px-4 sm:text-sm" onClick={() => setConfirmApproveAll(true)}>
               <Check className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> Aprovar todas as publicações
             </Button>
           </div>
@@ -434,11 +437,11 @@ export default function AprovacaoPublic() {
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-8">
         <div className="mx-auto flex flex-col items-center gap-1 text-center">
           {appLogoUrl ? (
-            <img src={appLogoUrl} alt="Uau Digital" className="h-14 w-auto max-w-[260px] object-contain" />
+            <img src={appLogoUrl} alt="Uau Digital" className="h-8 w-auto max-w-[150px] object-contain" />
           ) : (
-            <p className="text-2xl font-bold"><span className="text-primary">uaü</span> digital</p>
+            <p className="text-base font-bold"><span className="text-primary">uaü</span> digital</p>
           )}
-          <p className="text-sm font-light text-muted-foreground">
+          <p className="text-xs font-light text-muted-foreground">
             Produzido por <span className="font-semibold text-primary">Uau Digital</span>
           </p>
         </div>
