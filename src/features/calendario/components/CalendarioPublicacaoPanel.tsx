@@ -903,20 +903,31 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-80 space-y-1.5 overflow-y-auto">
-            {notReadyPublications.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => {
-                  setIncompleteDialogOpen(false);
-                  setSelectedId(p.id);
-                }}
-                className="flex w-full items-center justify-between gap-3 rounded-lg border border-border/50 px-3 py-2 text-left text-sm hover:bg-accent/50"
-              >
-                <span className="truncate">{p.title || "Sem título"}</span>
-                <span className="shrink-0 text-xs text-muted-foreground">{missingFieldsFor(p).join(", ")}</span>
-              </button>
-            ))}
+            {notReadyPublications.map((p) => {
+              const thumb = thumbnailFor(p.task_id);
+              const ContentIcon = CONTENT_TYPE_ICON[p.content_type];
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => {
+                    setIncompleteDialogOpen(false);
+                    setSelectedId(p.id);
+                  }}
+                  className="flex w-full items-center gap-3 rounded-lg border border-border/50 px-3 py-2 text-left text-sm hover:bg-accent/50"
+                >
+                  {thumb ? (
+                    <img src={thumb} alt="" className="h-9 w-9 shrink-0 rounded-md object-cover" />
+                  ) : (
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                      <ContentIcon className="h-4 w-4" />
+                    </span>
+                  )}
+                  <span className="min-w-0 flex-1 truncate">{p.title || "Sem título"}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">{missingFieldsFor(p).join(", ")}</span>
+                </button>
+              );
+            })}
           </div>
         </DialogContent>
       </Dialog>
