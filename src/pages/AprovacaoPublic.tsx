@@ -406,15 +406,11 @@ export default function AprovacaoPublic() {
             {feedItems.length === 0 && <p className="col-span-3 p-8 text-center text-sm text-muted-foreground">Nada pronto para mostrar ainda.</p>}
             {feedItems.map((p) => {
               const ContentIcon = CONTENT_TYPE_ICON[p.content_type] ?? File;
-              const contentTypeColor = getContentTypeColor(p.content_type);
               return (
                 // Instagram's feed post ratio (1080x1350 = 4:5), not the profile grid's square crop.
                 <button key={p.id} type="button" onClick={() => setSelectedId(p.id)} className="group relative aspect-[4/5] overflow-hidden rounded-lg bg-muted">
                   {firstImageUrl(p) ? <img src={firstImageUrl(p)!} alt="" className="h-full w-full object-cover" /> : <ImageIcon className="m-auto h-6 w-6 text-muted-foreground" />}
-                  <span className={cn("absolute left-1.5 top-1.5 inline-flex items-center gap-1 truncate rounded-md px-1.5 py-0.5 text-[9px] font-semibold shadow-sm", contentTypeColor.bg, contentTypeColor.text)}>
-                    <ContentIcon className="h-3 w-3 shrink-0" />
-                    <span className="truncate">{CONTENT_TYPE_LABELS[p.content_type] ?? p.content_type}</span>
-                  </span>
+                  <ContentIcon className="absolute left-1.5 top-1.5 h-4 w-4 text-white drop-shadow" />
                 </button>
               );
             })}
@@ -457,7 +453,7 @@ export default function AprovacaoPublic() {
         const statusMeta = STATUS_META[selected.status] ?? { label: selected.status, shortLabel: selected.status, className: "bg-muted text-muted-foreground" };
 
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={() => setSelectedId(null)}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-xl" onClick={() => setSelectedId(null)}>
             <div
               className="relative flex max-h-[90vh] w-full max-w-5xl flex-col overflow-y-auto overflow-x-hidden overscroll-contain rounded-2xl border-black/10 bg-white/80 shadow-2xl backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.07] sm:border"
               onClick={(e) => e.stopPropagation()}
@@ -544,14 +540,6 @@ export default function AprovacaoPublic() {
                   </div>
 
                   <div className="space-y-1 px-3 pb-3">
-                    <div>
-                      <span className="mr-1 text-sm font-semibold">{clientName}</span>
-                      {selected.caption ? (
-                        <span className="whitespace-pre-line text-sm text-foreground/80">{selected.caption}</span>
-                      ) : (
-                        <span className="text-sm italic text-muted-foreground">sem legenda</span>
-                      )}
-                    </div>
                     {selected.publish_date && (
                       <p className="text-[11px] uppercase text-muted-foreground">
                         Publicação prevista para: {format(parseISO(selected.publish_date), "dd/MM/yyyy")}{selected.publish_time ? ` às ${selected.publish_time.slice(0, 5)}` : ""}
@@ -573,6 +561,13 @@ export default function AprovacaoPublic() {
                     <p className="text-sm font-medium leading-none text-foreground">Status</p>
                     <Badge className={cn("rounded-full", statusMeta.className)} variant="secondary">{statusMeta.label}</Badge>
                   </div>
+
+                  {selected.caption && (
+                    <div className="space-y-1.5">
+                      <p className="text-sm font-medium leading-none text-foreground">Legenda</p>
+                      <p className="whitespace-pre-line text-sm text-foreground/80">{selected.caption}</p>
+                    </div>
+                  )}
 
                   {selected.client_note && (
                     <div className="rounded-xl bg-primary/5 p-3 text-sm">
