@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Label } from "@/components/ui/label";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
@@ -283,6 +284,14 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
     () => publications.filter((p) => p.status === "aprovada"),
     [publications],
   );
+  // Concluir só faz sentido quando o ciclo inteiro já está pronto pra ir ao ar —
+  // toda publicação precisa ter data, horário e legenda definidos, senão o time
+  // fecharia a tarefa sem ainda saber quando/como postar.
+  const notReadyPublications = useMemo(
+    () => publications.filter((p) => !p.publish_date || !p.publish_time || !p.caption?.trim()),
+    [publications],
+  );
+  const cycleReadyToConclude = publications.length > 0 && notReadyPublications.length === 0;
   const taskIds = useMemo(() => publications.map((p) => p.task_id), [publications]);
   const attachmentsQ = useTaskAttachmentsMap(taskIds);
   const coverAttachmentIds = useMemo(
@@ -648,15 +657,28 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
             </PopoverContent>
           </Popover>
 
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-9 gap-1.5 rounded-full"
-            disabled={publishablePublications.length === 0}
-            onClick={() => setPublishConfirmOpen(true)}
-          >
-            <Check className="h-3.5 w-3.5" /> Concluir
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 gap-1.5 rounded-full"
+                  disabled={publishablePublications.length === 0 || !cycleReadyToConclude}
+                  onClick={() => setPublishConfirmOpen(true)}
+                >
+                  <Check className="h-3.5 w-3.5" /> Concluir
+                </Button>
+              </span>
+            </TooltipTrigger>
+            {!cycleReadyToConclude && publications.length > 0 && (
+              <TooltipContent>
+                {notReadyPublications.length === 1
+                  ? "1 publicação ainda sem data, horário ou legenda."
+                  : `${notReadyPublications.length} publicações ainda sem data, horário ou legenda.`}
+              </TooltipContent>
+            )}
+          </Tooltip>
 
           <Tabs value={view} onValueChange={(v) => setView(v as any)} className="ml-auto">
             <TabsList className="h-9 rounded-full">
