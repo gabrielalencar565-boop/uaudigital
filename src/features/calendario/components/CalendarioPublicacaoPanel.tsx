@@ -15,6 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Label } from "@/components/ui/label";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useClients, useTeamMembers } from "@/features/data/queries";
@@ -287,11 +288,19 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
   // Concluir só faz sentido quando o ciclo inteiro já está pronto pra ir ao ar —
   // toda publicação precisa ter data, horário e legenda definidos, senão o time
   // fecharia a tarefa sem ainda saber quando/como postar.
+  const missingFieldsFor = (p: CalendarPublication) => {
+    const missing: string[] = [];
+    if (!p.publish_date) missing.push("Data");
+    if (!p.publish_time) missing.push("Horário");
+    if (!p.caption?.trim()) missing.push("Legenda");
+    return missing;
+  };
   const notReadyPublications = useMemo(
-    () => publications.filter((p) => !p.publish_date || !p.publish_time || !p.caption?.trim()),
+    () => publications.filter((p) => missingFieldsFor(p).length > 0),
     [publications],
   );
   const cycleReadyToConclude = publications.length > 0 && notReadyPublications.length === 0;
+  const [incompleteDialogOpen, setIncompleteDialogOpen] = useState(false);
   const taskIds = useMemo(() => publications.map((p) => p.task_id), [publications]);
   const attachmentsQ = useTaskAttachmentsMap(taskIds);
   const coverAttachmentIds = useMemo(
@@ -664,19 +673,21 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
                   variant="outline"
                   size="sm"
                   className="h-9 gap-1.5 rounded-full"
-                  disabled={publishablePublications.length === 0 || !cycleReadyToConclude}
-                  onClick={() => setPublishConfirmOpen(true)}
+                  disabled={cycleReadyToConclude && publishablePublications.length === 0}
+                  onClick={() => {
+                    if (!cycleReadyToConclude) {
+                      setIncompleteDialogOpen(true);
+                    } else {
+                      setPublishConfirmOpen(true);
+                    }
+                  }}
                 >
                   <Check className="h-3.5 w-3.5" /> Concluir
                 </Button>
               </span>
             </TooltipTrigger>
-            {!cycleReadyToConclude && publications.length > 0 && (
-              <TooltipContent>
-                {notReadyPublications.length === 1
-                  ? "1 publicação ainda sem data, horário ou legenda."
-                  : `${notReadyPublications.length} publicações ainda sem data, horário ou legenda.`}
-              </TooltipContent>
+            {cycleReadyToConclude && publishablePublications.length === 0 && (
+              <TooltipContent>Nenhuma publicação aprovada ainda.</TooltipContent>
             )}
           </Tooltip>
 
@@ -882,6 +893,33 @@ export function CalendarioPublicacaoPanel({ onOpenTask }: Props) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={incompleteDialogOpen} onOpenChange={setIncompleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Ciclo incompleto</DialogTitle>
+            <DialogDescription>
+              {notReadyPublications.length === 1 ? "1 publicação" : `${notReadyPublications.length} publicações`} ainda {notReadyPublications.length === 1 ? "precisa" : "precisam"} de data, horário e/ou legenda antes de concluir. Clique numa publicação para abrir e completar.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-80 space-y-1.5 overflow-y-auto">
+            {notReadyPublications.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => {
+                  setIncompleteDialogOpen(false);
+                  setSelectedId(p.id);
+                }}
+                className="flex w-full items-center justify-between gap-3 rounded-lg border border-border/50 px-3 py-2 text-left text-sm hover:bg-accent/50"
+              >
+                <span className="truncate">{p.title || "Sem título"}</span>
+                <span className="shrink-0 text-xs text-muted-foreground">{missingFieldsFor(p).join(", ")}</span>
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
