@@ -172,6 +172,27 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
       updateTask.mutate({ id: sub.id, status_global: "backlog" as any });
       toast("Subtarefa desmarcada");
     } else {
+      // Same rule as the parent task's "Concluir" flow (PmTaskDetailDialog): a
+      // pdf-stage subtask can't be marked done here while its linked
+      // calendar_publications entry is still missing date/time/caption.
+      if (sub.stage_current === "pdf") {
+        const sb = supabase as any;
+        const { data: pub } = await sb
+          .from("calendar_publications")
+          .select("caption, publish_date, publish_time")
+          .eq("task_id", sub.id)
+          .maybeSingle();
+        if (pub) {
+          const missing: string[] = [];
+          if (!pub.publish_date) missing.push("Data");
+          if (!pub.publish_time) missing.push("Horário");
+          if (!pub.caption?.trim()) missing.push("Legenda");
+          if (missing.length > 0) {
+            toast.error(`Ciclo incompleto — complete no Cronograma antes de concluir: ${missing.join(", ")}.`);
+            return;
+          }
+        }
+      }
       updateTask.mutate({ id: sub.id, status_global: "concluido" as any });
       toast.success("Subtarefa concluída!");
       const { broadcastTeamActivity } = await import("@/hooks/use-team-activity");
