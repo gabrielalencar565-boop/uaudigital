@@ -68,7 +68,6 @@ export function PublicationPreviewPanel({ publication, media, clientName, client
   const [timeOpen, setTimeOpen] = useState(false);
   const [frameDialogOpen, setFrameDialogOpen] = useState(false);
   const [capturingFrame, setCapturingFrame] = useState(false);
-  const [publishing, setPublishing] = useState(false);
   const [dragImageIndex, setDragImageIndex] = useState<number | null>(null);
   const [dragOverImageIndex, setDragOverImageIndex] = useState<number | null>(null);
   const frameVideoRef = useRef<HTMLVideoElement>(null);
@@ -95,31 +94,6 @@ export function PublicationPreviewPanel({ publication, media, clientName, client
 
   const save = (updates: Partial<CalendarPublication>) => {
     updatePublication.mutate({ id: publication.id, ...updates });
-  };
-
-  // Marking a post as done closes the loop so the team doesn't have to separately go
-  // mark the task complete in Gestão after posting. The publication's own approval
-  // status (aguardando_aprovacao / alteracao_solicitada / aprovada) is untouched.
-  const handlePublish = async () => {
-    const missing: string[] = [];
-    if (!publication.publish_date) missing.push("Data");
-    if (!publication.publish_time) missing.push("Horário");
-    if (!publication.caption?.trim()) missing.push("Legenda");
-    if (missing.length > 0) {
-      toast.error(`Ciclo incompleto — falta ${missing.join(", ")} antes de concluir.`);
-      return;
-    }
-    setPublishing(true);
-    try {
-      const { error } = await sb.from("pm_tasks").update({ status_global: "concluido" }).eq("id", publication.task_id);
-      if (error) throw error;
-      qc.invalidateQueries({ queryKey: ["pm_tasks"] });
-      toast.success("Tarefa marcada como concluída!");
-    } catch (e: any) {
-      toast.error(e?.message ?? "Erro ao concluir");
-    } finally {
-      setPublishing(false);
-    }
   };
 
   const pickDate = (d: Date | undefined) => {
@@ -686,11 +660,6 @@ export function PublicationPreviewPanel({ publication, media, clientName, client
                   </SelectContent>
                 </Select>
               </div>
-
-              <Button className="w-full gap-1.5" onClick={handlePublish} disabled={publishing}>
-                {publishing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                Concluir
-              </Button>
 
               <div className="space-y-1.5">
                 <Label>Observação interna <span className="text-xs font-normal text-muted-foreground">(só a equipe vê)</span></Label>
