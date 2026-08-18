@@ -474,6 +474,9 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
           if (!calendar.share_enabled) {
             updateCalendarShare.mutate({ id: calendar.id, clientId: clientId!, share_enabled: true });
           }
+          if (calendar.status === "em_montagem") {
+            updateCalendarStatus.mutate({ id: calendar.id, status: "enviado_ao_cliente", clientId: clientId! });
+          }
           setShareOpen(true);
         },
         onError: (e: any) => toast.error(e?.message ?? "Erro ao concluir o ciclo"),
