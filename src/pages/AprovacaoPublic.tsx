@@ -4,7 +4,7 @@ import { useTheme } from "next-themes";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-  Loader2, CalendarX, LayoutGrid, Grid3x3, List, X, Check, MessageSquareWarning, Film, Image as ImageIcon, Camera, Smartphone, File, Clock, CalendarDays, ChevronLeft, ChevronRight, Images, Aperture, Play, Heart, MessageCircle, Send, Bookmark,
+  Loader2, CalendarX, LayoutGrid, Grid3x3, List, X, Check, MessageSquareWarning, Film, Image as ImageIcon, Camera, Smartphone, File, Clock, CalendarDays, ChevronLeft, ChevronRight, Images, Aperture, Play, Heart, MessageCircle, Send, Bookmark, Sun, Moon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -234,7 +234,7 @@ export default function AprovacaoPublic() {
   const [confirmApproveAll, setConfirmApproveAll] = useState(false);
 
   const appSettingsQ = useAppSettings();
-  const { resolvedTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
   const appLogoUrl = resolvedTheme === "dark"
     ? (appSettingsQ.data?.sidebar_logo_dark_url ?? appSettingsQ.data?.sidebar_logo_url)
     : appSettingsQ.data?.sidebar_logo_url;
@@ -335,12 +335,20 @@ export default function AprovacaoPublic() {
     <div className="min-h-screen bg-background pb-16">
       <header className="border-b border-border/40 bg-card px-4 py-6 sm:px-8">
         <div className="mx-auto max-w-6xl">
-          <div className="mb-4">
+          <div className="mb-4 flex items-center justify-between">
             {appLogoUrl ? (
               <img src={appLogoUrl} alt="Uau Digital" className="h-6 w-auto max-w-[140px] object-contain opacity-80" />
             ) : (
               <p className="text-sm font-bold opacity-80"><span className="text-primary">uaü</span> digital</p>
             )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-full text-muted-foreground"
+              onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+            >
+              {resolvedTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
           </div>
           <div className="flex items-center gap-4 sm:gap-5">
             <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-tr from-purple-500 via-pink-500 to-orange-400 sm:h-24 sm:w-24">
@@ -403,14 +411,14 @@ export default function AprovacaoPublic() {
             ))}
           </div>
         ) : (
-          <div className="mx-auto grid max-w-md grid-cols-3 gap-0.5 overflow-hidden rounded-2xl border border-border/40 bg-card sm:max-w-none">
+          <div className="mx-auto grid max-w-md grid-cols-3 gap-1.5 sm:max-w-none">
             {feedItems.length === 0 && <p className="col-span-3 p-8 text-center text-sm text-muted-foreground">Nada pronto para mostrar ainda.</p>}
             {feedItems.map((p) => {
               const ContentIcon = CONTENT_TYPE_ICON[p.content_type] ?? File;
               const contentTypeColor = getContentTypeColor(p.content_type);
               return (
                 // Instagram's feed post ratio (1080x1350 = 4:5), not the profile grid's square crop.
-                <button key={p.id} type="button" onClick={() => setSelectedId(p.id)} className="group relative aspect-[4/5] bg-muted">
+                <button key={p.id} type="button" onClick={() => setSelectedId(p.id)} className="group relative aspect-[4/5] overflow-hidden rounded-lg bg-muted">
                   {firstImageUrl(p) ? <img src={firstImageUrl(p)!} alt="" className="h-full w-full object-cover" /> : <ImageIcon className="m-auto h-6 w-6 text-muted-foreground" />}
                   <span className={cn("absolute left-1.5 top-1.5 inline-flex items-center gap-1 truncate rounded-md px-1.5 py-0.5 text-[9px] font-semibold shadow-sm", contentTypeColor.bg, contentTypeColor.text)}>
                     <ContentIcon className="h-3 w-3 shrink-0" />
