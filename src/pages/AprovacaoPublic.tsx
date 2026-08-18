@@ -570,6 +570,13 @@ export default function AprovacaoPublic() {
                     <Badge className={cn("rounded-full", statusMeta.className)} variant="secondary">{statusMeta.label}</Badge>
                   </div>
 
+                  {selected.caption && (
+                    <div className="space-y-1.5">
+                      <p className="text-sm font-medium leading-none text-foreground">Legenda</p>
+                      <p className="whitespace-pre-line text-sm text-foreground/80">{selected.caption}</p>
+                    </div>
+                  )}
+
                   {selected.client_note && (
                     <div className="rounded-xl bg-primary/5 p-3 text-sm">
                       <p className="mb-1 text-xs font-semibold text-primary">Observação da equipe</p>
