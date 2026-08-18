@@ -431,12 +431,12 @@ export default function AprovacaoPublic() {
         )}
       </main>
 
-      <div className="mx-auto max-w-6xl px-4 pb-2 sm:px-8">
-        <div className="mx-auto flex max-w-xs flex-col items-center gap-3 rounded-2xl border border-border/40 bg-card px-6 py-8 text-center">
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-8">
+        <div className="mx-auto flex flex-col items-center gap-3 text-center">
           {appLogoUrl ? (
-            <img src={appLogoUrl} alt="Uau Digital" className="h-8 w-auto max-w-[160px] object-contain" />
+            <img src={appLogoUrl} alt="Uau Digital" className="h-14 w-auto max-w-[260px] object-contain" />
           ) : (
-            <p className="text-lg font-bold"><span className="text-primary">uaü</span> digital</p>
+            <p className="text-2xl font-bold"><span className="text-primary">uaü</span> digital</p>
           )}
           <p className="text-sm text-muted-foreground">
             Produzido por <span className="font-semibold text-primary">Uau Digital</span>
