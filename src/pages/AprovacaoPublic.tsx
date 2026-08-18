@@ -441,7 +441,7 @@ export default function AprovacaoPublic() {
           ) : (
             <p className="text-base font-bold"><span className="text-primary">uaü</span> digital</p>
           )}
-          <p className="text-xs font-light text-muted-foreground">
+          <p className="text-[10px] font-light text-muted-foreground">
             Produzido por <span className="font-semibold text-primary">Uau Digital</span>
           </p>
         </div>
