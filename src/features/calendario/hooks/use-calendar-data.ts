@@ -56,10 +56,13 @@ export function useTaskAttachmentsMap(taskIds: string[]) {
     enabled: taskIds.length > 0,
     queryKey: ["pm_attachments_for_calendar", taskIds],
     queryFn: async () => {
+      // Only "final" content goes to the calendar/carousel — production materials
+      // (category "material") are internal working files, never client-facing.
       const { data, error } = await sb
         .from("pm_attachments")
         .select("id, task_id, public_url, file_type, order_index")
         .in("task_id", taskIds)
+        .eq("category", "final")
         .order("order_index", { ascending: true })
         .order("created_at", { ascending: true });
       if (error) throw error;
