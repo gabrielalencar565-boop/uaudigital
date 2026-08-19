@@ -335,12 +335,7 @@ export default function AprovacaoPublic() {
     <div className="min-h-screen bg-background pb-16">
       <header className="border-b border-border/40 bg-card px-4 py-6 sm:px-8">
         <div className="mx-auto max-w-6xl">
-          <div className="mb-4 flex items-center justify-between">
-            {appLogoUrl ? (
-              <img src={appLogoUrl} alt="Uau Digital" className="h-6 w-auto max-w-[140px] object-contain opacity-80" />
-            ) : (
-              <p className="text-sm font-bold opacity-80"><span className="text-primary">uaü</span> digital</p>
-            )}
+          <div className="mb-4 flex items-center justify-end">
             <Button
               variant="ghost"
               size="icon"
