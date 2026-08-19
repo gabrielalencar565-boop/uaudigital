@@ -70,13 +70,17 @@ Deno.serve(async (req) => {
     const rangeHeader = req.headers.get("range");
     if (rangeHeader) driveHeaders["Range"] = rangeHeader;
 
-    const driveRes = await fetch(
-      `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
-      { headers: driveHeaders },
-    );
+    const driveUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
+    let driveRes = await fetch(driveUrl, { headers: driveHeaders });
+    // Google's API occasionally hiccups on individual requests (transient 5xx/network
+    // errors) — a client mid-playback would otherwise see a hard failure for something
+    // that a single retry resolves almost every time.
+    if (!driveRes.ok || !driveRes.body) {
+      driveRes = await fetch(driveUrl, { headers: driveHeaders });
+    }
 
     if (!driveRes.ok || !driveRes.body) {
-      return new Response("upstream error", { status: 502, headers: corsHeaders });
+      return new Response(`upstream error (${driveRes.status})`, { status: 502, headers: corsHeaders });
     }
 
     const responseHeaders: Record<string, string> = {
