@@ -185,6 +185,21 @@ async function syncContractMonths(agendaClientId: string, startISO: string | nul
   if (upErr) throw upErr;
 }
 
+async function deactivateContractMonths(agendaClientId: string) {
+  const { data: link, error: linkErr } = await supabase
+    .from("magic2_client_links")
+    .select("magic2_client_id")
+    .eq("agenda_client_id", agendaClientId)
+    .maybeSingle();
+  if (linkErr) throw linkErr;
+  if (!link?.magic2_client_id) return;
+  const { error: upErr } = await supabase
+    .from("magic2_cycles")
+    .update({ is_active: false })
+    .eq("client_id", link.magic2_client_id);
+  if (upErr) throw upErr;
+}
+
 
 function normalizeClientName(s: string): string {
   return (s ?? "")
@@ -466,6 +481,12 @@ export function AdminClientesPanel() {
           );
         } catch (syncErr) {
           console.warn("syncContractMonths (edit) failed:", syncErr);
+        }
+      } else {
+        try {
+          await deactivateContractMonths(editClient.id);
+        } catch (syncErr) {
+          console.warn("deactivateContractMonths (edit) failed:", syncErr);
         }
       }
 
