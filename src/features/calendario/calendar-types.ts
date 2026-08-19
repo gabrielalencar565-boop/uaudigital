@@ -44,6 +44,7 @@ export const CALENDAR_STATUS_LABELS: Record<CalendarStatus, string> = {
 };
 
 export const PUBLICATION_STATUS_LABELS: Record<PublicationStatus, string> = {
+  em_montagem: "Em montagem",
   aguardando_aprovacao: "Aguardando aprovação",
   aprovada: "Aprovada",
   alteracao_solicitada: "Alteração solicitada",

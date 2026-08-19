@@ -3905,6 +3905,7 @@ export type Database = {
         | "aguardando_aprovacao"
         | "alteracao_solicitada"
         | "aprovada"
+        | "em_montagem"
       reward_redemption_status:
         | "pendente"
         | "aprovado"
@@ -4148,6 +4149,7 @@ export const Constants = {
         "aguardando_aprovacao",
         "alteracao_solicitada",
         "aprovada",
+        "em_montagem",
       ],
       reward_redemption_status: [
         "pendente",
