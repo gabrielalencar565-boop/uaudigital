@@ -66,10 +66,11 @@ const clientSchema = z.object({
   notes: z.string().max(500).optional().or(z.literal("")),
   monthly_value: z.coerce.number().min(0).default(0),
   contract_start: z.string().optional().or(z.literal("")),
-  contract_months: z.coerce.number().int().min(0).max(240).default(12),
-  due_day: z.coerce.number().int().min(0).max(31).default(10),
+  contract_months: z.coerce.number().int().min(1).max(240).default(12),
+  due_day: z.coerce.number().int().min(1).max(31).default(10),
   services: z.array(z.string()).default([]),
   participates_magic: z.boolean().default(true),
+  appears_in_financial: z.boolean().default(true),
   participates_ranking: z.boolean().default(true),
   has_goals: z.boolean().default(false),
   paused_from: z.string().optional().or(z.literal("")),
@@ -90,6 +91,7 @@ const emptyDefaults: ClientFormValues = {
   due_day: 10,
   services: [],
   participates_magic: true,
+  appears_in_financial: true,
   participates_ranking: true,
   has_goals: false,
   paused_from: "",
@@ -326,8 +328,7 @@ export function AdminClientesPanel() {
       });
       const newId = created?.id ?? created;
       if (newId) {
-        const dueDay = Number(values.due_day ?? 0);
-        const hideFromFinancial = !dueDay || dueDay <= 0;
+        const hideFromFinancial = !values.appears_in_financial;
         await supabase
           .from("clients")
           .update({
@@ -336,11 +337,11 @@ export function AdminClientesPanel() {
             resumed_from: monthInputToDate(values.resumed_from),
             ended_at: values.ended_at || null,
             end_reason: values.end_reason?.trim() || null,
-            appears_in_financial: !hideFromFinancial,
+            appears_in_financial: values.appears_in_financial,
           } as any)
           .eq("id", newId);
         if (hideFromFinancial) {
-          // Cliente oculto do Financeiro (dia de pagamento = 0)
+          // Cliente marcado para não aparecer no Financeiro
           await supabase.from("financial_revenues").delete().eq("client_id", newId);
           await supabase.from("financial_clients").delete().eq("id", newId);
         } else if (values.contract_months != null || values.due_day != null) {
@@ -348,20 +349,22 @@ export function AdminClientesPanel() {
             .from("financial_clients")
             .update({
               contract_months: values.contract_months ?? 12,
-              due_day: dueDay,
+              due_day: values.due_day ?? 10,
             } as any)
             .eq("id", newId);
         }
 
         // Auto-marca os N meses contratados em magic2_cycles
-        try {
-          await syncContractMonths(
-            newId,
-            values.contract_start || new Date().toISOString().slice(0, 10),
-            values.contract_months ?? 0,
-          );
-        } catch (syncErr) {
-          console.warn("syncContractMonths (create) failed:", syncErr);
+        if (values.participates_magic) {
+          try {
+            await syncContractMonths(
+              newId,
+              values.contract_start || new Date().toISOString().slice(0, 10),
+              values.contract_months ?? 0,
+            );
+          } catch (syncErr) {
+            console.warn("syncContractMonths (create) failed:", syncErr);
+          }
         }
       }
       qc.invalidateQueries({ queryKey: ["financial_clients"] });
@@ -386,8 +389,7 @@ export function AdminClientesPanel() {
       const endedDate = values.ended_at && /^\d{4}-\d{2}-\d{2}$/.test(values.ended_at)
         ? values.ended_at
         : monthInputToDate(values.ended_at);
-      const dueDay = Number(values.due_day ?? 0);
-      const hideFromFinancial = !dueDay || dueDay <= 0;
+      const hideFromFinancial = !values.appears_in_financial;
 
       // is_active derivado da timeline (status no mês atual).
       const today = new Date();
@@ -422,7 +424,7 @@ export function AdminClientesPanel() {
           participates_magic: values.participates_magic,
           participates_ranking: values.participates_ranking,
           has_goals: values.has_goals,
-          appears_in_financial: !hideFromFinancial,
+          appears_in_financial: values.appears_in_financial,
           paused_from: pausedDate,
           resumed_from: resumedDate,
           ended_at: endedDate,
@@ -433,7 +435,7 @@ export function AdminClientesPanel() {
       if (error) throw error;
 
       if (hideFromFinancial) {
-        // Oculto do Financeiro (dia de pagamento = 0)
+        // Marcado para não aparecer no Financeiro
         await supabase.from("financial_revenues").delete().eq("client_id", editClient.id);
         await supabase.from("financial_clients").delete().eq("id", editClient.id);
       } else {
@@ -446,7 +448,7 @@ export function AdminClientesPanel() {
             monthly_value: values.monthly_value || 0,
             contract_start: values.contract_start || new Date().toISOString().slice(0, 10),
             contract_months: values.contract_months ?? 12,
-            due_day: dueDay,
+            due_day: values.due_day ?? 10,
             ended_at: endedDate,
             is_active: computedActive,
           } as any, { onConflict: "id" });
@@ -455,14 +457,16 @@ export function AdminClientesPanel() {
 
 
       // Auto-marca os N meses contratados em magic2_cycles a partir de contract_start
-      try {
-        await syncContractMonths(
-          editClient.id,
-          values.contract_start || editClient.contract_start || new Date().toISOString().slice(0, 10),
-          values.contract_months ?? 0,
-        );
-      } catch (syncErr) {
-        console.warn("syncContractMonths (edit) failed:", syncErr);
+      if (values.participates_magic) {
+        try {
+          await syncContractMonths(
+            editClient.id,
+            values.contract_start || editClient.contract_start || new Date().toISOString().slice(0, 10),
+            values.contract_months ?? 0,
+          );
+        } catch (syncErr) {
+          console.warn("syncContractMonths (edit) failed:", syncErr);
+        }
       }
 
 
@@ -575,6 +579,7 @@ export function AdminClientesPanel() {
       due_day: fc?.due_day ?? 10,
       services: client.services ?? [],
       participates_magic: client.participates_magic ?? true,
+      appears_in_financial: client.appears_in_financial ?? true,
       participates_ranking: client.participates_ranking ?? true,
       has_goals: client.has_goals ?? false,
       paused_from: client.paused_from ? client.paused_from.slice(0, 7) : "",
@@ -1133,18 +1138,28 @@ function ClientFormDialog({
                   </div>
                   <div className="space-y-1.5">
                     <Label>Duração (meses)</Label>
-                    <Input type="number" step="1" min="0" max="240" {...form.register("contract_months")} />
-                    <p className="text-[11px] text-muted-foreground">
-                      Use <strong>0</strong> para não aparecer no Magic Number.
-                    </p>
+                    <Input type="number" step="1" min="1" max="240" {...form.register("contract_months")} />
                   </div>
                   <div className="space-y-1.5">
                     <Label>Dia de pagamento</Label>
-                    <Input type="number" step="1" min="0" max="31" {...form.register("due_day")} />
-                    <p className="text-[11px] text-muted-foreground">
-                      Use <strong>0</strong> para não aparecer no Financeiro (cliente interno).
-                    </p>
+                    <Input type="number" step="1" min="1" max="31" {...form.register("due_day")} />
                   </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                  <label className="flex items-center gap-2 rounded-lg border border-border/60 px-3 py-2 cursor-pointer hover:bg-accent/50 transition-colors">
+                    <Checkbox
+                      checked={!form.watch("participates_magic")}
+                      onCheckedChange={(checked) => form.setValue("participates_magic", !checked)}
+                    />
+                    <span className="text-sm">Não aparecer no Magic Number</span>
+                  </label>
+                  <label className="flex items-center gap-2 rounded-lg border border-border/60 px-3 py-2 cursor-pointer hover:bg-accent/50 transition-colors">
+                    <Checkbox
+                      checked={!form.watch("appears_in_financial")}
+                      onCheckedChange={(checked) => form.setValue("appears_in_financial", !checked)}
+                    />
+                    <span className="text-sm">Não aparecer no Financeiro (cliente interno)</span>
+                  </label>
                 </div>
               </section>
 

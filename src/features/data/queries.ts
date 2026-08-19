@@ -23,6 +23,7 @@ export type ClientRow = {
   contract_start?: string | null;
   services?: string[] | null;
   participates_magic?: boolean;
+  appears_in_financial?: boolean;
   participates_ranking?: boolean;
   has_goals?: boolean;
   paused_from?: string | null;
@@ -266,7 +267,7 @@ export function useAllClients() {
     queryFn: async (): Promise<ClientRow[]> => {
       const { data, error } = await supabase
         .from("clients")
-        .select("id, name, magic_due_date, notes, is_active, is_freelancer_sentinel, manager_id, plan_name, monthly_value, contract_start, services, participates_magic, participates_ranking, has_goals, paused_from, resumed_from, ended_at, end_reason, logo_url")
+        .select("id, name, magic_due_date, notes, is_active, is_freelancer_sentinel, manager_id, plan_name, monthly_value, contract_start, services, participates_magic, appears_in_financial, participates_ranking, has_goals, paused_from, resumed_from, ended_at, end_reason, logo_url")
         .eq("is_freelancer_sentinel", false)
         .order("is_active", { ascending: false })
         .order("name", { ascending: true });
