@@ -40,7 +40,10 @@ Deno.serve(async (req) => {
   try {
     const url = new URL(req.url);
     const segments = url.pathname.split("/").filter(Boolean);
-    const fileId = segments[segments.length - 1];
+    // URLs generated after this fix carry a file extension (".../{fileId}.mp4") so
+    // in-app browsers that sniff media type off the URL will actually play <video>;
+    // older rows still have a bare file ID with no extension, so only strip one if present.
+    const fileId = segments[segments.length - 1]?.replace(/\.[a-zA-Z0-9]+$/, "");
     const token = url.searchParams.get("t");
 
     if (!fileId || !token) {
