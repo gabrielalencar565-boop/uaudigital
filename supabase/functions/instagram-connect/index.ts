@@ -86,6 +86,38 @@ async function handleStart(admin: ReturnType<typeof createClient>, userId: strin
   return json({ url: url.toString() });
 }
 
+type Candidate = {
+  facebook_page_id: string;
+  facebook_page_name: string;
+  instagram_business_account_id: string;
+  instagram_username: string | null;
+  access_token: string;
+  token_expires_at: string;
+};
+
+async function finalizeConnection(admin: ReturnType<typeof createClient>, clientId: string, candidate: Candidate) {
+  const { error: upsertError } = await admin.from("instagram_connections").upsert(
+    {
+      client_id: clientId,
+      facebook_page_id: candidate.facebook_page_id,
+      facebook_page_name: candidate.facebook_page_name,
+      instagram_business_account_id: candidate.instagram_business_account_id,
+      instagram_username: candidate.instagram_username,
+      access_token: candidate.access_token,
+      token_expires_at: candidate.token_expires_at,
+      status: "active",
+      last_error: null,
+    },
+    { onConflict: "client_id" },
+  );
+  if (upsertError) throw upsertError;
+  return json({
+    success: true,
+    facebook_page_name: candidate.facebook_page_name,
+    instagram_username: candidate.instagram_username,
+  });
+}
+
 async function handleCallback(admin: ReturnType<typeof createClient>, body: { code?: string; state?: string }) {
   const { code, state } = body;
   if (!code || !state) return json({ error: "code and state are required" }, 400);
@@ -100,7 +132,6 @@ async function handleCallback(admin: ReturnType<typeof createClient>, body: { co
   if (Date.now() - new Date(stateRow.created_at).getTime() > STATE_TTL_MS) {
     return json({ error: "state expired, please reconnect" }, 400);
   }
-  await admin.from("instagram_oauth_states").update({ consumed_at: new Date().toISOString() }).eq("state", state);
 
   const clientId = stateRow.client_id as string;
 
@@ -121,8 +152,9 @@ async function handleCallback(admin: ReturnType<typeof createClient>, body: { co
       fb_exchange_token: shortLived.access_token,
     });
     const expiresInSeconds: number = longLived.expires_in ?? 60 * 24 * 60 * 60;
+    const tokenExpiresAt = new Date(Date.now() + expiresInSeconds * 1000).toISOString();
 
-    // 3. List the Pages this user manages. Page tokens returned here (when the user
+    // 3. List every Page this user manages. Page tokens returned here (when the user
     // token used to request them is already long-lived) inherit that same long
     // expiry per Meta's docs — verify this against a real token before relying on it.
     const pagesRes = await graphGet("me/accounts", { access_token: longLived.access_token });
@@ -131,39 +163,78 @@ async function handleCallback(admin: ReturnType<typeof createClient>, body: { co
       return json({ error: "nenhuma Página do Facebook encontrada para essa conta" }, 422);
     }
 
-    // 4. Find the first Page with a linked Instagram Business Account.
-    let linked: { page: (typeof pages)[number]; igAccountId: string } | null = null;
+    // 4. Collect every Page that has a linked Instagram Business Account — the account
+    // can administer more than one client's Page, so auto-picking the first match would
+    // silently connect the wrong client. Only when there's exactly one candidate is it
+    // safe to finalize immediately without an explicit choice.
+    const candidates: Candidate[] = [];
     for (const page of pages) {
       const pageInfo = await graphGet(page.id, { fields: "instagram_business_account", access_token: page.access_token });
-      if (pageInfo.instagram_business_account?.id) {
-        linked = { page, igAccountId: pageInfo.instagram_business_account.id };
-        break;
-      }
+      const igAccountId = pageInfo.instagram_business_account?.id;
+      if (!igAccountId) continue;
+      const igInfo = await graphGet(igAccountId, { fields: "username", access_token: page.access_token });
+      candidates.push({
+        facebook_page_id: page.id,
+        facebook_page_name: page.name,
+        instagram_business_account_id: igAccountId,
+        instagram_username: igInfo.username ?? null,
+        access_token: page.access_token,
+        token_expires_at: tokenExpiresAt,
+      });
     }
-    if (!linked) {
+
+    if (candidates.length === 0) {
       return json({ error: "nenhuma Página encontrada tem uma conta do Instagram Business vinculada" }, 422);
     }
 
-    const igInfo = await graphGet(linked.igAccountId, { fields: "username", access_token: linked.page.access_token });
+    if (candidates.length === 1) {
+      await admin.from("instagram_oauth_states").update({ consumed_at: new Date().toISOString() }).eq("state", state);
+      return await finalizeConnection(admin, clientId, candidates[0]);
+    }
 
-    const tokenExpiresAt = new Date(Date.now() + expiresInSeconds * 1000).toISOString();
-    const { error: upsertError } = await admin.from("instagram_connections").upsert(
-      {
-        client_id: clientId,
-        facebook_page_id: linked.page.id,
-        facebook_page_name: linked.page.name,
-        instagram_business_account_id: linked.igAccountId,
-        instagram_username: igInfo.username ?? null,
-        access_token: linked.page.access_token,
-        token_expires_at: tokenExpiresAt,
-        status: "active",
-        last_error: null,
-      },
-      { onConflict: "client_id" },
-    );
-    if (upsertError) throw upsertError;
+    // Multiple candidates: stash them (including their access tokens) against the still-open
+    // state row and ask the frontend to let the admin pick one, via action "select_page".
+    // Not marking the state consumed yet — it's consumed only once a Page is actually chosen.
+    await admin.from("instagram_oauth_states").update({ pending_pages: candidates }).eq("state", state);
+    return json({
+      needs_selection: true,
+      state,
+      options: candidates.map((c) => ({
+        facebook_page_id: c.facebook_page_id,
+        facebook_page_name: c.facebook_page_name,
+        instagram_username: c.instagram_username,
+      })),
+    });
+  } catch (e) {
+    return json({ error: String(e) }, 502);
+  }
+}
 
-    return json({ success: true, facebook_page_name: linked.page.name, instagram_username: igInfo.username ?? null });
+async function handleSelectPage(admin: ReturnType<typeof createClient>, body: { state?: string; facebook_page_id?: string }) {
+  const { state, facebook_page_id } = body;
+  if (!state || !facebook_page_id) return json({ error: "state and facebook_page_id are required" }, 400);
+
+  const { data: stateRow } = await admin
+    .from("instagram_oauth_states")
+    .select("client_id, created_at, consumed_at, pending_pages")
+    .eq("state", state)
+    .maybeSingle();
+  if (!stateRow) return json({ error: "unknown or expired state" }, 400);
+  if (stateRow.consumed_at) return json({ error: "state already used" }, 400);
+  if (Date.now() - new Date(stateRow.created_at).getTime() > STATE_TTL_MS) {
+    return json({ error: "state expired, please reconnect" }, 400);
+  }
+
+  const candidates = (stateRow.pending_pages ?? []) as Candidate[];
+  const chosen = candidates.find((c) => c.facebook_page_id === facebook_page_id);
+  if (!chosen) return json({ error: "Página inválida para essa conexão" }, 400);
+
+  try {
+    await admin
+      .from("instagram_oauth_states")
+      .update({ consumed_at: new Date().toISOString(), pending_pages: null })
+      .eq("state", state);
+    return await finalizeConnection(admin, stateRow.client_id as string, chosen);
   } catch (e) {
     return json({ error: String(e) }, 502);
   }
@@ -217,6 +288,8 @@ Deno.serve(async (req) => {
         return await handleStart(admin, userId, body);
       case "callback":
         return await handleCallback(admin, body);
+      case "select_page":
+        return await handleSelectPage(admin, body);
       case "disconnect":
         return await handleDisconnect(admin, body);
       default:
