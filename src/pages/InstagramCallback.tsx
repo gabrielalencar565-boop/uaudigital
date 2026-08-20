@@ -32,15 +32,30 @@ async function extractError(data: { error?: string } | null, error: unknown): Pr
   return String(error);
 }
 
-// Module-level (not component-level) guard: in production, this callback route has been
-// observed firing its effect twice for the same code/state pair — the server-side atomic
-// claim (see instagram-connect's handleCallback) already makes that safe, but the *second*
-// response (an "already processed" error) was overwriting the *first* (successful) one in
-// the UI, since a plain in-component useRef doesn't survive whatever causes the duplicate
-// mount/fire. A module-scoped Set does: it's shared by every instance of this component for
-// the lifetime of the page, so a second dispatch of the same state is dropped before it
-// ever reaches the network, regardless of why the effect fired again.
-const dispatchedStates = new Set<string>();
+// Module-level (not component-level) cache: in production this callback route genuinely
+// remounts once mid-flow (RequireAuth resolving auth state swaps its rendered children),
+// which loses any purely in-component guard (a ref or local state) along with whatever it
+// was tracking. A plain "already dispatched, ignore" flag made this worse — the *second*
+// mount would see the flag set and silently do nothing, leaving its own outcome stuck on
+// "loading" forever, since the exchange's result belonged to the now-unmounted first
+// instance. Caching the actual in-flight/resolved *promise* per state instead means every
+// mount (however many happen) awaits the same exchange and applies its real outcome to
+// whichever instance is currently on screen.
+const exchanges = new Map<string, Promise<Outcome>>();
+
+async function exchangeCode(code: string, state: string): Promise<Outcome> {
+  const { data, error } = await supabase.functions.invoke("instagram-connect", { body: { action: "callback", code, state } });
+  if (error || data?.error) {
+    return { status: "error", message: await extractError(data, error) };
+  }
+  if (data.needs_selection) {
+    return { status: "select", state: data.state, options: data.options as PageOption[] };
+  }
+  return {
+    status: "success",
+    message: `Conectado à Página "${data.facebook_page_name}"${data.instagram_username ? ` (@${data.instagram_username})` : ""}.`,
+  };
+}
 
 export default function InstagramCallback() {
   const [searchParams] = useSearchParams();
@@ -62,25 +77,12 @@ export default function InstagramCallback() {
       setOutcome({ status: "error", message: "Faltam parâmetros na resposta do Instagram." });
       return;
     }
-    if (dispatchedStates.has(state)) return;
-    dispatchedStates.add(state);
-
-    supabase.functions
-      .invoke("instagram-connect", { body: { action: "callback", code, state } })
-      .then(async ({ data, error }) => {
-        if (error || data?.error) {
-          setOutcome({ status: "error", message: await extractError(data, error) });
-          return;
-        }
-        if (data.needs_selection) {
-          setOutcome({ status: "select", state: data.state, options: data.options as PageOption[] });
-          return;
-        }
-        setOutcome({
-          status: "success",
-          message: `Conectado à Página "${data.facebook_page_name}"${data.instagram_username ? ` (@${data.instagram_username})` : ""}.`,
-        });
-      });
+    let promise = exchanges.get(state);
+    if (!promise) {
+      promise = exchangeCode(code, state);
+      exchanges.set(state, promise);
+    }
+    promise.then(setOutcome);
   }, [searchParams]);
 
   async function confirmSelection() {
