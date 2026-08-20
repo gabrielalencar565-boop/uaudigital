@@ -122,18 +122,24 @@ async function handleCallback(admin: ReturnType<typeof createClient>, body: { co
   const { code, state } = body;
   if (!code || !state) return json({ error: "code and state are required" }, 400);
 
-  const { data: stateRow } = await admin
+  // Atomically claim this state row (UPDATE ... WHERE consumed_at IS NULL) before touching
+  // Facebook at all — Meta's auth codes are strictly single-use, so if a duplicate/racing
+  // invocation (e.g. a page reload replaying the same callback URL) reached the token
+  // exchange concurrently, the second call would fail hard with Facebook's own opaque
+  // "This authorization code has been used" error instead of our own clear message.
+  const { data: claimed } = await admin
     .from("instagram_oauth_states")
-    .select("client_id, created_at, consumed_at")
+    .update({ consumed_at: new Date().toISOString() })
     .eq("state", state)
+    .is("consumed_at", null)
+    .select("client_id, created_at")
     .maybeSingle();
-  if (!stateRow) return json({ error: "unknown or expired state" }, 400);
-  if (stateRow.consumed_at) return json({ error: "state already used" }, 400);
-  if (Date.now() - new Date(stateRow.created_at).getTime() > STATE_TTL_MS) {
+  if (!claimed) return json({ error: "conexão já processada ou desconhecida — feche esta aba e tente conectar de novo" }, 400);
+  if (Date.now() - new Date(claimed.created_at).getTime() > STATE_TTL_MS) {
     return json({ error: "state expired, please reconnect" }, 400);
   }
 
-  const clientId = stateRow.client_id as string;
+  const clientId = claimed.client_id as string;
 
   try {
     // 1. Short-lived user token from the auth code.
@@ -188,13 +194,11 @@ async function handleCallback(admin: ReturnType<typeof createClient>, body: { co
     }
 
     if (candidates.length === 1) {
-      await admin.from("instagram_oauth_states").update({ consumed_at: new Date().toISOString() }).eq("state", state);
       return await finalizeConnection(admin, clientId, candidates[0]);
     }
 
-    // Multiple candidates: stash them (including their access tokens) against the still-open
-    // state row and ask the frontend to let the admin pick one, via action "select_page".
-    // Not marking the state consumed yet — it's consumed only once a Page is actually chosen.
+    // Multiple candidates: stash them (including their access tokens) against the already-
+    // claimed state row and ask the frontend to let the admin pick one, via "select_page".
     await admin.from("instagram_oauth_states").update({ pending_pages: candidates }).eq("state", state);
     return json({
       needs_selection: true,
@@ -214,26 +218,25 @@ async function handleSelectPage(admin: ReturnType<typeof createClient>, body: { 
   const { state, facebook_page_id } = body;
   if (!state || !facebook_page_id) return json({ error: "state and facebook_page_id are required" }, 400);
 
+  // By this point handleCallback already claimed (consumed_at) this state row and left the
+  // candidate Pages in pending_pages — so the only thing left to validate is that a
+  // selection hasn't already been made (pending_pages cleared) or the chosen id is bogus.
   const { data: stateRow } = await admin
     .from("instagram_oauth_states")
-    .select("client_id, created_at, consumed_at, pending_pages")
+    .select("client_id, pending_pages")
     .eq("state", state)
+    .not("consumed_at", "is", null)
     .maybeSingle();
-  if (!stateRow) return json({ error: "unknown or expired state" }, 400);
-  if (stateRow.consumed_at) return json({ error: "state already used" }, 400);
-  if (Date.now() - new Date(stateRow.created_at).getTime() > STATE_TTL_MS) {
-    return json({ error: "state expired, please reconnect" }, 400);
+  if (!stateRow || !stateRow.pending_pages) {
+    return json({ error: "sessão de conexão inválida, expirada ou já usada — tente conectar de novo" }, 400);
   }
 
-  const candidates = (stateRow.pending_pages ?? []) as Candidate[];
+  const candidates = stateRow.pending_pages as Candidate[];
   const chosen = candidates.find((c) => c.facebook_page_id === facebook_page_id);
   if (!chosen) return json({ error: "Página inválida para essa conexão" }, 400);
 
   try {
-    await admin
-      .from("instagram_oauth_states")
-      .update({ consumed_at: new Date().toISOString(), pending_pages: null })
-      .eq("state", state);
+    await admin.from("instagram_oauth_states").update({ pending_pages: null }).eq("state", state);
     return await finalizeConnection(admin, stateRow.client_id as string, chosen);
   } catch (e) {
     return json({ error: String(e) }, 502);

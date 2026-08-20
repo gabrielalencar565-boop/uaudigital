@@ -59,6 +59,10 @@ export default function InstagramCallback() {
       return;
     }
 
+    // Strip code/state from the URL right away so an accidental refresh doesn't replay
+    // this same (single-use) authorization code against the Facebook token exchange.
+    navigate("/admin/instagram-callback", { replace: true });
+
     supabase.functions
       .invoke("instagram-connect", { body: { action: "callback", code, state } })
       .then(async ({ data, error }) => {
