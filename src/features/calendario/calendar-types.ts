@@ -34,6 +34,13 @@ export interface CalendarPublication {
   order_index: number;
   created_at: string;
   updated_at: string;
+  instagram_status: "not_published" | "pending" | "publishing" | "published" | "failed";
+  instagram_media_id: string | null;
+  instagram_creation_id: string | null;
+  instagram_permalink: string | null;
+  instagram_error: string | null;
+  instagram_published_at: string | null;
+  instagram_publish_attempted_at: string | null;
 }
 
 export const CALENDAR_STATUS_LABELS: Record<CalendarStatus, string> = {

@@ -3,7 +3,7 @@ import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, ExternalLink, Heart, MessageCircle, Send, Bookmark, Trash2, X, ImagePlus, Loader2, CalendarDays, Clock, Camera, Check } from "lucide-react";
+import { ChevronLeft, ChevronRight, ExternalLink, Heart, MessageCircle, Send, Bookmark, Trash2, X, ImagePlus, Loader2, CalendarDays, Clock, Camera, Check, Instagram, AlertTriangle } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { CONTENT_TYPE_LABELS, PUBLICATION_STATUS_LABELS, type CalendarPublication, type PublicationContentType, type PublicationStatus } from "../calendar-types";
 import { useCoverCandidates, useRemoveCalendarPublication, useReorderCarouselImages, useUpdateCalendarPublication } from "../hooks/use-calendar-data";
 import { useUploadPmAttachment } from "@/features/gestao/hooks/use-pm-data";
+import { useInstagramConnections, usePublishToInstagram } from "../hooks/use-instagram";
 import { PmImageViewer } from "@/features/gestao/components/PmImageViewer";
 
 const sb = supabase as any;
@@ -25,6 +26,7 @@ const sb = supabase as any;
 interface Props {
   publication: CalendarPublication | null;
   media: { id: string; url: string; type: string | null }[];
+  clientId: string | null;
   clientName: string;
   clientLogoUrl?: string | null;
   onClose: () => void;
@@ -48,13 +50,16 @@ function nearestTimeSlot() {
   return `${String(Math.floor(rounded / 60)).padStart(2, "0")}:${rounded % 60 === 0 ? "00" : "30"}`;
 }
 
-export function PublicationPreviewPanel({ publication, media, clientName, clientLogoUrl, onClose, onOpenTask, onNavigate, hasPrev, hasNext }: Props) {
+export function PublicationPreviewPanel({ publication, media, clientId, clientName, clientLogoUrl, onClose, onOpenTask, onNavigate, hasPrev, hasNext }: Props) {
   const qc = useQueryClient();
   const updatePublication = useUpdateCalendarPublication();
   const removePublication = useRemoveCalendarPublication();
   const uploadCover = useUploadPmAttachment();
   const reorderCarousel = useReorderCarouselImages();
   const coverCandidatesQ = useCoverCandidates(publication?.task_id ?? null);
+  const igConnectionsQ = useInstagramConnections(clientId ?? undefined);
+  const igConnection = igConnectionsQ.data?.[0];
+  const publishToInstagram = usePublishToInstagram();
   const coverFileInputRef = useRef<HTMLInputElement>(null);
   const [caption, setCaption] = useState("");
   const [internalNote, setInternalNote] = useState("");
@@ -670,6 +675,68 @@ export function PublicationPreviewPanel({ publication, media, clientName, client
                 <Label>Observação para o cliente</Label>
                 <Textarea value={clientNote} rows={2} onChange={(e) => setClientNote(e.target.value)} onBlur={() => clientNote !== (publication.client_note ?? "") && save({ client_note: clientNote || null })} />
               </div>
+
+              {(() => {
+                const unsupportedType = publication.content_type === "story" || publication.content_type === "outro";
+                const canPublish = igConnection?.status === "active" && !unsupportedType;
+                const isPublishing = publication.instagram_status === "publishing";
+                return (
+                  <div className="space-y-1.5 border-t pt-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <Label className="flex items-center gap-1.5">
+                        <Instagram className="h-3.5 w-3.5" /> Publicação no Instagram
+                      </Label>
+                      {publication.instagram_status === "published" && (
+                        <span className="flex items-center gap-1 text-xs text-emerald-600">
+                          <Check className="h-3.5 w-3.5" /> Publicado
+                          {publication.instagram_permalink && (
+                            <a href={publication.instagram_permalink} target="_blank" rel="noreferrer" className="underline">
+                              ver post
+                            </a>
+                          )}
+                        </span>
+                      )}
+                      {publication.instagram_status === "failed" && (
+                        <span className="flex items-center gap-1 text-xs text-destructive" title={publication.instagram_error ?? undefined}>
+                          <AlertTriangle className="h-3.5 w-3.5" /> Falhou
+                        </span>
+                      )}
+                    </div>
+                    {publication.instagram_status === "failed" && publication.instagram_error && (
+                      <p className="text-xs text-destructive">{publication.instagram_error}</p>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full gap-1.5"
+                      disabled={!canPublish || isPublishing || publishToInstagram.isPending}
+                      title={
+                        unsupportedType
+                          ? "Stories e outros tipos de conteúdo não são publicados automaticamente"
+                          : igConnection?.status !== "active"
+                            ? "Este cliente ainda não tem o Instagram conectado (veja em Clientes)"
+                            : undefined
+                      }
+                      onClick={() =>
+                        publishToInstagram.mutate(
+                          { publicationId: publication.id, calendarId: publication.calendar_id },
+                          {
+                            onSuccess: () => toast.success("Publicado no Instagram."),
+                            onError: (err) => toast.error(err instanceof Error ? err.message : "Erro ao publicar no Instagram"),
+                          },
+                        )
+                      }
+                    >
+                      {isPublishing || publishToInstagram.isPending ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Instagram className="h-3.5 w-3.5" />
+                      )}
+                      {publication.instagram_status === "published" ? "Publicar novamente" : "Publicar agora no Instagram"}
+                    </Button>
+                  </div>
+                );
+              })()}
 
               <div className="flex items-center gap-2 border-t pt-4">
                 <Button variant="outline" size="sm" className="gap-1.5" onClick={() => onOpenTask(publication.task_id)}>

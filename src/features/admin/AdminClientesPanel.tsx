@@ -4,8 +4,9 @@ import { buildAssigneesForClient, mergeClientAssignees } from "@/lib/role-stage-
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { format, isValid } from "date-fns";
-import { Plus, Pencil, Trash2, Users, Filter, DollarSign, XCircle, ImagePlus } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, Filter, DollarSign, XCircle, ImagePlus, Instagram, Link2Off } from "lucide-react";
 import { useSession } from "@/hooks/use-session";
+import { useConnectInstagram, useDisconnectInstagram, useInstagramConnections } from "@/features/calendario/hooks/use-instagram";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -221,7 +222,16 @@ export function AdminClientesPanel() {
   const teamMembersQ = useTeamMembers();
   const finValuesQ = useFinancialClientValues();
   const activeMonthsQ = useAllActiveContractMonths();
+  const igConnectionsQ = useInstagramConnections();
+  const connectInstagram = useConnectInstagram();
+  const disconnectInstagram = useDisconnectInstagram();
   const qc = useQueryClient();
+
+  const igConnectionMap = useMemo(() => {
+    const m = new Map<string, (typeof igConnectionsQ.data)[number]>();
+    for (const c of igConnectionsQ.data ?? []) m.set(c.client_id, c);
+    return m;
+  }, [igConnectionsQ.data]);
 
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -672,6 +682,7 @@ export function AdminClientesPanel() {
                     <TableHead>Mensal</TableHead>
                     <TableHead>Squads</TableHead>
                     <TableHead>Contrato</TableHead>
+                    <TableHead>Instagram</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -735,6 +746,54 @@ export function AdminClientesPanel() {
                               {remaining} meses restantes
                             </Badge>
                           )}
+                        </TableCell>
+
+                        <TableCell>
+                          {(() => {
+                            const conn = igConnectionMap.get(client.id);
+                            if (conn?.status === "active") {
+                              return (
+                                <div className="flex items-center gap-1">
+                                  <Badge variant="success" className="text-[10px]">
+                                    {conn.instagram_username ? `@${conn.instagram_username}` : "Conectado"}
+                                  </Badge>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    title="Desconectar Instagram"
+                                    disabled={disconnectInstagram.isPending}
+                                    onClick={() => disconnectInstagram.mutate({ clientId: client.id })}
+                                  >
+                                    <Link2Off className="h-3.5 w-3.5 text-muted-foreground" />
+                                  </Button>
+                                </div>
+                              );
+                            }
+                            return (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-xs"
+                                disabled={connectInstagram.isPending}
+                                onClick={() => {
+                                  connectInstagram.mutate(
+                                    { clientId: client.id },
+                                    {
+                                      onSuccess: (url) => {
+                                        window.location.href = url;
+                                      },
+                                      onError: (err) => {
+                                        toast.error(err instanceof Error ? err.message : "Erro ao iniciar conexão com o Instagram");
+                                      },
+                                    },
+                                  );
+                                }}
+                              >
+                                <Instagram className="mr-1 h-3.5 w-3.5" />
+                                Conectar
+                              </Button>
+                            );
+                          })()}
                         </TableCell>
 
                         <TableCell className="text-right">
