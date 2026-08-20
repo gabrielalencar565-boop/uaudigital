@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { addDays, format, parseISO, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Film, LayoutGrid, List, Grid3x3, Image as ImageIcon, Link2, Copy, RefreshCw, ArrowUpRight, UserRound, CircleDashed, Clock, AlertTriangle, CheckCircle2, Check, CalendarDays, Bookmark, Play } from "lucide-react";
+import { ChevronLeft, ChevronRight, Film, LayoutGrid, List, Grid3x3, Image as ImageIcon, Link2, Copy, RefreshCw, ArrowUpRight, UserRound, CircleDashed, Clock, AlertTriangle, CheckCircle2, Check, CalendarDays, Bookmark, Play, Instagram } from "lucide-react";
 import { TAG_COLORS } from "@/features/gestao/pm-constants";
 import { DndContext, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
@@ -27,6 +27,7 @@ import {
 import { CALENDAR_STATUS_LABELS, CONTENT_TYPE_LABELS, PUBLICATION_STATUS_LABELS, type CalendarPublication, type CalendarStatus } from "../calendar-types";
 import { PublicationCard, CONTENT_TYPE_ICON, getContentTypeColor } from "./PublicationCard";
 import { PublicationPreviewPanel } from "./PublicationPreviewPanel";
+import { useConnectInstagram, useDisconnectInstagram, useInstagramConnections } from "../hooks/use-instagram";
 
 interface Props {
   onOpenTask: (taskId: string) => void;
@@ -234,6 +235,16 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
   const selectedClient = clientsQ.data?.find((c) => c.id === clientId);
   const clientName = selectedClient?.name ?? "Cliente";
   const clientLogoUrl = selectedClient?.logo_url ?? null;
+
+  const igConnectionsQ = useInstagramConnections();
+  const igConnectionMap = useMemo(() => {
+    const m = new Map<string, (typeof igConnectionsQ.data)[number]>();
+    for (const c of igConnectionsQ.data ?? []) m.set(c.client_id, c);
+    return m;
+  }, [igConnectionsQ.data]);
+  const connectInstagram = useConnectInstagram();
+  const disconnectInstagram = useDisconnectInstagram();
+  const [igDisconnectTarget, setIgDisconnectTarget] = useState<{ id: string; name: string } | null>(null);
 
   // "Social" responsável por cliente: vem do assignee fixo da etapa "planejamento".
   const teamMembersQ = useTeamMembers();
@@ -619,6 +630,52 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                   <span className="truncate text-base font-semibold leading-tight">{c.name}</span>
                   {c.plan_name && <span className="truncate text-xs text-muted-foreground">{c.plan_name}</span>}
                 </div>
+                {(() => {
+                  const igConn = igConnectionMap.get(c.id);
+                  if (igConn?.status === "active") {
+                    return (
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        title="Desconectar Instagram"
+                        className="flex w-fit items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-600 transition-colors hover:bg-emerald-500/20"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          setIgDisconnectTarget({ id: c.id, name: c.name });
+                        }}
+                      >
+                        <Instagram className="h-3 w-3" />
+                        {igConn.instagram_username ? `@${igConn.instagram_username}` : "Conectado"}
+                      </span>
+                    );
+                  }
+                  return (
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      className="flex w-fit items-center gap-1 rounded-full border border-border/50 px-2.5 py-1 text-[11px] font-semibold text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        connectInstagram.mutate(
+                          { clientId: c.id },
+                          {
+                            onSuccess: (url) => {
+                              window.location.href = url;
+                            },
+                            onError: (err) => {
+                              toast.error(err instanceof Error ? err.message : "Erro ao iniciar conexão com o Instagram");
+                            },
+                          },
+                        );
+                      }}
+                    >
+                      <Instagram className="h-3 w-3" />
+                      Conectar Instagram
+                    </span>
+                  );
+                })()}
                 {statusMeta && (
                   <span
                     className={cn(
@@ -919,6 +976,28 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
         hasPrev={navIndex > 0}
         hasNext={navIndex >= 0 && navIndex < navList.length - 1}
       />
+
+      <AlertDialog open={!!igDisconnectTarget} onOpenChange={(open) => !open && setIgDisconnectTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Desconectar Instagram?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O cliente "{igDisconnectTarget?.name}" deixará de publicar automaticamente no Instagram até ser conectado de novo.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (igDisconnectTarget) disconnectInstagram.mutate({ clientId: igDisconnectTarget.id });
+                setIgDisconnectTarget(null);
+              }}
+            >
+              Desconectar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={unpublishConfirmOpen} onOpenChange={setUnpublishConfirmOpen}>
         <AlertDialogContent>
