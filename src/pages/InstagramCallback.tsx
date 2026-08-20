@@ -34,9 +34,22 @@ export default function InstagramCallback() {
 
     supabase.functions
       .invoke("instagram-connect", { body: { action: "callback", code, state } })
-      .then(({ data, error }) => {
+      .then(async ({ data, error }) => {
         if (error || data?.error) {
-          setOutcome({ status: "error", message: data?.error ?? String(error) });
+          // supabase-js doesn't surface the response body for non-2xx invokes by
+          // default — the actual `{ error: "..." }` our function returned is on
+          // error.context (the raw Response), so read it there instead of falling
+          // back to the generic "Edge Function returned a non-2xx status code".
+          let message = data?.error as string | undefined;
+          if (!message && error && "context" in error) {
+            try {
+              const body = await (error as { context: Response }).context.json();
+              message = body?.error;
+            } catch {
+              // context wasn't JSON — fall through to the generic error string below.
+            }
+          }
+          setOutcome({ status: "error", message: message ?? String(error) });
           return;
         }
         setOutcome({

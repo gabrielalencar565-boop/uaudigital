@@ -16,7 +16,18 @@ const APP_ID = Deno.env.get("META_APP_ID")!;
 const APP_SECRET = Deno.env.get("META_APP_SECRET")!;
 const REDIRECT_URI = Deno.env.get("INSTAGRAM_OAUTH_REDIRECT_URI")!;
 
-const OAUTH_SCOPES = ["instagram_basic", "instagram_content_publish", "pages_show_list", "pages_read_engagement"].join(",");
+// Names/set confirmed against this app's own "Permissões e recursos" page (App Dashboard →
+// Casos de uso → API do Instagram → Permissões e recursos), the source of truth for exact
+// spelling and "Pronto para teste" status — the "Casos de uso" summary page's bullet list
+// showed "instagram_content_publishing" (with "-ing"), which turned out to be a stale/wrong
+// label there; the real permission, confirmed "Pronto para teste", is instagram_content_publish.
+const OAUTH_SCOPES = [
+  "instagram_basic",
+  "instagram_content_publish",
+  "pages_show_list",
+  "pages_read_engagement",
+  "business_management",
+].join(",");
 
 // OAuth states older than this are rejected — bounds how long a stale, abandoned
 // connect attempt can be replayed.
