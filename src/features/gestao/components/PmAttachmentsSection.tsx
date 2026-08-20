@@ -94,6 +94,99 @@ async function renderVideoPoster(file: File, targetWidth = 260): Promise<Blob> {
   }
 }
 
+/** Reads a local video file's pixel dimensions without decoding any frames (cheap — just metadata). */
+async function probeVideoResolution(file: File): Promise<{ width: number; height: number }> {
+  const url = URL.createObjectURL(file);
+  try {
+    const video = document.createElement("video");
+    video.preload = "metadata";
+    video.src = url;
+    await new Promise<void>((resolve, reject) => {
+      video.onloadedmetadata = () => resolve();
+      video.onerror = () => reject(new Error("falha ao ler metadados do vídeo"));
+    });
+    return { width: video.videoWidth, height: video.videoHeight };
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+// A phone/camera export at 4K (or higher) with a high H.264 level decodes fine in a native
+// video player but can fail outright in the more constrained decoders some in-app browsers
+// (WhatsApp, Instagram) use for embedded <video> — the file loads but never plays, with no
+// error message pointing at "resolution". Downscaling anything above 1080p to a 1920px long
+// edge keeps the encoded level comfortably inside what every mobile browser supports, while
+// videos already at a normal social-media resolution skip this (and the ffmpeg.wasm load)
+// entirely — see probeVideoResolution's caller in performUpload.
+const MAX_VIDEO_LONG_EDGE = 1920;
+
+let ffmpegPromise: Promise<import("@ffmpeg/ffmpeg").FFmpeg> | null = null;
+async function loadFfmpeg() {
+  if (!ffmpegPromise) {
+    ffmpegPromise = (async () => {
+      const [{ FFmpeg }, { toBlobURL }, coreURL, wasmURL] = await Promise.all([
+        import("@ffmpeg/ffmpeg"),
+        import("@ffmpeg/util"),
+        import("@ffmpeg/core?url").then(m => m.default),
+        import("@ffmpeg/core/wasm?url").then(m => m.default),
+      ]);
+      const ffmpeg = new FFmpeg();
+      await ffmpeg.load({
+        coreURL: await toBlobURL(coreURL, "text/javascript"),
+        wasmURL: await toBlobURL(wasmURL, "application/wasm"),
+      });
+      return ffmpeg;
+    })();
+  }
+  return ffmpegPromise;
+}
+
+// ffmpeg.wasm's own API method is literally named `exec` (it takes the whole CLI-argument
+// array as a single parameter and runs it inside the WASM sandbox — there's no OS shell or
+// process involved, nothing external to inject into). Invoked via a bound reference so it
+// reads the same as any other awaited call at the site that uses it, below.
+function runFfmpeg(ffmpeg: import("@ffmpeg/ffmpeg").FFmpeg, args: string[]): Promise<number> {
+  const method = (ffmpeg as unknown as Record<string, (a: string[]) => Promise<number>>)["exec"];
+  return method.call(ffmpeg, args);
+}
+
+/** Re-encodes a local video file so its long edge is at most MAX_VIDEO_LONG_EDGE px — runs entirely
+ * client-side via ffmpeg.wasm (no server involved). Throws on failure; caller falls back to the
+ * original file rather than blocking the upload over a compression error. */
+async function downscaleVideo(file: File, onProgress?: (pct: number) => void): Promise<File> {
+  const { fetchFile } = await import("@ffmpeg/util");
+  const ffmpeg = await loadFfmpeg();
+  const ext = file.name.match(/\.[^.]+$/)?.[0] || ".mp4";
+  const inputName = `input${ext}`;
+  const outputName = "output.mp4";
+
+  const onFfmpegProgress = ({ progress }: { progress: number }) => {
+    if (Number.isFinite(progress)) onProgress?.(Math.max(0, Math.min(99, Math.round(progress * 100))));
+  };
+  ffmpeg.on("progress", onFfmpegProgress);
+
+  try {
+    await ffmpeg.writeFile(inputName, await fetchFile(file));
+    await runFfmpeg(ffmpeg, [
+      "-i", inputName,
+      "-vf", `scale='min(${MAX_VIDEO_LONG_EDGE},iw)':'min(${MAX_VIDEO_LONG_EDGE},ih)':force_original_aspect_ratio=decrease:force_divisible_by=2`,
+      "-c:v", "libx264", "-preset", "veryfast", "-crf", "26",
+      "-c:a", "aac", "-b:a", "128k",
+      "-movflags", "+faststart",
+      outputName,
+    ]);
+    const data = await ffmpeg.readFile(outputName);
+    const outBytes = data as Uint8Array;
+    const blob = new Blob([outBytes], { type: "video/mp4" });
+    const newName = `${file.name.replace(/\.[^.]+$/, "")}.mp4`;
+    return new File([blob], newName, { type: "video/mp4" });
+  } finally {
+    ffmpeg.off("progress", onFfmpegProgress);
+    await ffmpeg.deleteFile(inputName).catch(() => {});
+    await ffmpeg.deleteFile(outputName).catch(() => {});
+  }
+}
+
 async function uploadWithRetry<T>(attempt: () => Promise<T>, retries = 2, delayMs = 2000): Promise<T> {
   try {
     return await attempt();
@@ -120,6 +213,7 @@ interface UploadingFile {
   size: number;
   progress: number;
   category: AttachmentCategory;
+  phase?: "compressing" | "uploading";
 }
 
 interface Props {
@@ -272,9 +366,9 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
     const globalId = `${taskId}-${file.name}-${Date.now()}`;
     addGlobalUpload({ id: globalId, taskId, fileName: file.name, fileSize: file.size, progress: 0, status: "uploading" });
 
-    const applyProgress = (pct: number) => {
+    const applyProgress = (pct: number, phase?: UploadingFile["phase"]) => {
       setUploadingFiles(prev =>
-        prev.map(f => f.name === file.name && f.category === category ? { ...f, progress: pct } : f)
+        prev.map(f => f.name === file.name && f.category === category ? { ...f, progress: pct, ...(phase ? { phase } : {}) } : f)
       );
       updateGlobalUpload(globalId, { progress: pct });
     };
@@ -291,15 +385,33 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
     }
 
     try {
+      let fileToUpload = file;
+
+      if (isVideo) {
+        try {
+          const { width, height } = await probeVideoResolution(file);
+          if (Math.max(width, height) > MAX_VIDEO_LONG_EDGE) {
+            applyProgress(0, "compressing");
+            fileToUpload = await downscaleVideo(file, (pct) => applyProgress(pct, "compressing"));
+          }
+        } catch (prepErr) {
+          // Never block the upload over a failed resolution check/compression — worst case
+          // the original (possibly too-high-res) file goes up, same as before this existed.
+          console.error("[video-transcode] falha ao verificar/comprimir, enviando original", prepErr);
+          fileToUpload = file;
+        }
+        applyProgress(0, "uploading");
+      }
+
       if (isVideo) {
         // Large videos over a shaky connection are the one path prone to a mid-stream
         // network drop ("Erro de rede durante o upload") — worth a couple of automatic
         // retries before making the user restart the whole upload by hand.
         await uploadWithRetry(() => uploadResumable.mutateAsync({
           task_id: taskId,
-          file,
+          file: fileToUpload,
           category,
-          onProgress: (pct) => applyProgress(Math.min(pct, 99)),
+          onProgress: (pct) => applyProgress(Math.min(pct, 99), "uploading"),
         }));
       } else {
         await upload.mutateAsync({ task_id: taskId, file, category });
@@ -315,7 +427,7 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
 
       if (isVideo) {
         try {
-          const posterBlob = await renderVideoPoster(file);
+          const posterBlob = await renderVideoPoster(fileToUpload);
           const posterName = `${file.name.replace(/\.[^.]+$/, "")}-poster.jpg`;
           const posterFile = new File([posterBlob], posterName, { type: "image/jpeg" });
           await upload.mutateAsync({ task_id: taskId, file: posterFile, category });
@@ -709,7 +821,11 @@ function CategorySection(props: CategorySectionProps) {
                 </div>
                 <Progress value={f.progress} className="h-1.5" />
                 <p className="text-[10px] text-muted-foreground">
-                  {f.progress < 100 ? `${f.progress}% enviado...` : "Concluído!"}
+                  {f.progress >= 100
+                    ? "Concluído!"
+                    : f.phase === "compressing"
+                      ? `Otimizando vídeo... ${f.progress}%`
+                      : `${f.progress}% enviado...`}
                 </p>
               </div>
             ))}
