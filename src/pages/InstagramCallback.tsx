@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,20 +32,24 @@ async function extractError(data: { error?: string } | null, error: unknown): Pr
   return String(error);
 }
 
+// Module-level (not component-level) guard: in production, this callback route has been
+// observed firing its effect twice for the same code/state pair — the server-side atomic
+// claim (see instagram-connect's handleCallback) already makes that safe, but the *second*
+// response (an "already processed" error) was overwriting the *first* (successful) one in
+// the UI, since a plain in-component useRef doesn't survive whatever causes the duplicate
+// mount/fire. A module-scoped Set does: it's shared by every instance of this component for
+// the lifetime of the page, so a second dispatch of the same state is dropped before it
+// ever reaches the network, regardless of why the effect fired again.
+const dispatchedStates = new Set<string>();
+
 export default function InstagramCallback() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [outcome, setOutcome] = useState<Outcome>({ status: "loading" });
   const [selectedPageId, setSelectedPageId] = useState<string>("");
   const [confirming, setConfirming] = useState(false);
-  // Meta's OAuth redirect can fire the effect twice in dev/StrictMode; the state row
-  // is single-use server-side anyway, but this avoids a confusing "already used" flash.
-  const ranRef = useRef(false);
 
   useEffect(() => {
-    if (ranRef.current) return;
-    ranRef.current = true;
-
     const code = searchParams.get("code");
     const state = searchParams.get("state");
     const oauthError = searchParams.get("error_description") || searchParams.get("error");
@@ -58,6 +62,8 @@ export default function InstagramCallback() {
       setOutcome({ status: "error", message: "Faltam parâmetros na resposta do Instagram." });
       return;
     }
+    if (dispatchedStates.has(state)) return;
+    dispatchedStates.add(state);
 
     supabase.functions
       .invoke("instagram-connect", { body: { action: "callback", code, state } })
