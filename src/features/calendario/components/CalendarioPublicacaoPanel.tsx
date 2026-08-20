@@ -638,7 +638,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                         role="button"
                         tabIndex={0}
                         title="Desconectar Instagram"
-                        className="flex w-fit items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-600 transition-colors hover:bg-emerald-500/20"
+                        className="flex w-fit items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary transition-colors hover:bg-primary/20"
                         onClick={(e) => {
                           e.stopPropagation();
                           e.preventDefault();
