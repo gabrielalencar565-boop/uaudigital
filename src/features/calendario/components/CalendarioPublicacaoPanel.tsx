@@ -970,6 +970,8 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
         clientId={clientId}
         clientName={clientName}
         clientLogoUrl={clientLogoUrl}
+        cycleStart={calendar?.cycle_start ?? null}
+        cycleEnd={calendar?.cycle_end ?? null}
         onClose={() => setSelectedId(null)}
         onOpenTask={onOpenTask}
         onNavigate={handleNavigate}

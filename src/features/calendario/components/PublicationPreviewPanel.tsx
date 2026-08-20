@@ -29,6 +29,8 @@ interface Props {
   clientId: string | null;
   clientName: string;
   clientLogoUrl?: string | null;
+  cycleStart?: string | null;
+  cycleEnd?: string | null;
   onClose: () => void;
   onOpenTask: (taskId: string) => void;
   onNavigate?: (direction: "prev" | "next") => void;
@@ -50,7 +52,7 @@ function nearestTimeSlot() {
   return `${String(Math.floor(rounded / 60)).padStart(2, "0")}:${rounded % 60 === 0 ? "00" : "30"}`;
 }
 
-export function PublicationPreviewPanel({ publication, media, clientId, clientName, clientLogoUrl, onClose, onOpenTask, onNavigate, hasPrev, hasNext }: Props) {
+export function PublicationPreviewPanel({ publication, media, clientId, clientName, clientLogoUrl, cycleStart, cycleEnd, onClose, onOpenTask, onNavigate, hasPrev, hasNext }: Props) {
   const qc = useQueryClient();
   const updatePublication = useUpdateCalendarPublication();
   const removePublication = useRemoveCalendarPublication();
@@ -546,6 +548,16 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                         onSelect={pickDate}
                         locale={ptBR}
                         initialFocus
+                        defaultMonth={
+                          publication.publish_date
+                            ? parseISO(publication.publish_date)
+                            : cycleStart
+                              ? parseISO(cycleStart)
+                              : undefined
+                        }
+                        disabled={
+                          cycleStart && cycleEnd ? { before: parseISO(cycleStart), after: parseISO(cycleEnd) } : undefined
+                        }
                       />
                       {publication.publish_date && (
                         <div className="border-t p-2">
