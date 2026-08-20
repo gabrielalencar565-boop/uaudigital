@@ -584,6 +584,19 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                       side="bottom"
                       avoidCollisions={false}
                     >
+                      <div className="mb-2 border-b pb-2">
+                        <input
+                          type="time"
+                          value={publication.publish_time?.slice(0, 5) ?? ""}
+                          onChange={(e) => {
+                            // Save without closing the popover — the native time input
+                            // fires onChange per field (hour, then minute), and closing
+                            // here would boot the user out mid-edit.
+                            if (e.target.value) save({ publish_time: `${e.target.value}:00` });
+                          }}
+                          className="h-9 w-full rounded-lg border border-border/50 bg-transparent px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                        />
+                      </div>
                       <div className="mb-2 grid grid-cols-2 gap-1.5 border-b pb-2">
                         <button
                           type="button"
