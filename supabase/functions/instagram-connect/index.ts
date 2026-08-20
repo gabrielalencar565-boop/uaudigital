@@ -95,6 +95,11 @@ type Candidate = {
   token_expires_at: string;
 };
 
+async function getClientName(admin: ReturnType<typeof createClient>, clientId: string): Promise<string | null> {
+  const { data } = await admin.from("clients").select("name").eq("id", clientId).maybeSingle();
+  return data?.name ?? null;
+}
+
 async function finalizeConnection(admin: ReturnType<typeof createClient>, clientId: string, candidate: Candidate) {
   const { error: upsertError } = await admin.from("instagram_connections").upsert(
     {
@@ -113,6 +118,7 @@ async function finalizeConnection(admin: ReturnType<typeof createClient>, client
   if (upsertError) throw upsertError;
   return json({
     success: true,
+    client_name: await getClientName(admin, clientId),
     facebook_page_name: candidate.facebook_page_name,
     instagram_username: candidate.instagram_username,
   });
@@ -193,17 +199,37 @@ async function handleCallback(admin: ReturnType<typeof createClient>, body: { co
       return json({ error: "nenhuma Página encontrada tem uma conta do Instagram Business vinculada" }, 422);
     }
 
-    if (candidates.length === 1) {
-      return await finalizeConnection(admin, clientId, candidates[0]);
+    // Hide Pages already actively connected to a *different* client — otherwise picking
+    // one here would silently steal it away from whichever client currently has it. A
+    // Page reappears once that other connection is disconnected. Re-selecting a Page
+    // already connected to *this same* client is still fine (e.g. refreshing its token).
+    const { data: takenRows } = await admin
+      .from("instagram_connections")
+      .select("facebook_page_id, client_id")
+      .eq("status", "active")
+      .neq("client_id", clientId);
+    const takenPageIds = new Set((takenRows ?? []).map((r) => r.facebook_page_id as string));
+    const availableCandidates = candidates.filter((c) => !takenPageIds.has(c.facebook_page_id));
+
+    if (availableCandidates.length === 0) {
+      return json(
+        { error: "todas as Páginas encontradas já estão conectadas a outros clientes — desconecte-as antes de reatribuir" },
+        422,
+      );
+    }
+
+    if (availableCandidates.length === 1) {
+      return await finalizeConnection(admin, clientId, availableCandidates[0]);
     }
 
     // Multiple candidates: stash them (including their access tokens) against the already-
     // claimed state row and ask the frontend to let the admin pick one, via "select_page".
-    await admin.from("instagram_oauth_states").update({ pending_pages: candidates }).eq("state", state);
+    await admin.from("instagram_oauth_states").update({ pending_pages: availableCandidates }).eq("state", state);
     return json({
       needs_selection: true,
       state,
-      options: candidates.map((c) => ({
+      client_name: await getClientName(admin, clientId),
+      options: availableCandidates.map((c) => ({
         facebook_page_id: c.facebook_page_id,
         facebook_page_name: c.facebook_page_name,
         instagram_username: c.instagram_username,

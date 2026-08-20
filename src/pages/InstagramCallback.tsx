@@ -11,7 +11,7 @@ type PageOption = { facebook_page_id: string; facebook_page_name: string; instag
 
 type Outcome =
   | { status: "loading" }
-  | { status: "select"; state: string; options: PageOption[] }
+  | { status: "select"; state: string; clientName: string | null; options: PageOption[] }
   | { status: "success"; message: string }
   | { status: "error"; message: string };
 
@@ -49,7 +49,12 @@ async function exchangeCode(code: string, state: string): Promise<Outcome> {
     return { status: "error", message: await extractError(data, error) };
   }
   if (data.needs_selection) {
-    return { status: "select", state: data.state, options: data.options as PageOption[] };
+    return {
+      status: "select",
+      state: data.state,
+      clientName: data.client_name ?? null,
+      options: data.options as PageOption[],
+    };
   }
   return {
     status: "success",
@@ -117,17 +122,22 @@ export default function InstagramCallback() {
           <CardContent className="text-sm text-muted-foreground">
             {(outcome.status === "success" || outcome.status === "error") && <p>{outcome.message}</p>}
             {outcome.status === "select" && (
-              <RadioGroup value={selectedPageId} onValueChange={setSelectedPageId} className="space-y-2">
-                {outcome.options.map((opt) => (
-                  <div key={opt.facebook_page_id} className="flex items-center gap-2 rounded-lg border p-3">
-                    <RadioGroupItem value={opt.facebook_page_id} id={opt.facebook_page_id} />
-                    <Label htmlFor={opt.facebook_page_id} className="flex-1 cursor-pointer font-normal">
-                      <span className="font-medium text-foreground">{opt.facebook_page_name}</span>
-                      {opt.instagram_username && <span className="ml-1 text-muted-foreground">(@{opt.instagram_username})</span>}
-                    </Label>
-                  </div>
-                ))}
-              </RadioGroup>
+              <>
+                <p className="mb-3">
+                  Cliente: <span className="font-medium text-foreground">{outcome.clientName ?? "—"}</span>
+                </p>
+                <RadioGroup value={selectedPageId} onValueChange={setSelectedPageId} className="space-y-2">
+                  {outcome.options.map((opt) => (
+                    <div key={opt.facebook_page_id} className="flex items-center gap-2 rounded-lg border p-3">
+                      <RadioGroupItem value={opt.facebook_page_id} id={opt.facebook_page_id} />
+                      <Label htmlFor={opt.facebook_page_id} className="flex-1 cursor-pointer font-normal">
+                        <span className="font-medium text-foreground">{opt.facebook_page_name}</span>
+                        {opt.instagram_username && <span className="ml-1 text-muted-foreground">(@{opt.instagram_username})</span>}
+                      </Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              </>
             )}
           </CardContent>
           <CardFooter className="gap-2">
