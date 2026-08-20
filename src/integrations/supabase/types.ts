@@ -109,6 +109,13 @@ export type Database = {
           cover_attachment_id: string | null
           created_at: string
           id: string
+          instagram_creation_id: string | null
+          instagram_error: string | null
+          instagram_media_id: string | null
+          instagram_permalink: string | null
+          instagram_publish_attempted_at: string | null
+          instagram_published_at: string | null
+          instagram_status: string
           internal_note: string | null
           order_index: number
           publish_date: string | null
@@ -128,6 +135,13 @@ export type Database = {
           cover_attachment_id?: string | null
           created_at?: string
           id?: string
+          instagram_creation_id?: string | null
+          instagram_error?: string | null
+          instagram_media_id?: string | null
+          instagram_permalink?: string | null
+          instagram_publish_attempted_at?: string | null
+          instagram_published_at?: string | null
+          instagram_status?: string
           internal_note?: string | null
           order_index?: number
           publish_date?: string | null
@@ -147,6 +161,13 @@ export type Database = {
           cover_attachment_id?: string | null
           created_at?: string
           id?: string
+          instagram_creation_id?: string | null
+          instagram_error?: string | null
+          instagram_media_id?: string | null
+          instagram_permalink?: string | null
+          instagram_publish_attempted_at?: string | null
+          instagram_published_at?: string | null
+          instagram_status?: string
           internal_note?: string | null
           order_index?: number
           publish_date?: string | null
@@ -1496,6 +1517,94 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "health_scores_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      instagram_connections: {
+        Row: {
+          access_token: string
+          client_id: string
+          connected_at: string
+          connected_by: string | null
+          facebook_page_id: string
+          facebook_page_name: string | null
+          id: string
+          instagram_business_account_id: string
+          instagram_username: string | null
+          last_error: string | null
+          status: string
+          token_expires_at: string
+          updated_at: string
+        }
+        Insert: {
+          access_token: string
+          client_id: string
+          connected_at?: string
+          connected_by?: string | null
+          facebook_page_id: string
+          facebook_page_name?: string | null
+          id?: string
+          instagram_business_account_id: string
+          instagram_username?: string | null
+          last_error?: string | null
+          status?: string
+          token_expires_at: string
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string
+          client_id?: string
+          connected_at?: string
+          connected_by?: string | null
+          facebook_page_id?: string
+          facebook_page_name?: string | null
+          id?: string
+          instagram_business_account_id?: string
+          instagram_username?: string | null
+          last_error?: string | null
+          status?: string
+          token_expires_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instagram_connections_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      instagram_oauth_states: {
+        Row: {
+          client_id: string
+          consumed_at: string | null
+          created_at: string
+          created_by: string | null
+          state: string
+        }
+        Insert: {
+          client_id: string
+          consumed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          state: string
+        }
+        Update: {
+          client_id?: string
+          consumed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          state?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instagram_oauth_states_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"

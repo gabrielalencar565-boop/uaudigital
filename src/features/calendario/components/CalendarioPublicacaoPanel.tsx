@@ -910,6 +910,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
       <PublicationPreviewPanel
         publication={selected}
         media={selected ? (attachmentsQ.data?.get(selected.task_id) ?? []) : []}
+        clientId={clientId}
         clientName={clientName}
         clientLogoUrl={clientLogoUrl}
         onClose={() => setSelectedId(null)}

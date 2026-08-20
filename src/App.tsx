@@ -11,6 +11,7 @@ import CronogramaPublic from "./pages/CronogramaPublic";
 import AprovacaoPublic from "./pages/AprovacaoPublic";
 import HealthScorePublic from "./pages/HealthScorePublic";
 import Pending from "./pages/Pending";
+import InstagramCallback from "./pages/InstagramCallback";
 import NotFound from "./pages/NotFound";
 import { RequireAuth } from "@/components/auth/RequireAuth";
 import { toast } from "sonner";
@@ -33,6 +34,14 @@ function AppRoutes() {
         <Route path="/cronograma/:taskId" element={<CronogramaPublic />} />
         <Route path="/avaliacao/:slug" element={<HealthScorePublic />} />
         <Route path="/aprovacao/:token" element={<AprovacaoPublic />} />
+        <Route
+          path="/admin/instagram-callback"
+          element={
+            <RequireAuth>
+              <InstagramCallback />
+            </RequireAuth>
+          }
+        />
         <Route
           path="/"
           element={
