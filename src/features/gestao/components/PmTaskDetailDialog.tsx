@@ -62,6 +62,17 @@ function randomToken(): string {
   return Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+// In-app browsers (WhatsApp/Instagram's WKWebView) can refuse to play <video> served
+// from a URL with no recognizable file extension, so drive-file-proxy URLs need one.
+const MIME_EXTENSIONS: Record<string, string> = {
+  "video/mp4": "mp4", "video/quicktime": "mov", "video/webm": "webm", "video/x-msvideo": "avi",
+  "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif", "image/DNG": "dng",
+  "application/pdf": "pdf", "application/x-zip-compressed": "zip",
+};
+function extensionFor(mimeType: string | null | undefined): string {
+  return MIME_EXTENSIONS[mimeType ?? ""] ?? "bin";
+}
+
 interface Props {
   task: PmTask | null;
   open: boolean;
@@ -565,7 +576,7 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
           if (rest.storage_provider === "drive" && rest.drive_file_id) {
             const token = randomToken();
             rest.access_token = token;
-            rest.public_url = `https://bzzubzjbsjwuvchuhklr.supabase.co/functions/v1/drive-file-proxy/${rest.drive_file_id}?t=${token}`;
+            rest.public_url = `https://bzzubzjbsjwuvchuhklr.supabase.co/functions/v1/drive-file-proxy/${rest.drive_file_id}.${extensionFor(rest.file_type)}?t=${token}`;
           }
           return rest;
         };
@@ -945,7 +956,7 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
             if (rest.storage_provider === "drive" && rest.drive_file_id) {
               const token = randomToken();
               rest.access_token = token;
-              rest.public_url = `https://bzzubzjbsjwuvchuhklr.supabase.co/functions/v1/drive-file-proxy/${rest.drive_file_id}?t=${token}`;
+              rest.public_url = `https://bzzubzjbsjwuvchuhklr.supabase.co/functions/v1/drive-file-proxy/${rest.drive_file_id}.${extensionFor(rest.file_type)}?t=${token}`;
             }
             return sbx.from("pm_attachments").insert({ ...rest, task_id: newTid });
           }));

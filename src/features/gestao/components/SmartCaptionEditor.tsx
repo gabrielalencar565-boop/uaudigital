@@ -68,6 +68,32 @@ function setImportantColor(el: HTMLElement, color: string) {
   el.style.setProperty("color", color, "important");
 }
 
+// Rich text pasted from elsewhere (ChatGPT, Google Docs, Notion…) brings its own inline
+// `color`/`background-color` baked into every tag, which doesn't adapt to this app's
+// dark/light theme — pasted near-black text on a near-white inline background reads fine
+// in light mode and is illegible in dark mode. Stripping style/class/data-* attributes
+// (and event handlers, out of caution) keeps the pasted text/structure but forces it to
+// follow the editor's own styling instead of the source site's.
+function sanitizePastedHtml(html: string): string {
+  const container = document.createElement("div");
+  container.innerHTML = html;
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_ELEMENT);
+  const elements: Element[] = [];
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    elements.push(node as Element);
+  }
+  for (const el of elements) {
+    el.removeAttribute("style");
+    el.removeAttribute("class");
+    for (const attr of Array.from(el.attributes)) {
+      if (attr.name.startsWith("data-") || attr.name.startsWith("on")) {
+        el.removeAttribute(attr.name);
+      }
+    }
+  }
+  return container.innerHTML;
+}
+
 /** Builds the actual <a> element for the compact dark "link pill" (icon + platform + shortened URL). */
 function buildAnchorElement(url: string): HTMLAnchorElement {
   const platform = detectPlatform(url);
@@ -632,6 +658,15 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
     const pastedText = e.clipboardData.getData("text/plain").trim();
 
     if (!pastedText || !new RegExp(`^${URL_REGEX_SOURCE}$`, "i").test(pastedText)) {
+      // Not a bare URL — if the clipboard carries rich HTML (pasted from ChatGPT, Docs,
+      // Notion…), strip its inline styles/attributes before inserting so it can't bring
+      // hardcoded light-mode colors into the editor. Plain-text pastes are left to the
+      // browser's default handling.
+      const html = e.clipboardData.getData("text/html");
+      if (html) {
+        e.preventDefault();
+        document.execCommand("insertHTML", false, sanitizePastedHtml(html));
+      }
       return;
     }
     const url = normalizeUrl(pastedText);
@@ -939,6 +974,14 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
         .up-lp-toolbar, .up-lp-resize { opacity: 0; transition: opacity .12s ease; }
         .up-lp-card:hover .up-lp-toolbar, .up-lp-card:hover .up-lp-resize { opacity: 1; }
         .up-lp-toolbar button:hover { background: rgba(0,0,0,0.8) !important; }
+        /* Captions saved before the paste sanitizer above existed can still carry a
+           hardcoded inline background-color from whatever site they were copied from —
+           this neutralizes it everywhere except the editor's own chrome (pills/cards/
+           toolbar), which is always marked contenteditable="false". */
+        .up-caption-editor *:not([contenteditable="false"]):not([contenteditable="false"] *) {
+          background-color: transparent !important;
+          background-image: none !important;
+        }
       `}</style>
 
       {/* Top-right status bar */}
@@ -1062,7 +1105,7 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
         }}
         data-placeholder={placeholder}
         className={cn(
-          "w-full rounded-lg border border-border/40 bg-background px-3 py-2",
+          "up-caption-editor w-full rounded-lg border border-border/40 bg-background px-3 py-2",
           "text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40",
           "[&_*]:!text-inherit [&_span]:!text-inherit [&_div]:!text-inherit [&_p]:!text-inherit [&_font]:!text-inherit",
           "[&_a]:!text-blue-600 [&_a]:!cursor-pointer [&_a:hover]:!text-blue-700",

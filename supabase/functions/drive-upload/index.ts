@@ -16,6 +16,21 @@ const REFRESH_TOKEN = Deno.env.get("GOOGLE_DRIVE_REFRESH_TOKEN")!;
 const ROOT_FOLDER_ID = Deno.env.get("GOOGLE_DRIVE_FOLDER_ID")!;
 const PROXY_BASE = `${Deno.env.get("SUPABASE_URL")}/functions/v1/drive-file-proxy`;
 
+// In-app browsers (WhatsApp/Instagram's WKWebView, notably) can refuse to play
+// <video> served from a URL with no recognizable file extension — they fall back to
+// extension sniffing for media playback in a way <img> loading doesn't. The proxy
+// URL's last path segment is a bare Google Drive file ID with no extension, so we
+// tack one on here; drive-file-proxy strips it back off before using the segment
+// as the file ID.
+const MIME_EXTENSIONS: Record<string, string> = {
+  "video/mp4": "mp4", "video/quicktime": "mov", "video/webm": "webm", "video/x-msvideo": "avi",
+  "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif", "image/DNG": "dng",
+  "application/pdf": "pdf", "application/x-zip-compressed": "zip",
+};
+function extensionFor(mimeType: string): string {
+  return MIME_EXTENSIONS[mimeType] ?? "bin";
+}
+
 // Control-plane calls (auth, folder search/create, resumable-session init) should
 // normally resolve in well under a second. When Google's API is slow or a request
 // just hangs, leaving them unbounded means the whole function silently sits there
@@ -284,7 +299,7 @@ Deno.serve(async (req) => {
       }
       const driveFile = await putRes.json();
       const token = randomToken();
-      const publicUrl = `${PROXY_BASE}/${driveFile.id}?t=${token}`;
+      const publicUrl = `${PROXY_BASE}/${driveFile.id}.${extensionFor(mimeType)}?t=${token}`;
       return new Response(
         JSON.stringify({ drive_file_id: driveFile.id, public_url: publicUrl, access_token: token }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -313,7 +328,7 @@ Deno.serve(async (req) => {
     const fileId = await uploadToDrive(accessToken, file.name, mimeType, bytes, parentId);
 
     const token = randomToken();
-    const publicUrl = `${PROXY_BASE}/${fileId}?t=${token}`;
+    const publicUrl = `${PROXY_BASE}/${fileId}.${extensionFor(mimeType)}?t=${token}`;
 
     return new Response(
       JSON.stringify({ drive_file_id: fileId, public_url: publicUrl, access_token: token }),

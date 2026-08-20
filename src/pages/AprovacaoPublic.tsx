@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
-import { useTheme } from "next-themes";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -18,6 +17,11 @@ import { TAG_COLORS } from "@/features/gestao/pm-constants";
 import { useAppSettings } from "@/features/data/queries";
 
 const FN_URL = "https://bzzubzjbsjwuvchuhklr.supabase.co/functions/v1/public-calendario-publicacao";
+
+// Tema isolado desta página: sempre abre em modo escuro para quem recebe o link,
+// independente do tema usado no painel interno. Guarda a preferência do cliente
+// numa chave própria (não a do painel interno) para não misturar os dois.
+const PUBLIC_THEME_KEY = "uau-theme-public";
 
 const CONTENT_TYPE_LABELS: Record<string, string> = {
   carrossel: "Carrossel", reel: "Reels", video: "Vídeo", story: "Stories", outro: "Outro", post: "Post", foto: "Foto",
@@ -234,8 +238,54 @@ export default function AprovacaoPublic() {
   const [confirmApproveAll, setConfirmApproveAll] = useState(false);
 
   const appSettingsQ = useAppSettings();
-  const { resolvedTheme, setTheme } = useTheme();
-  const appLogoUrl = resolvedTheme === "dark"
+
+  const [publicTheme, setPublicThemeState] = useState<"light" | "dark">(() => {
+    try {
+      return localStorage.getItem(PUBLIC_THEME_KEY) === "light" ? "light" : "dark";
+    } catch {
+      return "dark";
+    }
+  });
+  const originalHtmlThemeRef = useRef<"light" | "dark" | null>(null);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (originalHtmlThemeRef.current === null) {
+      originalHtmlThemeRef.current = root.classList.contains("dark") ? "dark" : "light";
+    }
+    const apply = () => {
+      root.classList.remove("light", "dark");
+      root.classList.add(publicTheme);
+    };
+    apply();
+    // O ThemeProvider global do painel interno também gerencia essa mesma classe e
+    // roda seu próprio efeito de montagem depois deste (é um componente pai na
+    // árvore), sobrescrevendo-a de volta para o tema interno. Reaplica no próximo
+    // tick para vencer essa corrida.
+    const timer = setTimeout(apply, 0);
+    return () => clearTimeout(timer);
+  }, [publicTheme]);
+
+  useEffect(() => {
+    return () => {
+      const original = originalHtmlThemeRef.current;
+      if (original) {
+        document.documentElement.classList.remove("light", "dark");
+        document.documentElement.classList.add(original);
+      }
+    };
+  }, []);
+
+  const setPublicTheme = (next: "light" | "dark") => {
+    setPublicThemeState(next);
+    try {
+      localStorage.setItem(PUBLIC_THEME_KEY, next);
+    } catch {
+      /* noop */
+    }
+  };
+
+  const appLogoUrl = publicTheme === "dark"
     ? (appSettingsQ.data?.sidebar_logo_dark_url ?? appSettingsQ.data?.sidebar_logo_url)
     : appSettingsQ.data?.sidebar_logo_url;
 
@@ -335,19 +385,14 @@ export default function AprovacaoPublic() {
     <div className="min-h-screen bg-background pb-16">
       <header className="border-b border-border/40 bg-card px-4 py-6 sm:px-8">
         <div className="mx-auto max-w-6xl">
-          <div className="mb-4 flex items-center justify-between">
-            {appLogoUrl ? (
-              <img src={appLogoUrl} alt="Uau Digital" className="h-6 w-auto max-w-[140px] object-contain opacity-80" />
-            ) : (
-              <p className="text-sm font-bold opacity-80"><span className="text-primary">uaü</span> digital</p>
-            )}
+          <div className="mb-4 flex items-center justify-end">
             <Button
               variant="ghost"
               size="icon"
               className="h-8 w-8 rounded-full text-muted-foreground"
-              onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+              onClick={() => setPublicTheme(publicTheme === "dark" ? "light" : "dark")}
             >
-              {resolvedTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              {publicTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
           </div>
           <div className="flex items-center gap-4 sm:gap-5">
@@ -508,12 +553,12 @@ export default function AprovacaoPublic() {
                               {carouselIndex + 1}/{images.length}
                             </div>
                             {carouselIndex > 0 && (
-                              <button onClick={() => setCarouselIndex((i) => i - 1)} className="absolute left-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 opacity-0 shadow-sm transition group-hover:opacity-100">
+                              <button onClick={() => setCarouselIndex((i) => i - 1)} className="absolute left-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-black opacity-0 shadow-sm transition group-hover:opacity-100">
                                 <ChevronLeft className="h-4 w-4" />
                               </button>
                             )}
                             {carouselIndex < images.length - 1 && (
-                              <button onClick={() => setCarouselIndex((i) => i + 1)} className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 opacity-0 shadow-sm transition group-hover:opacity-100">
+                              <button onClick={() => setCarouselIndex((i) => i + 1)} className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-black opacity-0 shadow-sm transition group-hover:opacity-100">
                                 <ChevronRight className="h-4 w-4" />
                               </button>
                             )}

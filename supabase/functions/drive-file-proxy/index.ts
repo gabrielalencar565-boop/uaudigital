@@ -18,7 +18,21 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, OPTIONS",
 };
 
+// A <video> tag issues MANY range requests per playback (initial buffering, then more on
+// every seek), and each one hit this function fresh — without caching, every single one was
+// paying for a full OAuth round-trip to Google (~1-2s) on top of the actual file fetch, before
+// a single byte of video reached the browser. On a slow/real mobile connection that's enough
+// added latency per chunk to make WKWebView-based in-app browsers (WhatsApp, Instagram) give
+// up and show a load error, even though the same request eventually succeeds over a fast link.
+// Module-level state survives across invocations on a warm Edge Function instance, so caching
+// the token here (refreshed a minute before actual expiry) turns most requests into just the
+// Drive fetch itself.
+let cachedToken: { token: string; expiresAt: number } | null = null;
+
 async function getAccessToken(): Promise<string> {
+  if (cachedToken && cachedToken.expiresAt > Date.now()) {
+    return cachedToken.token;
+  }
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -31,16 +45,24 @@ async function getAccessToken(): Promise<string> {
   });
   if (!res.ok) throw new Error(`token refresh failed: ${await res.text()}`);
   const data = await res.json();
+  cachedToken = { token: data.access_token, expiresAt: Date.now() + (Math.max(data.expires_in ?? 3600, 120) - 60) * 1000 };
   return data.access_token;
 }
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
+  const t0 = Date.now();
+  const timing: string[] = [];
+  const mark = (label: string, start: number) => timing.push(`${label};dur=${Date.now() - start}`);
+
   try {
     const url = new URL(req.url);
     const segments = url.pathname.split("/").filter(Boolean);
-    const fileId = segments[segments.length - 1];
+    // URLs generated after this fix carry a file extension (".../{fileId}.mp4") so
+    // in-app browsers that sniff media type off the URL will actually play <video>;
+    // older rows still have a bare file ID with no extension, so only strip one if present.
+    const fileId = segments[segments.length - 1]?.replace(/\.[a-zA-Z0-9]+$/, "");
     const token = url.searchParams.get("t");
 
     if (!fileId || !token) {
@@ -52,31 +74,47 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    const { data: attachment } = await admin
-      .from("pm_attachments")
-      .select("drive_file_id, file_type")
-      .eq("drive_file_id", fileId)
-      .eq("access_token", token)
-      .eq("storage_provider", "drive")
-      .maybeSingle();
+    // The token-capability lookup and the Google OAuth refresh don't depend on each
+    // other — running them concurrently instead of one-after-the-other shaves off
+    // whichever one is faster (typically the DB lookup), which matters on the request
+    // that's on the critical path before a single video byte can start streaming.
+    let tStep = Date.now();
+    const wasCached = !!(cachedToken && cachedToken.expiresAt > Date.now());
+    const [{ data: attachment }, accessToken] = await Promise.all([
+      admin
+        .from("pm_attachments")
+        .select("drive_file_id, file_type")
+        .eq("drive_file_id", fileId)
+        .eq("access_token", token)
+        .eq("storage_provider", "drive")
+        .maybeSingle(),
+      getAccessToken(),
+    ]);
+    mark(`db_and_token_${wasCached ? "cached" : "fresh"}`, tStep);
 
     if (!attachment) {
       return new Response("not found", { status: 404, headers: corsHeaders });
     }
 
-    const accessToken = await getAccessToken();
-
     const driveHeaders: Record<string, string> = { Authorization: `Bearer ${accessToken}` };
     const rangeHeader = req.headers.get("range");
     if (rangeHeader) driveHeaders["Range"] = rangeHeader;
 
-    const driveRes = await fetch(
-      `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
-      { headers: driveHeaders },
-    );
+    const driveUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
+    tStep = Date.now();
+    let driveRes = await fetch(driveUrl, { headers: driveHeaders });
+    mark("drive_fetch_headers", tStep);
+    // Google's API occasionally hiccups on individual requests (transient 5xx/network
+    // errors) — a client mid-playback would otherwise see a hard failure for something
+    // that a single retry resolves almost every time.
+    if (!driveRes.ok || !driveRes.body) {
+      tStep = Date.now();
+      driveRes = await fetch(driveUrl, { headers: driveHeaders });
+      mark("drive_fetch_retry", tStep);
+    }
 
     if (!driveRes.ok || !driveRes.body) {
-      return new Response("upstream error", { status: 502, headers: corsHeaders });
+      return new Response(`upstream error (${driveRes.status})`, { status: 502, headers: corsHeaders });
     }
 
     const responseHeaders: Record<string, string> = {
@@ -84,6 +122,7 @@ Deno.serve(async (req) => {
       "Content-Type": attachment.file_type || driveRes.headers.get("content-type") || "application/octet-stream",
       "Cache-Control": "private, max-age=86400",
       "Accept-Ranges": "bytes",
+      "Server-Timing": [...timing, `total;dur=${Date.now() - t0}`].join(", "),
     };
     const contentRange = driveRes.headers.get("content-range");
     if (contentRange) responseHeaders["Content-Range"] = contentRange;
