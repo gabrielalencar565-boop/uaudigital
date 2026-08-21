@@ -212,10 +212,19 @@ export function useUpdateCalendarPublication() {
     mutationFn: async ({ id, ...updates }: Partial<CalendarPublication> & { id: string }) => {
       const { data, error } = await sb.from("calendar_publications").update(updates).eq("id", id).select().single();
       if (error) throw error;
-      return data as CalendarPublication;
+      return { data: data as CalendarPublication, scheduledTurnedOn: updates.instagram_scheduled === true };
     },
-    onSuccess: (data) => {
+    onSuccess: ({ data, scheduledTurnedOn }) => {
       qc.invalidateQueries({ queryKey: ["calendar_publications", data.calendar_id] });
+      // The per-publication "Agendar publicação" button goes through this same generic
+      // update — when it's what just flipped instagram_scheduled on, trg_complete_agendamento_on_scheduled
+      // may have completed the pipeline's agendamento task, so refresh those views too.
+      if (scheduledTurnedOn) {
+        qc.invalidateQueries({ queryKey: ["pm_tasks"] });
+        qc.invalidateQueries({ queryKey: ["pm_task_status_for_calendar"] });
+        qc.invalidateQueries({ queryKey: ["magic2"] });
+        qc.invalidateQueries({ queryKey: ["tasks"] });
+      }
     },
   });
 }
@@ -271,6 +280,10 @@ export function useUnpublishCycle() {
 // auto-publish cron to pick up — see instagram_scheduled on calendar_publications. Skips
 // anything already scheduled or already published; the caller (CalendarioPublicacaoPanel)
 // is responsible for pre-filtering to only approved+complete publications before calling this.
+//
+// A DB trigger (trg_complete_agendamento_on_scheduled) reacts to instagram_scheduled flipping
+// true by auto-completing the pipeline's "agendamento" task and syncing Magic Number/Agenda —
+// invalidate those too so the UI reflects it without a manual refresh.
 export function useScheduleCyclePublications() {
   const qc = useQueryClient();
   return useMutation({
@@ -283,6 +296,10 @@ export function useScheduleCyclePublications() {
     },
     onSuccess: ({ calendarId }) => {
       qc.invalidateQueries({ queryKey: ["calendar_publications", calendarId] });
+      qc.invalidateQueries({ queryKey: ["pm_tasks"] });
+      qc.invalidateQueries({ queryKey: ["pm_task_status_for_calendar"] });
+      qc.invalidateQueries({ queryKey: ["magic2"] });
+      qc.invalidateQueries({ queryKey: ["tasks"] });
     },
   });
 }
