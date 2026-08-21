@@ -1187,9 +1187,13 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
       <AlertDialog open={forceScheduleConfirmOpen} onOpenChange={setForceScheduleConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Nenhuma publicação aprovada ainda</AlertDialogTitle>
+            <AlertDialogTitle>
+              {forceSchedulablePublications.length === 1
+                ? "A publicação ainda não foi aprovada"
+                : `Nenhuma das ${forceSchedulablePublications.length} publicações foi aprovada ainda`}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              {forceSchedulablePublications.length === 1 ? "1 publicação está" : `${forceSchedulablePublications.length} publicações estão`} completas (legenda, data e horário) mas o cliente ainda não aprovou nenhuma. Forçar o agendamento libera essas publicações pro cron de auto-publicação no Instagram mesmo assim, sem esperar a aprovação.
+              Forçar o agendamento libera pro cron de auto-publicação no Instagram mesmo assim, sem aprovação do cliente.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
