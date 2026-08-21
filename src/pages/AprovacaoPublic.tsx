@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-  Loader2, CalendarX, LayoutGrid, Grid3x3, List, X, Check, MessageSquareWarning, Film, Image as ImageIcon, Camera, Smartphone, File, Clock, CalendarDays, ChevronLeft, ChevronRight, Images, Aperture, Play, Heart, MessageCircle, Send, Bookmark, Sun, Moon,
+  Loader2, CalendarX, LayoutGrid, Grid3x3, List, X, Check, MessageSquareWarning, Film, Image as ImageIcon, Video, Smartphone, File, Clock, CalendarDays, ChevronLeft, ChevronRight, Images, Aperture, Play, Heart, MessageCircle, Send, Bookmark, Sun, Moon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,7 +28,7 @@ const CONTENT_TYPE_LABELS: Record<string, string> = {
 };
 
 const CONTENT_TYPE_ICON: Record<string, typeof Film> = {
-  carrossel: LayoutGrid, reel: Film, video: Camera, story: Smartphone, outro: File, post: Images, foto: Aperture,
+  carrossel: LayoutGrid, reel: Film, video: Video, story: Smartphone, outro: File, post: Images, foto: Aperture,
 };
 
 // Mirrors the internal Cronograma's color-per-content-type mapping so the
@@ -565,16 +565,18 @@ export default function AprovacaoPublic() {
                         />
                         {videoLoading && (
                           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                            <svg width="56" height="56" viewBox="0 0 56 56" className="-rotate-90 drop-shadow-lg">
-                              <circle cx="28" cy="28" r="24" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="4" />
-                              <circle
-                                cx="28" cy="28" r="24" fill="none"
-                                stroke="hsl(var(--primary))" strokeWidth="4" strokeLinecap="round"
-                                strokeDasharray={2 * Math.PI * 24}
-                                strokeDashoffset={2 * Math.PI * 24 * (1 - videoProgress / 100)}
-                                style={{ transition: "stroke-dashoffset 0.2s linear" }}
-                              />
-                            </svg>
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-black/45 backdrop-blur-sm">
+                              <svg width="22" height="22" viewBox="0 0 22 22" className="-rotate-90">
+                                <circle cx="11" cy="11" r="9" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="2.5" />
+                                <circle
+                                  cx="11" cy="11" r="9" fill="none"
+                                  stroke="hsl(var(--primary))" strokeWidth="2.5" strokeLinecap="round"
+                                  strokeDasharray={2 * Math.PI * 9}
+                                  strokeDashoffset={2 * Math.PI * 9 * (1 - videoProgress / 100)}
+                                  style={{ transition: "stroke-dashoffset 0.2s linear" }}
+                                />
+                              </svg>
+                            </div>
                           </div>
                         )}
                       </>

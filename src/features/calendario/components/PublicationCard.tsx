@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Camera, Film, Images, Aperture, LayoutGrid, Smartphone, GripVertical, File, ChevronLeft, ChevronRight, Bookmark } from "lucide-react";
+import { Video, Film, Images, Aperture, LayoutGrid, Smartphone, GripVertical, File, ChevronLeft, ChevronRight, Bookmark } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TAG_COLORS } from "@/features/gestao/pm-constants";
 import { CONTENT_TYPE_LABELS, type CalendarPublication } from "../calendar-types";
@@ -7,7 +7,7 @@ import { CONTENT_TYPE_LABELS, type CalendarPublication } from "../calendar-types
 export const CONTENT_TYPE_ICON: Record<CalendarPublication["content_type"], typeof Film> = {
   carrossel: LayoutGrid,
   reel: Film,
-  video: Camera,
+  video: Video,
   story: Smartphone,
   outro: File,
   post: Images,
