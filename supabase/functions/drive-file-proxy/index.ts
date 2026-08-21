@@ -20,19 +20,24 @@ const corsHeaders = {
 
 // A <video> tag issues MANY range requests per playback (initial buffering, then more on
 // every seek), and each one hit this function fresh — without caching, every single one was
-// paying for a full OAuth round-trip to Google (~1-2s) on top of the actual file fetch, before
-// a single byte of video reached the browser. On a slow/real mobile connection that's enough
-// added latency per chunk to make WKWebView-based in-app browsers (WhatsApp, Instagram) give
-// up and show a load error, even though the same request eventually succeeds over a fast link.
-// Module-level state survives across invocations on a warm Edge Function instance, so caching
-// the token here (refreshed a minute before actual expiry) turns most requests into just the
-// Drive fetch itself.
-let cachedToken: { token: string; expiresAt: number } | null = null;
-
-async function getAccessToken(): Promise<string> {
-  if (cachedToken && cachedToken.expiresAt > Date.now()) {
-    return cachedToken.token;
+// paying for a full OAuth round-trip to Google (~250ms-1s) on top of the actual file fetch,
+// before a single byte of video reached the browser. On a slow/real mobile connection that's
+// enough added latency per chunk to make WKWebView-based in-app browsers (WhatsApp, Instagram)
+// give up and show a load error, even though the same request eventually succeeds over a fast
+// link. A plain module-level cache turned out not to help much in measured practice — Supabase
+// Edge Functions don't reliably reuse the same warm isolate between separate client requests —
+// so the token is cached in Postgres (drive_oauth_token_cache) instead: any invocation on any
+// instance reuses a still-valid token with one fast DB read instead of hitting Google.
+async function getAccessToken(admin: ReturnType<typeof createClient>): Promise<string> {
+  const { data: cached } = await admin
+    .from("drive_oauth_token_cache")
+    .select("access_token, expires_at")
+    .eq("id", 1)
+    .maybeSingle();
+  if (cached && new Date(cached.expires_at).getTime() > Date.now()) {
+    return cached.access_token;
   }
+
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -45,7 +50,10 @@ async function getAccessToken(): Promise<string> {
   });
   if (!res.ok) throw new Error(`token refresh failed: ${await res.text()}`);
   const data = await res.json();
-  cachedToken = { token: data.access_token, expiresAt: Date.now() + (Math.max(data.expires_in ?? 3600, 120) - 60) * 1000 };
+  const expiresAt = new Date(Date.now() + (Math.max(data.expires_in ?? 3600, 120) - 60) * 1000).toISOString();
+  // Best-effort — if the write races with another cold invocation refreshing at the same
+  // time, whichever lands last just overwrites with an equally-valid token.
+  await admin.from("drive_oauth_token_cache").upsert({ id: 1, access_token: data.access_token, expires_at: expiresAt });
   return data.access_token;
 }
 
@@ -74,12 +82,11 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    // The token-capability lookup and the Google OAuth refresh don't depend on each
+    // The token-capability lookup and the Google OAuth token fetch don't depend on each
     // other — running them concurrently instead of one-after-the-other shaves off
-    // whichever one is faster (typically the DB lookup), which matters on the request
-    // that's on the critical path before a single video byte can start streaming.
+    // whichever one is faster, which matters on the request that's on the critical path
+    // before a single video byte can start streaming.
     let tStep = Date.now();
-    const wasCached = !!(cachedToken && cachedToken.expiresAt > Date.now());
     const [{ data: attachment }, accessToken] = await Promise.all([
       admin
         .from("pm_attachments")
@@ -88,9 +95,9 @@ Deno.serve(async (req) => {
         .eq("access_token", token)
         .eq("storage_provider", "drive")
         .maybeSingle(),
-      getAccessToken(),
+      getAccessToken(admin),
     ]);
-    mark(`db_and_token_${wasCached ? "cached" : "fresh"}`, tStep);
+    mark("db_and_token", tStep);
 
     if (!attachment) {
       return new Response("not found", { status: 404, headers: corsHeaders });
