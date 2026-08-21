@@ -343,6 +343,13 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
     () => publishablePublications.filter((p) => !p.instagram_scheduled && p.instagram_status !== "published" && missingFieldsFor(p).length === 0),
     [publishablePublications],
   );
+  // Fallback quando não há nada aprovado ainda pra agendar da forma normal: o time pode
+  // forçar o agendamento de publicações completas (legenda+data+horário) mesmo sem aprovação
+  // do cliente — oferecido só como ação extra no toast, não como caminho padrão.
+  const forceSchedulablePublications = useMemo(
+    () => publications.filter((p) => !p.instagram_scheduled && p.instagram_status !== "published" && missingFieldsFor(p).length === 0),
+    [publications],
+  );
   const [incompleteScheduleDialogOpen, setIncompleteScheduleDialogOpen] = useState(false);
   const scheduleCycle = useScheduleCyclePublications();
   const taskIds = useMemo(() => publications.map((p) => p.task_id), [publications]);
@@ -819,9 +826,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
             onClick={() => {
               if (notReadyToSchedule.length > 0) {
                 setIncompleteScheduleDialogOpen(true);
-              } else if (schedulablePublications.length === 0) {
-                toast.info("Nenhuma publicação aprovada pendente de agendamento.");
-              } else {
+              } else if (schedulablePublications.length > 0) {
                 scheduleCycle.mutate(
                   { calendarId: calendar!.id, publicationIds: schedulablePublications.map((p) => p.id) },
                   {
@@ -832,6 +837,28 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                     onError: (e: any) => toast.error(e?.message ?? "Erro ao agendar publicações"),
                   },
                 );
+              } else if (forceSchedulablePublications.length > 0) {
+                // Nada aprovado ainda — oferece agendar à força como ação extra dentro do
+                // próprio toast, sem diálogo de confirmação separado.
+                toast.info("Nenhuma publicação aprovada pendente de agendamento.", {
+                  action: {
+                    label: "Forçar agendamento",
+                    onClick: () => {
+                      scheduleCycle.mutate(
+                        { calendarId: calendar!.id, publicationIds: forceSchedulablePublications.map((p) => p.id) },
+                        {
+                          onSuccess: () => {
+                            const n = forceSchedulablePublications.length;
+                            toast.success(`${n} publicaç${n === 1 ? "ão agendada" : "ões agendadas"} à força (sem aprovação do cliente).`);
+                          },
+                          onError: (e: any) => toast.error(e?.message ?? "Erro ao agendar publicações"),
+                        },
+                      );
+                    },
+                  },
+                });
+              } else {
+                toast.info("Nenhuma publicação pendente de agendamento.");
               }
             }}
           >
