@@ -265,7 +265,7 @@ export function useUnpublishCycle() {
 }
 
 // Which of these tasks are already marked concluído — used to render the bulk
-// "Concluir" button as done (green, with an option to unmark) once every approved
+// "Concluir" button as done (roxo, with an option to unmark) once every approved
 // publication's task has actually been closed out.
 export function useTaskCompletionMap(taskIds: string[]) {
   return useQuery({
