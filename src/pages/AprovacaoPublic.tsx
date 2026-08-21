@@ -309,6 +309,7 @@ export default function AprovacaoPublic() {
 
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [videoLoading, setVideoLoading] = useState(true);
+  const [videoProgress, setVideoProgress] = useState(0);
 
   const respond = async (publicationId: string, respAction: "aprovar" | "alteracao", text?: string) => {
     if (!token) return;
@@ -352,7 +353,7 @@ export default function AprovacaoPublic() {
   const selected = navIndex >= 0 ? navList[navIndex] : (publications.find((p) => p.id === selectedId) ?? null);
   useEffect(() => setFeedbackText(selected?.client_feedback ?? ""), [selectedId]);
   useEffect(() => setCarouselIndex(0), [selectedId]);
-  useEffect(() => setVideoLoading(true), [selectedId]);
+  useEffect(() => { setVideoLoading(true); setVideoProgress(0); }, [selectedId]);
 
   const handleNavigate = (direction: "prev" | "next") => {
     if (navIndex < 0) return;
@@ -552,6 +553,11 @@ export default function AprovacaoPublic() {
                           preload="auto"
                           playsInline
                           poster={images[0]?.url}
+                          onProgress={(e) => {
+                            const v = e.currentTarget;
+                            if (!v.duration || Number.isNaN(v.duration) || v.buffered.length === 0) return;
+                            setVideoProgress(Math.min(100, Math.round((v.buffered.end(v.buffered.length - 1) / v.duration) * 100)));
+                          }}
                           onWaiting={() => setVideoLoading(true)}
                           onCanPlay={() => setVideoLoading(false)}
                           onPlaying={() => setVideoLoading(false)}
@@ -559,7 +565,16 @@ export default function AprovacaoPublic() {
                         />
                         {videoLoading && (
                           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                            <Loader2 className="h-10 w-10 animate-spin text-white drop-shadow-lg" />
+                            <svg width="56" height="56" viewBox="0 0 56 56" className="-rotate-90 drop-shadow-lg">
+                              <circle cx="28" cy="28" r="24" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="4" />
+                              <circle
+                                cx="28" cy="28" r="24" fill="none"
+                                stroke="hsl(var(--primary))" strokeWidth="4" strokeLinecap="round"
+                                strokeDasharray={2 * Math.PI * 24}
+                                strokeDashoffset={2 * Math.PI * 24 * (1 - videoProgress / 100)}
+                                style={{ transition: "stroke-dashoffset 0.2s linear" }}
+                              />
+                            </svg>
                           </div>
                         )}
                       </>
