@@ -243,9 +243,11 @@ export function usePublishCycle() {
   });
 }
 
-// Reverses usePublishCycle — same tasks, back to backlog. Since the Agenda reads this
-// same status_global column directly, unmarking here immediately unmarks it there too;
-// no separate sync needed.
+// Reverses usePublishCycle — same tasks, back to backlog. Note this only touches
+// pm_tasks.status_global; the Agenda actually reads a separate `tasks.status` snapshot and
+// Magic Number reads `magic2_cycle_stages.completed` (both flipped to done by
+// pm_sync_stage_completion when the stage was originally completed) — this does NOT reverse
+// those, so they can end up showing "concluído" while the Cronograma shows "Concluir" again.
 export function useUnpublishCycle() {
   const qc = useQueryClient();
   return useMutation({

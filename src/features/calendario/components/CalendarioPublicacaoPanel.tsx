@@ -347,14 +347,18 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
   const scheduleCycle = useScheduleCyclePublications();
   const taskIds = useMemo(() => publications.map((p) => p.task_id), [publications]);
   const attachmentsQ = useTaskAttachmentsMap(taskIds);
-  // "Concluído" (roxo, unmark-able) once every approved publication's task has
-  // actually been closed out — not just approved by the client.
-  const approvedTaskIds = useMemo(
-    () => [...new Set(publishablePublications.map((p) => p.task_id))],
-    [publishablePublications],
+  // "Concluído" (roxo, unmark-able) mirrors the same status_global signal the Agenda and o
+  // Magic Number já mostram como concluído — não depende de aprovação do cliente. Um pipeline
+  // task vira status_global='concluido' assim que o time termina a própria etapa (ex.: PDF),
+  // normalmente bem antes (e independente) do cliente aprovar — ver pm_sync_stage_completion.
+  // Antes isso só considerava tarefas já aprovadas, então uma tarefa já concluída em todo
+  // lugar continuava presa em "Concluir" aqui só por falta de aprovação.
+  const allTaskIdsInCycle = useMemo(
+    () => [...new Set(publications.map((p) => p.task_id))],
+    [publications],
   );
-  const taskCompletionQ = useTaskCompletionMap(approvedTaskIds);
-  const cycleConcluded = approvedTaskIds.length > 0 && approvedTaskIds.every((id) => taskCompletionQ.data?.has(id));
+  const taskCompletionQ = useTaskCompletionMap(allTaskIdsInCycle);
+  const cycleConcluded = allTaskIdsInCycle.length > 0 && allTaskIdsInCycle.every((id) => taskCompletionQ.data?.has(id));
   const unpublishCycle = useUnpublishCycle();
   const [unpublishConfirmOpen, setUnpublishConfirmOpen] = useState(false);
   const coverAttachmentIds = useMemo(
@@ -498,7 +502,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
 
   const handleConfirmPublish = () => {
     if (!calendar) return;
-    const taskIdsToComplete = [...new Set(publishablePublications.map((p) => p.task_id))];
+    const taskIdsToComplete = allTaskIdsInCycle;
     publishCycle.mutate(
       { calendarId: calendar.id, taskIds: taskIdsToComplete },
       {
@@ -528,7 +532,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
   const handleUnpublish = () => {
     if (!calendar) return;
     unpublishCycle.mutate(
-      { calendarId: calendar.id, taskIds: approvedTaskIds },
+      { calendarId: calendar.id, taskIds: allTaskIdsInCycle },
       {
         onSuccess: () => toast.success("Conclusão desmarcada."),
         onError: (e: any) => toast.error(e?.message ?? "Erro ao desmarcar"),
@@ -1096,7 +1100,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
           <AlertDialogHeader>
             <AlertDialogTitle>Desmarcar conclusão deste ciclo?</AlertDialogTitle>
             <AlertDialogDescription>
-              {approvedTaskIds.length === 1 ? "A tarefa voltará" : `As ${approvedTaskIds.length} tarefas voltarão`} para pendente — na Agenda também, já que é a mesma tarefa.
+              {allTaskIdsInCycle.length === 1 ? "A tarefa voltará" : `As ${allTaskIdsInCycle.length} tarefas voltarão`} para pendente na Gestão.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
