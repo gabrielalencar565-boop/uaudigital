@@ -287,6 +287,25 @@ export function useScheduleCyclePublications() {
   });
 }
 
+// Reverses useScheduleCyclePublications — same publications, back to instagram_scheduled=false.
+// Used when the whole cycle is already "Publicações agendadas" and the team wants to undo it
+// in one stroke (same toggle shape as usePublishCycle/useUnpublishCycle above).
+export function useUnscheduleCyclePublications() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ calendarId, publicationIds }: { calendarId: string; publicationIds: string[] }) => {
+      if (publicationIds.length > 0) {
+        const { error } = await sb.from("calendar_publications").update({ instagram_scheduled: false }).in("id", publicationIds);
+        if (error) throw error;
+      }
+      return { calendarId };
+    },
+    onSuccess: ({ calendarId }) => {
+      qc.invalidateQueries({ queryKey: ["calendar_publications", calendarId] });
+    },
+  });
+}
+
 // Which of these tasks are already marked concluído — used to render the bulk
 // "Concluir" button as done (roxo, with an option to unmark) once every approved
 // publication's task has actually been closed out.
