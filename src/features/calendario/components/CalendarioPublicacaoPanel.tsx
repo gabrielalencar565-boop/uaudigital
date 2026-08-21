@@ -332,23 +332,41 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
   );
   const cycleReadyToConclude = publications.length > 0 && notReadyPublications.length === 0;
   const [incompleteDialogOpen, setIncompleteDialogOpen] = useState(false);
+  // "PDF concluído" — mirrors the same status_global signal the Agenda and o Magic Number
+  // já mostram como concluído. Um pipeline task vira status_global='concluido' assim que o
+  // time termina a própria etapa (ex.: PDF) — ver pm_sync_stage_completion. O fluxo exige essa
+  // etapa feita antes de liberar o agendamento pro Instagram (ver isPdfConcluded abaixo).
+  const allTaskIdsInCycle = useMemo(
+    () => [...new Set(publications.map((p) => p.task_id))],
+    [publications],
+  );
+  const taskCompletionQ = useTaskCompletionMap(allTaskIdsInCycle);
+  const cycleConcluded = allTaskIdsInCycle.length > 0 && allTaskIdsInCycle.every((id) => taskCompletionQ.data?.has(id));
+  const isPdfConcluded = (p: CalendarPublication) => taskCompletionQ.data?.has(p.task_id) ?? false;
   // "Agendar publicações": libera de uma vez pro cron do Instagram tudo que o cliente já
   // aprovou e que já tem data/horário/legenda — só as aprovadas entram aqui (diferente de
-  // notReadyPublications acima, que olha o ciclo inteiro pra "Concluir").
+  // notReadyPublications acima, que olha o ciclo inteiro pra "Concluir PDF"). Segue o fluxo:
+  // só é possível agendar depois que o PDF daquela publicação já foi concluído.
   const notReadyToSchedule = useMemo(
     () => publishablePublications.filter((p) => missingFieldsFor(p).length > 0),
     [publishablePublications],
   );
   const schedulablePublications = useMemo(
-    () => publishablePublications.filter((p) => !p.instagram_scheduled && p.instagram_status !== "published" && missingFieldsFor(p).length === 0),
-    [publishablePublications],
+    () => publishablePublications.filter((p) => !p.instagram_scheduled && p.instagram_status !== "published" && missingFieldsFor(p).length === 0 && isPdfConcluded(p)),
+    [publishablePublications, taskCompletionQ.data],
   );
   // Fallback quando não há nada aprovado ainda pra agendar da forma normal: o time pode
-  // forçar o agendamento de publicações completas (legenda+data+horário) mesmo sem aprovação
-  // do cliente — oferecido só como ação extra no toast, não como caminho padrão.
+  // forçar o agendamento de publicações completas (legenda+data+horário, PDF concluído) mesmo
+  // sem aprovação do cliente — oferecido via diálogo de confirmação, não como caminho padrão.
   const forceSchedulablePublications = useMemo(
-    () => publications.filter((p) => !p.instagram_scheduled && p.instagram_status !== "published" && missingFieldsFor(p).length === 0),
-    [publications],
+    () => publications.filter((p) => !p.instagram_scheduled && p.instagram_status !== "published" && missingFieldsFor(p).length === 0 && isPdfConcluded(p)),
+    [publications, taskCompletionQ.data],
+  );
+  // Completas e sem agendamento, mas o PDF ainda não foi concluído — bloqueadas até o time
+  // marcar "Concluir PDF", pra dar um feedback claro em vez de simplesmente não aparecerem.
+  const blockedByPdfNotConcluded = useMemo(
+    () => publications.filter((p) => !p.instagram_scheduled && p.instagram_status !== "published" && missingFieldsFor(p).length === 0 && !isPdfConcluded(p)),
+    [publications, taskCompletionQ.data],
   );
   const [incompleteScheduleDialogOpen, setIncompleteScheduleDialogOpen] = useState(false);
   const scheduleCycle = useScheduleCyclePublications();
@@ -356,27 +374,15 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
   const [unscheduleConfirmOpen, setUnscheduleConfirmOpen] = useState(false);
   const [forceScheduleConfirmOpen, setForceScheduleConfirmOpen] = useState(false);
   // "Publicações agendadas" (roxo, desagendável) uma vez que tudo que já pode ser agendado
-  // (completo e ainda não publicado) já está com instagram_scheduled=true — mesmo padrão do
-  // toggle "Concluir PDF"/"PDF concluído".
+  // (completo, PDF concluído e ainda não publicado) já está com instagram_scheduled=true —
+  // mesmo padrão do toggle "Concluir PDF"/"PDF concluído".
   const schedulableUniverse = useMemo(
-    () => publications.filter((p) => p.instagram_status !== "published" && missingFieldsFor(p).length === 0),
-    [publications],
+    () => publications.filter((p) => p.instagram_status !== "published" && missingFieldsFor(p).length === 0 && isPdfConcluded(p)),
+    [publications, taskCompletionQ.data],
   );
   const cycleScheduled = schedulableUniverse.length > 0 && schedulableUniverse.every((p) => p.instagram_scheduled);
   const taskIds = useMemo(() => publications.map((p) => p.task_id), [publications]);
   const attachmentsQ = useTaskAttachmentsMap(taskIds);
-  // "PDF concluído" (roxo, unmark-able) mirrors the same status_global signal the Agenda and o
-  // Magic Number já mostram como concluído — não depende de aprovação do cliente. Um pipeline
-  // task vira status_global='concluido' assim que o time termina a própria etapa (ex.: PDF),
-  // normalmente bem antes (e independente) do cliente aprovar — ver pm_sync_stage_completion.
-  // Antes isso só considerava tarefas já aprovadas, então uma tarefa já concluída em todo
-  // lugar continuava presa em "Concluir" aqui só por falta de aprovação.
-  const allTaskIdsInCycle = useMemo(
-    () => [...new Set(publications.map((p) => p.task_id))],
-    [publications],
-  );
-  const taskCompletionQ = useTaskCompletionMap(allTaskIdsInCycle);
-  const cycleConcluded = allTaskIdsInCycle.length > 0 && allTaskIdsInCycle.every((id) => taskCompletionQ.data?.has(id));
   const unpublishCycle = useUnpublishCycle();
   const [unpublishConfirmOpen, setUnpublishConfirmOpen] = useState(false);
   const coverAttachmentIds = useMemo(
@@ -888,6 +894,9 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                 } else if (forceSchedulablePublications.length > 0) {
                   // Nada aprovado ainda — oferece agendar à força via diálogo de confirmação.
                   setForceScheduleConfirmOpen(true);
+                } else if (blockedByPdfNotConcluded.length > 0) {
+                  const n = blockedByPdfNotConcluded.length;
+                  toast.info(`${n} publicaç${n === 1 ? "ão está pronta, mas o PDF dela ainda não foi concluído" : "ões estão prontas, mas o PDF delas ainda não foi concluído"}. Marque "Concluir PDF" primeiro.`);
                 } else {
                   toast.info("Nenhuma publicação pendente de agendamento.");
                 }
