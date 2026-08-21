@@ -15,9 +15,11 @@ export const CONTENT_TYPE_ICON: Record<CalendarPublication["content_type"], type
 };
 
 // Mirrors the color of the tag that generates each content type
-// (Post → green, Foto/Capa → teal, Carrossel → blue, Vídeo curto → yellow,
-// Vídeo → purple, Stories → red), so the card reads consistently with the
-// task's own tag.
+// (Post → green, Foto/Capa → teal, Carrossel → blue, Vídeo curto/Vídeo → yellow,
+// Stories → red), so the card reads consistently with the task's own tag.
+// "video" is a legacy content_type — every video format resolves to "reel" (Reels)
+// now, so this entry only exists to satisfy the Record over the DB enum; nothing
+// assigns "video" anymore (see pm_resolve_content_type).
 const CONTENT_TYPE_COLOR_KEY: Record<CalendarPublication["content_type"], string> = {
   carrossel: "blue",
   reel: "yellow",

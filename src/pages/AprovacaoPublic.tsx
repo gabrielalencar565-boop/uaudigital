@@ -499,7 +499,7 @@ export default function AprovacaoPublic() {
         const images = selected.media.filter((m) => m.type?.startsWith("image/"));
         const videos = selected.media.filter((m) => m.type?.startsWith("video/"));
         const isStory = selected.content_type === "story";
-        const hasVideo = (selected.content_type === "reel" || selected.content_type === "video") && videos.length > 0;
+        const hasVideo = selected.content_type === "reel" && videos.length > 0;
         const isCarousel = selected.content_type === "carrossel" && images.length > 1;
         const clientInitial = clientName?.charAt(0)?.toUpperCase() || "C";
         const statusMeta = STATUS_META[selected.status] ?? { label: selected.status, shortLabel: selected.status, className: "bg-muted text-muted-foreground" };

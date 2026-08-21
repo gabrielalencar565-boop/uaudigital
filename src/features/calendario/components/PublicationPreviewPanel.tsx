@@ -214,7 +214,7 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
     setDragOverImageIndex(null);
   };
   const isStory = publication.content_type === "story";
-  const hasVideo = (publication.content_type === "reel" || publication.content_type === "video") && videos.length > 0;
+  const hasVideo = publication.content_type === "reel" && videos.length > 0;
 
   const clientInitial = clientName?.charAt(0)?.toUpperCase() || "C";
   const dateFormatted = publication.publish_date
@@ -432,7 +432,10 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                 <Select value={publication.content_type} onValueChange={(v: PublicationContentType) => save({ content_type: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {Object.entries(CONTENT_TYPE_LABELS).map(([key, label]) => (
+                    {/* "video" is a legacy content_type kept only so old rows still render
+                        (see calendar-types.ts) — every video format is Reels now, so it's
+                        not offered as a choice here. */}
+                    {Object.entries(CONTENT_TYPE_LABELS).filter(([key]) => key !== "video").map(([key, label]) => (
                       <SelectItem key={key} value={key}>{label}</SelectItem>
                     ))}
                   </SelectContent>
@@ -475,7 +478,7 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                 </div>
               )}
 
-              {(publication.content_type === "reel" || publication.content_type === "video") && (() => {
+              {publication.content_type === "reel" && (() => {
                 const ownIds = new Set(images.map((img) => img.id));
                 const allCandidates = coverCandidatesQ.data ?? [];
                 const coverId = publication.cover_attachment_id;
@@ -537,7 +540,7 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                 return (
                   <div className="space-y-3">
                     <div className="space-y-1.5">
-                      <Label>Capa do {publication.content_type === "reel" ? "Reel" : "Vídeo"}</Label>
+                      <Label>Capa do Reel</Label>
                       <div
                         onDragOver={(e) => { e.preventDefault(); setCoverDragActive(true); }}
                         onDragLeave={() => setCoverDragActive(false)}
