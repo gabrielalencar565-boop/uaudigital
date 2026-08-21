@@ -1174,7 +1174,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
           <AlertDialogHeader>
             <AlertDialogTitle>Desmarcar agendamento deste ciclo?</AlertDialogTitle>
             <AlertDialogDescription>
-              {schedulableUniverse.length === 1 ? "A publicação" : `As ${schedulableUniverse.length} publicações`} {schedulableUniverse.length === 1 ? "deixará" : "deixarão"} de ser elegível ao cron de auto-publicação no Instagram até serem agendadas de novo.
+              {schedulableUniverse.length === 1 ? "A publicação deixará" : `As ${schedulableUniverse.length} publicações deixarão`} de sair sozinha{schedulableUniverse.length === 1 ? "" : "s"} no Instagram até ser{schedulableUniverse.length === 1 ? "" : "em"} agendada{schedulableUniverse.length === 1 ? "" : "s"} de novo.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1193,7 +1193,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                 : `Nenhuma das ${forceSchedulablePublications.length} publicações foi aprovada ainda`}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Forçar o agendamento libera pro cron de auto-publicação no Instagram mesmo assim, sem aprovação do cliente.
+              Forçar o agendamento faz elas saírem sozinhas no Instagram no horário marcado, mesmo sem o cliente ter aprovado.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
