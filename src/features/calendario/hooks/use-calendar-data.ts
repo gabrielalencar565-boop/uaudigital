@@ -171,6 +171,41 @@ export function useCoverCandidates(taskId: string | null) {
   });
 }
 
+// Root tasks of a client that aren't in the Cronograma yet — candidates for the "+ Nova
+// publicação" dialog's "Usar tarefa existente" tab. Excludes tasks that already have a
+// calendar_publications row, and tasks with active (non-deleted) subtasks, since the
+// pm_task_pdf_stage_to_calendar trigger silently skips those (a container task never gets
+// its own calendar row) — offering them here would just silently do nothing on confirm.
+export function useUnscheduledClientTasks(clientId: string | null) {
+  return useQuery({
+    enabled: !!clientId,
+    queryKey: ["unscheduled_client_tasks", clientId],
+    queryFn: async (): Promise<
+      { id: string; title: string; tags: string[]; posting_date: string | null; stage_current: string; due_date: string | null; assignee_id: string | null }[]
+    > => {
+      const { data: tasks, error } = await sb
+        .from("pm_tasks")
+        .select("id, title, tags, posting_date, stage_current, due_date, assignee_id")
+        .eq("client_id", clientId)
+        .is("parent_task_id", null)
+        .is("deleted_at", null)
+        .order("title", { ascending: true });
+      if (error) throw error;
+      const taskIds = (tasks ?? []).map((t: { id: string }) => t.id);
+      if (taskIds.length === 0) return [];
+
+      const [{ data: scheduled }, { data: withChildren }] = await Promise.all([
+        sb.from("calendar_publications").select("task_id").in("task_id", taskIds),
+        sb.from("pm_tasks").select("parent_task_id").in("parent_task_id", taskIds).is("deleted_at", null),
+      ]);
+      const scheduledIds = new Set((scheduled ?? []).map((r: { task_id: string }) => r.task_id));
+      const parentIds = new Set((withChildren ?? []).map((r: { parent_task_id: string }) => r.parent_task_id));
+
+      return (tasks ?? []).filter((t: { id: string }) => !scheduledIds.has(t.id) && !parentIds.has(t.id));
+    },
+  });
+}
+
 export function useUpdateCalendarPublication() {
   const qc = useQueryClient();
   return useMutation({
