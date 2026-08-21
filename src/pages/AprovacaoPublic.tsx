@@ -543,7 +543,7 @@ export default function AprovacaoPublic() {
                         <div className="flex aspect-[9/16] max-h-[68vh] w-full items-center justify-center rounded-xl bg-muted text-xs text-muted-foreground">Sem mídia</div>
                       )
                     ) : hasVideo ? (
-                      <video src={videos[0].url} controls preload="auto" playsInline className="mx-auto block h-auto max-h-[68vh] w-auto max-w-full rounded-xl object-contain" />
+                      <video src={videos[0].url} controls preload="auto" playsInline poster={images[0]?.url} className="mx-auto block h-auto max-h-[68vh] w-auto max-w-full rounded-xl object-contain" />
                     ) : images.length > 0 ? (
                       <>
                         <img src={images[carouselIndex]?.url ?? images[0].url} alt="" className="max-h-[68vh] w-full rounded-xl object-cover" />
