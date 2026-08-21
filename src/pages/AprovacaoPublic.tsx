@@ -314,6 +314,11 @@ export default function AprovacaoPublic() {
   // just show the spinner over whatever frame is already on screen — not snap back to
   // the cover image, which would look like playback jumped backwards.
   const [videoEverPlayed, setVideoEverPlayed] = useState(false);
+  // Before the user taps play, the native poster + play button already show correctly on
+  // their own — our loading overlay has no reason to exist yet and would only hide that
+  // native play button behind it. It only earns its keep from the moment play is actually
+  // requested until real frames start rendering.
+  const [playRequested, setPlayRequested] = useState(false);
 
   const respond = async (publicationId: string, respAction: "aprovar" | "alteracao", text?: string) => {
     if (!token) return;
@@ -357,7 +362,7 @@ export default function AprovacaoPublic() {
   const selected = navIndex >= 0 ? navList[navIndex] : (publications.find((p) => p.id === selectedId) ?? null);
   useEffect(() => setFeedbackText(selected?.client_feedback ?? ""), [selectedId]);
   useEffect(() => setCarouselIndex(0), [selectedId]);
-  useEffect(() => { setVideoLoading(true); setVideoProgress(0); setVideoEverPlayed(false); }, [selectedId]);
+  useEffect(() => { setVideoLoading(true); setVideoProgress(0); setVideoEverPlayed(false); setPlayRequested(false); }, [selectedId]);
 
   const handleNavigate = (direction: "prev" | "next") => {
     if (navIndex < 0) return;
@@ -562,18 +567,20 @@ export default function AprovacaoPublic() {
                             if (!v.duration || Number.isNaN(v.duration) || v.buffered.length === 0) return;
                             setVideoProgress(Math.min(100, Math.round((v.buffered.end(v.buffered.length - 1) / v.duration) * 100)));
                           }}
+                          onPlay={() => setPlayRequested(true)}
                           onWaiting={() => setVideoLoading(true)}
                           onCanPlay={() => setVideoLoading(false)}
                           onPlaying={() => { setVideoLoading(false); setVideoEverPlayed(true); }}
                           className="mx-auto block h-auto max-h-[68vh] w-auto max-w-full rounded-xl object-contain"
                         />
-                        {videoLoading && (
+                        {playRequested && videoLoading && (
                           <>
                             {/* iOS/mobile WebKit clears the poster to a black frame the instant
                                 play is tapped, even though the video isn't actually ready yet —
                                 this stand-in keeps the cover frame visible underneath the spinner
                                 until real playback (onPlaying) is confirmed, instead of a flash
-                                of black. */}
+                                of black. Gated on playRequested so it never covers the native
+                                play button before the user has actually tapped it. */}
                             {!videoEverPlayed && images[0] && (
                               <img
                                 src={images[0].url}
