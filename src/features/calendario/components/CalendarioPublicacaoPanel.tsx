@@ -357,7 +357,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
   const [forceScheduleConfirmOpen, setForceScheduleConfirmOpen] = useState(false);
   // "Publicações agendadas" (roxo, desagendável) uma vez que tudo que já pode ser agendado
   // (completo e ainda não publicado) já está com instagram_scheduled=true — mesmo padrão do
-  // toggle "Concluir"/"Concluído".
+  // toggle "Concluir PDF"/"PDF concluído".
   const schedulableUniverse = useMemo(
     () => publications.filter((p) => p.instagram_status !== "published" && missingFieldsFor(p).length === 0),
     [publications],
@@ -365,7 +365,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
   const cycleScheduled = schedulableUniverse.length > 0 && schedulableUniverse.every((p) => p.instagram_scheduled);
   const taskIds = useMemo(() => publications.map((p) => p.task_id), [publications]);
   const attachmentsQ = useTaskAttachmentsMap(taskIds);
-  // "Concluído" (roxo, unmark-able) mirrors the same status_global signal the Agenda and o
+  // "PDF concluído" (roxo, unmark-able) mirrors the same status_global signal the Agenda and o
   // Magic Number já mostram como concluído — não depende de aprovação do cliente. Um pipeline
   // task vira status_global='concluido' assim que o time termina a própria etapa (ex.: PDF),
   // normalmente bem antes (e independente) do cliente aprovar — ver pm_sync_stage_completion.
@@ -837,7 +837,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
               className="h-9 gap-1.5 rounded-full border-violet-500/40 bg-violet-500/10 text-violet-600 hover:bg-violet-500/20 hover:text-violet-600"
               onClick={() => setUnpublishConfirmOpen(true)}
             >
-              <Check className="h-3.5 w-3.5" /> Concluído
+              <Check className="h-3.5 w-3.5" /> PDF concluído
             </Button>
           ) : (
             <Button
@@ -852,7 +852,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                 }
               }}
             >
-              <Check className="h-3.5 w-3.5" /> Concluir
+              <Check className="h-3.5 w-3.5" /> Concluir PDF
             </Button>
           )}
 
@@ -1157,7 +1157,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
       <AlertDialog open={unpublishConfirmOpen} onOpenChange={setUnpublishConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Desmarcar conclusão deste ciclo?</AlertDialogTitle>
+            <AlertDialogTitle>Desmarcar PDF concluído deste ciclo?</AlertDialogTitle>
             <AlertDialogDescription>
               {allTaskIdsInCycle.length === 1 ? "A tarefa voltará" : `As ${allTaskIdsInCycle.length} tarefas voltarão`} para pendente na Gestão.
             </AlertDialogDescription>
