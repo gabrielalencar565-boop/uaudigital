@@ -5,8 +5,10 @@
 //   - action "publish_one": manual "Publicar agora" button, one publication, requires a
 //     real user session.
 //   - action "run_schedules": called by pg_cron via pg_net on a timer, scans everything
-//     due and publishes each in turn. Authenticated by a shared secret header instead of
-//     a Supabase JWT, since pg_net has no user session to attach.
+//     due AND explicitly cleared (calendar_publications.instagram_scheduled = true — set by
+//     the team via the per-publication "Agendar" button or the cycle-wide "Agendar
+//     publicações" action) and publishes each in turn. Authenticated by a shared secret
+//     header instead of a Supabase JWT, since pg_net has no user session to attach.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -195,6 +197,7 @@ async function handleRunSchedules(admin: ReturnType<typeof createClient>) {
     .select("*")
     .not("publish_date", "is", null)
     .not("publish_time", "is", null)
+    .eq("instagram_scheduled", true)
     .in("instagram_status", ["not_published", "failed", "publishing"])
     .lte("publish_date", todayIso);
   if (error) throw error;

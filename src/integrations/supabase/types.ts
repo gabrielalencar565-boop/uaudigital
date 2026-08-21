@@ -115,6 +115,7 @@ export type Database = {
           instagram_permalink: string | null
           instagram_publish_attempted_at: string | null
           instagram_published_at: string | null
+          instagram_scheduled: boolean
           instagram_status: string
           internal_note: string | null
           order_index: number
@@ -141,6 +142,7 @@ export type Database = {
           instagram_permalink?: string | null
           instagram_publish_attempted_at?: string | null
           instagram_published_at?: string | null
+          instagram_scheduled?: boolean
           instagram_status?: string
           internal_note?: string | null
           order_index?: number
@@ -167,6 +169,7 @@ export type Database = {
           instagram_permalink?: string | null
           instagram_publish_attempted_at?: string | null
           instagram_published_at?: string | null
+          instagram_scheduled?: boolean
           instagram_status?: string
           internal_note?: string | null
           order_index?: number
@@ -1111,6 +1114,24 @@ export type Database = {
         }
         Relationships: []
       }
+      drive_oauth_token_cache: {
+        Row: {
+          access_token: string
+          expires_at: string
+          id: number
+        }
+        Insert: {
+          access_token: string
+          expires_at: string
+          id?: number
+        }
+        Update: {
+          access_token?: string
+          expires_at?: string
+          id?: number
+        }
+        Relationships: []
+      }
       financial_clients: {
         Row: {
           cnpj: string | null
@@ -1586,6 +1607,7 @@ export type Database = {
           consumed_at: string | null
           created_at: string
           created_by: string | null
+          pending_pages: Json | null
           state: string
         }
         Insert: {
@@ -1593,6 +1615,7 @@ export type Database = {
           consumed_at?: string | null
           created_at?: string
           created_by?: string | null
+          pending_pages?: Json | null
           state: string
         }
         Update: {
@@ -1600,6 +1623,7 @@ export type Database = {
           consumed_at?: string | null
           created_at?: string
           created_by?: string | null
+          pending_pages?: Json | null
           state?: string
         }
         Relationships: [
@@ -3864,6 +3888,10 @@ export type Database = {
           new_status: Database["public"]["Enums"]["task_status"]
           stage_completed: boolean
         }[]
+      }
+      verify_instagram_cron_secret: {
+        Args: { candidate: string }
+        Returns: boolean
       }
       whatsapp_check_ranking_changes: {
         Args: { _month: number; _year: number }

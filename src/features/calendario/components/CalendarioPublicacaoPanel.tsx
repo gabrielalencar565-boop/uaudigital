@@ -23,7 +23,7 @@ import { useClients, useTeamMembers } from "@/features/data/queries";
 import { useDefaultFlowWithDates, getFixedAssignee } from "@/features/gestao/components/PmStageFlowConfig";
 import { useSession } from "@/hooks/use-session";
 import {
-  useCalendarPublications, useCalendarsForClient, useCalendarsForCycle, useCapaTaskIds, useCoverAttachmentsById, usePublishCycle, useUnpublishCycle, useTaskAttachmentsMap, useTaskCompletionMap, useUpdateCalendarPublication, useUpdateCalendarShare, useUpdateCalendarStatus,
+  useCalendarPublications, useCalendarsForClient, useCalendarsForCycle, useCapaTaskIds, useCoverAttachmentsById, usePublishCycle, useScheduleCyclePublications, useUnscheduleCyclePublications, useUnpublishCycle, useTaskAttachmentsMap, useTaskCompletionMap, useUpdateCalendarPublication, useUpdateCalendarShare, useUpdateCalendarStatus,
 } from "../hooks/use-calendar-data";
 import { CALENDAR_STATUS_LABELS, CONTENT_TYPE_LABELS, PUBLICATION_STATUS_LABELS, type CalendarPublication, type CalendarStatus } from "../calendar-types";
 import { PublicationCard, CONTENT_TYPE_ICON, getContentTypeColor } from "./PublicationCard";
@@ -332,16 +332,57 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
   );
   const cycleReadyToConclude = publications.length > 0 && notReadyPublications.length === 0;
   const [incompleteDialogOpen, setIncompleteDialogOpen] = useState(false);
-  const taskIds = useMemo(() => publications.map((p) => p.task_id), [publications]);
-  const attachmentsQ = useTaskAttachmentsMap(taskIds);
-  // "Concluído" (roxo, unmark-able) once every approved publication's task has
-  // actually been closed out — not just approved by the client.
-  const approvedTaskIds = useMemo(
-    () => [...new Set(publishablePublications.map((p) => p.task_id))],
+  // "PDF concluído" — mirrors the same status_global signal the Agenda and o Magic Number
+  // já mostram como concluído. Um pipeline task vira status_global='concluido' assim que o
+  // time termina a própria etapa (ex.: PDF) — ver pm_sync_stage_completion. O fluxo exige essa
+  // etapa feita antes de liberar o agendamento pro Instagram (ver isPdfConcluded abaixo).
+  const allTaskIdsInCycle = useMemo(
+    () => [...new Set(publications.map((p) => p.task_id))],
+    [publications],
+  );
+  const taskCompletionQ = useTaskCompletionMap(allTaskIdsInCycle);
+  const cycleConcluded = allTaskIdsInCycle.length > 0 && allTaskIdsInCycle.every((id) => taskCompletionQ.data?.has(id));
+  const isPdfConcluded = (p: CalendarPublication) => taskCompletionQ.data?.has(p.task_id) ?? false;
+  // "Agendar publicações": libera de uma vez pro cron do Instagram tudo que o cliente já
+  // aprovou e que já tem data/horário/legenda — só as aprovadas entram aqui (diferente de
+  // notReadyPublications acima, que olha o ciclo inteiro pra "Concluir PDF"). Segue o fluxo:
+  // só é possível agendar depois que o PDF daquela publicação já foi concluído.
+  const notReadyToSchedule = useMemo(
+    () => publishablePublications.filter((p) => missingFieldsFor(p).length > 0),
     [publishablePublications],
   );
-  const taskCompletionQ = useTaskCompletionMap(approvedTaskIds);
-  const cycleConcluded = approvedTaskIds.length > 0 && approvedTaskIds.every((id) => taskCompletionQ.data?.has(id));
+  const schedulablePublications = useMemo(
+    () => publishablePublications.filter((p) => !p.instagram_scheduled && p.instagram_status !== "published" && missingFieldsFor(p).length === 0 && isPdfConcluded(p)),
+    [publishablePublications, taskCompletionQ.data],
+  );
+  // Fallback quando não há nada aprovado ainda pra agendar da forma normal: o time pode
+  // forçar o agendamento de publicações completas (legenda+data+horário, PDF concluído) mesmo
+  // sem aprovação do cliente — oferecido via diálogo de confirmação, não como caminho padrão.
+  const forceSchedulablePublications = useMemo(
+    () => publications.filter((p) => !p.instagram_scheduled && p.instagram_status !== "published" && missingFieldsFor(p).length === 0 && isPdfConcluded(p)),
+    [publications, taskCompletionQ.data],
+  );
+  // Completas e sem agendamento, mas o PDF ainda não foi concluído — bloqueadas até o time
+  // marcar "Concluir PDF", pra dar um feedback claro em vez de simplesmente não aparecerem.
+  const blockedByPdfNotConcluded = useMemo(
+    () => publications.filter((p) => !p.instagram_scheduled && p.instagram_status !== "published" && missingFieldsFor(p).length === 0 && !isPdfConcluded(p)),
+    [publications, taskCompletionQ.data],
+  );
+  const [incompleteScheduleDialogOpen, setIncompleteScheduleDialogOpen] = useState(false);
+  const scheduleCycle = useScheduleCyclePublications();
+  const unscheduleCycle = useUnscheduleCyclePublications();
+  const [unscheduleConfirmOpen, setUnscheduleConfirmOpen] = useState(false);
+  const [forceScheduleConfirmOpen, setForceScheduleConfirmOpen] = useState(false);
+  // "Publicações agendadas" (roxo, desagendável) uma vez que tudo que já pode ser agendado
+  // (completo, PDF concluído e ainda não publicado) já está com instagram_scheduled=true —
+  // mesmo padrão do toggle "Concluir PDF"/"PDF concluído".
+  const schedulableUniverse = useMemo(
+    () => publications.filter((p) => p.instagram_status !== "published" && missingFieldsFor(p).length === 0 && isPdfConcluded(p)),
+    [publications, taskCompletionQ.data],
+  );
+  const cycleScheduled = schedulableUniverse.length > 0 && schedulableUniverse.every((p) => p.instagram_scheduled);
+  const taskIds = useMemo(() => publications.map((p) => p.task_id), [publications]);
+  const attachmentsQ = useTaskAttachmentsMap(taskIds);
   const unpublishCycle = useUnpublishCycle();
   const [unpublishConfirmOpen, setUnpublishConfirmOpen] = useState(false);
   const coverAttachmentIds = useMemo(
@@ -485,7 +526,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
 
   const handleConfirmPublish = () => {
     if (!calendar) return;
-    const taskIdsToComplete = [...new Set(publishablePublications.map((p) => p.task_id))];
+    const taskIdsToComplete = allTaskIdsInCycle;
     publishCycle.mutate(
       { calendarId: calendar.id, taskIds: taskIdsToComplete },
       {
@@ -515,13 +556,40 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
   const handleUnpublish = () => {
     if (!calendar) return;
     unpublishCycle.mutate(
-      { calendarId: calendar.id, taskIds: approvedTaskIds },
+      { calendarId: calendar.id, taskIds: allTaskIdsInCycle },
       {
         onSuccess: () => toast.success("Conclusão desmarcada."),
         onError: (e: any) => toast.error(e?.message ?? "Erro ao desmarcar"),
       },
     );
     setUnpublishConfirmOpen(false);
+  };
+
+  const handleUnschedule = () => {
+    if (!calendar) return;
+    unscheduleCycle.mutate(
+      { calendarId: calendar.id, publicationIds: schedulableUniverse.map((p) => p.id) },
+      {
+        onSuccess: () => toast.success("Agendamento desmarcado."),
+        onError: (e: any) => toast.error(e?.message ?? "Erro ao desmarcar agendamento"),
+      },
+    );
+    setUnscheduleConfirmOpen(false);
+  };
+
+  const handleForceSchedule = () => {
+    if (!calendar) return;
+    scheduleCycle.mutate(
+      { calendarId: calendar.id, publicationIds: forceSchedulablePublications.map((p) => p.id) },
+      {
+        onSuccess: () => {
+          const n = forceSchedulablePublications.length;
+          toast.success(`${n} publicaç${n === 1 ? "ão agendada" : "ões agendadas"} à força (sem aprovação do cliente).`);
+        },
+        onError: (e: any) => toast.error(e?.message ?? "Erro ao agendar publicações"),
+      },
+    );
+    setForceScheduleConfirmOpen(false);
   };
 
   const handleDragEnd = (e: DragEndEvent) => {
@@ -775,7 +843,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
               className="h-9 gap-1.5 rounded-full border-violet-500/40 bg-violet-500/10 text-violet-600 hover:bg-violet-500/20 hover:text-violet-600"
               onClick={() => setUnpublishConfirmOpen(true)}
             >
-              <Check className="h-3.5 w-3.5" /> Concluído
+              <Check className="h-3.5 w-3.5" /> PDF concluído
             </Button>
           ) : (
             <Button
@@ -790,7 +858,51 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                 }
               }}
             >
-              <Check className="h-3.5 w-3.5" /> Concluir
+              <Check className="h-3.5 w-3.5" /> Concluir PDF
+            </Button>
+          )}
+
+          {cycleScheduled ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 gap-1.5 rounded-full border-violet-500/40 bg-violet-500/10 text-violet-600 hover:bg-violet-500/20 hover:text-violet-600"
+              onClick={() => setUnscheduleConfirmOpen(true)}
+            >
+              <Check className="h-3.5 w-3.5" /> Publicações agendadas
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 gap-1.5 rounded-full"
+              disabled={scheduleCycle.isPending}
+              onClick={() => {
+                if (notReadyToSchedule.length > 0) {
+                  setIncompleteScheduleDialogOpen(true);
+                } else if (schedulablePublications.length > 0) {
+                  scheduleCycle.mutate(
+                    { calendarId: calendar!.id, publicationIds: schedulablePublications.map((p) => p.id) },
+                    {
+                      onSuccess: () => {
+                        const n = schedulablePublications.length;
+                        toast.success(`${n} publicaç${n === 1 ? "ão agendada" : "ões agendadas"}.`);
+                      },
+                      onError: (e: any) => toast.error(e?.message ?? "Erro ao agendar publicações"),
+                    },
+                  );
+                } else if (forceSchedulablePublications.length > 0) {
+                  // Nada aprovado ainda — oferece agendar à força via diálogo de confirmação.
+                  setForceScheduleConfirmOpen(true);
+                } else if (blockedByPdfNotConcluded.length > 0) {
+                  const n = blockedByPdfNotConcluded.length;
+                  toast.info(`${n} publicaç${n === 1 ? "ão está pronta, mas o PDF dela ainda não foi concluído" : "ões estão prontas, mas o PDF delas ainda não foi concluído"}. Marque "Concluir PDF" primeiro.`);
+                } else {
+                  toast.info("Nenhuma publicação pendente de agendamento.");
+                }
+              }}
+            >
+              <Clock className="h-3.5 w-3.5" /> Agendar publicações
             </Button>
           )}
 
@@ -1054,14 +1166,48 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
       <AlertDialog open={unpublishConfirmOpen} onOpenChange={setUnpublishConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Desmarcar conclusão deste ciclo?</AlertDialogTitle>
+            <AlertDialogTitle>Desmarcar PDF concluído deste ciclo?</AlertDialogTitle>
             <AlertDialogDescription>
-              {approvedTaskIds.length === 1 ? "A tarefa voltará" : `As ${approvedTaskIds.length} tarefas voltarão`} para pendente — na Agenda também, já que é a mesma tarefa.
+              {allTaskIdsInCycle.length === 1 ? "A tarefa voltará" : `As ${allTaskIdsInCycle.length} tarefas voltarão`} para pendente na Gestão.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleUnpublish}>Desmarcar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={unscheduleConfirmOpen} onOpenChange={setUnscheduleConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Desmarcar agendamento deste ciclo?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {schedulableUniverse.length === 1 ? "A publicação deixará" : `As ${schedulableUniverse.length} publicações deixarão`} de sair sozinha{schedulableUniverse.length === 1 ? "" : "s"} no Instagram até ser{schedulableUniverse.length === 1 ? "" : "em"} agendada{schedulableUniverse.length === 1 ? "" : "s"} de novo.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleUnschedule}>Desmarcar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={forceScheduleConfirmOpen} onOpenChange={setForceScheduleConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {forceSchedulablePublications.length === 1
+                ? "A publicação ainda não foi aprovada"
+                : `Nenhuma das ${forceSchedulablePublications.length} publicações foi aprovada ainda`}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Forçar o agendamento faz elas saírem sozinhas no Instagram no horário marcado, mesmo sem o cliente ter aprovado.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleForceSchedule}>Forçar agendamento</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -1084,6 +1230,44 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                   type="button"
                   onClick={() => {
                     setIncompleteDialogOpen(false);
+                    setSelectedId(p.id);
+                  }}
+                  className="flex w-full items-center gap-3 rounded-lg border border-border/50 px-3 py-2 text-left text-sm hover:bg-accent/50"
+                >
+                  {thumb ? (
+                    <img src={thumb} alt="" className="h-9 w-9 shrink-0 rounded-md object-cover" />
+                  ) : (
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                      <ContentIcon className="h-4 w-4" />
+                    </span>
+                  )}
+                  <span className="min-w-0 flex-1 truncate">{p.title || "Sem título"}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">{missingFieldsFor(p).join(", ")}</span>
+                </button>
+              );
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={incompleteScheduleDialogOpen} onOpenChange={setIncompleteScheduleDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Publicações aprovadas incompletas</DialogTitle>
+            <DialogDescription>
+              {notReadyToSchedule.length === 1 ? "1 publicação aprovada ainda precisa" : `${notReadyToSchedule.length} publicações aprovadas ainda precisam`} de data, horário e/ou legenda antes de agendar. Clique numa publicação para abrir e completar.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-80 space-y-1.5 overflow-y-auto">
+            {notReadyToSchedule.map((p) => {
+              const thumb = thumbnailFor(p.task_id);
+              const ContentIcon = CONTENT_TYPE_ICON[p.content_type];
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => {
+                    setIncompleteScheduleDialogOpen(false);
                     setSelectedId(p.id);
                   }}
                   className="flex w-full items-center gap-3 rounded-lg border border-border/50 px-3 py-2 text-left text-sm hover:bg-accent/50"

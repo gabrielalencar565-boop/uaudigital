@@ -35,6 +35,9 @@ export interface CalendarPublication {
   created_at: string;
   updated_at: string;
   instagram_status: "not_published" | "pending" | "publishing" | "published" | "failed";
+  // Team explicitly confirmed this is cleared for the auto-publish cron to pick up — set via
+  // the per-publication "Agendar" action or the cycle-wide "Agendar publicações" bulk action.
+  instagram_scheduled: boolean;
   instagram_media_id: string | null;
   instagram_creation_id: string | null;
   instagram_permalink: string | null;
