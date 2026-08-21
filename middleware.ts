@@ -14,6 +14,13 @@ export const config = {
 const BOT_UA_RE =
   /facebookexternalhit|Facebot|WhatsApp|Twitterbot|LinkedInBot|Slackbot|TelegramBot|Discordbot|SkypeUriPreview|redditbot|Pinterest|vkShare|W3C_Validator|Applebot|BingPreview|Iframely|Embedly/i;
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const MONTHS_PT_SHORT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+
+function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+}
+
 export default async function middleware(request: Request) {
   const ua = request.headers.get("user-agent") || "";
   if (!BOT_UA_RE.test(ua)) return;
@@ -33,8 +40,35 @@ export default async function middleware(request: Request) {
     // No image configured or Supabase unreachable — bot just won't get a rich image.
   }
 
-  const title = "Uau Digital";
-  const description = "Confira e aprove as publicações programadas para o seu perfil.";
+  let title = "Uau Digital";
+  let description = "Confira e aprove as publicações programadas para o seu perfil.";
+
+  // Personalize with the client's name and the cycle's month (named after cycle_end,
+  // matching the app's own cycle-naming convention) — e.g. "Conteúdos - Dra Luanna | Set/2026".
+  const token = new URL(request.url).pathname.match(/^\/aprovacao\/([^/]+)/)?.[1] ?? "";
+  if (UUID_RE.test(token)) {
+    try {
+      const res = await fetch(`${supabaseUrl}/functions/v1/public-calendario-publicacao`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: "load", token }),
+      });
+      if (res.ok) {
+        const data = (await res.json()) as { clientName?: string; calendar?: { cycleEnd?: string } };
+        const clientName = data.clientName;
+        const cycleEnd = data.calendar?.cycleEnd;
+        const month = cycleEnd ? MONTHS_PT_SHORT[Number(cycleEnd.slice(5, 7)) - 1] : null;
+        const year = cycleEnd?.slice(0, 4);
+        if (clientName && month && year) {
+          title = escapeHtml(`Conteúdos - ${clientName} | ${month}/${year}`);
+          description = escapeHtml(`Confira e aprove as publicações programadas para ${clientName} — ciclo ${month}/${year}.`);
+        }
+      }
+    } catch {
+      // Token lookup failed — bot just gets the generic branding instead.
+    }
+  }
+
   const pageUrl = request.url;
 
   const html = `<!doctype html>
