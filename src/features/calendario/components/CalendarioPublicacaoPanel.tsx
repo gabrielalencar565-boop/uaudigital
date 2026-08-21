@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { addDays, format, parseISO, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Film, LayoutGrid, List, Grid3x3, Image as ImageIcon, Link2, Copy, RefreshCw, ArrowUpRight, UserRound, CircleDashed, Clock, AlertTriangle, CheckCircle2, Check, CalendarDays, Bookmark, Play, Instagram } from "lucide-react";
+import { ChevronLeft, ChevronRight, Film, LayoutGrid, List, Grid3x3, Image as ImageIcon, Link2, Copy, RefreshCw, ArrowUpRight, UserRound, CircleDashed, Clock, AlertTriangle, CheckCircle2, Check, CalendarDays, Bookmark, Play, Instagram, Plus } from "lucide-react";
 import { TAG_COLORS } from "@/features/gestao/pm-constants";
 import { DndContext, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
@@ -27,6 +28,7 @@ import {
 import { CALENDAR_STATUS_LABELS, CONTENT_TYPE_LABELS, PUBLICATION_STATUS_LABELS, type CalendarPublication, type CalendarStatus } from "../calendar-types";
 import { PublicationCard, CONTENT_TYPE_ICON, getContentTypeColor } from "./PublicationCard";
 import { PublicationPreviewPanel } from "./PublicationPreviewPanel";
+import { QuickAddPublicationDialog } from "./QuickAddPublicationDialog";
 import { useConnectInstagram, useDisconnectInstagram, useInstagramConnections } from "../hooks/use-instagram";
 
 interface Props {
@@ -245,6 +247,10 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
   const connectInstagram = useConnectInstagram();
   const disconnectInstagram = useDisconnectInstagram();
   const [igDisconnectTarget, setIgDisconnectTarget] = useState<{ id: string; name: string } | null>(null);
+
+  const qc = useQueryClient();
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [quickAddDate, setQuickAddDate] = useState<string | null>(null);
 
   // "Social" responsável por cliente: vem do assignee fixo da etapa "planejamento".
   const teamMembersQ = useTeamMembers();
@@ -799,8 +805,18 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
       )}
 
       {!calendar && (
-        <div className="rounded-2xl border border-dashed border-border/40 p-10 text-center text-sm text-muted-foreground">
-          Nenhum calendário para esse cliente neste ciclo ainda — ele é criado automaticamente assim que uma tarefa chegar na etapa "PDF".
+        <div className="space-y-3 rounded-2xl border border-dashed border-border/40 p-10 text-center text-sm text-muted-foreground">
+          <p>Nenhum calendário para esse cliente neste ciclo ainda — ele é criado automaticamente assim que uma tarefa chegar na etapa "PDF".</p>
+          <Button
+            size="sm"
+            className="h-9 gap-1.5 rounded-full"
+            onClick={() => {
+              setQuickAddDate(null);
+              setQuickAddOpen(true);
+            }}
+          >
+            <Plus className="h-3.5 w-3.5" /> Nova publicação
+          </Button>
         </div>
       )}
 
@@ -851,18 +867,33 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                           key={key}
                           id={key}
                           className={cn(
-                            "calendar-card-hover relative min-h-[130px] space-y-1.5 rounded-xl border border-border/40 bg-card/20 p-1.5 transition",
+                            "group/cell calendar-card-hover relative min-h-[130px] space-y-1.5 rounded-xl border border-border/40 bg-card/20 p-1.5 transition",
                             isToday && "border-primary/40",
                             !inCycle && "opacity-50",
                           )}
                         >
-                          <div
-                            className={cn(
-                              "flex h-6 w-6 items-center justify-center rounded-full border border-border/60 bg-background/60 text-[11px]",
-                              isToday ? "text-primary" : "text-muted-foreground",
+                          <div className="flex items-center justify-between">
+                            <div
+                              className={cn(
+                                "flex h-6 w-6 items-center justify-center rounded-full border border-border/60 bg-background/60 text-[11px]",
+                                isToday ? "text-primary" : "text-muted-foreground",
+                              )}
+                            >
+                              {format(d, "d")}
+                            </div>
+                            {inCycle && (
+                              <button
+                                type="button"
+                                className="h-5 w-5 rounded-md flex items-center justify-center text-muted-foreground/40 hover:text-primary hover:bg-primary/10 transition opacity-0 group-hover/cell:opacity-100"
+                                onClick={() => {
+                                  setQuickAddDate(key);
+                                  setQuickAddOpen(true);
+                                }}
+                                title="Nova publicação"
+                              >
+                                <Plus className="h-3 w-3" />
+                              </button>
                             )}
-                          >
-                            {format(d, "d")}
                           </div>
                           {dayPubs.map((p) => (
                             <DraggablePublication key={p.id} publication={p} images={imagesFor(p)} onClick={() => setSelectedId(p.id)} isCapa={isCapaTask(p.task_id)} />
@@ -978,6 +1009,25 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
         hasPrev={navIndex > 0}
         hasNext={navIndex >= 0 && navIndex < navList.length - 1}
       />
+
+      {clientId && (
+        <QuickAddPublicationDialog
+          open={quickAddOpen}
+          onClose={() => {
+            setQuickAddOpen(false);
+            setQuickAddDate(null);
+          }}
+          clientId={clientId}
+          cycleStart={cycleStartKey}
+          initialDate={quickAddDate}
+          onCreated={(publicationId) => {
+            qc.invalidateQueries({ queryKey: ["publication_calendars", clientId] });
+            qc.invalidateQueries({ queryKey: ["unscheduled_client_tasks", clientId] });
+            if (calendar?.id) qc.invalidateQueries({ queryKey: ["calendar_publications", calendar.id] });
+            setSelectedId(publicationId);
+          }}
+        />
+      )}
 
       <AlertDialog open={!!igDisconnectTarget} onOpenChange={(open) => !open && setIgDisconnectTarget(null)}>
         <AlertDialogContent>

@@ -63,6 +63,7 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
   const igConnection = igConnectionsQ.data?.[0];
   const publishToInstagram = usePublishToInstagram();
   const coverFileInputRef = useRef<HTMLInputElement>(null);
+  const mediaFileInputRef = useRef<HTMLInputElement>(null);
   const [caption, setCaption] = useState("");
   const [internalNote, setInternalNote] = useState("");
   const [clientNote, setClientNote] = useState("");
@@ -70,6 +71,7 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
   const [captionExpanded, setCaptionExpanded] = useState(false);
   const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
   const [coverDragActive, setCoverDragActive] = useState(false);
+  const [mediaDragActive, setMediaDragActive] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [dateOpen, setDateOpen] = useState(false);
   const [timeOpen, setTimeOpen] = useState(false);
@@ -120,6 +122,21 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
       { task_id: publication.task_id, file, category: "final" },
       { onSuccess: (att) => save({ cover_attachment_id: att.id }) },
     );
+  };
+
+  // Adds the very first piece of content when the publication has none yet. Video isn't
+  // handled here on purpose — PmAttachmentsSection.tsx's upload path does client-side
+  // compression + a resumable direct-to-Drive upload for video (needed since a raw 4K
+  // export once broke WhatsApp in-app playback, see that file's history); duplicating that
+  // pipeline here isn't worth it just for this empty-state shortcut, so video still goes
+  // through "Abrir tarefa original" where the full pipeline already lives.
+  const uploadAsMedia = (file: File) => {
+    if (file.type.startsWith("video/")) {
+      toast.error('Pra vídeo, envie pela tarefa original ("Abrir tarefa original") — aqui é só pra imagem por enquanto.');
+      return;
+    }
+    if (!file.type.startsWith("image/")) return;
+    uploadCover.mutate({ task_id: publication.task_id, file, category: "final" });
   };
 
   const deleteCoverImage = async (imgId: string) => {
@@ -254,18 +271,68 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
               <div className={cn("relative w-full bg-black/5 group px-3", isStory && "flex justify-center")}>
                 {isStory ? (
                   images[0] ? (
-                    <button type="button" onClick={() => setViewerOpen(true)} className="block">
-                      <img src={images[0].url} alt="" className="aspect-[9/16] max-h-[68vh] cursor-zoom-in rounded-xl object-cover" />
-                    </button>
+                    <div className="relative">
+                      <button type="button" onClick={() => setViewerOpen(true)} className="block">
+                        <img src={images[0].url} alt="" className="aspect-[9/16] max-h-[68vh] cursor-zoom-in rounded-xl object-cover" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteCoverImage(images[0].id)}
+                        title="Remover mídia"
+                        className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white opacity-0 transition group-hover:opacity-100 hover:bg-black/80"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   ) : (
-                    <div className="flex aspect-[9/16] max-h-[68vh] w-full items-center justify-center rounded-xl bg-muted text-xs text-muted-foreground">Sem mídia</div>
+                    <button
+                      type="button"
+                      onDragOver={(e) => { e.preventDefault(); setMediaDragActive(true); }}
+                      onDragLeave={() => setMediaDragActive(false)}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setMediaDragActive(false);
+                        const file = e.dataTransfer.files?.[0];
+                        if (file) uploadAsMedia(file);
+                      }}
+                      onClick={() => mediaFileInputRef.current?.click()}
+                      disabled={uploadCover.isPending}
+                      className={cn(
+                        "flex aspect-[9/16] max-h-[68vh] w-full flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-border bg-muted text-xs text-muted-foreground transition hover:border-primary hover:text-primary disabled:opacity-60",
+                        mediaDragActive && "border-primary bg-primary/5",
+                      )}
+                    >
+                      {uploadCover.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : <ImagePlus className="h-5 w-5" />}
+                      {uploadCover.isPending ? "Enviando..." : "Sem mídia — clique ou arraste"}
+                    </button>
                   )
                 ) : hasVideo ? (
-                  <video src={videos[0].url} controls className="mx-auto block h-auto max-h-[68vh] w-auto max-w-full rounded-xl object-contain" />
+                  <div className="relative">
+                    <video src={videos[0].url} controls className="mx-auto block h-auto max-h-[68vh] w-auto max-w-full rounded-xl object-contain" />
+                    <button
+                      type="button"
+                      onClick={() => deleteCoverImage(videos[0].id)}
+                      title="Remover mídia"
+                      className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white opacity-0 transition group-hover:opacity-100 hover:bg-black/80"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 ) : images.length > 0 ? (
                   <>
                     <button type="button" onClick={() => setViewerOpen(true)} className="block w-full">
                       <img src={images[carouselIndex]?.url ?? images[0].url} alt="" className="max-h-[68vh] w-full cursor-zoom-in rounded-xl object-cover" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteCoverImage(images[carouselIndex]?.id ?? images[0].id)}
+                      title="Remover mídia"
+                      className={cn(
+                        "absolute top-2 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white opacity-0 transition group-hover:opacity-100 hover:bg-black/80",
+                        isCarousel ? "left-2" : "right-2",
+                      )}
+                    >
+                      <X className="h-3.5 w-3.5" />
                     </button>
                     {isCarousel && (
                       <>
@@ -291,8 +358,38 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                     )}
                   </>
                 ) : (
-                  <div className="flex h-40 w-full items-center justify-center rounded-xl bg-muted text-xs text-muted-foreground">Sem mídia anexada</div>
+                  <button
+                    type="button"
+                    onDragOver={(e) => { e.preventDefault(); setMediaDragActive(true); }}
+                    onDragLeave={() => setMediaDragActive(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setMediaDragActive(false);
+                      const file = e.dataTransfer.files?.[0];
+                      if (file) uploadAsMedia(file);
+                    }}
+                    onClick={() => mediaFileInputRef.current?.click()}
+                    disabled={uploadCover.isPending}
+                    className={cn(
+                      "flex h-40 w-full flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-border bg-muted text-xs text-muted-foreground transition hover:border-primary hover:text-primary disabled:opacity-60",
+                      mediaDragActive && "border-primary bg-primary/5",
+                    )}
+                  >
+                    {uploadCover.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : <ImagePlus className="h-5 w-5" />}
+                    {uploadCover.isPending ? "Enviando..." : "Sem mídia anexada — clique ou arraste pra adicionar"}
+                  </button>
                 )}
+                <input
+                  ref={mediaFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = "";
+                    if (file) uploadAsMedia(file);
+                  }}
+                />
               </div>
 
               <div className="flex items-center justify-between px-3 py-2">

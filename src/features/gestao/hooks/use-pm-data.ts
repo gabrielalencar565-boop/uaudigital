@@ -155,6 +155,7 @@ export function useCreatePmTask() {
       watchers?: string[];
       post_type?: string;
       posting_time?: string;
+      posting_date?: string;
       periodic_stage_key?: string | null;
     }) => {
       const { data: { user } } = await supabase.auth.getUser();
