@@ -942,7 +942,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                   const images = media.filter((m) => m.type?.startsWith("image/"));
                   const thumb = images[0]?.url ?? null;
                   const isCarousel = p.content_type === "carrossel" && images.length > 1;
-                  const isVideoish = p.content_type === "reel" || p.content_type === "video";
+                  const isVideoish = p.content_type === "reel";
                   return (
                     // Instagram's feed post ratio (1080x1350 = 4:5), mirrors the public preview's Feed.
                     <button key={p.id} type="button" onClick={() => setSelectedId(p.id)} className="group relative aspect-[4/5] overflow-hidden rounded-lg bg-muted">
