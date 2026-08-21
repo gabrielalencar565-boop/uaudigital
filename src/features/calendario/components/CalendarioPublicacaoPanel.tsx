@@ -354,6 +354,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
   const scheduleCycle = useScheduleCyclePublications();
   const unscheduleCycle = useUnscheduleCyclePublications();
   const [unscheduleConfirmOpen, setUnscheduleConfirmOpen] = useState(false);
+  const [forceScheduleConfirmOpen, setForceScheduleConfirmOpen] = useState(false);
   // "Publicações agendadas" (roxo, desagendável) uma vez que tudo que já pode ser agendado
   // (completo e ainda não publicado) já está com instagram_scheduled=true — mesmo padrão do
   // toggle "Concluir"/"Concluído".
@@ -568,6 +569,21 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
       },
     );
     setUnscheduleConfirmOpen(false);
+  };
+
+  const handleForceSchedule = () => {
+    if (!calendar) return;
+    scheduleCycle.mutate(
+      { calendarId: calendar.id, publicationIds: forceSchedulablePublications.map((p) => p.id) },
+      {
+        onSuccess: () => {
+          const n = forceSchedulablePublications.length;
+          toast.success(`${n} publicaç${n === 1 ? "ão agendada" : "ões agendadas"} à força (sem aprovação do cliente).`);
+        },
+        onError: (e: any) => toast.error(e?.message ?? "Erro ao agendar publicações"),
+      },
+    );
+    setForceScheduleConfirmOpen(false);
   };
 
   const handleDragEnd = (e: DragEndEvent) => {
@@ -870,25 +886,8 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                     },
                   );
                 } else if (forceSchedulablePublications.length > 0) {
-                  // Nada aprovado ainda — oferece agendar à força como ação extra dentro do
-                  // próprio toast, sem diálogo de confirmação separado.
-                  toast.info("Nenhuma publicação aprovada pendente de agendamento.", {
-                    action: {
-                      label: "Forçar agendamento",
-                      onClick: () => {
-                        scheduleCycle.mutate(
-                          { calendarId: calendar!.id, publicationIds: forceSchedulablePublications.map((p) => p.id) },
-                          {
-                            onSuccess: () => {
-                              const n = forceSchedulablePublications.length;
-                              toast.success(`${n} publicaç${n === 1 ? "ão agendada" : "ões agendadas"} à força (sem aprovação do cliente).`);
-                            },
-                            onError: (e: any) => toast.error(e?.message ?? "Erro ao agendar publicações"),
-                          },
-                        );
-                      },
-                    },
-                  });
+                  // Nada aprovado ainda — oferece agendar à força via diálogo de confirmação.
+                  setForceScheduleConfirmOpen(true);
                 } else {
                   toast.info("Nenhuma publicação pendente de agendamento.");
                 }
@@ -1181,6 +1180,21 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleUnschedule}>Desmarcar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={forceScheduleConfirmOpen} onOpenChange={setForceScheduleConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Nenhuma publicação aprovada ainda</AlertDialogTitle>
+            <AlertDialogDescription>
+              {forceSchedulablePublications.length === 1 ? "1 publicação está" : `${forceSchedulablePublications.length} publicações estão`} completas (legenda, data e horário) mas o cliente ainda não aprovou nenhuma. Forçar o agendamento libera essas publicações pro cron de auto-publicação no Instagram mesmo assim, sem esperar a aprovação.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleForceSchedule}>Forçar agendamento</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
