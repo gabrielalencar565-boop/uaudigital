@@ -212,14 +212,18 @@ export function useUpdateCalendarPublication() {
     mutationFn: async ({ id, ...updates }: Partial<CalendarPublication> & { id: string }) => {
       const { data, error } = await sb.from("calendar_publications").update(updates).eq("id", id).select().single();
       if (error) throw error;
-      return { data: data as CalendarPublication, scheduledTurnedOn: updates.instagram_scheduled === true };
+      return {
+        data: data as CalendarPublication,
+        scheduledChanged: typeof updates.instagram_scheduled === "boolean",
+      };
     },
-    onSuccess: ({ data, scheduledTurnedOn }) => {
+    onSuccess: ({ data, scheduledChanged }) => {
       qc.invalidateQueries({ queryKey: ["calendar_publications", data.calendar_id] });
-      // The per-publication "Agendar publicação" button goes through this same generic
-      // update — when it's what just flipped instagram_scheduled on, trg_complete_agendamento_on_scheduled
-      // may have completed the pipeline's agendamento task, so refresh those views too.
-      if (scheduledTurnedOn) {
+      // The per-publication "Agendar publicação"/"Cancelar agendamento" actions go through this
+      // same generic update — whichever direction instagram_scheduled just flipped,
+      // trg_complete_agendamento_on_scheduled / trg_uncomplete_agendamento_on_unscheduled may have
+      // completed or reverted the pipeline's agendamento task, so refresh those views too.
+      if (scheduledChanged) {
         qc.invalidateQueries({ queryKey: ["pm_tasks"] });
         qc.invalidateQueries({ queryKey: ["pm_task_status_for_calendar"] });
         qc.invalidateQueries({ queryKey: ["magic2"] });
@@ -307,6 +311,10 @@ export function useScheduleCyclePublications() {
 // Reverses useScheduleCyclePublications — same publications, back to instagram_scheduled=false.
 // Used when the whole cycle is already "Publicações agendadas" and the team wants to undo it
 // in one stroke (same toggle shape as usePublishCycle/useUnpublishCycle above).
+//
+// A DB trigger (trg_uncomplete_agendamento_on_unscheduled) mirrors trg_complete_agendamento_on_scheduled
+// in reverse: reverts the pipeline's agendamento task and un-syncs Magic Number/Agenda — invalidate
+// those too.
 export function useUnscheduleCyclePublications() {
   const qc = useQueryClient();
   return useMutation({
@@ -319,6 +327,10 @@ export function useUnscheduleCyclePublications() {
     },
     onSuccess: ({ calendarId }) => {
       qc.invalidateQueries({ queryKey: ["calendar_publications", calendarId] });
+      qc.invalidateQueries({ queryKey: ["pm_tasks"] });
+      qc.invalidateQueries({ queryKey: ["pm_task_status_for_calendar"] });
+      qc.invalidateQueries({ queryKey: ["magic2"] });
+      qc.invalidateQueries({ queryKey: ["tasks"] });
     },
   });
 }
