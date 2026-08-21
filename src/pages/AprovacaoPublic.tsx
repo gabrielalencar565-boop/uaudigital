@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-  Loader2, CalendarX, LayoutGrid, Grid3x3, List, X, Check, MessageSquareWarning, Film, Image as ImageIcon, Camera, Smartphone, File, Clock, CalendarDays, ChevronLeft, ChevronRight, Images, Aperture, Play, Heart, MessageCircle, Send, Bookmark, Sun, Moon,
+  Loader2, CalendarX, LayoutGrid, Grid3x3, List, X, Check, MessageSquareWarning, Film, Image as ImageIcon, Video, Smartphone, File, Clock, CalendarDays, ChevronLeft, ChevronRight, Images, Aperture, Play, Heart, MessageCircle, Send, Bookmark, Sun, Moon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,7 +28,7 @@ const CONTENT_TYPE_LABELS: Record<string, string> = {
 };
 
 const CONTENT_TYPE_ICON: Record<string, typeof Film> = {
-  carrossel: LayoutGrid, reel: Film, video: Camera, story: Smartphone, outro: File, post: Images, foto: Aperture,
+  carrossel: LayoutGrid, reel: Film, video: Video, story: Smartphone, outro: File, post: Images, foto: Aperture,
 };
 
 // Mirrors the internal Cronograma's color-per-content-type mapping so the
@@ -310,6 +310,10 @@ export default function AprovacaoPublic() {
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [videoLoading, setVideoLoading] = useState(true);
   const [videoProgress, setVideoProgress] = useState(0);
+  // Once real frames have rendered at least once, a later rebuffer (onWaiting) should
+  // just show the spinner over whatever frame is already on screen — not snap back to
+  // the cover image, which would look like playback jumped backwards.
+  const [videoEverPlayed, setVideoEverPlayed] = useState(false);
 
   const respond = async (publicationId: string, respAction: "aprovar" | "alteracao", text?: string) => {
     if (!token) return;
@@ -353,7 +357,7 @@ export default function AprovacaoPublic() {
   const selected = navIndex >= 0 ? navList[navIndex] : (publications.find((p) => p.id === selectedId) ?? null);
   useEffect(() => setFeedbackText(selected?.client_feedback ?? ""), [selectedId]);
   useEffect(() => setCarouselIndex(0), [selectedId]);
-  useEffect(() => { setVideoLoading(true); setVideoProgress(0); }, [selectedId]);
+  useEffect(() => { setVideoLoading(true); setVideoProgress(0); setVideoEverPlayed(false); }, [selectedId]);
 
   const handleNavigate = (direction: "prev" | "next") => {
     if (navIndex < 0) return;
@@ -560,22 +564,38 @@ export default function AprovacaoPublic() {
                           }}
                           onWaiting={() => setVideoLoading(true)}
                           onCanPlay={() => setVideoLoading(false)}
-                          onPlaying={() => setVideoLoading(false)}
+                          onPlaying={() => { setVideoLoading(false); setVideoEverPlayed(true); }}
                           className="mx-auto block h-auto max-h-[68vh] w-auto max-w-full rounded-xl object-contain"
                         />
                         {videoLoading && (
-                          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                            <svg width="56" height="56" viewBox="0 0 56 56" className="-rotate-90 drop-shadow-lg">
-                              <circle cx="28" cy="28" r="24" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="4" />
-                              <circle
-                                cx="28" cy="28" r="24" fill="none"
-                                stroke="hsl(var(--primary))" strokeWidth="4" strokeLinecap="round"
-                                strokeDasharray={2 * Math.PI * 24}
-                                strokeDashoffset={2 * Math.PI * 24 * (1 - videoProgress / 100)}
-                                style={{ transition: "stroke-dashoffset 0.2s linear" }}
+                          <>
+                            {/* iOS/mobile WebKit clears the poster to a black frame the instant
+                                play is tapped, even though the video isn't actually ready yet —
+                                this stand-in keeps the cover frame visible underneath the spinner
+                                until real playback (onPlaying) is confirmed, instead of a flash
+                                of black. */}
+                            {!videoEverPlayed && images[0] && (
+                              <img
+                                src={images[0].url}
+                                alt=""
+                                className="pointer-events-none absolute inset-0 h-full w-full rounded-xl object-contain"
                               />
-                            </svg>
-                          </div>
+                            )}
+                            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-black/45 backdrop-blur-sm">
+                                <svg width="22" height="22" viewBox="0 0 22 22" className="-rotate-90">
+                                  <circle cx="11" cy="11" r="9" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="2.5" />
+                                  <circle
+                                    cx="11" cy="11" r="9" fill="none"
+                                    stroke="hsl(var(--primary))" strokeWidth="2.5" strokeLinecap="round"
+                                    strokeDasharray={2 * Math.PI * 9}
+                                    strokeDashoffset={2 * Math.PI * 9 * (1 - videoProgress / 100)}
+                                    style={{ transition: "stroke-dashoffset 0.2s linear" }}
+                                  />
+                                </svg>
+                              </div>
+                            </div>
+                          </>
                         )}
                       </>
                     ) : images.length > 0 ? (
