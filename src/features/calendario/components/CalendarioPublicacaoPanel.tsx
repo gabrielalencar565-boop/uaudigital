@@ -23,7 +23,7 @@ import { useClients, useTeamMembers } from "@/features/data/queries";
 import { useDefaultFlowWithDates, getFixedAssignee } from "@/features/gestao/components/PmStageFlowConfig";
 import { useSession } from "@/hooks/use-session";
 import {
-  useCalendarPublications, useCalendarsForClient, useCalendarsForCycle, useCapaTaskIds, useCoverAttachmentsById, usePublishCycle, useUnpublishCycle, useTaskAttachmentsMap, useTaskCompletionMap, useUpdateCalendarPublication, useUpdateCalendarShare, useUpdateCalendarStatus,
+  useCalendarPublications, useCalendarsForClient, useCalendarsForCycle, useCapaTaskIds, useCoverAttachmentsById, usePublishCycle, useScheduleCyclePublications, useUnpublishCycle, useTaskAttachmentsMap, useTaskCompletionMap, useUpdateCalendarPublication, useUpdateCalendarShare, useUpdateCalendarStatus,
 } from "../hooks/use-calendar-data";
 import { CALENDAR_STATUS_LABELS, CONTENT_TYPE_LABELS, PUBLICATION_STATUS_LABELS, type CalendarPublication, type CalendarStatus } from "../calendar-types";
 import { PublicationCard, CONTENT_TYPE_ICON, getContentTypeColor } from "./PublicationCard";
@@ -332,6 +332,19 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
   );
   const cycleReadyToConclude = publications.length > 0 && notReadyPublications.length === 0;
   const [incompleteDialogOpen, setIncompleteDialogOpen] = useState(false);
+  // "Agendar publicações": libera de uma vez pro cron do Instagram tudo que o cliente já
+  // aprovou e que já tem data/horário/legenda — só as aprovadas entram aqui (diferente de
+  // notReadyPublications acima, que olha o ciclo inteiro pra "Concluir").
+  const notReadyToSchedule = useMemo(
+    () => publishablePublications.filter((p) => missingFieldsFor(p).length > 0),
+    [publishablePublications],
+  );
+  const schedulablePublications = useMemo(
+    () => publishablePublications.filter((p) => !p.instagram_scheduled && p.instagram_status !== "published" && missingFieldsFor(p).length === 0),
+    [publishablePublications],
+  );
+  const [incompleteScheduleDialogOpen, setIncompleteScheduleDialogOpen] = useState(false);
+  const scheduleCycle = useScheduleCyclePublications();
   const taskIds = useMemo(() => publications.map((p) => p.task_id), [publications]);
   const attachmentsQ = useTaskAttachmentsMap(taskIds);
   // "Concluído" (roxo, unmark-able) once every approved publication's task has
@@ -794,6 +807,33 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
             </Button>
           )}
 
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 gap-1.5 rounded-full"
+            disabled={scheduleCycle.isPending}
+            onClick={() => {
+              if (notReadyToSchedule.length > 0) {
+                setIncompleteScheduleDialogOpen(true);
+              } else if (schedulablePublications.length === 0) {
+                toast.info("Nenhuma publicação aprovada pendente de agendamento.");
+              } else {
+                scheduleCycle.mutate(
+                  { calendarId: calendar!.id, publicationIds: schedulablePublications.map((p) => p.id) },
+                  {
+                    onSuccess: () => {
+                      const n = schedulablePublications.length;
+                      toast.success(`${n} publicaç${n === 1 ? "ão agendada" : "ões agendadas"}.`);
+                    },
+                    onError: (e: any) => toast.error(e?.message ?? "Erro ao agendar publicações"),
+                  },
+                );
+              }
+            }}
+          >
+            <Clock className="h-3.5 w-3.5" /> Agendar publicações
+          </Button>
+
           <Tabs value={view} onValueChange={(v) => setView(v as any)} className="ml-auto">
             <TabsList className="h-9 rounded-full">
               <TabsTrigger value="calendario" className="gap-1.5 rounded-full text-xs"><LayoutGrid className="h-3.5 w-3.5" /> Calendário</TabsTrigger>
@@ -1084,6 +1124,44 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                   type="button"
                   onClick={() => {
                     setIncompleteDialogOpen(false);
+                    setSelectedId(p.id);
+                  }}
+                  className="flex w-full items-center gap-3 rounded-lg border border-border/50 px-3 py-2 text-left text-sm hover:bg-accent/50"
+                >
+                  {thumb ? (
+                    <img src={thumb} alt="" className="h-9 w-9 shrink-0 rounded-md object-cover" />
+                  ) : (
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                      <ContentIcon className="h-4 w-4" />
+                    </span>
+                  )}
+                  <span className="min-w-0 flex-1 truncate">{p.title || "Sem título"}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">{missingFieldsFor(p).join(", ")}</span>
+                </button>
+              );
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={incompleteScheduleDialogOpen} onOpenChange={setIncompleteScheduleDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Publicações aprovadas incompletas</DialogTitle>
+            <DialogDescription>
+              {notReadyToSchedule.length === 1 ? "1 publicação aprovada ainda precisa" : `${notReadyToSchedule.length} publicações aprovadas ainda precisam`} de data, horário e/ou legenda antes de agendar. Clique numa publicação para abrir e completar.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-80 space-y-1.5 overflow-y-auto">
+            {notReadyToSchedule.map((p) => {
+              const thumb = thumbnailFor(p.task_id);
+              const ContentIcon = CONTENT_TYPE_ICON[p.content_type];
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => {
+                    setIncompleteScheduleDialogOpen(false);
                     setSelectedId(p.id);
                   }}
                   className="flex w-full items-center gap-3 rounded-lg border border-border/50 px-3 py-2 text-left text-sm hover:bg-accent/50"

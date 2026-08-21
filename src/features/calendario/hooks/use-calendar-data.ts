@@ -264,6 +264,27 @@ export function useUnpublishCycle() {
   });
 }
 
+// Bulk "Agendar publicações" action: clears every eligible publication in the cycle at once
+// (approved by the client + date/time/legenda already filled in) for the Instagram
+// auto-publish cron to pick up — see instagram_scheduled on calendar_publications. Skips
+// anything already scheduled or already published; the caller (CalendarioPublicacaoPanel)
+// is responsible for pre-filtering to only approved+complete publications before calling this.
+export function useScheduleCyclePublications() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ calendarId, publicationIds }: { calendarId: string; publicationIds: string[] }) => {
+      if (publicationIds.length > 0) {
+        const { error } = await sb.from("calendar_publications").update({ instagram_scheduled: true }).in("id", publicationIds);
+        if (error) throw error;
+      }
+      return { calendarId };
+    },
+    onSuccess: ({ calendarId }) => {
+      qc.invalidateQueries({ queryKey: ["calendar_publications", calendarId] });
+    },
+  });
+}
+
 // Which of these tasks are already marked concluído — used to render the bulk
 // "Concluir" button as done (roxo, with an option to unmark) once every approved
 // publication's task has actually been closed out.

@@ -102,7 +102,16 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
   if (!publication) return null;
 
   const save = (updates: Partial<CalendarPublication>) => {
-    updatePublication.mutate({ id: publication.id, ...updates });
+    // The "Agendar" confirmation is tied to a specific date/time — changing either one
+    // invalidates it, so the team has to consciously re-confirm for the new slot instead of
+    // silently staying "scheduled" for a time nobody actually agreed to.
+    const changesDateOrTime = "publish_date" in updates || "publish_time" in updates;
+    const shouldResetScheduled = changesDateOrTime && publication.instagram_scheduled && !("instagram_scheduled" in updates);
+    updatePublication.mutate({
+      id: publication.id,
+      ...updates,
+      ...(shouldResetScheduled ? { instagram_scheduled: false } : {}),
+    });
   };
 
   const pickDate = (d: Date | undefined) => {
@@ -805,13 +814,29 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                 const unsupportedType = publication.content_type === "story" || publication.content_type === "outro";
                 const canPublish = igConnection?.status === "active" && !unsupportedType;
                 const isPublishing = publication.instagram_status === "publishing";
+                const isPublished = publication.instagram_status === "published";
+                const hasDateTime = !!publication.publish_date && !!publication.publish_time;
+                const scheduleDateTime = hasDateTime
+                  ? `${format(parseISO(publication.publish_date!), "dd/MM", { locale: ptBR })} às ${publication.publish_time!.slice(0, 5)}`
+                  : null;
+                // Same readiness bar as agendar em massa no Cronograma (missingFieldsFor em
+                // CalendarioPublicacaoPanel.tsx) — não faz sentido liberar pro Instagram sem
+                // legenda nem mídia final selecionada.
+                const missingForSchedule = [
+                  !plainCaption ? "legenda" : null,
+                  media.length === 0 ? "mídia" : null,
+                ].filter((x): x is string => !!x);
+                const publishedAtFormatted = publication.instagram_published_at
+                  ? format(parseISO(publication.instagram_published_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
+                  : null;
+
                 return (
                   <div className="space-y-1.5 border-t pt-4">
                     <div className="flex items-center justify-between gap-2">
                       <Label className="flex items-center gap-1.5">
                         <Instagram className="h-3.5 w-3.5" /> Publicação no Instagram
                       </Label>
-                      {publication.instagram_status === "published" && (
+                      {isPublished && (
                         <span className="flex items-center gap-1 text-xs text-emerald-600">
                           <Check className="h-3.5 w-3.5" /> Publicado
                           {publication.instagram_permalink && (
@@ -827,38 +852,117 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                         </span>
                       )}
                     </div>
+                    {isPublished && publishedAtFormatted && (
+                      <p className="text-xs text-muted-foreground">Publicado em {publishedAtFormatted}</p>
+                    )}
                     {publication.instagram_status === "failed" && publication.instagram_error && (
                       <p className="text-xs text-destructive">{publication.instagram_error}</p>
                     )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full gap-1.5"
-                      disabled={!canPublish || isPublishing || publishToInstagram.isPending}
-                      title={
-                        unsupportedType
-                          ? "Stories e outros tipos de conteúdo não são publicados automaticamente"
-                          : igConnection?.status !== "active"
-                            ? "Este cliente ainda não tem o Instagram conectado (veja em Clientes)"
-                            : undefined
-                      }
-                      onClick={() =>
-                        publishToInstagram.mutate(
-                          { publicationId: publication.id, calendarId: publication.calendar_id },
-                          {
-                            onSuccess: () => toast.success("Publicado no Instagram."),
-                            onError: (err) => toast.error(err instanceof Error ? err.message : "Erro ao publicar no Instagram"),
-                          },
-                        )
-                      }
-                    >
-                      {isPublishing || publishToInstagram.isPending ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Instagram className="h-3.5 w-3.5" />
-                      )}
-                      {publication.instagram_status === "published" ? "Publicar novamente" : "Publicar agora no Instagram"}
-                    </Button>
+
+                    {!isPublished && hasDateTime && !publication.instagram_scheduled && (
+                      <p className="text-xs text-amber-600">Ainda não agendado nem publicado.</p>
+                    )}
+
+                    {isPublished ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full gap-1.5"
+                        disabled={!canPublish || isPublishing || publishToInstagram.isPending}
+                        title={
+                          unsupportedType
+                            ? "Stories e outros tipos de conteúdo não são publicados automaticamente"
+                            : igConnection?.status !== "active"
+                              ? "Este cliente ainda não tem o Instagram conectado (veja em Clientes)"
+                              : undefined
+                        }
+                        onClick={() =>
+                          publishToInstagram.mutate(
+                            { publicationId: publication.id, calendarId: publication.calendar_id },
+                            {
+                              onSuccess: () => toast.success("Publicado no Instagram."),
+                              onError: (err) => toast.error(err instanceof Error ? err.message : "Erro ao publicar no Instagram"),
+                            },
+                          )
+                        }
+                      >
+                        {isPublishing || publishToInstagram.isPending ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Instagram className="h-3.5 w-3.5" />
+                        )}
+                        Publicar novamente
+                      </Button>
+                    ) : !hasDateTime ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full gap-1.5"
+                        disabled={!canPublish || isPublishing || publishToInstagram.isPending}
+                        title={
+                          unsupportedType
+                            ? "Stories e outros tipos de conteúdo não são publicados automaticamente"
+                            : igConnection?.status !== "active"
+                              ? "Este cliente ainda não tem o Instagram conectado (veja em Clientes)"
+                              : undefined
+                        }
+                        onClick={() =>
+                          publishToInstagram.mutate(
+                            { publicationId: publication.id, calendarId: publication.calendar_id },
+                            {
+                              onSuccess: () => toast.success("Publicado no Instagram."),
+                              onError: (err) => toast.error(err instanceof Error ? err.message : "Erro ao publicar no Instagram"),
+                            },
+                          )
+                        }
+                      >
+                        {isPublishing || publishToInstagram.isPending ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Instagram className="h-3.5 w-3.5" />
+                        )}
+                        Publicar agora no Instagram
+                      </Button>
+                    ) : publication.instagram_scheduled ? (
+                      <div className="flex items-center justify-between gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2">
+                        <span className="flex items-center gap-1.5 text-xs font-medium text-primary">
+                          <Check className="h-3.5 w-3.5" /> Agendado para {scheduleDateTime}
+                        </span>
+                        <button
+                          type="button"
+                          className="text-xs text-muted-foreground underline hover:text-foreground"
+                          onClick={() => {
+                            save({ instagram_scheduled: false });
+                            toast.success("Agendamento cancelado.");
+                          }}
+                        >
+                          Cancelar agendamento
+                        </button>
+                      </div>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full gap-1.5"
+                        disabled={!canPublish || missingForSchedule.length > 0}
+                        title={
+                          unsupportedType
+                            ? "Stories e outros tipos de conteúdo não são publicados automaticamente"
+                            : igConnection?.status !== "active"
+                              ? "Este cliente ainda não tem o Instagram conectado (veja em Clientes)"
+                              : missingForSchedule.length > 0
+                                ? `Falta preencher: ${missingForSchedule.join(", ")}`
+                                : undefined
+                        }
+                        onClick={() => {
+                          save({ instagram_scheduled: true });
+                          toast.success(`Publicação agendada para ${scheduleDateTime}.`);
+                        }}
+                      >
+                        <Clock className="h-3.5 w-3.5" />
+                        Agendar publicação
+                      </Button>
+                    )}
                   </div>
                 );
               })()}
