@@ -16,7 +16,6 @@ const corsHeaders = {
 };
 
 const GRAPH_VERSION = "v21.0";
-const CRON_SECRET = Deno.env.get("INSTAGRAM_CRON_SECRET");
 
 // Video/Reels containers process asynchronously on Meta's side; this bounds how long a
 // single item can block one function invocation before giving up (the item stays
@@ -201,13 +200,13 @@ async function handleRunSchedules(admin: ReturnType<typeof createClient>) {
   if (error) throw error;
 
   const now = Date.now();
-  // NOTE: publish_date/publish_time are naive wall-clock values entered by the team via
-  // the same picker used everywhere else in the Cronograma — this assumes they represent
-  // the same local time zone this function runs in (Edge Functions default to UTC).
-  // Verify against how the date/time picker actually stores values before trusting cron
-  // timing precision in production.
+  // publish_date/publish_time are naive wall-clock values entered by the team via the same
+  // picker used everywhere else in the Cronograma, meaning America/Sao_Paulo local time —
+  // the agency is Brazil-only. Edge Functions run with TZ=UTC, so parsing the bare string
+  // (no offset) would silently read it as UTC and fire 3h early. Brazil has had no DST
+  // since 2019, so the -03:00 offset is safe to hardcode rather than needing a TZ database.
   const due = ((candidates ?? []) as { id: string; publish_date: string; publish_time: string; instagram_status: string; instagram_publish_attempted_at: string | null }[]).filter((p) => {
-    const scheduledAt = new Date(`${p.publish_date}T${p.publish_time}`).getTime();
+    const scheduledAt = new Date(`${p.publish_date}T${p.publish_time}-03:00`).getTime();
     if (scheduledAt > now) return false;
     if (p.instagram_status !== "not_published") {
       // "failed" or stuck "publishing" (e.g. the function was killed mid-flight) — only
@@ -241,7 +240,10 @@ Deno.serve(async (req) => {
 
     if (action === "run_schedules") {
       const cronSecret = req.headers.get("X-Cron-Secret");
-      if (!CRON_SECRET || cronSecret !== CRON_SECRET) return json({ error: "unauthorized" }, 401);
+      // Verified against Vault (the same secret pg_cron itself reads to send this header)
+      // instead of a separate Deno.env var, so the two can't drift out of sync again.
+      const { data: validSecret } = await admin.rpc("verify_instagram_cron_secret", { candidate: cronSecret });
+      if (!validSecret) return json({ error: "unauthorized" }, 401);
       return await handleRunSchedules(admin);
     }
 

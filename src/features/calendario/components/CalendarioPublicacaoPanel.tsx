@@ -334,7 +334,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
   const [incompleteDialogOpen, setIncompleteDialogOpen] = useState(false);
   const taskIds = useMemo(() => publications.map((p) => p.task_id), [publications]);
   const attachmentsQ = useTaskAttachmentsMap(taskIds);
-  // "Concluído" (green, unmark-able) once every approved publication's task has
+  // "Concluído" (roxo, unmark-able) once every approved publication's task has
   // actually been closed out — not just approved by the client.
   const approvedTaskIds = useMemo(
     () => [...new Set(publishablePublications.map((p) => p.task_id))],
@@ -772,7 +772,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
             <Button
               variant="outline"
               size="sm"
-              className="h-9 gap-1.5 rounded-full border-emerald-500/40 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 hover:text-emerald-600"
+              className="h-9 gap-1.5 rounded-full border-violet-500/40 bg-violet-500/10 text-violet-600 hover:bg-violet-500/20 hover:text-violet-600"
               onClick={() => setUnpublishConfirmOpen(true)}
             >
               <Check className="h-3.5 w-3.5" /> Concluído
