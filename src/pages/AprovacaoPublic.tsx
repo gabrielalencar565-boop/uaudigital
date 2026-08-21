@@ -308,6 +308,7 @@ export default function AprovacaoPublic() {
   useEffect(() => { load(); }, [token]);
 
   const [carouselIndex, setCarouselIndex] = useState(0);
+  const [videoLoading, setVideoLoading] = useState(true);
 
   const respond = async (publicationId: string, respAction: "aprovar" | "alteracao", text?: string) => {
     if (!token) return;
@@ -351,6 +352,7 @@ export default function AprovacaoPublic() {
   const selected = navIndex >= 0 ? navList[navIndex] : (publications.find((p) => p.id === selectedId) ?? null);
   useEffect(() => setFeedbackText(selected?.client_feedback ?? ""), [selectedId]);
   useEffect(() => setCarouselIndex(0), [selectedId]);
+  useEffect(() => setVideoLoading(true), [selectedId]);
 
   const handleNavigate = (direction: "prev" | "next") => {
     if (navIndex < 0) return;
@@ -543,7 +545,24 @@ export default function AprovacaoPublic() {
                         <div className="flex aspect-[9/16] max-h-[68vh] w-full items-center justify-center rounded-xl bg-muted text-xs text-muted-foreground">Sem mídia</div>
                       )
                     ) : hasVideo ? (
-                      <video src={videos[0].url} controls preload="auto" playsInline poster={images[0]?.url} className="mx-auto block h-auto max-h-[68vh] w-auto max-w-full rounded-xl object-contain" />
+                      <>
+                        <video
+                          src={videos[0].url}
+                          controls
+                          preload="auto"
+                          playsInline
+                          poster={images[0]?.url}
+                          onWaiting={() => setVideoLoading(true)}
+                          onCanPlay={() => setVideoLoading(false)}
+                          onPlaying={() => setVideoLoading(false)}
+                          className="mx-auto block h-auto max-h-[68vh] w-auto max-w-full rounded-xl object-contain"
+                        />
+                        {videoLoading && (
+                          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                            <Loader2 className="h-10 w-10 animate-spin text-white drop-shadow-lg" />
+                          </div>
+                        )}
+                      </>
                     ) : images.length > 0 ? (
                       <>
                         <img src={images[carouselIndex]?.url ?? images[0].url} alt="" className="max-h-[68vh] w-full rounded-xl object-cover" />
