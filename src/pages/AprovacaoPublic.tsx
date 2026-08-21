@@ -606,7 +606,22 @@ export default function AprovacaoPublic() {
                         <div className="flex aspect-[9/16] max-h-[68vh] w-full items-center justify-center rounded-xl bg-muted text-xs text-muted-foreground">Sem mídia</div>
                       )
                     ) : hasVideo ? (
-                      <>
+                      <div className="relative mx-auto block">
+                        {/* The cover image (not the <video>) establishes the box size here — a
+                            bare <video> resizes its own box the instant real dimensions become
+                            known (poster-sized while readyState is HAVE_NOTHING, then the video's
+                            own intrinsic size once it starts loading), which visibly shrinks/
+                            letterboxes the player right as the loading spinner appears. Anchoring
+                            size to the cover image instead keeps the box identical across
+                            not-yet-playing / buffering / playing, with the absolutely-positioned
+                            video just filling whatever that box turns out to be. */}
+                        {images[0] && (
+                          <img
+                            src={images[0].url}
+                            alt=""
+                            className="mx-auto block h-auto max-h-[68vh] w-auto max-w-full rounded-xl object-contain"
+                          />
+                        )}
                         <video
                           src={videos[0].url}
                           controls
@@ -617,7 +632,12 @@ export default function AprovacaoPublic() {
                           onWaiting={() => setVideoLoading(true)}
                           onCanPlay={() => setVideoLoading(false)}
                           onPlaying={() => { setVideoLoading(false); setVideoEverPlayed(true); }}
-                          className="mx-auto block h-auto max-h-[68vh] w-auto max-w-full rounded-xl object-contain"
+                          className={cn(
+                            "rounded-xl object-contain",
+                            images[0]
+                              ? "absolute inset-0 h-full w-full"
+                              : "mx-auto block h-auto max-h-[68vh] w-auto max-w-full",
+                          )}
                         />
                         {/* iOS/mobile WebKit clears the poster to a black frame the instant play
                             is tapped, even though the video isn't actually ready yet — this
@@ -631,7 +651,7 @@ export default function AprovacaoPublic() {
                             className="pointer-events-none absolute inset-0 h-full w-full rounded-xl object-contain"
                           />
                         )}
-                      </>
+                      </div>
                     ) : images.length > 0 ? (
                       <>
                         <img src={images[carouselIndex]?.url ?? images[0].url} alt="" className="max-h-[68vh] w-full rounded-xl object-cover" />
