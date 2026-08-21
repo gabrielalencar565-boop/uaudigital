@@ -99,27 +99,79 @@ function PublicListCard({ publication: p, idx, onClick, onApprove }: { publicati
     return () => clearInterval(id);
   }, [hasMultiple, paused, images.length]);
 
+  // Drag-to-swipe: follows the pointer live via dragOffset (px), then on release either
+  // commits to the next/prev slide (past a 20%-of-width threshold) or snaps back. Tracked
+  // with pointer events (not touch-only) so it works with a mouse too. hasDraggedRef
+  // suppresses the card's own onClick (which opens the detail modal) so a swipe doesn't
+  // also count as a tap.
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartXRef = useRef<number | null>(null);
+  const hasDraggedRef = useRef(false);
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (!hasMultiple) return;
+    dragStartXRef.current = e.clientX;
+    hasDraggedRef.current = false;
+    setIsDragging(true);
+    setPaused(true);
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (dragStartXRef.current === null) return;
+    const delta = e.clientX - dragStartXRef.current;
+    if (Math.abs(delta) > 8) hasDraggedRef.current = true;
+    setDragOffset(delta);
+  };
+  const endDrag = () => {
+    if (dragStartXRef.current === null) return;
+    const width = trackRef.current?.offsetWidth ?? 1;
+    if (dragOffset > width * 0.2) {
+      setSlide((s) => (s - 1 + images.length) % images.length);
+    } else if (dragOffset < -width * 0.2) {
+      setSlide((s) => (s + 1) % images.length);
+    }
+    dragStartXRef.current = null;
+    setDragOffset(0);
+    setIsDragging(false);
+  };
+
   return (
     <div
       role="button"
       tabIndex={0}
-      onClick={onClick}
+      onClick={() => {
+        if (hasDraggedRef.current) { hasDraggedRef.current = false; return; }
+        onClick();
+      }}
       onKeyDown={(e) => e.key === "Enter" && onClick()}
       className="group grid cursor-pointer overflow-hidden rounded-3xl border border-border/40 bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-elevated sm:grid-cols-[220px_1fr]"
     >
       <div
         className="relative flex items-center justify-center bg-muted/30 p-3 sm:border-r sm:border-border/30"
         onMouseEnter={() => setPaused(true)}
-        onMouseLeave={() => setPaused(false)}
+        onMouseLeave={() => { setPaused(false); endDrag(); }}
       >
         {hasMultiple ? (
-          <div className="h-64 w-full overflow-hidden rounded-2xl bg-background">
+          <div
+            ref={trackRef}
+            className="h-64 w-full touch-pan-y select-none overflow-hidden rounded-2xl bg-background"
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={endDrag}
+            onPointerCancel={endDrag}
+          >
             <div
-              className="flex h-full transition-transform duration-500 ease-out"
-              style={{ transform: `translateX(-${slide * 100}%)` }}
+              className="flex h-full ease-out"
+              style={{
+                transform: `translateX(calc(-${slide * 100}% + ${dragOffset}px))`,
+                transitionProperty: "transform",
+                transitionDuration: isDragging ? "0ms" : "500ms",
+              }}
             >
               {images.map((url, i) => (
-                <img key={i} src={url} alt="" className="h-full w-full shrink-0 object-contain" />
+                <img key={i} src={url} alt="" draggable={false} className="h-full w-full shrink-0 object-contain" />
               ))}
             </div>
           </div>

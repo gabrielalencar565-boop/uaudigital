@@ -94,29 +94,18 @@ async function renderVideoPoster(file: File, targetWidth = 260): Promise<Blob> {
   }
 }
 
-/** Reads a local video file's pixel dimensions without decoding any frames (cheap — just metadata). */
-async function probeVideoResolution(file: File): Promise<{ width: number; height: number }> {
-  const url = URL.createObjectURL(file);
-  try {
-    const video = document.createElement("video");
-    video.preload = "metadata";
-    video.src = url;
-    await new Promise<void>((resolve, reject) => {
-      video.onloadedmetadata = () => resolve();
-      video.onerror = () => reject(new Error("falha ao ler metadados do vídeo"));
-    });
-    return { width: video.videoWidth, height: video.videoHeight };
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
-
 // A phone/camera export at 4K (or higher) with a high H.264 level decodes fine in a native
 // video player but can fail outright in the more constrained decoders some in-app browsers
 // (WhatsApp, Instagram) use for embedded <video> — the file loads but never plays, with no
 // error message pointing at "resolution". Downscaling anything above 1080p to a 1920px long
-// edge keeps the encoded level comfortably inside what every mobile browser supports, while
-// videos already at a normal social-media resolution skip this (and the ffmpeg.wasm load)
+// edge keeps the encoded level comfortably inside what every mobile browser supports.
+//
+// This now always runs, even when the source is already within that resolution — an
+// unprocessed phone export can still carry a much higher bitrate than the CRF below produces
+// (measured real attachments: 12-17MB for a ~30s vertical clip), and that's paid for on every
+// single playback of the public approval link, proxied through Google Drive at well under
+// 1MB/s. Recompressing once at upload time is a one-time cost the team absorbs so every later
+// viewer doesn't. The scale filter is already a no-op when the source is at or under the cap
 // entirely — see probeVideoResolution's caller in performUpload.
 const MAX_VIDEO_LONG_EDGE = 1920;
 
@@ -389,15 +378,12 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
 
       if (isVideo) {
         try {
-          const { width, height } = await probeVideoResolution(file);
-          if (Math.max(width, height) > MAX_VIDEO_LONG_EDGE) {
-            applyProgress(0, "compressing");
-            fileToUpload = await downscaleVideo(file, (pct) => applyProgress(pct, "compressing"));
-          }
+          applyProgress(0, "compressing");
+          fileToUpload = await downscaleVideo(file, (pct) => applyProgress(pct, "compressing"));
         } catch (prepErr) {
-          // Never block the upload over a failed resolution check/compression — worst case
-          // the original (possibly too-high-res) file goes up, same as before this existed.
-          console.error("[video-transcode] falha ao verificar/comprimir, enviando original", prepErr);
+          // Never block the upload over a failed compression — worst case the original
+          // (possibly larger/higher-bitrate) file goes up, same as before this existed.
+          console.error("[video-transcode] falha ao comprimir, enviando original", prepErr);
           fileToUpload = file;
         }
         applyProgress(0, "uploading");
