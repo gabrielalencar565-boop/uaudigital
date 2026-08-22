@@ -159,7 +159,11 @@ async function downscaleVideo(file: File, onProgress?: (pct: number) => void): P
     await runFfmpeg(ffmpeg, [
       "-i", inputName,
       "-vf", `scale='min(${MAX_VIDEO_LONG_EDGE},iw)':'min(${MAX_VIDEO_LONG_EDGE},ih)':force_original_aspect_ratio=decrease:force_divisible_by=2`,
-      "-c:v", "libx264", "-preset", "veryfast", "-crf", "26",
+      // "ultrafast" trades a somewhat larger output file for meaningfully less encoding
+      // time — worth it since this runs synchronously in the browser via WASM (much slower
+      // than native ffmpeg) and blocks the upload. Doesn't touch the resolution cap above,
+      // which is the part that actually fixed the old WhatsApp in-app playback failure.
+      "-c:v", "libx264", "-preset", "ultrafast", "-crf", "26",
       "-c:a", "aac", "-b:a", "128k",
       "-movflags", "+faststart",
       outputName,
