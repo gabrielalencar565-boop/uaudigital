@@ -86,6 +86,10 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Best-effort — an orphaned cache entry just wastes a little storage, not worth
+    // failing the whole delete over.
+    await admin.storage.from("drive-media-cache").remove([drive_file_id]).catch(() => {});
+
     const accessToken = await getAccessToken();
     const driveRes = await fetch(
       `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(drive_file_id)}`,
