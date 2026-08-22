@@ -127,7 +127,12 @@ Deno.serve(async (req) => {
     const responseHeaders: Record<string, string> = {
       ...corsHeaders,
       "Content-Type": attachment.file_type || driveRes.headers.get("content-type") || "application/octet-stream",
-      "Cache-Control": "private, max-age=86400",
+      // "public" (not "private") lets any shared/CDN cache in front of this function reuse
+      // a response across different users/sessions requesting the exact same URL — safe
+      // here because the URL's own opaque token IS the access control (same model as any
+      // signed-URL CDN), and it directly cuts the ~700ms-1s Google Drive round-trip that
+      // otherwise repeats on every single view, for every viewer, of the same attachment.
+      "Cache-Control": "public, max-age=86400",
       "Accept-Ranges": "bytes",
       "Server-Timing": [...timing, `total;dur=${Date.now() - t0}`].join(", "),
     };
