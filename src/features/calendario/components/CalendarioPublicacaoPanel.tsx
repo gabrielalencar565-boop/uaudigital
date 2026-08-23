@@ -23,7 +23,8 @@ import { useClients, useTeamMembers } from "@/features/data/queries";
 import { useDefaultFlowWithDates, getFixedAssignee } from "@/features/gestao/components/PmStageFlowConfig";
 import { useSession } from "@/hooks/use-session";
 import {
-  useCalendarPublications, useCalendarsForClient, useCalendarsForCycle, useCapaTaskIds, useCoverAttachmentsById, usePublishCycle, useScheduleCyclePublications, useUnscheduleCyclePublications, useUnpublishCycle, useTaskAttachmentsMap, useTaskCompletionMap, useUpdateCalendarPublication, useUpdateCalendarShare, useUpdateCalendarStatus,
+  useCalendarPublications, useCalendarsForClient, useCalendarsForCycle, useCapaTaskIds, useCoverAttachmentsById, useInstagramRiskSummary, usePublishCycle, useScheduleCyclePublications, useUnscheduleCyclePublications, useUnpublishCycle, useTaskAttachmentsMap, useTaskCompletionMap, useUpdateCalendarPublication, useUpdateCalendarShare, useUpdateCalendarStatus,
+  type ClientInstagramRisk,
 } from "../hooks/use-calendar-data";
 import { CALENDAR_STATUS_LABELS, CONTENT_TYPE_LABELS, PUBLICATION_STATUS_LABELS, type CalendarPublication, type CalendarStatus } from "../calendar-types";
 import { PublicationCard, CONTENT_TYPE_ICON, getContentTypeColor } from "./PublicationCard";
@@ -48,6 +49,23 @@ function cycleStart(anchor: Date) {
   return new Date(end.getFullYear(), end.getMonth() - 1, 28);
 }
 const UNSCHEDULED_ID = "unscheduled";
+
+function describeInstagramRisk(r: ClientInstagramRisk): string {
+  const parts: string[] = [];
+  if (r.notConnectedCount > 0) {
+    parts.push(`${r.notConnectedCount} publicaç${r.notConnectedCount > 1 ? "ões" : "ão"} agendada${r.notConnectedCount > 1 ? "s" : ""} sem Instagram conectado`);
+  }
+  if (r.failedCount > 0) {
+    parts.push(`${r.failedCount} falha${r.failedCount > 1 ? "s" : ""} ao publicar`);
+  }
+  if (r.unsupportedCount > 0) {
+    parts.push(`${r.unsupportedCount} agendada${r.unsupportedCount > 1 ? "s" : ""} num tipo que não sai sozinho (Stories/Outro)`);
+  }
+  if (r.tokenExpiresInDays !== null) {
+    parts.push(r.tokenExpiresInDays === 0 ? "acesso ao Instagram expira hoje" : `acesso ao Instagram expira em ${r.tokenExpiresInDays} dia${r.tokenExpiresInDays > 1 ? "s" : ""}`);
+  }
+  return parts.join(" · ");
+}
 
 // Maps the 4 calendar_status values to the badge shown on the client card in the
 // sidebar — label matches CALENDAR_STATUS_LABELS exactly, key is just the status
@@ -247,6 +265,9 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
   const connectInstagram = useConnectInstagram();
   const disconnectInstagram = useDisconnectInstagram();
   const [igDisconnectTarget, setIgDisconnectTarget] = useState<{ id: string; name: string } | null>(null);
+  const instagramRiskQ = useInstagramRiskSummary(igConnectionsQ.data);
+  const instagramRisks = instagramRiskQ.data ?? [];
+  const currentClientRisk = clientId ? instagramRisks.find((r) => r.clientId === clientId) ?? null : null;
 
   const qc = useQueryClient();
   const [quickAddOpen, setQuickAddOpen] = useState(false);
@@ -640,6 +661,29 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
         </div>
       </div>
 
+      {!clientId && instagramRisks.length > 0 && (
+        <div className="flex items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-4">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <p className="text-sm font-semibold text-destructive">
+              {instagramRisks.length === 1 ? "1 cliente" : `${instagramRisks.length} clientes`} com risco de publicação agendada não sair sozinha no Instagram
+            </p>
+            <div className="space-y-1">
+              {instagramRisks.map((r) => (
+                <button
+                  key={r.clientId}
+                  type="button"
+                  onClick={() => setClientId(r.clientId)}
+                  className="block text-left text-xs text-destructive/90 underline-offset-2 hover:underline"
+                >
+                  <span className="font-medium">{r.clientName}</span> — {describeInstagramRisk(r)}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {!clientId && (
         <div className="flex items-center gap-1 rounded-full border border-border/30 bg-muted/20 p-1 w-fit">
           {[
@@ -781,6 +825,15 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
       {/* Selected client's calendar, full view */}
       {clientId && (
       <div className="space-y-4">
+      {currentClientRisk && (
+        <div className="flex items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-3">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+          <p className="text-xs text-destructive/90">
+            <span className="font-semibold">Atenção:</span> {describeInstagramRisk(currentClientRisk)}.
+            {currentClientRisk.notConnectedCount > 0 && " Conecte o Instagram do cliente pra essas publicações saírem."}
+          </p>
+        </div>
+      )}
       {calendar && (
         <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/30 bg-muted/20 p-3">
           <Select value={calendar.status} onValueChange={(v: CalendarStatus) => updateCalendarStatus.mutate({ id: calendar.id, status: v, clientId: clientId! })}>

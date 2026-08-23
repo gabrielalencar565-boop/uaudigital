@@ -335,6 +335,116 @@ export function useUnscheduleCyclePublications() {
   });
 }
 
+export interface ClientInstagramRisk {
+  clientId: string;
+  clientName: string;
+  notConnectedCount: number;
+  failedCount: number;
+  unsupportedCount: number;
+  tokenExpiresInDays: number | null;
+}
+
+const TOKEN_EXPIRY_WARNING_MS = 3 * 24 * 60 * 60 * 1000;
+
+// Scans every client at once (not just the one currently open) for anything that could stop
+// a publication the team already scheduled (instagram_scheduled=true, see
+// useScheduleCyclePublications) from actually going out — a broken/missing Instagram
+// connection, a content type the auto-publish pipeline can't handle (story/outro, see
+// instagram-publish's publishToInstagram), a publish attempt that already failed, or a token
+// close to expiring. Feeds the warning banner in CalendarioPublicacaoPanel so the team finds
+// out *before* the scheduled time comes and nothing goes out, not after.
+//
+// Takes connection status as a parameter (from useInstagramConnections) instead of querying
+// instagram_connections directly — that table has RLS enabled with zero policies (it holds
+// the real access_token), so a direct client-side query silently returns nothing and every
+// client would misleadingly show up as "not connected". useInstagramConnections already goes
+// through the instagram-connect edge function's "status" action, which safely exposes only
+// the non-secret columns via the service role.
+export function useInstagramRiskSummary(connections: { client_id: string; status: string; token_expires_at: string }[] | undefined) {
+  return useQuery({
+    queryKey: ["instagram_risk_summary", connections],
+    enabled: connections !== undefined,
+    queryFn: async (): Promise<ClientInstagramRisk[]> => {
+      const { data: pubs, error: pubsErr } = await sb
+        .from("calendar_publications")
+        .select("id, calendar_id, content_type, instagram_status")
+        .eq("instagram_scheduled", true)
+        .neq("instagram_status", "published");
+      if (pubsErr) throw pubsErr;
+      const scheduled = (pubs ?? []) as { id: string; calendar_id: string; content_type: string; instagram_status: string }[];
+
+      const calendarIds = [...new Set(scheduled.map((p) => p.calendar_id))];
+      const clientIdByCalendarId = new Map<string, string>();
+      if (calendarIds.length > 0) {
+        const { data: calendars, error: calErr } = await sb
+          .from("publication_calendars")
+          .select("id, client_id")
+          .in("id", calendarIds);
+        if (calErr) throw calErr;
+        for (const c of (calendars ?? []) as { id: string; client_id: string }[]) clientIdByCalendarId.set(c.id, c.client_id);
+      }
+
+      const clientIds = [...new Set(Array.from(clientIdByCalendarId.values()))];
+      if (clientIds.length === 0) return [];
+
+      const { data: clients, error: clientsErr } = await sb.from("clients").select("id, name").in("id", clientIds);
+      if (clientsErr) throw clientsErr;
+      const clientNameById = new Map<string, string>((clients ?? []).map((c: { id: string; name: string }) => [c.id, c.name]));
+      type ConnectionRow = { client_id: string; status: string; token_expires_at: string | null };
+      const connectionByClient = new Map<string, ConnectionRow>(
+        (connections ?? []).map((c) => [c.client_id, c]),
+      );
+
+      const now = Date.now();
+      const riskByClient = new Map<string, ClientInstagramRisk>();
+      const getRisk = (clientId: string) => {
+        let r = riskByClient.get(clientId);
+        if (!r) {
+          r = { clientId, clientName: clientNameById.get(clientId) ?? "Cliente", notConnectedCount: 0, failedCount: 0, unsupportedCount: 0, tokenExpiresInDays: null };
+          riskByClient.set(clientId, r);
+        }
+        return r;
+      };
+
+      for (const p of scheduled) {
+        const clientId = clientIdByCalendarId.get(p.calendar_id);
+        if (!clientId) continue;
+        const connection = connectionByClient.get(clientId);
+
+        if (!connection || connection.status !== "active") {
+          getRisk(clientId).notConnectedCount++;
+          continue; // root cause is the connection — no need to also count it as "failed"
+        }
+        if (p.content_type === "story" || p.content_type === "outro") {
+          getRisk(clientId).unsupportedCount++;
+          continue;
+        }
+        if (p.instagram_status === "failed") {
+          getRisk(clientId).failedCount++;
+        }
+      }
+
+      // Token-expiry risk applies per connected client regardless of whether any of their
+      // scheduled publications individually triggered another risk above.
+      for (const clientId of clientIds) {
+        const connection = connectionByClient.get(clientId);
+        if (!connection || connection.status !== "active" || !connection.token_expires_at) continue;
+        const msLeft = new Date(connection.token_expires_at).getTime() - now;
+        if (msLeft < TOKEN_EXPIRY_WARNING_MS) {
+          getRisk(clientId).tokenExpiresInDays = Math.max(0, Math.ceil(msLeft / (24 * 60 * 60 * 1000)));
+        }
+      }
+
+      return Array.from(riskByClient.values()).filter(
+        (r) => r.notConnectedCount > 0 || r.failedCount > 0 || r.unsupportedCount > 0 || r.tokenExpiresInDays !== null,
+      );
+    },
+    // Risk conditions can change from outside this tab (the cron running, a token expiring) —
+    // keep it reasonably fresh without polling too aggressively.
+    refetchInterval: 5 * 60 * 1000,
+  });
+}
+
 // Which of these tasks are already marked concluído — used to render the bulk
 // "Concluir" button as done (roxo, with an option to unmark) once every approved
 // publication's task has actually been closed out.
