@@ -379,6 +379,7 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
 
     try {
       let fileToUpload = file;
+      let compressionFailed = false;
 
       if (isVideo) {
         try {
@@ -387,8 +388,13 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
         } catch (prepErr) {
           // Never block the upload over a failed compression — worst case the original
           // (possibly larger/higher-bitrate) file goes up, same as before this existed.
+          // This used to only log to the console, which nobody sees — a video whose
+          // compression fails (a real cause: iPhone .mov exports in HEVC, a codec the
+          // in-browser encoder often can't decode) uploads unprocessed and silently risks
+          // the exact WhatsApp/Instagram playback problem this pipeline exists to prevent.
           console.error("[video-transcode] falha ao comprimir, enviando original", prepErr);
           fileToUpload = file;
+          compressionFailed = true;
         }
         applyProgress(0, "uploading");
       }
@@ -414,6 +420,9 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
         removeGlobalUpload(globalId);
       }, 800);
       toast.success("Arquivo anexado!");
+      if (compressionFailed) {
+        toast.warning(`"${file.name}" foi enviado sem compressão — pode não tocar corretamente no WhatsApp/Instagram. Se for um vídeo do iPhone, tente reexportar em "Mais compatível" (Ajustes > Câmera > Formatos) e reenviar.`, { duration: 12000 });
+      }
 
       if (isVideo) {
         try {
@@ -423,6 +432,9 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
           await upload.mutateAsync({ task_id: taskId, file: posterFile, category });
         } catch (posterErr) {
           console.error("[video-poster] falha ao gerar miniatura", posterErr);
+          if (!compressionFailed) {
+            toast.warning(`Não consegui gerar uma miniatura automática pra "${file.name}" — defina uma capa manualmente pra ele aparecer no Cronograma.`, { duration: 10000 });
+          }
         }
       }
     } catch (err: any) {
