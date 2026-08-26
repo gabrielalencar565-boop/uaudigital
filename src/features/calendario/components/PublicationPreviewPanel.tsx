@@ -136,12 +136,14 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
   // pipeline here isn't worth it just for this empty-state shortcut, so video still goes
   // through "Abrir tarefa original" where the full pipeline already lives.
   const uploadAsMedia = (file: File) => {
-    if (file.type.startsWith("video/")) {
-      toast.error('Pra vídeo, envie pela tarefa original ("Abrir tarefa original") — aqui é só pra imagem por enquanto.');
+    if (file.type.startsWith("image/")) {
+      uploadCover.mutate({ task_id: publication.task_id, file, category: "final" });
       return;
     }
-    if (!file.type.startsWith("image/")) return;
-    uploadCover.mutate({ task_id: publication.task_id, file, category: "final" });
+    // Covers both a properly-typed video and any file whose type the browser couldn't sniff
+    // (some .mov exports report an empty file.type) — either way this dropzone can't take it,
+    // so always say so instead of silently doing nothing.
+    toast.error('Pra vídeo, envie pela tarefa original ("Abrir tarefa original") — aqui é só pra imagem por enquanto.');
   };
 
   const deleteCoverImage = async (imgId: string) => {
@@ -387,7 +389,7 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                 <input
                   ref={mediaFileInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/*,video/*"
                   className="hidden"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
