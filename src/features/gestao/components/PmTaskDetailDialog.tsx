@@ -1182,8 +1182,14 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
   const blockedByIncompleteCalendar = async (checkTask: PmTask, children: PmTask[] = []) => {
     if (checkTask.stage_current !== "pdf") return false;
     const sb = supabase as any;
+    // "Capa" tasks only exist to hand off a cover image to a sibling publication (see
+    // useCapaTaskIds/useCoverCandidates) — they never carry their own scheduled post, so
+    // requiring date/horário/legenda on them would block conclusion over fields that were
+    // never meant to be filled in.
+    const isCapaTask = (t: PmTask) => (t.tags ?? []).some((tag) => tag.split(":")[0].trim().toLowerCase() === "capa");
     const pdfChildren = children.filter((c) => c.stage_current === "pdf");
-    const candidates = pdfChildren.length > 0 ? pdfChildren : [checkTask];
+    const candidates = (pdfChildren.length > 0 ? pdfChildren : [checkTask]).filter((c) => !isCapaTask(c));
+    if (candidates.length === 0) return false;
     const idsToCheck = candidates.map((c) => c.id);
 
     const { data: pubs } = await sb

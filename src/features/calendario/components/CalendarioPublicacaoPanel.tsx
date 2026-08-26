@@ -331,6 +331,9 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
 
   const publicationsQ = useCalendarPublications(calendar?.id ?? null);
   const publications = publicationsQ.data ?? [];
+  const taskIds = useMemo(() => publications.map((p) => p.task_id), [publications]);
+  const capaTaskIdsQ = useCapaTaskIds(taskIds);
+  const isCapaTask = (taskId: string) => capaTaskIdsQ.data?.has(taskId) ?? false;
   // Only approved publications are eligible to be concluded — a post still awaiting
   // review or with changes requested shouldn't have its task closed out yet.
   const publishablePublications = useMemo(
@@ -347,9 +350,12 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
     if (!p.caption?.trim()) missing.push("Legenda");
     return missing;
   };
+  // "Capa" tasks only exist to hand off a cover image to a sibling publication (see
+  // useCapaTaskIds/useCoverCandidates) — they never get their own data/horário/legenda, so
+  // they shouldn't count against "Concluir PDF" readiness.
   const notReadyPublications = useMemo(
-    () => publications.filter((p) => missingFieldsFor(p).length > 0),
-    [publications],
+    () => publications.filter((p) => !isCapaTask(p.task_id) && missingFieldsFor(p).length > 0),
+    [publications, capaTaskIdsQ.data],
   );
   const cycleReadyToConclude = publications.length > 0 && notReadyPublications.length === 0;
   const [incompleteDialogOpen, setIncompleteDialogOpen] = useState(false);
@@ -402,7 +408,6 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
     [publications, taskCompletionQ.data],
   );
   const cycleScheduled = schedulableUniverse.length > 0 && schedulableUniverse.every((p) => p.instagram_scheduled);
-  const taskIds = useMemo(() => publications.map((p) => p.task_id), [publications]);
   const attachmentsQ = useTaskAttachmentsMap(taskIds);
   const unpublishCycle = useUnpublishCycle();
   const [unpublishConfirmOpen, setUnpublishConfirmOpen] = useState(false);
@@ -411,8 +416,6 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
     [publications],
   );
   const coverAttachmentsQ = useCoverAttachmentsById(coverAttachmentIds);
-  const capaTaskIdsQ = useCapaTaskIds(taskIds);
-  const isCapaTask = (taskId: string) => capaTaskIdsQ.data?.has(taskId) ?? false;
 
   const updatePublication = useUpdateCalendarPublication();
   const updateCalendarStatus = useUpdateCalendarStatus();

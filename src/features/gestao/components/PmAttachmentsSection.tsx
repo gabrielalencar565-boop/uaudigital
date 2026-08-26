@@ -109,6 +109,11 @@ async function renderVideoPoster(file: File, targetWidth = 260): Promise<Blob> {
 // entirely — see probeVideoResolution's caller in performUpload.
 const MAX_VIDEO_LONG_EDGE = 1920;
 
+// Custom drag MIME type marking "this drag is an existing attachment card being moved
+// between category sections", so a section's drop zone (built for OS file uploads) can
+// tell that apart from a real file coming from outside the browser.
+const ATTACHMENT_DRAG_MIME = "application/x-pm-attachment-id";
+
 let ffmpegPromise: Promise<import("@ffmpeg/ffmpeg").FFmpeg> | null = null;
 async function loadFfmpeg() {
   if (!ffmpegPromise) {
@@ -539,7 +544,14 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
 
   const handleMoveCategory = async (att: PmAttachment, target: AttachmentCategory) => {
     try {
-      await sb.from("pm_attachments").update({ category: target }).eq("id", att.id);
+      // A video's auto-generated poster (see renderVideoPoster) is matched to it by
+      // file name *and category* — see videoPosterMap below — so leaving the poster
+      // behind in the old category would silently break that video's thumbnail here.
+      const posterName = `${att.file_name.replace(/\.[^.]+$/, "")}-poster.jpg`;
+      const pairedPosterIds = attachments
+        .filter((a) => a.category === att.category && a.file_name === posterName && a.file_type?.startsWith("image/"))
+        .map((a) => a.id);
+      await sb.from("pm_attachments").update({ category: target }).in("id", [att.id, ...pairedPosterIds]);
       queryClient.invalidateQueries({ queryKey: ["pm_attachments"] });
       queryClient.invalidateQueries({ queryKey: ["pm_attachments_for_calendar"] });
       queryClient.invalidateQueries({ queryKey: ["cover_candidates"] });
@@ -698,6 +710,8 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
         onMove={(att) => handleMoveCategory(att, "final")}
         moveLabel="Mover para Conteúdo Final"
         onOpenViewer={(att) => openViewer(att, materials)}
+        allAttachments={attachments}
+        onMoveCategory={handleMoveCategory}
       />
 
       <CategorySection
@@ -725,6 +739,8 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
         onMove={(att) => handleMoveCategory(att, "material")}
         moveLabel="Mover para Materiais de Produção"
         onOpenViewer={(att) => openViewer(att, finals)}
+        allAttachments={attachments}
+        onMoveCategory={handleMoveCategory}
       />
 
       <PmImageViewer
@@ -778,13 +794,18 @@ interface CategorySectionProps {
   onMove: (att: PmAttachment) => void;
   moveLabel: string;
   onOpenViewer: (att: PmAttachment) => void;
+  allAttachments: PmAttachment[];
+  // Raw mover (unlike onMove, which is pre-bound to always send *away* from this section,
+  // for the "..." menu action) — dropping a card here needs to send it *to* this section's
+  // own category instead, regardless of where it came from.
+  onMoveCategory: (att: PmAttachment, target: AttachmentCategory) => void;
 }
 
 function CategorySection(props: CategorySectionProps) {
   const {
-    title, subtitle, icon, accentClass, list, posterMap, uploadingFiles, onUpload, onDelete,
+    category, title, subtitle, icon, accentClass, list, posterMap, uploadingFiles, onUpload, onDelete,
     onRenameStart, onRenameCommit, renamingId, renameDraft, setRenameDraft, setRenamingId,
-    onCopyUrl, onDownload, onSetCover, currentCoverUrl, membersMap, onMove, moveLabel, onOpenViewer,
+    onCopyUrl, onDownload, onSetCover, currentCoverUrl, membersMap, onMove, moveLabel, onOpenViewer, allAttachments, onMoveCategory,
   } = props;
 
   const fileRef = useRef<HTMLInputElement>(null);
@@ -805,6 +826,14 @@ function CategorySection(props: CategorySectionProps) {
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     setDragging(false);
+    // Dragging an existing card from the other category section onto this one — see
+    // draggable/onDragStart below — moves it instead of trying to "upload" it again.
+    const draggedId = e.dataTransfer.getData(ATTACHMENT_DRAG_MIME);
+    if (draggedId) {
+      const dragged = allAttachments.find((a) => a.id === draggedId);
+      if (dragged && (dragged.category ?? "material") !== category) onMoveCategory(dragged, category);
+      return;
+    }
     if (e.dataTransfer.files.length > 0) {
       for (const file of Array.from(e.dataTransfer.files)) await onUpload(file);
     }
@@ -892,6 +921,11 @@ function CategorySection(props: CategorySectionProps) {
               return (
                 <div
                   key={att.id}
+                  draggable={renamingId !== att.id}
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData(ATTACHMENT_DRAG_MIME, att.id);
+                    e.dataTransfer.effectAllowed = "move";
+                  }}
                   className={cn(
                     "relative group rounded-md border bg-card/30 transition-all",
                     isCover ? "border-primary/50 ring-1 ring-primary/30" : "border-border/40",
