@@ -139,10 +139,16 @@ function runFfmpeg(ffmpeg: import("@ffmpeg/ffmpeg").FFmpeg, args: string[]): Pro
   return method.call(ffmpeg, args);
 }
 
-/** Re-encodes a local video file so its long edge is at most MAX_VIDEO_LONG_EDGE px — runs entirely
- * client-side via ffmpeg.wasm (no server involved). Throws on failure; caller falls back to the
- * original file rather than blocking the upload over a compression error. */
-async function downscaleVideo(file: File, onProgress?: (pct: number) => void): Promise<File> {
+// Fallback caps tried in order after MAX_VIDEO_LONG_EDGE, only if a prior attempt throws
+// (see downscaleVideoWithFallback below). Lower caps mean fewer/smaller decoded frames held
+// in the WASM heap at once, which is what actually crashes on 4K sources — not the encoder
+// settings — so this is the lever that turns a failed compression into a successful one.
+const FALLBACK_VIDEO_LONG_EDGES = [1280, 854];
+
+/** Re-encodes a local video file so its long edge is at most `maxEdge` px — runs entirely
+ * client-side via ffmpeg.wasm (no server involved). Throws on failure; caller falls back to a
+ * smaller cap (see downscaleVideoWithFallback) rather than giving up on compression outright. */
+async function downscaleVideo(file: File, maxEdge: number, onProgress?: (pct: number) => void): Promise<File> {
   const { fetchFile } = await import("@ffmpeg/util");
   const ffmpeg = await loadFfmpeg();
   const ext = file.name.match(/\.[^.]+$/)?.[0] || ".mp4";
@@ -158,12 +164,17 @@ async function downscaleVideo(file: File, onProgress?: (pct: number) => void): P
     await ffmpeg.writeFile(inputName, await fetchFile(file));
     await runFfmpeg(ffmpeg, [
       "-i", inputName,
-      "-vf", `scale='min(${MAX_VIDEO_LONG_EDGE},iw)':'min(${MAX_VIDEO_LONG_EDGE},ih)':force_original_aspect_ratio=decrease:force_divisible_by=2`,
+      "-vf", `scale='min(${maxEdge},iw)':'min(${maxEdge},ih)':force_original_aspect_ratio=decrease:force_divisible_by=2`,
       // "ultrafast" trades a somewhat larger output file for meaningfully less encoding
       // time — worth it since this runs synchronously in the browser via WASM (much slower
       // than native ffmpeg) and blocks the upload. Doesn't touch the resolution cap above,
       // which is the part that actually fixed the old WhatsApp in-app playback failure.
+      // rc-lookahead=0/ref=1 disable libx264's multi-frame lookahead buffer, which is the
+      // single biggest driver of peak memory on a 4K source (each held frame is tens of MB) —
+      // this is what was actually crashing the WASM heap on large vertical 4K exports, the
+      // same failure mode already root-caused for the poster-frame extraction below.
       "-c:v", "libx264", "-preset", "ultrafast", "-crf", "26",
+      "-x264-params", "rc-lookahead=0:ref=1",
       "-c:a", "aac", "-b:a", "128k",
       "-movflags", "+faststart",
       outputName,
@@ -178,6 +189,25 @@ async function downscaleVideo(file: File, onProgress?: (pct: number) => void): P
     await ffmpeg.deleteFile(inputName).catch(() => {});
     await ffmpeg.deleteFile(outputName).catch(() => {});
   }
+}
+
+/** Tries downscaleVideo at MAX_VIDEO_LONG_EDGE, then at progressively smaller caps in
+ * FALLBACK_VIDEO_LONG_EDGES if it throws — a 4K source that OOMs the WASM heap at 1920 will
+ * often succeed at 1280 or 854, since fewer/smaller frames need to be held at once. Only
+ * throws (letting the caller fall back to the uncompressed original) once every cap has
+ * failed. */
+async function downscaleVideoWithFallback(file: File, onProgress?: (pct: number) => void): Promise<File> {
+  const caps = [MAX_VIDEO_LONG_EDGE, ...FALLBACK_VIDEO_LONG_EDGES];
+  let lastErr: unknown;
+  for (const cap of caps) {
+    try {
+      return await downscaleVideo(file, cap, onProgress);
+    } catch (err) {
+      lastErr = err;
+      console.error(`[video-transcode] falha ao comprimir em ${cap}px, tentando cap menor`, err);
+    }
+  }
+  throw lastErr;
 }
 
 async function uploadWithRetry<T>(attempt: () => Promise<T>, retries = 2, delayMs = 2000): Promise<T> {
@@ -384,7 +414,7 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
       if (isVideo) {
         try {
           applyProgress(0, "compressing");
-          fileToUpload = await downscaleVideo(file, (pct) => applyProgress(pct, "compressing"));
+          fileToUpload = await downscaleVideoWithFallback(file, (pct) => applyProgress(pct, "compressing"));
         } catch (prepErr) {
           // Never block the upload over a failed compression — worst case the original
           // (possibly larger/higher-bitrate) file goes up, same as before this existed.
