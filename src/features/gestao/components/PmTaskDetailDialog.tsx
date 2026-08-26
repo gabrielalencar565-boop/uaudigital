@@ -2369,9 +2369,11 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
           </>
         )}
 
-        <div className="flex flex-wrap items-center gap-2 pt-2">
-          <SendToCronogramaButton task={task} isLeaf={childTasks.length === 0} onOpenInCalendario={onOpenInCalendario} />
-        </div>
+        {childTasks.length === 0 && (
+          <div className="flex flex-wrap items-center gap-2 border-t border-border/20 pt-4">
+            <SendToCronogramaButton task={task} isLeaf onOpenInCalendario={onOpenInCalendario} />
+          </div>
+        )}
 
         {/* Link or Date dialog for existing agenda tasks — rendered outside conditional to survive task status changes */}
         <LinkOrDateDialog
