@@ -1018,7 +1018,7 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                removePublication.mutate({ id: publication.id, calendarId: publication.calendar_id });
+                removePublication.mutate({ id: publication.id, calendarId: publication.calendar_id, taskId: publication.task_id });
                 setConfirmRemoveOpen(false);
                 onClose();
               }}

@@ -48,7 +48,7 @@ import { broadcastTeamActivity } from "@/hooks/use-team-activity";
 import { setViewingTask } from "@/hooks/use-task-viewers";
 import { LateAppealDialog } from "@/features/tasks/LateAppealDialog";
 import { isTaskLate } from "@/features/tasks/is-task-late";
-import { useTaskAttachmentsMap } from "@/features/calendario/hooks/use-calendar-data";
+import { useTaskAttachmentsMap, useTaskCalendarEntry } from "@/features/calendario/hooks/use-calendar-data";
 
 function initials(n: string) {
   return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
@@ -379,6 +379,82 @@ function StageCircle({ stageKey, size = "md" }: { stageKey: string; size?: "xs" 
     <span className={cn("rounded-full shrink-0 flex items-center justify-center", sizeClass, isDone ? `${color.bg}` : `border-2 ${color.border}`)}>
       {isDone && size !== "xs" && <Check className="h-2 w-2 text-white" />}
     </span>
+  );
+}
+
+// ─── Send to Cronograma ───
+
+// Manual shortcut for the same thing pm_task_pdf_stage_to_calendar already does
+// automatically when a task reaches the "pdf" stage — lets the team push a task into a
+// chosen month's Cronograma on demand instead of waiting on (or fighting) the automatic
+// trigger. Mirrors QuickAddPublicationDialog's "Usar tarefa existente" tab: forcing
+// stage_current to "pdf" with a posting_date inside the target cycle is what actually
+// creates the calendar_publications row, via that same trigger.
+function SendToCronogramaButton({ task, isLeaf, onOpenInCalendario }: { task: PmTask; isLeaf: boolean; onOpenInCalendario?: (taskId: string) => void }) {
+  const updateTask = useUpdatePmTask();
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [sending, setSending] = useState(false);
+  const entryQ = useTaskCalendarEntry(isLeaf ? task.id : null);
+
+  // A container task (has active subtasks) never gets its own calendar row — each
+  // subtask gets its own instead — so there's nothing useful this button could do here.
+  if (!isLeaf) return null;
+  if (entryQ.isLoading) return null;
+
+  if (entryQ.data) {
+    return (
+      <Button size="sm" variant="outline" className="gap-1.5" onClick={() => onOpenInCalendario?.(task.id)}>
+        <Calendar className="h-3.5 w-3.5" /> Ver no Cronograma
+      </Button>
+    );
+  }
+
+  const monthOptions = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(new Date().getFullYear(), new Date().getMonth() + i, 1);
+    const label = format(d, "MMMM 'de' yyyy", { locale: ptBR });
+    return { date: format(d, "yyyy-MM-dd"), label: label.charAt(0).toUpperCase() + label.slice(1) };
+  });
+
+  const send = async (dateStr: string) => {
+    setSending(true);
+    try {
+      await updateTask.mutateAsync({ id: task.id, stage_current: "pdf", posting_date: dateStr } as any);
+      queryClient.invalidateQueries({ queryKey: ["task_calendar_entry", task.id] });
+      queryClient.invalidateQueries({ queryKey: ["unscheduled_client_tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["publication_calendars"] });
+      queryClient.invalidateQueries({ queryKey: ["calendar_publications"] });
+      toast.success("Enviado para o Cronograma");
+      setOpen(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao enviar para o Cronograma");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button size="sm" variant="outline" className="gap-1.5">
+          <Calendar className="h-3.5 w-3.5" /> Enviar para o Cronograma
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="z-[130] w-56 p-1.5" align="start">
+        <p className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Escolha o mês</p>
+        {monthOptions.map((opt) => (
+          <button
+            key={opt.date}
+            type="button"
+            disabled={sending}
+            className="block w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent/50 disabled:opacity-50"
+            onClick={() => send(opt.date)}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -2291,6 +2367,12 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
         </div>
         )}
           </>
+        )}
+
+        {childTasks.length === 0 && (
+          <div className="inline-flex w-fit flex-wrap items-center gap-2 rounded-xl border border-black/10 p-1 dark:border-white/10">
+            <SendToCronogramaButton task={task} isLeaf onOpenInCalendario={onOpenInCalendario} />
+          </div>
         )}
 
         {/* Link or Date dialog for existing agenda tasks — rendered outside conditional to survive task status changes */}
