@@ -206,6 +206,25 @@ export function useUnscheduledClientTasks(clientId: string | null) {
   });
 }
 
+// Backs the "Enviar para o cronograma" shortcut in the Gestão task dialog — lets it know
+// whether the task already has a calendar_publications row (and its id, to jump straight to
+// it) without duplicating the lookup at every call site.
+export function useTaskCalendarEntry(taskId: string | null) {
+  return useQuery({
+    enabled: !!taskId,
+    queryKey: ["task_calendar_entry", taskId],
+    queryFn: async (): Promise<{ id: string; calendar_id: string } | null> => {
+      const { data, error } = await sb
+        .from("calendar_publications")
+        .select("id, calendar_id")
+        .eq("task_id", taskId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
 export function useUpdateCalendarPublication() {
   const qc = useQueryClient();
   return useMutation({
@@ -467,13 +486,17 @@ export function useTaskCompletionMap(taskIds: string[]) {
 export function useRemoveCalendarPublication() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, calendarId }: { id: string; calendarId: string }) => {
+    mutationFn: async ({ id, calendarId, taskId }: { id: string; calendarId: string; taskId?: string }) => {
       const { error } = await sb.from("calendar_publications").delete().eq("id", id);
       if (error) throw error;
-      return { id, calendarId };
+      return { id, calendarId, taskId };
     },
-    onSuccess: ({ calendarId }) => {
+    onSuccess: ({ calendarId, taskId }) => {
       qc.invalidateQueries({ queryKey: ["calendar_publications", calendarId] });
+      // Lets the "Enviar para o Cronograma" shortcut in the Gestão task dialog notice the
+      // task is unscheduled again instead of still offering a "Ver no Cronograma" link to
+      // the entry that was just deleted here.
+      if (taskId) qc.invalidateQueries({ queryKey: ["task_calendar_entry", taskId] });
     },
   });
 }
