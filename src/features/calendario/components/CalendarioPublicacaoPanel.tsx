@@ -1112,7 +1112,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                     // Instagram's feed post ratio (1080x1350 = 4:5), mirrors the public preview's Feed.
                     <button key={p.id} type="button" onClick={() => setSelectedId(p.id)} className="group relative aspect-[4/5] overflow-hidden rounded-lg bg-muted">
                       {thumb ? (
-                        <img src={thumb} alt="" className="h-full w-full object-cover transition-opacity group-hover:opacity-90" />
+                        <img src={thumb} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover transition-opacity group-hover:opacity-90" />
                       ) : (
                         <span className="flex h-full w-full items-center justify-center"><ImageIcon className="h-6 w-6 text-muted-foreground/40" /></span>
                       )}
@@ -1140,7 +1140,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                         className="flex w-56 items-center gap-2 rounded-lg border border-border/30 bg-card px-2 py-1.5 text-left hover:bg-muted/40"
                       >
                         {thumbnailFor(p.task_id) ? (
-                          <img src={thumbnailFor(p.task_id)!} alt="" className="h-8 w-8 shrink-0 rounded-md object-cover" />
+                          <img src={thumbnailFor(p.task_id)!} alt="" loading="lazy" decoding="async" className="h-8 w-8 shrink-0 rounded-md object-cover" />
                         ) : (
                           <span className="h-8 w-8 shrink-0 rounded-md bg-muted" />
                         )}
@@ -1288,7 +1288,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                   className="flex w-full items-center gap-3 rounded-lg border border-border/50 px-3 py-2 text-left text-sm hover:bg-accent/50"
                 >
                   {thumb ? (
-                    <img src={thumb} alt="" className="h-9 w-9 shrink-0 rounded-md object-cover" />
+                    <img src={thumb} alt="" loading="lazy" decoding="async" className="h-9 w-9 shrink-0 rounded-md object-cover" />
                   ) : (
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
                       <ContentIcon className="h-4 w-4" />
@@ -1326,7 +1326,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                   className="flex w-full items-center gap-3 rounded-lg border border-border/50 px-3 py-2 text-left text-sm hover:bg-accent/50"
                 >
                   {thumb ? (
-                    <img src={thumb} alt="" className="h-9 w-9 shrink-0 rounded-md object-cover" />
+                    <img src={thumb} alt="" loading="lazy" decoding="async" className="h-9 w-9 shrink-0 rounded-md object-cover" />
                   ) : (
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
                       <ContentIcon className="h-4 w-4" />

@@ -102,7 +102,7 @@ export function PublicationCard({ publication, images, onClick, dragHandleProps,
               style={{ transform: `translateX(-${slide * 100}%)` }}
             >
               {imgList.map((url, i) => (
-                <img key={i} src={url} alt="" className={cn("h-full w-full shrink-0", hasMultiple ? "object-contain" : "object-cover")} />
+                <img key={i} src={url} alt="" loading="lazy" decoding="async" className={cn("h-full w-full shrink-0", hasMultiple ? "object-contain" : "object-cover")} />
               ))}
             </div>
           ) : (
