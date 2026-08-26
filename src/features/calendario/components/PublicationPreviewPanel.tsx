@@ -797,9 +797,11 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
               </div>
 
               {publication.status === "alteracao_solicitada" && publication.client_feedback && (
-                <div className="space-y-1.5 rounded-xl border border-destructive bg-destructive p-3">
-                  <Label className="text-destructive-foreground">Alteração solicitada pelo cliente</Label>
-                  <p className="whitespace-pre-wrap text-sm text-destructive-foreground">{publication.client_feedback}</p>
+                <div className="space-y-1.5">
+                  <Label>Alteração solicitada pelo cliente</Label>
+                  <div className="rounded-xl border border-destructive bg-destructive p-3">
+                    <p className="whitespace-pre-wrap text-sm text-destructive-foreground">{publication.client_feedback}</p>
+                  </div>
                 </div>
               )}
 
