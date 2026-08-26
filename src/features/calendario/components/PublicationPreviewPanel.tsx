@@ -65,8 +65,6 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
   const coverFileInputRef = useRef<HTMLInputElement>(null);
   const mediaFileInputRef = useRef<HTMLInputElement>(null);
   const [caption, setCaption] = useState("");
-  const [internalNote, setInternalNote] = useState("");
-  const [clientNote, setClientNote] = useState("");
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [captionExpanded, setCaptionExpanded] = useState(false);
   const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
@@ -93,8 +91,6 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
 
   useEffect(() => {
     setCaption(publication?.caption ?? "");
-    setInternalNote(publication?.internal_note ?? "");
-    setClientNote(publication?.client_note ?? "");
     setCarouselIndex(0);
     setCaptionExpanded(false);
   }, [publication?.id]);
@@ -800,15 +796,14 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                 </Select>
               </div>
 
-              <div className="space-y-1.5">
-                <Label>Observação interna <span className="text-xs font-normal text-muted-foreground">(só a equipe vê)</span></Label>
-                <Textarea value={internalNote} rows={2} onChange={(e) => setInternalNote(e.target.value)} onBlur={() => internalNote !== (publication.internal_note ?? "") && save({ internal_note: internalNote || null })} />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Observação para o cliente</Label>
-                <Textarea value={clientNote} rows={2} onChange={(e) => setClientNote(e.target.value)} onBlur={() => clientNote !== (publication.client_note ?? "") && save({ client_note: clientNote || null })} />
-              </div>
+              {publication.status === "alteracao_solicitada" && publication.client_feedback && (
+                <div className="space-y-1.5">
+                  <Label>Alteração solicitada pelo cliente</Label>
+                  <div className="rounded-xl border border-destructive bg-destructive p-3">
+                    <p className="whitespace-pre-wrap text-sm text-destructive-foreground">{publication.client_feedback}</p>
+                  </div>
+                </div>
+              )}
 
               {(() => {
                 const unsupportedType = publication.content_type === "story" || publication.content_type === "outro";

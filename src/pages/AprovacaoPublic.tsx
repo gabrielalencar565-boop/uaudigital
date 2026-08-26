@@ -171,12 +171,12 @@ function PublicListCard({ publication: p, idx, onClick, onApprove }: { publicati
               }}
             >
               {images.map((url, i) => (
-                <img key={i} src={url} alt="" draggable={false} className="h-full w-full shrink-0 object-contain" />
+                <img key={i} src={url} alt="" draggable={false} loading="lazy" decoding="async" className="h-full w-full shrink-0 object-contain" />
               ))}
             </div>
           </div>
         ) : images[0] ? (
-          <img src={images[0]} alt="" className="h-auto max-h-72 w-auto max-w-full rounded-2xl object-contain" />
+          <img src={images[0]} alt="" loading="lazy" decoding="async" className="h-auto max-h-72 w-auto max-w-full rounded-2xl object-contain" />
         ) : (
           <div className="flex aspect-square w-full items-center justify-center rounded-2xl bg-muted">
             <ContentIcon className="h-8 w-8 text-muted-foreground" />
@@ -517,7 +517,7 @@ export default function AprovacaoPublic() {
               return (
                 // Instagram's feed post ratio (1080x1350 = 4:5), not the profile grid's square crop.
                 <button key={p.id} type="button" onClick={() => setSelectedId(p.id)} className="group relative aspect-[4/5] overflow-hidden rounded-lg bg-muted">
-                  {firstImageUrl(p) ? <img src={firstImageUrl(p)!} alt="" className="h-full w-full object-cover" /> : <ImageIcon className="m-auto h-6 w-6 text-muted-foreground" />}
+                  {firstImageUrl(p) ? <img src={firstImageUrl(p)!} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" /> : <ImageIcon className="m-auto h-6 w-6 text-muted-foreground" />}
                   <ContentIcon className="absolute left-1.5 top-1.5 h-4 w-4 text-white drop-shadow" />
                 </button>
               );
