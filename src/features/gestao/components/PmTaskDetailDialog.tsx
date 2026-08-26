@@ -2370,7 +2370,7 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
         )}
 
         {childTasks.length === 0 && (
-          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-black/10 p-3 dark:border-white/10">
+          <div className="inline-flex w-fit flex-wrap items-center gap-2 rounded-xl border border-black/10 p-1 dark:border-white/10">
             <SendToCronogramaButton task={task} isLeaf onOpenInCalendario={onOpenInCalendario} />
           </div>
         )}
