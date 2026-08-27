@@ -38,6 +38,21 @@ interface Props {
   onFocusHandled?: () => void;
 }
 
+// Grid/list/feed cards only ever show a post's cover at a few hundred px — the originals
+// are phone-camera photos (often several MB each), so with 20-100 posts per cycle that's
+// tens to hundreds of MB decoded just for thumbnails. Route Supabase Storage-hosted images
+// through its on-the-fly image transform instead (confirmed enabled on this project). Drive
+// proxy URLs and anything else that doesn't match the storage path are left untouched — the
+// full-resolution PublicationPreviewPanel reads attachments separately and is never touched
+// by this, since it's applied only at the point each grid helper reads out a `.url`.
+const STORAGE_OBJECT_PATH = "/storage/v1/object/public/";
+function toGridThumbUrl(url: string): string {
+  const idx = url.indexOf(STORAGE_OBJECT_PATH);
+  if (idx === -1) return url;
+  const rewritten = url.slice(0, idx) + "/storage/v1/render/image/public/" + url.slice(idx + STORAGE_OBJECT_PATH.length);
+  return `${rewritten}${rewritten.includes("?") ? "&" : "?"}width=480&quality=70`;
+}
+
 function anchorForDate(d: Date) {
   return d.getDate() >= 28 ? new Date(d.getFullYear(), d.getMonth() + 1, 1) : new Date(d.getFullYear(), d.getMonth(), 1);
 }
@@ -450,7 +465,10 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
     const external = coverAttachmentsQ.data?.get(coverId);
     return external ? [external, ...list] : list;
   };
-  const thumbnailFor = (taskId: string) => mediaFor(taskId).find((m) => m.type?.startsWith("image/"))?.url ?? null;
+  const thumbnailFor = (taskId: string) => {
+    const url = mediaFor(taskId).find((m) => m.type?.startsWith("image/"))?.url;
+    return url ? toGridThumbUrl(url) : null;
+  };
 
   // A "Capa" holding-task (see useCoverCandidates) whose image is currently pinned as
   // some *other* publication's cover is "in use" — hide it from "Publicações sem data"
@@ -472,7 +490,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
   // image as a static thumbnail, even if the task has other image attachments
   // (e.g. an auto-generated video poster alongside a manually chosen cover).
   const imagesFor = (p: CalendarPublication) => {
-    const imgs = mediaFor(p.task_id).filter((m) => m.type?.startsWith("image/")).map((m) => m.url);
+    const imgs = mediaFor(p.task_id).filter((m) => m.type?.startsWith("image/")).map((m) => toGridThumbUrl(m.url));
     return p.content_type === "carrossel" ? imgs : imgs.slice(0, 1);
   };
 
@@ -1108,7 +1126,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                 {feedItems.map((p) => {
                   const media = mediaFor(p.task_id);
                   const images = media.filter((m) => m.type?.startsWith("image/"));
-                  const thumb = images[0]?.url ?? null;
+                  const thumb = images[0] ? toGridThumbUrl(images[0].url) : null;
                   const isCarousel = p.content_type === "carrossel" && images.length > 1;
                   const isVideoish = p.content_type === "reel";
                   return (
