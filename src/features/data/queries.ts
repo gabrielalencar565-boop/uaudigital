@@ -547,16 +547,23 @@ export function useDeleteTask() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: { taskId: string; userId: string }) => {
-      // Soft delete: apenas marca deleted_at
-      const { error, count } = await supabase
+      // Soft delete: apenas marca deleted_at. Sem o .select(), um UPDATE bloqueado
+      // silenciosamente pela RLS (ex.: usuário não é admin/planner nem o responsável
+      // pela tarefa) retorna sucesso com zero linhas afetadas — sem isso, o toast
+      // mentia "movida para lixeira" e a tarefa voltava assim que a query revalidasse.
+      const { data, error } = await supabase
         .from("tasks")
-        .update({ 
+        .update({
           deleted_at: new Date().toISOString(),
           deleted_by: input.userId
         })
         .eq("id", input.taskId)
-        .is("deleted_at", null);
+        .is("deleted_at", null)
+        .select("id");
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error("Você não tem permissão para excluir esta tarefa.");
+      }
       return input;
     },
     onMutate: async (input) => {
