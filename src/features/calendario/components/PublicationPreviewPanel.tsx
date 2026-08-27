@@ -17,7 +17,8 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { CONTENT_TYPE_LABELS, PUBLICATION_STATUS_LABELS, type CalendarPublication, type PublicationContentType, type PublicationStatus } from "../calendar-types";
 import { useCoverCandidates, useRemoveCalendarPublication, useReorderCarouselImages, useUpdateCalendarPublication } from "../hooks/use-calendar-data";
-import { useUploadPmAttachment } from "@/features/gestao/hooks/use-pm-data";
+import { useUploadPmAttachment, useUploadPmAttachmentResumable } from "@/features/gestao/hooks/use-pm-data";
+import { downscaleVideoWithFallback, renderVideoPoster } from "@/features/gestao/components/PmAttachmentsSection";
 import { useInstagramConnections, usePublishToInstagram } from "../hooks/use-instagram";
 import { PmImageViewer } from "@/features/gestao/components/PmImageViewer";
 
@@ -57,6 +58,8 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
   const updatePublication = useUpdateCalendarPublication();
   const removePublication = useRemoveCalendarPublication();
   const uploadCover = useUploadPmAttachment();
+  const uploadVideoResumable = useUploadPmAttachmentResumable();
+  const [videoUpload, setVideoUpload] = useState<{ phase: "compressing" | "uploading"; pct: number } | null>(null);
   const reorderCarousel = useReorderCarouselImages();
   const coverCandidatesQ = useCoverCandidates(publication?.task_id ?? null);
   const igConnectionsQ = useInstagramConnections(clientId ?? undefined);
@@ -129,21 +132,43 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
     );
   };
 
-  // Adds the very first piece of content when the publication has none yet. Video isn't
-  // handled here on purpose — PmAttachmentsSection.tsx's upload path does client-side
-  // compression + a resumable direct-to-Drive upload for video (needed since a raw 4K
-  // export once broke WhatsApp in-app playback, see that file's history); duplicating that
-  // pipeline here isn't worth it just for this empty-state shortcut, so video still goes
-  // through "Abrir tarefa original" where the full pipeline already lives.
-  const uploadAsMedia = (file: File) => {
+  // Adds the very first piece of content when the publication has none yet. Video reuses
+  // PmAttachmentsSection's own compression + poster pipeline (exported from there) instead of
+  // duplicating it — same client-side downscale that fixed the old WhatsApp in-app playback
+  // failure on raw 4K exports.
+  const uploadAsMedia = async (file: File) => {
     if (file.type.startsWith("image/")) {
       uploadCover.mutate({ task_id: publication.task_id, file, category: "final" });
       return;
     }
-    // Covers both a properly-typed video and any file whose type the browser couldn't sniff
-    // (some .mov exports report an empty file.type) — either way this dropzone can't take it,
-    // so always say so instead of silently doing nothing.
-    toast.error('Pra vídeo, envie pela tarefa original ("Abrir tarefa original") — aqui é só pra imagem por enquanto.');
+    // Anything not sniffed as image is treated as a video attempt — covers both a
+    // properly-typed video and files whose type the browser couldn't sniff (some .mov
+    // exports report an empty file.type).
+    setVideoUpload({ phase: "compressing", pct: 0 });
+    try {
+      const compressed = await downscaleVideoWithFallback(file, (pct) => setVideoUpload({ phase: "compressing", pct }));
+      setVideoUpload({ phase: "uploading", pct: 0 });
+      await uploadVideoResumable.mutateAsync({
+        task_id: publication.task_id,
+        file: compressed,
+        category: "final",
+        onProgress: (pct) => setVideoUpload({ phase: "uploading", pct }),
+      });
+      toast.success("Vídeo enviado!");
+      try {
+        const posterBlob = await renderVideoPoster(compressed);
+        const posterName = `${file.name.replace(/\.[^.]+$/, "")}-poster.jpg`;
+        const posterFile = new File([posterBlob], posterName, { type: "image/jpeg" });
+        await uploadCover.mutateAsync({ task_id: publication.task_id, file: posterFile, category: "final" });
+      } catch (posterErr) {
+        console.error("[video-poster] falha ao gerar miniatura", posterErr);
+        toast.warning('Não consegui gerar uma miniatura automática — defina uma capa manualmente.');
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao enviar vídeo");
+    } finally {
+      setVideoUpload(null);
+    }
   };
 
   const deleteCoverImage = async (imgId: string) => {
@@ -232,6 +257,13 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
   const LIMIT = 150;
   const isLong = plainCaption.length > LIMIT;
 
+  const mediaUploadBusy = uploadCover.isPending || !!videoUpload;
+  const mediaUploadLabel = videoUpload
+    ? `${videoUpload.phase === "compressing" ? "Otimizando vídeo" : "Enviando vídeo"}... ${videoUpload.pct}%`
+    : uploadCover.isPending
+      ? "Enviando..."
+      : null;
+
   return (
     <>
       <Dialog open onOpenChange={(v) => !v && onClose()}>
@@ -303,14 +335,14 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                         if (file) uploadAsMedia(file);
                       }}
                       onClick={() => mediaFileInputRef.current?.click()}
-                      disabled={uploadCover.isPending}
+                      disabled={mediaUploadBusy}
                       className={cn(
                         "flex aspect-[9/16] max-h-[68vh] w-full flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-border bg-muted text-xs text-muted-foreground transition hover:border-primary hover:text-primary disabled:opacity-60",
                         mediaDragActive && "border-primary bg-primary/5",
                       )}
                     >
-                      {uploadCover.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : <ImagePlus className="h-5 w-5" />}
-                      {uploadCover.isPending ? "Enviando..." : "Sem mídia — clique ou arraste"}
+                      {mediaUploadBusy ? <Loader2 className="h-5 w-5 animate-spin" /> : <ImagePlus className="h-5 w-5" />}
+                      {mediaUploadLabel ?? "Sem mídia — clique ou arraste"}
                     </button>
                   )
                 ) : hasVideo ? (
@@ -376,14 +408,14 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                       if (file) uploadAsMedia(file);
                     }}
                     onClick={() => mediaFileInputRef.current?.click()}
-                    disabled={uploadCover.isPending}
+                    disabled={mediaUploadBusy}
                     className={cn(
                       "flex h-40 w-full flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-border bg-muted text-xs text-muted-foreground transition hover:border-primary hover:text-primary disabled:opacity-60",
                       mediaDragActive && "border-primary bg-primary/5",
                     )}
                   >
-                    {uploadCover.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : <ImagePlus className="h-5 w-5" />}
-                    {uploadCover.isPending ? "Enviando..." : "Sem mídia anexada — clique ou arraste pra adicionar"}
+                    {mediaUploadBusy ? <Loader2 className="h-5 w-5 animate-spin" /> : <ImagePlus className="h-5 w-5" />}
+                    {mediaUploadLabel ?? "Sem mídia anexada — clique ou arraste pra adicionar"}
                   </button>
                 )}
                 <input
