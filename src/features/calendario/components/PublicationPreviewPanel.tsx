@@ -172,9 +172,16 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
   };
 
   const deleteCoverImage = async (imgId: string) => {
+    // RLS only lets the uploader or an admin delete a given attachment — a delete blocked by
+    // that returns success with no row back (data stays null) rather than an error, so check
+    // for that explicitly or this silently no-ops while still claiming success.
     const { data, error } = await sb.from("pm_attachments").delete().eq("id", imgId).select("drive_file_id").maybeSingle();
     if (error) {
       toast.error("Erro ao excluir imagem");
+      return;
+    }
+    if (!data) {
+      toast.error("Você não tem permissão para excluir esta imagem — só quem enviou ou um admin pode.");
       return;
     }
     if (data?.drive_file_id) {

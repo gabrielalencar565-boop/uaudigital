@@ -559,8 +559,16 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
       // first and let the UI update immediately. Storage/Drive cleanup are best-effort side
       // effects (an external API round-trip each) that don't need to block that; a failure
       // here just leaves an orphaned file behind rather than making every delete wait on it.
-      const { error } = await sb.from("pm_attachments").delete().eq("id", att.id);
+      //
+      // .select() matters here: the RLS policy only allows the uploader or an admin to
+      // delete a given attachment, and a DELETE blocked by RLS returns success with zero
+      // rows affected rather than an error — without checking that, this would report
+      // "Anexo excluído!" and refetch the exact same row right back.
+      const { data, error } = await sb.from("pm_attachments").delete().eq("id", att.id).select("id");
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error("Você não tem permissão para excluir este anexo — só quem enviou ou um admin pode.");
+      }
       queryClient.invalidateQueries({ queryKey: ["pm_attachments"] });
       queryClient.invalidateQueries({ queryKey: ["pm_attachments_for_calendar"] });
       queryClient.invalidateQueries({ queryKey: ["cover_candidates"] });
