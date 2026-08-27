@@ -196,12 +196,41 @@ async function downscaleVideo(file: File, maxEdge: number, onProgress?: (pct: nu
   }
 }
 
+/** Reads a video's pixel dimensions via the browser's own (hardware-accelerated) decoder —
+ * no ffmpeg/WASM involved, resolves in milliseconds. Returns null if the browser can't read
+ * metadata for this file at all (e.g. a codec it doesn't support), so the caller can fall
+ * back to attempting compression anyway rather than assuming anything about the source. */
+function probeVideoDimensions(file: File): Promise<{ width: number; height: number } | null> {
+  return new Promise((resolve) => {
+    const video = document.createElement("video");
+    video.preload = "metadata";
+    const url = URL.createObjectURL(file);
+    const finish = (result: { width: number; height: number } | null) => {
+      URL.revokeObjectURL(url);
+      resolve(result);
+    };
+    video.onloadedmetadata = () => finish(video.videoWidth && video.videoHeight ? { width: video.videoWidth, height: video.videoHeight } : null);
+    video.onerror = () => finish(null);
+    video.src = url;
+  });
+}
+
 /** Tries downscaleVideo at MAX_VIDEO_LONG_EDGE, then at progressively smaller caps in
  * FALLBACK_VIDEO_LONG_EDGES if it throws — a 4K source that OOMs the WASM heap at 1920 will
  * often succeed at 1280 or 854, since fewer/smaller frames need to be held at once. Only
  * throws (letting the caller fall back to the uncompressed original) once every cap has
  * failed. */
 export async function downscaleVideoWithFallback(file: File, onProgress?: (pct: number) => void): Promise<File> {
+  // The resolution cap is what actually fixed the old WhatsApp in-app playback failure (see
+  // downscaleVideo's comment) — a source already inside it has nothing left for the slow
+  // WASM re-encode to fix, so skip straight to upload instead of making every attachment,
+  // however small, pay for a full decode+encode pass.
+  const dims = await probeVideoDimensions(file);
+  if (dims && Math.max(dims.width, dims.height) <= MAX_VIDEO_LONG_EDGE) {
+    onProgress?.(100);
+    return file;
+  }
+
   const caps = [MAX_VIDEO_LONG_EDGE, ...FALLBACK_VIDEO_LONG_EDGES];
   let lastErr: unknown;
   for (const cap of caps) {
