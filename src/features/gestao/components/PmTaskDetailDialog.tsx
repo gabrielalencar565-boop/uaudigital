@@ -94,7 +94,12 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
   const mergePdfTasks = useMergePdfTasks();
   const queryClientPrefetch = useQueryClient();
 
-  const tasksQ = usePmTasks();
+  // Only fetches once this specific dialog is actually open — several callers keep this
+  // component mounted with open=false when nothing is selected (e.g. the sidebar's
+  // notification dialog, present on every page), so without this every page load and every
+  // task mutation anywhere was refetching the entire unpaginated pm_tasks table for a dialog
+  // nobody was even looking at.
+  const tasksQ = usePmTasks(open);
   const resolvedRootTask = useMemo(() => {
     if (!task) return null;
     return tasksQ.data?.find(t => t.id === task.id) ?? task;

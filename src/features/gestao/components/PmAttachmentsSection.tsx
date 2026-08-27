@@ -555,17 +555,25 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
 
   const handleDeleteAttachment = async (att: PmAttachment) => {
     try {
-      const { error: storageErr } = await supabase.storage.from("pm-attachments").remove([att.storage_path]);
-      if (storageErr) console.warn("Storage delete error:", storageErr);
-      if (att.drive_file_id) {
-        const { error: driveErr } = await supabase.functions.invoke("drive-delete", { body: { drive_file_id: att.drive_file_id, attachment_id: att.id } });
-        if (driveErr) console.warn("Drive delete error:", driveErr);
-      }
-      await sb.from("pm_attachments").delete().eq("id", att.id);
+      // The DB row is what actually makes the attachment disappear from the UI — delete it
+      // first and let the UI update immediately. Storage/Drive cleanup are best-effort side
+      // effects (an external API round-trip each) that don't need to block that; a failure
+      // here just leaves an orphaned file behind rather than making every delete wait on it.
+      const { error } = await sb.from("pm_attachments").delete().eq("id", att.id);
+      if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ["pm_attachments"] });
       queryClient.invalidateQueries({ queryKey: ["pm_attachments_for_calendar"] });
       queryClient.invalidateQueries({ queryKey: ["cover_candidates"] });
       toast.success("Anexo excluído!");
+
+      supabase.storage.from("pm-attachments").remove([att.storage_path]).then(({ error: storageErr }) => {
+        if (storageErr) console.warn("Storage delete error:", storageErr);
+      });
+      if (att.drive_file_id) {
+        supabase.functions.invoke("drive-delete", { body: { drive_file_id: att.drive_file_id, attachment_id: att.id } }).then(({ error: driveErr }) => {
+          if (driveErr) console.warn("Drive delete error:", driveErr);
+        });
+      }
     } catch (err: any) {
       toast.error(err?.message ?? "Erro ao excluir anexo");
     }
@@ -619,9 +627,14 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
     setRenamingId(null);
   };
 
-  const handleDownload = async (url: string, fileName: string) => {
-    try {
+  const handleDownload = (url: string, fileName: string) => {
+    // fetch+blob (needed so the browser respects `download` with the right file name for a
+    // cross-origin URL) gives zero visual feedback until the whole file is in memory — for a
+    // large video that reads as "nothing happened" for several seconds. toast.promise covers
+    // that gap instead of leaving the click looking like it did nothing.
+    const download = async () => {
       const res = await fetch(url);
+      if (!res.ok) throw new Error("Erro ao baixar arquivo");
       const blob = await res.blob();
       const blobUrl = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -631,9 +644,12 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(blobUrl);
-    } catch {
-      toast.error("Erro ao baixar arquivo");
-    }
+    };
+    toast.promise(download(), {
+      loading: `Baixando ${fileName}...`,
+      success: "Download concluído!",
+      error: "Erro ao baixar arquivo",
+    });
   };
 
   const handleDownloadAll = async () => {

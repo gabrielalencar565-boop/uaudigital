@@ -12,10 +12,17 @@ const sb = supabase as any;
 // necessários ao abrir o detalhe da tarefa — ali usamos queries específicas.
 const PM_TASK_LIST_COLUMNS = "id,project_id,client_id,title,priority,status_global,stage_current,start_date,due_date,created_by,assignee_id,watchers,tags,created_at,updated_at,parent_task_id,cover_url,is_extra_demand,is_draft,post_type,posting_date,posting_time,deleted_at,deleted_by,origin_task_id,periodic_stage_key";
 
-/** Fetch only root tasks (no parent) — SELECT * (description usada em widgets) */
-export function usePmTasks() {
+/** Fetch only root tasks (no parent) — SELECT * (description usada em widgets).
+ * `enabled` (default true) lets a caller that only needs this to resolve a single task by id
+ * — e.g. a task detail dialog kept mounted with `open=false` — skip the fetch entirely until
+ * it's actually needed. This is the single heaviest query in the app (every root task, every
+ * client, unpaginated, `description` alone averaging ~2KB and up to 557KB on some rows), and
+ * it was previously running on every page load via components that mount it unconditionally
+ * regardless of whether anything was actually open. */
+export function usePmTasks(enabled = true) {
   return useQuery<PmTask[]>({
     queryKey: ["pm_tasks"],
+    enabled,
     queryFn: async () => {
       const { data, error } = await sb
         .from("pm_tasks")
