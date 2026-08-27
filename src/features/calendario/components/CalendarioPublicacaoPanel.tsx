@@ -375,8 +375,8 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
   // notReadyPublications acima, que olha o ciclo inteiro pra "Concluir PDF"). Segue o fluxo:
   // só é possível agendar depois que o PDF daquela publicação já foi concluído.
   const notReadyToSchedule = useMemo(
-    () => publishablePublications.filter((p) => missingFieldsFor(p).length > 0),
-    [publishablePublications],
+    () => publishablePublications.filter((p) => !isCapaTask(p.task_id) && missingFieldsFor(p).length > 0),
+    [publishablePublications, capaTaskIdsQ.data],
   );
   const schedulablePublications = useMemo(
     () => publishablePublications.filter((p) => !p.instagram_scheduled && p.instagram_status !== "published" && missingFieldsFor(p).length === 0 && isPdfConcluded(p)),
