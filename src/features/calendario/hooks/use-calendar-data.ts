@@ -60,17 +60,22 @@ export function useTaskAttachmentsMap(taskIds: string[]) {
       // (category "material") are internal working files, never client-facing.
       const { data, error } = await sb
         .from("pm_attachments")
-        .select("id, task_id, public_url, file_type, order_index")
+        .select("id, task_id, public_url, thumbnail_url, file_type, order_index")
         .in("task_id", taskIds)
         .eq("category", "final")
         .order("order_index", { ascending: true })
         .order("created_at", { ascending: true });
       if (error) throw error;
-      const map = new Map<string, { id: string; url: string; type: string | null }[]>();
-      for (const row of (data ?? []) as { id: string; task_id: string; public_url: string | null; file_type: string | null }[]) {
+      const map = new Map<string, { id: string; url: string; thumbUrl: string; type: string | null }[]>();
+      for (const row of (data ?? []) as { id: string; task_id: string; public_url: string | null; thumbnail_url: string | null; file_type: string | null }[]) {
         if (!row.public_url) continue;
         const prev = map.get(row.task_id) ?? [];
-        prev.push({ id: row.id, url: row.public_url, type: row.file_type });
+        // url stays full-resolution — PublicationPreviewPanel reads this same map directly
+        // for the actual editing/review view. thumbUrl (generated client-side at upload
+        // time, see uploadImageThumbnail in use-pm-data.ts) is a small Supabase
+        // Storage-hosted JPEG meant only for the grid/list/feed cards below; older rows
+        // uploaded before that existed just fall back to the full original there too.
+        prev.push({ id: row.id, url: row.public_url, thumbUrl: row.thumbnail_url ?? row.public_url, type: row.file_type });
         map.set(row.task_id, prev);
       }
       return map;
@@ -126,12 +131,12 @@ export function useCoverAttachmentsById(ids: string[]) {
     enabled: ids.length > 0,
     queryKey: ["cover_attachments_by_id", ids],
     queryFn: async () => {
-      const { data, error } = await sb.from("pm_attachments").select("id, public_url, file_type").in("id", ids);
+      const { data, error } = await sb.from("pm_attachments").select("id, public_url, thumbnail_url, file_type").in("id", ids);
       if (error) throw error;
-      const map = new Map<string, { id: string; url: string; type: string | null }>();
-      for (const row of (data ?? []) as { id: string; public_url: string | null; file_type: string | null }[]) {
+      const map = new Map<string, { id: string; url: string; thumbUrl: string; type: string | null }>();
+      for (const row of (data ?? []) as { id: string; public_url: string | null; thumbnail_url: string | null; file_type: string | null }[]) {
         if (!row.public_url) continue;
-        map.set(row.id, { id: row.id, url: row.public_url, type: row.file_type });
+        map.set(row.id, { id: row.id, url: row.public_url, thumbUrl: row.thumbnail_url ?? row.public_url, type: row.file_type });
       }
       return map;
     },

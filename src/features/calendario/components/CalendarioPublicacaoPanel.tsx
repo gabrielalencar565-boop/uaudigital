@@ -461,7 +461,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
   // of drag/scroll jank on larger Cronogramas. mediaFor/thumbnailFor/imagesFor below keep
   // the exact same call signatures — this only changes recompute-per-call into a lookup.
   const mediaByTask = useMemo(() => {
-    const map = new Map<string, { id: string; url: string; type: string | null }[]>();
+    const map = new Map<string, { id: string; url: string; thumbUrl: string; type: string | null }[]>();
     for (const p of publications) {
       const list = attachmentsQ.data?.get(p.task_id) ?? [];
       const coverId = p.cover_attachment_id;
@@ -487,7 +487,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
   const thumbnailByTask = useMemo(() => {
     const map = new Map<string, string | null>();
     for (const p of publications) {
-      const url = (mediaByTask.get(p.task_id) ?? []).find((m) => m.type?.startsWith("image/"))?.url;
+      const url = (mediaByTask.get(p.task_id) ?? []).find((m) => m.type?.startsWith("image/"))?.thumbUrl;
       map.set(p.task_id, url ? toGridThumbUrl(url) : null);
     }
     return map;
@@ -516,7 +516,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
   const imagesByPub = useMemo(() => {
     const map = new Map<string, string[]>();
     for (const p of publications) {
-      const imgs = (mediaByTask.get(p.task_id) ?? []).filter((m) => m.type?.startsWith("image/")).map((m) => toGridThumbUrl(m.url));
+      const imgs = (mediaByTask.get(p.task_id) ?? []).filter((m) => m.type?.startsWith("image/")).map((m) => toGridThumbUrl(m.thumbUrl));
       map.set(p.id, p.content_type === "carrossel" ? imgs : imgs.slice(0, 1));
     }
     return map;
@@ -1155,7 +1155,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                 {feedItems.map((p) => {
                   const media = mediaFor(p.task_id);
                   const images = media.filter((m) => m.type?.startsWith("image/"));
-                  const thumb = images[0] ? toGridThumbUrl(images[0].url) : null;
+                  const thumb = images[0] ? toGridThumbUrl(images[0].thumbUrl) : null;
                   const isCarousel = p.content_type === "carrossel" && images.length > 1;
                   const isVideoish = p.content_type === "reel";
                   return (

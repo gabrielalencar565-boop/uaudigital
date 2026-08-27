@@ -650,6 +650,44 @@ export function useAddPmComment() {
   });
 }
 
+// Cronograma cards only ever show a cover at a few hundred px, but a directly-uploaded
+// photo can be a multi-MB phone-camera original — attachments are stored on Google Drive
+// (see useUploadPmAttachment* below) and served through drive-file-proxy, which has no
+// room to resize on the fly (a prior attempt crashed the edge runtime decoding a large
+// real photo). So instead this generates a small JPEG client-side at upload time (same
+// canvas-downscale approach already used for video posters) and uploads *that* straight to
+// Supabase Storage — cheap to serve, no proxy, no server-side decode. Returns null (no
+// thumbnail_url written) rather than throwing on any failure — a missing thumbnail just
+// means that card falls back to the full-size image, never a broken upload.
+async function uploadImageThumbnail(file: File, taskId: string): Promise<string | null> {
+  if (!file.type.startsWith("image/")) return null;
+  try {
+    const bitmap = await createImageBitmap(file);
+    const targetWidth = 480;
+    let blob: Blob = file;
+    if (bitmap.width > targetWidth) {
+      const scale = targetWidth / bitmap.width;
+      const canvas = document.createElement("canvas");
+      canvas.width = targetWidth;
+      canvas.height = Math.round(bitmap.height * scale);
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      const encoded = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.75));
+      if (encoded) blob = encoded;
+    }
+    bitmap.close();
+
+    const path = `thumbnails/${taskId}/${crypto.randomUUID()}.jpg`;
+    const { error: uploadErr } = await sb.storage.from("pm-attachments").upload(path, blob, { contentType: "image/jpeg" });
+    if (uploadErr) throw uploadErr;
+    const { data } = sb.storage.from("pm-attachments").getPublicUrl(path);
+    return data.publicUrl;
+  } catch (e) {
+    console.error("[thumbnail] falha ao gerar/enviar miniatura:", e);
+    return null;
+  }
+}
+
 export function useUploadPmAttachment() {
   const qc = useQueryClient();
   return useMutation({
@@ -665,6 +703,8 @@ export function useUploadPmAttachment() {
       });
       if (driveErr) throw driveErr;
 
+      const thumbnailUrl = await uploadImageThumbnail(file, task_id);
+
       const { data, error } = await sb.from("pm_attachments").insert({
         task_id,
         uploaded_by: user.id,
@@ -674,6 +714,7 @@ export function useUploadPmAttachment() {
         storage_provider: "drive",
         drive_file_id: driveData.drive_file_id,
         public_url: driveData.public_url,
+        thumbnail_url: thumbnailUrl,
         access_token: driveData.access_token,
         category: category ?? "material",
       }).select().single();
@@ -751,6 +792,8 @@ export function useUploadPmAttachmentResumable() {
         xhr.send(file);
       });
 
+      const thumbnailUrl = await uploadImageThumbnail(file, task_id);
+
       const { data, error } = await sb.from("pm_attachments").insert({
         task_id,
         uploaded_by: user.id,
@@ -760,6 +803,7 @@ export function useUploadPmAttachmentResumable() {
         storage_provider: "drive",
         drive_file_id: driveData.drive_file_id,
         public_url: driveData.public_url,
+        thumbnail_url: thumbnailUrl,
         access_token: driveData.access_token,
         category: category ?? "material",
       }).select().single();
