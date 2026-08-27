@@ -623,11 +623,20 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
         await sb.from("pm_tasks").update({ status_global: "concluido" }).in("id", childIds);
       }
 
-      // Clone children sequentially to avoid overwhelming React Query
+      // Clone children via a single batched insert (one network round-trip instead of N
+      // sequential ones) while still preserving creation order: childTasks is already
+      // sorted created_at ascending (usePmChildTasks), and downstream consumers re-sort
+      // subtasks the same way, so each clone gets an explicit created_at spaced 1ms apart
+      // in that same order instead of letting the DB assign a same-statement, order-losing now().
       const { data: { user } } = await supabase.auth.getUser();
-      const childIdMap: Record<string, string> = {}; // old id → new id
-      for (const child of childTasks) {
-        const { data: newChild } = await sb.from("pm_tasks").insert({
+      const baseTime = Date.now();
+      // Each clone gets a distinct, explicit created_at (spaced 1ms apart, in original
+      // order) — this both preserves display order and, since RETURNING on a multi-row
+      // INSERT isn't guaranteed to echo VALUES order, doubles as the correlation key back
+      // to its source child (safer than trusting positional order for this remap).
+      const stampByOldId = new Map(childTasks.map((child, i) => [child.id, new Date(baseTime + i).toISOString()]));
+      const { data: newChildRows, error: cloneChildrenError } = await sb.from("pm_tasks").insert(
+        childTasks.map((child) => ({
           client_id: child.client_id,
           title: child.title,
           description: child.description ?? null,
@@ -640,8 +649,16 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
           status_global: "backlog",
           post_type: inferPmPostType(child, fallbackPostType) ?? null,
           created_by: user?.id,
-        }).select("id").single();
-        if (newChild) childIdMap[child.id] = newChild.id;
+          created_at: stampByOldId.get(child.id),
+        }))
+      ).select("id, created_at");
+      if (cloneChildrenError) throw cloneChildrenError;
+      const newIdByStamp = new Map((newChildRows ?? []).map((row: any) => [new Date(row.created_at).toISOString(), row.id]));
+      const childIdMap: Record<string, string> = {}; // old id → new id
+      for (const child of childTasks) {
+        const stamp = stampByOldId.get(child.id)!;
+        const newId = newIdByStamp.get(stamp) as string | undefined;
+        if (newId) childIdMap[child.id] = newId;
       }
 
       // Copy attachments AND comments in background (fire-and-forget to avoid blocking UI)
