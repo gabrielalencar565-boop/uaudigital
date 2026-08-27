@@ -54,7 +54,7 @@ async function renderPdfThumbnail(url: string, targetWidth = 260): Promise<strin
 }
 
 /** Extracts an early frame from a local video file as a small JPEG blob, for use as a poster thumbnail. */
-async function renderVideoPoster(file: File, targetWidth = 260): Promise<Blob> {
+export async function renderVideoPoster(file: File, targetWidth = 260): Promise<Blob> {
   const url = URL.createObjectURL(file);
   try {
     const video = document.createElement("video");
@@ -201,7 +201,7 @@ async function downscaleVideo(file: File, maxEdge: number, onProgress?: (pct: nu
  * often succeed at 1280 or 854, since fewer/smaller frames need to be held at once. Only
  * throws (letting the caller fall back to the uncompressed original) once every cap has
  * failed. */
-async function downscaleVideoWithFallback(file: File, onProgress?: (pct: number) => void): Promise<File> {
+export async function downscaleVideoWithFallback(file: File, onProgress?: (pct: number) => void): Promise<File> {
   const caps = [MAX_VIDEO_LONG_EDGE, ...FALLBACK_VIDEO_LONG_EDGES];
   let lastErr: unknown;
   for (const cap of caps) {
