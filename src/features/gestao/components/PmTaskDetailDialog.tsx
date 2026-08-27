@@ -28,7 +28,7 @@ import {
   useUpdatePmTask, useCreatePmTask, usePmTasks, usePmChildTasks,
   usePmComments, usePmAttachments, usePmSyncStageCompletion, useMergePdfTasks,
 } from "../hooks/use-pm-data";
-import { usePmTags } from "../hooks/use-pm-tags";
+import { usePmTags, useCreatePmTag } from "../hooks/use-pm-tags";
 import { useDefaultFlowWithDates, getNextStages, getFixedAssignee, getFixedWatchers, resolveAssigneeStageKey } from "./PmStageFlowConfig";
 import { PmSubtaskList } from "./PmSubtaskList";
 import { PmPlanningSubtasks } from "./PmPlanningSubtasks";
@@ -311,9 +311,18 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
           <AlertDialogCancel>Cancelar</AlertDialogCancel>
           <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={async () => {
             const { data: { user } } = await supabase.auth.getUser();
-            deleteTask.mutate({ id: currentTask.id, deleted_at: new Date().toISOString(), deleted_by: user?.id ?? null } as any);
-            toast.success("Tarefa movida para a lixeira");
-            handleClose();
+            try {
+              await deleteTask.mutateAsync({ id: currentTask.id, deleted_at: new Date().toISOString(), deleted_by: user?.id ?? null } as any);
+              toast.success("Tarefa movida para a lixeira");
+              setShowDeleteConfirm(false);
+              handleClose();
+            } catch (err: any) {
+              // Reported bug: this used to fire the success toast and close before the
+              // mutation resolved, so a failed delete (any error, any task) still told the
+              // user it worked — the task just silently stayed put. Now the dialog stays
+              // open and the real error shows, so a retry is possible.
+              toast.error(err?.message ?? "Erro ao excluir tarefa");
+            }
           }}>Excluir</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -492,6 +501,7 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
   const [newTagName, setNewTagName] = useState("");
+  const createTag = useCreatePmTag();
   const [stageChoiceOpen, setStageChoiceOpen] = useState(false);
   const [stageChoiceOptions, setStageChoiceOptions] = useState<string[]>([]);
 
@@ -1916,6 +1926,7 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
         await recalcTagPoints(task.id);
         await handleTagCorrectionResync(oldTags, newTags);
       },
+      onError: (err: any) => toast.error(err?.message ?? "Erro ao remover etiqueta"),
     });
   };
   const toggleGlobalTag = (tag: string) => {
@@ -1929,8 +1940,25 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
           await recalcTagPoints(task.id);
           await handleTagCorrectionResync(existing, newTags);
         },
+        onError: (err: any) => toast.error(err?.message ?? "Erro ao adicionar etiqueta"),
       });
     }
+  };
+  // Creating a new global tag was previously only reachable via Configurações → Pontuação
+  // (admin-only), even though pm_tags itself already allows any authenticated insert —
+  // so non-admins had no way to tag a task with anything that wasn't already on the list.
+  const createAndApplyTag = (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const paletteKeys = TAG_COLORS.map(c => c.key);
+    const colorKey = paletteKeys[Math.floor(Math.random() * paletteKeys.length)];
+    createTag.mutate({ name: trimmed, color_key: colorKey }, {
+      onSuccess: (created) => {
+        setNewTagName("");
+        toggleGlobalTag(`${created.name}:${created.color_key}`);
+      },
+      onError: (err: any) => toast.error(err?.message ?? "Erro ao criar etiqueta"),
+    });
   };
 
   return (
@@ -2169,7 +2197,19 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
                 )}
                 {globalTags.length === 0 && (
                   <div className="p-4 text-center text-xs text-muted-foreground">
-                    Nenhuma etiqueta criada. Crie em Configurações → Pontuação.
+                    Nenhuma etiqueta criada ainda.
+                  </div>
+                )}
+                {newTagName.trim() && !globalTags.some(gt => gt.name.toLowerCase() === newTagName.trim().toLowerCase()) && (
+                  <div className="p-2 border-t border-border/30">
+                    <button
+                      className="flex w-full items-center gap-2 px-2 py-1.5 rounded text-left hover:bg-accent/50 transition disabled:opacity-50"
+                      disabled={createTag.isPending}
+                      onClick={() => createAndApplyTag(newTagName)}
+                    >
+                      <Plus className="h-3 w-3 shrink-0 text-muted-foreground" />
+                      <span className="text-xs flex-1">Criar etiqueta "{newTagName.trim()}"</span>
+                    </button>
                   </div>
                 )}
               </PopoverContent>
