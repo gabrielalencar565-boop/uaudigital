@@ -196,12 +196,41 @@ async function downscaleVideo(file: File, maxEdge: number, onProgress?: (pct: nu
   }
 }
 
+/** Reads a video's pixel dimensions via the browser's own (hardware-accelerated) decoder —
+ * no ffmpeg/WASM involved, resolves in milliseconds. Returns null if the browser can't read
+ * metadata for this file at all (e.g. a codec it doesn't support), so the caller can fall
+ * back to attempting compression anyway rather than assuming anything about the source. */
+function probeVideoDimensions(file: File): Promise<{ width: number; height: number } | null> {
+  return new Promise((resolve) => {
+    const video = document.createElement("video");
+    video.preload = "metadata";
+    const url = URL.createObjectURL(file);
+    const finish = (result: { width: number; height: number } | null) => {
+      URL.revokeObjectURL(url);
+      resolve(result);
+    };
+    video.onloadedmetadata = () => finish(video.videoWidth && video.videoHeight ? { width: video.videoWidth, height: video.videoHeight } : null);
+    video.onerror = () => finish(null);
+    video.src = url;
+  });
+}
+
 /** Tries downscaleVideo at MAX_VIDEO_LONG_EDGE, then at progressively smaller caps in
  * FALLBACK_VIDEO_LONG_EDGES if it throws — a 4K source that OOMs the WASM heap at 1920 will
  * often succeed at 1280 or 854, since fewer/smaller frames need to be held at once. Only
  * throws (letting the caller fall back to the uncompressed original) once every cap has
  * failed. */
 export async function downscaleVideoWithFallback(file: File, onProgress?: (pct: number) => void): Promise<File> {
+  // The resolution cap is what actually fixed the old WhatsApp in-app playback failure (see
+  // downscaleVideo's comment) — a source already inside it has nothing left for the slow
+  // WASM re-encode to fix, so skip straight to upload instead of making every attachment,
+  // however small, pay for a full decode+encode pass.
+  const dims = await probeVideoDimensions(file);
+  if (dims && Math.max(dims.width, dims.height) <= MAX_VIDEO_LONG_EDGE) {
+    onProgress?.(100);
+    return file;
+  }
+
   const caps = [MAX_VIDEO_LONG_EDGE, ...FALLBACK_VIDEO_LONG_EDGES];
   let lastErr: unknown;
   for (const cap of caps) {
@@ -526,17 +555,25 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
 
   const handleDeleteAttachment = async (att: PmAttachment) => {
     try {
-      const { error: storageErr } = await supabase.storage.from("pm-attachments").remove([att.storage_path]);
-      if (storageErr) console.warn("Storage delete error:", storageErr);
-      if (att.drive_file_id) {
-        const { error: driveErr } = await supabase.functions.invoke("drive-delete", { body: { drive_file_id: att.drive_file_id, attachment_id: att.id } });
-        if (driveErr) console.warn("Drive delete error:", driveErr);
-      }
-      await sb.from("pm_attachments").delete().eq("id", att.id);
+      // The DB row is what actually makes the attachment disappear from the UI — delete it
+      // first and let the UI update immediately. Storage/Drive cleanup are best-effort side
+      // effects (an external API round-trip each) that don't need to block that; a failure
+      // here just leaves an orphaned file behind rather than making every delete wait on it.
+      const { error } = await sb.from("pm_attachments").delete().eq("id", att.id);
+      if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ["pm_attachments"] });
       queryClient.invalidateQueries({ queryKey: ["pm_attachments_for_calendar"] });
       queryClient.invalidateQueries({ queryKey: ["cover_candidates"] });
       toast.success("Anexo excluído!");
+
+      supabase.storage.from("pm-attachments").remove([att.storage_path]).then(({ error: storageErr }) => {
+        if (storageErr) console.warn("Storage delete error:", storageErr);
+      });
+      if (att.drive_file_id) {
+        supabase.functions.invoke("drive-delete", { body: { drive_file_id: att.drive_file_id, attachment_id: att.id } }).then(({ error: driveErr }) => {
+          if (driveErr) console.warn("Drive delete error:", driveErr);
+        });
+      }
     } catch (err: any) {
       toast.error(err?.message ?? "Erro ao excluir anexo");
     }
@@ -590,9 +627,14 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
     setRenamingId(null);
   };
 
-  const handleDownload = async (url: string, fileName: string) => {
-    try {
+  const handleDownload = (url: string, fileName: string) => {
+    // fetch+blob (needed so the browser respects `download` with the right file name for a
+    // cross-origin URL) gives zero visual feedback until the whole file is in memory — for a
+    // large video that reads as "nothing happened" for several seconds. toast.promise covers
+    // that gap instead of leaving the click looking like it did nothing.
+    const download = async () => {
       const res = await fetch(url);
+      if (!res.ok) throw new Error("Erro ao baixar arquivo");
       const blob = await res.blob();
       const blobUrl = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -602,9 +644,12 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(blobUrl);
-    } catch {
-      toast.error("Erro ao baixar arquivo");
-    }
+    };
+    toast.promise(download(), {
+      loading: `Baixando ${fileName}...`,
+      success: "Download concluído!",
+      error: "Erro ao baixar arquivo",
+    });
   };
 
   const handleDownloadAll = async () => {
