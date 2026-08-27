@@ -504,6 +504,15 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
   const createTag = useCreatePmTag();
   const [stageChoiceOpen, setStageChoiceOpen] = useState(false);
   const [stageChoiceOptions, setStageChoiceOptions] = useState<string[]>([]);
+  // "Concluir" (handleConcluido -> doAdvance) inserts a whole new pipeline-stage task plus
+  // clones every child into it — its own DB work is fire-and-forget, so nothing here ever
+  // naturally reflects "in progress" fast enough to stop a second click. Confirmed root
+  // cause of repeated duplicate "[Cliente] - PDF - Agosto" containers (and the calendar
+  // data loss that followed from cleaning them up): the button had no disabled/pending
+  // guard at all, so a real double-click fired doAdvance twice, each creating a full
+  // duplicate batch. This flag is the guard — set synchronously on click, so the button's
+  // own `disabled` stops a second click before it's dispatched.
+  const [isCompleting, setIsCompleting] = useState(false);
 
   // Date on completion state
   const [completionDateOpen, setCompletionDateOpen] = useState(false);
@@ -539,14 +548,14 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
 
   // Late-task justification dialog
   const [lateAppeal, setLateAppeal] = useState<{ open: boolean; action: (() => void | Promise<void>) | null }>({ open: false, action: null });
-  const runWithLateCheck = useCallback((action: () => void | Promise<void>) => {
+  const runWithLateCheck = useCallback(async (action: () => void | Promise<void>) => {
     const isLate = isTaskLate(task.due_date) && task.status_global !== "concluido";
     const uid = sessionUser?.id;
     const involved = !!uid && (task.assignee_id === uid || (task.watchers ?? []).includes(uid));
     if (isLate && involved) {
       setLateAppeal({ open: true, action });
     } else {
-      void action();
+      await action();
     }
   }, [task.due_date, task.status_global, task.assignee_id, task.watchers, sessionUser?.id]);
   const periodicStagesQ = usePeriodicStages();
@@ -1227,7 +1236,8 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
     const { data: pubs } = await sb
       .from("calendar_publications")
       .select("task_id, caption, publish_date, publish_time")
-      .in("task_id", idsToCheck);
+      .in("task_id", idsToCheck)
+      .is("deleted_at", null);
     if (!pubs || pubs.length === 0) return false;
 
     const incomplete = (pubs as { task_id: string; caption: string | null; publish_date: string | null; publish_time: string | null }[])
@@ -2320,7 +2330,16 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
         <div className="flex flex-wrap items-center gap-2 pt-2">
           {!(isDone || isCompletedSnapshot) ? (
             <>
-              <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={() => runWithLateCheck(handleConcluido)}>
+              <Button
+                size="sm"
+                className="gap-1.5 bg-success text-success-foreground hover:bg-success/80"
+                disabled={isCompleting}
+                onClick={() => {
+                  if (isCompleting) return;
+                  setIsCompleting(true);
+                  runWithLateCheck(handleConcluido).finally(() => setIsCompleting(false));
+                }}
+              >
                 <CheckCircle2 className="h-4 w-4" />
                 {task.stage_current === "revisao" ? "Aprovar e seguir fluxo" : "Concluir"}
                 <ChevronRight className="h-3.5 w-3.5" />

@@ -70,7 +70,7 @@ export function QuickAddPublicationDialog({ open, onClose, clientId, cycleStart,
   }
 
   async function afterMutationSuccess(taskId: string) {
-    const { data: pub, error } = await sb.from("calendar_publications").select("id").eq("task_id", taskId).maybeSingle();
+    const { data: pub, error } = await sb.from("calendar_publications").select("id").eq("task_id", taskId).is("deleted_at", null).maybeSingle();
     if (error || !pub) {
       toast.error("Tarefa criada, mas não achei a publicação no Cronograma — confira manualmente.");
       handleClose();

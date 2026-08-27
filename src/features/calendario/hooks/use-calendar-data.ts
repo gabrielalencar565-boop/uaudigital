@@ -43,6 +43,7 @@ export function useCalendarPublications(calendarId: string | null) {
         .from("calendar_publications")
         .select("*")
         .eq("calendar_id", calendarId)
+        .is("deleted_at", null)
         .order("order_index", { ascending: true })
         .order("created_at", { ascending: true });
       if (error) throw error;
@@ -200,7 +201,7 @@ export function useUnscheduledClientTasks(clientId: string | null) {
       if (taskIds.length === 0) return [];
 
       const [{ data: scheduled }, { data: withChildren }] = await Promise.all([
-        sb.from("calendar_publications").select("task_id").in("task_id", taskIds),
+        sb.from("calendar_publications").select("task_id").in("task_id", taskIds).is("deleted_at", null),
         sb.from("pm_tasks").select("parent_task_id").in("parent_task_id", taskIds).is("deleted_at", null),
       ]);
       const scheduledIds = new Set((scheduled ?? []).map((r: { task_id: string }) => r.task_id));
@@ -223,6 +224,7 @@ export function useTaskCalendarEntry(taskId: string | null) {
         .from("calendar_publications")
         .select("id, calendar_id")
         .eq("task_id", taskId)
+        .is("deleted_at", null)
         .maybeSingle();
       if (error) throw error;
       return data;
@@ -393,7 +395,8 @@ export function useInstagramRiskSummary(connections: { client_id: string; status
         .from("calendar_publications")
         .select("id, calendar_id, content_type, instagram_status")
         .eq("instagram_scheduled", true)
-        .neq("instagram_status", "published");
+        .neq("instagram_status", "published")
+        .is("deleted_at", null);
       if (pubsErr) throw pubsErr;
       const scheduled = (pubs ?? []) as { id: string; calendar_id: string; content_type: string; instagram_status: string }[];
 

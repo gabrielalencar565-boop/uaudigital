@@ -12,6 +12,7 @@ export async function openTaskInCalendario(taskId: string) {
     .from("calendar_publications")
     .select("id, publication_calendars(client_id, cycle_start)")
     .eq("task_id", taskId)
+    .is("deleted_at", null)
     .maybeSingle();
   const cal = pub?.publication_calendars;
   if (!pub || !cal) {
