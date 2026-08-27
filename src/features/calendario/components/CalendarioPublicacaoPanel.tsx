@@ -47,9 +47,13 @@ interface Props {
 // by this, since it's applied only at the point each grid helper reads out a `.url`.
 const STORAGE_OBJECT_PATH = "/storage/v1/object/public/";
 function toGridThumbUrl(url: string): string {
-  const idx = url.indexOf(STORAGE_OBJECT_PATH);
-  if (idx === -1) return url;
-  const rewritten = url.slice(0, idx) + "/storage/v1/render/image/public/" + url.slice(idx + STORAGE_OBJECT_PATH.length);
+  // Drive-hosted images (drive-file-proxy) are intentionally NOT resized here — an earlier
+  // attempt to add server-side resizing to that function crashed on large real photos
+  // (WORKER_RESOURCE_LIMIT decoding a 6.5MB JPEG in the edge runtime), so it was reverted.
+  // Only Supabase Storage-hosted images get the cheap, already-safe transform below.
+  const storageIdx = url.indexOf(STORAGE_OBJECT_PATH);
+  if (storageIdx === -1) return url;
+  const rewritten = url.slice(0, storageIdx) + "/storage/v1/render/image/public/" + url.slice(storageIdx + STORAGE_OBJECT_PATH.length);
   return `${rewritten}${rewritten.includes("?") ? "&" : "?"}width=480&quality=70`;
 }
 
@@ -450,25 +454,45 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
   // may belong to a different task entirely (e.g. chosen from a sibling "Capa" task
   // during the PDF stage), so when it's not found in this task's own attachments, it's
   // looked up via coverAttachmentsQ and prepended instead.
-  const mediaFor = (taskId: string) => {
-    const list = attachmentsQ.data?.get(taskId) ?? [];
-    const coverId = publicationByTask.get(taskId)?.cover_attachment_id;
-    if (!coverId) return list;
-    const idx = list.findIndex((m) => m.id === coverId);
-    if (idx === 0) return list;
-    if (idx > 0) {
-      const reordered = [...list];
-      const [cover] = reordered.splice(idx, 1);
-      reordered.unshift(cover);
-      return reordered;
+  //
+  // Precomputed once per data change (not per render/per card) — with 20-100 publications,
+  // recomputing this array-scan plus the thumbnail URL rewrite for every card on every
+  // render (including every pointer-move frame while dragging a card) was the main source
+  // of drag/scroll jank on larger Cronogramas. mediaFor/thumbnailFor/imagesFor below keep
+  // the exact same call signatures — this only changes recompute-per-call into a lookup.
+  const mediaByTask = useMemo(() => {
+    const map = new Map<string, { id: string; url: string; type: string | null }[]>();
+    for (const p of publications) {
+      const list = attachmentsQ.data?.get(p.task_id) ?? [];
+      const coverId = p.cover_attachment_id;
+      let result = list;
+      if (coverId) {
+        const idx = list.findIndex((m) => m.id === coverId);
+        if (idx > 0) {
+          const reordered = [...list];
+          const [cover] = reordered.splice(idx, 1);
+          reordered.unshift(cover);
+          result = reordered;
+        } else if (idx === -1) {
+          const external = coverAttachmentsQ.data?.get(coverId);
+          if (external) result = [external, ...list];
+        }
+      }
+      map.set(p.task_id, result);
     }
-    const external = coverAttachmentsQ.data?.get(coverId);
-    return external ? [external, ...list] : list;
-  };
-  const thumbnailFor = (taskId: string) => {
-    const url = mediaFor(taskId).find((m) => m.type?.startsWith("image/"))?.url;
-    return url ? toGridThumbUrl(url) : null;
-  };
+    return map;
+  }, [publications, attachmentsQ.data, coverAttachmentsQ.data]);
+  const mediaFor = (taskId: string) => mediaByTask.get(taskId) ?? [];
+
+  const thumbnailByTask = useMemo(() => {
+    const map = new Map<string, string | null>();
+    for (const p of publications) {
+      const url = (mediaByTask.get(p.task_id) ?? []).find((m) => m.type?.startsWith("image/"))?.url;
+      map.set(p.task_id, url ? toGridThumbUrl(url) : null);
+    }
+    return map;
+  }, [publications, mediaByTask]);
+  const thumbnailFor = (taskId: string) => thumbnailByTask.get(taskId) ?? null;
 
   // A "Capa" holding-task (see useCoverCandidates) whose image is currently pinned as
   // some *other* publication's cover is "in use" — hide it from "Publicações sem data"
@@ -489,10 +513,15 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
   // content type (reel, vídeo, imagem...) the card should show just the one cover
   // image as a static thumbnail, even if the task has other image attachments
   // (e.g. an auto-generated video poster alongside a manually chosen cover).
-  const imagesFor = (p: CalendarPublication) => {
-    const imgs = mediaFor(p.task_id).filter((m) => m.type?.startsWith("image/")).map((m) => toGridThumbUrl(m.url));
-    return p.content_type === "carrossel" ? imgs : imgs.slice(0, 1);
-  };
+  const imagesByPub = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const p of publications) {
+      const imgs = (mediaByTask.get(p.task_id) ?? []).filter((m) => m.type?.startsWith("image/")).map((m) => toGridThumbUrl(m.url));
+      map.set(p.id, p.content_type === "carrossel" ? imgs : imgs.slice(0, 1));
+    }
+    return map;
+  }, [publications, mediaByTask]);
+  const imagesFor = (p: CalendarPublication) => imagesByPub.get(p.id) ?? [];
 
   const byDay = useMemo(() => {
     const map = new Map<string, CalendarPublication[]>();
