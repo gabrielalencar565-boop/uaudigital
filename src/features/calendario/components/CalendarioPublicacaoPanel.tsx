@@ -723,7 +723,11 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                 <button
                   key={r.clientId}
                   type="button"
-                  onClick={() => setClientId(r.clientId)}
+                  onClick={() => {
+                    setClientId(r.clientId);
+                    if (r.firstProblemPublishDate) setCursor(anchorForDate(parseISO(r.firstProblemPublishDate)));
+                    if (r.firstProblemPublicationId) setSelectedId(r.firstProblemPublicationId);
+                  }}
                   className="block text-left text-xs text-destructive/90 underline-offset-2 hover:underline"
                 >
                   <span className="font-medium">{r.clientName}</span> — {describeInstagramRisk(r)}
@@ -876,13 +880,29 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
       {clientId && (
       <div className="space-y-4">
       {currentClientRisk && (
-        <div className="flex items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-3">
+        <button
+          type="button"
+          disabled={!currentClientRisk.firstProblemPublicationId}
+          onClick={() => {
+            const id = currentClientRisk.firstProblemPublicationId;
+            if (!id) return;
+            if (currentClientRisk.firstProblemPublishDate) {
+              setCursor(anchorForDate(parseISO(currentClientRisk.firstProblemPublishDate)));
+            }
+            setSelectedId(id);
+          }}
+          className={cn(
+            "flex w-full items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-3 text-left",
+            currentClientRisk.firstProblemPublicationId && "cursor-pointer transition-colors hover:bg-destructive/10",
+          )}
+        >
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
           <p className="text-xs text-destructive/90">
             <span className="font-semibold">Atenção:</span> {describeInstagramRisk(currentClientRisk)}.
             {currentClientRisk.notConnectedCount > 0 && " Conecte o Instagram do cliente pra essas publicações saírem."}
+            {currentClientRisk.firstProblemPublicationId && " Clique para abrir a publicação."}
           </p>
-        </div>
+        </button>
       )}
       {calendar && (
         <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/30 bg-muted/20 p-3">
@@ -1217,7 +1237,6 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
         clientName={clientName}
         clientLogoUrl={clientLogoUrl}
         cycleStart={calendar?.cycle_start ?? null}
-        cycleEnd={calendar?.cycle_end ?? null}
         onClose={() => setSelectedId(null)}
         onOpenTask={onOpenTask}
         onNavigate={handleNavigate}

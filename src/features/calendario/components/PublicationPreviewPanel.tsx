@@ -31,7 +31,6 @@ interface Props {
   clientName: string;
   clientLogoUrl?: string | null;
   cycleStart?: string | null;
-  cycleEnd?: string | null;
   onClose: () => void;
   onOpenTask: (taskId: string) => void;
   onNavigate?: (direction: "prev" | "next") => void;
@@ -53,7 +52,7 @@ function nearestTimeSlot() {
   return `${String(Math.floor(rounded / 60)).padStart(2, "0")}:${rounded % 60 === 0 ? "00" : "30"}`;
 }
 
-export function PublicationPreviewPanel({ publication, media, clientId, clientName, clientLogoUrl, cycleStart, cycleEnd, onClose, onOpenTask, onNavigate, hasPrev, hasNext }: Props) {
+export function PublicationPreviewPanel({ publication, media, clientId, clientName, clientLogoUrl, cycleStart, onClose, onOpenTask, onNavigate, hasPrev, hasNext }: Props) {
   const qc = useQueryClient();
   const updatePublication = useUpdateCalendarPublication();
   const removePublication = useRemoveCalendarPublication();
@@ -700,9 +699,6 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                             : cycleStart
                               ? parseISO(cycleStart)
                               : undefined
-                        }
-                        disabled={
-                          cycleStart && cycleEnd ? { before: parseISO(cycleStart), after: parseISO(cycleEnd) } : undefined
                         }
                       />
                       {publication.publish_date && (
