@@ -843,7 +843,7 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
               )}
 
               {(() => {
-                const unsupportedType = publication.content_type === "story" || publication.content_type === "outro";
+                const unsupportedType = publication.content_type === "outro";
                 const canPublish = igConnection?.status === "active" && !unsupportedType;
                 const isPublishing = publication.instagram_status === "publishing";
                 const isPublished = publication.instagram_status === "published";
@@ -903,7 +903,7 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                         disabled={!canPublish || isPublishing || publishToInstagram.isPending}
                         title={
                           unsupportedType
-                            ? "Stories e outros tipos de conteúdo não são publicados automaticamente"
+                            ? "Esse tipo de conteúdo não é publicado automaticamente"
                             : igConnection?.status !== "active"
                               ? "Este cliente ainda não tem o Instagram conectado (veja em Clientes)"
                               : undefined
@@ -933,7 +933,7 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                         disabled={!canPublish || isPublishing || publishToInstagram.isPending}
                         title={
                           unsupportedType
-                            ? "Stories e outros tipos de conteúdo não são publicados automaticamente"
+                            ? "Esse tipo de conteúdo não é publicado automaticamente"
                             : igConnection?.status !== "active"
                               ? "Este cliente ainda não tem o Instagram conectado (veja em Clientes)"
                               : undefined
@@ -979,7 +979,7 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                         disabled={!canPublish || missingForSchedule.length > 0}
                         title={
                           unsupportedType
-                            ? "Stories e outros tipos de conteúdo não são publicados automaticamente"
+                            ? "Esse tipo de conteúdo não é publicado automaticamente"
                             : igConnection?.status !== "active"
                               ? "Este cliente ainda não tem o Instagram conectado (veja em Clientes)"
                               : missingForSchedule.length > 0

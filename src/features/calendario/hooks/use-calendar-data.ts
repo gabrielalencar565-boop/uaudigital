@@ -460,7 +460,7 @@ export function useInstagramRiskSummary(connections: { client_id: string; status
           flagFirstProblem(r, p);
           continue; // root cause is the connection — no need to also count it as "failed"
         }
-        if (p.content_type === "story" || p.content_type === "outro") {
+        if (p.content_type === "outro") {
           const r = getRisk(clientId);
           r.unsupportedCount++;
           flagFirstProblem(r, p);

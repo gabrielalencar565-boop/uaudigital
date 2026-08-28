@@ -272,7 +272,13 @@ async function handleSelectPage(admin: ReturnType<typeof createClient>, body: { 
 async function handleDisconnect(admin: ReturnType<typeof createClient>, body: { client_id?: string }) {
   const clientId = body.client_id;
   if (!clientId) return json({ error: "client_id is required" }, 400);
-  const { error } = await admin.from("instagram_connections").update({ status: "revoked" }).eq("client_id", clientId);
+  // Clearing access_token (not just flipping status) is what makes "Desconectar Instagram"
+  // an actual data-deletion action, not just a UI toggle — required for this to honestly
+  // back the app's Instagram Data Deletion Instructions.
+  const { error } = await admin
+    .from("instagram_connections")
+    .update({ status: "revoked", access_token: null })
+    .eq("client_id", clientId);
   if (error) throw error;
   return json({ success: true });
 }

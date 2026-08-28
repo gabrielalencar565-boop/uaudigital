@@ -114,7 +114,6 @@ async function publishToInstagram(admin: ReturnType<typeof createClient>, public
     .eq("id", publication.id);
 
   try {
-    if (publication.content_type === "story") throw new Error("Stories não são suportados nesta versão");
     if (publication.content_type === "outro") throw new Error("tipo de conteúdo não suportado para publicação automática");
 
     const media = await fetchMediaForTask(admin, publication.task_id);
@@ -122,7 +121,18 @@ async function publishToInstagram(admin: ReturnType<typeof createClient>, public
 
     let creationId: string;
 
-    if (publication.content_type === "carrossel") {
+    if (publication.content_type === "story") {
+      // Stories only take a single image or video, and the Graph API rejects a caption
+      // param on this media_type (no text-overlay support via the Content Publishing API).
+      const item = media[0];
+      const isVideo = item.type?.startsWith("video/") ?? false;
+      const container = await graphPost(`${igUserId}/media`, accessToken, {
+        media_type: "STORIES",
+        ...(isVideo ? { video_url: item.url } : { image_url: item.url }),
+      });
+      if (isVideo) await waitUntilFinished(container.id, accessToken);
+      creationId = container.id;
+    } else if (publication.content_type === "carrossel") {
       if (media.length < 2) throw new Error("carrossel precisa de pelo menos 2 mídias");
       const childIds: string[] = [];
       for (const item of media) {
