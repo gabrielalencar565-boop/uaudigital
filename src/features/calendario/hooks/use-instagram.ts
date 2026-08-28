@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 export type InstagramConnection = {
@@ -26,6 +27,18 @@ export function useInstagramConnections(clientId?: string) {
   });
 }
 
+// Both mutations below used to fail completely silently on error (no onError anywhere,
+// including at the call sites) — a stale/revoked session, for example, would 401 and the
+// UI would just look like nothing happened, with no way to tell "it failed" from "it's still
+// connecting". These toasts are the fix: any failure is now visible instead of silent.
+function instagramErrorMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.includes("session_not_found") || message.includes("invalid session")) {
+    return "Sua sessão expirou — recarregue a página e faça login de novo.";
+  }
+  return message;
+}
+
 export function useConnectInstagram() {
   return useMutation({
     mutationFn: async ({ clientId }: { clientId: string }) => {
@@ -36,6 +49,7 @@ export function useConnectInstagram() {
       if (data?.error) throw new Error(data.error);
       return data.url as string;
     },
+    onError: (error) => toast.error(instagramErrorMessage(error)),
   });
 }
 
@@ -51,7 +65,9 @@ export function useDisconnectInstagram() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["instagram_connections"] });
+      toast.success("Instagram desconectado.");
     },
+    onError: (error) => toast.error(instagramErrorMessage(error)),
   });
 }
 
