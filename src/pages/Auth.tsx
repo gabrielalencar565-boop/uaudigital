@@ -182,20 +182,12 @@ export default function Auth() {
           options: { emailRedirectTo },
         });
         if (error) { toast.error(error.message); return; }
-        try {
-          if (data.user?.id) {
-            const req = await supabase.from("access_requests").insert({
-              user_id: data.user.id,
-              note: values.email,
-              status: "pending",
-            });
-            if (req.error) toast.error(req.error.message);
-          }
-        } catch (e: any) {
-          toast.error(e?.message ?? "Falha ao registrar solicitação de acesso");
-        } finally {
-          await supabase.auth.signOut();
-        }
+        // The access_requests row is created server-side by a database trigger on
+        // auth.users insert (handle_new_user_access_request) — doing it here client-side
+        // used to silently fail whenever "Confirm email" left the new user with no active
+        // session yet (auth.uid() was null, so the RLS insert policy rejected the row),
+        // leaving the signup invisible in the admin approval list.
+        await supabase.auth.signOut();
         toast.success("Cadastro criado! Agora aguarde aprovação do admin.");
         navigate("/pending?status=pending", { replace: true });
         return;
