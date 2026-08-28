@@ -368,6 +368,11 @@ export interface ClientInstagramRisk {
   failedCount: number;
   unsupportedCount: number;
   tokenExpiresInDays: number | null;
+  // First publication that tripped notConnected/unsupported/failed above, so the warning
+  // banner can jump straight to it instead of just naming the problem — null when the only
+  // active risk is the token-expiry one, which isn't tied to any single publication.
+  firstProblemPublicationId: string | null;
+  firstProblemPublishDate: string | null;
 }
 
 const TOKEN_EXPIRY_WARNING_MS = 3 * 24 * 60 * 60 * 1000;
@@ -393,12 +398,12 @@ export function useInstagramRiskSummary(connections: { client_id: string; status
     queryFn: async (): Promise<ClientInstagramRisk[]> => {
       const { data: pubs, error: pubsErr } = await sb
         .from("calendar_publications")
-        .select("id, calendar_id, content_type, instagram_status")
+        .select("id, calendar_id, content_type, instagram_status, publish_date")
         .eq("instagram_scheduled", true)
         .neq("instagram_status", "published")
         .is("deleted_at", null);
       if (pubsErr) throw pubsErr;
-      const scheduled = (pubs ?? []) as { id: string; calendar_id: string; content_type: string; instagram_status: string }[];
+      const scheduled = (pubs ?? []) as { id: string; calendar_id: string; content_type: string; instagram_status: string; publish_date: string | null }[];
 
       const calendarIds = [...new Set(scheduled.map((p) => p.calendar_id))];
       const clientIdByCalendarId = new Map<string, string>();
@@ -427,10 +432,16 @@ export function useInstagramRiskSummary(connections: { client_id: string; status
       const getRisk = (clientId: string) => {
         let r = riskByClient.get(clientId);
         if (!r) {
-          r = { clientId, clientName: clientNameById.get(clientId) ?? "Cliente", notConnectedCount: 0, failedCount: 0, unsupportedCount: 0, tokenExpiresInDays: null };
+          r = { clientId, clientName: clientNameById.get(clientId) ?? "Cliente", notConnectedCount: 0, failedCount: 0, unsupportedCount: 0, tokenExpiresInDays: null, firstProblemPublicationId: null, firstProblemPublishDate: null };
           riskByClient.set(clientId, r);
         }
         return r;
+      };
+      const flagFirstProblem = (r: ClientInstagramRisk, p: { id: string; publish_date: string | null }) => {
+        if (r.firstProblemPublicationId === null) {
+          r.firstProblemPublicationId = p.id;
+          r.firstProblemPublishDate = p.publish_date;
+        }
       };
 
       for (const p of scheduled) {
@@ -439,15 +450,21 @@ export function useInstagramRiskSummary(connections: { client_id: string; status
         const connection = connectionByClient.get(clientId);
 
         if (!connection || connection.status !== "active") {
-          getRisk(clientId).notConnectedCount++;
+          const r = getRisk(clientId);
+          r.notConnectedCount++;
+          flagFirstProblem(r, p);
           continue; // root cause is the connection — no need to also count it as "failed"
         }
         if (p.content_type === "story" || p.content_type === "outro") {
-          getRisk(clientId).unsupportedCount++;
+          const r = getRisk(clientId);
+          r.unsupportedCount++;
+          flagFirstProblem(r, p);
           continue;
         }
         if (p.instagram_status === "failed") {
-          getRisk(clientId).failedCount++;
+          const r = getRisk(clientId);
+          r.failedCount++;
+          flagFirstProblem(r, p);
         }
       }
 
