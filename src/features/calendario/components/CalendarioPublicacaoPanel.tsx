@@ -78,7 +78,7 @@ function describeInstagramRisk(r: ClientInstagramRisk): string {
     parts.push(`${r.failedCount} falha${r.failedCount > 1 ? "s" : ""} ao publicar`);
   }
   if (r.unsupportedCount > 0) {
-    parts.push(`${r.unsupportedCount} agendada${r.unsupportedCount > 1 ? "s" : ""} num tipo que não sai sozinho (Stories/Outro)`);
+    parts.push(`${r.unsupportedCount} agendada${r.unsupportedCount > 1 ? "s" : ""} num tipo que não sai sozinho (Outro)`);
   }
   if (r.tokenExpiresInDays !== null) {
     parts.push(r.tokenExpiresInDays === 0 ? "acesso ao Instagram expira hoje" : `acesso ao Instagram expira em ${r.tokenExpiresInDays} dia${r.tokenExpiresInDays > 1 ? "s" : ""}`);

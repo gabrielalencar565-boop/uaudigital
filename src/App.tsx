@@ -12,6 +12,8 @@ import AprovacaoPublic from "./pages/AprovacaoPublic";
 import HealthScorePublic from "./pages/HealthScorePublic";
 import Pending from "./pages/Pending";
 import InstagramCallback from "./pages/InstagramCallback";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import DataDeletion from "./pages/DataDeletion";
 import NotFound from "./pages/NotFound";
 import { RedirectNotice } from "@/components/redirect/RedirectNotice";
 import { RequireAuth } from "@/components/auth/RequireAuth";
@@ -35,6 +37,8 @@ function AppRoutes() {
         <Route path="/cronograma/:taskId" element={<CronogramaPublic />} />
         <Route path="/avaliacao/:slug" element={<HealthScorePublic />} />
         <Route path="/aprovacao/:token" element={<AprovacaoPublic />} />
+        <Route path="/privacidade" element={<PrivacyPolicy />} />
+        <Route path="/exclusao-de-dados" element={<DataDeletion />} />
         <Route
           path="/admin/instagram-callback"
           element={

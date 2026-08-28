@@ -245,6 +245,11 @@ export function useUpdateCalendarPublication() {
     },
     onSuccess: ({ data, scheduledChanged }) => {
       qc.invalidateQueries({ queryKey: ["calendar_publications", data.calendar_id] });
+      // This is also how a fix to whatever tripped the Instagram-risk warning banner gets
+      // saved (e.g. switching a Stories/Outro publication to a supported content_type) — the
+      // banner's own query has no other trigger to refetch on (just a 5-minute poll), so
+      // without this it kept showing the resolved warning until that poll caught up.
+      qc.invalidateQueries({ queryKey: ["instagram_risk_summary"] });
       // The per-publication "Agendar publicação"/"Cancelar agendamento" actions go through this
       // same generic update — whichever direction instagram_scheduled just flipped,
       // trg_complete_agendamento_on_scheduled / trg_uncomplete_agendamento_on_unscheduled may have
@@ -455,7 +460,7 @@ export function useInstagramRiskSummary(connections: { client_id: string; status
           flagFirstProblem(r, p);
           continue; // root cause is the connection — no need to also count it as "failed"
         }
-        if (p.content_type === "story" || p.content_type === "outro") {
+        if (p.content_type === "outro") {
           const r = getRisk(clientId);
           r.unsupportedCount++;
           flagFirstProblem(r, p);
