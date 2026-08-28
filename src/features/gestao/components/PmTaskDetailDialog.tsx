@@ -28,7 +28,7 @@ import {
   useUpdatePmTask, useCreatePmTask, usePmTasks, usePmChildTasks,
   usePmComments, usePmAttachments, usePmSyncStageCompletion, useMergePdfTasks,
 } from "../hooks/use-pm-data";
-import { usePmTags } from "../hooks/use-pm-tags";
+import { usePmTags, useCreatePmTag } from "../hooks/use-pm-tags";
 import { useDefaultFlowWithDates, getNextStages, getFixedAssignee, getFixedWatchers, resolveAssigneeStageKey } from "./PmStageFlowConfig";
 import { PmSubtaskList } from "./PmSubtaskList";
 import { PmPlanningSubtasks } from "./PmPlanningSubtasks";
@@ -311,9 +311,18 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
           <AlertDialogCancel>Cancelar</AlertDialogCancel>
           <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={async () => {
             const { data: { user } } = await supabase.auth.getUser();
-            deleteTask.mutate({ id: currentTask.id, deleted_at: new Date().toISOString(), deleted_by: user?.id ?? null } as any);
-            toast.success("Tarefa movida para a lixeira");
-            handleClose();
+            try {
+              await deleteTask.mutateAsync({ id: currentTask.id, deleted_at: new Date().toISOString(), deleted_by: user?.id ?? null } as any);
+              toast.success("Tarefa movida para a lixeira");
+              setShowDeleteConfirm(false);
+              handleClose();
+            } catch (err: any) {
+              // Reported bug: this used to fire the success toast and close before the
+              // mutation resolved, so a failed delete (any error, any task) still told the
+              // user it worked — the task just silently stayed put. Now the dialog stays
+              // open and the real error shows, so a retry is possible.
+              toast.error(err?.message ?? "Erro ao excluir tarefa");
+            }
           }}>Excluir</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -492,8 +501,18 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
   const [newTagName, setNewTagName] = useState("");
+  const createTag = useCreatePmTag();
   const [stageChoiceOpen, setStageChoiceOpen] = useState(false);
   const [stageChoiceOptions, setStageChoiceOptions] = useState<string[]>([]);
+  // "Concluir" (handleConcluido -> doAdvance) inserts a whole new pipeline-stage task plus
+  // clones every child into it — its own DB work is fire-and-forget, so nothing here ever
+  // naturally reflects "in progress" fast enough to stop a second click. Confirmed root
+  // cause of repeated duplicate "[Cliente] - PDF - Agosto" containers (and the calendar
+  // data loss that followed from cleaning them up): the button had no disabled/pending
+  // guard at all, so a real double-click fired doAdvance twice, each creating a full
+  // duplicate batch. This flag is the guard — set synchronously on click, so the button's
+  // own `disabled` stops a second click before it's dispatched.
+  const [isCompleting, setIsCompleting] = useState(false);
 
   // Date on completion state
   const [completionDateOpen, setCompletionDateOpen] = useState(false);
@@ -529,14 +548,14 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
 
   // Late-task justification dialog
   const [lateAppeal, setLateAppeal] = useState<{ open: boolean; action: (() => void | Promise<void>) | null }>({ open: false, action: null });
-  const runWithLateCheck = useCallback((action: () => void | Promise<void>) => {
+  const runWithLateCheck = useCallback(async (action: () => void | Promise<void>) => {
     const isLate = isTaskLate(task.due_date) && task.status_global !== "concluido";
     const uid = sessionUser?.id;
     const involved = !!uid && (task.assignee_id === uid || (task.watchers ?? []).includes(uid));
     if (isLate && involved) {
       setLateAppeal({ open: true, action });
     } else {
-      void action();
+      await action();
     }
   }, [task.due_date, task.status_global, task.assignee_id, task.watchers, sessionUser?.id]);
   const periodicStagesQ = usePeriodicStages();
@@ -623,11 +642,20 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
         await sb.from("pm_tasks").update({ status_global: "concluido" }).in("id", childIds);
       }
 
-      // Clone children sequentially to avoid overwhelming React Query
+      // Clone children via a single batched insert (one network round-trip instead of N
+      // sequential ones) while still preserving creation order: childTasks is already
+      // sorted created_at ascending (usePmChildTasks), and downstream consumers re-sort
+      // subtasks the same way, so each clone gets an explicit created_at spaced 1ms apart
+      // in that same order instead of letting the DB assign a same-statement, order-losing now().
       const { data: { user } } = await supabase.auth.getUser();
-      const childIdMap: Record<string, string> = {}; // old id → new id
-      for (const child of childTasks) {
-        const { data: newChild } = await sb.from("pm_tasks").insert({
+      const baseTime = Date.now();
+      // Each clone gets a distinct, explicit created_at (spaced 1ms apart, in original
+      // order) — this both preserves display order and, since RETURNING on a multi-row
+      // INSERT isn't guaranteed to echo VALUES order, doubles as the correlation key back
+      // to its source child (safer than trusting positional order for this remap).
+      const stampByOldId = new Map(childTasks.map((child, i) => [child.id, new Date(baseTime + i).toISOString()]));
+      const { data: newChildRows, error: cloneChildrenError } = await sb.from("pm_tasks").insert(
+        childTasks.map((child) => ({
           client_id: child.client_id,
           title: child.title,
           description: child.description ?? null,
@@ -640,8 +668,16 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
           status_global: "backlog",
           post_type: inferPmPostType(child, fallbackPostType) ?? null,
           created_by: user?.id,
-        }).select("id").single();
-        if (newChild) childIdMap[child.id] = newChild.id;
+          created_at: stampByOldId.get(child.id),
+        }))
+      ).select("id, created_at");
+      if (cloneChildrenError) throw cloneChildrenError;
+      const newIdByStamp = new Map((newChildRows ?? []).map((row: any) => [new Date(row.created_at).toISOString(), row.id]));
+      const childIdMap: Record<string, string> = {}; // old id → new id
+      for (const child of childTasks) {
+        const stamp = stampByOldId.get(child.id)!;
+        const newId = newIdByStamp.get(stamp) as string | undefined;
+        if (newId) childIdMap[child.id] = newId;
       }
 
       // Copy attachments AND comments in background (fire-and-forget to avoid blocking UI)
@@ -1200,7 +1236,8 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
     const { data: pubs } = await sb
       .from("calendar_publications")
       .select("task_id, caption, publish_date, publish_time")
-      .in("task_id", idsToCheck);
+      .in("task_id", idsToCheck)
+      .is("deleted_at", null);
     if (!pubs || pubs.length === 0) return false;
 
     const incomplete = (pubs as { task_id: string; caption: string | null; publish_date: string | null; publish_time: string | null }[])
@@ -1899,6 +1936,7 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
         await recalcTagPoints(task.id);
         await handleTagCorrectionResync(oldTags, newTags);
       },
+      onError: (err: any) => toast.error(err?.message ?? "Erro ao remover etiqueta"),
     });
   };
   const toggleGlobalTag = (tag: string) => {
@@ -1912,8 +1950,25 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
           await recalcTagPoints(task.id);
           await handleTagCorrectionResync(existing, newTags);
         },
+        onError: (err: any) => toast.error(err?.message ?? "Erro ao adicionar etiqueta"),
       });
     }
+  };
+  // Creating a new global tag was previously only reachable via Configurações → Pontuação
+  // (admin-only), even though pm_tags itself already allows any authenticated insert —
+  // so non-admins had no way to tag a task with anything that wasn't already on the list.
+  const createAndApplyTag = (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const paletteKeys = TAG_COLORS.map(c => c.key);
+    const colorKey = paletteKeys[Math.floor(Math.random() * paletteKeys.length)];
+    createTag.mutate({ name: trimmed, color_key: colorKey }, {
+      onSuccess: (created) => {
+        setNewTagName("");
+        toggleGlobalTag(`${created.name}:${created.color_key}`);
+      },
+      onError: (err: any) => toast.error(err?.message ?? "Erro ao criar etiqueta"),
+    });
   };
 
   return (
@@ -2152,7 +2207,19 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
                 )}
                 {globalTags.length === 0 && (
                   <div className="p-4 text-center text-xs text-muted-foreground">
-                    Nenhuma etiqueta criada. Crie em Configurações → Pontuação.
+                    Nenhuma etiqueta criada ainda.
+                  </div>
+                )}
+                {newTagName.trim() && !globalTags.some(gt => gt.name.toLowerCase() === newTagName.trim().toLowerCase()) && (
+                  <div className="p-2 border-t border-border/30">
+                    <button
+                      className="flex w-full items-center gap-2 px-2 py-1.5 rounded text-left hover:bg-accent/50 transition disabled:opacity-50"
+                      disabled={createTag.isPending}
+                      onClick={() => createAndApplyTag(newTagName)}
+                    >
+                      <Plus className="h-3 w-3 shrink-0 text-muted-foreground" />
+                      <span className="text-xs flex-1">Criar etiqueta "{newTagName.trim()}"</span>
+                    </button>
                   </div>
                 )}
               </PopoverContent>
@@ -2263,7 +2330,16 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
         <div className="flex flex-wrap items-center gap-2 pt-2">
           {!(isDone || isCompletedSnapshot) ? (
             <>
-              <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={() => runWithLateCheck(handleConcluido)}>
+              <Button
+                size="sm"
+                className="gap-1.5 bg-success text-success-foreground hover:bg-success/80"
+                disabled={isCompleting}
+                onClick={() => {
+                  if (isCompleting) return;
+                  setIsCompleting(true);
+                  runWithLateCheck(handleConcluido).finally(() => setIsCompleting(false));
+                }}
+              >
                 <CheckCircle2 className="h-4 w-4" />
                 {task.stage_current === "revisao" ? "Aprovar e seguir fluxo" : "Concluir"}
                 <ChevronRight className="h-3.5 w-3.5" />

@@ -181,6 +181,7 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
           .from("calendar_publications")
           .select("caption, publish_date, publish_time")
           .eq("task_id", sub.id)
+          .is("deleted_at", null)
           .maybeSingle();
         if (pub) {
           const missing: string[] = [];

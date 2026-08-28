@@ -43,6 +43,7 @@ export function useCalendarPublications(calendarId: string | null) {
         .from("calendar_publications")
         .select("*")
         .eq("calendar_id", calendarId)
+        .is("deleted_at", null)
         .order("order_index", { ascending: true })
         .order("created_at", { ascending: true });
       if (error) throw error;
@@ -60,17 +61,22 @@ export function useTaskAttachmentsMap(taskIds: string[]) {
       // (category "material") are internal working files, never client-facing.
       const { data, error } = await sb
         .from("pm_attachments")
-        .select("id, task_id, public_url, file_type, order_index")
+        .select("id, task_id, public_url, thumbnail_url, file_type, order_index")
         .in("task_id", taskIds)
         .eq("category", "final")
         .order("order_index", { ascending: true })
         .order("created_at", { ascending: true });
       if (error) throw error;
-      const map = new Map<string, { id: string; url: string; type: string | null }[]>();
-      for (const row of (data ?? []) as { id: string; task_id: string; public_url: string | null; file_type: string | null }[]) {
+      const map = new Map<string, { id: string; url: string; thumbUrl: string; type: string | null }[]>();
+      for (const row of (data ?? []) as { id: string; task_id: string; public_url: string | null; thumbnail_url: string | null; file_type: string | null }[]) {
         if (!row.public_url) continue;
         const prev = map.get(row.task_id) ?? [];
-        prev.push({ id: row.id, url: row.public_url, type: row.file_type });
+        // url stays full-resolution — PublicationPreviewPanel reads this same map directly
+        // for the actual editing/review view. thumbUrl (generated client-side at upload
+        // time, see uploadImageThumbnail in use-pm-data.ts) is a small Supabase
+        // Storage-hosted JPEG meant only for the grid/list/feed cards below; older rows
+        // uploaded before that existed just fall back to the full original there too.
+        prev.push({ id: row.id, url: row.public_url, thumbUrl: row.thumbnail_url ?? row.public_url, type: row.file_type });
         map.set(row.task_id, prev);
       }
       return map;
@@ -126,12 +132,12 @@ export function useCoverAttachmentsById(ids: string[]) {
     enabled: ids.length > 0,
     queryKey: ["cover_attachments_by_id", ids],
     queryFn: async () => {
-      const { data, error } = await sb.from("pm_attachments").select("id, public_url, file_type").in("id", ids);
+      const { data, error } = await sb.from("pm_attachments").select("id, public_url, thumbnail_url, file_type").in("id", ids);
       if (error) throw error;
-      const map = new Map<string, { id: string; url: string; type: string | null }>();
-      for (const row of (data ?? []) as { id: string; public_url: string | null; file_type: string | null }[]) {
+      const map = new Map<string, { id: string; url: string; thumbUrl: string; type: string | null }>();
+      for (const row of (data ?? []) as { id: string; public_url: string | null; thumbnail_url: string | null; file_type: string | null }[]) {
         if (!row.public_url) continue;
-        map.set(row.id, { id: row.id, url: row.public_url, type: row.file_type });
+        map.set(row.id, { id: row.id, url: row.public_url, thumbUrl: row.thumbnail_url ?? row.public_url, type: row.file_type });
       }
       return map;
     },
@@ -195,7 +201,7 @@ export function useUnscheduledClientTasks(clientId: string | null) {
       if (taskIds.length === 0) return [];
 
       const [{ data: scheduled }, { data: withChildren }] = await Promise.all([
-        sb.from("calendar_publications").select("task_id").in("task_id", taskIds),
+        sb.from("calendar_publications").select("task_id").in("task_id", taskIds).is("deleted_at", null),
         sb.from("pm_tasks").select("parent_task_id").in("parent_task_id", taskIds).is("deleted_at", null),
       ]);
       const scheduledIds = new Set((scheduled ?? []).map((r: { task_id: string }) => r.task_id));
@@ -218,6 +224,7 @@ export function useTaskCalendarEntry(taskId: string | null) {
         .from("calendar_publications")
         .select("id, calendar_id")
         .eq("task_id", taskId)
+        .is("deleted_at", null)
         .maybeSingle();
       if (error) throw error;
       return data;
@@ -388,7 +395,8 @@ export function useInstagramRiskSummary(connections: { client_id: string; status
         .from("calendar_publications")
         .select("id, calendar_id, content_type, instagram_status")
         .eq("instagram_scheduled", true)
-        .neq("instagram_status", "published");
+        .neq("instagram_status", "published")
+        .is("deleted_at", null);
       if (pubsErr) throw pubsErr;
       const scheduled = (pubs ?? []) as { id: string; calendar_id: string; content_type: string; instagram_status: string }[];
 
