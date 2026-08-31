@@ -4,6 +4,8 @@ import { Heart, MessageCircle, Send, Bookmark, Clock, Instagram } from "lucide-r
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useTodayScheduledPublications, useTaskAttachmentsMap } from "@/features/calendario/hooks/use-calendar-data";
+import { CONTENT_TYPE_ICON, getContentTypeColor } from "@/features/calendario/components/PublicationCard";
+import { CONTENT_TYPE_LABELS } from "@/features/calendario/calendar-types";
 
 const ROTATE_MS = 4500;
 // Fraction of the track's own height a drag must cross before it counts as a swipe
@@ -74,10 +76,12 @@ export function TodayInstagramLoopWidget() {
             Nenhuma publicação prevista pra hoje
           </div>
         ) : (
-          <div className="mx-3 mb-3 flex gap-1.5">
+          <div className="mx-3 mb-3 flex justify-center gap-1.5">
             <div
               ref={trackRef}
-              className="relative h-64 flex-1 touch-none select-none overflow-hidden rounded-lg bg-black"
+              // Instagram's own feed post ratio (1080x1350 = 4:5) — width capped so the
+              // widget stays compact instead of stretching to the full card width.
+              className="relative aspect-[4/5] w-[190px] shrink-0 touch-none select-none overflow-hidden rounded-lg bg-black"
               onPointerDown={onPointerDown}
               onPointerMove={onPointerMove}
               onPointerUp={endDrag}
@@ -85,6 +89,8 @@ export function TodayInstagramLoopWidget() {
             >
               {publications.map((p, i) => {
                 const cover = attachmentsQ.data?.get(p.taskId)?.[0];
+                const ContentIcon = CONTENT_TYPE_ICON[p.contentType];
+                const contentColor = getContentTypeColor(p.contentType);
                 // TikTok-style vertical stack: every slide sits at its own 100%-height
                 // offset, translated as one unit so swiping up brings the next slide in
                 // from below instead of just cross-fading the content.
@@ -103,13 +109,17 @@ export function TodayInstagramLoopWidget() {
                         <Instagram className="h-8 w-8 text-muted-foreground" />
                       </div>
                     )}
-                    <div className="absolute inset-x-0 top-0 flex items-center gap-2 bg-gradient-to-b from-black/70 to-transparent px-2.5 py-2">
+                    <div className="absolute inset-x-0 top-0 flex items-center gap-1.5 bg-gradient-to-b from-black/70 to-transparent px-2 py-1.5">
                       <span className="h-5 w-5 shrink-0 overflow-hidden rounded-full bg-muted">
                         {p.clientLogoUrl && <img src={p.clientLogoUrl} alt="" className="h-full w-full object-cover" />}
                       </span>
                       <span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-white">{p.clientName}</span>
+                      <span className={cn("inline-flex shrink-0 items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-semibold", contentColor.bg, contentColor.text)}>
+                        <ContentIcon className="h-2.5 w-2.5" />
+                        {CONTENT_TYPE_LABELS[p.contentType]}
+                      </span>
                     </div>
-                    <div className="absolute inset-x-0 bottom-0 space-y-1 bg-gradient-to-t from-black/80 to-transparent px-2.5 pb-2 pt-4">
+                    <div className="absolute inset-x-0 bottom-0 space-y-1 bg-gradient-to-t from-black/80 to-transparent px-2 pb-2 pt-4">
                       {p.caption && <p className="line-clamp-2 text-[11px] text-white/90">{p.caption}</p>}
                       <p className="flex items-center gap-1 text-[10px] text-white/70">
                         <Clock className="h-2.5 w-2.5" />
