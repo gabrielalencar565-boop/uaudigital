@@ -78,20 +78,24 @@ export function TodayInstagramLoopWidget() {
   const cardWidthPct = 100 / VISIBLE;
 
   return (
-    <Card>
+    <Card className="flex h-full flex-col">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-sm">
           <Instagram className="h-4 w-4 text-primary" />
           Hoje no Instagram
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-0">
+      <CardContent className="flex flex-1 flex-col p-0">
         {publications.length === 0 ? (
-          <div className="px-4 pb-4 text-center text-sm text-muted-foreground">
+          <div className="flex flex-1 items-center justify-center px-4 pb-4 text-center text-sm text-muted-foreground">
             Nenhuma publicação prevista pra hoje
           </div>
         ) : (
-          <div className="relative mx-2 mb-3 flex items-center gap-1.5">
+          // Card stretches to match the left column's height (Atribuídas a mim +
+          // Menções stacked); the media strip itself stays at its own natural size and
+          // is centered in whatever extra vertical room that leaves, instead of
+          // distorting the posts' real Instagram aspect ratio to fill the gap.
+          <div className="relative mx-2 mb-3 flex flex-1 items-center gap-1.5">
             {publications.length > VISIBLE && (
               <button
                 type="button"

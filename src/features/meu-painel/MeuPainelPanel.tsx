@@ -464,18 +464,14 @@ export function MeuPainelPanel() {
         <MetricSparkCard label="Atrasadas" value={summary.overdue} icon={<AlertTriangle className="h-5 w-5" />} accentClass="text-red-500" />
       </div>
 
-      {/* ── 4. PM TASKS (Gestão) ── */}
-      <div className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.22s" }}>
-        <MyPmTasksWidget onOpenTask={(taskId) => setSelectedPmTaskId(taskId)} />
-      </div>
-
-
-      {/* ── 6. MENTIONS + TODAY'S INSTAGRAM LOOP ── */}
+      {/* ── 4/6. PM TASKS + MENTIONS (left) alongside TODAY'S INSTAGRAM LOOP (right,
+          stretches to match the left column's combined height) ── */}
       <div
-        className="grid grid-cols-1 gap-4 md:grid-cols-5 opacity-0"
-        style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.38s" }}
+        className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-5 opacity-0"
+        style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.22s" }}
       >
-        <div className="md:col-span-2">
+        <div className="flex flex-col gap-4 md:col-span-2">
+          <MyPmTasksWidget onOpenTask={(taskId) => setSelectedPmTaskId(taskId)} />
           <MentionsWidget onOpenTask={(taskId) => setSelectedPmTaskId(taskId)} />
         </div>
         <div className="md:col-span-3">
