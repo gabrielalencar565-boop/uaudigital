@@ -18,7 +18,7 @@ import { useMyMonthlyPerformanceRank } from "@/features/meu-painel/hooks/use-my-
 import { MeuPainelPerformanceRankCard } from "@/features/meu-painel/components/MeuPainelPerformanceRankCard";
 import { useMyAnnualPerformanceRank } from "@/features/meu-painel/hooks/use-my-annual-performance-rank";
 import { useNow } from "@/hooks/use-now";
-import { MentionsWidget } from "@/features/meu-painel/components/MentionsWidget";
+import { NotesWidget } from "@/features/meu-painel/components/NotesWidget";
 import { TodayInstagramLoopWidget } from "@/features/meu-painel/components/TodayInstagramLoopWidget";
 import { MyPmTasksWidget } from "@/features/meu-painel/components/MyPmTasksWidget";
 import { PmTaskDetailDialog } from "@/features/gestao/components/PmTaskDetailDialog";
@@ -464,7 +464,7 @@ export function MeuPainelPanel() {
         <MetricSparkCard label="Atrasadas" value={summary.overdue} icon={<AlertTriangle className="h-5 w-5" />} accentClass="text-red-500" />
       </div>
 
-      {/* ── 4/6. PM TASKS + MENTIONS (left) alongside TODAY'S INSTAGRAM LOOP (right,
+      {/* ── 4/6. PM TASKS + NOTES (left) alongside TODAY'S INSTAGRAM LOOP (right,
           stretches to match the left column's combined height) ── */}
       <div
         className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-5 opacity-0"
@@ -472,7 +472,7 @@ export function MeuPainelPanel() {
       >
         <div className="flex flex-col gap-4 md:col-span-3">
           <MyPmTasksWidget onOpenTask={(taskId) => setSelectedPmTaskId(taskId)} />
-          <MentionsWidget onOpenTask={(taskId) => setSelectedPmTaskId(taskId)} />
+          <NotesWidget />
         </div>
         <div className="md:col-span-2">
           <TodayInstagramLoopWidget onOpenTask={(taskId) => setSelectedPmTaskId(taskId)} />
