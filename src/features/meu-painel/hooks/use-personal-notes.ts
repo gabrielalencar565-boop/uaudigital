@@ -13,6 +13,7 @@ export interface PersonalNote {
   // ISO weekday (1=segunda .. 7=domingo) for the widget's weekly kanban view; null means
   // the note isn't placed on any day and only shows in the plain list.
   day_of_week: number | null;
+  done: boolean;
 }
 
 export function useMyNotes(userId?: string) {
@@ -66,6 +67,19 @@ export function useMoveNoteToDay() {
   return useMutation({
     mutationFn: async ({ id, dayOfWeek }: { id: string; dayOfWeek: number | null }) => {
       const { error } = await sb.from("personal_notes").update({ day_of_week: dayOfWeek }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["personal_notes"] }),
+  });
+}
+
+// Separate from useUpdateNote for the same reason as useMoveNoteToDay — checking a note
+// off shouldn't need to round-trip its whole text body.
+export function useToggleNoteDone() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, done }: { id: string; done: boolean }) => {
+      const { error } = await sb.from("personal_notes").update({ done }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["personal_notes"] }),

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { format, isToday, isYesterday } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ChevronLeft, LayoutList, Columns3, Plus, Search, StickyNote, Trash2 } from "lucide-react";
+import { CheckCircle2, ChevronLeft, Circle, Plus, StickyNote, Trash2 } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -13,6 +13,7 @@ import {
   useUpdateNote,
   useDeleteNote,
   useMoveNoteToDay,
+  useToggleNoteDone,
   type PersonalNote,
 } from "@/features/meu-painel/hooks/use-personal-notes";
 
@@ -53,8 +54,6 @@ function todayIsoWeekday(): number {
   return jsDay === 0 ? 7 : jsDay;
 }
 
-type View = "list" | "kanban";
-
 export function NotesWidget() {
   const { user } = useSession();
   const notesQ = useMyNotes(user?.id);
@@ -63,11 +62,10 @@ export function NotesWidget() {
   const updateNote = useUpdateNote();
   const deleteNote = useDeleteNote();
   const moveNote = useMoveNoteToDay();
+  const toggleDone = useToggleNoteDone();
 
-  const [view, setView] = useState<View>("list");
   const [openId, setOpenId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
-  const [query, setQuery] = useState("");
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const today = useMemo(() => todayIsoWeekday(), []);
   const [selectedDay, setSelectedDay] = useState(today);
@@ -102,12 +100,6 @@ export function NotesWidget() {
     if (openId === id) setOpenId(null);
   };
 
-  const filteredNotes = useMemo(() => {
-    if (!query.trim()) return notes;
-    const q = query.toLowerCase();
-    return notes.filter((n) => n.content.toLowerCase().includes(q));
-  }, [notes, query]);
-
   const notesByDay = useMemo(() => {
     const map = new Map<number, PersonalNote[]>();
     for (const n of notes) {
@@ -116,6 +108,9 @@ export function NotesWidget() {
       list.push(n);
       map.set(n.day_of_week, list);
     }
+    // Checked-off notes sink to the bottom of their day, same as a to-do list — everything
+    // still to do stays up top where it's visible at a glance.
+    for (const list of map.values()) list.sort((a, b) => Number(a.done) - Number(b.done));
     return map;
   }, [notes]);
 
@@ -147,40 +142,14 @@ export function NotesWidget() {
               <StickyNote className="h-4 w-4 text-amber-500" />
               Notas
             </CardTitle>
-            <div className="flex items-center gap-1">
-              <div className="flex items-center gap-0.5 rounded-full border border-border/60 p-0.5">
-                <button
-                  type="button"
-                  onClick={() => setView("list")}
-                  title="Lista"
-                  className={cn(
-                    "flex h-5 w-5 items-center justify-center rounded-full transition",
-                    view === "list" ? "bg-amber-500 text-white" : "text-muted-foreground hover:bg-accent hover:text-foreground",
-                  )}
-                >
-                  <LayoutList className="h-3 w-3" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setView("kanban")}
-                  title="Semana"
-                  className={cn(
-                    "flex h-5 w-5 items-center justify-center rounded-full transition",
-                    view === "kanban" ? "bg-amber-500 text-white" : "text-muted-foreground hover:bg-accent hover:text-foreground",
-                  )}
-                >
-                  <Columns3 className="h-3 w-3" />
-                </button>
-              </div>
-              <button
-                type="button"
-                onClick={() => handleNewNote()}
-                title="Nova nota"
-                className="flex h-6 w-6 items-center justify-center rounded-full text-amber-600 transition hover:bg-amber-500/10"
-              >
-                <Plus className="h-4 w-4" />
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => handleNewNote(selectedDay)}
+              title="Nova nota"
+              className="flex h-6 w-6 items-center justify-center rounded-full text-amber-600 transition hover:bg-amber-500/10"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
           </div>
         )}
       </CardHeader>
@@ -220,7 +189,7 @@ export function NotesWidget() {
               className="w-full resize-none border-none bg-transparent text-sm leading-relaxed text-foreground outline-none placeholder:text-muted-foreground/60"
             />
           </div>
-        ) : view === "kanban" ? (
+        ) : (
           <>
             <div className="mx-4 mb-2 flex items-center justify-between gap-1">
               {WEEK_DAYS.map(({ day, label }) => (
@@ -258,34 +227,13 @@ export function NotesWidget() {
               ) : (
                 <div className="divide-y divide-border/30">
                   {(notesByDay.get(selectedDay) ?? []).map((n) => (
-                    <NoteRow key={n.id} note={n} onOpen={() => setOpenId(n.id)} onDelete={() => handleDelete(n.id)} />
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
-          </>
-        ) : (
-          <>
-            {notes.length > 0 && (
-              <div className="mx-4 mb-2 flex items-center gap-2 rounded-lg bg-muted/60 px-2.5 py-1.5">
-                <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                <input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Buscar nas notas"
-                  className="w-full border-none bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground"
-                />
-              </div>
-            )}
-            <ScrollArea className="max-h-[280px]">
-              {filteredNotes.length === 0 ? (
-                <div className="px-4 pb-4 text-center text-sm text-muted-foreground">
-                  {notes.length === 0 ? "Nenhuma nota ainda — toque em + pra criar a primeira." : "Nada encontrado."}
-                </div>
-              ) : (
-                <div className="divide-y divide-border/30">
-                  {filteredNotes.map((n) => (
-                    <NoteRow key={n.id} note={n} onOpen={() => setOpenId(n.id)} onDelete={() => handleDelete(n.id)} />
+                    <NoteRow
+                      key={n.id}
+                      note={n}
+                      onOpen={() => setOpenId(n.id)}
+                      onDelete={() => handleDelete(n.id)}
+                      onToggleDone={() => toggleDone.mutate({ id: n.id, done: !n.done })}
+                    />
                   ))}
                 </div>
               )}
@@ -297,13 +245,36 @@ export function NotesWidget() {
   );
 }
 
-function NoteRow({ note, onOpen, onDelete }: { note: PersonalNote; onOpen: () => void; onDelete: () => void }) {
+function NoteRow({
+  note,
+  onOpen,
+  onDelete,
+  onToggleDone,
+}: {
+  note: PersonalNote;
+  onOpen: () => void;
+  onDelete: () => void;
+  onToggleDone: () => void;
+}) {
   const title = deriveTitle(note.content);
   const preview = derivePreview(note.content);
   return (
     <div className="group relative flex items-start gap-2 px-4 py-2.5 transition hover:bg-accent/30">
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggleDone();
+        }}
+        title={note.done ? "Marcar como não concluída" : "Marcar como concluída"}
+        className={cn("mt-0.5 shrink-0 transition", note.done ? "text-amber-500" : "text-muted-foreground/50 hover:text-amber-500")}
+      >
+        {note.done ? <CheckCircle2 className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
+      </button>
       <button type="button" onClick={onOpen} className="min-w-0 flex-1 text-left">
-        <p className="truncate text-[13px] font-medium text-foreground">{title}</p>
+        <p className={cn("truncate text-[13px] font-medium", note.done ? "text-muted-foreground line-through" : "text-foreground")}>
+          {title}
+        </p>
         <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
           {formatNoteDate(note.updated_at)}
           {preview && <span className="text-muted-foreground/70"> — {preview}</span>}
