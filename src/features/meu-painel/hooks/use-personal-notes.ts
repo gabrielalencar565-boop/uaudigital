@@ -10,6 +10,9 @@ export interface PersonalNote {
   content: string;
   created_at: string;
   updated_at: string;
+  // ISO weekday (1=segunda .. 7=domingo) for the widget's weekly kanban view; null means
+  // the note isn't placed on any day and only shows in the plain list.
+  day_of_week: number | null;
 }
 
 export function useMyNotes(userId?: string) {
@@ -31,10 +34,10 @@ export function useMyNotes(userId?: string) {
 export function useCreateNote() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ userId }: { userId: string }): Promise<PersonalNote> => {
+    mutationFn: async ({ userId, dayOfWeek }: { userId: string; dayOfWeek?: number | null }): Promise<PersonalNote> => {
       const { data, error } = await sb
         .from("personal_notes")
-        .insert({ user_id: userId, title: "", content: "" })
+        .insert({ user_id: userId, title: "", content: "", day_of_week: dayOfWeek ?? null })
         .select()
         .single();
       if (error) throw error;
@@ -49,6 +52,20 @@ export function useUpdateNote() {
   return useMutation({
     mutationFn: async ({ id, title, content }: { id: string; title: string; content: string }) => {
       const { error } = await sb.from("personal_notes").update({ title, content }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["personal_notes"] }),
+  });
+}
+
+// Separate from useUpdateNote (content autosave) so dragging a card between kanban
+// columns — or changing the day from the editor — doesn't need to round-trip the whole
+// note body just to change one field.
+export function useMoveNoteToDay() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, dayOfWeek }: { id: string; dayOfWeek: number | null }) => {
+      const { error } = await sb.from("personal_notes").update({ day_of_week: dayOfWeek }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["personal_notes"] }),
