@@ -8,22 +8,11 @@ import { CONTENT_TYPE_ICON, getContentTypeColor } from "@/features/calendario/co
 import { CONTENT_TYPE_LABELS } from "@/features/calendario/calendar-types";
 
 const ROTATE_MS = 5000;
-const VISIBLE_OPTIONS = [2, 3, 4] as const;
+const VISIBLE = 2;
 const GAP_PX = 8;
 // Fraction of one card's own width a drag must cross before it counts as a swipe
 // instead of snapping back.
 const SWIPE_THRESHOLD = 0.3;
-const VISIBLE_STORAGE_KEY = "today-instagram-widget-visible-count";
-
-function readStoredVisibleCount(): number {
-  try {
-    const raw = localStorage.getItem(VISIBLE_STORAGE_KEY);
-    const n = raw ? Number(raw) : NaN;
-    return (VISIBLE_OPTIONS as readonly number[]).includes(n) ? n : 3;
-  } catch {
-    return 3;
-  }
-}
 
 export function TodayInstagramLoopWidget() {
   const todayKey = useMemo(() => new Date().toLocaleDateString("en-CA"), []);
@@ -31,17 +20,6 @@ export function TodayInstagramLoopWidget() {
   const publications = pubsQ.data ?? [];
   const taskIds = useMemo(() => publications.map((p) => p.taskId), [publications]);
   const attachmentsQ = useTaskAttachmentsMap(taskIds);
-
-  // How many posts show side by side — a lightweight per-viewer preference, not shared
-  // data, so localStorage (not the DB) is the right place for it.
-  const [visibleCount, setVisibleCount] = useState(readStoredVisibleCount);
-  useEffect(() => {
-    try {
-      localStorage.setItem(VISIBLE_STORAGE_KEY, String(visibleCount));
-    } catch {
-      /* best-effort only */
-    }
-  }, [visibleCount]);
 
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -81,7 +59,7 @@ export function TodayInstagramLoopWidget() {
     if (publications.length <= 1) return;
     setPaused(true);
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
-    dragState.current = { startX: e.clientX, width: (trackRef.current?.clientWidth ?? visibleCount * 100) / visibleCount };
+    dragState.current = { startX: e.clientX, width: (trackRef.current?.clientWidth ?? VISIBLE * 100) / VISIBLE };
   };
   const onPointerMove = (e: React.PointerEvent) => {
     if (!dragState.current) return;
@@ -97,31 +75,15 @@ export function TodayInstagramLoopWidget() {
     setPaused(false);
   };
 
-  const cardWidthPct = 100 / visibleCount;
+  const cardWidthPct = 100 / VISIBLE;
 
   return (
     <Card className="flex h-full flex-col">
-      <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2 space-y-0">
+      <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-sm">
           <Instagram className="h-4 w-4 text-primary" />
           Hoje no Instagram
         </CardTitle>
-        <div className="flex items-center gap-0.5 rounded-full border border-border/60 p-0.5">
-          {VISIBLE_OPTIONS.map((n) => (
-            <button
-              key={n}
-              type="button"
-              onClick={() => setVisibleCount(n)}
-              title={`Mostrar ${n} de uma vez`}
-              className={cn(
-                "flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-semibold transition",
-                n === visibleCount ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground",
-              )}
-            >
-              {n}
-            </button>
-          ))}
-        </div>
       </CardHeader>
       <CardContent className="flex flex-1 flex-col p-0">
         {publications.length === 0 ? (
@@ -134,7 +96,7 @@ export function TodayInstagramLoopWidget() {
           // is centered in whatever extra vertical room that leaves, instead of
           // distorting the posts' real Instagram aspect ratio to fill the gap.
           <div className="relative mx-2 mb-3 flex flex-1 items-center gap-1.5">
-            {publications.length > visibleCount && (
+            {publications.length > VISIBLE && (
               <button
                 type="button"
                 onClick={() => step(-1)}
@@ -169,7 +131,7 @@ export function TodayInstagramLoopWidget() {
                     <div
                       key={p.id}
                       className="relative aspect-[4/5] shrink-0 overflow-hidden rounded-lg bg-black"
-                      style={{ width: `calc(${cardWidthPct}% - ${(GAP_PX * (visibleCount - 1)) / visibleCount}px)` }}
+                      style={{ width: `calc(${cardWidthPct}% - ${(GAP_PX * (VISIBLE - 1)) / VISIBLE}px)` }}
                     >
                       {cover ? (
                         <img src={cover.thumbUrl} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" draggable={false} />
@@ -200,7 +162,7 @@ export function TodayInstagramLoopWidget() {
               </div>
             </div>
 
-            {publications.length > visibleCount && (
+            {publications.length > VISIBLE && (
               <button
                 type="button"
                 onClick={() => step(1)}
