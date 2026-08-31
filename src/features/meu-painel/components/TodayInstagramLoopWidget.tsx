@@ -3,13 +3,22 @@ import { Clock, Instagram, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { useTodayScheduledPublications, useTaskAttachmentsMap } from "@/features/calendario/hooks/use-calendar-data";
+import {
+  useTodayScheduledPublications,
+  useTaskAttachmentsMap,
+  useCoverAttachmentsById,
+  type TodayScheduledPublication,
+} from "@/features/calendario/hooks/use-calendar-data";
 import { CONTENT_TYPE_ICON, getContentTypeColor } from "@/features/calendario/components/PublicationCard";
 import { CONTENT_TYPE_LABELS } from "@/features/calendario/calendar-types";
 import { openTaskInCalendario } from "@/features/calendario/open-in-calendario";
 
 const ROTATE_MS = 5000;
 const VISIBLE = 2;
+// How many clone slides get padded onto each end of the strip so the last real post can
+// still slide into view instead of leaving an empty gap where the "missing" second card
+// would be — see the wrap-around comment on step() below.
+const CLONES = VISIBLE - 1;
 const GAP_PX = 8;
 // Fraction of one card's own width a drag must cross before it counts as a swipe
 // instead of snapping back.
@@ -21,8 +30,38 @@ export function TodayInstagramLoopWidget() {
   const publications = pubsQ.data ?? [];
   const taskIds = useMemo(() => publications.map((p) => p.taskId), [publications]);
   const attachmentsQ = useTaskAttachmentsMap(taskIds);
+  const coverIds = useMemo(
+    () => [...new Set(publications.map((p) => p.coverAttachmentId).filter((id): id is string => !!id))],
+    [publications],
+  );
+  const coverAttachmentsQ = useCoverAttachmentsById(coverIds);
 
-  const [index, setIndex] = useState(0);
+  // Reels/vídeos têm o arquivo de vídeo como próprio anexo — mostrar isso como <img>
+  // resulta numa imagem quebrada. A capa escolhida (cover_attachment_id) é sempre uma
+  // imagem de verdade, então ela tem prioridade sobre o primeiro anexo "final" bruto.
+  const thumbnailFor = (p: TodayScheduledPublication) => {
+    if (p.coverAttachmentId) {
+      const own = attachmentsQ.data?.get(p.taskId)?.find((a) => a.id === p.coverAttachmentId);
+      if (own) return own;
+      const external = coverAttachmentsQ.data?.get(p.coverAttachmentId);
+      if (external) return external;
+    }
+    return attachmentsQ.data?.get(p.taskId)?.[0];
+  };
+
+  const N = publications.length;
+  // Infinite loop: pad a clone of the tail before the real items and a clone of the head
+  // after them, so the visible window always has enough cards to fill it — without this,
+  // sliding to the actual last post left the second slot empty (nothing left to show).
+  // Real items live at extended indices [CLONES, CLONES + N - 1]; index starts there.
+  const extended = useMemo(() => {
+    if (N === 0) return [];
+    const head = publications.slice(0, CLONES);
+    const tail = publications.slice(Math.max(0, N - CLONES));
+    return [...tail, ...publications, ...head];
+  }, [publications, N]);
+
+  const [index, setIndex] = useState(CLONES);
   const [paused, setPaused] = useState(false);
   const [dragX, setDragX] = useState(0);
   const [instant, setInstant] = useState(false);
@@ -30,34 +69,40 @@ export function TodayInstagramLoopWidget() {
   const dragState = useRef<{ startX: number; width: number } | null>(null);
 
   useEffect(() => {
-    if (index >= publications.length) setIndex(0);
-  }, [publications.length, index]);
+    setIndex(CLONES);
+  }, [N]);
 
   useEffect(() => {
-    if (publications.length <= 1 || paused) return;
-    const id = setInterval(() => step(1), ROTATE_MS);
+    if (N <= 1 || paused) return;
+    const id = setInterval(() => setIndex((i) => i + 1), ROTATE_MS);
     return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [publications.length, paused, index]);
+  }, [N, paused]);
 
-  // Advancing forward off the last item (or backward off the first) would otherwise
-  // animate a long slide across the whole strip back to the opposite end — instead the
-  // wrap is done as an un-animated snap, so the loop reads as continuous.
-  const step = (dir: 1 | -1) => {
-    if (publications.length === 0) return;
-    setIndex((i) => {
-      const next = i + dir;
-      if (next < 0 || next >= publications.length) {
-        setInstant(true);
-        requestAnimationFrame(() => requestAnimationFrame(() => setInstant(false)));
-        return dir === 1 ? 0 : publications.length - 1;
-      }
-      return next;
-    });
+  // Once a slide finishes animating into a cloned slot, snap invisibly (no transition)
+  // back to the equivalent real position — that clone shows exactly the same content, so
+  // the jump is imperceptible and the loop reads as continuous in either direction.
+  const handleTransitionEnd = (e: React.TransitionEvent) => {
+    // Card buttons have their own hover-brightness transition, which bubbles up here too
+    // — only react to the track's own transform transition finishing, not a child's.
+    if (e.target !== e.currentTarget || e.propertyName !== "transform") return;
+    if (index >= CLONES + N) {
+      setInstant(true);
+      setIndex(index - N);
+    } else if (index < CLONES) {
+      setInstant(true);
+      setIndex(index + N);
+    }
   };
+  useEffect(() => {
+    if (!instant) return;
+    const id = requestAnimationFrame(() => requestAnimationFrame(() => setInstant(false)));
+    return () => cancelAnimationFrame(id);
+  }, [instant]);
+
+  const step = (dir: 1 | -1) => setIndex((i) => i + dir);
 
   const onPointerDown = (e: React.PointerEvent) => {
-    if (publications.length <= 1) return;
+    if (N <= 1) return;
     setPaused(true);
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
     dragState.current = { startX: e.clientX, width: (trackRef.current?.clientWidth ?? VISIBLE * 100) / VISIBLE };
@@ -87,7 +132,7 @@ export function TodayInstagramLoopWidget() {
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-1 flex-col p-0">
-        {publications.length === 0 ? (
+        {N === 0 ? (
           <div className="flex flex-1 items-center justify-center px-4 pb-4 text-center text-sm text-muted-foreground">
             Nenhuma publicação prevista pra hoje
           </div>
@@ -97,7 +142,7 @@ export function TodayInstagramLoopWidget() {
           // is centered in whatever extra vertical room that leaves, instead of
           // distorting the posts' real Instagram aspect ratio to fill the gap.
           <div className="relative mx-2 mb-3 flex flex-1 items-center gap-1.5">
-            {publications.length > VISIBLE && (
+            {N > VISIBLE && (
               <button
                 type="button"
                 onClick={() => step(-1)}
@@ -119,18 +164,19 @@ export function TodayInstagramLoopWidget() {
             >
               <div
                 className={cn("flex", !instant && !dragState.current && "transition-transform duration-400 ease-out")}
+                onTransitionEnd={handleTransitionEnd}
                 style={{
                   gap: GAP_PX,
                   transform: `translateX(calc(-${index * cardWidthPct}% - ${index * GAP_PX}px + ${dragX}px))`,
                 }}
               >
-                {publications.map((p) => {
-                  const cover = attachmentsQ.data?.get(p.taskId)?.[0];
+                {extended.map((p, i) => {
+                  const cover = thumbnailFor(p);
                   const ContentIcon = CONTENT_TYPE_ICON[p.contentType];
                   const contentColor = getContentTypeColor(p.contentType);
                   return (
                     <button
-                      key={p.id}
+                      key={`${p.id}-${i}`}
                       type="button"
                       onClick={() => openTaskInCalendario(p.taskId)}
                       className="relative aspect-[4/5] shrink-0 overflow-hidden rounded-lg bg-black text-left transition hover:brightness-110"
@@ -165,7 +211,7 @@ export function TodayInstagramLoopWidget() {
               </div>
             </div>
 
-            {publications.length > VISIBLE && (
+            {N > VISIBLE && (
               <button
                 type="button"
                 onClick={() => step(1)}
