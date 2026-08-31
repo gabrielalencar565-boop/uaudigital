@@ -52,6 +52,99 @@ export function useCalendarPublications(calendarId: string | null) {
   });
 }
 
+export interface TodayScheduledPublication {
+  id: string;
+  taskId: string;
+  clientId: string;
+  clientName: string;
+  clientLogoUrl: string | null;
+  caption: string | null;
+  publishTime: string | null;
+  contentType: CalendarPublication["content_type"];
+  coverAttachmentId: string | null;
+}
+
+// Powers Meu Painel's "hoje no Instagram" widget — every publication due today across
+// every client, regardless of approval/scheduling status, so the team sees the day's
+// full lineup at a glance instead of having to open each client's Cronograma.
+// Fetches one full publication row on demand — for spots like Meu Painel's "hoje no
+// Instagram" widget that only need the full CalendarPublication (every field
+// PublicationPreviewPanel reads) once the viewer actually opens one, not for the whole
+// day's list up front.
+export function useCalendarPublicationById(id: string | null) {
+  return useQuery({
+    enabled: !!id,
+    queryKey: ["calendar_publication", id],
+    queryFn: async (): Promise<CalendarPublication | null> => {
+      const { data, error } = await sb.from("calendar_publications").select("*").eq("id", id).maybeSingle();
+      if (error) throw error;
+      return data ?? null;
+    },
+  });
+}
+
+export function useTodayScheduledPublications(todayKey: string) {
+  return useQuery({
+    queryKey: ["today_scheduled_publications", todayKey],
+    queryFn: async (): Promise<TodayScheduledPublication[]> => {
+      const { data: pubs, error: pubsErr } = await sb
+        .from("calendar_publications")
+        .select("id, task_id, calendar_id, content_type, caption, publish_time, cover_attachment_id")
+        .eq("publish_date", todayKey)
+        .is("deleted_at", null)
+        .order("publish_time", { ascending: true, nullsFirst: false });
+      if (pubsErr) throw pubsErr;
+      const rows = (pubs ?? []) as {
+        id: string; task_id: string; calendar_id: string; content_type: CalendarPublication["content_type"];
+        caption: string | null; publish_time: string | null; cover_attachment_id: string | null;
+      }[];
+      if (rows.length === 0) return [];
+
+      const calendarIds = [...new Set(rows.map((r) => r.calendar_id))];
+      const { data: calendars, error: calErr } = await sb
+        .from("publication_calendars")
+        .select("id, client_id")
+        .in("id", calendarIds);
+      if (calErr) throw calErr;
+      const clientIdByCalendarId = new Map<string, string>(
+        ((calendars ?? []) as { id: string; client_id: string }[]).map((c) => [c.id, c.client_id]),
+      );
+
+      const clientIds = [...new Set(Array.from(clientIdByCalendarId.values()))];
+      const { data: clients, error: clientsErr } = await sb
+        .from("clients")
+        .select("id, name, logo_url")
+        .in("id", clientIds);
+      if (clientsErr) throw clientsErr;
+      const clientById = new Map<string, { name: string; logo_url: string | null }>(
+        ((clients ?? []) as { id: string; name: string; logo_url: string | null }[]).map((c) => [c.id, c]),
+      );
+
+      return rows
+        .map((r) => {
+          const clientId = clientIdByCalendarId.get(r.calendar_id);
+          const client = clientId ? clientById.get(clientId) : undefined;
+          if (!clientId || !client) return null;
+          return {
+            id: r.id,
+            taskId: r.task_id,
+            clientId,
+            clientName: client.name,
+            clientLogoUrl: client.logo_url,
+            caption: r.caption,
+            publishTime: r.publish_time,
+            contentType: r.content_type,
+            coverAttachmentId: r.cover_attachment_id,
+          };
+        })
+        .filter((v): v is TodayScheduledPublication => v !== null);
+    },
+    // The lineup can change from other tabs (a post added/removed, time edited) — keep it
+    // reasonably fresh without polling aggressively.
+    refetchInterval: 5 * 60 * 1000,
+  });
+}
+
 export function useTaskAttachmentsMap(taskIds: string[]) {
   return useQuery({
     enabled: taskIds.length > 0,
