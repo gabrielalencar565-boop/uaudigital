@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { format, isToday, isYesterday } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { CheckCircle2, ChevronLeft, Circle, Plus, StickyNote, Trash2 } from "lucide-react";
+import { CheckCircle2, Circle, Clock, Plus, StickyNote, Trash2 } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -14,29 +12,9 @@ import {
   useDeleteNote,
   useMoveNoteToDay,
   useToggleNoteDone,
+  useSetNoteTime,
   type PersonalNote,
 } from "@/features/meu-painel/hooks/use-personal-notes";
-
-// Every field the Notes app derives from raw text, mirrored here: the "title" is just the
-// note's own first line (there's no separate title column in the real app either), and
-// the list preview is the next non-empty line, exactly like iOS.
-function deriveTitle(content: string): string {
-  const firstLine = content.split("\n")[0]?.trim();
-  return firstLine || "Nova nota";
-}
-function derivePreview(content: string): string {
-  const lines = content.split("\n").slice(1);
-  const line = lines.find((l) => l.trim().length > 0);
-  return line?.trim() ?? "";
-}
-function formatNoteDate(iso: string): string {
-  const d = new Date(iso);
-  if (isToday(d)) return format(d, "'Hoje às' HH:mm");
-  if (isYesterday(d)) return format(d, "'Ontem às' HH:mm");
-  return format(d, "dd/MM/yyyy", { locale: ptBR });
-}
-
-const AUTOSAVE_DEBOUNCE_MS = 600;
 
 // ISO weekday numbering (1=segunda .. 7=domingo), Monday-first to match how the agency's
 // own week already runs everywhere else in the app (Cronograma cycles, Agenda).
@@ -63,41 +41,14 @@ export function NotesWidget() {
   const deleteNote = useDeleteNote();
   const moveNote = useMoveNoteToDay();
   const toggleDone = useToggleNoteDone();
+  const setTime = useSetNoteTime();
 
-  const [openId, setOpenId] = useState<string | null>(null);
-  const [draft, setDraft] = useState("");
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const today = useMemo(() => todayIsoWeekday(), []);
   const [selectedDay, setSelectedDay] = useState(today);
 
-  const openNote = notes.find((n) => n.id === openId) ?? null;
-
-  useEffect(() => {
-    if (openNote) setDraft(openNote.content);
-    // Only re-sync the draft when switching which note is open, not on every refetch —
-    // otherwise a background invalidation would clobber whatever the user is mid-typing.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openId]);
-
-  const scheduleSave = (content: string) => {
-    if (!openId) return;
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      updateNote.mutate({ id: openId, title: deriveTitle(content), content });
-    }, AUTOSAVE_DEBOUNCE_MS);
-  };
-
   const handleNewNote = (dayOfWeek?: number | null) => {
     if (!user?.id) return;
-    createNote.mutate(
-      { userId: user.id, dayOfWeek },
-      { onSuccess: (note) => setOpenId(note.id) },
-    );
-  };
-
-  const handleDelete = (id: string) => {
-    deleteNote.mutate(id);
-    if (openId === id) setOpenId(null);
+    createNote.mutate({ userId: user.id, dayOfWeek });
   };
 
   const notesByDay = useMemo(() => {
@@ -117,129 +68,62 @@ export function NotesWidget() {
   return (
     <Card>
       <CardHeader className="pb-2">
-        {openNote ? (
-          <div className="flex items-center justify-between gap-2">
-            <button
-              type="button"
-              onClick={() => setOpenId(null)}
-              className="flex items-center gap-0.5 text-sm font-medium text-amber-600 hover:text-amber-700"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              Notas
-            </button>
-            <button
-              type="button"
-              onClick={() => handleDelete(openNote.id)}
-              title="Excluir nota"
-              className="text-muted-foreground transition hover:text-destructive"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-          </div>
-        ) : (
-          <div className="flex items-center justify-between gap-2">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <StickyNote className="h-4 w-4 text-amber-500" />
-              Notas
-            </CardTitle>
-            <button
-              type="button"
-              onClick={() => handleNewNote(selectedDay)}
-              title="Nova nota"
-              className="flex h-6 w-6 items-center justify-center rounded-full text-amber-600 transition hover:bg-amber-500/10"
-            >
-              <Plus className="h-4 w-4" />
-            </button>
-          </div>
-        )}
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <StickyNote className="h-4 w-4 text-amber-500" />
+            Notas
+          </CardTitle>
+          <button
+            type="button"
+            onClick={() => handleNewNote(selectedDay)}
+            title="Nova nota"
+            className="flex h-6 w-6 items-center justify-center rounded-full text-amber-600 transition hover:bg-amber-500/10"
+          >
+            <Plus className="h-4 w-4" />
+          </button>
+        </div>
       </CardHeader>
       <CardContent className="p-0">
-        {openNote ? (
-          <div className="flex flex-col px-4 pb-4">
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <p className="text-[11px] text-muted-foreground">{formatNoteDate(openNote.updated_at)}</p>
-              <div className="flex items-center gap-1">
-                {WEEK_DAYS.map(({ day, label }) => (
-                  <button
-                    key={day}
-                    type="button"
-                    onClick={() => moveNote.mutate({ id: openNote.id, dayOfWeek: openNote.day_of_week === day ? null : day })}
-                    title={`Colocar na ${label}`}
-                    className={cn(
-                      "flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-semibold transition",
-                      openNote.day_of_week === day
-                        ? "bg-amber-500 text-white"
-                        : "text-muted-foreground/70 hover:bg-accent hover:text-foreground",
-                    )}
-                  >
-                    {label[0]}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <textarea
-              autoFocus
-              value={draft}
-              onChange={(e) => {
-                setDraft(e.target.value);
-                scheduleSave(e.target.value);
-              }}
-              placeholder="Comece a escrever…"
-              rows={8}
-              className="w-full resize-none border-none bg-transparent text-sm leading-relaxed text-foreground outline-none placeholder:text-muted-foreground/60"
-            />
-          </div>
-        ) : (
-          <>
-            <div className="mx-4 mb-2 flex items-center justify-between gap-1">
-              {WEEK_DAYS.map(({ day, label }) => (
-                <button
-                  key={day}
-                  type="button"
-                  onClick={() => setSelectedDay(day)}
-                  title={label}
-                  className={cn(
-                    "flex h-7 w-7 flex-col items-center justify-center rounded-full text-[10px] font-semibold transition",
-                    selectedDay === day
-                      ? "bg-amber-500 text-white"
-                      : day === today
-                        ? "text-amber-600 ring-1 ring-amber-400/50"
-                        : "text-muted-foreground/70 hover:bg-accent hover:text-foreground",
-                  )}
-                >
-                  {label[0]}
-                </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => handleNewNote(selectedDay)}
-                title="Nova nota nesse dia"
-                className="ml-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-amber-600 transition hover:bg-amber-500/10"
-              >
-                <Plus className="h-4 w-4" />
-              </button>
-            </div>
-            <ScrollArea className="max-h-[280px]">
-              {(notesByDay.get(selectedDay) ?? []).length === 0 ? (
-                <div className="px-4 pb-4 text-center text-sm text-muted-foreground">
-                  Nenhuma nota em {WEEK_DAYS.find((d) => d.day === selectedDay)?.label} — toque em + pra criar.
-                </div>
-              ) : (
-                <div className="divide-y divide-border/30">
-                  {(notesByDay.get(selectedDay) ?? []).map((n) => (
-                    <NoteRow
-                      key={n.id}
-                      note={n}
-                      onOpen={() => setOpenId(n.id)}
-                      onDelete={() => handleDelete(n.id)}
-                      onToggleDone={() => toggleDone.mutate({ id: n.id, done: !n.done })}
-                    />
-                  ))}
-                </div>
+        <div className="mx-4 mb-2 flex items-center justify-between gap-1">
+          {WEEK_DAYS.map(({ day, label }) => (
+            <button
+              key={day}
+              type="button"
+              onClick={() => setSelectedDay(day)}
+              title={label}
+              className={cn(
+                "flex h-7 w-7 flex-col items-center justify-center rounded-full text-[10px] font-semibold transition",
+                selectedDay === day
+                  ? "bg-amber-500 text-white"
+                  : day === today
+                    ? "text-amber-600 ring-1 ring-amber-400/50"
+                    : "text-muted-foreground/70 hover:bg-accent hover:text-foreground",
               )}
-            </ScrollArea>
-          </>
-        )}
+            >
+              {label[0]}
+            </button>
+          ))}
+        </div>
+        <ScrollArea className="max-h-[280px]">
+          {(notesByDay.get(selectedDay) ?? []).length === 0 ? (
+            <div className="px-4 pb-4 text-center text-sm text-muted-foreground">
+              Nenhuma nota em {WEEK_DAYS.find((d) => d.day === selectedDay)?.label} — toque em + pra criar.
+            </div>
+          ) : (
+            <div className="divide-y divide-border/30">
+              {(notesByDay.get(selectedDay) ?? []).map((n) => (
+                <NoteRow
+                  key={n.id}
+                  note={n}
+                  onSaveTitle={(title) => updateNote.mutate({ id: n.id, title, content: title })}
+                  onDelete={() => deleteNote.mutate(n.id)}
+                  onToggleDone={() => toggleDone.mutate({ id: n.id, done: !n.done })}
+                  onSetTime={(time) => setTime.mutate({ id: n.id, time })}
+                />
+              ))}
+            </div>
+          )}
+        </ScrollArea>
       </CardContent>
     </Card>
   );
@@ -247,49 +131,93 @@ export function NotesWidget() {
 
 function NoteRow({
   note,
-  onOpen,
+  onSaveTitle,
   onDelete,
   onToggleDone,
+  onSetTime,
 }: {
   note: PersonalNote;
-  onOpen: () => void;
+  onSaveTitle: (title: string) => void;
   onDelete: () => void;
   onToggleDone: () => void;
+  onSetTime: (time: string | null) => void;
 }) {
-  const title = deriveTitle(note.content);
-  const preview = derivePreview(note.content);
+  const [title, setTitle] = useState(note.title);
+  const [editingTime, setEditingTime] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setTitle(note.title);
+  }, [note.title]);
+
+  // A brand-new note has an empty title — focus it immediately so typing the name is the
+  // very next thing that happens, no extra click needed.
+  useEffect(() => {
+    if (note.title === "" && inputRef.current) inputRef.current.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const commitTitle = () => {
+    if (title !== note.title) onSaveTitle(title);
+  };
+
   return (
-    <div className="group relative flex items-start gap-2 px-4 py-2.5 transition hover:bg-accent/30">
+    <div className="group relative flex items-center gap-2 px-4 py-2">
       <button
         type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onToggleDone();
-        }}
+        onClick={onToggleDone}
         title={note.done ? "Marcar como não concluída" : "Marcar como concluída"}
-        className={cn("mt-0.5 shrink-0 transition", note.done ? "text-amber-500" : "text-muted-foreground/50 hover:text-amber-500")}
+        className={cn("shrink-0 transition", note.done ? "text-amber-500" : "text-muted-foreground/50 hover:text-amber-500")}
       >
         {note.done ? <CheckCircle2 className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
       </button>
-      <button type="button" onClick={onOpen} className="min-w-0 flex-1 text-left">
-        <p className={cn("truncate text-[13px] font-medium", note.done ? "text-muted-foreground line-through" : "text-foreground")}>
-          {title}
-        </p>
-        <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-          {formatNoteDate(note.updated_at)}
-          {preview && <span className="text-muted-foreground/70"> — {preview}</span>}
-        </p>
-      </button>
+
+      <input
+        ref={inputRef}
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        onBlur={commitTitle}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+        }}
+        placeholder="Nome da demanda…"
+        className={cn(
+          "min-w-0 flex-1 border-none bg-transparent text-[13px] outline-none placeholder:text-muted-foreground/60",
+          note.done ? "text-muted-foreground line-through" : "text-foreground",
+        )}
+      />
+
+      {editingTime ? (
+        <input
+          type="time"
+          autoFocus
+          defaultValue={note.time_of_day?.slice(0, 5) ?? ""}
+          onBlur={(e) => {
+            onSetTime(e.target.value || null);
+            setEditingTime(false);
+          }}
+          className="w-[84px] shrink-0 rounded border border-border/60 bg-transparent px-1 py-0.5 text-[11px] text-foreground outline-none"
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={() => setEditingTime(true)}
+          title="Definir horário"
+          className={cn(
+            "flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium transition",
+            note.time_of_day ? "text-amber-600" : "text-muted-foreground/40 opacity-0 group-hover:opacity-100 hover:text-amber-600",
+          )}
+        >
+          <Clock className="h-3 w-3" />
+          {note.time_of_day && note.time_of_day.slice(0, 5)}
+        </button>
+      )}
+
       <button
         type="button"
         title="Excluir"
-        onClick={(e) => {
-          e.stopPropagation();
-          onDelete();
-        }}
-        className={cn(
-          "shrink-0 rounded p-1 text-muted-foreground opacity-0 transition hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100",
-        )}
+        onClick={onDelete}
+        className="shrink-0 rounded p-1 text-muted-foreground opacity-0 transition hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
       >
         <Trash2 className="h-3.5 w-3.5" />
       </button>

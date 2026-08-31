@@ -14,6 +14,8 @@ export interface PersonalNote {
   // the note isn't placed on any day and only shows in the plain list.
   day_of_week: number | null;
   done: boolean;
+  // "HH:MM:SS" (Postgres time), or null when no time was set for this note/demand.
+  time_of_day: string | null;
 }
 
 export function useMyNotes(userId?: string) {
@@ -80,6 +82,17 @@ export function useToggleNoteDone() {
   return useMutation({
     mutationFn: async ({ id, done }: { id: string; done: boolean }) => {
       const { error } = await sb.from("personal_notes").update({ done }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["personal_notes"] }),
+  });
+}
+
+export function useSetNoteTime() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, time }: { id: string; time: string | null }) => {
+      const { error } = await sb.from("personal_notes").update({ time_of_day: time }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["personal_notes"] }),
