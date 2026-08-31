@@ -19,6 +19,7 @@ import { MeuPainelPerformanceRankCard } from "@/features/meu-painel/components/M
 import { useMyAnnualPerformanceRank } from "@/features/meu-painel/hooks/use-my-annual-performance-rank";
 import { useNow } from "@/hooks/use-now";
 import { MentionsWidget } from "@/features/meu-painel/components/MentionsWidget";
+import { TodayInstagramLoopWidget } from "@/features/meu-painel/components/TodayInstagramLoopWidget";
 import { MyPmTasksWidget } from "@/features/meu-painel/components/MyPmTasksWidget";
 import { PmTaskDetailDialog } from "@/features/gestao/components/PmTaskDetailDialog";
 import { openTaskInCalendario } from "@/features/calendario/open-in-calendario";
@@ -469,9 +470,13 @@ export function MeuPainelPanel() {
       </div>
 
 
-      {/* ── 6. MENTIONS ── */}
-      <div className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.38s" }}>
+      {/* ── 6. MENTIONS + TODAY'S INSTAGRAM LOOP ── */}
+      <div
+        className="grid grid-cols-1 gap-4 md:grid-cols-2 opacity-0"
+        style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.38s" }}
+      >
         <MentionsWidget onOpenTask={(taskId) => setSelectedPmTaskId(taskId)} />
+        <TodayInstagramLoopWidget />
       </div>
 
       {/* ── 7. PRODUCTIVITY ── */}
