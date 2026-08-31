@@ -7,11 +7,16 @@ import {
   useTodayScheduledPublications,
   useTaskAttachmentsMap,
   useCoverAttachmentsById,
+  useCalendarPublicationById,
   type TodayScheduledPublication,
 } from "@/features/calendario/hooks/use-calendar-data";
 import { CONTENT_TYPE_ICON, getContentTypeColor } from "@/features/calendario/components/PublicationCard";
 import { CONTENT_TYPE_LABELS } from "@/features/calendario/calendar-types";
-import { openTaskInCalendario } from "@/features/calendario/open-in-calendario";
+import { PublicationPreviewPanel } from "@/features/calendario/components/PublicationPreviewPanel";
+
+interface Props {
+  onOpenTask: (taskId: string) => void;
+}
 
 const ROTATE_MS = 5000;
 const VISIBLE = 2;
@@ -24,12 +29,19 @@ const GAP_PX = 8;
 // instead of snapping back.
 const SWIPE_THRESHOLD = 0.3;
 
-export function TodayInstagramLoopWidget() {
+export function TodayInstagramLoopWidget({ onOpenTask }: Props) {
   const todayKey = useMemo(() => new Date().toLocaleDateString("en-CA"), []);
   const pubsQ = useTodayScheduledPublications(todayKey);
   const publications = pubsQ.data ?? [];
   const taskIds = useMemo(() => publications.map((p) => p.taskId), [publications]);
   const attachmentsQ = useTaskAttachmentsMap(taskIds);
+
+  // Clicking a card opens the same caption/date/status panel Cronograma uses, right here
+  // over Meu Painel — no navigation to the Cronograma section needed just to peek at one
+  // post's details.
+  const [openId, setOpenId] = useState<string | null>(null);
+  const openPub = publications.find((p) => p.id === openId) ?? null;
+  const openPubFullQ = useCalendarPublicationById(openId);
   const coverIds = useMemo(
     () => [...new Set(publications.map((p) => p.coverAttachmentId).filter((id): id is string => !!id))],
     [publications],
@@ -178,7 +190,7 @@ export function TodayInstagramLoopWidget() {
                     <button
                       key={`${p.id}-${i}`}
                       type="button"
-                      onClick={() => openTaskInCalendario(p.taskId)}
+                      onClick={() => setOpenId(p.id)}
                       className="relative aspect-[4/5] shrink-0 overflow-hidden rounded-lg bg-black text-left transition hover:brightness-110"
                       style={{ width: `calc(${cardWidthPct}% - ${(GAP_PX * (VISIBLE - 1)) / VISIBLE}px)` }}
                     >
@@ -224,6 +236,18 @@ export function TodayInstagramLoopWidget() {
           </div>
         )}
       </CardContent>
+
+      {openPub && openPubFullQ.data && (
+        <PublicationPreviewPanel
+          publication={openPubFullQ.data}
+          media={(attachmentsQ.data?.get(openPub.taskId) ?? []).map((a) => ({ id: a.id, url: a.url, type: a.type }))}
+          clientId={openPub.clientId}
+          clientName={openPub.clientName}
+          clientLogoUrl={openPub.clientLogoUrl}
+          onClose={() => setOpenId(null)}
+          onOpenTask={onOpenTask}
+        />
+      )}
     </Card>
   );
 }

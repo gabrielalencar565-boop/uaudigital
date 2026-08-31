@@ -67,6 +67,22 @@ export interface TodayScheduledPublication {
 // Powers Meu Painel's "hoje no Instagram" widget — every publication due today across
 // every client, regardless of approval/scheduling status, so the team sees the day's
 // full lineup at a glance instead of having to open each client's Cronograma.
+// Fetches one full publication row on demand — for spots like Meu Painel's "hoje no
+// Instagram" widget that only need the full CalendarPublication (every field
+// PublicationPreviewPanel reads) once the viewer actually opens one, not for the whole
+// day's list up front.
+export function useCalendarPublicationById(id: string | null) {
+  return useQuery({
+    enabled: !!id,
+    queryKey: ["calendar_publication", id],
+    queryFn: async (): Promise<CalendarPublication | null> => {
+      const { data, error } = await sb.from("calendar_publications").select("*").eq("id", id).maybeSingle();
+      if (error) throw error;
+      return data ?? null;
+    },
+  });
+}
+
 export function useTodayScheduledPublications(todayKey: string) {
   return useQuery({
     queryKey: ["today_scheduled_publications", todayKey],

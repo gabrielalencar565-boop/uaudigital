@@ -475,7 +475,7 @@ export function MeuPainelPanel() {
           <MentionsWidget onOpenTask={(taskId) => setSelectedPmTaskId(taskId)} />
         </div>
         <div className="md:col-span-2">
-          <TodayInstagramLoopWidget />
+          <TodayInstagramLoopWidget onOpenTask={(taskId) => setSelectedPmTaskId(taskId)} />
         </div>
       </div>
 
