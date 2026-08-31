@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { useTodayScheduledPublications, useTaskAttachmentsMap } from "@/features/calendario/hooks/use-calendar-data";
 import { CONTENT_TYPE_ICON, getContentTypeColor } from "@/features/calendario/components/PublicationCard";
 import { CONTENT_TYPE_LABELS } from "@/features/calendario/calendar-types";
+import { openTaskInCalendario } from "@/features/calendario/open-in-calendario";
 
 const ROTATE_MS = 5000;
 const VISIBLE = 2;
@@ -128,9 +129,11 @@ export function TodayInstagramLoopWidget() {
                   const ContentIcon = CONTENT_TYPE_ICON[p.contentType];
                   const contentColor = getContentTypeColor(p.contentType);
                   return (
-                    <div
+                    <button
                       key={p.id}
-                      className="relative aspect-[4/5] shrink-0 overflow-hidden rounded-lg bg-black"
+                      type="button"
+                      onClick={() => openTaskInCalendario(p.taskId)}
+                      className="relative aspect-[4/5] shrink-0 overflow-hidden rounded-lg bg-black text-left transition hover:brightness-110"
                       style={{ width: `calc(${cardWidthPct}% - ${(GAP_PX * (VISIBLE - 1)) / VISIBLE}px)` }}
                     >
                       {cover ? (
@@ -156,7 +159,7 @@ export function TodayInstagramLoopWidget() {
                           {CONTENT_TYPE_LABELS[p.contentType]}
                         </span>
                       </div>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
