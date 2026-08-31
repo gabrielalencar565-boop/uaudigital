@@ -22,16 +22,39 @@ const GRAPH_VERSION = "v21.0";
 // Video/Reels containers process asynchronously on Meta's side; this bounds how long a
 // single item can block one function invocation before giving up (the item stays
 // retryable on the next cron tick either way, see the backoff logic in handleRunSchedules).
+// A real ~33MB Reel was observed taking noticeably longer than the old 80s budget to
+// finish processing, so this is generous — 45 * 4s = 180s — while still comfortably
+// inside Supabase's own platform execution ceiling (150s+, see drive-upload's own note
+// on this) so a genuinely-stuck poll hits *this* timeout and gets a real error recorded,
+// instead of the whole function being killed externally first with nothing written down.
 const POLL_INTERVAL_MS = 4000;
-const POLL_MAX_ATTEMPTS = 20; // ~80s cap per video/reel container
+const POLL_MAX_ATTEMPTS = 45;
 const RETRY_BACKOFF_MS = 15 * 60 * 1000;
+// Every single Graph API call gets its own bound — without this, a stalled connection to
+// Meta (not an error, just silence) hangs the `fetch` indefinitely with no JS exception
+// ever thrown, so the try/catch below never runs and the row is left stuck on
+// "publishing" forever with no error recorded. This is exactly what was happening.
+const REQUEST_TIMEOUT_MS = 25_000;
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 }
 
+async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs = REQUEST_TIMEOUT_MS): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } catch (e) {
+    if (controller.signal.aborted) throw new Error(`request to ${url} timed out after ${timeoutMs}ms`);
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function graphPost(path: string, accessToken: string, params: Record<string, string>) {
-  const res = await fetch(`https://graph.facebook.com/${GRAPH_VERSION}/${path}`, {
+  const res = await fetchWithTimeout(`https://graph.facebook.com/${GRAPH_VERSION}/${path}`, {
     method: "POST",
     body: new URLSearchParams({ ...params, access_token: accessToken }),
   });
@@ -44,7 +67,7 @@ async function graphGet(path: string, accessToken: string, params: Record<string
   const url = new URL(`https://graph.facebook.com/${GRAPH_VERSION}/${path}`);
   url.searchParams.set("access_token", accessToken);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
-  const res = await fetch(url.toString());
+  const res = await fetchWithTimeout(url.toString(), {});
   const data = await res.json();
   if (!res.ok || data.error) throw new Error(`Graph API error on ${path}: ${JSON.stringify(data.error ?? data)}`);
   return data;
@@ -130,7 +153,13 @@ async function publishToInstagram(admin: ReturnType<typeof createClient>, public
         media_type: "STORIES",
         ...(isVideo ? { video_url: item.url } : { image_url: item.url }),
       });
-      if (isVideo) await waitUntilFinished(container.id, accessToken);
+      // Written now, before the (potentially long) wait below, so a video that's still
+      // processing when this invocation gets cut off leaves a trail — the container isn't
+      // silently orphaned with nothing in the DB pointing at it.
+      if (isVideo) {
+        await admin.from("calendar_publications").update({ instagram_creation_id: container.id }).eq("id", publication.id);
+        await waitUntilFinished(container.id, accessToken);
+      }
       creationId = container.id;
     } else if (publication.content_type === "carrossel") {
       if (media.length < 2) throw new Error("carrossel precisa de pelo menos 2 mídias");
@@ -158,7 +187,11 @@ async function publishToInstagram(admin: ReturnType<typeof createClient>, public
         caption: publication.caption ?? "",
         ...(isVideo ? { video_url: item.url, media_type: isReel ? "REELS" : "VIDEO" } : { image_url: item.url }),
       });
-      if (isVideo) await waitUntilFinished(container.id, accessToken);
+      // Same reasoning as the Stories branch above — persist before the wait, not after.
+      if (isVideo) {
+        await admin.from("calendar_publications").update({ instagram_creation_id: container.id }).eq("id", publication.id);
+        await waitUntilFinished(container.id, accessToken);
+      }
       creationId = container.id;
     }
 
