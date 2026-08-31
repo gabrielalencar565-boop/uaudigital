@@ -58,7 +58,12 @@ export function TodayInstagramLoopWidget({ onOpenTask }: Props) {
       const external = coverAttachmentsQ.data?.get(p.coverAttachmentId);
       if (external) return external;
     }
-    return attachmentsQ.data?.get(p.taskId)?.[0];
+    // No cover chosen — fall back to the task's own attachments, but skip past any video
+    // file to the first real image (a video and its captured-frame image can share the
+    // same order_index, in which case whichever uploaded first — often the video — would
+    // otherwise win the tie and get rendered as a broken <img>).
+    const list = attachmentsQ.data?.get(p.taskId) ?? [];
+    return list.find((a) => !a.type?.startsWith("video/")) ?? list[0];
   };
 
   const N = publications.length;
