@@ -472,11 +472,15 @@ export function MeuPainelPanel() {
 
       {/* ── 6. MENTIONS + TODAY'S INSTAGRAM LOOP ── */}
       <div
-        className="grid grid-cols-1 gap-4 md:grid-cols-2 opacity-0"
+        className="grid grid-cols-1 gap-4 md:grid-cols-5 opacity-0"
         style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.38s" }}
       >
-        <MentionsWidget onOpenTask={(taskId) => setSelectedPmTaskId(taskId)} />
-        <TodayInstagramLoopWidget />
+        <div className="md:col-span-2">
+          <MentionsWidget onOpenTask={(taskId) => setSelectedPmTaskId(taskId)} />
+        </div>
+        <div className="md:col-span-3">
+          <TodayInstagramLoopWidget />
+        </div>
       </div>
 
       {/* ── 7. PRODUCTIVITY ── */}

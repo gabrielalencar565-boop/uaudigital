@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useTodayScheduledPublications, useTaskAttachmentsMap } from "@/features/calendario/hooks/use-calendar-data";
 import { CONTENT_TYPE_ICON, getContentTypeColor } from "@/features/calendario/components/PublicationCard";
+import { CONTENT_TYPE_LABELS } from "@/features/calendario/calendar-types";
 
 const ROTATE_MS = 5000;
 const VISIBLE = 3;
@@ -90,15 +91,15 @@ export function TodayInstagramLoopWidget() {
             Nenhuma publicação prevista pra hoje
           </div>
         ) : (
-          <div className="relative mx-3 mb-3 flex items-center gap-1">
+          <div className="relative mx-2 mb-3 flex items-center gap-1.5">
             {publications.length > VISIBLE && (
               <button
                 type="button"
                 onClick={() => step(-1)}
-                className="z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-foreground/70 transition hover:bg-accent hover:text-foreground"
+                className="z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-foreground/70 transition hover:bg-accent hover:text-foreground"
                 aria-label="Anterior"
               >
-                <ChevronLeft className="h-3.5 w-3.5" />
+                <ChevronLeft className="h-4 w-4" />
               </button>
             )}
 
@@ -135,18 +136,21 @@ export function TodayInstagramLoopWidget() {
                           <Instagram className="h-6 w-6 text-muted-foreground" />
                         </div>
                       )}
-                      <div className="absolute inset-x-0 top-0 flex items-center gap-1 bg-gradient-to-b from-black/70 to-transparent p-1">
-                        <span className="h-4 w-4 shrink-0 overflow-hidden rounded-full bg-muted">
+                      <div className="absolute inset-x-0 top-0 flex items-center gap-1.5 bg-gradient-to-b from-black/70 to-transparent p-1.5">
+                        <span className="h-5 w-5 shrink-0 overflow-hidden rounded-full bg-muted">
                           {p.clientLogoUrl && <img src={p.clientLogoUrl} alt="" className="h-full w-full object-cover" draggable={false} />}
                         </span>
-                        <span className="min-w-0 flex-1 truncate text-[9px] font-semibold text-white">{p.clientName}</span>
+                        <span className="min-w-0 flex-1 truncate text-[10px] font-semibold text-white">{p.clientName}</span>
                       </div>
-                      <span className={cn("absolute right-1 top-6 flex h-4 w-4 items-center justify-center rounded-full", contentColor.bg, contentColor.text)} title={p.contentType}>
-                        <ContentIcon className="h-2.5 w-2.5" />
-                      </span>
-                      <div className="absolute inset-x-0 bottom-0 flex items-center gap-0.5 bg-gradient-to-t from-black/80 to-transparent p-1">
-                        <Clock className="h-2.5 w-2.5 text-white/80" />
-                        <span className="text-[9px] text-white/80">{p.publishTime ? p.publishTime.slice(0, 5) : "—"}</span>
+                      <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 bg-gradient-to-t from-black/80 to-transparent p-1.5">
+                        <span className="flex items-center gap-1 text-[10px] text-white/80">
+                          <Clock className="h-3 w-3" />
+                          {p.publishTime ? p.publishTime.slice(0, 5) : "—"}
+                        </span>
+                        <span className={cn("inline-flex shrink-0 items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-semibold", contentColor.bg, contentColor.text)}>
+                          <ContentIcon className="h-2.5 w-2.5" />
+                          {CONTENT_TYPE_LABELS[p.contentType]}
+                        </span>
                       </div>
                     </div>
                   );
@@ -161,7 +165,7 @@ export function TodayInstagramLoopWidget() {
                 className="z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-foreground/70 transition hover:bg-accent hover:text-foreground"
                 aria-label="Próximo"
               >
-                <ChevronRight className="h-3.5 w-3.5" />
+                <ChevronRight className="h-4 w-4" />
               </button>
             )}
           </div>
