@@ -68,11 +68,11 @@ export function NotesWidget() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [query, setQuery] = useState("");
-  const [dragOverDay, setDragOverDay] = useState<number | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const today = useMemo(() => todayIsoWeekday(), []);
+  const [selectedDay, setSelectedDay] = useState(today);
 
   const openNote = notes.find((n) => n.id === openId) ?? null;
-  const today = useMemo(() => todayIsoWeekday(), []);
 
   useEffect(() => {
     if (openNote) setDraft(openNote.content);
@@ -221,60 +221,49 @@ export function NotesWidget() {
             />
           </div>
         ) : view === "kanban" ? (
-          <div className="flex gap-2 overflow-x-auto px-4 pb-4">
-            {WEEK_DAYS.map(({ day, label }) => {
-              const dayNotes = notesByDay.get(day) ?? [];
-              return (
-                <div
+          <>
+            <div className="mx-4 mb-2 flex items-center justify-between gap-1">
+              {WEEK_DAYS.map(({ day, label }) => (
+                <button
                   key={day}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    setDragOverDay(day);
-                  }}
-                  onDragLeave={() => setDragOverDay((d) => (d === day ? null : d))}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    const id = e.dataTransfer.getData("text/note-id");
-                    if (id) moveNote.mutate({ id, dayOfWeek: day });
-                    setDragOverDay(null);
-                  }}
+                  type="button"
+                  onClick={() => setSelectedDay(day)}
+                  title={label}
                   className={cn(
-                    "flex w-[110px] shrink-0 flex-col rounded-lg border p-1.5",
-                    day === today ? "border-amber-400/60 bg-amber-500/5" : "border-border/50",
-                    dragOverDay === day && "ring-2 ring-amber-400",
+                    "flex h-7 w-7 flex-col items-center justify-center rounded-full text-[10px] font-semibold transition",
+                    selectedDay === day
+                      ? "bg-amber-500 text-white"
+                      : day === today
+                        ? "text-amber-600 ring-1 ring-amber-400/50"
+                        : "text-muted-foreground/70 hover:bg-accent hover:text-foreground",
                   )}
                 >
-                  <div className="mb-1 flex items-center justify-between px-0.5">
-                    <span className={cn("text-[10px] font-semibold", day === today ? "text-amber-600" : "text-muted-foreground")}>
-                      {label}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleNewNote(day)}
-                      title="Nova nota"
-                      className="text-muted-foreground/70 transition hover:text-amber-600"
-                    >
-                      <Plus className="h-3 w-3" />
-                    </button>
-                  </div>
-                  <div className="flex min-h-[40px] flex-col gap-1">
-                    {dayNotes.map((n) => (
-                      <button
-                        key={n.id}
-                        type="button"
-                        draggable
-                        onDragStart={(e) => e.dataTransfer.setData("text/note-id", n.id)}
-                        onClick={() => setOpenId(n.id)}
-                        className="cursor-grab rounded-md bg-amber-500/10 px-1.5 py-1 text-left text-[10px] leading-snug text-foreground active:cursor-grabbing"
-                      >
-                        {deriveTitle(n.content)}
-                      </button>
-                    ))}
-                  </div>
+                  {label[0]}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => handleNewNote(selectedDay)}
+                title="Nova nota nesse dia"
+                className="ml-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-amber-600 transition hover:bg-amber-500/10"
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+            </div>
+            <ScrollArea className="max-h-[280px]">
+              {(notesByDay.get(selectedDay) ?? []).length === 0 ? (
+                <div className="px-4 pb-4 text-center text-sm text-muted-foreground">
+                  Nenhuma nota em {WEEK_DAYS.find((d) => d.day === selectedDay)?.label} — toque em + pra criar.
                 </div>
-              );
-            })}
-          </div>
+              ) : (
+                <div className="divide-y divide-border/30">
+                  {(notesByDay.get(selectedDay) ?? []).map((n) => (
+                    <NoteRow key={n.id} note={n} onOpen={() => setOpenId(n.id)} onDelete={() => handleDelete(n.id)} />
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </>
         ) : (
           <>
             {notes.length > 0 && (
