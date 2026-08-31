@@ -70,14 +70,14 @@ export function NotesWidget() {
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="flex items-center gap-2 text-sm">
-            <StickyNote className="h-4 w-4 text-amber-500" />
+            <StickyNote className="h-4 w-4 text-primary" />
             Notas
           </CardTitle>
           <button
             type="button"
             onClick={() => handleNewNote(selectedDay)}
             title="Nova nota"
-            className="flex h-6 w-6 items-center justify-center rounded-full text-amber-600 transition hover:bg-amber-500/10"
+            className="flex h-6 w-6 items-center justify-center rounded-full text-primary transition hover:bg-primary/10"
           >
             <Plus className="h-4 w-4" />
           </button>
@@ -94,9 +94,9 @@ export function NotesWidget() {
               className={cn(
                 "flex h-7 w-7 flex-col items-center justify-center rounded-full text-[10px] font-semibold transition",
                 selectedDay === day
-                  ? "bg-amber-500 text-white"
+                  ? "bg-primary text-primary-foreground"
                   : day === today
-                    ? "text-amber-600 ring-1 ring-amber-400/50"
+                    ? "text-primary ring-1 ring-primary/50"
                     : "text-muted-foreground/70 hover:bg-accent hover:text-foreground",
               )}
             >
@@ -167,7 +167,7 @@ function NoteRow({
         type="button"
         onClick={onToggleDone}
         title={note.done ? "Marcar como não concluída" : "Marcar como concluída"}
-        className={cn("shrink-0 transition", note.done ? "text-amber-500" : "text-muted-foreground/50 hover:text-amber-500")}
+        className={cn("shrink-0 transition", note.done ? "text-primary" : "text-muted-foreground/50 hover:text-primary")}
       >
         {note.done ? <CheckCircle2 className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
       </button>
@@ -205,7 +205,7 @@ function NoteRow({
           title="Definir horário"
           className={cn(
             "flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium transition",
-            note.time_of_day ? "text-amber-600" : "text-muted-foreground/40 opacity-0 group-hover:opacity-100 hover:text-amber-600",
+            note.time_of_day ? "text-primary" : "text-muted-foreground/40 opacity-0 group-hover:opacity-100 hover:text-primary",
           )}
         >
           <Clock className="h-3 w-3" />
