@@ -264,16 +264,29 @@ async function handleRunSchedules(admin: ReturnType<typeof createClient>) {
     return true;
   });
 
-  const results = [];
-  for (const publication of due) {
+  // Processed concurrently, not one at a time — each video/reel can take up to
+  // POLL_MAX_ATTEMPTS * POLL_INTERVAL_MS (~3 minutes) to finish processing, and this scan
+  // only gets 5 minutes before the next cron tick starts a fresh one. On a day with several
+  // Reels due in the same slot, a sequential loop meant only the first one or two ever got
+  // touched — the rest sat at instagram_status "not_published" with no attempt recorded at
+  // all, for hours, until they happened to reach the front of the queue. Every candidate
+  // here belongs to a different publication (own row, own client), so there's no shared
+  // state to race on, and different clients' Instagram accounts don't share rate limits.
+  const results = await Promise.allSettled(
     // deno-lint-ignore no-explicit-any
-    const { data: full } = await admin.from("calendar_publications").select("*").eq("id", (publication as any).id).maybeSingle();
-    if (!full) continue;
-    const result = await publishToInstagram(admin, full);
-    results.push({ id: full.id, ...result });
-  }
+    (due as any[]).map(async (publication) => {
+      const { data: full } = await admin.from("calendar_publications").select("*").eq("id", publication.id).maybeSingle();
+      if (!full) return null;
+      const result = await publishToInstagram(admin, full);
+      return { id: full.id, ...result };
+    }),
+  );
 
-  return json({ processed: results.length, results });
+  const processed = results
+    .map((r) => (r.status === "fulfilled" ? r.value : { success: false, error: String(r.reason) }))
+    .filter((r): r is NonNullable<typeof r> => r !== null);
+
+  return json({ processed: processed.length, results: processed });
 }
 
 Deno.serve(async (req) => {
