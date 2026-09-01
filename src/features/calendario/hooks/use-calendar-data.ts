@@ -338,6 +338,11 @@ export function useUpdateCalendarPublication() {
     },
     onSuccess: ({ data, scheduledChanged }) => {
       qc.invalidateQueries({ queryKey: ["calendar_publications", data.calendar_id] });
+      // Standalone single-publication view (e.g. the preview dialog opened from the "Hoje no
+      // Instagram" widget via useCalendarPublicationById) has its own cache entry keyed by id
+      // alone — without this it keeps showing stale data (e.g. "Agendado") after an update
+      // like "Cancelar agendamento" until the dialog is closed and reopened.
+      qc.invalidateQueries({ queryKey: ["calendar_publication", data.id] });
       // This is also how a fix to whatever tripped the Instagram-risk warning banner gets
       // saved (e.g. switching a Stories/Outro publication to a supported content_type) — the
       // banner's own query has no other trigger to refetch on (just a 5-minute poll), so
