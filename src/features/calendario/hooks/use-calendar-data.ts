@@ -325,6 +325,29 @@ export function useTaskCalendarEntry(taskId: string | null) {
   });
 }
 
+// Batch version of useTaskCalendarEntry, for a parent task figuring out which of its
+// subtasks have already been sent to the Cronograma (so a "send all" action only touches
+// the ones that haven't gone yet).
+export function useTaskCalendarEntriesFor(taskIds: string[]) {
+  return useQuery({
+    enabled: taskIds.length > 0,
+    queryKey: ["task_calendar_entries_for", [...taskIds].sort()],
+    queryFn: async (): Promise<Map<string, { id: string; calendar_id: string }>> => {
+      const { data, error } = await sb
+        .from("calendar_publications")
+        .select("id, calendar_id, task_id")
+        .in("task_id", taskIds)
+        .is("deleted_at", null);
+      if (error) throw error;
+      const map = new Map<string, { id: string; calendar_id: string }>();
+      for (const row of (data ?? []) as { id: string; calendar_id: string; task_id: string }[]) {
+        map.set(row.task_id, { id: row.id, calendar_id: row.calendar_id });
+      }
+      return map;
+    },
+  });
+}
+
 export function useUpdateCalendarPublication() {
   const qc = useQueryClient();
   return useMutation({
@@ -338,6 +361,11 @@ export function useUpdateCalendarPublication() {
     },
     onSuccess: ({ data, scheduledChanged }) => {
       qc.invalidateQueries({ queryKey: ["calendar_publications", data.calendar_id] });
+      // Standalone single-publication view (e.g. the preview dialog opened from the "Hoje no
+      // Instagram" widget via useCalendarPublicationById) has its own cache entry keyed by id
+      // alone — without this it keeps showing stale data (e.g. "Agendado") after an update
+      // like "Cancelar agendamento" until the dialog is closed and reopened.
+      qc.invalidateQueries({ queryKey: ["calendar_publication", data.id] });
       // This is also how a fix to whatever tripped the Instagram-risk warning banner gets
       // saved (e.g. switching a Stories/Outro publication to a supported content_type) — the
       // banner's own query has no other trigger to refetch on (just a 5-minute poll), so

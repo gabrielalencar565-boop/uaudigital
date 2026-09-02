@@ -3,7 +3,7 @@ import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, ExternalLink, Heart, MessageCircle, Send, Bookmark, Trash2, X, ImagePlus, Loader2, CalendarDays, Clock, Camera, Check, Instagram, AlertTriangle } from "lucide-react";
+import { ChevronLeft, ChevronRight, ExternalLink, Heart, MessageCircle, Send, Bookmark, Trash2, X, ImagePlus, Loader2, CalendarDays, Clock, Camera, Check, Instagram, AlertTriangle, RefreshCw } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -889,6 +889,38 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                     )}
                     {publication.instagram_status === "failed" && publication.instagram_error && (
                       <p className="text-xs text-destructive">{publication.instagram_error}</p>
+                    )}
+
+                    {publication.instagram_status === "failed" && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full gap-1.5"
+                        disabled={!canPublish || isPublishing || publishToInstagram.isPending}
+                        title={
+                          unsupportedType
+                            ? "Esse tipo de conteúdo não é publicado automaticamente"
+                            : igConnection?.status !== "active"
+                              ? "Este cliente ainda não tem o Instagram conectado (veja em Clientes)"
+                              : undefined
+                        }
+                        onClick={() =>
+                          publishToInstagram.mutate(
+                            { publicationId: publication.id, calendarId: publication.calendar_id },
+                            {
+                              onSuccess: () => toast.success("Publicado no Instagram."),
+                              onError: (err) => toast.error(err instanceof Error ? err.message : "Erro ao publicar no Instagram"),
+                            },
+                          )
+                        }
+                      >
+                        {isPublishing || publishToInstagram.isPending ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-3.5 w-3.5" />
+                        )}
+                        Tentar novamente
+                      </Button>
                     )}
 
                     {!isPublished && hasDateTime && !publication.instagram_scheduled && (

@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   Calendar, UserCircle, Flag, X, ChevronRight, ArrowLeft, Trash2, Combine,
   Layers, Tag, MessageSquare, Plus, Check, CheckCircle2, RotateCcw, Paperclip, ListTodo, FileText, Pencil, Lock,
-  Image as ImageIcon,
+  Image as ImageIcon, Loader2,
 } from "lucide-react";
 import { useSession } from "@/hooks/use-session";
 import { useRole } from "@/hooks/use-role";
@@ -48,7 +48,7 @@ import { broadcastTeamActivity } from "@/hooks/use-team-activity";
 import { setViewingTask } from "@/hooks/use-task-viewers";
 import { LateAppealDialog } from "@/features/tasks/LateAppealDialog";
 import { isTaskLate } from "@/features/tasks/is-task-late";
-import { useTaskAttachmentsMap, useTaskCalendarEntry } from "@/features/calendario/hooks/use-calendar-data";
+import { useTaskAttachmentsMap, useTaskCalendarEntry, useTaskCalendarEntriesFor, useRemoveCalendarPublication } from "@/features/calendario/hooks/use-calendar-data";
 
 function initials(n: string) {
   return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
@@ -452,6 +452,124 @@ function SendToCronogramaButton({ task, isLeaf, onOpenInCalendario }: { task: Pm
       <PopoverTrigger asChild>
         <Button size="sm" variant="outline" className="gap-1.5">
           <Calendar className="h-3.5 w-3.5" /> Enviar para o Cronograma
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="z-[130] w-56 p-1.5" align="start">
+        <p className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Escolha o mês</p>
+        {monthOptions.map((opt) => (
+          <button
+            key={opt.date}
+            type="button"
+            disabled={sending}
+            className="block w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent/50 disabled:opacity-50"
+            onClick={() => send(opt.date)}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+// Parent-task counterpart to SendToCronogramaButton above. A container task never gets its
+// own calendar row (see that trigger's own guard), so this instead sends every subtask that
+// hasn't gone yet — each one still creates its own independent calendar_publications row via
+// the same pm_task_pdf_stage_to_calendar trigger, pulling that subtask's own attachments,
+// exactly like clicking "Enviar para o Cronograma" on each subtask individually would.
+function SendParentToCronogramaButton({ task, childTasks }: { task: PmTask; childTasks: PmTask[] }) {
+  const updateTask = useUpdatePmTask();
+  const removePublication = useRemoveCalendarPublication();
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [unsending, setUnsending] = useState(false);
+  const childIds = childTasks.map((c) => c.id);
+  const entriesQ = useTaskCalendarEntriesFor(childIds);
+
+  if (entriesQ.isLoading) return null;
+
+  const entries = entriesQ.data ?? new Map<string, { id: string; calendar_id: string }>();
+  const pending = childTasks.filter((c) => !entries.has(c.id));
+  const sent = childTasks.filter((c) => entries.has(c.id));
+
+  const invalidateAll = () => {
+    queryClient.invalidateQueries({ queryKey: ["task_calendar_entries_for"] });
+    for (const child of childTasks) queryClient.invalidateQueries({ queryKey: ["task_calendar_entry", child.id] });
+    queryClient.invalidateQueries({ queryKey: ["unscheduled_client_tasks"] });
+    queryClient.invalidateQueries({ queryKey: ["publication_calendars"] });
+    queryClient.invalidateQueries({ queryKey: ["calendar_publications"] });
+  };
+
+  if (pending.length === 0) {
+    // All sent — offer to undo. Removing just the calendar_publications rows isn't enough:
+    // the trigger that creates them (pm_task_pdf_stage_to_calendar) skips re-inserting
+    // whenever a task's stage_current was already "pdf" going into the update, so without
+    // also reverting each child back to the parent's own current stage, clicking "Enviar"
+    // again later would silently do nothing.
+    const handleUnmark = async () => {
+      setUnsending(true);
+      try {
+        await Promise.allSettled(
+          sent.map((child) => {
+            const entry = entries.get(child.id)!;
+            return removePublication.mutateAsync({ id: entry.id, calendarId: entry.calendar_id, taskId: child.id });
+          }),
+        );
+        await Promise.allSettled(
+          sent.map((child) => updateTask.mutateAsync({ id: child.id, stage_current: task.stage_current } as any)),
+        );
+        invalidateAll();
+        toast.success("Removido do Cronograma");
+      } finally {
+        setUnsending(false);
+      }
+    };
+
+    return (
+      <Button size="sm" variant="outline" className="gap-1.5 text-muted-foreground" disabled={unsending} onClick={handleUnmark}>
+        {unsending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Calendar className="h-3.5 w-3.5" />}
+        Desmarcar — todas as subtarefas já estão no Cronograma
+      </Button>
+    );
+  }
+
+  const monthOptions = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(new Date().getFullYear(), new Date().getMonth() + i, 1);
+    const label = format(d, "MMMM 'de' yyyy", { locale: ptBR });
+    return { date: format(d, "yyyy-MM-dd"), label: label.charAt(0).toUpperCase() + label.slice(1) };
+  });
+
+  const send = async (dateStr: string) => {
+    setSending(true);
+    try {
+      const results = await Promise.allSettled(
+        pending.map((child) => updateTask.mutateAsync({ id: child.id, stage_current: "pdf", posting_date: dateStr } as any)),
+      );
+      const failed = results.filter((r) => r.status === "rejected").length;
+      const succeeded = results.length - failed;
+      queryClient.invalidateQueries({ queryKey: ["task_calendar_entries_for"] });
+      for (const child of pending) queryClient.invalidateQueries({ queryKey: ["task_calendar_entry", child.id] });
+      queryClient.invalidateQueries({ queryKey: ["unscheduled_client_tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["publication_calendars"] });
+      queryClient.invalidateQueries({ queryKey: ["calendar_publications"] });
+      if (failed === 0) {
+        toast.success(succeeded === 1 ? "1 subtarefa enviada para o Cronograma" : `${succeeded} subtarefas enviadas para o Cronograma`);
+      } else {
+        toast.warning(`${succeeded} enviada(s), ${failed} falharam ao enviar para o Cronograma`);
+      }
+      setOpen(false);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button size="sm" variant="outline" className="gap-1.5">
+          <Calendar className="h-3.5 w-3.5" />
+          Enviar {pending.length === childTasks.length ? "todas as subtarefas" : `${pending.length} subtarefa(s)`} para o Cronograma
         </Button>
       </PopoverTrigger>
       <PopoverContent className="z-[130] w-56 p-1.5" align="start">
@@ -2459,6 +2577,12 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
         {childTasks.length === 0 && (
           <div className="inline-flex w-fit flex-wrap items-center gap-2 rounded-xl border border-black/10 p-1 dark:border-white/10">
             <SendToCronogramaButton task={task} isLeaf onOpenInCalendario={onOpenInCalendario} />
+          </div>
+        )}
+
+        {childTasks.length > 0 && (
+          <div className="inline-flex w-fit flex-wrap items-center gap-2 rounded-xl border border-black/10 p-1 dark:border-white/10">
+            <SendParentToCronogramaButton task={task} childTasks={childTasks} />
           </div>
         )}
 
