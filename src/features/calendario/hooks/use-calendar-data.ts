@@ -325,6 +325,29 @@ export function useTaskCalendarEntry(taskId: string | null) {
   });
 }
 
+// Batch version of useTaskCalendarEntry, for a parent task figuring out which of its
+// subtasks have already been sent to the Cronograma (so a "send all" action only touches
+// the ones that haven't gone yet).
+export function useTaskCalendarEntriesFor(taskIds: string[]) {
+  return useQuery({
+    enabled: taskIds.length > 0,
+    queryKey: ["task_calendar_entries_for", [...taskIds].sort()],
+    queryFn: async (): Promise<Map<string, { id: string; calendar_id: string }>> => {
+      const { data, error } = await sb
+        .from("calendar_publications")
+        .select("id, calendar_id, task_id")
+        .in("task_id", taskIds)
+        .is("deleted_at", null);
+      if (error) throw error;
+      const map = new Map<string, { id: string; calendar_id: string }>();
+      for (const row of (data ?? []) as { id: string; calendar_id: string; task_id: string }[]) {
+        map.set(row.task_id, { id: row.id, calendar_id: row.calendar_id });
+      }
+      return map;
+    },
+  });
+}
+
 export function useUpdateCalendarPublication() {
   const qc = useQueryClient();
   return useMutation({
