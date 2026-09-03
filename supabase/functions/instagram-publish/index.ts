@@ -102,6 +102,16 @@ async function fetchMediaForTask(admin: ReturnType<typeof createClient>, taskId:
     .map((a) => ({ url: a.public_url as string, type: a.file_type }));
 }
 
+// The chosen Reel cover can point at an attachment that isn't even one of this task's own
+// media items (see PublicationPreviewPanel.tsx's "pinnedCandidate" — a cover can be pinned
+// in from a different, PDF-stage task), so this has to look it up by id directly rather than
+// reusing fetchMediaForTask's task-scoped query.
+async function fetchCoverUrl(admin: ReturnType<typeof createClient>, coverAttachmentId: string | null): Promise<string | null> {
+  if (!coverAttachmentId) return null;
+  const { data } = await admin.from("pm_attachments").select("public_url").eq("id", coverAttachmentId).maybeSingle();
+  return (data as { public_url: string | null } | null)?.public_url ?? null;
+}
+
 async function markFailed(admin: ReturnType<typeof createClient>, publicationId: string, message: string) {
   await admin
     .from("calendar_publications")
@@ -180,12 +190,21 @@ async function publishToInstagram(admin: ReturnType<typeof createClient>, public
       });
       creationId = parent.id;
     } else {
-      const item = media[0];
       const isReel = publication.content_type === "reel";
+      // Prefer the actual video attachment over media[0] — a cover image uploaded to the
+      // same task can share the "final" category and sort ahead of the video (same
+      // order_index/created_at tie), which would otherwise send an image as video_url.
+      const item = (isReel ? media.find((m) => m.type?.startsWith("video/")) : undefined) ?? media[0];
       const isVideo = isReel || (item.type?.startsWith("video/") ?? false);
+      // Reels support a custom cover image (cover_url takes priority over Meta's own
+      // auto-picked frame) — the team's chosen "Capa do Reel" was being uploaded and shown
+      // in-app but never actually sent to Meta, so posts always used Instagram's own
+      // auto-selected frame instead of the chosen cover.
+      const coverUrl = isReel ? await fetchCoverUrl(admin, publication.cover_attachment_id) : null;
       const container = await graphPost(`${igUserId}/media`, accessToken, {
         caption: publication.caption ?? "",
         ...(isVideo ? { video_url: item.url, media_type: isReel ? "REELS" : "VIDEO" } : { image_url: item.url }),
+        ...(coverUrl ? { cover_url: coverUrl } : {}),
       });
       // Same reasoning as the Stories branch above — persist before the wait, not after.
       if (isVideo) {
