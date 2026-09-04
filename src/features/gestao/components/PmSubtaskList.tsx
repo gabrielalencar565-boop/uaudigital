@@ -12,7 +12,7 @@ import { PM_ACTIVE_STAGES, getStageCircleColor, stageLabel, tagColor, tagDisplay
 import { useUpdatePmTask, useCreatePmTask } from "../hooks/use-pm-data";
 import { usePmTags } from "../hooks/use-pm-tags";
 import { PmAssigneeSelector } from "./PmAssigneeSelector";
-import { getFixedAssignee, getFixedWatchers, useDefaultFlowWithDates } from "./PmStageFlowConfig";
+import { getFixedAssignee, getFixedWatchers, useDefaultFlowWithDates, computeAlteracaoDueDate } from "./PmStageFlowConfig";
 import { SubtaskTrashDialog } from "./SubtaskTrashDialog";
 import { toast } from "sonner";
 import type { PmTask } from "../pm-types";
@@ -36,7 +36,7 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
   const createTask = useCreatePmTask();
   const globalTagsQ = usePmTags();
   const globalTags = globalTagsQ.data ?? [];
-  const { stageAssignees } = useDefaultFlowWithDates();
+  const { stageAssignees, transitionDates } = useDefaultFlowWithDates();
   const [newTitle, setNewTitle] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showTrash, setShowTrash] = useState(false);
@@ -205,7 +205,12 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
     if (readOnly) return;
     const fixedAssignee = getFixedAssignee(stageAssignees, "alteracoes", parentTask.client_id);
     const fixedWatchers = getFixedWatchers(stageAssignees, "alteracoes", parentTask.client_id);
-    const updates: any = { id: sub.id, stage_current: "alteracoes" as any, status_global: "backlog" as any };
+    const updates: any = {
+      id: sub.id,
+      stage_current: "alteracoes" as any,
+      status_global: "backlog" as any,
+      due_date: computeAlteracaoDueDate(transitionDates),
+    };
     if (fixedAssignee !== undefined) {
       updates.assignee_id = fixedAssignee;
       updates.watchers = fixedWatchers;
