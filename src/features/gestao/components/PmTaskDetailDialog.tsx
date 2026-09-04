@@ -1069,6 +1069,67 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
     doAdvance(completedStage, nextStage, newDueDate);
   };
 
+  // Revert: go back to previous stage (undo concluído advance). Scoped by lineage
+  // (origin_task_id), not title — an earlier version matched only by
+  // client_id+stage+status+title, which for recurring content with repeated titles
+  // (common month over month) could delete an unrelated task from a different cycle.
+  const handleRevert = async () => {
+    if (!task.stage_current || task.stage_current === "captacao") return;
+    // Find the stage that points to the current stage
+    const prevStage = Object.entries(flowConfig).find(([_, targets]) =>
+      (targets as string[]).includes(task.stage_current)
+    )?.[0];
+    if (!prevStage) {
+      toast.error("Não foi possível reverter");
+      return;
+    }
+
+    const { data: { user } } = await supabase.auth.getUser();
+    const sb = supabase as any;
+    const originId = task.origin_task_id ?? task.id;
+
+    // 1) Delete the snapshot pm_task created for the previous stage (concluído copy) —
+    //    same lineage-scoped match handleAlteracao's own snapshot lookup uses.
+    await sb
+      .from("pm_tasks")
+      .delete()
+      .or(`id.eq.${originId},origin_task_id.eq.${originId}`)
+      .eq("stage_current", prevStage)
+      .eq("status_global", "concluido")
+      .is("parent_task_id", null)
+      .not("id", "eq", task.id);
+
+    // 2) Soft-delete performance snapshot tasks for this pm_task + prevStage
+    //    This triggers task_soft_delete_uncheck_magic to uncheck magic number & recalc scores
+    await sb
+      .from("tasks")
+      .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id ?? null })
+      .like("description", `pm:${task.id}:${prevStage}%`)
+      .is("deleted_at", null);
+
+    // 3) Restore assignee from the previous stage
+    const fixedAssignee = getFixedAssignee(stageAssignees, prevStage, task.client_id);
+    const fixedWatchers = getFixedWatchers(stageAssignees, prevStage, task.client_id);
+    const updates: any = { id: task.id, stage_current: prevStage as any };
+    if (fixedAssignee !== undefined) {
+      updates.assignee_id = fixedAssignee;
+      updates.watchers = fixedWatchers;
+    }
+    updateTask.mutate(updates);
+
+    // Revert child tasks too
+    for (const child of childTasks) {
+      const childUpdates: any = { id: child.id, stage_current: prevStage as any };
+      if (fixedAssignee !== undefined) {
+        childUpdates.assignee_id = fixedAssignee;
+        childUpdates.watchers = fixedWatchers;
+      }
+      updateTask.mutate(childUpdates);
+    }
+
+    toast.success(`Revertido para ${stageLabel(prevStage)}`);
+  };
+
   // ── Split task helper (creates or links to existing agenda task) ──
   const executeSplitTask = async (
     stage: string, stageLabel_: string, children: PmTask[], postType: string,
@@ -2401,6 +2462,9 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
             </div>
             <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={handleReturnFromAlteracao}>
               <CheckCircle2 className="h-4 w-4" /> Ajuste Concluído
+            </Button>
+            <Button size="sm" variant="outline" className="gap-1.5 text-muted-foreground border-border/40 hover:bg-muted/60" onClick={handleRevert}>
+              <RotateCcw className="h-3.5 w-3.5" /> Reverter
             </Button>
           </div>
         )}
