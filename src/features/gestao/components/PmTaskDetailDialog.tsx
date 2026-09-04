@@ -29,7 +29,7 @@ import {
   usePmComments, usePmAttachments, usePmSyncStageCompletion, useMergePdfTasks,
 } from "../hooks/use-pm-data";
 import { usePmTags, useCreatePmTag } from "../hooks/use-pm-tags";
-import { useDefaultFlowWithDates, getNextStages, getFixedAssignee, getFixedWatchers, resolveAssigneeStageKey } from "./PmStageFlowConfig";
+import { useDefaultFlowWithDates, getNextStages, getFixedAssignee, getFixedWatchers, resolveAssigneeStageKey, computeAlteracaoDueDate, findActualPreviousAssignee } from "./PmStageFlowConfig";
 import { PmSubtaskList } from "./PmSubtaskList";
 import { PmPlanningSubtasks } from "./PmPlanningSubtasks";
 import { PmCommentsSection } from "./PmCommentsSection";
@@ -1069,11 +1069,14 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
     doAdvance(completedStage, nextStage, newDueDate);
   };
 
-  // Revert: go back to previous stage (undo concluído advance)
+  // Revert: go back to previous stage (undo concluído advance). Scoped by lineage
+  // (origin_task_id), not title — an earlier version matched only by
+  // client_id+stage+status+title, which for recurring content with repeated titles
+  // (common month over month) could delete an unrelated task from a different cycle.
   const handleRevert = async () => {
     if (!task.stage_current || task.stage_current === "captacao") return;
     // Find the stage that points to the current stage
-    const prevStage = Object.entries(flowConfig).find(([_, targets]) => 
+    const prevStage = Object.entries(flowConfig).find(([_, targets]) =>
       (targets as string[]).includes(task.stage_current)
     )?.[0];
     if (!prevStage) {
@@ -1081,19 +1084,19 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
       return;
     }
 
-    const { supabase } = await import("@/integrations/supabase/client");
     const { data: { user } } = await supabase.auth.getUser();
     const sb = supabase as any;
+    const originId = task.origin_task_id ?? task.id;
 
-    // 1) Delete the snapshot pm_task created for the previous stage (concluído copy)
-    //    Snapshots have status_global = "concluido" and stage_current = prevStage
+    // 1) Delete the snapshot pm_task created for the previous stage (concluído copy) —
+    //    same lineage-scoped match handleAlteracao's own snapshot lookup uses.
     await sb
       .from("pm_tasks")
       .delete()
-      .eq("client_id", task.client_id)
+      .or(`id.eq.${originId},origin_task_id.eq.${originId}`)
       .eq("stage_current", prevStage)
       .eq("status_global", "concluido")
-      .eq("title", task.title)
+      .is("parent_task_id", null)
       .not("id", "eq", task.id);
 
     // 2) Soft-delete performance snapshot tasks for this pm_task + prevStage
@@ -1626,6 +1629,9 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
     if (!user) return;
 
     const originId = task.origin_task_id ?? task.id;
+    // Always relative to today, never to the task's own (possibly stale) due_date — see
+    // computeAlteracaoDueDate's doc comment for why this matters specifically here.
+    const newAltDueDate = computeAlteracaoDueDate(transitionDates);
 
     // Detect if children have mixed post_types (both video and design)
     const childPostTypes = new Set(
@@ -1688,6 +1694,7 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
         stage_current: "alteracoes" as any,
         assignee_id: previousStageAssignee ?? null,
         watchers: previousStageWatchers,
+        due_date: newAltDueDate,
         // Planejamento has mixed Design/Vídeo children, but the parent must stay PLAN
         // so returning from Alteração reopens REV/PLAN instead of falling back to REV/DSG.
         post_type: isPautaReview ? "planejamento" : null,
@@ -1696,11 +1703,19 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
 
       for (const child of childTasks) {
         const childPt = child.post_type ?? "design";
+        const childStage = childPt === "video" ? "edicao_videos" : "design";
+        const childAssignee = await findActualPreviousAssignee(
+          originId,
+          childStage,
+          childPt,
+          getAssigneeForPostType(childPt) ?? previousStageAssignee ?? null,
+        );
         updateTask.mutate({
           id: child.id,
           stage_current: "alteracoes" as any,
-          assignee_id: getAssigneeForPostType(childPt) ?? previousStageAssignee ?? null,
+          assignee_id: childAssignee,
           watchers: getWatchersForPostType(childPt) ?? previousStageWatchers,
+          due_date: newAltDueDate,
           post_type: childPt,
         } as any);
       }
@@ -1752,6 +1767,7 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
         status_global: "em_andamento" as any,
         assignee_id: resolvedPreviousAssignee,
         watchers: resolvedPreviousWatchers,
+        due_date: newAltDueDate,
         post_type: previousSnapshot.post_type ?? resolvedAlteracaoPostType,
       };
       updateTask.mutate(prevUpdates);
@@ -1774,6 +1790,7 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
           status_global: "backlog" as any,
           assignee_id: resolvedPreviousAssignee,
           watchers: resolvedPreviousWatchers,
+          due_date: newAltDueDate,
           post_type: child.post_type ?? previousSnapshot.post_type ?? resolvedAlteracaoPostType,
         } as any);
       }
@@ -1795,7 +1812,12 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
 
       toast.success("Tarefa retornou para alteração no responsável anterior");
     } else {
-      const resolvedPreviousAssignee = previousStageAssignee ?? null;
+      const resolvedPreviousAssignee = await findActualPreviousAssignee(
+        originId,
+        previousWorkStage,
+        resolvedAlteracaoPostType,
+        previousStageAssignee ?? null,
+      );
       const resolvedPreviousWatchers = previousStageWatchers;
 
       const updates: any = {
@@ -1803,6 +1825,7 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
         stage_current: "alteracoes" as any,
         assignee_id: resolvedPreviousAssignee,
         watchers: resolvedPreviousWatchers,
+        due_date: newAltDueDate,
         post_type: resolvedAlteracaoPostType,
       };
       updateTask.mutate(updates);
@@ -1813,6 +1836,7 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
           stage_current: "alteracoes" as any,
           assignee_id: resolvedPreviousAssignee,
           watchers: resolvedPreviousWatchers,
+          due_date: newAltDueDate,
           post_type: child.post_type ?? resolvedAlteracaoPostType,
         } as any);
       }
@@ -2370,6 +2394,7 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
                     stage_current: "alteracoes",
                     status_global: "backlog",
                     post_type: pt ?? task.post_type,
+                    due_date: computeAlteracaoDueDate(transitionDates),
                     ...(altAssignee ? { assignee_id: altAssignee } : {}),
                     ...(altWatchers?.length ? { watchers: altWatchers } : {}),
                   } as any);
@@ -2416,6 +2441,7 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
                     stage_current: "alteracoes",
                     status_global: "backlog",
                     post_type: pt ?? task.post_type,
+                    due_date: computeAlteracaoDueDate(transitionDates),
                     ...(altAssignee ? { assignee_id: altAssignee } : {}),
                     ...(altWatchers?.length ? { watchers: altWatchers } : {}),
                   } as any);
@@ -2437,7 +2463,6 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
             <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={handleReturnFromAlteracao}>
               <CheckCircle2 className="h-4 w-4" /> Ajuste Concluído
             </Button>
-            {/* Revert button */}
             <Button size="sm" variant="outline" className="gap-1.5 text-muted-foreground border-border/40 hover:bg-muted/60" onClick={handleRevert}>
               <RotateCcw className="h-3.5 w-3.5" /> Reverter
             </Button>

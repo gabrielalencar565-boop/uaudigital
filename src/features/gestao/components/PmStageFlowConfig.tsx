@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { ArrowRight, Check, Settings2, Plus, Trash2, Pencil, Save, X, Star } from "lucide-react";
+import { addDays, format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { PM_ACTIVE_STAGES, getStageCircleColor } from "../pm-constants";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -93,6 +94,54 @@ export function getFixedWatchers(stageAssignees: StageAssignees, stageKey: strin
 export function resolveAssigneeStageKey(completedStage: string | undefined, nextStage: string): string {
   if (completedStage === "planejamento" && nextStage === "revisao") return "revisao_pauta";
   return nextStage;
+}
+
+/** Due date to use whenever a task enters "alteracoes" — always relative to TODAY, never to
+ *  the task's own (possibly stale) due_date. This matters because the most common way a
+ *  Design/Vídeo task re-enters "alteracoes" is by reopening its own old completed snapshot
+ *  row, whose due_date is still whatever it was the day that work was originally finished —
+ *  basing this off "today" instead of that stale value is what keeps the new deadline sane.
+ *  "pick" is treated the same as unconfigured (fallback +1 day) — a full date-picker flow
+ *  across every alteração entry point isn't worth it for what's meant to be automatic. */
+export function computeAlteracaoDueDate(transitionDates: Record<string, "pick" | number>): string {
+  const config = transitionDates["alteracoes"];
+  const days = typeof config === "number" ? config : 1;
+  return format(addDays(new Date(), days), "yyyy-MM-dd");
+}
+
+/** Finds who actually held a given stage in this content's lineage (by origin_task_id),
+ *  so "Alteração" can route back to the real previous-stage worker instead of whatever's
+ *  pinned as the client's fixed assignee for that stage (which may be a different person,
+ *  or not configured at all). Tries the same post_type-scoped match the snapshot-reopen path
+ *  already uses, loosens to any post_type if that's empty, and only falls back to the fixed
+ *  config if the lineage genuinely has no history at that stage yet. */
+export async function findActualPreviousAssignee(
+  originId: string,
+  stage: string,
+  postType: string | null,
+  fixedFallback: string | null | undefined,
+): Promise<string | null | undefined> {
+  const sb = supabase as any;
+  const base = () =>
+    sb
+      .from("pm_tasks")
+      .select("assignee_id")
+      .or(`id.eq.${originId},origin_task_id.eq.${originId}`)
+      .eq("stage_current", stage)
+      .is("parent_task_id", null)
+      .is("deleted_at", null)
+      .order("updated_at", { ascending: false })
+      .limit(1);
+
+  if (postType) {
+    const { data } = await base().eq("post_type", postType);
+    if (data?.[0]?.assignee_id) return data[0].assignee_id;
+  }
+
+  const { data: loose } = await base();
+  if (loose?.[0]?.assignee_id) return loose[0].assignee_id;
+
+  return fixedFallback ?? null;
 }
 
 const STAGE_OPTIONS = PM_ACTIVE_STAGES;
