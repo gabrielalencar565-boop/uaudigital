@@ -483,8 +483,8 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
                       <AreaChart data={progressData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
                         <defs>
                           <linearGradient id="progressGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="hsl(var(--sidebar))" stopOpacity={0.4} />
-                            <stop offset="95%" stopColor="hsl(var(--sidebar))" stopOpacity={0.02} />
+                            <stop offset="0%" stopColor="hsl(253, 90%, 68%)" stopOpacity={0.4} />
+                            <stop offset="95%" stopColor="hsl(253, 90%, 68%)" stopOpacity={0.02} />
                           </linearGradient>
                           <linearGradient id="prevGradient" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="0%" stopColor="hsl(var(--muted-foreground))" stopOpacity={0.15} />
@@ -520,11 +520,11 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
                         <Area
                           type="monotone"
                           dataKey="percentual"
-                          stroke="hsl(var(--sidebar))"
+                          stroke="hsl(253, 90%, 68%)"
                           strokeWidth={2.5}
                           fill="url(#progressGradient)"
                           dot={false}
-                          activeDot={{ r: 4, fill: "hsl(var(--sidebar))", stroke: "hsl(var(--background))", strokeWidth: 2 }}
+                          activeDot={{ r: 4, fill: "hsl(253, 90%, 68%)", stroke: "hsl(var(--background))", strokeWidth: 2 }}
                           connectNulls
                         />
                       </AreaChart>
@@ -534,7 +534,7 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
                   <div className="flex flex-col gap-2 pt-1 border-t border-border/50">
                     <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
                       <span className="flex items-center gap-1.5">
-                        <span className="inline-block w-4 h-0.5 rounded-full" style={{ backgroundColor: "hsl(var(--sidebar))" }} />
+                        <span className="inline-block w-4 h-0.5 rounded-full" style={{ backgroundColor: "hsl(253, 90%, 68%)" }} />
                         {currentMonthLabel} (atual)
                       </span>
                       <span className="flex items-center gap-1.5">
@@ -626,8 +626,8 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
                         <BarChart data={proactivityData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
                           <defs>
                             <linearGradient id="proactBarGrad" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor="hsl(var(--sidebar))" stopOpacity={0.85} />
-                              <stop offset="100%" stopColor="hsl(var(--sidebar))" stopOpacity={0.35} />
+                              <stop offset="0%" stopColor="hsl(253, 90%, 68%)" stopOpacity={0.85} />
+                              <stop offset="100%" stopColor="hsl(253, 90%, 68%)" stopOpacity={0.35} />
                             </linearGradient>
                             <linearGradient id="proactBarBestGrad" x1="0" y1="0" x2="0" y2="1">
                               <stop offset="0%" stopColor="hsl(142, 71%, 45%)" stopOpacity={1} />
@@ -747,7 +747,7 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
                           <Line
                             type="monotone"
                             dataKey="ido"
-                            stroke="hsl(var(--sidebar))"
+                            stroke="hsl(253, 90%, 68%)"
                             strokeWidth={2.5}
                             dot={(props: any) => {
                               const { cx, cy, payload } = props;
@@ -764,7 +764,7 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
                                 />
                               );
                             }}
-                            activeDot={{ r: 6, fill: "hsl(var(--sidebar))", stroke: "hsl(var(--background))", strokeWidth: 2 }}
+                            activeDot={{ r: 6, fill: "hsl(253, 90%, 68%)", stroke: "hsl(var(--background))", strokeWidth: 2 }}
                             connectNulls={false}
                           />
                         </LineChart>
