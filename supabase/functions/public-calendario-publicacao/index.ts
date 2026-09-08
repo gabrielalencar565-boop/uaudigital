@@ -45,12 +45,23 @@ Deno.serve(async (req) => {
     if (action === "load") {
       const { data: client } = await admin.from("clients").select("name, logo_url").eq("id", calendar.client_id).maybeSingle();
 
-      const { data: pubs } = await admin
+      // NOTE: this used to filter `.neq("status", "cancelada")` — "cancelada" was never a
+      // real value of the publication_status enum (only em_montagem, aguardando_aprovacao,
+      // aprovada, alteracao_solicitada exist), so that comparison threw on every call and
+      // silently produced an empty publications list every time (the error was never
+      // checked). The actual "exclude this" signal is the soft-delete column, matching how
+      // every other calendar_publications query in the app already filters.
+      const { data: pubs, error: pubsError } = await admin
         .from("calendar_publications")
         .select("id, task_id, title, content_type, caption, publish_date, publish_time, status, client_note, client_feedback, order_index, cover_attachment_id")
         .eq("calendar_id", calendar.id)
-        .neq("status", "cancelada")
-        .order("order_index", { ascending: true });
+        .is("deleted_at", null)
+        .order("order_index", { ascending: true })
+        // Same tiebreaker as useCalendarPublications (use-calendar-data.ts) — publications
+        // commonly share order_index 0 too, so without this the public page's post order
+        // can drift from what the team sees in the Cronograma.
+        .order("created_at", { ascending: true });
+      if (pubsError) console.error("public-calendario-publicacao pubs query error:", pubsError.message);
 
       const taskIds = [...new Set((pubs ?? []).map((p: any) => p.task_id))];
       const byTask = new Map<string, { id: string; url: string; type: string | null }[]>();
@@ -59,7 +70,13 @@ Deno.serve(async (req) => {
           .from("pm_attachments")
           .select("id, task_id, public_url, file_type, order_index")
           .in("task_id", taskIds)
-          .order("order_index", { ascending: true });
+          .order("order_index", { ascending: true })
+          // Every other place in the app that sorts attachments (Cronograma panel,
+          // instagram-publish, the other public endpoint) also breaks ties on created_at —
+          // this was the one spot missing it. Attachments commonly share order_index 0 until
+          // someone actually drags to reorder, so without this tiebreaker Postgres is free to
+          // return tied rows in an arbitrary order, out of sync with every other view.
+          .order("created_at", { ascending: true });
         for (const a of (atts ?? []) as any[]) {
           if (!a.public_url) continue;
           const list = byTask.get(a.task_id) ?? [];
@@ -97,11 +114,18 @@ Deno.serve(async (req) => {
         },
         publications: (pubs ?? []).map(({ task_id, cover_attachment_id, ...p }: any) => {
           const media = byTask.get(task_id) ?? [];
-          const idx = cover_attachment_id ? media.findIndex((m) => m.id === cover_attachment_id) : -1;
+          // Carrossel pages are shown in full, in order (AprovacaoPublic.tsx keeps every
+          // image for content_type "carrossel" instead of just media[0]) — moving the
+          // chosen cover to the front here would scramble a sequence the team deliberately
+          // arranged via "Ordem das páginas do carrossel". Only single-media types (which
+          // really do just render media[0]) benefit from front-loading the cover.
+          const idx = (cover_attachment_id && p.content_type !== "carrossel")
+            ? media.findIndex((m) => m.id === cover_attachment_id)
+            : -1;
           let ordered = media;
           if (idx > 0) {
             ordered = [media[idx], ...media.slice(0, idx), ...media.slice(idx + 1)];
-          } else if (idx === -1 && cover_attachment_id && coverById.has(cover_attachment_id)) {
+          } else if (idx === -1 && p.content_type !== "carrossel" && cover_attachment_id && coverById.has(cover_attachment_id)) {
             ordered = [coverById.get(cover_attachment_id)!, ...media];
           }
           return { ...p, media: ordered.map(({ id, ...m }) => m) };
@@ -145,16 +169,19 @@ Deno.serve(async (req) => {
         .from("calendar_publications")
         .select("id")
         .eq("calendar_id", calendar.id)
+        .is("deleted_at", null)
         .eq("status", "alteracao_solicitada");
       if (pending && pending.length > 0) {
         return json({ error: "pending_changes", count: pending.length }, 409);
       }
 
+      // Same fix as the "load" query above — "cancelada" was never a valid
+      // publication_status value, so this filter threw and silently no-op'd the update.
       await admin
         .from("calendar_publications")
         .update({ status: "aprovada", client_responded_at: new Date().toISOString() })
         .eq("calendar_id", calendar.id)
-        .neq("status", "cancelada");
+        .is("deleted_at", null);
 
       await admin.from("publication_calendars").update({ status: "aprovado" }).eq("id", calendar.id);
 

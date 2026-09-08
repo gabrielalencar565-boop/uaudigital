@@ -466,7 +466,11 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
       const list = attachmentsQ.data?.get(p.task_id) ?? [];
       const coverId = p.cover_attachment_id;
       let result = list;
-      if (coverId) {
+      // Carrossel pages are shown in full, in the order the team arranged via "Ordem das
+      // páginas do carrossel" — moving the chosen cover to the front here would scramble
+      // that order for every carrossel view (cards, grid thumbnails). Only single-media
+      // types that really do just show the first image benefit from front-loading it.
+      if (coverId && p.content_type !== "carrossel") {
         const idx = list.findIndex((m) => m.id === coverId);
         if (idx > 0) {
           const reordered = [...list];

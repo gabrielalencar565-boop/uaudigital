@@ -5,11 +5,9 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/ca
 import { Target } from "lucide-react";
 import { useToggleMagic2Stage, useCreateAndToggleMagic2Stage } from "@/features/magic2/hooks/use-magic2";
 import { useMagic2Dashboard } from "@/features/magic2/hooks/use-magic2-dashboard";
-import { useMagic2ScheduledStages } from "@/features/magic2/hooks/use-magic2-scheduled-stages";
 import { useSession } from "@/hooks/use-session";
 import { MonthYearNav } from "@/features/magic2/components/MonthYearNav";
 import { Magic2Checklist } from "@/features/magic2/components/Magic2Checklist";
-import { Magic2Fluxo } from "@/features/magic2/components/Magic2Fluxo";
 import { Magic2Dashboard } from "@/features/magic2/components/Magic2Dashboard";
 import { CountdownTo27Badge } from "@/features/magic2/components/CountdownTo27Badge";
 import type { Magic2StageKey } from "@/features/magic2/magic2-stages";
@@ -27,11 +25,10 @@ export function Magic2Panel() {
   const initial = getCycleMonthYear(now);
   const [year, setYear] = useState<number>(initial.year);
   const [month, setMonth] = useState<number>(initial.month);
-  const [tab, setTab] = useState<"checklist" | "fluxo" | "dashboard">("checklist");
+  const [tab, setTab] = useState<"checklist" | "dashboard">("checklist");
   const { query: q, dashboard, cycles } = useMagic2Dashboard(year, month);
   const toggle = useToggleMagic2Stage();
   const createAndToggle = useCreateAndToggleMagic2Stage();
-  const scheduledQuery = useMagic2ScheduledStages(year, month);
 
   const onToggleCell = async (stageId: string, current: boolean) => {
     if (!user) return;
@@ -83,7 +80,6 @@ export function Magic2Panel() {
           <TabsList className="bg-card/40">
             <TabsTrigger value="checklist">Checklist</TabsTrigger>
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-            <TabsTrigger value="fluxo">Fluxo</TabsTrigger>
           </TabsList>
 
           <TabsContent value="checklist" className="mt-4">
@@ -100,14 +96,6 @@ export function Magic2Panel() {
 
           <TabsContent value="dashboard" className="mt-4">
             <Magic2Dashboard dashboard={dashboard} year={year} month={month} />
-          </TabsContent>
-
-          <TabsContent value="fluxo" className="mt-4">
-            <Magic2Fluxo
-              cycles={cycles}
-              scheduledByClient={scheduledQuery.data ?? new Map()}
-              isLoading={scheduledQuery.isLoading}
-            />
           </TabsContent>
         </Tabs>
       )}
