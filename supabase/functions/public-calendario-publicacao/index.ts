@@ -70,6 +70,13 @@ Deno.serve(async (req) => {
           .from("pm_attachments")
           .select("id, task_id, public_url, file_type, order_index")
           .in("task_id", taskIds)
+          // Only "final" content is client-facing — production materials (category
+          // "material") are internal working files, same rule as everywhere else that
+          // resolves attachments for display (useTaskAttachmentsMap, instagram-publish's
+          // fetchMediaForTask). This query never actually ran with real data before (the
+          // "cancelada" bug above always left taskIds empty), so this missing filter never
+          // surfaced until that was fixed.
+          .eq("category", "final")
           .order("order_index", { ascending: true })
           // Every other place in the app that sorts attachments (Cronograma panel,
           // instagram-publish, the other public endpoint) also breaks ties on created_at —
