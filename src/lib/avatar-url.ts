@@ -1,5 +1,6 @@
 const STORAGE_SIGN_SEGMENT = "/storage/v1/object/sign/";
 const STORAGE_PUBLIC_SEGMENT = "/storage/v1/object/public/";
+const STORAGE_RENDER_SEGMENT = "/storage/v1/render/image/public/";
 const AVATAR_WIDTH = 96;
 const AVATAR_HEIGHT = 96;
 
@@ -32,6 +33,13 @@ export function optimizeAvatarUrl(rawUrl: string | null | undefined): string | u
   try {
     const parsed = new URL(normalized);
     if (parsed.pathname.includes(STORAGE_PUBLIC_SEGMENT)) {
+      // The plain object endpoint (/object/public/) silently ignores width/height/quality —
+      // those only do anything on the image-transform endpoint (/render/image/public/). This
+      // swap also sidesteps a real incident: a batch of storage objects ended up with the
+      // wrong stored content-type, and Supabase's edge CDN cached that bad response on the
+      // object endpoint for a long time (ignoring the object's own Cache-Control) — the
+      // render endpoint is a separate cache that already reflects the corrected metadata.
+      parsed.pathname = parsed.pathname.replace(STORAGE_PUBLIC_SEGMENT, STORAGE_RENDER_SEGMENT);
       if (!parsed.searchParams.has("width")) parsed.searchParams.set("width", String(AVATAR_WIDTH));
       if (!parsed.searchParams.has("height")) parsed.searchParams.set("height", String(AVATAR_HEIGHT));
       if (!parsed.searchParams.has("quality")) parsed.searchParams.set("quality", "80");

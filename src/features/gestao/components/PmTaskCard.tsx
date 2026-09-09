@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import { toStorageRenderUrl } from "@/lib/storage-image-url";
 import { priorityMeta, tagColor, tagDisplay, isHexColor, TAG_COLORS } from "../pm-constants";
 import { useUpdatePmTask, useDeletePmTask, useCreatePmTask } from "../hooks/use-pm-data";
 import { usePeriodicStages } from "../hooks/use-periodic-stages";
@@ -85,7 +86,7 @@ export function PmTaskCard({ task, clientName, assignees = [], childTasks = [], 
     )}>
       {task.cover_url && (
         <div className="w-full h-20 overflow-hidden">
-          <img src={task.cover_url} alt="" className="w-full h-full object-cover" />
+          <img src={toStorageRenderUrl(task.cover_url)} alt="" className="w-full h-full object-cover" />
         </div>
       )}
 

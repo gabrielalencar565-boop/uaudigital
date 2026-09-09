@@ -793,7 +793,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                 <div className="flex items-start justify-between">
                   <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-tr from-purple-500 via-pink-500 to-orange-400 text-sm font-bold text-white ring-2 ring-background">
                     {c.logo_url ? (
-                      <img src={c.logo_url} alt="" className="h-full w-full object-cover" />
+                      <img src={toGridThumbUrl(c.logo_url)} alt="" className="h-full w-full object-cover" />
                     ) : (
                       initial
                     )}
@@ -868,7 +868,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                     title={responsible.display_name}
                   >
                     {responsible.avatar_url ? (
-                      <img src={responsible.avatar_url} alt={responsible.display_name} className="h-full w-full object-cover" />
+                      <img src={toGridThumbUrl(responsible.avatar_url)} alt={responsible.display_name} className="h-full w-full object-cover" />
                     ) : (
                       responsible.display_name.trim().charAt(0).toUpperCase() || "?"
                     )}

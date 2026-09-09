@@ -3,6 +3,7 @@ import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Clock, List, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toStorageRenderUrl } from "@/lib/storage-image-url";
 import { POST_TYPE_META, type CronogramaViewProps } from "./types";
 
 export function ListView({ posts, selectedPost, onSelectPost }: CronogramaViewProps) {
@@ -50,7 +51,7 @@ export function ListView({ posts, selectedPost, onSelectPost }: CronogramaViewPr
               {datePosts.map(post => {
                 const meta = POST_TYPE_META[post.post_type ?? "post"] ?? POST_TYPE_META.post;
                 const Icon = meta.icon;
-                const imgUrl = post.attachment_url || post.cover_url;
+                const imgUrl = toStorageRenderUrl(post.attachment_url || post.cover_url);
                 const isSelected = selectedPost?.id === post.id;
 
                 return (

@@ -2,7 +2,7 @@ import * as React from "react";
 import * as AvatarPrimitive from "@radix-ui/react-avatar";
 
 import { cn } from "@/lib/utils";
-import { normalizeAvatarUrl, withAvatarCacheBuster } from "@/lib/avatar-url";
+import { optimizeAvatarUrl, withAvatarCacheBuster } from "@/lib/avatar-url";
 import { getAvatarCacheStatus, getCachedAvatarSrc, preloadAvatar, subscribeToAvatar } from "@/lib/avatar-preloader";
 
 type AvatarStatus = "idle" | "loading" | "loaded" | "error";
@@ -63,8 +63,14 @@ const AvatarImage = React.forwardRef<
   React.ImgHTMLAttributes<HTMLImageElement> & { onLoadingStatusChange?: (status: string) => void }
 >(({ className, src, onError, onLoadingStatusChange, ...props }, ref) => {
   const setParentStatus = React.useContext(AvatarSetStatusContext);
+  // Routes through the image-transform endpoint (not just the plain object endpoint) so
+  // every avatar gets this regardless of whether the data it came from already ran
+  // optimizeAvatarUrl upstream — calling it twice is harmless (idempotent past the first
+  // rewrite). See optimizeAvatarUrl's own comment for why this specifically matters: the
+  // plain object endpoint's edge cache got stuck serving a bad content-type for a batch of
+  // files, and the transform endpoint is a separate cache that doesn't have that problem.
   const normalizedSrc = React.useMemo(
-    () => normalizeAvatarUrl(typeof src === "string" ? src : undefined),
+    () => optimizeAvatarUrl(typeof src === "string" ? src : undefined),
     [src]
   );
 

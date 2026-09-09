@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { DatePicker, DatePickerInline } from "@/components/ui/date-picker";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { toStorageRenderUrl } from "@/lib/storage-image-url";
 import {
   PM_ACTIVE_STAGES, stageLabel, getStageCircleColor,
   parseTag, tagColor, tagDisplay, isHexColor, TAG_COLORS
@@ -2117,7 +2118,7 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
     <div className="space-y-0">
       {task.cover_url && (
         <div className="relative w-full h-40 overflow-hidden bg-muted">
-          <img src={task.cover_url} alt="Capa" className="w-full h-full object-cover" />
+          <img src={toStorageRenderUrl(task.cover_url)} alt="Capa" className="w-full h-full object-cover" />
           {!isCompletedSnapshot && <Button size="sm" variant="secondary" className="absolute top-2 right-2 h-6 text-[10px] opacity-0 hover:opacity-100 focus:opacity-100 transition-opacity" onClick={handleRemoveCover}>Remover capa</Button>}
         </div>
       )}

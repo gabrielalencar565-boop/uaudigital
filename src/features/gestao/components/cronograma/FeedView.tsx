@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { toStorageRenderUrl } from "@/lib/storage-image-url";
 import { Instagram } from "lucide-react";
 import { POST_TYPE_META, type CronogramaViewProps } from "./types";
 
@@ -14,7 +15,7 @@ export function FeedView({ posts, selectedPost, onSelectPost }: CronogramaViewPr
 
       <div className="grid grid-cols-3 gap-0.5 rounded-xl overflow-hidden border border-border/30">
         {posts.map(post => {
-          const imgUrl = post.attachment_url || post.cover_url;
+          const imgUrl = toStorageRenderUrl(post.attachment_url || post.cover_url);
           const meta = POST_TYPE_META[post.post_type ?? "post"] ?? POST_TYPE_META.post;
           const Icon = meta.icon;
           const isSelected = selectedPost?.id === post.id;
