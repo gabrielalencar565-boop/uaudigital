@@ -3,7 +3,7 @@ import {
   Home, ClipboardList, Eye, DollarSign,
   CalendarDays, CalendarRange, PieChart, Workflow,
   Target, Trophy, Users, Receipt, FileSpreadsheet,
-  ArrowRightLeft, TrendingUp, Settings, Briefcase,
+  ArrowRightLeft, TrendingUp, Settings, Briefcase, Instagram,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { MainTab } from "@/components/layout/UauSidebarShell";
@@ -11,7 +11,9 @@ import type { MainTab } from "@/components/layout/UauSidebarShell";
 /* ── Sub-tab definitions per bottom tab ── */
 const SUB_TABS: Record<string, { key: MainTab; label: string; icon: React.ComponentType<any> }[]> = {
   tarefas: [
-    { key: "cronograma", label: "Cronograma", icon: CalendarRange },
+    { key: "pauta_pessoas", label: "Pauta", icon: ClipboardList },
+    { key: "calendario_publicacao", label: "Cronograma", icon: Instagram },
+    { key: "cronograma", label: "Produção", icon: CalendarRange },
     { key: "visao_geral_projetos", label: "Squads", icon: PieChart },
     { key: "fluxos", label: "Fluxos", icon: Workflow },
   ],
@@ -39,7 +41,7 @@ const BOTTOM_TABS: { key: string; label: string; icon: React.ComponentType<any>;
 
 /* ── Helpers ── */
 function resolveActiveBottom(tab: MainTab): string {
-  const tarefasTabs: MainTab[] = ["tarefas", "agenda_gestao", "cronograma", "visao_geral_projetos", "fluxos"];
+  const tarefasTabs: MainTab[] = ["tarefas", "agenda_gestao", "pauta_pessoas", "calendario_publicacao", "cronograma", "visao_geral_projetos", "fluxos"];
   if (tarefasTabs.includes(tab)) return "tarefas";
   const dashTabs: MainTab[] = ["visao_do_dia", "magic2", "desempenho"];
   if (dashTabs.includes(tab)) return "dashboard";
