@@ -12,6 +12,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import { toStorageRenderUrl } from "@/lib/storage-image-url";
 import { toast } from "sonner";
 import { TAG_COLORS } from "@/features/gestao/pm-constants";
 import { useAppSettings } from "@/features/data/queries";
@@ -337,18 +338,29 @@ export default function AprovacaoPublic() {
     }
   };
 
-  const appLogoUrl = publicTheme === "dark"
-    ? (appSettingsQ.data?.sidebar_logo_dark_url ?? appSettingsQ.data?.sidebar_logo_url)
-    : appSettingsQ.data?.sidebar_logo_url;
+  const appLogoUrl = toStorageRenderUrl(
+    publicTheme === "dark"
+      ? (appSettingsQ.data?.sidebar_logo_dark_url ?? appSettingsQ.data?.sidebar_logo_url)
+      : appSettingsQ.data?.sidebar_logo_url,
+  );
 
   const load = async () => {
     if (!token) return;
     try {
       const data = await callFn({ action: "load", token });
       setClientName(data.clientName);
-      setClientLogoUrl(data.clientLogoUrl ?? null);
+      setClientLogoUrl(toStorageRenderUrl(data.clientLogoUrl) ?? null);
       setCalendarInfo(data.calendar);
-      setPublications(data.publications);
+      setPublications(
+        (data.publications as PublicationData[]).map((p) => ({
+          ...p,
+          // Only images route through the image-transform endpoint — it can't serve video,
+          // and the object-endpoint cache issue this works around only ever hit images.
+          media: p.media.map((m) =>
+            m.type?.startsWith("image/") ? { ...m, url: toStorageRenderUrl(m.url) ?? m.url } : m,
+          ),
+        })),
+      );
       setNotFound(false);
     } catch {
       setNotFound(true);

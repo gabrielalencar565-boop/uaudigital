@@ -21,11 +21,14 @@ const REDIRECT_URI = Deno.env.get("INSTAGRAM_OAUTH_REDIRECT_URI")!;
 // spelling and "Pronto para teste" status — the "Casos de uso" summary page's bullet list
 // showed "instagram_content_publishing" (with "-ing"), which turned out to be a stale/wrong
 // label there; the real permission, confirmed "Pronto para teste", is instagram_content_publish.
+// pages_read_engagement was requested here but never actually used anywhere in the app
+// (no insights/engagement Graph API call exists) — Meta's App Review rejected it for
+// exactly that reason ("screencast not aligned with use case"). Removed rather than
+// re-justified; add it back only alongside a real feature that reads engagement data.
 const OAUTH_SCOPES = [
   "instagram_basic",
   "instagram_content_publish",
   "pages_show_list",
-  "pages_read_engagement",
   "business_management",
 ].join(",");
 

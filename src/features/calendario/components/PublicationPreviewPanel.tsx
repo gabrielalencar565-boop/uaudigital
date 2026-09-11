@@ -14,6 +14,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { cn } from "@/lib/utils";
+import { toStorageRenderUrl } from "@/lib/storage-image-url";
 import { supabase } from "@/integrations/supabase/client";
 import { CONTENT_TYPE_LABELS, PUBLICATION_STATUS_LABELS, type CalendarPublication, type PublicationContentType, type PublicationStatus } from "../calendar-types";
 import { useCoverCandidates, useRemoveCalendarPublication, useReorderCarouselImages, useUpdateCalendarPublication } from "../hooks/use-calendar-data";
@@ -231,7 +232,15 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
     }
   };
 
-  const images = media.filter((m) => m.type?.startsWith("image/"));
+  // Full-resolution view (unlike the grid cards' toGridThumbUrl) — images still need to
+  // route through the render endpoint rather than the plain object endpoint, since a batch
+  // of Storage objects have their edge cache stuck on the object endpoint (see
+  // toStorageRenderUrl's own comment for the full story). Videos are left untouched — the
+  // image-transform endpoint can't serve video, and the object-endpoint cache issue only
+  // ever affected image content-types.
+  const images = media
+    .filter((m) => m.type?.startsWith("image/"))
+    .map((m) => ({ ...m, url: toStorageRenderUrl(m.url) ?? m.url }));
   const videos = media.filter((m) => m.type?.startsWith("video/"));
   const isCarousel = publication.content_type === "carrossel" && images.length > 1;
 
@@ -303,7 +312,7 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
               <div className="flex items-center gap-2.5 px-3 py-2.5">
                 <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-gradient-to-tr from-purple-500 via-pink-500 to-orange-400">
                   {clientLogoUrl ? (
-                    <img src={clientLogoUrl} alt="" className="h-full w-full object-cover" />
+                    <img src={toStorageRenderUrl(clientLogoUrl)} alt="" className="h-full w-full object-cover" />
                   ) : (
                     <span className="text-xs font-bold text-white">{clientInitial}</span>
                   )}
@@ -555,7 +564,7 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                               isCover ? "border-primary" : "border-transparent opacity-70 hover:opacity-100",
                             )}
                           >
-                            <img src={img.url} alt="" className="h-full w-full object-cover" />
+                            <img src={toStorageRenderUrl(img.url)} alt="" className="h-full w-full object-cover" />
                             {isCover && (
                               <span className="absolute inset-x-0 bottom-0 bg-primary/90 py-0.5 text-center text-[9px] font-semibold text-primary-foreground">
                                 Capa
@@ -577,7 +586,7 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                         </div>
                       </HoverCardTrigger>
                       <HoverCardContent side="top" className="w-auto p-1">
-                        <img src={img.url} alt="" className="max-h-80 max-w-80 rounded-md object-contain" />
+                        <img src={toStorageRenderUrl(img.url)} alt="" className="max-h-80 max-w-80 rounded-md object-contain" />
                       </HoverCardContent>
                     </HoverCard>
                   );

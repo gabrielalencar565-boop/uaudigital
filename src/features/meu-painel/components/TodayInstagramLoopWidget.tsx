@@ -3,6 +3,7 @@ import { Clock, Instagram, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { toStorageRenderUrl } from "@/lib/storage-image-url";
 import {
   useTodayScheduledPublications,
   useTaskAttachmentsMap,
@@ -200,7 +201,14 @@ export function TodayInstagramLoopWidget({ onOpenTask }: Props) {
                       style={{ width: `calc(${cardWidthPct}% - ${(GAP_PX * (VISIBLE - 1)) / VISIBLE}px)` }}
                     >
                       {cover ? (
-                        <img src={cover.thumbUrl} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" draggable={false} />
+                        <img
+                          src={cover.type?.startsWith("video/") ? cover.thumbUrl : toStorageRenderUrl(cover.thumbUrl)}
+                          alt=""
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                          decoding="async"
+                          draggable={false}
+                        />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center bg-muted">
                           <Instagram className="h-6 w-6 text-muted-foreground" />
@@ -208,7 +216,7 @@ export function TodayInstagramLoopWidget({ onOpenTask }: Props) {
                       )}
                       <div className="absolute inset-x-0 top-0 flex items-center gap-1.5 bg-gradient-to-b from-black/70 to-transparent p-1.5">
                         <span className="h-5 w-5 shrink-0 overflow-hidden rounded-full bg-muted">
-                          {p.clientLogoUrl && <img src={p.clientLogoUrl} alt="" className="h-full w-full object-cover" draggable={false} />}
+                          {p.clientLogoUrl && <img src={toStorageRenderUrl(p.clientLogoUrl)} alt="" className="h-full w-full object-cover" draggable={false} />}
                         </span>
                         <span className="min-w-0 flex-1 truncate text-[10px] font-semibold text-white">{p.clientName}</span>
                       </div>

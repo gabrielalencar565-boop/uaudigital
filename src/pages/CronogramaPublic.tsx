@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { toStorageRenderUrl } from "@/lib/storage-image-url";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -201,9 +202,9 @@ function PublicPostSidebar({ post, feedback, onClose, onSubmitFeedback }: {
 }) {
   const [feedbackText, setFeedbackText] = useState(feedback?.feedback_text ?? "");
   const meta = POST_TYPE_META[post.post_type ?? "post"] ?? POST_TYPE_META.post;
-  const allImages = post.all_attachment_urls ?? [];
+  const allImages = (post.all_attachment_urls ?? []).map((u) => toStorageRenderUrl(u)!);
   const isCarousel = post.post_type === "carrossel" && allImages.length > 1;
-  const singleImg = post.attachment_url || post.cover_url;
+  const singleImg = toStorageRenderUrl(post.attachment_url || post.cover_url);
 
   return (
     <div className="w-96 shrink-0 border border-gray-200 rounded-2xl bg-white p-5 shadow-sm space-y-4 max-h-[80vh] overflow-y-auto">
@@ -344,7 +345,7 @@ function PublicMonthlyView({ posts, selectedPost, onSelectPost }: { posts: PostD
               {dayPosts.map(p => {
                 const meta = POST_TYPE_META[p.post_type ?? "post"] ?? POST_TYPE_META.post;
                 const Icon = meta.icon;
-                const imgUrl = p.attachment_url || p.cover_url;
+                const imgUrl = toStorageRenderUrl(p.attachment_url || p.cover_url);
                 return (
                   <div key={p.id} className="mb-1" onClick={(e) => { e.stopPropagation(); onSelectPost(p); }}>
                     {imgUrl && <img src={imgUrl} alt="" className="w-full aspect-square rounded object-cover mb-0.5" />}
@@ -400,7 +401,7 @@ function PublicWeeklyView({ posts, selectedPost, onSelectPost }: { posts: PostDa
                 {dayPosts.map(post => {
                   const meta = POST_TYPE_META[post.post_type ?? "post"] ?? POST_TYPE_META.post;
                   const Icon = meta.icon;
-                  const imgUrl = post.attachment_url || post.cover_url;
+                  const imgUrl = toStorageRenderUrl(post.attachment_url || post.cover_url);
                   return (
                     <div key={post.id} className={cn("rounded-lg border p-1.5 cursor-pointer transition hover:scale-[1.02]", selectedPost?.id === post.id ? "ring-2 ring-indigo-500" : "border-gray-200")} onClick={() => onSelectPost(post)}>
                       {imgUrl && <img src={imgUrl} alt="" className="w-full aspect-square rounded-md object-cover mb-1" />}
@@ -430,7 +431,7 @@ function PublicFeedView({ posts, selectedPost, onSelectPost }: { posts: PostData
       </div>
       <div className="grid grid-cols-3 gap-0.5 rounded-xl overflow-hidden border border-gray-200">
         {posts.map(post => {
-          const imgUrl = post.attachment_url || post.cover_url;
+          const imgUrl = toStorageRenderUrl(post.attachment_url || post.cover_url);
           const meta = POST_TYPE_META[post.post_type ?? "post"] ?? POST_TYPE_META.post;
           const Icon = meta.icon;
           return (

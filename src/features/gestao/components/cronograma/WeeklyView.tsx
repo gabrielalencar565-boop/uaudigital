@@ -4,6 +4,7 @@ import { ptBR } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, Clock, Cake, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { toStorageRenderUrl } from "@/lib/storage-image-url";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { getIconById } from "@/features/agenda/components/IconPicker";
 import { useTeamMembers } from "@/features/data/queries";
@@ -148,7 +149,7 @@ export function WeeklyView({ posts, selectedPost, onSelectPost, onDateChange }: 
                     {dayPosts.map(post => {
                       const meta = POST_TYPE_META[post.post_type ?? "post"] ?? POST_TYPE_META.post;
                       const Icon = meta.icon;
-                      const imgUrl = post.attachment_url || post.cover_url;
+                      const imgUrl = toStorageRenderUrl(post.attachment_url || post.cover_url);
                       const isSelected = selectedPost?.id === post.id;
 
                       return (
@@ -229,7 +230,7 @@ export function WeeklyView({ posts, selectedPost, onSelectPost, onDateChange }: 
                   {dayPosts.map(post => {
                     const meta = POST_TYPE_META[post.post_type ?? "post"] ?? POST_TYPE_META.post;
                     const Icon = meta.icon;
-                    const imgUrl = post.attachment_url || post.cover_url;
+                    const imgUrl = toStorageRenderUrl(post.attachment_url || post.cover_url);
                     const isSelected = selectedPost?.id === post.id;
 
                     return (

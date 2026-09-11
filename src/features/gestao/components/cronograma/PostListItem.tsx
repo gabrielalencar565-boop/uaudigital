@@ -5,6 +5,7 @@ import { Pencil } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { toStorageRenderUrl } from "@/lib/storage-image-url";
 import { POST_TYPE_META, type CronogramaPost } from "./types";
 
 interface Props {
@@ -20,7 +21,7 @@ export function PostListItem({ post, isSelected, onSelect, onRename }: Props) {
 
   const meta = POST_TYPE_META[post.post_type ?? "post"] ?? POST_TYPE_META.post;
   const Icon = meta.icon;
-  const imgUrl = post.attachment_url || post.cover_url;
+  const imgUrl = toStorageRenderUrl(post.attachment_url || post.cover_url);
 
   const startRename = (e: React.MouseEvent) => {
     e.stopPropagation();

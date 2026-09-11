@@ -10,6 +10,7 @@ import { useUploadPmAttachment, useUploadPmAttachmentResumable } from "../hooks/
 import type { PmAttachment } from "../pm-types";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { toStorageRenderUrl } from "@/lib/storage-image-url";
 import { PmImageViewer } from "./PmImageViewer";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -292,7 +293,7 @@ function AttachmentThumbnail({ url, name, isKnownImage, isPdf, isVideo, posterUr
     return (
       <div className="relative w-full aspect-[4/3] overflow-hidden rounded-t-md bg-muted cursor-pointer" onClick={onClick}>
         {posterUrl ? (
-          <img src={posterUrl} alt={name} className="h-full w-full object-cover transition group-hover:scale-105" />
+          <img src={toStorageRenderUrl(posterUrl)} alt={name} className="h-full w-full object-cover transition group-hover:scale-105" />
         ) : (
           <div className="flex h-full w-full items-center justify-center">
             <FileVideo className="h-6 w-6 text-muted-foreground/40" />
@@ -389,7 +390,7 @@ function AttachmentThumbnail({ url, name, isKnownImage, isPdf, isVideo, posterUr
       onClick={onClick}
     >
       <img
-        src={convertedUrl ?? url}
+        src={convertedUrl ?? toStorageRenderUrl(url)}
         alt={name}
         className="w-full h-full object-cover transition group-hover:scale-105"
         onError={() => setFailed(true)}
