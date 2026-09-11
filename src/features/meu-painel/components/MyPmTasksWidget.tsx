@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { AlertTriangle, ChevronDown, ChevronRight, Flag, GitBranch, ListChecks, MessageSquare, FileText } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronRight, Flag, GitBranch, ListChecks, MessageSquare } from "lucide-react";
 import { differenceInCalendarDays, format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 
@@ -277,9 +277,6 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
               <span className="min-w-0 truncate text-[13px] font-medium text-foreground">
                 {t.title}
               </span>
-              {t.description && (
-                <FileText className="h-3 w-3 shrink-0 text-muted-foreground/50" />
-              )}
               {childCount > 0 && (
                 <span className="flex shrink-0 items-center gap-0.5 text-[11px] text-muted-foreground">
                   <GitBranch className="h-3 w-3" /> {childCount}

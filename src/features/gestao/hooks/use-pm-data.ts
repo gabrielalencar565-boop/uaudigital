@@ -12,24 +12,62 @@ const sb = supabase as any;
 // necessários ao abrir o detalhe da tarefa — ali usamos queries específicas.
 const PM_TASK_LIST_COLUMNS = "id,project_id,client_id,title,priority,status_global,stage_current,start_date,due_date,created_by,assignee_id,watchers,tags,created_at,updated_at,parent_task_id,cover_url,is_extra_demand,is_draft,post_type,posting_date,posting_time,deleted_at,deleted_by,origin_task_id,periodic_stage_key";
 
-/** Fetch only root tasks (no parent) — SELECT * (description usada em widgets).
+/** Fetch only root tasks (no parent) — light columns (see PM_TASK_LIST_COLUMNS).
+ * This runs on nearly every page (app shell, Meu Painel, Gestão, deadline report, day view)
+ * unpaginated, so `description`/`caption`/`revision_notes` — needed only once a specific
+ * task is opened, averaging ~2KB and up to 557KB on some rows — are deliberately left out;
+ * a task detail view fetches those itself via `usePmTaskById`.
  * `enabled` (default true) lets a caller that only needs this to resolve a single task by id
  * — e.g. a task detail dialog kept mounted with `open=false` — skip the fetch entirely until
- * it's actually needed. This is the single heaviest query in the app (every root task, every
- * client, unpaginated, `description` alone averaging ~2KB and up to 557KB on some rows), and
- * it was previously running on every page load via components that mount it unconditionally
- * regardless of whether anything was actually open. */
+ * it's actually needed. */
 export function usePmTasks(enabled = true) {
   return useQuery<PmTask[]>({
     queryKey: ["pm_tasks"],
     enabled,
+    staleTime: 30_000,
     queryFn: async () => {
       const { data, error } = await sb
         .from("pm_tasks")
-        .select("*")
+        .select(PM_TASK_LIST_COLUMNS)
         .is("parent_task_id", null)
         .is("deleted_at", null)
         .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
+/** Fetch a single task by id with every column (description/caption/revision_notes
+ * included) — used by the task detail dialog instead of scanning the light, unpaginated
+ * `usePmTasks()` list just to find one row and read its full content. */
+export function usePmTaskById(id: string | null) {
+  return useQuery<PmTask | null>({
+    queryKey: ["pm_task", id],
+    enabled: !!id,
+    queryFn: async () => {
+      const { data, error } = await sb.from("pm_tasks").select("*").eq("id", id).maybeSingle();
+      if (error) throw error;
+      return data ?? null;
+    },
+  });
+}
+
+/** Other root PDF-stage tasks for a client — used to offer merging duplicate PDF tasks
+ * from the task detail dialog. Scoped server-side to one client instead of scanning the
+ * full unpaginated `usePmTasks()` list for a handful of matches. */
+export function usePmPdfTasksForClient(clientId: string | null, enabled: boolean) {
+  return useQuery<PmTask[]>({
+    queryKey: ["pm_tasks_pdf_for_client", clientId],
+    enabled: enabled && !!clientId,
+    queryFn: async () => {
+      const { data, error } = await sb
+        .from("pm_tasks")
+        .select(PM_TASK_LIST_COLUMNS)
+        .eq("client_id", clientId)
+        .eq("stage_current", "pdf")
+        .is("parent_task_id", null)
+        .is("deleted_at", null);
       if (error) throw error;
       return data ?? [];
     },
@@ -58,6 +96,7 @@ export function usePmChildTasks(parentId: string | null) {
 export function usePmAllChildTasks() {
   return useQuery<PmTask[]>({
     queryKey: ["pm_child_tasks_all"],
+    staleTime: 30_000,
     queryFn: async () => {
       const pageSize = 1000;
       const filtered = () => sb.from("pm_tasks").not("parent_task_id", "is", null).is("deleted_at", null);

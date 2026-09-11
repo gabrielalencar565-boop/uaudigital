@@ -26,7 +26,7 @@ import {
 } from "../pm-constants";
 import { usePeriodicStages } from "../hooks/use-periodic-stages";
 import {
-  useUpdatePmTask, useCreatePmTask, usePmTasks, usePmChildTasks,
+  useUpdatePmTask, useCreatePmTask, usePmTaskById, usePmPdfTasksForClient, usePmChildTasks,
   usePmComments, usePmAttachments, usePmSyncStageCompletion, useMergePdfTasks,
 } from "../hooks/use-pm-data";
 import { usePmTags, useCreatePmTag } from "../hooks/use-pm-tags";
@@ -95,16 +95,18 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
   const mergePdfTasks = useMergePdfTasks();
   const queryClientPrefetch = useQueryClient();
 
-  // Only fetches once this specific dialog is actually open — several callers keep this
-  // component mounted with open=false when nothing is selected (e.g. the sidebar's
-  // notification dialog, present on every page), so without this every page load and every
-  // task mutation anywhere was refetching the entire unpaginated pm_tasks table for a dialog
-  // nobody was even looking at.
-  const tasksQ = usePmTasks(open);
+  // Full-detail fetch (description/caption/revision_notes) for just this one task, instead
+  // of scanning the light, unpaginated `usePmTasks()` list that backs every board/kanban
+  // view — that used to run again on every dialog open just to find one row and read its
+  // content. `open` gates it off entirely for callers that keep this component mounted
+  // with open=false when nothing is selected (e.g. the sidebar's notification dialog,
+  // present on every page). The `task` prop covers instant render; this overlays the full
+  // row (description etc.) once it lands.
+  const rootTaskDetailQ = usePmTaskById(open ? (task?.id ?? null) : null);
   const resolvedRootTask = useMemo(() => {
     if (!task) return null;
-    return tasksQ.data?.find(t => t.id === task.id) ?? task;
-  }, [task, tasksQ.data]);
+    return rootTaskDetailQ.data && rootTaskDetailQ.data.id === task.id ? { ...task, ...rootTaskDetailQ.data } : task;
+  }, [task, rootTaskDetailQ.data]);
 
   const currentTaskId = taskStack.length > 0 ? taskStack[taskStack.length - 1] : resolvedRootTask?.id ?? null;
 
@@ -149,25 +151,27 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
 
   const isSubtaskView = taskStack.length > 0;
 
-  // Merge candidates: outras tarefas PDF do mesmo cliente/mês.
+  // Merge candidates: outras tarefas PDF do mesmo cliente/mês. Scoped server-side to this
+  // client (see usePmPdfTasksForClient) instead of scanning the full unpaginated task list.
   // Regras relaxadas: aceita qualquer post_type (inclusive vazio) e tarefas concluídas,
   // para permitir unir PDFs antigos divergentes que já foram entregues.
+  const clientPdfTasksQ = usePmPdfTasksForClient(
+    currentTask?.client_id ?? null,
+    !isSubtaskView && currentTask?.stage_current === "pdf",
+  );
   const mergeCandidates = useMemo(() => {
     if (isSubtaskView) return [] as PmTask[];
     if (!currentTask || currentTask.stage_current !== "pdf") return [] as PmTask[];
     if (!currentTask.due_date) return [] as PmTask[];
     const ownDue = new Date(`${currentTask.due_date}T00:00:00`);
     const ownKey = `${ownDue.getFullYear()}-${ownDue.getMonth()}`;
-    return (tasksQ.data ?? []).filter((t) => {
+    return (clientPdfTasksQ.data ?? []).filter((t) => {
       if (t.id === currentTask.id) return false;
-      if ((t as any).deleted_at) return false;
-      if (t.client_id !== currentTask.client_id) return false;
-      if (t.stage_current !== "pdf") return false;
       if (!t.due_date) return false;
       const d = new Date(`${t.due_date}T00:00:00`);
       return `${d.getFullYear()}-${d.getMonth()}` === ownKey;
     });
-  }, [tasksQ.data, currentTask, isSubtaskView]);
+  }, [clientPdfTasksQ.data, currentTask, isSubtaskView]);
 
   // Presence: tell teammates which task this user currently has open
   // IMPORTANT: must be declared before any early return to keep hook order stable
@@ -280,7 +284,7 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
 
           {/* CENTER: Task detail */}
           <div className="flex-1 overflow-y-auto min-h-0">
-            <TaskContentView task={currentTask} parentTask={resolvedRootTask} childTasks={childTasks} attachments={attachments} membersMap={membersMap} members={members} isAdmin={isAdmin} onSelectSubtask={handleSelectSubtask} activeSubtaskId={null} onClose={handleClose} clientsMap={clientsMap} allTags={allTags} parentStageCurrent={isSubtaskView ? resolvedRootTask.stage_current : undefined} globalTags={globalTagsQ.data ?? []} onEditTask={(taskId) => setTaskStack(prev => [...prev, taskId])} onOpenInCalendario={onOpenInCalendario} />
+            <TaskContentView task={currentTask} parentTask={resolvedRootTask} childTasks={childTasks} childTasksLoading={childTasksQ.isLoading} attachments={attachments} membersMap={membersMap} members={members} isAdmin={isAdmin} onSelectSubtask={handleSelectSubtask} activeSubtaskId={null} onClose={handleClose} clientsMap={clientsMap} allTags={allTags} parentStageCurrent={isSubtaskView ? resolvedRootTask.stage_current : undefined} globalTags={globalTagsQ.data ?? []} onEditTask={(taskId) => setTaskStack(prev => [...prev, taskId])} onOpenInCalendario={onOpenInCalendario} />
           </div>
 
           {/* RIGHT: Comments sidebar (hidden on mobile) */}
@@ -593,8 +597,8 @@ function SendParentToCronogramaButton({ task, childTasks }: { task: PmTask; chil
 
 // ─── Task Content View ───
 
-function TaskContentView({ task, parentTask, childTasks, attachments, membersMap, members, isAdmin, onSelectSubtask, activeSubtaskId, onClose, clientsMap, allTags, parentStageCurrent, globalTags, onEditTask, onOpenInCalendario }: {
-  task: PmTask; parentTask: PmTask; childTasks: PmTask[]; attachments: any[];
+function TaskContentView({ task, parentTask, childTasks, childTasksLoading, attachments, membersMap, members, isAdmin, onSelectSubtask, activeSubtaskId, onClose, clientsMap, allTags, parentStageCurrent, globalTags, onEditTask, onOpenInCalendario }: {
+  task: PmTask; parentTask: PmTask; childTasks: PmTask[]; childTasksLoading: boolean; attachments: any[];
   membersMap: Record<string, { name: string; avatar?: string }>; members: { id: string; name: string }[];
   isAdmin: boolean; onSelectSubtask: (sub: PmTask) => void; activeSubtaskId: string | null;
   onClose: () => void; clientsMap: Record<string, string>; allTags: string[];
@@ -738,6 +742,11 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
   const doAdvance = async (completedStage: string, nextStage: string, newDueDate?: string, linkedTaskId?: string) => {
     const sb = supabase as any;
     const qc = (window as any).__pmQueryClient ?? null; // fallback, won't be used
+    // Fetched once and reused everywhere below — getUser() round-trips to the auth
+    // server (unlike getSession()), so calling it a second time inside
+    // cloneChildrenToNewTask just to re-derive the same id added needless latency to
+    // every stage advance.
+    const currentUserPromise = supabase.auth.getUser();
 
     const cloneChildrenToNewTask = async (targetTaskId: string, targetStage: string) => {
       const assigneeKey = resolveAssigneeStageKey(completedStage, targetStage);
@@ -766,7 +775,7 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
       // sorted created_at ascending (usePmChildTasks), and downstream consumers re-sort
       // subtasks the same way, so each clone gets an explicit created_at spaced 1ms apart
       // in that same order instead of letting the DB assign a same-statement, order-losing now().
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await currentUserPromise;
       const baseTime = Date.now();
       // Each clone gets a distinct, explicit created_at (spaced 1ms apart, in original
       // order) — this both preserves display order and, since RETURNING on a multi-row
@@ -951,7 +960,7 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
                   ? "design"
                   : (task.post_type ?? undefined);
 
-          const { data: { user } } = await supabase.auth.getUser();
+          const { data: { user } } = await currentUserPromise;
           const { data: newTask } = await sb.from("pm_tasks").insert({
             client_id: task.client_id,
             title: newTitle,
@@ -971,8 +980,13 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
           }).select().single();
 
           if (newTask) {
-            cloneChildrenToNewTask(newTask.id, nextStage);
-            // Copy parent-level comments to new task (background)
+            // Awaited: invalidating the child-tasks query below before this insert lands
+            // would refetch 0 rows, cache that empty result, and never refetch again —
+            // the new task would look permanently empty even though the clone eventually
+            // succeeds in the DB (reported bug: subtasks "disappearing" on stage advance).
+            await cloneChildrenToNewTask(newTask.id, nextStage);
+            // Copy parent-level comments to new task (background — comments aren't
+            // gated by the same empty-cache trap, ok to keep non-blocking)
             void (async () => {
               const { data: parentComments } = await sb.from("pm_comments").select("*").eq("task_id", task.id);
               if (parentComments?.length) {
@@ -2461,10 +2475,10 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-destructive/10 border border-destructive/30 text-destructive text-xs font-semibold">
               <RotateCcw className="h-3.5 w-3.5" /> {resolvedTaskPostType === "video" ? "ALT/VDO" : resolvedTaskPostType === "design" ? "ALT/DSG" : resolvedTaskPostType === "planejamento" ? "ALT/PLAN" : "Em Alteração"}
             </div>
-            <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" onClick={handleReturnFromAlteracao}>
+            <Button size="sm" className="gap-1.5 bg-success text-success-foreground hover:bg-success/80" disabled={childTasksLoading} title={childTasksLoading ? "Carregando subtarefas..." : undefined} onClick={handleReturnFromAlteracao}>
               <CheckCircle2 className="h-4 w-4" /> Ajuste Concluído
             </Button>
-            <Button size="sm" variant="outline" className="gap-1.5 text-muted-foreground border-border/40 hover:bg-muted/60" onClick={handleRevert}>
+            <Button size="sm" variant="outline" className="gap-1.5 text-muted-foreground border-border/40 hover:bg-muted/60" disabled={childTasksLoading} title={childTasksLoading ? "Carregando subtarefas..." : undefined} onClick={handleRevert}>
               <RotateCcw className="h-3.5 w-3.5" /> Reverter
             </Button>
           </div>
@@ -2477,15 +2491,16 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
               <Button
                 size="sm"
                 className="gap-1.5 bg-success text-success-foreground hover:bg-success/80"
-                disabled={isCompleting}
+                disabled={isCompleting || childTasksLoading}
+                title={childTasksLoading ? "Carregando subtarefas..." : undefined}
                 onClick={() => {
-                  if (isCompleting) return;
+                  if (isCompleting || childTasksLoading) return;
                   setIsCompleting(true);
                   runWithLateCheck(handleConcluido).finally(() => setIsCompleting(false));
                 }}
               >
                 <CheckCircle2 className="h-4 w-4" />
-                {task.stage_current === "revisao" ? "Aprovar e seguir fluxo" : "Concluir"}
+                {childTasksLoading ? "Carregando..." : task.stage_current === "revisao" ? "Aprovar e seguir fluxo" : "Concluir"}
                 <ChevronRight className="h-3.5 w-3.5" />
               </Button>
 
@@ -2535,7 +2550,10 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
             <Button
               size="sm"
               className="group/done gap-1.5 min-w-[130px] bg-success text-success-foreground hover:bg-destructive/90 transition-colors duration-200"
+              disabled={childTasksLoading}
+              title={childTasksLoading ? "Carregando subtarefas..." : undefined}
               onClick={async () => {
+                if (childTasksLoading) return;
                 const sbx = supabase as any;
                 const allIds = [task.id, ...childTasks.map(c => c.id)];
 
@@ -2590,7 +2608,7 @@ function TaskContentView({ task, parentTask, childTasks, attachments, membersMap
 
           {/* Enviar para Alteração — only from Revisão */}
           {task.stage_current === "revisao" && (
-            <Button size="sm" variant="outline" className="gap-1.5 text-red-500 border-red-500/30 hover:bg-red-500/10" onClick={handleAlteracao}>
+            <Button size="sm" variant="outline" className="gap-1.5 text-red-500 border-red-500/30 hover:bg-red-500/10" disabled={childTasksLoading} title={childTasksLoading ? "Carregando subtarefas..." : undefined} onClick={handleAlteracao}>
               <RotateCcw className="h-3.5 w-3.5" /> Enviar para Alteração
             </Button>
           )}
