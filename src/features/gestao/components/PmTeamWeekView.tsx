@@ -6,7 +6,6 @@ import {
   History, Maximize2, Minimize2, Plus, Search, User,
 } from "lucide-react";
 import { DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from "@dnd-kit/core";
-import { CSS } from "@dnd-kit/utilities";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -173,15 +172,18 @@ function TaskCard({ task, clientsMap, todayKey, minimal, onClick, dragHandleProp
 
 function DraggableTaskCard(props: Omit<Parameters<typeof TaskCard>[0], "dragHandleProps" | "isDragging">) {
   const draggable = !props.task.id.startsWith("legacy_");
-  const { setNodeRef, listeners, attributes, setActivatorNodeRef, transform, isDragging } = useDraggable({
+  const { setNodeRef, listeners, attributes, setActivatorNodeRef, isDragging } = useDraggable({
     id: props.task.id,
     data: { task: props.task },
     disabled: !draggable,
   });
-  const style = transform ? { transform: CSS.Translate.toString(transform) } : undefined;
-
+  // No `transform` style here on purpose — a DragOverlay clone already renders the
+  // floating copy that follows the cursor. Also translating this original node made it
+  // slide out of its grid cell (which has no overflow clipping) and visually bleed into
+  // neighboring day columns while dragging (reported bug: cards look "glitched" mid-drag).
+  // This one just dims in place via isDragging below.
   return (
-    <div ref={setNodeRef} style={style}>
+    <div ref={setNodeRef}>
       <TaskCard {...props} dragHandleProps={{ listeners, attributes, setActivatorNodeRef }} isDragging={isDragging} />
     </div>
   );
