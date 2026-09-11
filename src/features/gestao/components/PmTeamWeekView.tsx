@@ -657,7 +657,14 @@ export function PmTeamWeekView({ tasks, clientsMap, membersMap, clients, current
                     <div className="overflow-x-auto">
                       <div
                         className="min-w-[760px] grid gap-px bg-black/10"
-                        style={{ gridTemplateColumns: `220px repeat(${visibleDays.length}, 1fr)` }}
+                        // Plain `1fr` tracks default to min-width:auto — a track won't shrink
+                        // below its content's intrinsic (unwrapped) width, so a card with a
+                        // longer title forced its whole day-column far wider than the others,
+                        // throwing off every column after it and making cards visually bleed
+                        // into the sticky name column while scrolling. `minmax(0, 1fr)` lets
+                        // each column actually shrink to its fair share so `truncate` on the
+                        // card text can do its job.
+                        style={{ gridTemplateColumns: `220px repeat(${visibleDays.length}, minmax(0, 1fr))` }}
                       >
                         <div className="bg-background px-3 py-2" />
                         {visibleDays.map((d, i) => {
