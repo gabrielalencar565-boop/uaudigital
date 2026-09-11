@@ -25,6 +25,12 @@ export function toStorageRenderUrl(rawUrl: string | null | undefined): string | 
     // (some Supabase plans reject/ignore a transform request with no params) — 1600 is
     // comfortably above every thumbnail/card use in this app, so it's a no-op for quality.
     if (!parsed.searchParams.has("width")) parsed.searchParams.set("width", "1600");
+    // Without an explicit resize mode, Supabase's transform only resizes the width and
+    // leaves height at the ORIGINAL pixel value instead of scaling it proportionally —
+    // a 1080x1080 source with just `?width=480` comes back 480x1080, stretched/cropped
+    // wherever it's displayed (reported as thumbnails looking "zoomed in"). `contain`
+    // scales both dimensions to fit the width while preserving the source's aspect ratio.
+    if (!parsed.searchParams.has("resize")) parsed.searchParams.set("resize", "contain");
     return parsed.toString();
   } catch {
     return trimmed;

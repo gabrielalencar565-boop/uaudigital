@@ -54,7 +54,11 @@ function toGridThumbUrl(url: string): string {
   const storageIdx = url.indexOf(STORAGE_OBJECT_PATH);
   if (storageIdx === -1) return url;
   const rewritten = url.slice(0, storageIdx) + "/storage/v1/render/image/public/" + url.slice(storageIdx + STORAGE_OBJECT_PATH.length);
-  return `${rewritten}${rewritten.includes("?") ? "&" : "?"}width=480&quality=70`;
+  // `resize=contain` is required here — without it Supabase only resizes the width and
+  // leaves height at the source's original pixel value instead of scaling it to match,
+  // so a square 1080x1080 logo comes back 480x1080 and gets cropped/zoomed wherever it's
+  // displayed with object-cover (reported bug: client logos/avatars looking "zoomed in").
+  return `${rewritten}${rewritten.includes("?") ? "&" : "?"}width=480&quality=70&resize=contain`;
 }
 
 function anchorForDate(d: Date) {
