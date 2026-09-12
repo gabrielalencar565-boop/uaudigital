@@ -72,6 +72,21 @@ try {
 
 createRoot(rootEl).render(<App />);
 
+// Hide the static splash screen (rendered inline in index.html, before any JS runs) once
+// React has actually painted something. Double rAF instead of hiding right after render()
+// so the browser has a committed frame to show first — otherwise the fade can start on an
+// still-blank page and just look like a delayed flash instead of a smooth handoff.
+(() => {
+  const splash = document.getElementById("app-splash");
+  if (!splash) return;
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      splash.classList.add("app-splash-hide");
+      setTimeout(() => splash.remove(), 300);
+    });
+  });
+})();
+
 // Register service worker only in production (not in iframe/preview)
 (() => {
   if (!("serviceWorker" in navigator)) return;

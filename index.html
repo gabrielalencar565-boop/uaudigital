@@ -24,9 +24,35 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Uau Digital">
   <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+  <style>
+    #app-splash {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #ffffff;
+      transition: opacity 0.25s ease;
+    }
+    #app-splash img {
+      width: 220px;
+      max-width: 60vw;
+      animation: app-splash-pulse 1.6s ease-in-out infinite;
+    }
+    @keyframes app-splash-pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.55; transform: scale(0.96); }
+    }
+    #app-splash.app-splash-hide {
+      opacity: 0;
+      pointer-events: none;
+    }
+  </style>
 </head>
 
   <body>
+    <div id="app-splash"><img src="/branding/uau-logo.png" alt="Uau Digital" /></div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
