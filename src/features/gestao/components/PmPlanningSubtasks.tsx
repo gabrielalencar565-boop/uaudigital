@@ -502,7 +502,7 @@ function PlanningSection({
                           : "border-emerald-500/30 hover:border-emerald-500/60 text-emerald-500/40 hover:text-emerald-500/70",
                         !isReviewEditable && "opacity-60 cursor-default"
                       )}
-                      title="Aprovado"
+                      title={isReviewEditable ? "Aprovado" : reviewMode === "alteracao" ? "Só quem revisa pode marcar isso — volta pra Revisão pra alterar" : "Aprovado"}
                     >
                       <Check className="h-3 w-3" />
                     </button>
@@ -516,7 +516,7 @@ function PlanningSection({
                           : "border-amber-500/30 hover:border-amber-500/60 text-amber-500/40 hover:text-amber-500/70",
                         !isReviewEditable && "opacity-60 cursor-default"
                       )}
-                      title="Precisa de alteração"
+                      title={isReviewEditable ? "Precisa de alteração" : reviewMode === "alteracao" ? "Só quem revisa pode marcar isso — volta pra Revisão pra alterar" : "Precisa de alteração"}
                     >
                       <RotateCcw className="h-3 w-3" />
                     </button>
