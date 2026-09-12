@@ -2567,6 +2567,22 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
                 await queryClient.cancelQueries({ queryKey: ["pm_child_tasks"] });
                 await queryClient.cancelQueries({ queryKey: ["pm_child_tasks_all"] });
 
+                const invalidateAll = () => {
+                  queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
+                  queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
+                  queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
+                };
+                // A failed write here used to fail silently: the optimistic cache update
+                // already showed "desconcluída", and with nothing calling invalidateAll()
+                // on error, the UI just kept showing the wrong state until some unrelated
+                // action refetched pm_tasks and the real (still concluído) row reasserted
+                // itself — reported as clicking "Desmarcar" repeatedly and it never sticking.
+                const onFailure = (err: any) => {
+                  console.error("Error desconcluindo tarefa:", err);
+                  toast.error(err?.message ?? "Erro ao desconcluir tarefa — tente novamente");
+                  invalidateAll();
+                };
+
                 if (isCompletedSnapshot) {
                   // Optimistic: instantly mark as backlog in cache
                   const markBacklog = (old: PmTask[] | undefined) =>
@@ -2576,17 +2592,20 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
                   queryClient.setQueriesData<PmTask[]>({ queryKey: ["pm_child_tasks_all"] }, markBacklog);
                   toast.success("Tarefa desconcluída");
                   // DB in background
-                  sbx.from("pm_tasks").update({ status_global: "backlog" }).in("id", allIds)
-                    .then(() => { queryClient.invalidateQueries({ queryKey: ["pm_tasks"] }); queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] }); queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] }); });
+                  const { error } = await sbx.from("pm_tasks").update({ status_global: "backlog" }).in("id", allIds);
+                  if (error) onFailure(error); else invalidateAll();
                 } else {
-                  const flowStages = Object.keys(flowConfig).length > 0
-                    ? Object.entries(flowConfig)
-                        .filter(([, v]: [string, any]) => v.enabled)
-                        .sort(([, a]: [string, any], [, b]: [string, any]) => (a.order ?? 0) - (b.order ?? 0))
-                        .map(([k]) => k)
-                    : PM_ACTIVE_STAGES.map(s => s.key);
-                  const entregaIdx = flowStages.indexOf("entrega");
-                  const prevStage = entregaIdx > 0 ? flowStages[entregaIdx - 1] : "agendamento";
+                  // Reverse-lookup the stage that actually points to "entrega" in this
+                  // flow (flowConfig is a flat { stage: nextStage | nextStage[] } map —
+                  // not { stage: { enabled, order } } as the old code here assumed, so its
+                  // .filter(([, v]) => v.enabled) always matched nothing and this silently
+                  // fell back to "agendamento" for every flow, right or wrong).
+                  const prevStageFromFlow = Object.entries(flowConfig).find(([, next]) =>
+                    Array.isArray(next) ? next.includes("entrega") : next === "entrega"
+                  )?.[0];
+                  const fallbackStages = PM_ACTIVE_STAGES.map(s => s.key);
+                  const entregaIdx = fallbackStages.indexOf("entrega");
+                  const prevStage = prevStageFromFlow ?? (entregaIdx > 0 ? fallbackStages[entregaIdx - 1] : "agendamento");
                   // Optimistic: instantly revert in cache
                   const revert = (old: PmTask[] | undefined) =>
                     old?.map(t => allIds.includes(t.id) ? { ...t, stage_current: prevStage as any, status_global: "backlog" as any } : t);
@@ -2595,8 +2614,8 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
                   queryClient.setQueriesData<PmTask[]>({ queryKey: ["pm_child_tasks_all"] }, revert);
                   toast.success("Tarefa desconcluída");
                   // DB in background
-                  sbx.from("pm_tasks").update({ stage_current: prevStage, status_global: "backlog" }).in("id", allIds)
-                    .then(() => { queryClient.invalidateQueries({ queryKey: ["pm_tasks"] }); queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] }); queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] }); });
+                  const { error } = await sbx.from("pm_tasks").update({ stage_current: prevStage, status_global: "backlog" }).in("id", allIds);
+                  if (error) onFailure(error); else invalidateAll();
                 }
               }}
             >
