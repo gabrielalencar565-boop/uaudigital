@@ -45,6 +45,15 @@
       max-width: 60vw;
       animation: app-splash-pulse 1.6s ease-in-out infinite;
     }
+    #app-splash .app-splash-logo-dark {
+      display: none;
+    }
+    #app-splash.app-splash-dark .app-splash-logo-light {
+      display: none;
+    }
+    #app-splash.app-splash-dark .app-splash-logo-dark {
+      display: block;
+    }
     @keyframes app-splash-pulse {
       0%, 100% { opacity: 1; transform: scale(1); }
       50% { opacity: 0.55; transform: scale(0.96); }
@@ -57,7 +66,10 @@
 </head>
 
   <body>
-    <div id="app-splash"><img src="/branding/uau-logo.png" alt="Uau Digital" /></div>
+    <div id="app-splash">
+      <img class="app-splash-logo-light" src="/branding/uau-logo-light.png" alt="Uau Digital" />
+      <img class="app-splash-logo-dark" src="/branding/uau-logo-dark.png" alt="Uau Digital" />
+    </div>
     <script>
       // Runs synchronously before first paint — matches the splash background to whatever
       // theme next-themes last stored (storageKey "uau-theme"), so it doesn't flash the
