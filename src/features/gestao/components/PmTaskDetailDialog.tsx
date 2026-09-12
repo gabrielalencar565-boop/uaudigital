@@ -1019,10 +1019,6 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
   const findExistingAgendaTaskForStage = async (nextStage: string, referenceDueDate?: string) => {
     if (nextStage === "entrega") return null;
 
-    // Revisão (Planejamento) é sempre uma etapa isolada por pauta — nunca reaproveita
-    // uma Revisão existente (que pode ser de materiais Design/Vídeo).
-    if (nextStage === "revisao" && task.stage_current === "planejamento") return null;
-
     const sb = supabase as any;
     const referenceDate = referenceDueDate ?? task.due_date ?? format(new Date(), "yyyy-MM-dd");
     const base = new Date(`${referenceDate}T12:00:00`);
@@ -1046,19 +1042,24 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
       .order("due_date", { ascending: true })
       .limit(1);
 
-    // When advancing to revisão (materiais), only link with the same post_type origin (video|design).
-    // Nunca casa com Revisão (Planejamento) que tem post_type='planejamento'.
-    // Also filter by post_type for any stage when the task has a specific post_type,
-    // to avoid cross-matching (e.g. design task finding a video revisão).
+    // Filter by post_type so this never cross-matches the wrong flavor of Revisão for
+    // the same client/month (e.g. a Design task finding a Vídeo Revisão, or either
+    // finding the unrelated Revisão (Planejamento) for that pauta). Planejamento → Revisão
+    // used to skip this whole existing-task lookup entirely ("always isolated per pauta"),
+    // but with no lookup, every "Desconcluir" + "Concluir" cycle on the same Planejamento
+    // task created a brand new Revisão row instead of reusing the one still sitting there —
+    // duplicates piled up in Cronograma/Agenda every time someone toggled it (reported as
+    // the task being "muito bugada"). Matching on post_type: 'planejamento' (the sentinel
+    // doAdvance itself stamps on that transition) finds that same isolated Revisão back,
+    // without ever matching a Design/Vídeo materials Revisão.
     const inferredNextStagePostType = task.stage_current === "edicao_videos"
       ? "video"
       : task.stage_current === "design"
         ? "design"
-        : task.post_type ?? undefined;
-    if (nextStage === "revisao" && inferredNextStagePostType && inferredNextStagePostType !== "planejamento") {
-      query = query.eq("post_type", inferredNextStagePostType);
-    } else if (inferredNextStagePostType && inferredNextStagePostType !== "planejamento") {
-      // For non-revisão stages, still filter by post_type to avoid cross-linking
+        : task.stage_current === "planejamento" && nextStage === "revisao"
+          ? "planejamento"
+          : task.post_type ?? undefined;
+    if (inferredNextStagePostType) {
       query = query.eq("post_type", inferredNextStagePostType);
     }
 
