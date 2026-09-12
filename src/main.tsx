@@ -76,13 +76,22 @@ createRoot(rootEl).render(<App />);
 // React has actually painted something. Double rAF instead of hiding right after render()
 // so the browser has a committed frame to show first — otherwise the fade can start on an
 // still-blank page and just look like a delayed flash instead of a smooth handoff.
+// On a fast (e.g. locally cached) load this whole thing can resolve in well under 100ms,
+// which reads as a flicker rather than a splash — MIN_VISIBLE_MS enforces a floor so the
+// logo is actually perceivable even then; __splashStart is stamped inline in index.html,
+// before this module (or React) has even loaded.
 (() => {
   const splash = document.getElementById("app-splash");
   if (!splash) return;
+  const MIN_VISIBLE_MS = 900;
+  const elapsed = performance.now() - ((window as any).__splashStart ?? performance.now());
+  const remaining = Math.max(0, MIN_VISIBLE_MS - elapsed);
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
-      splash.classList.add("app-splash-hide");
-      setTimeout(() => splash.remove(), 300);
+      setTimeout(() => {
+        splash.classList.add("app-splash-hide");
+        setTimeout(() => splash.remove(), 350);
+      }, remaining);
     });
   });
 })();

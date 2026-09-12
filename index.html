@@ -32,8 +32,13 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #ffffff;
-      transition: opacity 0.25s ease;
+      background: hsla(210, 40%, 98%, 0.72);
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
+      transition: opacity 0.35s ease;
+    }
+    #app-splash.app-splash-dark {
+      background: hsla(0, 0%, 7%, 0.72);
     }
     #app-splash img {
       width: 220px;
@@ -53,6 +58,17 @@
 
   <body>
     <div id="app-splash"><img src="/branding/uau-logo.png" alt="Uau Digital" /></div>
+    <script>
+      // Runs synchronously before first paint — matches the splash background to whatever
+      // theme next-themes last stored (storageKey "uau-theme"), so it doesn't flash the
+      // wrong color before React mounts and applies the real theme class.
+      window.__splashStart = performance.now();
+      try {
+        if (localStorage.getItem("uau-theme") === "dark") {
+          document.getElementById("app-splash").classList.add("app-splash-dark");
+        }
+      } catch (e) {}
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
