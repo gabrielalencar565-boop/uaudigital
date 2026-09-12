@@ -191,6 +191,14 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
 
   if (!task || !currentTask || !resolvedRootTask) return null;
 
+  // NOTE: childTasksQ now has refetchOnMount:"always" (see use-pm-data.ts) so a task
+  // reopened with stale cached children triggers a background refetch — during that
+  // window isLoading is already false (cached data exists) but the cached array can still
+  // be wrong (e.g. 0 children from before a lineage change landed). The "Concluir"/advance
+  // buttons below gate on isLoading || isFetching together for exactly this reason: gating
+  // on isLoading alone let a click during that refetch clone the stale (often empty)
+  // childTasks into the next stage — confirmed live on a task that kept advancing into an
+  // empty Revisão despite already having real subtasks in the DB.
   const childTasks = childTasksQ.data ?? [];
   const comments = commentsQ.data ?? [];
   const attachments = attachmentsQ.data ?? [];
@@ -290,7 +298,7 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
 
           {/* CENTER: Task detail */}
           <div className="flex-1 overflow-y-auto min-h-0">
-            <TaskContentView task={currentTask} parentTask={resolvedRootTask} childTasks={childTasks} childTasksLoading={childTasksQ.isLoading} attachments={attachments} membersMap={membersMap} members={members} isAdmin={isAdmin} onSelectSubtask={handleSelectSubtask} activeSubtaskId={null} onClose={handleClose} clientsMap={clientsMap} allTags={allTags} parentStageCurrent={isSubtaskView ? resolvedRootTask.stage_current : undefined} globalTags={globalTagsQ.data ?? []} onEditTask={(taskId) => setTaskStack(prev => [...prev, taskId])} onOpenInCalendario={onOpenInCalendario} />
+            <TaskContentView task={currentTask} parentTask={resolvedRootTask} childTasks={childTasks} childTasksLoading={childTasksQ.isLoading || childTasksQ.isFetching} attachments={attachments} membersMap={membersMap} members={members} isAdmin={isAdmin} onSelectSubtask={handleSelectSubtask} activeSubtaskId={null} onClose={handleClose} clientsMap={clientsMap} allTags={allTags} parentStageCurrent={isSubtaskView ? resolvedRootTask.stage_current : undefined} globalTags={globalTagsQ.data ?? []} onEditTask={(taskId) => setTaskStack(prev => [...prev, taskId])} onOpenInCalendario={onOpenInCalendario} />
           </div>
 
           {/* RIGHT: Comments sidebar (hidden on mobile) */}
