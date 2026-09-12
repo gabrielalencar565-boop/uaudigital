@@ -26,7 +26,7 @@ import {
 } from "../pm-constants";
 import { usePeriodicStages } from "../hooks/use-periodic-stages";
 import {
-  useUpdatePmTask, useCreatePmTask, usePmTaskById, usePmPdfTasksForClient, usePmChildTasks,
+  useUpdatePmTask, useCreatePmTask, useDeletePmTask, usePmTaskById, usePmPdfTasksForClient, usePmChildTasks,
   usePmComments, usePmAttachments, usePmSyncStageCompletion, useMergePdfTasks,
 } from "../hooks/use-pm-data";
 import { usePmTags, useCreatePmTag } from "../hooks/use-pm-tags";
@@ -91,7 +91,13 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showMergeConfirm, setShowMergeConfirm] = useState(false);
   const [selectedMergeId, setSelectedMergeId] = useState<string | null>(null);
-  const deleteTask = useUpdatePmTask();
+  // useDeletePmTask (not a plain update) — it cascades the soft-delete to children,
+  // scoring snapshots, and Magic Number unmarking. A prior version of this dialog used
+  // useUpdatePmTask() here, which only sets deleted_at on the one row: children of a
+  // deleted parent stayed live (still counted/visible elsewhere), and none of the cleanup
+  // this dialog's own confirmation text promises ("pontos... Magic Number...") ran —
+  // reported as tasks "not really" being deleted.
+  const deleteTask = useDeletePmTask();
   const mergePdfTasks = useMergePdfTasks();
   const queryClientPrefetch = useQueryClient();
 
@@ -315,9 +321,8 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
         <AlertDialogFooter>
           <AlertDialogCancel>Cancelar</AlertDialogCancel>
           <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={async () => {
-            const { data: { user } } = await supabase.auth.getUser();
             try {
-              await deleteTask.mutateAsync({ id: currentTask.id, deleted_at: new Date().toISOString(), deleted_by: user?.id ?? null } as any);
+              await deleteTask.mutateAsync(currentTask.id);
               toast.success("Tarefa movida para a lixeira");
               setShowDeleteConfirm(false);
               handleClose();
