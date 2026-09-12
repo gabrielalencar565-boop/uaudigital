@@ -45,6 +45,14 @@ export function usePmTaskById(id: string | null) {
   return useQuery<PmTask | null>({
     queryKey: ["pm_task", id],
     enabled: !!id,
+    // The app-wide default staleTime is 2 minutes (realtime is meant to invalidate this
+    // sooner) — fine for list/board views, but a task detail dialog needs to show the true
+    // current row the moment it opens, not whatever was cached up to 2 minutes ago. A
+    // confirmed case: a task's data changed, but reopening it inside that window kept
+    // showing the stale snapshot until something else happened to invalidate it (reported
+    // as the task detail taking a very long time to "catch up"). `refetchOnMount: "always"`
+    // forces a fresh fetch on every open regardless of the cached staleness.
+    refetchOnMount: "always",
     queryFn: async () => {
       const { data, error } = await sb.from("pm_tasks").select("*").eq("id", id).maybeSingle();
       if (error) throw error;
@@ -79,6 +87,11 @@ export function usePmChildTasks(parentId: string | null) {
   return useQuery<PmTask[]>({
     queryKey: ["pm_child_tasks", parentId],
     enabled: !!parentId,
+    // See usePmTaskById's comment: the 2-minute app-wide staleTime is wrong for a task
+    // detail view — a subtask list that just changed (e.g. re-parented, cloned to a new
+    // stage) must show the real current state on open, not a cached snapshot from before
+    // the change.
+    refetchOnMount: "always",
     queryFn: async () => {
       const { data, error } = await sb
         .from("pm_tasks")
@@ -129,6 +142,7 @@ export function usePmComments(taskId: string | null) {
   return useQuery<PmComment[]>({
     queryKey: ["pm_comments", taskId],
     enabled: !!taskId,
+    refetchOnMount: "always",
     queryFn: async () => {
       const { data, error } = await sb.from("pm_comments").select("*").eq("task_id", taskId).order("created_at", { ascending: true });
       if (error) throw error;
@@ -141,6 +155,7 @@ export function usePmAttachments(taskId: string | null) {
   return useQuery<PmAttachment[]>({
     queryKey: ["pm_attachments", taskId],
     enabled: !!taskId,
+    refetchOnMount: "always",
     queryFn: async () => {
       const { data, error } = await sb.from("pm_attachments").select("*").eq("task_id", taskId).order("created_at", { ascending: false });
       if (error) throw error;
