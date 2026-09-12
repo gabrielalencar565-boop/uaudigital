@@ -739,6 +739,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
 
   const invalidatePmTaskQueries = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
+    queryClient.invalidateQueries({ queryKey: ["pm_task"] }); // also refresh the single-task query the dialog itself reads (usePmTaskById)
     queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
     queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
     queryClient.invalidateQueries({ queryKey: ["pm_activity_log"] });
@@ -910,6 +911,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
           .in("id", allIds)
           .then(() => {
             queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
+            queryClient.invalidateQueries({ queryKey: ["pm_task"] }); // also refresh the single-task query the dialog itself reads (usePmTaskById)
             queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
             queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
             queryClient.invalidateQueries({ queryKey: ["pm_activity_log"] });
@@ -1004,6 +1006,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
           }
 
           queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
+          queryClient.invalidateQueries({ queryKey: ["pm_task"] }); // also refresh the single-task query the dialog itself reads (usePmTaskById)
           queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
           queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
           queryClient.invalidateQueries({ queryKey: ["pm_activity_log"] });
@@ -1419,6 +1422,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
       // Sync scoring for captação
       syncCompletedStage(completedStage);
       queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["pm_task"] }); // also refresh the single-task query the dialog itself reads (usePmTaskById)
       queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
       queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
       toast.success("Captação concluída!");
@@ -1435,6 +1439,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
       // Sync scoring for periodic stage — creates mirror rows in `tasks` and recomputes performance
       await syncCompletedStage(task.stage_current);
       queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["pm_task"] }); // also refresh the single-task query the dialog itself reads (usePmTaskById)
       queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
       queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
       toast.success("Tarefa concluída!");
@@ -1504,6 +1509,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
         .in("id", allIds);
       syncCompletedStage(completedStage);
       queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["pm_task"] }); // also refresh the single-task query the dialog itself reads (usePmTaskById)
       queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
       queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
       toast.success("Demanda extra concluída!");
@@ -2570,6 +2576,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
 
                 const invalidateAll = () => {
                   queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
+                  queryClient.invalidateQueries({ queryKey: ["pm_task"] }); // also refresh the single-task query the dialog itself reads (usePmTaskById)
                   queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
                   queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
                 };
@@ -2591,6 +2598,11 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
                   queryClient.setQueriesData<PmTask[]>({ queryKey: ["pm_tasks"] }, markBacklog);
                   queryClient.setQueriesData<PmTask[]>({ queryKey: ["pm_child_tasks"] }, markBacklog);
                   queryClient.setQueriesData<PmTask[]>({ queryKey: ["pm_child_tasks_all"] }, markBacklog);
+                  // usePmTaskById (what this dialog itself reads for `task`) is keyed by a
+                  // single id, not the list — the setQueriesData calls above never touch
+                  // it, so without this the button looked unresponsive until the later
+                  // invalidateAll() round-trip landed (reported as "demora desmarcar").
+                  queryClient.setQueryData<PmTask | null>(["pm_task", task.id], (old) => old ? { ...old, status_global: "backlog" as any } : old);
                   toast.success("Tarefa desconcluída");
                   // DB in background
                   const { error } = await sbx.from("pm_tasks").update({ status_global: "backlog" }).in("id", allIds);
@@ -2613,6 +2625,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
                   queryClient.setQueriesData<PmTask[]>({ queryKey: ["pm_tasks"] }, revert);
                   queryClient.setQueriesData<PmTask[]>({ queryKey: ["pm_child_tasks"] }, revert);
                   queryClient.setQueriesData<PmTask[]>({ queryKey: ["pm_child_tasks_all"] }, revert);
+                  queryClient.setQueryData<PmTask | null>(["pm_task", task.id], (old) => old ? { ...old, stage_current: prevStage as any, status_global: "backlog" as any } : old);
                   toast.success("Tarefa desconcluída");
                   // DB in background
                   const { error } = await sbx.from("pm_tasks").update({ stage_current: prevStage, status_global: "backlog" }).in("id", allIds);
