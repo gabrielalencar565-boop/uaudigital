@@ -212,10 +212,6 @@ export function MeuPainelPanel() {
   }, [selected]);
   const prevMonthKey = useMemo(() => `${prevMonth.year}-${String(prevMonth.month).padStart(2, "0")}`, [prevMonth]);
   const prevTasksQ = useTasks({ month: prevMonthKey, assignedUserId: user?.id });
-  const prevSummary = useMemo(() => {
-    const all = prevTasksQ.data ?? [];
-    return { total: all.length, done: all.filter((t) => t.status === "concluido").length, pending: all.filter((t) => t.status !== "concluido").length };
-  }, [prevTasksQ.data]);
 
   // ── Previous month rank ──
   const prevPerf = useMyMonthlyPerformanceRank({ userId: user?.id, year: prevMonth.year, month: prevMonth.month });
@@ -298,16 +294,6 @@ export function MeuPainelPanel() {
       else if (i > 0) break; // break on first gap (skip today if nothing yet)
     }
     return count;
-  }, [myTasks, todayKey]);
-
-  // ── Sparkline data (last 7 days) ──
-  const sparkData = useMemo(() => {
-    const data: number[] = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = format(subDays(today, i), "yyyy-MM-dd");
-      data.push(myTasks.filter((t) => t.status === "concluido" && t.completed_at && format(new Date(t.completed_at), "yyyy-MM-dd") === d).length);
-    }
-    return data;
   }, [myTasks, todayKey]);
 
   // ── Bottleneck data ──
@@ -458,10 +444,10 @@ export function MeuPainelPanel() {
 
       {/* ── 3. METRIC CARDS ── */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.15s" }}>
-        <MetricSparkCard label="Tarefas" value={summary.total} prevValue={prevSummary.total || undefined} icon={<ListChecks className="h-5 w-5" />} tone="violet" description="Total de tarefas atribuídas a você" sparkData={sparkData} />
-        <MetricSparkCard label="Concluídas" value={summary.done} prevValue={prevSummary.done || undefined} icon={<CheckCircle2 className="h-5 w-5" />} tone="emerald" description="Tarefas finalizadas" sparkData={sparkData} />
-        <MetricSparkCard label="Pendentes" value={summary.pending} prevValue={prevSummary.pending || undefined} icon={<Clock className="h-5 w-5" />} tone="amber" description="Tarefas ainda não concluídas" />
-        <MetricSparkCard label="Atrasadas" value={summary.overdue} icon={<AlertTriangle className="h-5 w-5" />} tone="red" description="Tarefas com prazo vencido" />
+        <MetricSparkCard label="Tarefas" value={summary.total} icon={<ListChecks className="h-5 w-5" />} tone="violet" description="Total de tarefas atribuídas a você neste mês, em qualquer etapa." />
+        <MetricSparkCard label="Concluídas" value={summary.done} icon={<CheckCircle2 className="h-5 w-5" />} tone="emerald" description="Tarefas que você já finalizou neste mês." />
+        <MetricSparkCard label="Pendentes" value={summary.pending} icon={<Clock className="h-5 w-5" />} tone="amber" description="Tarefas ainda em aberto, dentro do prazo." />
+        <MetricSparkCard label="Atrasadas" value={summary.overdue} icon={<AlertTriangle className="h-5 w-5" />} tone="red" description="Tarefas com prazo vencido que ainda não foram concluídas." />
       </div>
 
       {/* ── 4/6. PM TASKS + NOTES (left) alongside TODAY'S INSTAGRAM LOOP (right,
