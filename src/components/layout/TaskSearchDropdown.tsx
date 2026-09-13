@@ -165,7 +165,7 @@ export function TaskSearchDropdown({ onSelectTask }: TaskSearchDropdownProps) {
         aria-label="Pesquisar tarefa"
         title="Pesquisar tarefa (⌘K)"
       >
-        <Search className="h-4 w-4 text-muted-foreground" />
+        <Search className="h-4 w-4" />
       </button>
     );
   }

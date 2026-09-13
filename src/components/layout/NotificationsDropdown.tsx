@@ -314,7 +314,7 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
     <Popover onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <button className="relative flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-accent/50 focus:outline-none">
-          <Bell className="h-4 w-4 text-muted-foreground" />
+          <Bell className="h-4 w-4" />
           {unreadCount > 0 && (
             <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">
               {unreadCount > 99 ? "99+" : unreadCount}
