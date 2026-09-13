@@ -179,7 +179,7 @@ export function UauSidebarShell({
           <Sidebar
             collapsible="none"
             className={cn(
-              "fixed left-0 top-[3.5rem] z-40 h-[calc(100svh-3.5rem)] border-r border-sidebar-border bg-sidebar",
+              "uau-sidebar-brand fixed left-4 top-[4.5rem] z-40 h-[calc(100svh-5.5rem)] rounded-[28px] bg-sidebar shadow-xl shadow-black/25 overflow-hidden",
               collapsed ? "w-16" : "w-56 xl:w-64"
             )}>
             
@@ -332,8 +332,8 @@ export function UauSidebarShell({
               isMobile
                 ? "px-3 pt-16 pb-24"
                 : collapsed
-                  ? "pl-[5rem] pr-6 pt-[4.5rem] pb-10"
-                  : "pl-[15rem] pr-6 pt-[4.5rem] pb-10 xl:pl-[17rem] xl:pr-8"
+                  ? "pl-[6rem] pr-6 pt-[4.5rem] pb-10"
+                  : "pl-[16rem] pr-6 pt-[4.5rem] pb-10 xl:pl-[18rem] xl:pr-8"
             )}>
             <div className="mx-auto w-full">
               <div className="animate-fade-in overflow-x-auto p-2 sm:p-4 lg:p-6 2xl:p-8">
