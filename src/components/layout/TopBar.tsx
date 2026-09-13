@@ -92,6 +92,15 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
           <TaskSearchDropdown onSelectTask={(id) => onOpenTask?.(id)} />
           <NotificationsDropdown onOpenTask={onOpenTask} />
 
+          <button
+            type="button"
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-accent/50 focus:outline-none"
+            aria-label={theme === "dark" ? "Ativar tema claro" : "Ativar tema escuro"}
+            title={theme === "dark" ? "Tema claro" : "Tema escuro"}
+          >
+            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </button>
 
           {/* Profile dropdown */}
           <DropdownMenu>
@@ -127,18 +136,6 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
               >
                 <Pencil className="h-4 w-4 text-muted-foreground" />
                 Editar perfil
-              </DropdownMenuItem>
-
-              <DropdownMenuItem
-                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                className="gap-2.5 rounded-lg px-3 py-2.5 cursor-pointer"
-              >
-                {theme === "dark" ? (
-                  <Sun className="h-4 w-4 text-muted-foreground" />
-                ) : (
-                  <Moon className="h-4 w-4 text-muted-foreground" />
-                )}
-                {theme === "dark" ? "Tema Claro" : "Tema Escuro"}
               </DropdownMenuItem>
 
               <DropdownMenuItem
