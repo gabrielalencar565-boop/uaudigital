@@ -16,6 +16,7 @@ import { useAppSettings } from "@/features/data/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { NotificationsDropdown } from "@/components/layout/NotificationsDropdown";
+import { TaskSearchDropdown } from "@/components/layout/TaskSearchDropdown";
 import { ChatBellButton } from "@/features/chat/ChatBellButton";
 
 import { useQueryClient } from "@tanstack/react-query";
@@ -88,6 +89,7 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
         {/* Right: Notifications + Profile */}
         <div className="flex items-center gap-1.5">
           <ChatBellButton />
+          <TaskSearchDropdown onSelectTask={(id) => onOpenTask?.(id)} />
           <NotificationsDropdown onOpenTask={onOpenTask} />
 
 
