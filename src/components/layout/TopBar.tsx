@@ -1,8 +1,6 @@
 import { useRef, useState, useEffect } from "react";
 import { LogOut, Moon, Pencil, Sun, Volume2 } from "lucide-react";
 import { useTheme } from "next-themes";
-import { WorkspaceDropdown } from "@/components/layout/WorkspaceDropdown";
-import { TaskSearchDropdown } from "@/components/layout/TaskSearchDropdown";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -86,12 +84,7 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 h-16 border-b border-border/40 bg-background/80 backdrop-blur-md">
-      <div className="flex h-full items-center justify-between px-4">
-        <div className="flex items-center gap-3">
-          <WorkspaceDropdown />
-          <TaskSearchDropdown onSelectTask={(id) => onOpenTask?.(id)} />
-        </div>
-
+      <div className="flex h-full items-center justify-end px-4">
         {/* Right: Notifications + Profile */}
         <div className="flex items-center gap-1.5">
           <ChatBellButton />

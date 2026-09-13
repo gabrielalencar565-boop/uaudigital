@@ -315,6 +315,39 @@ export function AdminAparenciaPanel() {
     }
   };
 
+  /* ── Símbolo da Sidebar (usado quando ela está recolhida, só ícone) ── */
+  const sidebarSymbolUrl = appSettingsQ.data?.sidebar_symbol_url ?? null;
+  const [uploadingSidebarSymbol, setUploadingSidebarSymbol] = useState(false);
+
+  const handleSidebarSymbolUpload = async (file: File) => {
+    if (!user) return;
+    if (!file.type.startsWith("image/")) { toast.error("Envie uma imagem"); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error("Máximo 5MB"); return; }
+    setUploadingSidebarSymbol(true);
+    try {
+      const ext = (file.name.split(".").pop() || "png").toLowerCase();
+      const path = `sidebar-symbol/${crypto.randomUUID()}.${ext}`;
+      const up = await supabase.storage.from("app-assets").upload(path, file, { upsert: true, contentType: file.type });
+      if (up.error) throw up.error;
+      const pub = supabase.storage.from("app-assets").getPublicUrl(path);
+      await updateAppSettings.mutateAsync({ sidebar_symbol_url: pub.data.publicUrl } as any);
+      toast.success("Símbolo atualizado!");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao enviar símbolo");
+    } finally {
+      setUploadingSidebarSymbol(false);
+    }
+  };
+
+  const handleRemoveSidebarSymbol = async () => {
+    try {
+      await updateAppSettings.mutateAsync({ sidebar_symbol_url: null } as any);
+      toast.success("Símbolo removido");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao remover símbolo");
+    }
+  };
+
   /* ── Miniatura de link compartilhado (WhatsApp e redes) ── */
   const linkPreviewImageUrl = appSettingsQ.data?.link_preview_image_url ?? null;
   const [uploadingLinkPreview, setUploadingLinkPreview] = useState(false);
@@ -495,6 +528,57 @@ export function AdminAparenciaPanel() {
             </Button>
             {sidebarLogoDarkUrl && (
               <Button variant="destructive" size="sm" className="gap-2" onClick={handleRemoveSidebarLogoDark}>
+                <Trash2 className="h-4 w-4" />
+                Remover
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Símbolo da Sidebar (recolhida) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Images className="h-5 w-5" />
+            Símbolo do Menu Lateral (recolhido)
+          </CardTitle>
+          <CardDescription>
+            Aparece no lugar da logo completa quando o menu lateral é recolhido (só ícones). Use uma imagem quadrada, de preferência só o símbolo/ícone da marca, com fundo transparente.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-6">
+            <div className="flex h-24 w-24 items-center justify-center rounded-xl border-2 border-dashed border-border bg-[#6932c9]">
+              {sidebarSymbolUrl ? (
+                <img src={sidebarSymbolUrl} alt="Símbolo do menu lateral" className="h-16 w-16 object-contain" />
+              ) : (
+                <span className="text-xs text-muted-foreground text-center px-2">Sem símbolo</span>
+              )}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="gap-2"
+              disabled={uploadingSidebarSymbol}
+              onClick={() => {
+                const input = document.createElement("input");
+                input.type = "file";
+                input.accept = "image/*";
+                input.onchange = async () => {
+                  const f = input.files?.[0];
+                  if (f) await handleSidebarSymbolUpload(f);
+                };
+                input.click();
+              }}
+            >
+              <Plus className="h-4 w-4" />
+              {uploadingSidebarSymbol ? "Enviando..." : sidebarSymbolUrl ? "Trocar símbolo" : "Enviar símbolo"}
+            </Button>
+            {sidebarSymbolUrl && (
+              <Button variant="destructive" size="sm" className="gap-2" onClick={handleRemoveSidebarSymbol}>
                 <Trash2 className="h-4 w-4" />
                 Remover
               </Button>

@@ -58,6 +58,7 @@ export type Database = {
           logo_url: string | null
           sidebar_logo_dark_url: string | null
           sidebar_logo_url: string | null
+          sidebar_symbol_url: string | null
           updated_at: string
           updated_by: string | null
           workspace_name: string
@@ -75,6 +76,7 @@ export type Database = {
           logo_url?: string | null
           sidebar_logo_dark_url?: string | null
           sidebar_logo_url?: string | null
+          sidebar_symbol_url?: string | null
           updated_at?: string
           updated_by?: string | null
           workspace_name?: string
@@ -92,6 +94,7 @@ export type Database = {
           logo_url?: string | null
           sidebar_logo_dark_url?: string | null
           sidebar_logo_url?: string | null
+          sidebar_symbol_url?: string | null
           updated_at?: string
           updated_by?: string | null
           workspace_name?: string
