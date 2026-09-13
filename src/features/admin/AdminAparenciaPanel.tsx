@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Plus, Trash2, Settings2, Move, ZoomIn, RotateCcw, Check } from "lucide-react";
+import { Plus, Trash2, Settings2, Move, ZoomIn, RotateCcw, Check, X } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -433,39 +433,40 @@ export function AdminAparenciaPanel() {
             {/* Tema Claro */}
             <div className="space-y-3">
               <Label>Tema Claro</Label>
-              <div className="flex h-24 items-center justify-center rounded-xl border-2 border-dashed border-border bg-white">
+              <div
+                role="button"
+                tabIndex={0}
+                className="group relative flex h-24 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-border bg-white transition hover:opacity-90"
+                onClick={() => {
+                  const input = document.createElement("input");
+                  input.type = "file";
+                  input.accept = "image/*";
+                  input.onchange = async () => {
+                    const f = input.files?.[0];
+                    if (f) await handleSidebarLogoUpload(f);
+                  };
+                  input.click();
+                }}
+              >
                 {sidebarLogoUrl ? (
-                  <img src={sidebarLogoUrl} alt="Logo tema claro" className="max-h-20 max-w-[90%] object-contain" />
+                  <>
+                    <img src={sidebarLogoUrl} alt="Logo tema claro" className="max-h-20 max-w-[90%] object-contain" />
+                    <button
+                      type="button"
+                      aria-label="Remover logo tema claro"
+                      className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-md hover:bg-destructive/90"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveSidebarLogo();
+                      }}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </>
                 ) : (
-                  <span className="text-xs text-muted-foreground">Sem logo</span>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="gap-2"
-                  disabled={uploadingSidebarLogo}
-                  onClick={() => {
-                    const input = document.createElement("input");
-                    input.type = "file";
-                    input.accept = "image/*";
-                    input.onchange = async () => {
-                      const f = input.files?.[0];
-                      if (f) await handleSidebarLogoUpload(f);
-                    };
-                    input.click();
-                  }}
-                >
-                  <Plus className="h-4 w-4" />
-                  {uploadingSidebarLogo ? "Enviando..." : sidebarLogoUrl ? "Trocar" : "Enviar"}
-                </Button>
-                {sidebarLogoUrl && (
-                  <Button variant="destructive" size="sm" className="gap-2" onClick={handleRemoveSidebarLogo}>
-                    <Trash2 className="h-4 w-4" />
-                    Remover
-                  </Button>
+                  <span className="text-xs text-muted-foreground">
+                    {uploadingSidebarLogo ? "Enviando..." : "Sem logo — clique para enviar"}
+                  </span>
                 )}
               </div>
             </div>
@@ -473,39 +474,40 @@ export function AdminAparenciaPanel() {
             {/* Tema Escuro */}
             <div className="space-y-3">
               <Label>Tema Escuro</Label>
-              <div className="flex h-24 items-center justify-center rounded-xl border-2 border-dashed border-border bg-[#0F1117]">
+              <div
+                role="button"
+                tabIndex={0}
+                className="group relative flex h-24 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-border bg-[#0F1117] transition hover:opacity-90"
+                onClick={() => {
+                  const input = document.createElement("input");
+                  input.type = "file";
+                  input.accept = "image/*";
+                  input.onchange = async () => {
+                    const f = input.files?.[0];
+                    if (f) await handleSidebarLogoDarkUpload(f);
+                  };
+                  input.click();
+                }}
+              >
                 {sidebarLogoDarkUrl ? (
-                  <img src={sidebarLogoDarkUrl} alt="Logo tema escuro" className="max-h-20 max-w-[90%] object-contain" />
+                  <>
+                    <img src={sidebarLogoDarkUrl} alt="Logo tema escuro" className="max-h-20 max-w-[90%] object-contain" />
+                    <button
+                      type="button"
+                      aria-label="Remover logo tema escuro"
+                      className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-md hover:bg-destructive/90"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveSidebarLogoDark();
+                      }}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </>
                 ) : (
-                  <span className="text-xs text-muted-foreground text-center px-2">Sem logo (usa a do tema claro)</span>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="gap-2"
-                  disabled={uploadingSidebarLogoDark}
-                  onClick={() => {
-                    const input = document.createElement("input");
-                    input.type = "file";
-                    input.accept = "image/*";
-                    input.onchange = async () => {
-                      const f = input.files?.[0];
-                      if (f) await handleSidebarLogoDarkUpload(f);
-                    };
-                    input.click();
-                  }}
-                >
-                  <Plus className="h-4 w-4" />
-                  {uploadingSidebarLogoDark ? "Enviando..." : sidebarLogoDarkUrl ? "Trocar" : "Enviar"}
-                </Button>
-                {sidebarLogoDarkUrl && (
-                  <Button variant="destructive" size="sm" className="gap-2" onClick={handleRemoveSidebarLogoDark}>
-                    <Trash2 className="h-4 w-4" />
-                    Remover
-                  </Button>
+                  <span className="text-xs text-muted-foreground text-center px-2">
+                    {uploadingSidebarLogoDark ? "Enviando..." : "Sem logo (usa a do tema claro) — clique para enviar"}
+                  </span>
                 )}
               </div>
             </div>
@@ -513,39 +515,40 @@ export function AdminAparenciaPanel() {
             {/* Símbolo (sidebar recolhida) */}
             <div className="space-y-3">
               <Label>Símbolo (recolhido)</Label>
-              <div className="flex h-24 items-center justify-center rounded-xl border-2 border-dashed border-border bg-[#6932c9]">
+              <div
+                role="button"
+                tabIndex={0}
+                className="group relative flex h-24 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-border bg-[#6932c9] transition hover:opacity-90"
+                onClick={() => {
+                  const input = document.createElement("input");
+                  input.type = "file";
+                  input.accept = "image/*";
+                  input.onchange = async () => {
+                    const f = input.files?.[0];
+                    if (f) await handleSidebarSymbolUpload(f);
+                  };
+                  input.click();
+                }}
+              >
                 {sidebarSymbolUrl ? (
-                  <img src={sidebarSymbolUrl} alt="Símbolo do menu lateral" className="h-16 w-16 object-contain" />
+                  <>
+                    <img src={sidebarSymbolUrl} alt="Símbolo do menu lateral" className="h-16 w-16 object-contain" />
+                    <button
+                      type="button"
+                      aria-label="Remover símbolo"
+                      className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-md hover:bg-destructive/90"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveSidebarSymbol();
+                      }}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </>
                 ) : (
-                  <span className="text-xs text-muted-foreground text-center px-2">Sem símbolo</span>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="gap-2"
-                  disabled={uploadingSidebarSymbol}
-                  onClick={() => {
-                    const input = document.createElement("input");
-                    input.type = "file";
-                    input.accept = "image/*";
-                    input.onchange = async () => {
-                      const f = input.files?.[0];
-                      if (f) await handleSidebarSymbolUpload(f);
-                    };
-                    input.click();
-                  }}
-                >
-                  <Plus className="h-4 w-4" />
-                  {uploadingSidebarSymbol ? "Enviando..." : sidebarSymbolUrl ? "Trocar" : "Enviar"}
-                </Button>
-                {sidebarSymbolUrl && (
-                  <Button variant="destructive" size="sm" className="gap-2" onClick={handleRemoveSidebarSymbol}>
-                    <Trash2 className="h-4 w-4" />
-                    Remover
-                  </Button>
+                  <span className="text-xs text-muted-foreground text-center px-2">
+                    {uploadingSidebarSymbol ? "Enviando..." : "Sem símbolo — clique para enviar"}
+                  </span>
                 )}
               </div>
             </div>
