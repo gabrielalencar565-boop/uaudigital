@@ -174,13 +174,16 @@ async function publishToInstagram(admin: ReturnType<typeof createClient>, public
         media_type: "STORIES",
         ...(isVideo ? { video_url: item.url } : { image_url: item.url }),
       });
-      // Written now, before the (potentially long) wait below, so a video that's still
-      // processing when this invocation gets cut off leaves a trail — the container isn't
-      // silently orphaned with nothing in the DB pointing at it.
-      if (isVideo) {
-        await admin.from("calendar_publications").update({ instagram_creation_id: container.id }).eq("id", publication.id);
-        await waitUntilFinished(graphHost, container.id, accessToken);
-      }
+      // Written before the wait below so a container that's still processing when this
+      // invocation gets cut off leaves a trail instead of being silently orphaned.
+      // Waiting for FINISHED regardless of media type — not just for video — because photo
+      // containers can also still be processing when media_publish is called right after
+      // creating them, which Meta rejects with "Media ID is not available" (error 9007 /
+      // subcode 2207027, confirmed happening in production). The wait is a no-op (single
+      // quick poll) when the container is already finished, so this costs nothing in the
+      // common case.
+      await admin.from("calendar_publications").update({ instagram_creation_id: container.id }).eq("id", publication.id);
+      await waitUntilFinished(graphHost, container.id, accessToken);
       creationId = container.id;
     } else if (publication.content_type === "carrossel") {
       if (media.length < 2) throw new Error("carrossel precisa de pelo menos 2 mídias");
@@ -191,7 +194,8 @@ async function publishToInstagram(admin: ReturnType<typeof createClient>, public
           is_carousel_item: "true",
           ...(isVideo ? { video_url: item.url, media_type: "VIDEO" } : { image_url: item.url }),
         });
-        if (isVideo) await waitUntilFinished(graphHost, child.id, accessToken);
+        // See the Stories branch above — waiting regardless of media type.
+        await waitUntilFinished(graphHost, child.id, accessToken);
         childIds.push(child.id);
       }
       const parent = await graphPost(graphHost, `${igUserId}/media`, accessToken, {
@@ -199,6 +203,8 @@ async function publishToInstagram(admin: ReturnType<typeof createClient>, public
         children: childIds.join(","),
         caption: publication.caption ?? "",
       });
+      await admin.from("calendar_publications").update({ instagram_creation_id: parent.id }).eq("id", publication.id);
+      await waitUntilFinished(graphHost, parent.id, accessToken);
       creationId = parent.id;
     } else {
       const isReel = publication.content_type === "reel";
@@ -217,11 +223,10 @@ async function publishToInstagram(admin: ReturnType<typeof createClient>, public
         ...(isVideo ? { video_url: item.url, media_type: isReel ? "REELS" : "VIDEO" } : { image_url: item.url }),
         ...(coverUrl ? { cover_url: coverUrl } : {}),
       });
-      // Same reasoning as the Stories branch above — persist before the wait, not after.
-      if (isVideo) {
-        await admin.from("calendar_publications").update({ instagram_creation_id: container.id }).eq("id", publication.id);
-        await waitUntilFinished(graphHost, container.id, accessToken);
-      }
+      // Same reasoning as the Stories branch above — persist before the wait, and wait
+      // regardless of media type (photos can be caught mid-processing too).
+      await admin.from("calendar_publications").update({ instagram_creation_id: container.id }).eq("id", publication.id);
+      await waitUntilFinished(graphHost, container.id, accessToken);
       creationId = container.id;
     }
 
