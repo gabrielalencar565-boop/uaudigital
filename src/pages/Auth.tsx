@@ -123,7 +123,10 @@ export default function Auth() {
   const appSettings = useAppSettings();
   
 
-  const logoUrl = appSettings.data?.logo_url ?? null;
+  // This panel's background is always dark (#0B0B0B below), so the dark-theme logo reads
+  // best here regardless of the app's own theme setting — falls back to the light variant
+  // if only that one is configured.
+  const logoUrl = appSettings.data?.sidebar_logo_dark_url || appSettings.data?.sidebar_logo_url || null;
   const bgImages = appSettings.data?.login_bg_images ?? [];
   const galleryPhotos = useMemo(() => {
     return bgImages.map((img: any) => img.url as string).filter(Boolean);

@@ -4,7 +4,7 @@ import { normalizeAvatarUrl } from "@/lib/avatar-url";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { UserRound, Save, ImageIcon, Circle, Square, Trash2, Plus, Images, Bell, Play, VolumeX } from "lucide-react";
+import { UserRound, Save, Trash2, Plus, Images, Bell, Play, VolumeX } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   NOTIFICATION_SOUNDS,
@@ -19,7 +19,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -55,18 +54,6 @@ export function ConfiguracoesPanel() {
 
   const appSettingsQ = useAppSettings();
   const updateAppSettings = useUpdateAppSettings();
-
-  const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [logoPreview, setLogoPreview] = useState<string | null>(null);
-  const [savingLogo, setSavingLogo] = useState(false);
-  const [logoShape, setLogoShape] = useState<"circle" | "square">("square");
-
-  // Sync logo shape from backend
-  useEffect(() => {
-    if (appSettingsQ.data?.logo_shape) {
-      setLogoShape(appSettingsQ.data.logo_shape);
-    }
-  }, [appSettingsQ.data?.logo_shape]);
 
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -262,190 +249,6 @@ export function ConfiguracoesPanel() {
           </CardFooter>
         </form>
       </Card>
-
-      {isAdmin ? (
-        <Card
-          className="opacity-0"
-          style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.3s" }}
-        >
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ImageIcon className="h-5 w-5" />
-              Logo do app
-            </CardTitle>
-            <CardDescription>A logo aparece no topo da sidebar (visível para todos).</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="workspace-name">Nome do workspace</Label>
-              <Input
-                id="workspace-name"
-                placeholder="Ex.: agencyflow"
-                defaultValue={appSettingsQ.data?.workspace_name ?? ""}
-                onBlur={async (e) => {
-                  const val = e.target.value.trim();
-                  if (val !== (appSettingsQ.data?.workspace_name ?? "")) {
-                    try {
-                      await updateAppSettings.mutateAsync({ workspace_name: val });
-                      toast.success("Nome atualizado!");
-                    } catch (err: any) {
-                      toast.error(err?.message ?? "Erro ao atualizar nome");
-                    }
-                  }
-                }}
-              />
-              <p className="text-xs text-muted-foreground">Texto exibido ao lado da logo no topo.</p>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Logo atual</Label>
-              {appSettingsQ.data?.logo_url ? (
-                <div className="flex items-start gap-3">
-                  <img
-                    src={appSettingsQ.data.logo_url}
-                    alt="Logo do app"
-                    className="h-16 w-16 rounded-md border border-border object-contain"
-                  />
-                  <p className="text-sm text-muted-foreground">Logo salva.</p>
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">Nenhuma logo definida (fallback será exibido).</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="app-logo">Nova logo</Label>
-              {logoPreview ? (
-                <div className="mb-2 flex items-start gap-3">
-                  <img
-                    src={logoPreview}
-                    alt="Pré-visualização"
-                    className="h-16 w-16 rounded-md border border-border object-contain"
-                  />
-                  <p className="text-sm text-muted-foreground">Pré-visualização da nova logo.</p>
-                </div>
-              ) : null}
-              <Input
-                id="app-logo"
-                type="file"
-                accept="image/*"
-                onChange={(e) => {
-                  const file = e.target.files?.[0] ?? null;
-                  setLogoFile(file);
-                  if (file) setLogoPreview(URL.createObjectURL(file));
-                  else setLogoPreview(null);
-                }}
-              />
-              <p className="text-xs text-muted-foreground">PNG/JPG/SVG • até 5MB</p>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Formato da logo</Label>
-              <RadioGroup
-                value={logoShape}
-                onValueChange={(v) => setLogoShape(v as "circle" | "square")}
-                className="flex gap-4"
-              >
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem value="square" id="shape-square" />
-                  <Label htmlFor="shape-square" className="flex cursor-pointer items-center gap-2 font-normal">
-                    <Square className="h-4 w-4" />
-                    Quadrado
-                  </Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem value="circle" id="shape-circle" />
-                  <Label htmlFor="shape-circle" className="flex cursor-pointer items-center gap-2 font-normal">
-                    <Circle className="h-4 w-4" />
-                    Círculo
-                  </Label>
-                </div>
-              </RadioGroup>
-            </div>
-          </CardContent>
-          <CardFooter className="flex gap-2">
-            <Button
-              type="button"
-              variant="brand"
-              className="gap-2"
-              disabled={!logoFile || savingLogo}
-              onClick={async () => {
-                if (!logoFile || !user) return;
-                setSavingLogo(true);
-                try {
-                  if (!logoFile.type.startsWith("image/")) throw new Error("Envie uma imagem (PNG/JPG/SVG)");
-                  if (logoFile.size > 5 * 1024 * 1024) throw new Error("Imagem muito grande (máx 5MB)");
-
-                  const ext = (logoFile.name.split(".").pop() || "png").toLowerCase();
-                  const path = `logo.${ext}`;
-                  const up = await supabase.storage.from("app-assets").upload(path, logoFile, {
-                    upsert: true,
-                    contentType: logoFile.type,
-                  });
-                  if (up.error) throw up.error;
-
-                  const pub = supabase.storage.from("app-assets").getPublicUrl(path);
-                  const newLogoUrl = pub.data.publicUrl ?? null;
-
-                  await updateAppSettings.mutateAsync({ logo_url: newLogoUrl, logo_shape: logoShape });
-                  setLogoFile(null);
-                  setLogoPreview(null);
-                  toast.success("Logo atualizada!");
-                } catch (e: any) {
-                  toast.error(e?.message ?? "Erro ao salvar logo");
-                } finally {
-                  setSavingLogo(false);
-                }
-              }}
-            >
-              <Save className="h-4 w-4" />
-              {savingLogo ? "Salvando..." : "Salvar logo"}
-            </Button>
-            {appSettingsQ.data?.logo_shape !== logoShape && !logoFile ? (
-              <Button
-                type="button"
-                variant="outline"
-                disabled={savingLogo}
-                onClick={async () => {
-                  setSavingLogo(true);
-                  try {
-                    await updateAppSettings.mutateAsync({ logo_shape: logoShape });
-                    toast.success("Formato atualizado!");
-                  } catch (e: any) {
-                    toast.error(e?.message ?? "Erro ao atualizar formato");
-                  } finally {
-                    setSavingLogo(false);
-                  }
-                }}
-              >
-                Aplicar formato
-              </Button>
-            ) : null}
-            {appSettingsQ.data?.logo_url ? (
-              <Button
-                type="button"
-                variant="outline"
-                disabled={savingLogo}
-                onClick={async () => {
-                  const ok = window.confirm("Tem certeza que deseja remover a logo? Será exibido o fallback.");
-                  if (!ok) return;
-                  setSavingLogo(true);
-                  try {
-                    await updateAppSettings.mutateAsync({ logo_url: null });
-                    toast.success("Logo removida");
-                  } catch (e: any) {
-                    toast.error(e?.message ?? "Erro ao remover logo");
-                  } finally {
-                    setSavingLogo(false);
-                  }
-                }}
-              >
-                Remover logo
-              </Button>
-            ) : null}
-          </CardFooter>
-        </Card>
-      ) : null}
 
       <NotificationSoundsCard />
 

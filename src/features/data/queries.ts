@@ -192,11 +192,9 @@ function normalizeBgImages(raw: any): BgImageConfig[] {
 
 export type AppSettingsRow = {
   id: number;
-  logo_url: string | null;
   sidebar_logo_url: string | null;
   sidebar_logo_dark_url: string | null;
   sidebar_symbol_url: string | null;
-  logo_shape: "circle" | "square";
   workspace_name: string;
   login_bg_images: BgImageConfig[];
   link_preview_image_url: string | null;
@@ -210,7 +208,7 @@ export function useAppSettings() {
     queryFn: async (): Promise<AppSettingsRow | null> => {
       const { data, error } = await supabase
         .from("app_settings")
-        .select("id, logo_url, sidebar_logo_url, sidebar_logo_dark_url, sidebar_symbol_url, logo_shape, workspace_name, login_bg_images, link_preview_image_url, updated_at, updated_by")
+        .select("id, sidebar_logo_url, sidebar_logo_dark_url, sidebar_symbol_url, workspace_name, login_bg_images, link_preview_image_url, updated_at, updated_by")
         .eq("id", 1)
         .maybeSingle();
       if (error) throw error;
@@ -230,7 +228,7 @@ export function useAppSettings() {
 export function useUpdateAppSettings() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (updates: { logo_url?: string | null; sidebar_logo_url?: string | null; sidebar_logo_dark_url?: string | null; sidebar_symbol_url?: string | null; logo_shape?: "circle" | "square"; workspace_name?: string; login_bg_images?: BgImageConfig[]; link_preview_image_url?: string | null }) => {
+    mutationFn: async (updates: { sidebar_logo_url?: string | null; sidebar_logo_dark_url?: string | null; sidebar_symbol_url?: string | null; workspace_name?: string; login_bg_images?: BgImageConfig[]; link_preview_image_url?: string | null }) => {
       const { data, error } = await supabase
         .from("app_settings")
         .update(updates as any)
