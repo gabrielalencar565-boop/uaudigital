@@ -183,7 +183,7 @@ export function UauSidebarShell({
           <Sidebar
             collapsible="none"
             className={cn(
-              "uau-sidebar-brand fixed left-4 top-4 z-[60] h-[calc(100svh-2rem)] rounded-[28px] bg-sidebar shadow-xl shadow-black/25 overflow-hidden",
+              "uau-sidebar-brand fixed left-4 top-4 z-40 h-[calc(100svh-2rem)] rounded-[28px] bg-sidebar shadow-xl shadow-black/25 overflow-hidden",
               collapsed ? "w-16" : "w-56 xl:w-64"
             )}>
             
