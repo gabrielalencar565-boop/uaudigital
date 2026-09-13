@@ -192,10 +192,10 @@ export function UauSidebarShell({
               <div className={cn("flex items-center", collapsed ? "flex-col gap-2" : "gap-2")}>
                 {collapsed ? (
                   sidebarSymbolUrl && (
-                    <img src={sidebarSymbolUrl} alt={workspaceName} className="h-8 w-8 object-contain" />
+                    <img src={sidebarSymbolUrl} alt={workspaceName} className="h-10 w-10 object-contain" />
                   )
                 ) : sidebarFullLogoUrl ? (
-                  <img src={sidebarFullLogoUrl} alt={workspaceName} className="h-7 max-w-[168px] object-contain object-left" />
+                  <img src={sidebarFullLogoUrl} alt={workspaceName} className="h-11 max-w-[188px] object-contain object-left" />
                 ) : (
                   <span className="text-sm font-bold text-sidebar-foreground truncate">{workspaceName}</span>
                 )}
