@@ -84,10 +84,15 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 h-16 border-b border-border/40 bg-background/80 backdrop-blur-md">
+    // No background/border spanning the full width on purpose — the sidebar now floats up
+    // into this same top strip, and a full-width bar here would paint a translucent stripe
+    // over its rounded top corner. Only the icon cluster itself (bottom div) gets a visible
+    // background, sized to its own content and floated top-right, so it never overlaps the
+    // sidebar's column at all.
+    <header className="fixed top-0 left-0 right-0 z-50 h-16">
       <div className="flex h-full items-center justify-end px-4">
         {/* Right: Notifications + Profile */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 rounded-2xl border border-border/40 bg-background/80 px-2 py-1.5 shadow-lg backdrop-blur-md">
           <ChatBellButton />
           <TaskSearchDropdown onSelectTask={(id) => onOpenTask?.(id)} />
           <NotificationsDropdown onOpenTask={onOpenTask} />
