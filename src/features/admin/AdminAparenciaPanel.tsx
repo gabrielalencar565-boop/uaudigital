@@ -378,60 +378,58 @@ export function AdminAparenciaPanel() {
 
   return (
     <div className="space-y-6">
-      {/* Cores */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Cores</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label>Cor principal da marca</Label>
-            <div className="flex items-center gap-3">
-              <input
-                type="color"
-                value={brandColorDraft}
-                onChange={(e) => setBrandColorDraft(e.target.value)}
-                className="h-10 w-14 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
-                aria-label="Escolher cor principal"
-              />
-              <input
-                type="text"
-                value={brandColorDraft}
-                onChange={(e) => setBrandColorDraft(e.target.value)}
-                placeholder="#6932c9"
-                className="h-10 w-32 rounded-md border border-border bg-background px-3 text-sm font-mono"
-                maxLength={7}
-              />
-              <p className="text-xs text-muted-foreground">
-                Usada no menu lateral, na barra de navegação (mobile), no anel da foto de perfil e em botões de destaque.
-              </p>
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Cores */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Cores</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>Cor principal da marca</Label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={brandColorDraft}
+                  onChange={(e) => setBrandColorDraft(e.target.value)}
+                  className="h-10 w-10 cursor-pointer rounded-full border border-border bg-transparent p-0 [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded-full [&::-webkit-color-swatch]:border-none [&::-moz-color-swatch]:rounded-full [&::-moz-color-swatch]:border-none"
+                  aria-label="Escolher cor principal"
+                />
+                <input
+                  type="text"
+                  value={brandColorDraft}
+                  onChange={(e) => setBrandColorDraft(e.target.value)}
+                  placeholder="#6932c9"
+                  className="h-10 w-32 rounded-md border border-border bg-background px-3 text-sm font-mono"
+                  maxLength={7}
+                />
+              </div>
             </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="brand"
-              className="gap-2"
-              disabled={!brandColorChanged || savingBrandColor}
-              onClick={handleSaveBrandColor}
-            >
-              {savingBrandColor ? "Salvando..." : "Salvar cor"}
-            </Button>
-            {brandColorDraft.toLowerCase() !== DEFAULT_BRAND_COLOR && (
-              <Button type="button" variant="outline" onClick={() => setBrandColorDraft(DEFAULT_BRAND_COLOR)}>
-                Restaurar padrão
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="brand"
+                className="gap-2"
+                disabled={!brandColorChanged || savingBrandColor}
+                onClick={handleSaveBrandColor}
+              >
+                {savingBrandColor ? "Salvando..." : "Salvar cor"}
               </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+              {brandColorDraft.toLowerCase() !== DEFAULT_BRAND_COLOR && (
+                <Button type="button" variant="outline" onClick={() => setBrandColorDraft(DEFAULT_BRAND_COLOR)}>
+                  Restaurar padrão
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
-      {/* Logos */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Logos</CardTitle>
-        </CardHeader>
-        <CardContent>
+        {/* Logos */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Logos</CardTitle>
+          </CardHeader>
+          <CardContent>
           <div className="grid gap-6 sm:grid-cols-3">
             {/* Tema Claro */}
             <div className="space-y-3">
@@ -553,8 +551,9 @@ export function AdminAparenciaPanel() {
               </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Miniatura de link compartilhado */}
       <Card>
