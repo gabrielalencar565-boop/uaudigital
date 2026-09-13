@@ -119,6 +119,10 @@ export function UauSidebarShell({
   const logoUrl = appSettingsQ.data?.logo_url;
   const logoShape = appSettingsQ.data?.logo_shape ?? "square";
   const logoClass = logoShape === "circle" ? "rounded-full" : "rounded-md";
+  const workspaceName = appSettingsQ.data?.workspace_name ?? "Uau Digital";
+  // Sidebar is always brand-purple regardless of app theme, so the dark-theme (white) logo variant reads best on it.
+  const sidebarFullLogoUrl = appSettingsQ.data?.sidebar_logo_dark_url || appSettingsQ.data?.sidebar_logo_url || null;
+  const sidebarSymbolUrl = appSettingsQ.data?.sidebar_symbol_url || null;
 
   useRealtimeSyncAll();
   useNotificationSound();
@@ -179,21 +183,28 @@ export function UauSidebarShell({
           <Sidebar
             collapsible="none"
             className={cn(
-              "uau-sidebar-brand fixed left-4 top-[4.5rem] z-40 h-[calc(100svh-5.5rem)] rounded-[28px] bg-sidebar shadow-xl shadow-black/25 overflow-hidden",
+              "uau-sidebar-brand fixed left-4 top-4 z-[60] h-[calc(100svh-2rem)] rounded-[28px] bg-sidebar shadow-xl shadow-black/25 overflow-hidden",
               collapsed ? "w-16" : "w-56 xl:w-64"
             )}>
             
             {/* Header: logo + collapse toggle */}
-            <div className={cn("px-3 pb-1 pt-3", collapsed && "px-2")}>
-              <div className={cn("flex items-center gap-2", collapsed && "justify-center")}>
-                {!collapsed &&
-                <span className="text-sm font-bold text-sidebar-foreground truncate">{appSettingsQ.data?.workspace_name ?? "Uau Digital"}</span>
-                }
+            <div className={cn("px-3 pb-2 pt-4", collapsed && "px-2")}>
+              <div className={cn("flex items-center", collapsed ? "flex-col gap-2" : "gap-2")}>
+                {collapsed ? (
+                  sidebarSymbolUrl && (
+                    <img src={sidebarSymbolUrl} alt={workspaceName} className="h-8 w-8 object-contain" />
+                  )
+                ) : sidebarFullLogoUrl ? (
+                  <img src={sidebarFullLogoUrl} alt={workspaceName} className="h-7 max-w-[168px] object-contain object-left" />
+                ) : (
+                  <span className="text-sm font-bold text-sidebar-foreground truncate">{workspaceName}</span>
+                )}
                 <button
                   type="button"
                   onClick={() => setCollapsed((v) => !v)}
                   className={cn(
-                    "ml-auto inline-flex h-7 w-7 items-center justify-center rounded-md text-sidebar-foreground/70 transition hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                    "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-sidebar-foreground/70 transition hover:bg-sidebar-accent hover:text-sidebar-foreground",
+                    !collapsed && "ml-auto"
                   )}
                   aria-label={collapsed ? "Expandir" : "Recolher"}>
                   <PanelLeftClose className={cn("h-4 w-4 transition-transform", collapsed && "rotate-180")} />
