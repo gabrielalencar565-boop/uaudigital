@@ -94,7 +94,9 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
     // even though nothing is visibly drawn there; pointer-events-auto below opts the actual
     // icon pill back in.
     <header className="pointer-events-none fixed top-0 left-0 right-0 z-50 h-16">
-      <div className="flex h-full items-center justify-end px-4">
+      {/* pr-6/xl:pr-8 matches the content area's own right padding in
+          UauSidebarShell.tsx so this pill's right edge lines up with the cards below it. */}
+      <div className="flex h-full items-center justify-end pl-4 pr-6 xl:pr-8">
         {/* Right: Notifications + Profile */}
         <div className="pointer-events-auto flex items-center gap-1.5 rounded-2xl border border-border/40 bg-background/80 px-2 py-1.5 shadow-lg backdrop-blur-md">
           <ChatBellButton />
