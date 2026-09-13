@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useMyProfile } from "@/hooks/use-my-profile";
-import { useAppSettings } from "@/features/data/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { NotificationsDropdown } from "@/components/layout/NotificationsDropdown";
@@ -34,7 +33,6 @@ interface TopBarProps {
 export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
   const { theme, setTheme } = useTheme();
   const myProfileQ = useMyProfile();
-  const appSettingsQ = useAppSettings();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [soundsOpen, setSoundsOpen] = useState(false);

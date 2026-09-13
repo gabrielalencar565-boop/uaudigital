@@ -54,8 +54,6 @@ export type Database = {
           login_bg_position_x: number
           login_bg_position_y: number
           login_bg_zoom: number
-          logo_shape: Database["public"]["Enums"]["logo_shape_type"]
-          logo_url: string | null
           sidebar_logo_dark_url: string | null
           sidebar_logo_url: string | null
           sidebar_symbol_url: string | null
@@ -72,8 +70,6 @@ export type Database = {
           login_bg_position_x?: number
           login_bg_position_y?: number
           login_bg_zoom?: number
-          logo_shape?: Database["public"]["Enums"]["logo_shape_type"]
-          logo_url?: string | null
           sidebar_logo_dark_url?: string | null
           sidebar_logo_url?: string | null
           sidebar_symbol_url?: string | null
@@ -90,8 +86,6 @@ export type Database = {
           login_bg_position_x?: number
           login_bg_position_y?: number
           login_bg_zoom?: number
-          logo_shape?: Database["public"]["Enums"]["logo_shape_type"]
-          logo_url?: string | null
           sidebar_logo_dark_url?: string | null
           sidebar_logo_url?: string | null
           sidebar_symbol_url?: string | null
@@ -4002,7 +3996,6 @@ export type Database = {
         | "financeira"
         | "comercial"
         | "investimento"
-      logo_shape_type: "circle" | "square"
       magic2_stage_type:
         | "captacao"
         | "edicao_videos"
@@ -4241,7 +4234,6 @@ export const Constants = {
         "comercial",
         "investimento",
       ],
-      logo_shape_type: ["circle", "square"],
       magic2_stage_type: [
         "captacao",
         "edicao_videos",

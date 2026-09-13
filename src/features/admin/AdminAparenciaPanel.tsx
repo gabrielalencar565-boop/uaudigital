@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Images, Plus, Trash2, Settings2, Move, ZoomIn, RotateCcw, Check } from "lucide-react";
+import { Plus, Trash2, Settings2, Move, ZoomIn, RotateCcw, Check } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -216,39 +216,6 @@ export function AdminAparenciaPanel() {
     }
   };
 
-  /* ── Logo do Login ── */
-  const logoUrl = appSettingsQ.data?.logo_url ?? null;
-  const [uploadingLogo, setUploadingLogo] = useState(false);
-
-  const handleLogoUpload = async (file: File) => {
-    if (!user) return;
-    if (!file.type.startsWith("image/")) { toast.error("Envie uma imagem"); return; }
-    if (file.size > 5 * 1024 * 1024) { toast.error("Máximo 5MB"); return; }
-    setUploadingLogo(true);
-    try {
-      const ext = (file.name.split(".").pop() || "png").toLowerCase();
-      const path = `logo/${crypto.randomUUID()}.${ext}`;
-      const up = await supabase.storage.from("app-assets").upload(path, file, { upsert: true, contentType: file.type });
-      if (up.error) throw up.error;
-      const pub = supabase.storage.from("app-assets").getPublicUrl(path);
-      await updateAppSettings.mutateAsync({ logo_url: pub.data.publicUrl } as any);
-      toast.success("Logo do login atualizada!");
-    } catch (e: any) {
-      toast.error(e?.message ?? "Erro ao enviar logo");
-    } finally {
-      setUploadingLogo(false);
-    }
-  };
-
-  const handleRemoveLogo = async () => {
-    try {
-      await updateAppSettings.mutateAsync({ logo_url: null } as any);
-      toast.success("Logo do login removida");
-    } catch (e: any) {
-      toast.error(e?.message ?? "Erro ao remover logo");
-    }
-  };
-
   /* ── Logo da Sidebar (tema claro) ── */
   const sidebarLogoUrl = appSettingsQ.data?.sidebar_logo_url ?? null;
   const [uploadingSidebarLogo, setUploadingSidebarLogo] = useState(false);
@@ -383,206 +350,132 @@ export function AdminAparenciaPanel() {
 
   return (
     <div className="space-y-6">
-      {/* Logo do Login */}
+      {/* Logos */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Images className="h-5 w-5" />
-            Logo do Login
-          </CardTitle>
-          <CardDescription>
-            Aparece na tela de login. Use preferencialmente uma imagem com fundo transparente (PNG).
-          </CardDescription>
+          <CardTitle>Logos</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-6">
-            <div className="flex h-24 w-48 items-center justify-center rounded-xl border-2 border-dashed border-border bg-muted/30">
-              {logoUrl ? (
-                <img src={logoUrl} alt="Logo login" className="max-h-20 max-w-[180px] object-contain" />
-              ) : (
-                <span className="text-xs text-muted-foreground">Sem logo</span>
-              )}
+        <CardContent>
+          <div className="grid gap-6 sm:grid-cols-3">
+            {/* Tema Claro */}
+            <div className="space-y-3">
+              <Label>Tema Claro</Label>
+              <div className="flex h-24 items-center justify-center rounded-xl border-2 border-dashed border-border bg-white">
+                {sidebarLogoUrl ? (
+                  <img src={sidebarLogoUrl} alt="Logo tema claro" className="max-h-20 max-w-[90%] object-contain" />
+                ) : (
+                  <span className="text-xs text-muted-foreground">Sem logo</span>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  disabled={uploadingSidebarLogo}
+                  onClick={() => {
+                    const input = document.createElement("input");
+                    input.type = "file";
+                    input.accept = "image/*";
+                    input.onchange = async () => {
+                      const f = input.files?.[0];
+                      if (f) await handleSidebarLogoUpload(f);
+                    };
+                    input.click();
+                  }}
+                >
+                  <Plus className="h-4 w-4" />
+                  {uploadingSidebarLogo ? "Enviando..." : sidebarLogoUrl ? "Trocar" : "Enviar"}
+                </Button>
+                {sidebarLogoUrl && (
+                  <Button variant="destructive" size="sm" className="gap-2" onClick={handleRemoveSidebarLogo}>
+                    <Trash2 className="h-4 w-4" />
+                    Remover
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              className="gap-2"
-              disabled={uploadingLogo}
-              onClick={() => {
-                const input = document.createElement("input");
-                input.type = "file";
-                input.accept = "image/*";
-                input.onchange = async () => {
-                  const f = input.files?.[0];
-                  if (f) await handleLogoUpload(f);
-                };
-                input.click();
-              }}
-            >
-              <Plus className="h-4 w-4" />
-              {uploadingLogo ? "Enviando..." : logoUrl ? "Trocar logo" : "Enviar logo"}
-            </Button>
-            {logoUrl && (
-              <Button variant="destructive" size="sm" className="gap-2" onClick={handleRemoveLogo}>
-                <Trash2 className="h-4 w-4" />
-                Remover
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Logo da Barra Superior — Tema Claro */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Images className="h-5 w-5" />
-            Logo da Barra Superior — Tema Claro
-          </CardTitle>
-          <CardDescription>
-            Aparece no topo da aplicação quando o tema claro está ativo.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-6">
-            <div className="flex h-24 w-48 items-center justify-center rounded-xl border-2 border-dashed border-border bg-white">
-              {sidebarLogoUrl ? (
-                <img src={sidebarLogoUrl} alt="Logo tema claro" className="max-h-20 max-w-[180px] object-contain" />
-              ) : (
-                <span className="text-xs text-muted-foreground">Sem logo</span>
-              )}
+            {/* Tema Escuro */}
+            <div className="space-y-3">
+              <Label>Tema Escuro</Label>
+              <div className="flex h-24 items-center justify-center rounded-xl border-2 border-dashed border-border bg-[#0F1117]">
+                {sidebarLogoDarkUrl ? (
+                  <img src={sidebarLogoDarkUrl} alt="Logo tema escuro" className="max-h-20 max-w-[90%] object-contain" />
+                ) : (
+                  <span className="text-xs text-muted-foreground text-center px-2">Sem logo (usa a do tema claro)</span>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  disabled={uploadingSidebarLogoDark}
+                  onClick={() => {
+                    const input = document.createElement("input");
+                    input.type = "file";
+                    input.accept = "image/*";
+                    input.onchange = async () => {
+                      const f = input.files?.[0];
+                      if (f) await handleSidebarLogoDarkUpload(f);
+                    };
+                    input.click();
+                  }}
+                >
+                  <Plus className="h-4 w-4" />
+                  {uploadingSidebarLogoDark ? "Enviando..." : sidebarLogoDarkUrl ? "Trocar" : "Enviar"}
+                </Button>
+                {sidebarLogoDarkUrl && (
+                  <Button variant="destructive" size="sm" className="gap-2" onClick={handleRemoveSidebarLogoDark}>
+                    <Trash2 className="h-4 w-4" />
+                    Remover
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              className="gap-2"
-              disabled={uploadingSidebarLogo}
-              onClick={() => {
-                const input = document.createElement("input");
-                input.type = "file";
-                input.accept = "image/*";
-                input.onchange = async () => {
-                  const f = input.files?.[0];
-                  if (f) await handleSidebarLogoUpload(f);
-                };
-                input.click();
-              }}
-            >
-              <Plus className="h-4 w-4" />
-              {uploadingSidebarLogo ? "Enviando..." : sidebarLogoUrl ? "Trocar logo" : "Enviar logo"}
-            </Button>
-            {sidebarLogoUrl && (
-              <Button variant="destructive" size="sm" className="gap-2" onClick={handleRemoveSidebarLogo}>
-                <Trash2 className="h-4 w-4" />
-                Remover
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Logo da Barra Superior — Tema Escuro */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Images className="h-5 w-5" />
-            Logo da Barra Superior — Tema Escuro
-          </CardTitle>
-          <CardDescription>
-            Aparece no topo da aplicação quando o tema escuro está ativo. Se não definida, usa a logo do tema claro.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-6">
-            <div className="flex h-24 w-48 items-center justify-center rounded-xl border-2 border-dashed border-border bg-[#0F1117]">
-              {sidebarLogoDarkUrl ? (
-                <img src={sidebarLogoDarkUrl} alt="Logo tema escuro" className="max-h-20 max-w-[180px] object-contain" />
-              ) : (
-                <span className="text-xs text-muted-foreground">Sem logo (usa a do tema claro)</span>
-              )}
+            {/* Símbolo (sidebar recolhida) */}
+            <div className="space-y-3">
+              <Label>Símbolo (recolhido)</Label>
+              <div className="flex h-24 items-center justify-center rounded-xl border-2 border-dashed border-border bg-[#6932c9]">
+                {sidebarSymbolUrl ? (
+                  <img src={sidebarSymbolUrl} alt="Símbolo do menu lateral" className="h-16 w-16 object-contain" />
+                ) : (
+                  <span className="text-xs text-muted-foreground text-center px-2">Sem símbolo</span>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  disabled={uploadingSidebarSymbol}
+                  onClick={() => {
+                    const input = document.createElement("input");
+                    input.type = "file";
+                    input.accept = "image/*";
+                    input.onchange = async () => {
+                      const f = input.files?.[0];
+                      if (f) await handleSidebarSymbolUpload(f);
+                    };
+                    input.click();
+                  }}
+                >
+                  <Plus className="h-4 w-4" />
+                  {uploadingSidebarSymbol ? "Enviando..." : sidebarSymbolUrl ? "Trocar" : "Enviar"}
+                </Button>
+                {sidebarSymbolUrl && (
+                  <Button variant="destructive" size="sm" className="gap-2" onClick={handleRemoveSidebarSymbol}>
+                    <Trash2 className="h-4 w-4" />
+                    Remover
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              className="gap-2"
-              disabled={uploadingSidebarLogoDark}
-              onClick={() => {
-                const input = document.createElement("input");
-                input.type = "file";
-                input.accept = "image/*";
-                input.onchange = async () => {
-                  const f = input.files?.[0];
-                  if (f) await handleSidebarLogoDarkUpload(f);
-                };
-                input.click();
-              }}
-            >
-              <Plus className="h-4 w-4" />
-              {uploadingSidebarLogoDark ? "Enviando..." : sidebarLogoDarkUrl ? "Trocar logo" : "Enviar logo"}
-            </Button>
-            {sidebarLogoDarkUrl && (
-              <Button variant="destructive" size="sm" className="gap-2" onClick={handleRemoveSidebarLogoDark}>
-                <Trash2 className="h-4 w-4" />
-                Remover
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Símbolo da Sidebar (recolhida) */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Images className="h-5 w-5" />
-            Símbolo do Menu Lateral (recolhido)
-          </CardTitle>
-          <CardDescription>
-            Aparece no lugar da logo completa quando o menu lateral é recolhido (só ícones). Use uma imagem quadrada, de preferência só o símbolo/ícone da marca, com fundo transparente.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-6">
-            <div className="flex h-24 w-24 items-center justify-center rounded-xl border-2 border-dashed border-border bg-[#6932c9]">
-              {sidebarSymbolUrl ? (
-                <img src={sidebarSymbolUrl} alt="Símbolo do menu lateral" className="h-16 w-16 object-contain" />
-              ) : (
-                <span className="text-xs text-muted-foreground text-center px-2">Sem símbolo</span>
-              )}
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              className="gap-2"
-              disabled={uploadingSidebarSymbol}
-              onClick={() => {
-                const input = document.createElement("input");
-                input.type = "file";
-                input.accept = "image/*";
-                input.onchange = async () => {
-                  const f = input.files?.[0];
-                  if (f) await handleSidebarSymbolUpload(f);
-                };
-                input.click();
-              }}
-            >
-              <Plus className="h-4 w-4" />
-              {uploadingSidebarSymbol ? "Enviando..." : sidebarSymbolUrl ? "Trocar símbolo" : "Enviar símbolo"}
-            </Button>
-            {sidebarSymbolUrl && (
-              <Button variant="destructive" size="sm" className="gap-2" onClick={handleRemoveSidebarSymbol}>
-                <Trash2 className="h-4 w-4" />
-                Remover
-              </Button>
-            )}
           </div>
         </CardContent>
       </Card>
@@ -590,13 +483,7 @@ export function AdminAparenciaPanel() {
       {/* Miniatura de link compartilhado */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Images className="h-5 w-5" />
-            Miniatura de Link (WhatsApp e redes)
-          </CardTitle>
-          <CardDescription>
-            Imagem que aparece quando um link do sistema (como o link de aprovação do cliente) é colado no WhatsApp ou em outras redes.
-          </CardDescription>
+          <CardTitle>Miniatura de Link (WhatsApp e redes)</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center gap-6">
@@ -641,13 +528,7 @@ export function AdminAparenciaPanel() {
       {/* Preview masonry — replica do login */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Images className="h-5 w-5" />
-            Preview da tela de login
-          </CardTitle>
-          <CardDescription>
-            Clique em uma foto na galeria para editá-la. Este preview simula o layout real do login.
-          </CardDescription>
+          <CardTitle>Preview da tela de login</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <MiniMasonryPreview images={images} selectedIdx={selectedIdx} onSelect={setSelectedIdx} />

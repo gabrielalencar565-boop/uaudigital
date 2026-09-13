@@ -116,9 +116,6 @@ export function UauSidebarShell({
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [notifTaskId, setNotifTaskId] = useState<string | null>(null);
   const appSettingsQ = useAppSettings();
-  const logoUrl = appSettingsQ.data?.logo_url;
-  const logoShape = appSettingsQ.data?.logo_shape ?? "square";
-  const logoClass = logoShape === "circle" ? "rounded-full" : "rounded-md";
   const workspaceName = appSettingsQ.data?.workspace_name ?? "Uau Digital";
   // Sidebar is always brand-purple regardless of app theme, so the dark-theme (white) logo variant reads best on it.
   const sidebarFullLogoUrl = appSettingsQ.data?.sidebar_logo_dark_url || appSettingsQ.data?.sidebar_logo_url || null;
