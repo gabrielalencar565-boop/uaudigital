@@ -458,10 +458,10 @@ export function MeuPainelPanel() {
 
       {/* ── 3. METRIC CARDS ── */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.15s" }}>
-        <MetricSparkCard label="Tarefas" value={summary.total} prevValue={prevSummary.total || undefined} icon={<ListChecks className="h-5 w-5" />} sparkData={sparkData} />
-        <MetricSparkCard label="Concluídas" value={summary.done} prevValue={prevSummary.done || undefined} icon={<CheckCircle2 className="h-5 w-5" />} accentClass="text-emerald-500" sparkData={sparkData} />
-        <MetricSparkCard label="Pendentes" value={summary.pending} prevValue={prevSummary.pending || undefined} icon={<Clock className="h-5 w-5" />} accentClass="text-amber-500" />
-        <MetricSparkCard label="Atrasadas" value={summary.overdue} icon={<AlertTriangle className="h-5 w-5" />} accentClass="text-red-500" />
+        <MetricSparkCard label="Tarefas" value={summary.total} prevValue={prevSummary.total || undefined} icon={<ListChecks className="h-5 w-5" />} tone="violet" description="Total de tarefas atribuídas a você" sparkData={sparkData} />
+        <MetricSparkCard label="Concluídas" value={summary.done} prevValue={prevSummary.done || undefined} icon={<CheckCircle2 className="h-5 w-5" />} tone="emerald" description="Tarefas finalizadas" sparkData={sparkData} />
+        <MetricSparkCard label="Pendentes" value={summary.pending} prevValue={prevSummary.pending || undefined} icon={<Clock className="h-5 w-5" />} tone="amber" description="Tarefas ainda não concluídas" />
+        <MetricSparkCard label="Atrasadas" value={summary.overdue} icon={<AlertTriangle className="h-5 w-5" />} tone="red" description="Tarefas com prazo vencido" />
       </div>
 
       {/* ── 4/6. PM TASKS + NOTES (left) alongside TODAY'S INSTAGRAM LOOP (right,
