@@ -388,21 +388,21 @@ export function MeuPainelPanel() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards" }}>
         <div
           className="md:col-span-2 relative group overflow-hidden transition-all duration-500 ease-out hover:-translate-y-1.5 hover:scale-[1.008]"
-          style={{ borderRadius: 28, boxShadow: "0 8px 32px -8px rgba(124,58,237,0.18), 0 0 0 1px rgba(139,92,246,0.12), inset 0 0 0 1px rgba(255,255,255,0.06)" }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "0 16px 48px -8px rgba(124,58,237,0.32), 0 0 24px 2px rgba(139,92,246,0.18), 0 0 0 1px rgba(139,92,246,0.25), inset 0 0 0 1px rgba(255,255,255,0.10)"; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "0 8px 32px -8px rgba(124,58,237,0.18), 0 0 0 1px rgba(139,92,246,0.12), inset 0 0 0 1px rgba(255,255,255,0.06)"; }}
+          style={{ borderRadius: 28, boxShadow: "0 8px 32px -8px hsl(var(--brand-glow-3) / 0.18), 0 0 0 1px hsl(var(--brand-glow-5) / 0.12), inset 0 0 0 1px rgba(255,255,255,0.06)" }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "0 16px 48px -8px hsl(var(--brand-glow-3) / 0.32), 0 0 24px 2px hsl(var(--brand-glow-5) / 0.18), 0 0 0 1px hsl(var(--brand-glow-5) / 0.25), inset 0 0 0 1px rgba(255,255,255,0.10)"; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "0 8px 32px -8px hsl(var(--brand-glow-3) / 0.18), 0 0 0 1px hsl(var(--brand-glow-5) / 0.12), inset 0 0 0 1px rgba(255,255,255,0.06)"; }}
         >
-          <div className="absolute -inset-8 opacity-90" style={{ background: "linear-gradient(135deg, #4C1D95 0%, #6D28D9 25%, #7C3AED 50%, #5B21B6 75%, #4C1D95 100%)", backgroundSize: "300% 300%", animation: "gradientFlow 14s ease-in-out infinite" }} />
-          <div className="absolute -inset-12 opacity-60" style={{ background: "radial-gradient(ellipse 70% 60% at 25% 35%, #8B5CF6 0%, transparent 70%), radial-gradient(ellipse 55% 65% at 75% 65%, #5B21B6 0%, transparent 65%)", animation: "parallaxLayer2 12s ease-in-out infinite" }} />
-          <div className="absolute -inset-16 opacity-50" style={{ background: "radial-gradient(circle 280px at 20% 70%, #7C3AED 0%, transparent 60%), radial-gradient(circle 220px at 80% 25%, #6D28D9 0%, transparent 55%)", filter: "blur(30px)", animation: "parallaxLayer3 9s ease-in-out infinite" }} />
+          <div className="absolute -inset-8 opacity-90" style={{ background: "linear-gradient(135deg, hsl(var(--brand-glow-1)) 0%, hsl(var(--brand-glow-2)) 25%, hsl(var(--brand-glow-3)) 50%, hsl(var(--brand-glow-4)) 75%, hsl(var(--brand-glow-1)) 100%)", backgroundSize: "300% 300%", animation: "gradientFlow 14s ease-in-out infinite" }} />
+          <div className="absolute -inset-12 opacity-60" style={{ background: "radial-gradient(ellipse 70% 60% at 25% 35%, hsl(var(--brand-glow-5)) 0%, transparent 70%), radial-gradient(ellipse 55% 65% at 75% 65%, hsl(var(--brand-glow-4)) 0%, transparent 65%)", animation: "parallaxLayer2 12s ease-in-out infinite" }} />
+          <div className="absolute -inset-16 opacity-50" style={{ background: "radial-gradient(circle 280px at 20% 70%, hsl(var(--brand-glow-3)) 0%, transparent 60%), radial-gradient(circle 220px at 80% 25%, hsl(var(--brand-glow-2)) 0%, transparent 55%)", filter: "blur(30px)", animation: "parallaxLayer3 9s ease-in-out infinite" }} />
           <div className="absolute inset-0 opacity-[0.07]" style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.4) 1px, transparent 1px)", backgroundSize: "44px 44px", animation: "gridDrift 22s linear infinite" }} />
-          <div className="absolute inset-0 pointer-events-none transition-opacity duration-500 opacity-40 group-hover:opacity-80" style={{ borderRadius: 28, boxShadow: "inset 0 0 0 1.5px rgba(167,139,250,0.3), 0 0 20px 0 rgba(124,58,237,0.08)" }} />
-          <div className="absolute -inset-px opacity-0 group-hover:opacity-100 transition-opacity duration-700" style={{ borderRadius: 28, background: "radial-gradient(circle at 50% 0%, rgba(167,139,250,0.3), transparent 60%)" }} />
+          <div className="absolute inset-0 pointer-events-none transition-opacity duration-500 opacity-40 group-hover:opacity-80" style={{ borderRadius: 28, boxShadow: "inset 0 0 0 1.5px hsl(var(--brand-glow-6) / 0.3), 0 0 20px 0 hsl(var(--brand-glow-3) / 0.08)" }} />
+          <div className="absolute -inset-px opacity-0 group-hover:opacity-100 transition-opacity duration-700" style={{ borderRadius: 28, background: "radial-gradient(circle at 50% 0%, hsl(var(--brand-glow-6) / 0.3), transparent 60%)" }} />
 
           <div className="relative z-10 flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:p-6">
             <div className="flex min-w-0 items-center gap-3.5">
               <div className="relative shrink-0">
-                <div className="absolute -inset-[3px] rounded-full" style={{ background: "linear-gradient(135deg, #A78BFA, #6366F1, #8B5CF6)", opacity: 0.9, animation: "spin 6s linear infinite" }} />
+                <div className="absolute -inset-[3px] rounded-full" style={{ background: "linear-gradient(135deg, hsl(var(--brand-glow-6)), hsl(var(--brand-glow-7)), hsl(var(--brand-glow-5)))", opacity: 0.9, animation: "spin 6s linear infinite" }} />
                 <UserAvatar avatarUrl={myProfile?.avatar_url} name={myProfile?.full_name} className="relative h-12 w-12 ring-2 ring-white/20" fallbackClassName="bg-white/15 text-white font-bold text-sm" />
               </div>
               <div className="min-w-0">
