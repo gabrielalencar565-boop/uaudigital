@@ -32,6 +32,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export function TaskSearchDropdown({ onSelectTask }: TaskSearchDropdownProps) {
+  const [expanded, setExpanded] = useState(false);
   const [search, setSearch] = useState("");
   const [focused, setFocused] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -39,29 +40,35 @@ export function TaskSearchDropdown({ onSelectTask }: TaskSearchDropdownProps) {
 
   const showResults = focused && search.trim().length > 0;
 
-  // Close on click outside
+  // Collapse back to just the icon once expanded with nothing typed and focus leaves
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setFocused(false);
+        if (!search.trim()) setExpanded(false);
       }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, []);
+  }, [search]);
 
   // ⌘K shortcut
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
-        inputRef.current?.focus();
+        setExpanded(true);
         setFocused(true);
       }
     };
     document.addEventListener("keydown", down);
     return () => document.removeEventListener("keydown", down);
   }, []);
+
+  // Focus the input as soon as it mounts (icon click or ⌘K)
+  useEffect(() => {
+    if (expanded) inputRef.current?.focus();
+  }, [expanded]);
 
   const clientsQ = useQuery({
     queryKey: ["clients_all"],
@@ -143,10 +150,25 @@ export function TaskSearchDropdown({ onSelectTask }: TaskSearchDropdownProps) {
     (taskId: string) => {
       setFocused(false);
       setSearch("");
+      setExpanded(false);
       onSelectTask(taskId);
     },
     [onSelectTask]
   );
+
+  if (!expanded) {
+    return (
+      <button
+        type="button"
+        onClick={() => setExpanded(true)}
+        className="relative hidden sm:inline-flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-accent/50 focus:outline-none"
+        aria-label="Pesquisar tarefa"
+        title="Pesquisar tarefa (⌘K)"
+      >
+        <Search className="h-4 w-4 text-muted-foreground" />
+      </button>
+    );
+  }
 
   return (
     <div ref={containerRef} className="relative hidden sm:block">
