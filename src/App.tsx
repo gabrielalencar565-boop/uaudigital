@@ -22,6 +22,7 @@ import { AppErrorBoundary } from "@/components/error/AppErrorBoundary";
 import { useLocation } from "react-router-dom";
 import { createQueryClient } from "@/lib/query-client";
 import { AvatarBootstrap } from "@/components/avatar/AvatarBootstrap";
+import { BrandColorProvider } from "@/components/theme/BrandColorProvider";
 import { SplashScreen } from "@/components/SplashScreen";
 
 
@@ -102,6 +103,7 @@ const App = () => {
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <AvatarBootstrap />
+          <BrandColorProvider />
           <Toaster />
           <Sonner position="bottom-right" />
           <BrowserRouter>

@@ -46,6 +46,7 @@ export type Database = {
       }
       app_settings: {
         Row: {
+          brand_color: string
           id: number
           link_preview_image_url: string | null
           login_bg_images: Json
@@ -62,6 +63,7 @@ export type Database = {
           workspace_name: string
         }
         Insert: {
+          brand_color?: string
           id?: number
           link_preview_image_url?: string | null
           login_bg_images?: Json
@@ -78,6 +80,7 @@ export type Database = {
           workspace_name?: string
         }
         Update: {
+          brand_color?: string
           id?: number
           link_preview_image_url?: string | null
           login_bg_images?: Json

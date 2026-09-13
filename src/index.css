@@ -140,19 +140,6 @@ All colors MUST be HSL.
     --spacing: 0.25rem;
   }
 
-  /* Sidebar flutuante: sempre roxo da marca, independente do tema claro/escuro do app */
-  .uau-sidebar-brand {
-    --sidebar-background: 263 70% 50%;
-    --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 0 0% 100%;
-    --sidebar-primary-foreground: 263 70% 50%;
-    --sidebar-accent: 263 70% 42%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 263 70% 38%;
-    --sidebar-ring: 0 0% 100%;
-    --sidebar: 263 70% 50%;
-  }
-
   .dark {
     /* ── Premium SaaS Dark Theme ── */
     /* Deep charcoal, never pure black */
