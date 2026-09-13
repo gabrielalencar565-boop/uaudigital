@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 export type InstagramConnection = {
   client_id: string;
   status: "active" | "revoked" | "expired" | "error";
+  auth_provider: "facebook_login" | "instagram_login";
   facebook_page_name: string | null;
   instagram_username: string | null;
   token_expires_at: string;
@@ -42,8 +43,11 @@ function instagramErrorMessage(error: unknown): string {
 export function useConnectInstagram() {
   return useMutation({
     mutationFn: async ({ clientId }: { clientId: string }) => {
+      // "start_ig_login" is the direct Instagram Login flow (Instagram API with Instagram
+      // Login) — no Facebook Page involved. Accounts connected via the older Facebook-Page
+      // flow keep working unchanged; only new connections use this from now on.
       const { data, error } = await supabase.functions.invoke("instagram-connect", {
-        body: { action: "start", client_id: clientId },
+        body: { action: "start_ig_login", client_id: clientId },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);

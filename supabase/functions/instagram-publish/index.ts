@@ -53,8 +53,18 @@ async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs = REQU
   }
 }
 
-async function graphPost(path: string, accessToken: string, params: Record<string, string>) {
-  const res = await fetchWithTimeout(`https://graph.facebook.com/${GRAPH_VERSION}/${path}`, {
+// Which Graph host to call depends on how the client's Instagram was connected — Facebook
+// Page connections use graph.facebook.com (Page-derived token), Instagram Login
+// connections use graph.instagram.com (token scoped directly to the IG account). Same
+// endpoint shapes/params on both hosts, only the host and the token's origin differ.
+type GraphHost = "graph.facebook.com" | "graph.instagram.com";
+
+function graphHostForProvider(authProvider: string): GraphHost {
+  return authProvider === "instagram_login" ? "graph.instagram.com" : "graph.facebook.com";
+}
+
+async function graphPost(graphHost: GraphHost, path: string, accessToken: string, params: Record<string, string>) {
+  const res = await fetchWithTimeout(`https://${graphHost}/${GRAPH_VERSION}/${path}`, {
     method: "POST",
     body: new URLSearchParams({ ...params, access_token: accessToken }),
   });
@@ -63,8 +73,8 @@ async function graphPost(path: string, accessToken: string, params: Record<strin
   return data;
 }
 
-async function graphGet(path: string, accessToken: string, params: Record<string, string> = {}) {
-  const url = new URL(`https://graph.facebook.com/${GRAPH_VERSION}/${path}`);
+async function graphGet(graphHost: GraphHost, path: string, accessToken: string, params: Record<string, string> = {}) {
+  const url = new URL(`https://${graphHost}/${GRAPH_VERSION}/${path}`);
   url.searchParams.set("access_token", accessToken);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
   const res = await fetchWithTimeout(url.toString(), {});
@@ -73,9 +83,9 @@ async function graphGet(path: string, accessToken: string, params: Record<string
   return data;
 }
 
-async function waitUntilFinished(creationId: string, accessToken: string) {
+async function waitUntilFinished(graphHost: GraphHost, creationId: string, accessToken: string) {
   for (let i = 0; i < POLL_MAX_ATTEMPTS; i++) {
-    const status = await graphGet(creationId, accessToken, { fields: "status_code" });
+    const status = await graphGet(graphHost, creationId, accessToken, { fields: "status_code" });
     if (status.status_code === "FINISHED") return;
     if (status.status_code === "ERROR") throw new Error(`processamento falhou no Instagram (creation ${creationId})`);
     await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
@@ -131,7 +141,7 @@ async function publishToInstagram(admin: ReturnType<typeof createClient>, public
 
   const { data: connection } = await admin
     .from("instagram_connections")
-    .select("instagram_business_account_id, access_token, status")
+    .select("instagram_business_account_id, access_token, status, auth_provider")
     .eq("client_id", calendar.client_id)
     .maybeSingle();
   if (!connection || connection.status !== "active") {
@@ -140,6 +150,7 @@ async function publishToInstagram(admin: ReturnType<typeof createClient>, public
 
   const igUserId = connection.instagram_business_account_id as string;
   const accessToken = connection.access_token as string;
+  const graphHost = graphHostForProvider(connection.auth_provider as string);
 
   await admin
     .from("calendar_publications")
@@ -159,7 +170,7 @@ async function publishToInstagram(admin: ReturnType<typeof createClient>, public
       // param on this media_type (no text-overlay support via the Content Publishing API).
       const item = media[0];
       const isVideo = item.type?.startsWith("video/") ?? false;
-      const container = await graphPost(`${igUserId}/media`, accessToken, {
+      const container = await graphPost(graphHost, `${igUserId}/media`, accessToken, {
         media_type: "STORIES",
         ...(isVideo ? { video_url: item.url } : { image_url: item.url }),
       });
@@ -168,7 +179,7 @@ async function publishToInstagram(admin: ReturnType<typeof createClient>, public
       // silently orphaned with nothing in the DB pointing at it.
       if (isVideo) {
         await admin.from("calendar_publications").update({ instagram_creation_id: container.id }).eq("id", publication.id);
-        await waitUntilFinished(container.id, accessToken);
+        await waitUntilFinished(graphHost, container.id, accessToken);
       }
       creationId = container.id;
     } else if (publication.content_type === "carrossel") {
@@ -176,14 +187,14 @@ async function publishToInstagram(admin: ReturnType<typeof createClient>, public
       const childIds: string[] = [];
       for (const item of media) {
         const isVideo = item.type?.startsWith("video/") ?? false;
-        const child = await graphPost(`${igUserId}/media`, accessToken, {
+        const child = await graphPost(graphHost, `${igUserId}/media`, accessToken, {
           is_carousel_item: "true",
           ...(isVideo ? { video_url: item.url, media_type: "VIDEO" } : { image_url: item.url }),
         });
-        if (isVideo) await waitUntilFinished(child.id, accessToken);
+        if (isVideo) await waitUntilFinished(graphHost, child.id, accessToken);
         childIds.push(child.id);
       }
-      const parent = await graphPost(`${igUserId}/media`, accessToken, {
+      const parent = await graphPost(graphHost, `${igUserId}/media`, accessToken, {
         media_type: "CAROUSEL",
         children: childIds.join(","),
         caption: publication.caption ?? "",
@@ -201,7 +212,7 @@ async function publishToInstagram(admin: ReturnType<typeof createClient>, public
       // in-app but never actually sent to Meta, so posts always used Instagram's own
       // auto-selected frame instead of the chosen cover.
       const coverUrl = isReel ? await fetchCoverUrl(admin, publication.cover_attachment_id) : null;
-      const container = await graphPost(`${igUserId}/media`, accessToken, {
+      const container = await graphPost(graphHost, `${igUserId}/media`, accessToken, {
         caption: publication.caption ?? "",
         ...(isVideo ? { video_url: item.url, media_type: isReel ? "REELS" : "VIDEO" } : { image_url: item.url }),
         ...(coverUrl ? { cover_url: coverUrl } : {}),
@@ -209,18 +220,18 @@ async function publishToInstagram(admin: ReturnType<typeof createClient>, public
       // Same reasoning as the Stories branch above — persist before the wait, not after.
       if (isVideo) {
         await admin.from("calendar_publications").update({ instagram_creation_id: container.id }).eq("id", publication.id);
-        await waitUntilFinished(container.id, accessToken);
+        await waitUntilFinished(graphHost, container.id, accessToken);
       }
       creationId = container.id;
     }
 
     await admin.from("calendar_publications").update({ instagram_creation_id: creationId }).eq("id", publication.id);
 
-    const published = await graphPost(`${igUserId}/media_publish`, accessToken, { creation_id: creationId });
+    const published = await graphPost(graphHost, `${igUserId}/media_publish`, accessToken, { creation_id: creationId });
 
     let permalink: string | null = null;
     try {
-      const info = await graphGet(published.id, accessToken, { fields: "permalink" });
+      const info = await graphGet(graphHost, published.id, accessToken, { fields: "permalink" });
       permalink = info.permalink ?? null;
     } catch {
       // Best-effort only — the publish itself already succeeded.
@@ -250,6 +261,51 @@ async function handlePublishOne(admin: ReturnType<typeof createClient>, body: { 
   if (!publication) return json({ error: "publicação não encontrada" }, 404);
   const result = await publishToInstagram(admin, publication);
   return json(result, result.success ? 200 : 502);
+}
+
+// Instagram Login tokens (unlike the Facebook Page tokens used by the older flow) must be
+// proactively refreshed before they expire (~60 days) — Meta's refresh endpoint rejects an
+// already-expired token outright, there's no way to recover after the fact. Scoped to
+// auth_provider = 'instagram_login' only; Facebook Page connections are untouched (they
+// have no refresh mechanism today, same as before this migration). Called by a cron job on
+// a timer, same X-Cron-Secret gate as "run_schedules" below — actually registering that
+// cron.schedule(...) is a manual, documented follow-up (see project plan), matching how
+// run_schedules' own cron trigger was set up outside of any tracked migration.
+async function handleRefreshTokens(admin: ReturnType<typeof createClient>) {
+  const soonIso = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString();
+  const { data: connections, error } = await admin
+    .from("instagram_connections")
+    .select("client_id, access_token, token_expires_at")
+    .eq("auth_provider", "instagram_login")
+    .eq("status", "active")
+    .lte("token_expires_at", soonIso);
+  if (error) throw error;
+
+  const results = await Promise.allSettled(
+    ((connections ?? []) as { client_id: string; access_token: string }[]).map(async (conn) => {
+      const url = new URL("https://graph.instagram.com/refresh_access_token");
+      url.searchParams.set("grant_type", "ig_refresh_token");
+      url.searchParams.set("access_token", conn.access_token);
+      const res = await fetchWithTimeout(url.toString(), {});
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        const message = `falha ao renovar token: ${JSON.stringify(data.error ?? data)}`;
+        await admin.from("instagram_connections").update({ status: "error", last_error: message }).eq("client_id", conn.client_id);
+        throw new Error(message);
+      }
+      const expiresInSeconds: number = data.expires_in ?? 60 * 24 * 60 * 60;
+      const tokenExpiresAt = new Date(Date.now() + expiresInSeconds * 1000).toISOString();
+      await admin
+        .from("instagram_connections")
+        .update({ access_token: data.access_token, token_expires_at: tokenExpiresAt, last_error: null })
+        .eq("client_id", conn.client_id);
+      return conn.client_id;
+    }),
+  );
+
+  const refreshed = results.filter((r) => r.status === "fulfilled").length;
+  const failed = results.filter((r) => r.status === "rejected").map((r) => String((r as PromiseRejectedResult).reason));
+  return json({ refreshed, failed });
 }
 
 async function handleRunSchedules(admin: ReturnType<typeof createClient>) {
@@ -323,6 +379,13 @@ Deno.serve(async (req) => {
       const { data: validSecret } = await admin.rpc("verify_instagram_cron_secret", { candidate: cronSecret });
       if (!validSecret) return json({ error: "unauthorized" }, 401);
       return await handleRunSchedules(admin);
+    }
+
+    if (action === "refresh_tokens") {
+      const cronSecret = req.headers.get("X-Cron-Secret");
+      const { data: validSecret } = await admin.rpc("verify_instagram_cron_secret", { candidate: cronSecret });
+      if (!validSecret) return json({ error: "unauthorized" }, 401);
+      return await handleRefreshTokens(admin);
     }
 
     if (action === "publish_one") {
