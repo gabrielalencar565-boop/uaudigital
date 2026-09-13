@@ -5,24 +5,24 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 
 type Tone = "violet" | "emerald" | "amber" | "red";
 
-const TONE_STYLES: Record<Tone, { glow: string; chip: string; icon: string }> = {
+const TONE_STYLES: Record<Tone, { wash: string; chip: string; icon: string }> = {
   violet: {
-    glow: "radial-gradient(120% 120% at 15% 0%, rgba(99,102,241,1) 0%, transparent 65%)",
+    wash: "bg-[linear-gradient(135deg,rgba(129,140,248,0.28)_0%,rgba(129,140,248,0)_70%)] dark:bg-[radial-gradient(120%_120%_at_15%_0%,rgba(99,102,241,0.16)_0%,transparent_65%)]",
     chip: "bg-indigo-500/10 dark:bg-indigo-400/15",
     icon: "text-indigo-600 dark:text-indigo-300",
   },
   emerald: {
-    glow: "radial-gradient(120% 120% at 15% 0%, rgba(16,185,129,1) 0%, transparent 65%)",
+    wash: "bg-[linear-gradient(135deg,rgba(52,211,153,0.28)_0%,rgba(52,211,153,0)_70%)] dark:bg-[radial-gradient(120%_120%_at_15%_0%,rgba(16,185,129,0.16)_0%,transparent_65%)]",
     chip: "bg-emerald-500/10 dark:bg-emerald-400/15",
     icon: "text-emerald-600 dark:text-emerald-300",
   },
   amber: {
-    glow: "radial-gradient(120% 120% at 15% 0%, rgba(245,158,11,1) 0%, transparent 65%)",
+    wash: "bg-[linear-gradient(135deg,rgba(251,191,36,0.3)_0%,rgba(251,191,36,0)_70%)] dark:bg-[radial-gradient(120%_120%_at_15%_0%,rgba(245,158,11,0.16)_0%,transparent_65%)]",
     chip: "bg-amber-500/10 dark:bg-amber-400/15",
     icon: "text-amber-600 dark:text-amber-300",
   },
   red: {
-    glow: "radial-gradient(120% 120% at 15% 0%, rgba(239,68,68,1) 0%, transparent 65%)",
+    wash: "bg-[linear-gradient(135deg,rgba(248,113,113,0.28)_0%,rgba(248,113,113,0)_70%)] dark:bg-[radial-gradient(120%_120%_at_15%_0%,rgba(239,68,68,0.16)_0%,transparent_65%)]",
     chip: "bg-red-500/10 dark:bg-red-400/15",
     icon: "text-red-600 dark:text-red-300",
   },
@@ -41,14 +41,14 @@ export function MetricSparkCard({ label, value, icon, tone = "violet", descripti
 
   return (
     <div className="group relative overflow-hidden rounded-2xl border border-border/40 bg-card p-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-elevated">
-      {/* Subtle per-category tint, low opacity so it blends with the card in both themes instead of overpowering it */}
-      <div className="pointer-events-none absolute inset-0 opacity-[0.07] dark:opacity-[0.16]" style={{ background: t.glow }} />
+      {/* Soft diagonal color wash — pastel in light mode, a dimmer corner glow in dark mode */}
+      <div className={cn("pointer-events-none absolute inset-0", t.wash)} />
 
       {description && (
         <TooltipProvider delayDuration={200}>
           <Tooltip>
             <TooltipTrigger asChild>
-              <button type="button" className="absolute right-3 top-3 text-muted-foreground/40 hover:text-muted-foreground transition-colors" aria-label={`Sobre ${label}`}>
+              <button type="button" className="absolute right-3 top-3 z-10 text-muted-foreground/40 hover:text-muted-foreground transition-colors" aria-label={`Sobre ${label}`}>
                 <Info className="h-3.5 w-3.5" />
               </button>
             </TooltipTrigger>
