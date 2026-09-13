@@ -84,21 +84,13 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
   };
 
   return (
-    // No background/border spanning the full width on purpose — the sidebar now floats up
-    // into this same top strip, and a full-width bar here would paint a translucent stripe
-    // over its rounded top corner. Only the icon cluster itself (bottom div) gets a visible
-    // background, sized to its own content and floated top-right, so it never overlaps the
-    // sidebar's column at all. pointer-events-none on the (invisible) full-width header is
-    // required too — otherwise its empty bounding box still swallows clicks meant for
-    // whatever sits underneath it at the same height (e.g. the sidebar's collapse button),
-    // even though nothing is visibly drawn there; pointer-events-auto below opts the actual
-    // icon pill back in.
-    <header className="pointer-events-none fixed top-0 left-0 right-0 z-50 h-16">
-      {/* pr-6/xl:pr-8 matches the content area's own right padding in
-          UauSidebarShell.tsx so this pill's right edge lines up with the cards below it. */}
-      <div className="flex h-full items-center justify-end pl-4 pr-6 xl:pr-8">
+    // z-30 (below the sidebar's z-40) so the sidebar's rounded top corner — which now
+    // reaches nearly to the top of the screen — renders on top of this bar instead of the
+    // other way around; both stay below dialogs/sheets (z-50) so those still cover everything.
+    <header className="fixed top-0 left-0 right-0 z-30 h-16 border-b border-border/40 bg-background/80 backdrop-blur-md">
+      <div className="flex h-full items-center justify-end px-4">
         {/* Right: Notifications + Profile */}
-        <div className="pointer-events-auto flex items-center gap-1.5 rounded-2xl border border-border/40 bg-background/80 px-2 py-1.5 shadow-lg backdrop-blur-md">
+        <div className="flex items-center gap-1.5">
           <ChatBellButton />
           <TaskSearchDropdown onSelectTask={(id) => onOpenTask?.(id)} />
           <NotificationsDropdown onOpenTask={onOpenTask} />
