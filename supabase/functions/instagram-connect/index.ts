@@ -19,9 +19,12 @@ const REDIRECT_URI = Deno.env.get("INSTAGRAM_OAUTH_REDIRECT_URI")!;
 // "Instagram API with Instagram Login" — a separate Meta product from the Facebook Login
 // flow above, with its own App ID/Secret even though it can live in the same Meta App.
 // The OAuth screen goes straight to instagram.com, no Facebook Page involved at all.
-const IG_LOGIN_APP_ID = Deno.env.get("INSTAGRAM_LOGIN_APP_ID")!;
-const IG_LOGIN_APP_SECRET = Deno.env.get("INSTAGRAM_LOGIN_APP_SECRET")!;
-const IG_LOGIN_REDIRECT_URI = Deno.env.get("INSTAGRAM_LOGIN_OAUTH_REDIRECT_URI")!;
+// .trim() guards against stray whitespace from copy-pasting the secret into Supabase (a
+// leading/trailing tab or space in client_id makes Instagram reject the whole authorize URL
+// as invalid, with only a generic "Page not available" to go on — this bit us once already).
+const IG_LOGIN_APP_ID = Deno.env.get("INSTAGRAM_LOGIN_APP_ID")!.trim();
+const IG_LOGIN_APP_SECRET = Deno.env.get("INSTAGRAM_LOGIN_APP_SECRET")!.trim();
+const IG_LOGIN_REDIRECT_URI = Deno.env.get("INSTAGRAM_LOGIN_OAUTH_REDIRECT_URI")!.trim();
 const IG_LOGIN_OAUTH_SCOPES = "instagram_business_basic,instagram_business_content_publish";
 
 // Names/set confirmed against this app's own "Permissões e recursos" page (App Dashboard →
