@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useAppSettings } from "@/features/data/queries";
-import { clampLightness, contrastingForeground, hexToHsl } from "@/lib/color";
+import { brandGlowPalette, clampLightness, contrastingForeground, hexToHsl } from "@/lib/color";
 
 const DEFAULT_BRAND_COLOR = "#6932c9";
 
@@ -11,11 +11,9 @@ const DEFAULT_BRAND_COLOR = "#6932c9";
 // this became configurable. Runs app-wide (mounted once in App.tsx) so it also covers pages
 // rendered before login, like /auth.
 //
-// Scope, by design (see project notes): this is the app's single brand/accent color — it
-// drives the sidebar, mobile bottom nav, the profile avatar ring, and any `variant="brand"`
-// button. It does not attempt to re-tint every decorative multi-stop gradient in the app
-// (e.g. the "Meu Painel" header card) — those stay purple until a real design pass touches
-// them specifically.
+// Scope: the sidebar, mobile bottom nav, the profile avatar ring, any `variant="brand"`
+// button, and the animated multi-stop "glow" gradients (Meu Painel header, Magic2 "Visão
+// Geral" card) via the --brand-glow-N vars below.
 export function BrandColorProvider() {
   const appSettingsQ = useAppSettings();
   const brandColor = appSettingsQ.data?.brand_color || DEFAULT_BRAND_COLOR;
@@ -47,6 +45,15 @@ export function BrandColorProvider() {
     root.setProperty("--brand", base);
     root.setProperty("--brand-foreground", foreground);
     root.setProperty("--brand-color-hex", brandColor);
+
+    const glow = brandGlowPalette(brandColor);
+    root.setProperty("--brand-glow-1", glow.glow1);
+    root.setProperty("--brand-glow-2", glow.glow2);
+    root.setProperty("--brand-glow-3", glow.glow3);
+    root.setProperty("--brand-glow-4", glow.glow4);
+    root.setProperty("--brand-glow-5", glow.glow5);
+    root.setProperty("--brand-glow-6", glow.glow6);
+    root.setProperty("--brand-glow-7", glow.glow7);
   }, [brandColor]);
 
   return null;

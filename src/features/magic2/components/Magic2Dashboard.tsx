@@ -27,7 +27,7 @@ function MetricCard({ value, label, highlight }: { value: string; label: string;
       )}
       style={highlight ? {
         borderRadius: 16,
-        boxShadow: "0 8px 32px -8px rgba(124,58,237,0.18), 0 0 0 1px rgba(139,92,246,0.12), inset 0 0 0 1px rgba(255,255,255,0.06)",
+        boxShadow: "0 8px 32px -8px hsl(var(--brand-glow-3) / 0.18), 0 0 0 1px hsl(var(--brand-glow-5) / 0.12), inset 0 0 0 1px rgba(255,255,255,0.06)",
       } : undefined}
     >
       {highlight && <GradientLayers />}
@@ -51,15 +51,15 @@ function GradientLayers() {
   return (
     <>
       <div className="absolute -inset-8 opacity-90" style={{
-        background: "linear-gradient(135deg, #4C1D95 0%, #6D28D9 25%, #7C3AED 50%, #5B21B6 75%, #4C1D95 100%)",
+        background: "linear-gradient(135deg, hsl(var(--brand-glow-1)) 0%, hsl(var(--brand-glow-2)) 25%, hsl(var(--brand-glow-3)) 50%, hsl(var(--brand-glow-4)) 75%, hsl(var(--brand-glow-1)) 100%)",
         backgroundSize: "300% 300%", animation: "gradientFlow 14s ease-in-out infinite",
       }} />
       <div className="absolute -inset-12 opacity-60" style={{
-        background: "radial-gradient(ellipse 70% 60% at 25% 35%, #8B5CF6 0%, transparent 70%), radial-gradient(ellipse 55% 65% at 75% 65%, #5B21B6 0%, transparent 65%)",
+        background: "radial-gradient(ellipse 70% 60% at 25% 35%, hsl(var(--brand-glow-5)) 0%, transparent 70%), radial-gradient(ellipse 55% 65% at 75% 65%, hsl(var(--brand-glow-4)) 0%, transparent 65%)",
         animation: "parallaxLayer2 12s ease-in-out infinite",
       }} />
       <div className="absolute -inset-16 opacity-50" style={{
-        background: "radial-gradient(circle 280px at 20% 70%, #7C3AED 0%, transparent 60%), radial-gradient(circle 220px at 80% 25%, #6D28D9 0%, transparent 55%), radial-gradient(circle 160px at 55% 50%, #4C1D95 0%, transparent 50%)",
+        background: "radial-gradient(circle 280px at 20% 70%, hsl(var(--brand-glow-3)) 0%, transparent 60%), radial-gradient(circle 220px at 80% 25%, hsl(var(--brand-glow-2)) 0%, transparent 55%), radial-gradient(circle 160px at 55% 50%, hsl(var(--brand-glow-1)) 0%, transparent 50%)",
         filter: "blur(30px)", animation: "parallaxLayer3 9s ease-in-out infinite",
       }} />
       <div className="absolute inset-0 opacity-[0.07]" style={{
@@ -67,7 +67,7 @@ function GradientLayers() {
         backgroundSize: "44px 44px", animation: "gridDrift 22s linear infinite",
       }} />
       <div className="absolute inset-0 pointer-events-none transition-opacity duration-500 opacity-40 group-hover:opacity-80"
-        style={{ borderRadius: 16, boxShadow: "inset 0 0 0 1.5px rgba(167,139,250,0.3), 0 0 20px 0 rgba(124,58,237,0.08)" }}
+        style={{ borderRadius: 16, boxShadow: "inset 0 0 0 1.5px hsl(var(--brand-glow-6) / 0.3), 0 0 20px 0 hsl(var(--brand-glow-3) / 0.08)" }}
       />
     </>
   );
@@ -131,7 +131,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
       <section className="flex flex-col gap-4">
         {/* Overview ring */}
         <Card className="overflow-hidden relative group border-0"
-          style={{ borderRadius: 16, boxShadow: "0 8px 32px -8px rgba(124,58,237,0.18), 0 0 0 1px rgba(139,92,246,0.12), inset 0 0 0 1px rgba(255,255,255,0.06)" }}
+          style={{ borderRadius: 16, boxShadow: "0 8px 32px -8px hsl(var(--brand-glow-3) / 0.18), 0 0 0 1px hsl(var(--brand-glow-5) / 0.12), inset 0 0 0 1px rgba(255,255,255,0.06)" }}
         >
           <GradientLayers />
           <CardHeader className="relative z-10 pb-2">
@@ -144,7 +144,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
               tone={dashboard.overallPct === 100 ? "success" : "warning"}
               size={200}
               stroke={16}
-              trackColor="rgba(91,33,182,0.45)"
+              trackColor="hsl(var(--brand-glow-4) / 0.45)"
               label={
                 <div className="text-center">
                   <div className="text-4xl font-semibold tabular-nums text-white drop-shadow-sm">{dashboard.overallPct}%</div>
@@ -193,7 +193,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
         className="overflow-hidden flex flex-col relative group border-0"
         style={{
           borderRadius: 16,
-          boxShadow: "0 8px 32px -8px rgba(124,58,237,0.18), 0 0 0 1px rgba(139,92,246,0.12), inset 0 0 0 1px rgba(255,255,255,0.06)",
+          boxShadow: "0 8px 32px -8px hsl(var(--brand-glow-3) / 0.18), 0 0 0 1px hsl(var(--brand-glow-5) / 0.12), inset 0 0 0 1px rgba(255,255,255,0.06)",
         }}
       >
         <GradientLayers />
@@ -208,7 +208,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
             tone={dashboard.overallPct === 100 ? "success" : "warning"}
             size={fullscreen ? 400 : 340}
             stroke={fullscreen ? 30 : 28}
-            trackColor="rgba(91,33,182,0.45)"
+            trackColor="hsl(var(--brand-glow-4) / 0.45)"
             label={
               <div className="text-center">
                 <div className={cn(

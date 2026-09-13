@@ -52,3 +52,24 @@ export function contrastingForeground(l: number): string {
 export function clampLightness(l: number): number {
   return Math.min(100, Math.max(0, l));
 }
+
+// Multi-stop "glow" palette used by decorative animated gradient headers (Meu Painel card,
+// Magic2 "Visão Geral" card). Keeps the brand hue/saturation but spreads lightness across the
+// same 7 stops the original hardcoded violet palette used (#4C1D95…#A78BFA), so swapping the
+// brand color re-tints these gradients instead of leaving them stuck on the old purple.
+export function brandGlowPalette(hex: string): {
+  glow1: string; glow2: string; glow3: string; glow4: string; glow5: string; glow6: string; glow7: string;
+} {
+  const { h, s: rawS } = hexToHsl(hex);
+  const s = Math.max(rawS, 55);
+  const stop = (l: number) => `${h} ${s}% ${l}%`;
+  return {
+    glow1: stop(26),
+    glow2: stop(38),
+    glow3: stop(58),
+    glow4: stop(42),
+    glow5: stop(66),
+    glow6: stop(76),
+    glow7: stop(52),
+  };
+}
