@@ -43,8 +43,20 @@ async function extractError(data: { error?: string } | null, error: unknown): Pr
 // whichever instance is currently on screen.
 const exchanges = new Map<string, Promise<Outcome>>();
 
+function successMessage(data: { facebook_page_name?: string | null; instagram_username?: string | null }): string {
+  // Instagram Login connections have no Facebook Page at all — only mention one when it
+  // actually exists (the older Facebook-Page flow).
+  if (data.facebook_page_name) {
+    return `Conectado à Página "${data.facebook_page_name}"${data.instagram_username ? ` (@${data.instagram_username})` : ""}.`;
+  }
+  return data.instagram_username ? `Conectado à conta @${data.instagram_username}.` : "Conectado.";
+}
+
 async function exchangeCode(code: string, state: string): Promise<Outcome> {
-  const { data, error } = await supabase.functions.invoke("instagram-connect", { body: { action: "callback", code, state } });
+  // The Instagram Login flow's state is prefixed ("ig:...") so this page can tell the two
+  // OAuth flows apart from the redirect alone, before any other context is available.
+  const action = state.startsWith("ig:") ? "callback_ig_login" : "callback";
+  const { data, error } = await supabase.functions.invoke("instagram-connect", { body: { action, code, state } });
   if (error || data?.error) {
     return { status: "error", message: await extractError(data, error) };
   }
@@ -56,10 +68,7 @@ async function exchangeCode(code: string, state: string): Promise<Outcome> {
       options: data.options as PageOption[],
     };
   }
-  return {
-    status: "success",
-    message: `Conectado à Página "${data.facebook_page_name}"${data.instagram_username ? ` (@${data.instagram_username})` : ""}.`,
-  };
+  return { status: "success", message: successMessage(data) };
 }
 
 export default function InstagramCallback() {
@@ -100,10 +109,7 @@ export default function InstagramCallback() {
       setOutcome({ status: "error", message: await extractError(data, error) });
       return;
     }
-    setOutcome({
-      status: "success",
-      message: `Conectado à Página "${data.facebook_page_name}"${data.instagram_username ? ` (@${data.instagram_username})` : ""}.`,
-    });
+    setOutcome({ status: "success", message: successMessage(data) });
   }
 
   return (

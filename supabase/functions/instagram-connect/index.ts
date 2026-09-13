@@ -16,6 +16,14 @@ const APP_ID = Deno.env.get("META_APP_ID")!;
 const APP_SECRET = Deno.env.get("META_APP_SECRET")!;
 const REDIRECT_URI = Deno.env.get("INSTAGRAM_OAUTH_REDIRECT_URI")!;
 
+// "Instagram API with Instagram Login" — a separate Meta product from the Facebook Login
+// flow above, with its own App ID/Secret even though it can live in the same Meta App.
+// The OAuth screen goes straight to instagram.com, no Facebook Page involved at all.
+const IG_LOGIN_APP_ID = Deno.env.get("INSTAGRAM_LOGIN_APP_ID")!;
+const IG_LOGIN_APP_SECRET = Deno.env.get("INSTAGRAM_LOGIN_APP_SECRET")!;
+const IG_LOGIN_REDIRECT_URI = Deno.env.get("INSTAGRAM_LOGIN_OAUTH_REDIRECT_URI")!;
+const IG_LOGIN_OAUTH_SCOPES = "instagram_business_basic,instagram_business_content_publish";
+
 // Names/set confirmed against this app's own "Permissões e recursos" page (App Dashboard →
 // Casos de uso → API do Instagram → Permissões e recursos), the source of truth for exact
 // spelling and "Pronto para teste" status — the "Casos de uso" summary page's bullet list
@@ -90,8 +98,9 @@ async function handleStart(admin: ReturnType<typeof createClient>, userId: strin
 }
 
 type Candidate = {
-  facebook_page_id: string;
-  facebook_page_name: string;
+  auth_provider: "facebook_login" | "instagram_login";
+  facebook_page_id: string | null;
+  facebook_page_name: string | null;
   instagram_business_account_id: string;
   instagram_username: string | null;
   access_token: string;
@@ -107,6 +116,7 @@ async function finalizeConnection(admin: ReturnType<typeof createClient>, client
   const { error: upsertError } = await admin.from("instagram_connections").upsert(
     {
       client_id: clientId,
+      auth_provider: candidate.auth_provider,
       facebook_page_id: candidate.facebook_page_id,
       facebook_page_name: candidate.facebook_page_name,
       instagram_business_account_id: candidate.instagram_business_account_id,
@@ -189,6 +199,7 @@ async function handleCallback(admin: ReturnType<typeof createClient>, body: { co
       if (!igAccountId) continue;
       const igInfo = await graphGet(igAccountId, { fields: "username", access_token: page.access_token });
       candidates.push({
+        auth_provider: "facebook_login",
         facebook_page_id: page.id,
         facebook_page_name: page.name,
         instagram_business_account_id: igAccountId,
@@ -272,6 +283,127 @@ async function handleSelectPage(admin: ReturnType<typeof createClient>, body: { 
   }
 }
 
+// ── Instagram API with Instagram Login — direct connection, no Facebook Page involved ──
+
+async function handleStartIgLogin(admin: ReturnType<typeof createClient>, userId: string, body: { client_id?: string }) {
+  const clientId = body.client_id;
+  if (!clientId) return json({ error: "client_id is required" }, 400);
+
+  const { data: client } = await admin.from("clients").select("id").eq("id", clientId).maybeSingle();
+  if (!client) return json({ error: "client not found" }, 404);
+
+  // Prefixed so InstagramCallback.tsx can tell the two OAuth flows apart from the `state`
+  // alone (it comes back on the redirect before we have any other context to dispatch on).
+  const state = "ig:" + crypto.randomUUID();
+  const { error } = await admin
+    .from("instagram_oauth_states")
+    .insert({ state, client_id: clientId, created_by: userId, provider: "instagram_login" });
+  if (error) throw error;
+
+  const url = new URL("https://www.instagram.com/oauth/authorize");
+  url.searchParams.set("client_id", IG_LOGIN_APP_ID);
+  url.searchParams.set("redirect_uri", IG_LOGIN_REDIRECT_URI);
+  url.searchParams.set("state", state);
+  url.searchParams.set("scope", IG_LOGIN_OAUTH_SCOPES);
+  url.searchParams.set("response_type", "code");
+
+  return json({ url: url.toString() });
+}
+
+async function handleCallbackIgLogin(admin: ReturnType<typeof createClient>, body: { code?: string; state?: string }) {
+  const { code, state } = body;
+  if (!code || !state) return json({ error: "code and state are required" }, 400);
+
+  const { data: claimed } = await admin
+    .from("instagram_oauth_states")
+    .update({ consumed_at: new Date().toISOString() })
+    .eq("state", state)
+    .is("consumed_at", null)
+    .select("client_id, created_at")
+    .maybeSingle();
+  if (!claimed) return json({ error: "conexão já processada ou desconhecida — feche esta aba e tente conectar de novo" }, 400);
+  if (Date.now() - new Date(claimed.created_at).getTime() > STATE_TTL_MS) {
+    return json({ error: "state expired, please reconnect" }, 400);
+  }
+
+  const clientId = claimed.client_id as string;
+
+  try {
+    // 1. Short-lived token from the auth code — note this host is api.instagram.com, not
+    // graph.facebook.com/graph.instagram.com like every other call in this function.
+    const tokenRes = await fetch("https://api.instagram.com/oauth/access_token", {
+      method: "POST",
+      body: new URLSearchParams({
+        client_id: IG_LOGIN_APP_ID,
+        client_secret: IG_LOGIN_APP_SECRET,
+        grant_type: "authorization_code",
+        redirect_uri: IG_LOGIN_REDIRECT_URI,
+        code,
+      }),
+    });
+    const tokenJson = await tokenRes.json();
+    if (!tokenRes.ok || tokenJson.error_message || tokenJson.error) {
+      throw new Error(`falha ao trocar o código por token: ${JSON.stringify(tokenJson)}`);
+    }
+    // Historically this endpoint (shared lineage with the old Instagram Basic Display API)
+    // could wrap the payload in a `data` array — handle both shapes defensively.
+    const shortLived = Array.isArray(tokenJson.data) ? tokenJson.data[0] : tokenJson;
+    const shortLivedToken = shortLived.access_token as string;
+
+    // 2. Exchange for a long-lived (~60 day) token — graph.instagram.com, not fb_exchange_token.
+    const longLivedUrl = new URL("https://graph.instagram.com/access_token");
+    longLivedUrl.searchParams.set("grant_type", "ig_exchange_token");
+    longLivedUrl.searchParams.set("client_secret", IG_LOGIN_APP_SECRET);
+    longLivedUrl.searchParams.set("access_token", shortLivedToken);
+    const longLivedRes = await fetch(longLivedUrl.toString());
+    const longLived = await longLivedRes.json();
+    if (!longLivedRes.ok || longLived.error) {
+      throw new Error(`falha ao gerar token de longa duração: ${JSON.stringify(longLived.error ?? longLived)}`);
+    }
+    const expiresInSeconds: number = longLived.expires_in ?? 60 * 24 * 60 * 60;
+    const tokenExpiresAt = new Date(Date.now() + expiresInSeconds * 1000).toISOString();
+
+    // 3. This IS the connected account's identity — no Page, no lookup indirection needed.
+    // `user_id` here plays the exact same role instagram_business_account_id already plays
+    // for the Facebook-Page flow (it's the {ig-user-id} used by every publish call).
+    const meUrl = new URL(`https://graph.instagram.com/${GRAPH_VERSION}/me`);
+    meUrl.searchParams.set("fields", "user_id,username,account_type");
+    meUrl.searchParams.set("access_token", longLived.access_token);
+    const meRes = await fetch(meUrl.toString());
+    const me = await meRes.json();
+    if (!meRes.ok || me.error) throw new Error(`falha ao identificar a conta do Instagram: ${JSON.stringify(me.error ?? me)}`);
+
+    const igUserId = String(me.user_id);
+
+    // Same anti-hijack guard as the Facebook flow (section above), keyed by the IG account
+    // id instead of a Page id since there's no Page here at all.
+    const { data: takenRows } = await admin
+      .from("instagram_connections")
+      .select("instagram_business_account_id, client_id")
+      .eq("status", "active")
+      .neq("client_id", clientId);
+    const alreadyTaken = (takenRows ?? []).some((r) => r.instagram_business_account_id === igUserId);
+    if (alreadyTaken) {
+      return json(
+        { error: "essa conta do Instagram já está conectada a outro cliente — desconecte-a antes de reatribuir" },
+        422,
+      );
+    }
+
+    return await finalizeConnection(admin, clientId, {
+      auth_provider: "instagram_login",
+      facebook_page_id: null,
+      facebook_page_name: null,
+      instagram_business_account_id: igUserId,
+      instagram_username: (me.username as string | undefined) ?? null,
+      access_token: longLived.access_token,
+      token_expires_at: tokenExpiresAt,
+    });
+  } catch (e) {
+    return json({ error: String(e) }, 502);
+  }
+}
+
 async function handleDisconnect(admin: ReturnType<typeof createClient>, body: { client_id?: string }) {
   const clientId = body.client_id;
   if (!clientId) return json({ error: "client_id is required" }, 400);
@@ -290,7 +422,7 @@ async function handleStatus(admin: ReturnType<typeof createClient>, body: { clie
   const clientId = body.client_id;
   let query = admin
     .from("instagram_connections")
-    .select("client_id, status, facebook_page_name, instagram_username, token_expires_at, last_error");
+    .select("client_id, status, auth_provider, facebook_page_name, instagram_username, token_expires_at, last_error");
   if (clientId) query = query.eq("client_id", clientId);
   const { data, error } = await query;
   if (error) throw error;
@@ -328,6 +460,10 @@ Deno.serve(async (req) => {
         return await handleCallback(admin, body);
       case "select_page":
         return await handleSelectPage(admin, body);
+      case "start_ig_login":
+        return await handleStartIgLogin(admin, userId, body);
+      case "callback_ig_login":
+        return await handleCallbackIgLogin(admin, body);
       case "disconnect":
         return await handleDisconnect(admin, body);
       default:
