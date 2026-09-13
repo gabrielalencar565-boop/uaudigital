@@ -107,7 +107,7 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="flex items-center gap-2 rounded-lg px-2 py-1.5 transition hover:bg-accent/50 focus:outline-none">
-                <Avatar className="h-7 w-7 ring-2 ring-[#6932c9] ring-offset-2 ring-offset-background">
+                <Avatar className="h-7 w-7 ring-2 ring-[var(--brand-color-hex)] ring-offset-2 ring-offset-background">
                   <AvatarImage src={userAvatar ?? undefined} alt={userName} />
                   <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-semibold">
                     {userInitials}

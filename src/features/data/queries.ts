@@ -195,6 +195,7 @@ export type AppSettingsRow = {
   sidebar_logo_url: string | null;
   sidebar_logo_dark_url: string | null;
   sidebar_symbol_url: string | null;
+  brand_color: string;
   workspace_name: string;
   login_bg_images: BgImageConfig[];
   link_preview_image_url: string | null;
@@ -208,7 +209,7 @@ export function useAppSettings() {
     queryFn: async (): Promise<AppSettingsRow | null> => {
       const { data, error } = await supabase
         .from("app_settings")
-        .select("id, sidebar_logo_url, sidebar_logo_dark_url, sidebar_symbol_url, workspace_name, login_bg_images, link_preview_image_url, updated_at, updated_by")
+        .select("id, sidebar_logo_url, sidebar_logo_dark_url, sidebar_symbol_url, brand_color, workspace_name, login_bg_images, link_preview_image_url, updated_at, updated_by")
         .eq("id", 1)
         .maybeSingle();
       if (error) throw error;
@@ -218,6 +219,7 @@ export function useAppSettings() {
         sidebar_logo_url: d?.sidebar_logo_url ?? null,
         sidebar_logo_dark_url: d?.sidebar_logo_dark_url ?? null,
         sidebar_symbol_url: d?.sidebar_symbol_url ?? null,
+        brand_color: d?.brand_color ?? "#6932c9",
         login_bg_images: normalizeBgImages(d?.login_bg_images),
         link_preview_image_url: d?.link_preview_image_url ?? null,
       } as AppSettingsRow | null;
@@ -228,7 +230,7 @@ export function useAppSettings() {
 export function useUpdateAppSettings() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (updates: { sidebar_logo_url?: string | null; sidebar_logo_dark_url?: string | null; sidebar_symbol_url?: string | null; workspace_name?: string; login_bg_images?: BgImageConfig[]; link_preview_image_url?: string | null }) => {
+    mutationFn: async (updates: { sidebar_logo_url?: string | null; sidebar_logo_dark_url?: string | null; sidebar_symbol_url?: string | null; brand_color?: string; workspace_name?: string; login_bg_images?: BgImageConfig[]; link_preview_image_url?: string | null }) => {
       const { data, error } = await supabase
         .from("app_settings")
         .update(updates as any)
