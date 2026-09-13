@@ -204,7 +204,8 @@ export function UauSidebarShell({
                   onClick={() => setCollapsed((v) => !v)}
                   className={cn(
                     "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-sidebar-foreground/70 transition hover:bg-sidebar-accent hover:text-sidebar-foreground",
-                    !collapsed && "ml-auto"
+                    !collapsed && "ml-auto",
+                    collapsed && "mt-1"
                   )}
                   aria-label={collapsed ? "Expandir" : "Recolher"}>
                   <PanelLeftClose className={cn("h-4 w-4 transition-transform", collapsed && "rotate-180")} />
