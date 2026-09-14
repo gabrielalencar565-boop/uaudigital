@@ -288,10 +288,13 @@ async function handleRefreshTokens(admin: ReturnType<typeof createClient>) {
 
   const results = await Promise.allSettled(
     ((connections ?? []) as { client_id: string; access_token: string }[]).map(async (conn) => {
+      // Same method quirk as the initial ig_exchange_token call in instagram-connect: Meta's
+      // docs show GET, but the live API rejects GET here with "Unsupported request - method
+      // type: get" — POST works.
       const url = new URL("https://graph.instagram.com/refresh_access_token");
       url.searchParams.set("grant_type", "ig_refresh_token");
       url.searchParams.set("access_token", conn.access_token);
-      const res = await fetchWithTimeout(url.toString(), {});
+      const res = await fetchWithTimeout(url.toString(), { method: "POST" });
       const data = await res.json();
       if (!res.ok || data.error) {
         const message = `falha ao renovar token: ${JSON.stringify(data.error ?? data)}`;
