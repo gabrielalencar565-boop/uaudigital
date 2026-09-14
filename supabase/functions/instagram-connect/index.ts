@@ -354,11 +354,13 @@ async function handleCallbackIgLogin(admin: ReturnType<typeof createClient>, bod
     const shortLivedToken = shortLived.access_token as string;
 
     // 2. Exchange for a long-lived (~60 day) token — graph.instagram.com, not fb_exchange_token.
+    // Meta's own reference still shows this as GET, but the live API now rejects GET here
+    // with IGApiException code 100 ("Unsupported request - method type: get") — POST works.
     const longLivedUrl = new URL("https://graph.instagram.com/access_token");
     longLivedUrl.searchParams.set("grant_type", "ig_exchange_token");
     longLivedUrl.searchParams.set("client_secret", IG_LOGIN_APP_SECRET);
     longLivedUrl.searchParams.set("access_token", shortLivedToken);
-    const longLivedRes = await fetch(longLivedUrl.toString());
+    const longLivedRes = await fetch(longLivedUrl.toString(), { method: "POST" });
     const longLived = await longLivedRes.json();
     if (!longLivedRes.ok || longLived.error) {
       throw new Error(`falha ao gerar token de longa duração: ${JSON.stringify(longLived.error ?? longLived)}`);
