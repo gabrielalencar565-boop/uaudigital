@@ -3,6 +3,7 @@ import { Plus, Trash2, Settings2, Move, ZoomIn, RotateCcw, Check, X } from "luci
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { ColorPickerPopover } from "@/components/ui/color-picker-popover";
 import { Slider } from "@/components/ui/slider";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
@@ -387,13 +388,7 @@ export function AdminAparenciaPanel() {
           <div className="space-y-2">
             <Label>Cor principal da marca</Label>
             <div className="flex items-center gap-3">
-              <input
-                type="color"
-                value={brandColorDraft}
-                onChange={(e) => setBrandColorDraft(e.target.value)}
-                className="h-10 w-10 cursor-pointer rounded-full border border-border bg-transparent p-0 [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded-full [&::-webkit-color-swatch]:border-none [&::-moz-color-swatch]:rounded-full [&::-moz-color-swatch]:border-none"
-                aria-label="Escolher cor principal"
-              />
+              <ColorPickerPopover value={brandColorDraft} onChange={setBrandColorDraft} />
               <input
                 type="text"
                 value={brandColorDraft}
