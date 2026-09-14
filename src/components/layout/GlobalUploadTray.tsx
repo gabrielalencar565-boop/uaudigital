@@ -20,7 +20,7 @@ export function GlobalUploadTray() {
     : `${items.length} ${items.length === 1 ? "envio concluído" : "envios concluídos"}`;
 
   return (
-    <div className="fixed bottom-4 right-4 z-[100] w-80 overflow-hidden rounded-xl border border-border/40 bg-card shadow-2xl">
+    <div className="fixed bottom-4 right-4 z-[9999] w-80 overflow-hidden rounded-xl border border-border/40 bg-card shadow-2xl">
       <div className="flex items-center justify-between border-b border-border/40 bg-muted/40 px-3 py-2">
         <span className="text-xs font-semibold">{headerLabel}</span>
         <div className="flex items-center gap-1">
