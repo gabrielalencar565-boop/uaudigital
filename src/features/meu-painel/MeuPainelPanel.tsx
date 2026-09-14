@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { format, getDay, subDays } from "date-fns";
+import { endOfMonth, format, getDay, subDays } from "date-fns";
 import { ListChecks, CheckCircle2, Clock, AlertTriangle, Flame, Activity, Trophy, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
@@ -147,6 +147,24 @@ export function MeuPainelPanel() {
   const clientsById = useMemo(() => new Map((clientsQ.data ?? []).map((c) => [c.id, c] as const)), [clientsQ.data]);
   const myTasks = useMemo(() => tasksQ.data ?? [], [tasksQ.data]);
 
+  // Real Gestão tasks (pm_tasks) assigned to/watched by the user, due this month — what the
+  // "Tarefas/Concluídas/Pendentes/Atrasadas" summary cards below count. They used to count
+  // `myTasks` (the `tasks` table above), but that's a scoring/points snapshot that only gains
+  // a row per scored stage transition — it undercounts real assigned work and didn't match
+  // either its own "Total de tarefas atribuídas a você" description or the "Atribuídas a
+  // mim" widget on this same page, which already reads from pm_tasks.
+  const pmTasksForSummaryQ = usePmTasks();
+  const monthEndKey = useMemo(() => format(endOfMonth(new Date(selected.year, selected.month - 1, 1)), "yyyy-MM-dd"), [selected]);
+  const myMonthPmTasks = useMemo(() => {
+    if (!user?.id) return [];
+    return (pmTasksForSummaryQ.data ?? []).filter((t) =>
+      (t.assignee_id === user.id || (t.watchers ?? []).includes(user.id)) &&
+      t.status_global !== "cancelado" &&
+      !(t as any).is_draft &&
+      !!t.due_date && t.due_date >= `${monthKey}-01` && t.due_date <= monthEndKey
+    );
+  }, [pmTasksForSummaryQ.data, user?.id, monthKey, monthEndKey]);
+
   // ── Cleaning ──
   const cleaningSchedulesQ = useCleaningSchedules();
   const cleaningCategoriesQ = useCleaningCategories();
@@ -184,25 +202,14 @@ export function MeuPainelPanel() {
   const upcomingTasks = useMemo(() => myTasks.filter((t) => t.status !== "concluido" && t.due_date > todayKey), [myTasks, todayKey]);
   const completedTasks = useMemo(() => [...myTasks.filter((t) => t.status === "concluido"), ...cleaningVMs.filter((c) => c.status === "concluido")], [myTasks, cleaningVMs]);
 
-  // ── All pending tasks (across all months) ──
-  const allMyPendingQ = useQuery({
-    enabled: !!user?.id,
-    queryKey: ["all_my_pending_tasks", user?.id],
-    queryFn: async () => {
-      const [tasksRes, pmRes] = await Promise.all([
-        supabase.from("tasks").select("id", { count: "exact", head: true }).eq("assigned_user_id", user!.id).neq("status", "concluido").is("deleted_at", null),
-        supabase.from("pm_tasks").select("id", { count: "exact", head: true }).eq("assignee_id", user!.id).is("parent_task_id", null).is("deleted_at", null).neq("status_global", "concluido").neq("status_global", "cancelado"),
-      ]);
-      return (tasksRes.count ?? 0) + (pmRes.count ?? 0);
-    },
-    staleTime: 30_000,
-  });
-
+  // Matches each card's own description: Concluídas = done, Atrasadas = open & past due,
+  // Pendentes = open & "dentro do prazo" (not yet due) — mutually exclusive from Atrasadas.
   const summary = useMemo(() => {
-    const done = myTasks.filter((t) => t.status === "concluido").length;
-    const pending = allMyPendingQ.data ?? myTasks.filter((t) => t.status !== "concluido").length;
-    return { total: myTasks.length, done, pending, overdue: overdueTasks.length };
-  }, [myTasks, overdueTasks.length, allMyPendingQ.data]);
+    const done = myMonthPmTasks.filter((t) => t.status_global === "concluido").length;
+    const overdue = myMonthPmTasks.filter((t) => t.status_global !== "concluido" && t.due_date! < todayKey).length;
+    const pending = myMonthPmTasks.length - done - overdue;
+    return { total: myMonthPmTasks.length, done, pending, overdue };
+  }, [myMonthPmTasks, todayKey]);
 
   // ── Previous month for comparison ──
   const prevMonth = useMemo(() => {
