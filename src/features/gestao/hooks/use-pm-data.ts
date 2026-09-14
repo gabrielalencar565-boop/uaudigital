@@ -424,6 +424,7 @@ export function useUpdatePmTask() {
       await qc.cancelQueries({ queryKey: ["pm_tasks"] });
       await qc.cancelQueries({ queryKey: ["pm_child_tasks"] });
       await qc.cancelQueries({ queryKey: ["pm_child_tasks_all"] });
+      await qc.cancelQueries({ queryKey: ["pm_task", id] });
 
       const updateInList = (old: PmTask[] | undefined) =>
         old?.map(t => t.id === id ? { ...t, ...updates } as PmTask : t);
@@ -431,6 +432,14 @@ export function useUpdatePmTask() {
       qc.setQueriesData<PmTask[]>({ queryKey: ["pm_tasks"] }, updateInList);
       qc.setQueriesData<PmTask[]>({ queryKey: ["pm_child_tasks"] }, updateInList);
       qc.setQueriesData<PmTask[]>({ queryKey: ["pm_child_tasks_all"] }, updateInList);
+
+      // The task detail dialog reads its root task from usePmTaskById's own
+      // ["pm_task", id] cache, merged *after* (so it wins over) the list-derived prop —
+      // see PmTaskDetailDialog's `resolvedRootTask`. Without patching this cache too, that
+      // stale single-row snapshot kept clobbering every optimistic assignee/field change
+      // made while the dialog was open, undoing it the moment this merge re-ran — reported
+      // as "changing the assignee sometimes doesn't stick".
+      qc.setQueryData<PmTask>(["pm_task", id], (old) => (old ? ({ ...old, ...updates } as PmTask) : old));
     },
     onSuccess: (_data, variables) => {
       if (Object.prototype.hasOwnProperty.call(variables, "tags") || Object.prototype.hasOwnProperty.call(variables, "due_date")) {
@@ -441,6 +450,7 @@ export function useUpdatePmTask() {
       qc.invalidateQueries({ queryKey: ["pm_tasks"] });
       qc.invalidateQueries({ queryKey: ["pm_child_tasks"] });
       qc.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
+      qc.invalidateQueries({ queryKey: ["pm_task", variables.id] });
       qc.invalidateQueries({ queryKey: ["pm_activity_log"] });
       // Tag/post_type changes resync calendar_publications.content_type server-side
       // (see pm_task_tags_resync_calendar trigger) — the Cronograma's own cache
