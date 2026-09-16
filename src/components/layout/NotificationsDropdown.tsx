@@ -90,6 +90,7 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
         .select("id, title, client_id, due_date, status_global, assignee_id, created_at")
         .eq("assignee_id", user!.id)
         .is("deleted_at", null)
+        .is("parent_task_id", null)
         .not("status_global", "in", "(concluido,cancelado)")
         .not("due_date", "is", null)
         .order("created_at", { ascending: false })
