@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from "react";
-import { LogOut, Moon, Pencil, Sun, Volume2 } from "lucide-react";
+import { BellRing, LogOut, Moon, Pencil, Sun, Volume2 } from "lucide-react";
 import { useTheme } from "next-themes";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -20,6 +20,7 @@ import { ChatBellButton } from "@/features/chat/ChatBellButton";
 
 import { useQueryClient } from "@tanstack/react-query";
 import { NotificationSoundsDialog } from "@/features/configuracoes/NotificationSoundsDialog";
+import { PushNotificationsDialog } from "@/features/configuracoes/PushNotificationsDialog";
 
 function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
@@ -36,6 +37,7 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [soundsOpen, setSoundsOpen] = useState(false);
+  const [pushOpen, setPushOpen] = useState(false);
 
   const userName = myProfileQ.data?.full_name ?? "Usuário";
   const userRole = myProfileQ.data?.role_title ?? "Colaborador";
@@ -150,6 +152,17 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
                 Som de notificações
               </DropdownMenuItem>
 
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault();
+                  setPushOpen(true);
+                }}
+                className="gap-2.5 rounded-lg px-3 py-2.5 cursor-pointer"
+              >
+                <BellRing className="h-4 w-4 text-muted-foreground" />
+                Notificações push
+              </DropdownMenuItem>
+
               <DropdownMenuSeparator />
 
               <DropdownMenuItem
@@ -164,6 +177,7 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
         </div>
       </div>
       <NotificationSoundsDialog open={soundsOpen} onOpenChange={setSoundsOpen} />
+      <PushNotificationsDialog open={pushOpen} onOpenChange={setPushOpen} />
     </header>
 
   );
