@@ -110,7 +110,7 @@ async function handleDailyDigest(db: ReturnType<typeof createClient>) {
       const parts: string[] = [];
       if (counts.overdue > 0) parts.push(`${counts.overdue} atrasada${counts.overdue > 1 ? "s" : ""}`);
       if (counts.today > 0) parts.push(`${counts.today} vencendo hoje`);
-      return sendToUser(db, userId, { title: "Suas tarefas", body: `${parts.join(" e ")}.` });
+      return sendToUser(db, userId, { title: "Bora ver o que te espera hoje? 👀", body: `${parts.join(" e ")} — dá uma conferida!` });
     }),
   );
 
