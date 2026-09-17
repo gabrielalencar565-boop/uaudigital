@@ -226,8 +226,9 @@ export function UauSidebarShell({
                           onClick={() => onTabChange(entry.key)}
                           className={cn(
                             "h-10 gap-3 rounded-xl text-sidebar-foreground/80 transition-colors",
-                            "hover:bg-sidebar-accent hover:text-sidebar-foreground",
-                            active && "bg-button-sheen bg-[length:200%_200%] animate-shine text-white font-semibold shadow-glow",
+                            active
+                              ? "bg-button-sheen bg-[length:200%_200%] animate-shine text-white font-semibold shadow-glow hover:brightness-90"
+                              : "hover:bg-sidebar-accent hover:text-sidebar-foreground",
                             isRecompensas && "relative overflow-hidden",
                             collapsed && "justify-center"
                           )}>
@@ -267,8 +268,10 @@ export function UauSidebarShell({
                               }
                             }}
                             className={cn(
-                              "h-10 gap-3 rounded-xl text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors flex-1",
-                              hasActiveChild && "bg-button-sheen bg-[length:200%_200%] animate-shine text-white font-semibold shadow-glow",
+                              "h-10 gap-3 rounded-xl text-sidebar-foreground/80 transition-colors flex-1",
+                              hasActiveChild
+                                ? "bg-button-sheen bg-[length:200%_200%] animate-shine text-white font-semibold shadow-glow hover:brightness-90"
+                                : "hover:bg-sidebar-accent hover:text-sidebar-foreground",
                               collapsed && "justify-center"
                             )}>
                             <entry.icon className="h-[18px] w-[18px] shrink-0" />
@@ -298,8 +301,10 @@ export function UauSidebarShell({
                                 <button
                                   key={child.key}
                                   onClick={() => onTabChange(child.key)}
-                                  className={cn("flex w-full items-center gap-2.5 px-2.5 py-2 text-sm text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground rounded-xl",
-                                  active && "bg-button-sheen bg-[length:200%_200%] animate-shine text-white font-medium shadow-glow"
+                                  className={cn("flex w-full items-center gap-2.5 px-2.5 py-2 text-sm text-sidebar-foreground/70 transition-colors rounded-xl",
+                                  active
+                                    ? "bg-button-sheen bg-[length:200%_200%] animate-shine text-white font-medium shadow-glow hover:brightness-90"
+                                    : "hover:bg-sidebar-accent hover:text-sidebar-foreground"
                                   )}>
                                     <child.icon className="h-4 w-4 shrink-0" />
                                     <span>{child.label}</span>
@@ -321,8 +326,10 @@ export function UauSidebarShell({
                     type="button"
                     onClick={() => onTabChange("configuracoes")}
                     className={cn(
-                      "inline-flex h-10 items-center gap-3 rounded-xl px-3 text-sidebar-foreground/70 transition hover:bg-sidebar-accent hover:text-sidebar-foreground",
-                      tab === "configuracoes" && "bg-button-sheen bg-[length:200%_200%] animate-shine text-white font-semibold shadow-glow"
+                      "inline-flex h-10 items-center gap-3 rounded-xl px-3 text-sidebar-foreground/70 transition",
+                      tab === "configuracoes"
+                        ? "bg-button-sheen bg-[length:200%_200%] animate-shine text-white font-semibold shadow-glow hover:brightness-90"
+                        : "hover:bg-sidebar-accent hover:text-sidebar-foreground"
                     )}
                     aria-label="Configurações"
                   >
