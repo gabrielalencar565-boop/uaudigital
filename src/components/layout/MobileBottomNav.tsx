@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   Home, ClipboardList, Eye, DollarSign,
-  CalendarDays, CalendarRange, PieChart, Workflow,
+  CalendarDays, PieChart, Workflow,
   Target, Trophy, Users, Receipt, FileSpreadsheet,
   ArrowRightLeft, TrendingUp, Settings, Briefcase, Instagram,
 } from "lucide-react";
@@ -13,7 +13,6 @@ const SUB_TABS: Record<string, { key: MainTab; label: string; icon: React.Compon
   tarefas: [
     { key: "pauta_pessoas", label: "Pauta", icon: ClipboardList },
     { key: "calendario_publicacao", label: "Cronograma", icon: Instagram },
-    { key: "cronograma", label: "Produção", icon: CalendarRange },
     { key: "visao_geral_projetos", label: "Squads", icon: PieChart },
     { key: "fluxos", label: "Fluxos", icon: Workflow },
   ],
