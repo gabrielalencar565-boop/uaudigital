@@ -23,6 +23,7 @@ import { useLocation } from "react-router-dom";
 import { createQueryClient } from "@/lib/query-client";
 import { AvatarBootstrap } from "@/components/avatar/AvatarBootstrap";
 import { BrandColorProvider } from "@/components/theme/BrandColorProvider";
+import { AutoPushPrompt } from "@/components/notifications/AutoPushPrompt";
 import { SplashScreen } from "@/components/SplashScreen";
 
 
@@ -104,6 +105,7 @@ const App = () => {
         <TooltipProvider>
           <AvatarBootstrap />
           <BrandColorProvider />
+          <AutoPushPrompt />
           <Toaster />
           <Sonner position="bottom-right" />
           <BrowserRouter>
