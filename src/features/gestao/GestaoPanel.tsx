@@ -618,6 +618,14 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
   const weekStart = useMemo(() => startOfWeek(cursor, { weekStartsOn: 0 }), [cursor]);
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
 
+  // Which day cells actually have a `data-day-key` node in the DOM right now — the mobile
+  // month view only renders days within the current month (no leading/trailing padding
+  // cells like the desktop grid does), so a day outside this set can't be scrolled to.
+  const visibleDayKeys = useMemo(() => {
+    const rendered = agendaView === "week" ? weekDays : (isMobile ? days.filter(d => d.getMonth() === cursor.getMonth()) : days);
+    return new Set(rendered.map(d => format(d, "yyyy-MM-dd")));
+  }, [agendaView, isMobile, days, weekDays, cursor]);
+
   // Fetch legacy tasks from `tasks` table for the visible month range
   const legacyMonth = format(cursor, "yyyy-MM");
   const legacyTasksQ = useTasks({ month: legacyMonth });
@@ -1005,12 +1013,18 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
                         .filter(([, ts]) => ts.some(t => isOverdue(t)))
                         .map(([k]) => k)
                         .sort();
-                      const firstKey = overdueDays[0];
+                      // Only scroll to a day that's actually rendered in the current
+                      // view — the mobile month list doesn't render padding days from
+                      // other months like the desktop grid does, so an overdue day from
+                      // a previous month has no element to scroll to there.
+                      const firstKey = overdueDays.find((k) => visibleDayKeys.has(k));
                       if (firstKey) {
                         requestAnimationFrame(() => {
                           const el = document.querySelector(`[data-day-key="${firstKey}"]`);
                           el?.scrollIntoView({ behavior: "smooth", block: "center" });
                         });
+                      } else if (overdueDays.length > 0) {
+                        toast.info("As tarefas atrasadas são de um mês anterior — troque o mês pra ver.");
                       }
                     }
                     return next;
