@@ -19,6 +19,7 @@ import { STAGES } from "@/lib/uau";
 import { cn } from "@/lib/utils";
 import { RefreshCw, Calendar, Target, RotateCcw, Trophy, ArrowUp, ArrowDown, SprayCan, CheckCircle2, Zap, Maximize, Minimize } from "lucide-react";
 import { useNow } from "@/hooks/use-now";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useSession } from "@/hooks/use-session";
@@ -66,6 +67,7 @@ function statusTone(status: string, dueDate: string, todayKey: string) {
   return "warning" as const;
 }
 export function DayViewPanel() {
+  const isMobile = useIsMobile();
   const [active, setActive] = useState<"magic" | "agenda" | "podio">("magic");
   const [autoRotate, setAutoRotate] = useState(true);
   const [isHoveringRotateBtn, setIsHoveringRotateBtn] = useState(false);
@@ -909,7 +911,11 @@ export function DayViewPanel() {
       groups.push({ user_id: "__unassigned__", display_name: "Sem responsável", avatar_url: null, ...unassigned });
     }
     const colCount = groups.length;
-    const cols = Math.ceil(colCount / 2);
+    // On mobile this grid is nearly full-viewport width, so the desktop's "2 rows worth
+    // of columns" packing (e.g. 4 columns for 7-8 people) squeezed each column down to a
+    // sliver — narrow enough that names like "Ana Beatriz" wrapped one letter per line.
+    // Cap at 2 columns on mobile; desktop keeps the denser packing.
+    const cols = isMobile ? Math.min(2, Math.max(colCount, 1)) : Math.ceil(colCount / 2);
     const gridStyle = { gridTemplateColumns: `repeat(${Math.max(cols, 1)}, minmax(0, 1fr))` };
     const dense = cols >= 4;
     const veryDense = cols >= 6;
