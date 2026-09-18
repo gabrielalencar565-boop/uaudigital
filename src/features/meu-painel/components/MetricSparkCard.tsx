@@ -64,7 +64,7 @@ export function MetricSparkCard({ label, value, icon, tone = "violet", descripti
           <span className={t.icon}>{icon}</span>
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">{label}</p>
+          <p className={cn("text-[11px] text-muted-foreground font-medium uppercase tracking-wider truncate", description && "pr-5")}>{label}</p>
           <AnimatedNumber value={value} className="text-2xl font-bold tabular-nums tracking-tight text-foreground mt-0.5" />
         </div>
       </div>
