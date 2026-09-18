@@ -1023,12 +1023,17 @@ export function DayViewPanel() {
             return (
               <div key={`col-${g.user_id}`} className="rounded-xl border border-border bg-card/50 p-2 min-w-0 flex flex-col overflow-hidden">
                 <div className="flex items-center gap-2 pb-2 mb-2 border-b border-border/50">
-                  <Avatar className={cn("shrink-0", veryDense ? "h-8 w-8" : dense ? "h-9 w-9" : "h-11 w-11")}>
+                  <Avatar className={cn("shrink-0", (isMobile || veryDense) ? "h-8 w-8" : dense ? "h-9 w-9" : "h-11 w-11")}>
                     <AvatarImage src={g.avatar_url ?? undefined} />
                     <AvatarFallback>{initials(g.display_name)}</AvatarFallback>
                   </Avatar>
                   <div className="min-w-0 flex-1">
-                    <p className={cn("font-bold break-words leading-tight", veryDense ? "text-xs" : dense ? "text-sm" : "text-base")}>
+                    {/* Mobile is capped at 2 columns (see `cols` above), but that's still
+                        narrow enough that text-base — sized for the desktop's wider
+                        columns — couldn't fit a single word like "Alencar" without
+                        break-words splitting it mid-word. Mobile always gets the same
+                        compact size the desktop only uses once very dense (many columns). */}
+                    <p className={cn("font-bold break-words leading-tight", (isMobile || veryDense) ? "text-xs" : dense ? "text-sm" : "text-base")}>
                       {g.display_name}
                     </p>
                     <span className="text-xs text-muted-foreground">{totalCount} {totalCount === 1 ? "tarefa" : "tarefas"}</span>
