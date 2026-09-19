@@ -417,10 +417,10 @@ export function MeuPainelPanel() {
 
   return (
     <div className="space-y-5">
-      {/* ── 1. HEADER + RANK ── */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards" }}>
+      {/* ── 1. HEADER + RANK (um único banner com o degradê de ponta a ponta) ── */}
+      <div className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards" }}>
         <div
-          className="md:col-span-2 relative group overflow-hidden transition-all duration-500 ease-out hover:-translate-y-1.5 hover:scale-[1.008]"
+          className="relative group overflow-hidden transition-all duration-500 ease-out hover:-translate-y-1.5 hover:scale-[1.004]"
           style={{ borderRadius: 28, boxShadow: "0 8px 32px -8px hsl(var(--brand-glow-3) / 0.18), 0 0 0 1px hsl(var(--brand-glow-5) / 0.12), inset 0 0 0 1px rgba(255,255,255,0.06)" }}
           onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "0 16px 48px -8px hsl(var(--brand-glow-3) / 0.32), 0 0 24px 2px hsl(var(--brand-glow-5) / 0.18), 0 0 0 1px hsl(var(--brand-glow-5) / 0.25), inset 0 0 0 1px rgba(255,255,255,0.10)"; }}
           onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "0 8px 32px -8px hsl(var(--brand-glow-3) / 0.18), 0 0 0 1px hsl(var(--brand-glow-5) / 0.12), inset 0 0 0 1px rgba(255,255,255,0.06)"; }}
@@ -432,47 +432,56 @@ export function MeuPainelPanel() {
           <div className="absolute inset-0 pointer-events-none transition-opacity duration-500 opacity-40 group-hover:opacity-80" style={{ borderRadius: 28, boxShadow: "inset 0 0 0 1.5px hsl(var(--brand-glow-6) / 0.3), 0 0 20px 0 hsl(var(--brand-glow-3) / 0.08)" }} />
           <div className="absolute -inset-px opacity-0 group-hover:opacity-100 transition-opacity duration-700" style={{ borderRadius: 28, background: "radial-gradient(circle at 50% 0%, hsl(var(--brand-glow-6) / 0.3), transparent 60%)" }} />
 
-          <div className="relative z-10 flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:p-6">
-            <div className="flex min-w-0 items-center gap-3.5">
-              <div className="relative shrink-0">
-                <div className="absolute -inset-[3px] rounded-full" style={{ background: "linear-gradient(135deg, hsl(var(--brand-glow-6)), hsl(var(--brand-glow-7)), hsl(var(--brand-glow-5)))", opacity: 0.9, animation: "spin 6s linear infinite" }} />
-                <UserAvatar avatarUrl={myProfile?.avatar_url} name={myProfile?.full_name} className="relative h-12 w-12 ring-2 ring-white/20" fallbackClassName="bg-white/15 text-white font-bold text-sm" />
+          <div className="relative z-10 flex flex-col gap-4 p-5 sm:p-6 md:flex-row md:items-center md:gap-5">
+            <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+              <div className="flex min-w-0 items-center gap-3.5">
+                <div className="relative shrink-0">
+                  <div className="absolute -inset-[3px] rounded-full" style={{ background: "linear-gradient(135deg, hsl(var(--brand-glow-6)), hsl(var(--brand-glow-7)), hsl(var(--brand-glow-5)))", opacity: 0.9, animation: "spin 6s linear infinite" }} />
+                  <UserAvatar avatarUrl={myProfile?.avatar_url} name={myProfile?.full_name} className="relative h-12 w-12 ring-2 ring-white/20" fallbackClassName="bg-white/15 text-white font-bold text-sm" />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="truncate text-lg font-semibold tracking-tight text-white drop-shadow-sm">{headerGreeting}</h2>
+                  <p className="break-words whitespace-normal text-sm text-white/70">{headerLine}</p>
+                </div>
               </div>
-              <div className="min-w-0">
-                <h2 className="truncate text-lg font-semibold tracking-tight text-white drop-shadow-sm">{headerGreeting}</h2>
-                <p className="break-words whitespace-normal text-sm text-white/70">{headerLine}</p>
+
+              <div className="flex items-center gap-2">
+                {/* Streak badge */}
+                {streak >= 2 && (
+                  <TooltipProvider delayDuration={200}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div
+                          className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold text-white backdrop-blur-xl border border-orange-400/30 shadow-lg cursor-default"
+                          style={{ background: "rgba(251,146,60,0.2)" }}
+                        >
+                          <Flame className="h-4 w-4 text-orange-400" />
+                          <span className="tabular-nums">{streak}</span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="text-xs z-[9999] max-w-[260px] whitespace-normal">
+                        🔥 Sequência de {streak} dias consecutivos concluindo tarefas
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+                <div className="inline-flex items-center rounded-full px-4 py-1.5 text-sm font-semibold tabular-nums text-white backdrop-blur-xl border border-white/15 shadow-lg shadow-black/10" style={{ background: "rgba(255,255,255,0.12)" }}>
+                  {format(today, "dd/MM")}
+                </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              {/* Streak badge */}
-              {streak >= 2 && (
-                <TooltipProvider delayDuration={200}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div
-                        className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold text-white backdrop-blur-xl border border-orange-400/30 shadow-lg cursor-default"
-                        style={{ background: "rgba(251,146,60,0.2)" }}
-                      >
-                        <Flame className="h-4 w-4 text-orange-400" />
-                        <span className="tabular-nums">{streak}</span>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="text-xs z-[9999] max-w-[260px] whitespace-normal">
-                      🔥 Sequência de {streak} dias consecutivos concluindo tarefas
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-              <div className="inline-flex items-center rounded-full px-4 py-1.5 text-sm font-semibold tabular-nums text-white backdrop-blur-xl border border-white/15 shadow-lg shadow-black/10" style={{ background: "rgba(255,255,255,0.12)" }}>
-                {format(today, "dd/MM")}
+            {/* Pontos mensal/anual — encaixados no mesmo banner, na lateral, como chips translúcidos */}
+            <div className="grid grid-cols-2 gap-3 md:flex md:shrink-0 md:gap-3">
+              <div className="md:w-44">
+                <MeuPainelPerformanceRankCard label="Mensal" rank={perf.rank} total={perf.total} medal={perf.medal} isLoading={perf.isLoading} />
+              </div>
+              <div className="md:w-44">
+                <MeuPainelPerformanceRankCard label="Anual" rank={perfYear.rank} total={perfYear.total} medal={perfYear.medal} isLoading={perfYear.isLoading} />
               </div>
             </div>
           </div>
         </div>
-
-        <MeuPainelPerformanceRankCard label="Mensal" rank={perf.rank} total={perf.total} medal={perf.medal} isLoading={perf.isLoading} />
-        <MeuPainelPerformanceRankCard label="Anual" rank={perfYear.rank} total={perfYear.total} medal={perfYear.medal} isLoading={perfYear.isLoading} />
       </div>
 
       {/* ── 3. METRIC CARDS ── */}

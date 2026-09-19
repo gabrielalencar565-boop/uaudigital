@@ -1,6 +1,4 @@
-import { CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 
 function getRankDisplay(rank: number | null, medal: string | null): {icon: string | null; number: number | null;} {
@@ -17,103 +15,74 @@ function getRankStyle(rank: number | null) {
     return {
       gradient: "var(--gradient-podium-1)",
       border: "rgba(212,168,67,0.5)",
-      shadow: "0 4px 20px -4px rgba(212,168,67,0.3)",
-      hoverShadow: "0 12px 32px -4px rgba(212,168,67,0.5), 0 0 20px -2px rgba(245,215,110,0.3)",
-      glow: "rgba(245,215,110,0.4)",
       text: "text-amber-900 dark:text-white",
     };
   if (rank === 2)
     return {
       gradient: "var(--gradient-podium-2)",
       border: "rgba(180,180,180,0.5)",
-      shadow: "0 4px 20px -4px rgba(160,160,160,0.25)",
-      hoverShadow: "0 12px 32px -4px rgba(160,160,160,0.45), 0 0 20px -2px rgba(220,220,220,0.3)",
-      glow: "rgba(200,200,200,0.4)",
       text: "text-gray-700 dark:text-foreground",
     };
   if (rank === 3)
     return {
       gradient: "var(--gradient-podium-3)",
       border: "rgba(194,126,58,0.4)",
-      shadow: "0 4px 20px -4px rgba(178,111,47,0.25)",
-      hoverShadow: "0 12px 32px -4px rgba(178,111,47,0.45), 0 0 20px -2px rgba(226,167,111,0.3)",
-      glow: "rgba(226,167,111,0.4)",
       text: "text-orange-900 dark:text-foreground",
     };
   return null;
 }
 
+// Chip translúcido pensado pra viver dentro do banner com gradiente animado do
+// cumprimento — não carrega fundo/sombra próprios (a não ser no pódio top-3,
+// que ganha a cor de ouro/prata/bronze pra se destacar).
 export function MeuPainelPerformanceRankCard({
   rank, total, medal, isLoading, label,
 }: { rank: number | null; total: number | null; medal: string | null; isLoading: boolean; label: string }) {
   const { icon, number } = getRankDisplay(rank, medal);
   const style = getRankStyle(rank);
-  const [hovered, setHovered] = useState(false);
 
   return (
     <div
-      className="relative w-full overflow-hidden rounded-2xl transition-all duration-500 ease-out"
+      className="relative flex w-full items-center gap-3 overflow-hidden rounded-2xl border px-4 py-3 backdrop-blur-xl transition-transform duration-300 hover:-translate-y-0.5"
       style={{
-        border: `1px solid ${style?.border ?? "hsl(var(--border))"}`,
-        boxShadow: hovered ? (style?.hoverShadow ?? "0 12px 32px -8px hsl(var(--primary) / 0.18)") : (style?.shadow ?? "none"),
-        transform: hovered ? "translateY(-6px) scale(1.01)" : "translateY(0) scale(1)",
+        borderColor: style?.border ?? "rgba(255,255,255,0.15)",
+        background: style?.gradient ?? "rgba(255,255,255,0.1)",
+        backgroundSize: style ? "300% 300%" : undefined,
+        animation: style ? "gradientFlow 20s ease-in-out infinite" : undefined,
       }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
     >
-      {/* Animated gradient background */}
-      {style ? (
-        <div
-          className="absolute inset-0 -z-10"
-          style={{
-            background: style.gradient,
-            backgroundSize: "300% 300%",
-            animation: "gradientFlow 20s ease-in-out infinite",
-          }}
-        />
-      ) : (
-        <div className="absolute inset-0 -z-10 bg-card" />
-      )}
+      <div
+        className={cn(
+          "grid h-10 w-10 shrink-0 place-items-center rounded-full border",
+          style ? "border-white/40 bg-white/25" : "border-white/20 bg-white/10"
+        )}
+      >
+        {isLoading ? (
+          <span className="text-xl leading-none text-white">…</span>
+        ) : icon ? (
+          <span className="text-2xl leading-none">{icon}</span>
+        ) : (
+          <span className={cn("text-base font-bold leading-none tabular-nums", style?.text ?? "text-white")}>{number}º</span>
+        )}
+      </div>
 
-      {/* Glow overlay on hover */}
-      {style && (
-        <div
-          className="pointer-events-none absolute inset-0 rounded-2xl transition-opacity duration-500"
-          style={{
-            opacity: hovered ? 0.6 : 0,
-            boxShadow: `inset 0 0 30px ${style.glow}`,
-          }}
-        />
-      )}
-
-      <CardContent className="relative flex w-full items-center justify-between gap-3 p-4 pt-7">
-        <div className="flex min-w-0 items-center gap-3">
-          <div
-            className={cn(
-              "grid h-10 w-10 shrink-0 place-items-center rounded-full transition-transform duration-300",
-              style ? "border border-white/40 bg-white/25" : "border border-border/60 bg-card/40",
-              hovered && "scale-110"
-            )}
-          >
-            {isLoading ? (
-              <span className="text-2xl leading-none">…</span>
-            ) : icon ? (
-              <span className="text-2xl leading-none">{icon}</span>
-            ) : (
-              <span className={cn("text-lg font-bold leading-none tabular-nums", style?.text)}>{number}º</span>
-            )}
-          </div>
-
-          <div className="flex min-w-0 items-baseline gap-2">
-            <span className={cn("text-2xl font-semibold tracking-tight md:text-4xl text-foreground")}>
-              {isLoading ? "—" : <AnimatedNumber value={total ?? 0} className="text-2xl font-semibold tracking-tight md:text-4xl" glow={false} />}
-            </span>
-            <span className={cn("text-sm", style ? "opacity-70 " + (style.text ?? "") : "text-muted-foreground")}>pts</span>
-          </div>
+      <div className="min-w-0 flex-1">
+        <p className={cn("truncate text-[11px] font-medium uppercase tracking-wide", style ? cn("opacity-70", style.text) : "text-white/60")}>
+          {label}
+        </p>
+        <div className="flex items-baseline gap-1">
+          {isLoading ? (
+            <span className={cn("text-xl font-semibold tabular-nums sm:text-2xl", style?.text ?? "text-white")}>—</span>
+          ) : (
+            <AnimatedNumber
+              value={total ?? 0}
+              className={cn("text-xl font-semibold tracking-tight tabular-nums sm:text-2xl", style?.text ?? "text-white")}
+              glow={false}
+            />
+          )}
+          <span className={cn("text-xs", style ? cn("opacity-70", style.text) : "text-white/60")}>pts</span>
         </div>
-
-        <span className={cn("absolute right-3 top-2 text-[11px] font-medium", style ? "opacity-60 " + (style.text ?? "") : "text-muted-foreground")}>{label}</span>
-      </CardContent>
+      </div>
     </div>
   );
 }
