@@ -162,7 +162,7 @@ export function TodayInstagramLoopWidget({ onOpenTask }: Props) {
             <span className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold text-primary">Hoje</span>
           )}
         </div>
-        <div className="mt-2 flex items-center justify-center gap-2">
+        <div className="mt-2 flex items-center justify-start gap-2">
           <button
             type="button"
             onClick={goToPrevDay}
