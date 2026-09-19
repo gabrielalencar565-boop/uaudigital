@@ -1,7 +1,7 @@
 import { Flag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { getStageCircleColor, PM_PRIORITIES } from "@/features/gestao/pm-constants";
+import { getStageCircleColor, PM_PRIORITIES, stageLabel } from "@/features/gestao/pm-constants";
 import { dueDateLabel } from "./MyPmTasksWidget";
 import type { PmTask } from "@/features/gestao/pm-types";
 
@@ -40,8 +40,8 @@ export function MetricTaskListSheet({ open, onOpenChange, title, tasks, clientsM
                 onClick={() => onOpenTask(t.id)}
                 className="flex w-full items-start gap-2.5 rounded-xl px-3 py-2.5 text-left transition hover:bg-accent/40"
               >
-                <span className={cn("mt-1 h-3 w-3 shrink-0 rounded-full border-2", stageColor.border, isDone && stageColor.bg)} />
                 <div className="min-w-0 flex-1">
+                  <p className={cn("text-[10px] font-semibold uppercase tracking-wide", stageColor.text)}>{stageLabel(t.stage_current)}</p>
                   <p className="truncate text-sm font-medium text-foreground">{t.title}</p>
                   <div className="mt-0.5 flex min-w-0 items-center gap-2">
                     <Flag className={cn("h-3 w-3 shrink-0", priority.color)} />
