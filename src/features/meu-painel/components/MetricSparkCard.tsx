@@ -34,13 +34,23 @@ interface Props {
   icon: React.ReactNode;
   tone?: Tone;
   description?: string;
+  onClick?: () => void;
 }
 
-export function MetricSparkCard({ label, value, icon, tone = "violet", description }: Props) {
+export function MetricSparkCard({ label, value, icon, tone = "violet", description, onClick }: Props) {
   const t = TONE_STYLES[tone];
 
   return (
-    <div className="group relative overflow-hidden rounded-2xl border border-border/40 bg-card p-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-elevated">
+    <div
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={onClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } } : undefined}
+      className={cn(
+        "group relative overflow-hidden rounded-2xl border border-border/40 bg-card p-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-elevated",
+        onClick && "cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      )}
+    >
       {/* Soft diagonal color wash — pastel in light mode, a dimmer corner glow in dark mode */}
       <div className={cn("pointer-events-none absolute inset-0", t.wash)} />
 
@@ -48,7 +58,12 @@ export function MetricSparkCard({ label, value, icon, tone = "violet", descripti
         <TooltipProvider delayDuration={200}>
           <Tooltip>
             <TooltipTrigger asChild>
-              <button type="button" className="absolute right-3 top-3 z-10 text-muted-foreground/40 hover:text-muted-foreground transition-colors" aria-label={`Sobre ${label}`}>
+              <button
+                type="button"
+                onClick={(e) => e.stopPropagation()}
+                className="absolute right-3 top-3 z-10 text-muted-foreground/40 hover:text-muted-foreground transition-colors"
+                aria-label={`Sobre ${label}`}
+              >
                 <Info className="h-3.5 w-3.5" />
               </button>
             </TooltipTrigger>
