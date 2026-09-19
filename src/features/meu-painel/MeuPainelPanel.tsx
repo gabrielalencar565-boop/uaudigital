@@ -493,7 +493,7 @@ export function MeuPainelPanel() {
           <MyPmTasksWidget onOpenTask={(taskId) => setSelectedPmTaskId(taskId)} />
           <NotesWidget />
         </div>
-        <div className="md:col-span-2">
+        <div className="md:col-span-2 self-start">
           <TodayInstagramLoopWidget onOpenTask={(taskId) => setSelectedPmTaskId(taskId)} />
         </div>
       </div>
