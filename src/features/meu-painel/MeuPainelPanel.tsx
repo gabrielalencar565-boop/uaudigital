@@ -338,6 +338,7 @@ export function MeuPainelPanel() {
   }, [myTasks]);
 
   const myProfile = myProfileQ.data;
+  const bannerPhotoUrl = myProfile?.banner_photo_url;
 
   const isBirthday = useMemo(() => {
     if (!myTeamMember?.birth_date) return false;
@@ -418,7 +419,7 @@ export function MeuPainelPanel() {
   return (
     <div className="space-y-5">
       {/* ── 1. HEADER + RANK (um único banner com o degradê de ponta a ponta) ── */}
-      <div className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards" }}>
+      <div className="relative opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards" }}>
         <div
           className="relative group overflow-hidden transition-all duration-500 ease-out hover:-translate-y-1.5 hover:scale-[1.004]"
           style={{ borderRadius: 28, boxShadow: "0 8px 32px -8px hsl(var(--brand-glow-3) / 0.18), 0 0 0 1px hsl(var(--brand-glow-5) / 0.12), inset 0 0 0 1px rgba(255,255,255,0.06)" }}
@@ -432,10 +433,10 @@ export function MeuPainelPanel() {
           <div className="absolute inset-0 pointer-events-none transition-opacity duration-500 opacity-40 group-hover:opacity-80" style={{ borderRadius: 28, boxShadow: "inset 0 0 0 1.5px hsl(var(--brand-glow-6) / 0.3), 0 0 20px 0 hsl(var(--brand-glow-3) / 0.08)" }} />
           <div className="absolute -inset-px opacity-0 group-hover:opacity-100 transition-opacity duration-700" style={{ borderRadius: 28, background: "radial-gradient(circle at 50% 0%, hsl(var(--brand-glow-6) / 0.3), transparent 60%)" }} />
 
-          <div className="relative z-10 flex flex-col gap-4 p-5 sm:p-6 md:flex-row md:items-center md:gap-5">
+          <div className={cn("relative z-10 flex flex-col gap-4 p-5 sm:p-6 md:flex-row md:items-center md:gap-5", bannerPhotoUrl && "sm:pl-36 md:pl-44")}>
             <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
               <div className="flex min-w-0 items-center gap-3.5">
-                <div className="relative shrink-0">
+                <div className={cn("relative shrink-0", bannerPhotoUrl && "sm:hidden")}>
                   <div className="absolute -inset-[3px] rounded-full" style={{ background: "linear-gradient(135deg, hsl(var(--brand-glow-6)), hsl(var(--brand-glow-7)), hsl(var(--brand-glow-5)))", opacity: 0.9, animation: "spin 6s linear infinite" }} />
                   <UserAvatar avatarUrl={myProfile?.avatar_url} name={myProfile?.full_name} className="relative h-12 w-12 ring-2 ring-white/20" fallbackClassName="bg-white/15 text-white font-bold text-sm" />
                 </div>
@@ -482,6 +483,17 @@ export function MeuPainelPanel() {
             </div>
           </div>
         </div>
+
+        {/* Foto "vazada" do usuário (PNG transparente, cadastrado em Editar perfil) —
+            sangra pra fora do card, por isso fica fora do wrapper com overflow-hidden. */}
+        {bannerPhotoUrl && (
+          <img
+            src={bannerPhotoUrl}
+            alt=""
+            aria-hidden="true"
+            className="pointer-events-none absolute bottom-0 left-3 z-20 hidden h-44 w-auto object-contain object-bottom drop-shadow-2xl sm:block sm:h-52 md:left-5 md:h-60"
+          />
+        )}
       </div>
 
       {/* ── 3. METRIC CARDS ── */}

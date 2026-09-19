@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, Controller } from "react-hook-form";
-import { Camera, Crop, ImagePlus, KeyRound, Save, UserRound } from "lucide-react";
+import { Camera, Crop, ImagePlus, KeyRound, Save, UserRound, X } from "lucide-react";
 import { AvatarCropDialog } from "./AvatarCropDialog";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
@@ -144,6 +144,10 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [bannerBlob, setBannerBlob] = useState<Blob | null>(null);
+  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
+  const [bannerUrl, setBannerUrl] = useState<string | null>(null);
+  const bannerFileInputRef = useRef<HTMLInputElement>(null);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
@@ -182,7 +186,7 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
     let cancelled = false;
     supabase
       .from("profiles")
-      .select("full_name, role_title, avatar_url")
+      .select("full_name, role_title, avatar_url, banner_photo_url")
       .eq("user_id", user.id)
       .maybeSingle()
       .then(({ data }) => {
@@ -201,6 +205,7 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
                 birth_date: (tmData as any)?.birth_date ?? "",
               });
               setAvatarUrl(data.avatar_url ?? null);
+              setBannerUrl(data.banner_photo_url ?? null);
             }
           });
       });
@@ -231,6 +236,27 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
     setCropSrc(null);
   }, [cropSrc]);
 
+  const handleBannerFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (bannerFileInputRef.current) bannerFileInputRef.current.value = "";
+    if (!file) return;
+    if (file.type !== "image/png") {
+      toast.error("Envie um PNG com fundo transparente (o recorte já precisa vir pronto).");
+      return;
+    }
+    if (bannerPreview) URL.revokeObjectURL(bannerPreview);
+    const url = URL.createObjectURL(file);
+    setBannerPreview(url);
+    setBannerBlob(file);
+  }, [bannerPreview]);
+
+  const handleRemoveBanner = useCallback(() => {
+    if (bannerPreview) URL.revokeObjectURL(bannerPreview);
+    setBannerPreview(null);
+    setBannerBlob(null);
+    setBannerUrl(null);
+  }, [bannerPreview]);
+
   const displayName = useMemo(() => form.watch("full_name") || "?", [form]);
 
   const onSave = async (v: ProfileValues) => {
@@ -251,9 +277,23 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
         nextAvatarUrl = pub.data.publicUrl ?? null;
       }
 
+      let nextBannerUrl = bannerUrl;
+      if (bannerBlob) {
+        if (bannerBlob.size > 5 * 1024 * 1024) throw new Error("Imagem muito grande (máx 5MB)");
+
+        const bannerPath = `${user.id}/banner-${crypto.randomUUID()}.png`;
+        const bannerUp = await supabase.storage.from("avatars").upload(bannerPath, bannerBlob, {
+          upsert: true,
+          contentType: "image/png",
+        });
+        if (bannerUp.error) throw bannerUp.error;
+        const bannerPub = supabase.storage.from("avatars").getPublicUrl(bannerPath);
+        nextBannerUrl = bannerPub.data.publicUrl ?? null;
+      }
+
       const prof = await supabase
         .from("profiles")
-        .update({ full_name: v.full_name, role_title: v.role_title, avatar_url: nextAvatarUrl })
+        .update({ full_name: v.full_name, role_title: v.role_title, avatar_url: nextAvatarUrl, banner_photo_url: nextBannerUrl })
         .eq("user_id", user.id);
       if (prof.error) throw prof.error;
 
@@ -265,6 +305,7 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
             display_name: v.full_name,
             role_title: v.role_title,
             avatar_url: nextAvatarUrl,
+            banner_photo_url: nextBannerUrl,
             is_active: true,
             birth_date: v.birth_date || null,
           } as any,
@@ -274,6 +315,8 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
 
       setAvatarUrl(nextAvatarUrl);
       setAvatarBlob(null);
+      setBannerUrl(nextBannerUrl);
+      setBannerBlob(null);
       // Invalidar todos os caches que consomem dados de avatar
       queryClient.invalidateQueries({ queryKey: ["my_profile"] });
       queryClient.invalidateQueries({ queryKey: ["team_members"] });
@@ -339,6 +382,51 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
                 <p className="text-xs text-muted-foreground">PNG/JPG/WebP • até 5MB</p>
               </div>
               <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Foto para o Meu Painel (opcional)</Label>
+            <div className="flex items-center gap-4">
+              <div
+                className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-border/60"
+                style={{
+                  backgroundImage: "linear-gradient(45deg, hsl(var(--muted)) 25%, transparent 25%), linear-gradient(-45deg, hsl(var(--muted)) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, hsl(var(--muted)) 75%), linear-gradient(-45deg, transparent 75%, hsl(var(--muted)) 75%)",
+                  backgroundSize: "10px 10px",
+                  backgroundPosition: "0 0, 0 5px, 5px -5px, -5px 0px",
+                }}
+              >
+                {(bannerPreview || bannerUrl) ? (
+                  <img src={bannerPreview ?? bannerUrl ?? undefined} alt="Foto do painel" className="h-full w-full object-contain" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center">
+                    <ImagePlus className="h-5 w-5 text-muted-foreground/40" />
+                  </div>
+                )}
+              </div>
+              <div className="flex-1">
+                <p className="text-sm text-muted-foreground">Aparece "vazada" na sua saudação do Meu Painel</p>
+                <p className="text-xs text-muted-foreground">PNG com fundo transparente já recortado • até 5MB</p>
+                <div className="mt-1.5 flex gap-2">
+                  <button
+                    type="button"
+                    className="text-xs font-medium text-primary hover:underline"
+                    onClick={() => bannerFileInputRef.current?.click()}
+                  >
+                    {(bannerPreview || bannerUrl) ? "Trocar" : "Selecionar PNG"}
+                  </button>
+                  {(bannerPreview || bannerUrl) && (
+                    <button
+                      type="button"
+                      className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-destructive"
+                      onClick={handleRemoveBanner}
+                    >
+                      <X className="h-3 w-3" /> Remover
+                    </button>
+                  )}
+                </div>
+              </div>
+              <input ref={bannerFileInputRef} type="file" accept="image/png" className="hidden" onChange={handleBannerFileSelect} />
             </div>
           </div>
 

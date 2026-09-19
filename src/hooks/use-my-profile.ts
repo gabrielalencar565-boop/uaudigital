@@ -8,6 +8,7 @@ export type MyProfileRow = {
   full_name: string;
   role_title: string;
   avatar_url: string | null;
+  banner_photo_url: string | null;
 };
 
 /**
@@ -28,7 +29,7 @@ export function useMyProfile() {
       // Tenta primeiro buscar do profiles
       const { data: profile, error: profErr } = await supabase
         .from("profiles")
-        .select("user_id, full_name, role_title, avatar_url")
+        .select("user_id, full_name, role_title, avatar_url, banner_photo_url")
         .eq("user_id", user.id)
         .maybeSingle();
 
@@ -36,13 +37,14 @@ export function useMyProfile() {
         return {
           ...profile,
           avatar_url: normalizeAvatarUrl(profile.avatar_url) ?? null,
+          banner_photo_url: normalizeAvatarUrl(profile.banner_photo_url) ?? null,
         } as MyProfileRow;
       }
 
       // Fallback para team_members se não existir perfil
       const { data: member, error: memErr } = await supabase
         .from("team_members")
-        .select("user_id, display_name, role_title, avatar_url")
+        .select("user_id, display_name, role_title, avatar_url, banner_photo_url")
         .eq("user_id", user.id)
         .maybeSingle();
 
@@ -52,6 +54,7 @@ export function useMyProfile() {
           full_name: member.display_name,
           role_title: member.role_title,
           avatar_url: normalizeAvatarUrl(member.avatar_url) ?? null,
+          banner_photo_url: normalizeAvatarUrl(member.banner_photo_url) ?? null,
         } as MyProfileRow;
       }
 
@@ -61,6 +64,7 @@ export function useMyProfile() {
         full_name: user.email?.split("@")[0] ?? "Usuário",
         role_title: "Colaborador",
         avatar_url: null,
+        banner_photo_url: null,
       };
     },
   });
