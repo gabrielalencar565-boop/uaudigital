@@ -10,9 +10,14 @@ interface AvatarCropDialogProps {
   imageSrc: string;
   onConfirm: (croppedBlob: Blob) => void;
   onCancel: () => void;
+  title?: string;
+  aspect?: number;
+  cropShape?: "round" | "rect";
+  outputWidth?: number;
+  outputHeight?: number;
 }
 
-async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<Blob> {
+async function getCroppedImg(imageSrc: string, pixelCrop: Area, outputWidth?: number, outputHeight?: number): Promise<Blob> {
   const image = new Image();
   image.crossOrigin = "anonymous";
   await new Promise<void>((res, rej) => {
@@ -22,9 +27,10 @@ async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<Blob> {
   });
 
   const canvas = document.createElement("canvas");
-  const size = Math.min(pixelCrop.width, pixelCrop.height, 512);
-  canvas.width = size;
-  canvas.height = size;
+  const width = outputWidth ?? Math.min(pixelCrop.width, pixelCrop.height, 512);
+  const height = outputHeight ?? Math.min(pixelCrop.width, pixelCrop.height, 512);
+  canvas.width = width;
+  canvas.height = height;
   const ctx = canvas.getContext("2d")!;
 
   ctx.drawImage(
@@ -35,8 +41,8 @@ async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<Blob> {
     pixelCrop.height,
     0,
     0,
-    size,
-    size,
+    width,
+    height,
   );
 
   return new Promise((resolve, reject) => {
@@ -47,7 +53,10 @@ async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<Blob> {
   });
 }
 
-export function AvatarCropDialog({ open, imageSrc, onConfirm, onCancel }: AvatarCropDialogProps) {
+export function AvatarCropDialog({
+  open, imageSrc, onConfirm, onCancel,
+  title = "Ajustar foto", aspect = 1, cropShape = "round", outputWidth, outputHeight,
+}: AvatarCropDialogProps) {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
@@ -61,7 +70,7 @@ export function AvatarCropDialog({ open, imageSrc, onConfirm, onCancel }: Avatar
     if (!croppedAreaPixels) return;
     setSaving(true);
     try {
-      const blob = await getCroppedImg(imageSrc, croppedAreaPixels);
+      const blob = await getCroppedImg(imageSrc, croppedAreaPixels, outputWidth, outputHeight);
       onConfirm(blob);
     } catch {
       onCancel();
@@ -74,17 +83,17 @@ export function AvatarCropDialog({ open, imageSrc, onConfirm, onCancel }: Avatar
     <Dialog open={open} onOpenChange={(v) => !v && onCancel()}>
       <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden">
         <DialogHeader className="p-4 pb-2">
-          <DialogTitle>Ajustar foto</DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
 
-        <div className="relative w-full aspect-square bg-black/90">
+        <div className="relative w-full bg-black/90" style={{ aspectRatio: aspect === 1 ? "1 / 1" : `${aspect} / 1` }}>
           <Cropper
             image={imageSrc}
             crop={crop}
             zoom={zoom}
-            aspect={1}
-            cropShape="round"
-            showGrid={false}
+            aspect={aspect}
+            cropShape={cropShape}
+            showGrid={cropShape === "rect"}
             onCropChange={setCrop}
             onZoomChange={setZoom}
             onCropComplete={onCropComplete}
