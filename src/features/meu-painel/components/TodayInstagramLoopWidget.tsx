@@ -150,7 +150,7 @@ export function TodayInstagramLoopWidget({ onOpenTask }: Props) {
   const cardWidthPct = 100 / VISIBLE;
 
   return (
-    <Card className="flex h-full flex-col">
+    <Card className="flex flex-col">
       <CardHeader className="pb-2">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
