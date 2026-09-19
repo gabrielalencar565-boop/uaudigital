@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useState } from "react";
 import { normalizeAvatarUrl } from "@/lib/avatar-url";
 import { Bell, Trash2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
 import { setPendingAppeal } from "@/lib/pending-appeal-store";
 import { isSubscribedOnThisDevice } from "@/lib/push-notifications";
+import { PushNotificationsDialog } from "@/features/configuracoes/PushNotificationsDialog";
 
 function timeAgo(timestamp: string): string {
   const diffMs = Date.now() - new Date(timestamp).getTime();
@@ -44,6 +45,8 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
   const today = new Date();
   const queryClient = useQueryClient();
   const { isAdmin } = useRole(user?.id);
+  const [popoverOpen, setPopoverOpen] = useState(false);
+  const [pushDialogOpen, setPushDialogOpen] = useState(false);
 
   const appealsQ = useQuery({
     queryKey: ["notifications_appeals_admin", user?.id],
@@ -308,12 +311,8 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
     if (keys.length > 0) dismissAll.mutate(keys);
   };
 
-  const handleOpenChange = (open: boolean) => {
-    if (open) handleMarkAllRead();
-  };
-
   return (
-    <Popover onOpenChange={handleOpenChange}>
+    <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
       <PopoverTrigger asChild>
         <button className="relative flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-accent/50 focus:outline-none">
           <Bell className="h-4 w-4" />
@@ -328,10 +327,15 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
         <div className="flex items-center justify-between border-b border-border/40 px-4 py-3">
           <h3 className="text-sm font-semibold">Notificações</h3>
           <div className="flex items-center gap-3 text-xs">
-            <span className={cn("flex items-center gap-1 font-medium", pushEnabled ? "text-lime-400" : "text-muted-foreground/60")}>
+            <button
+              type="button"
+              className={cn("flex items-center gap-1 font-medium transition", pushEnabled ? "text-lime-400 hover:text-lime-300" : "text-muted-foreground/60 hover:text-muted-foreground")}
+              onClick={() => { setPopoverOpen(false); setPushDialogOpen(true); }}
+              title="Configurar notificações push"
+            >
               <Bell className="h-3.5 w-3.5" />
               {pushEnabled ? "Ativadas" : "Desativadas"}
-            </span>
+            </button>
             {unreadCount > 0 && (
               <button
                 type="button"
@@ -378,9 +382,9 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
                       <span className="mt-1.5 h-2 w-2 shrink-0" />
                     )}
                     <div className="min-w-0 flex-1">
-                      <p className="text-[13px] font-medium text-foreground leading-snug">{n.title}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground leading-snug">{n.subtitle}</p>
-                      <p className="mt-1 text-[11px] text-muted-foreground/50">{timeAgo(n.timestamp)}</p>
+                      <p className={cn("text-[13px] font-medium leading-snug", isUnread ? "text-foreground" : "text-muted-foreground")}>{n.title}</p>
+                      <p className={cn("mt-0.5 text-xs leading-snug", isUnread ? "text-muted-foreground" : "text-muted-foreground/60")}>{n.subtitle}</p>
+                      <p className={cn("mt-1 text-[11px]", isUnread ? "text-muted-foreground/50" : "text-muted-foreground/30")}>{timeAgo(n.timestamp)}</p>
                     </div>
                   </button>
                 );
@@ -389,6 +393,7 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
           )}
         </ScrollArea>
       </PopoverContent>
+      <PushNotificationsDialog open={pushDialogOpen} onOpenChange={setPushDialogOpen} />
     </Popover>
   );
 }
