@@ -1,18 +1,28 @@
 import { useMemo, useCallback } from "react";
 import { normalizeAvatarUrl } from "@/lib/avatar-url";
-import { Bell, AlertTriangle, AtSign, UserPlus, Clock, Check, CheckCheck, FileText, Trash2 } from "lucide-react";
+import { Bell, Trash2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { format, differenceInCalendarDays } from "date-fns";
+import { differenceInCalendarDays } from "date-fns";
 import { useRole } from "@/hooks/use-role";
 
-import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
 import { setPendingAppeal } from "@/lib/pending-appeal-store";
+import { isSubscribedOnThisDevice } from "@/lib/push-notifications";
+
+function timeAgo(timestamp: string): string {
+  const diffMs = Date.now() - new Date(timestamp).getTime();
+  const minutes = Math.floor(diffMs / 60000);
+  if (minutes < 1) return "agora";
+  if (minutes < 60) return `há ${minutes}min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `há ${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `há ${days}d`;
+}
 
 type NotificationItem = {
   id: string;
@@ -98,6 +108,13 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
       return data ?? [];
     },
   });
+
+  const pushEnabledQ = useQuery({
+    queryKey: ["push_subscribed_bell"],
+    queryFn: isSubscribedOnThisDevice,
+    staleTime: 30_000,
+  });
+  const pushEnabled = pushEnabledQ.data ?? false;
 
   const membersQ = useQuery({
     queryKey: ["team_members_notif"],
@@ -262,22 +279,6 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
 
   const unreadCount = notifications.filter(n => !readKeys.has(n.key)).length;
 
-  const typeIcon = {
-    mention: AtSign,
-    assigned: UserPlus,
-    overdue: AlertTriangle,
-    upcoming: Clock,
-    appeal: FileText,
-  };
-
-  const typeColor = {
-    mention: "text-primary",
-    assigned: "text-blue-400",
-    overdue: "text-destructive",
-    upcoming: "text-warning",
-    appeal: "text-yellow-500",
-  };
-
   const handleClickNotification = (n: NotificationItem) => {
     if (!readKeys.has(n.key)) {
       markAsRead.mutate(n.key);
@@ -326,29 +327,29 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
       <PopoverContent align="end" className="w-96 rounded-xl p-0">
         <div className="flex items-center justify-between border-b border-border/40 px-4 py-3">
           <h3 className="text-sm font-semibold">Notificações</h3>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-3 text-xs">
+            <span className={cn("flex items-center gap-1 font-medium", pushEnabled ? "text-lime-400" : "text-muted-foreground/60")}>
+              <Bell className="h-3.5 w-3.5" />
+              {pushEnabled ? "Ativadas" : "Desativadas"}
+            </span>
             {unreadCount > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+              <button
+                type="button"
+                className="text-muted-foreground transition hover:text-foreground"
                 onClick={handleMarkAllRead}
               >
-                <CheckCheck className="h-3.5 w-3.5" />
-                Marcar tudo como lido
-              </Button>
+                Marcar todas como lidas
+              </button>
             )}
             {notifications.length > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-destructive"
+              <button
+                type="button"
+                className="text-muted-foreground transition hover:text-destructive"
                 onClick={handleClearAll}
                 title="Limpar notificações"
               >
                 <Trash2 className="h-3.5 w-3.5" />
-                Limpar
-              </Button>
+              </button>
             )}
           </div>
         </div>
@@ -360,7 +361,6 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
           ) : (
             <div className="divide-y divide-border/30">
               {notifications.map(n => {
-                const Icon = typeIcon[n.type];
                 const isUnread = !readKeys.has(n.key);
                 return (
                   <button
@@ -372,19 +372,16 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
                       isUnread && "bg-primary/5"
                     )}
                   >
-                    <div className={cn("mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted/50", typeColor[n.type])}>
-                      <Icon className="h-3.5 w-3.5" />
-                    </div>
+                    {isUnread ? (
+                      <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />
+                    ) : (
+                      <span className="mt-1.5 h-2 w-2 shrink-0" />
+                    )}
                     <div className="min-w-0 flex-1">
                       <p className="text-[13px] font-medium text-foreground leading-snug">{n.title}</p>
-                      <p className="mt-0.5 truncate text-xs text-muted-foreground">{n.subtitle}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground leading-snug">{n.subtitle}</p>
+                      <p className="mt-1 text-[11px] text-muted-foreground/50">{timeAgo(n.timestamp)}</p>
                     </div>
-                    {isUnread && (
-                      <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />
-                    )}
-                    {!isUnread && (
-                      <Check className="mt-1.5 h-3 w-3 shrink-0 text-muted-foreground/40" />
-                    )}
                   </button>
                 );
               })}
