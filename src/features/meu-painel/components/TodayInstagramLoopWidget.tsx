@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { addDays, format, isToday as isSameDayAsToday } from "date-fns";
 import { Clock, Instagram, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,8 +32,15 @@ const GAP_PX = 8;
 const SWIPE_THRESHOLD = 0.3;
 
 export function TodayInstagramLoopWidget({ onOpenTask }: Props) {
-  const todayKey = useMemo(() => new Date().toLocaleDateString("en-CA"), []);
-  const pubsQ = useTodayScheduledPublications(todayKey);
+  // Defaults to today but is fully browsable — the hook just queries whatever
+  // publish_date it's given, "today" was never a hard requirement.
+  const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const dateKey = useMemo(() => format(selectedDate, "yyyy-MM-dd"), [selectedDate]);
+  const isToday = useMemo(() => isSameDayAsToday(selectedDate), [selectedDate]);
+  const goToPrevDay = () => setSelectedDate((d) => addDays(d, -1));
+  const goToNextDay = () => setSelectedDate((d) => addDays(d, 1));
+  const goToToday = () => setSelectedDate(new Date());
+  const pubsQ = useTodayScheduledPublications(dateKey);
   const publications = pubsQ.data ?? [];
   const taskIds = useMemo(() => publications.map((p) => p.taskId), [publications]);
   const attachmentsQ = useTaskAttachmentsMap(taskIds);
@@ -88,7 +96,7 @@ export function TodayInstagramLoopWidget({ onOpenTask }: Props) {
 
   useEffect(() => {
     setIndex(CLONES);
-  }, [N]);
+  }, [N, dateKey]);
 
   useEffect(() => {
     if (N <= 1 || paused) return;
@@ -144,15 +152,47 @@ export function TodayInstagramLoopWidget({ onOpenTask }: Props) {
   return (
     <Card className="flex h-full flex-col">
       <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2 text-sm">
-          <Instagram className="h-4 w-4 text-primary" />
-          Hoje no Instagram
-        </CardTitle>
+        <div className="flex items-center gap-2">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
+            <Instagram className="h-4 w-4" />
+          </div>
+          <CardTitle className="flex-1 text-sm">Publicações no Instagram</CardTitle>
+          <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">{N}</span>
+          {isToday && (
+            <span className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold text-primary">Hoje</span>
+          )}
+        </div>
+        <div className="mt-2 flex items-center justify-center gap-2">
+          <button
+            type="button"
+            onClick={goToPrevDay}
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-foreground/70 transition hover:bg-accent hover:text-foreground"
+            aria-label="Dia anterior"
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={goToToday}
+            className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-foreground transition hover:bg-accent"
+            title="Voltar para hoje"
+          >
+            {format(selectedDate, "dd/MM/yyyy")}
+          </button>
+          <button
+            type="button"
+            onClick={goToNextDay}
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-foreground/70 transition hover:bg-accent hover:text-foreground"
+            aria-label="Próximo dia"
+          >
+            <ChevronRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
       </CardHeader>
       <CardContent className="flex flex-1 flex-col p-0">
         {N === 0 ? (
           <div className="flex flex-1 items-center justify-center px-4 pb-4 text-center text-sm text-muted-foreground">
-            Nenhuma publicação prevista pra hoje
+            {isToday ? "Nenhuma publicação prevista pra hoje" : "Nenhuma publicação prevista para este dia"}
           </div>
         ) : (
           // Card stretches to match the left column's height (Atribuídas a mim +
