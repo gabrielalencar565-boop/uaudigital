@@ -144,9 +144,11 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [bannerPopoverOpen, setBannerPopoverOpen] = useState(false);
   const [bannerBlob, setBannerBlob] = useState<Blob | null>(null);
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
   const [bannerUrl, setBannerUrl] = useState<string | null>(null);
+  const [bannerCropSrc, setBannerCropSrc] = useState<string | null>(null);
   const bannerFileInputRef = useRef<HTMLInputElement>(null);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -240,15 +242,24 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
     const file = e.target.files?.[0];
     if (bannerFileInputRef.current) bannerFileInputRef.current.value = "";
     if (!file) return;
-    if (file.type !== "image/png") {
-      toast.error("Envie um PNG com fundo transparente (o recorte já precisa vir pronto).");
-      return;
-    }
-    if (bannerPreview) URL.revokeObjectURL(bannerPreview);
+    if (!file.type.startsWith("image/")) return;
     const url = URL.createObjectURL(file);
+    setBannerCropSrc(url);
+  }, []);
+
+  const handleBannerCropConfirm = useCallback((blob: Blob) => {
+    if (bannerPreview) URL.revokeObjectURL(bannerPreview);
+    if (bannerCropSrc) URL.revokeObjectURL(bannerCropSrc);
+    const url = URL.createObjectURL(blob);
     setBannerPreview(url);
-    setBannerBlob(file);
-  }, [bannerPreview]);
+    setBannerBlob(blob);
+    setBannerCropSrc(null);
+  }, [bannerPreview, bannerCropSrc]);
+
+  const handleBannerCropCancel = useCallback(() => {
+    if (bannerCropSrc) URL.revokeObjectURL(bannerCropSrc);
+    setBannerCropSrc(null);
+  }, [bannerCropSrc]);
 
   const handleRemoveBanner = useCallback(() => {
     if (bannerPreview) URL.revokeObjectURL(bannerPreview);
@@ -281,10 +292,10 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
       if (bannerBlob) {
         if (bannerBlob.size > 5 * 1024 * 1024) throw new Error("Imagem muito grande (máx 5MB)");
 
-        const bannerPath = `${user.id}/banner-${crypto.randomUUID()}.png`;
+        const bannerPath = `${user.id}/banner-${crypto.randomUUID()}.webp`;
         const bannerUp = await supabase.storage.from("avatars").upload(bannerPath, bannerBlob, {
           upsert: true,
-          contentType: "image/png",
+          contentType: "image/webp",
         });
         if (bannerUp.error) throw bannerUp.error;
         const bannerPub = supabase.storage.from("avatars").getPublicUrl(bannerPath);
@@ -388,45 +399,62 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
           <div className="space-y-2">
             <Label>Foto para o Meu Painel (opcional)</Label>
             <div className="flex items-center gap-4">
-              <div
-                className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-border/60"
-                style={{
-                  backgroundImage: "linear-gradient(45deg, hsl(var(--muted)) 25%, transparent 25%), linear-gradient(-45deg, hsl(var(--muted)) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, hsl(var(--muted)) 75%), linear-gradient(-45deg, transparent 75%, hsl(var(--muted)) 75%)",
-                  backgroundSize: "10px 10px",
-                  backgroundPosition: "0 0, 0 5px, 5px -5px, -5px 0px",
-                }}
-              >
-                {(bannerPreview || bannerUrl) ? (
-                  <img src={bannerPreview ?? bannerUrl ?? undefined} alt="Foto do painel" className="h-full w-full object-contain" />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center">
-                    <ImagePlus className="h-5 w-5 text-muted-foreground/40" />
-                  </div>
-                )}
-              </div>
-              <div className="flex-1">
-                <p className="text-sm text-muted-foreground">Aparece "vazada" na sua saudação do Meu Painel</p>
-                <p className="text-xs text-muted-foreground">PNG com fundo transparente já recortado • até 5MB</p>
-                <div className="mt-1.5 flex gap-2">
+              <Popover open={bannerPopoverOpen} onOpenChange={setBannerPopoverOpen}>
+                <PopoverTrigger asChild>
                   <button
                     type="button"
-                    className="text-xs font-medium text-primary hover:underline"
-                    onClick={() => bannerFileInputRef.current?.click()}
+                    className="relative group h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-border/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    style={{
+                      backgroundImage: "linear-gradient(45deg, hsl(var(--muted)) 25%, transparent 25%), linear-gradient(-45deg, hsl(var(--muted)) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, hsl(var(--muted)) 75%), linear-gradient(-45deg, transparent 75%, hsl(var(--muted)) 75%)",
+                      backgroundSize: "10px 10px",
+                      backgroundPosition: "0 0, 0 5px, 5px -5px, -5px 0px",
+                    }}
                   >
-                    {(bannerPreview || bannerUrl) ? "Trocar" : "Selecionar PNG"}
+                    {(bannerPreview || bannerUrl) ? (
+                      <img src={bannerPreview ?? bannerUrl ?? undefined} alt="Foto do painel" className="h-full w-full object-cover object-top" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center">
+                        <ImagePlus className="h-5 w-5 text-muted-foreground/40" />
+                      </div>
+                    )}
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
+                      <Camera className="h-5 w-5 text-white" />
+                    </div>
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-44 p-1" align="start">
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-accent transition-colors"
+                    onClick={() => { setBannerPopoverOpen(false); bannerFileInputRef.current?.click(); }}
+                  >
+                    <ImagePlus className="h-4 w-4" /> {(bannerPreview || bannerUrl) ? "Trocar foto" : "Selecionar foto"}
                   </button>
                   {(bannerPreview || bannerUrl) && (
                     <button
                       type="button"
-                      className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-destructive"
-                      onClick={handleRemoveBanner}
+                      className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-accent transition-colors"
+                      onClick={() => { setBannerPopoverOpen(false); setBannerCropSrc(bannerPreview ?? bannerUrl!); }}
                     >
-                      <X className="h-3 w-3" /> Remover
+                      <Crop className="h-4 w-4" /> Ajustar foto
                     </button>
                   )}
-                </div>
+                </PopoverContent>
+              </Popover>
+              <div className="flex-1">
+                <p className="text-sm text-muted-foreground">Aparece na sua saudação do Meu Painel</p>
+                <p className="text-xs text-muted-foreground">Qualquer foto, com zoom e posição pra você ajustar • até 5MB</p>
+                {(bannerPreview || bannerUrl) && (
+                  <button
+                    type="button"
+                    className="mt-1.5 flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-destructive"
+                    onClick={handleRemoveBanner}
+                  >
+                    <X className="h-3 w-3" /> Remover
+                  </button>
+                )}
               </div>
-              <input ref={bannerFileInputRef} type="file" accept="image/png" className="hidden" onChange={handleBannerFileSelect} />
+              <input ref={bannerFileInputRef} type="file" accept="image/*" className="hidden" onChange={handleBannerFileSelect} />
             </div>
           </div>
 
@@ -435,6 +463,18 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
             imageSrc={cropSrc ?? ""}
             onConfirm={handleCropConfirm}
             onCancel={handleCropCancel}
+          />
+
+          <AvatarCropDialog
+            open={!!bannerCropSrc}
+            imageSrc={bannerCropSrc ?? ""}
+            onConfirm={handleBannerCropConfirm}
+            onCancel={handleBannerCropCancel}
+            title="Ajustar foto do Meu Painel"
+            aspect={0.8}
+            cropShape="rect"
+            outputWidth={480}
+            outputHeight={600}
           />
 
           <div className="space-y-2">
