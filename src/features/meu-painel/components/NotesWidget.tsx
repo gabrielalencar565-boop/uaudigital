@@ -70,7 +70,9 @@ export function NotesWidget() {
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="flex items-center gap-2 text-sm">
-            <StickyNote className="h-4 w-4 text-primary" />
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
+              <StickyNote className="h-4 w-4" />
+            </div>
             Notas
           </CardTitle>
           <button
