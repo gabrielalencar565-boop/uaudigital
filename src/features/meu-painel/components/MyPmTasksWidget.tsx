@@ -19,7 +19,7 @@ const PRIORITY_FLAG: Record<string, string> = {
   baixa: "text-muted-foreground/40",
 };
 
-function dueDateLabel(dueDate: string | null, todayKey: string, isDone = false) {
+export function dueDateLabel(dueDate: string | null, todayKey: string, isDone = false) {
   if (!dueDate) return { text: "—", color: "text-muted-foreground" };
   const today = new Date(todayKey + "T00:00:00");
   const due = new Date(dueDate + "T00:00:00");

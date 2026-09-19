@@ -30,6 +30,7 @@ import { SmartFeedbackWidget } from "@/features/meu-painel/components/SmartFeedb
 import { DayQuickView } from "@/features/meu-painel/components/DayQuickView";
 import { BottleneckWidget } from "@/features/meu-painel/components/BottleneckWidget";
 import { MetricSparkCard } from "@/features/meu-painel/components/MetricSparkCard";
+import { MetricTaskListSheet } from "@/features/meu-painel/components/MetricTaskListSheet";
 import { LateAppealDialog } from "@/features/tasks/LateAppealDialog";
 import { isTaskLate } from "@/features/tasks/is-task-late";
 
@@ -210,6 +211,31 @@ export function MeuPainelPanel() {
     const pending = myMonthPmTasks.length - done - overdue;
     return { total: myMonthPmTasks.length, done, pending, overdue };
   }, [myMonthPmTasks, todayKey]);
+
+  // Which metric card's task list is open in the side sheet, if any.
+  const [metricSheet, setMetricSheet] = useState<"total" | "done" | "pending" | "overdue" | null>(null);
+  const metricSheetTasks = useMemo(() => {
+    switch (metricSheet) {
+      case "done":
+        return myMonthPmTasks.filter((t) => t.status_global === "concluido");
+      case "overdue":
+        return myMonthPmTasks.filter((t) => t.status_global !== "concluido" && t.due_date! < todayKey);
+      case "pending":
+        return myMonthPmTasks.filter((t) => t.status_global !== "concluido" && t.due_date! >= todayKey);
+      case "total":
+        return myMonthPmTasks;
+      default:
+        return [];
+    }
+  }, [metricSheet, myMonthPmTasks, todayKey]);
+  const metricSheetTitle: Record<"total" | "done" | "pending" | "overdue", string> = {
+    total: "Tarefas", done: "Concluídas", pending: "Pendentes", overdue: "Atrasadas",
+  };
+  const clientsNameMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    (clientsQ.data ?? []).forEach((c) => { m[c.id] = c.name; });
+    return m;
+  }, [clientsQ.data]);
 
   // ── Previous month for comparison ──
   const prevMonth = useMemo(() => {
@@ -451,10 +477,10 @@ export function MeuPainelPanel() {
 
       {/* ── 3. METRIC CARDS ── */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.15s" }}>
-        <MetricSparkCard label="Tarefas" value={summary.total} icon={<ListChecks className="h-5 w-5" />} tone="violet" description="Total de tarefas atribuídas a você neste mês, em qualquer etapa." />
-        <MetricSparkCard label="Concluídas" value={summary.done} icon={<CheckCircle2 className="h-5 w-5" />} tone="emerald" description="Tarefas que você já finalizou neste mês." />
-        <MetricSparkCard label="Pendentes" value={summary.pending} icon={<Clock className="h-5 w-5" />} tone="amber" description="Tarefas ainda em aberto, dentro do prazo." />
-        <MetricSparkCard label="Atrasadas" value={summary.overdue} icon={<AlertTriangle className="h-5 w-5" />} tone="red" description="Tarefas com prazo vencido que ainda não foram concluídas." />
+        <MetricSparkCard label="Tarefas" value={summary.total} icon={<ListChecks className="h-5 w-5" />} tone="violet" description="Total de tarefas atribuídas a você neste mês, em qualquer etapa." onClick={() => setMetricSheet("total")} />
+        <MetricSparkCard label="Concluídas" value={summary.done} icon={<CheckCircle2 className="h-5 w-5" />} tone="emerald" description="Tarefas que você já finalizou neste mês." onClick={() => setMetricSheet("done")} />
+        <MetricSparkCard label="Pendentes" value={summary.pending} icon={<Clock className="h-5 w-5" />} tone="amber" description="Tarefas ainda em aberto, dentro do prazo." onClick={() => setMetricSheet("pending")} />
+        <MetricSparkCard label="Atrasadas" value={summary.overdue} icon={<AlertTriangle className="h-5 w-5" />} tone="red" description="Tarefas com prazo vencido que ainda não foram concluídas." onClick={() => setMetricSheet("overdue")} />
       </div>
 
       {/* ── 4/6. PM TASKS + NOTES (left) alongside TODAY'S INSTAGRAM LOOP (right,
@@ -481,6 +507,17 @@ export function MeuPainelPanel() {
 
       {/* ── PM Task Dialog ── */}
       <PmTaskDetailDialogWrapper taskId={selectedPmTaskId} onClose={() => setSelectedPmTaskId(null)} isAdmin={isAdmin} />
+
+      {/* ── Metric card task list (Tarefas/Concluídas/Pendentes/Atrasadas) ── */}
+      <MetricTaskListSheet
+        open={!!metricSheet}
+        onOpenChange={(open) => { if (!open) setMetricSheet(null); }}
+        title={metricSheet ? metricSheetTitle[metricSheet] : ""}
+        tasks={metricSheetTasks}
+        clientsMap={clientsNameMap}
+        todayKey={todayKey}
+        onOpenTask={(taskId) => setSelectedPmTaskId(taskId)}
+      />
 
       {/* ── Late task appeal dialog ── */}
       <LateAppealDialog
