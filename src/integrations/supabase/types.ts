@@ -2666,6 +2666,7 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          banner_photo_url: string | null
           created_at: string
           full_name: string
           id: string
@@ -2675,6 +2676,7 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          banner_photo_url?: string | null
           created_at?: string
           full_name: string
           id?: string
@@ -2684,6 +2686,7 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          banner_photo_url?: string | null
           created_at?: string
           full_name?: string
           id?: string
@@ -3204,6 +3207,7 @@ export type Database = {
       team_members: {
         Row: {
           avatar_url: string | null
+          banner_photo_url: string | null
           birth_date: string | null
           created_at: string
           display_name: string
@@ -3214,6 +3218,7 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          banner_photo_url?: string | null
           birth_date?: string | null
           created_at?: string
           display_name: string
@@ -3224,6 +3229,7 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          banner_photo_url?: string | null
           birth_date?: string | null
           created_at?: string
           display_name?: string
