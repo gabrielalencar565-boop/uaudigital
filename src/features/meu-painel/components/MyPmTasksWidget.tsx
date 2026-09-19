@@ -371,7 +371,9 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
       <Card className="rounded-2xl border border-border bg-card shadow-sm">
         <CardHeader className="px-5 pt-4 pb-3">
           <div className="flex items-center gap-2">
-            <ListChecks className="h-5 w-5 text-muted-foreground" />
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
+              <ListChecks className="h-4 w-4" />
+            </div>
             <CardTitle className="text-base font-semibold">Atribuídas a mim</CardTitle>
           </div>
         </CardHeader>
@@ -471,7 +473,12 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Atribuídas a mim</CardTitle>
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
+              <ListChecks className="h-4 w-4" />
+            </div>
+            <CardTitle className="text-base">Atribuídas a mim</CardTitle>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
         {/* Em atraso */}
