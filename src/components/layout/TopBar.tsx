@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from "react";
-import { BellRing, LogOut, Moon, Pencil, Sun, Volume2 } from "lucide-react";
+import { BellRing, CircleHelp, LogOut, Moon, Pencil, Sun, Volume2 } from "lucide-react";
 import { useTheme } from "next-themes";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -21,6 +21,7 @@ import { ChatBellButton } from "@/features/chat/ChatBellButton";
 import { useQueryClient } from "@tanstack/react-query";
 import { NotificationSoundsDialog } from "@/features/configuracoes/NotificationSoundsDialog";
 import { PushNotificationsDialog } from "@/features/configuracoes/PushNotificationsDialog";
+import { ReportProblemDialog } from "@/features/configuracoes/ReportProblemDialog";
 
 function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
@@ -38,6 +39,7 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [soundsOpen, setSoundsOpen] = useState(false);
   const [pushOpen, setPushOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
 
   const userName = myProfileQ.data?.full_name ?? "Usuário";
   const userRole = myProfileQ.data?.role_title ?? "Colaborador";
@@ -91,6 +93,16 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
       <div className="flex h-full items-center justify-end px-4">
         {/* Right: Notifications + Profile */}
         <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setReportOpen(true)}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-accent/50 focus:outline-none"
+            aria-label="Relatar um problema"
+            title="Relatar um problema"
+          >
+            <CircleHelp className="h-[18px] w-[18px]" />
+          </button>
+
           <ChatBellButton />
           <TaskSearchDropdown onSelectTask={(id) => onOpenTask?.(id)} />
           <NotificationsDropdown onOpenTask={onOpenTask} />
@@ -178,6 +190,7 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
       </div>
       <NotificationSoundsDialog open={soundsOpen} onOpenChange={setSoundsOpen} />
       <PushNotificationsDialog open={pushOpen} onOpenChange={setPushOpen} />
+      <ReportProblemDialog open={reportOpen} onOpenChange={setReportOpen} />
     </header>
 
   );

@@ -112,17 +112,21 @@ export function usePmAllChildTasks() {
     staleTime: 30_000,
     queryFn: async () => {
       const pageSize = 1000;
-      const filtered = () => sb.from("pm_tasks").not("parent_task_id", "is", null).is("deleted_at", null);
+      // Postgrest só expõe filtros como `.not()`/`.is()` DEPOIS de `.select()` — chamá-los
+      // direto em `.from()` quebra em runtime ("... .not is not a function"), então o
+      // filtro entra como uma função aplicada por cima de cada `.select()` já construído.
+      const withFilters = (q: any) => q.not("parent_task_id", "is", null).is("deleted_at", null);
 
-      const { count, error: countError } = await filtered().select("id", { count: "exact", head: true });
+      const { count, error: countError } = await withFilters(
+        sb.from("pm_tasks").select("id", { count: "exact", head: true }),
+      );
       if (countError) throw countError;
 
       const totalPages = Math.max(1, Math.ceil((count ?? 0) / pageSize));
       const pages = await Promise.all(
         Array.from({ length: totalPages }, (_, i) => {
           const from = i * pageSize;
-          return filtered()
-            .select(PM_TASK_LIST_COLUMNS)
+          return withFilters(sb.from("pm_tasks").select(PM_TASK_LIST_COLUMNS))
             .order("created_at", { ascending: true })
             .range(from, from + pageSize - 1);
         }),

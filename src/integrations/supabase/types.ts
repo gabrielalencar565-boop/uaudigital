@@ -60,6 +60,13 @@ export type Database = {
           sidebar_symbol_url: string | null
           updated_at: string
           updated_by: string | null
+          whats_new_description: string | null
+          whats_new_enabled: boolean
+          whats_new_published_at: string | null
+          whats_new_target_action: string | null
+          whats_new_target_selector: string | null
+          whats_new_target_tab: string | null
+          whats_new_title: string | null
           workspace_name: string
         }
         Insert: {
@@ -77,6 +84,13 @@ export type Database = {
           sidebar_symbol_url?: string | null
           updated_at?: string
           updated_by?: string | null
+          whats_new_description?: string | null
+          whats_new_enabled?: boolean
+          whats_new_published_at?: string | null
+          whats_new_target_action?: string | null
+          whats_new_target_selector?: string | null
+          whats_new_target_tab?: string | null
+          whats_new_title?: string | null
           workspace_name?: string
         }
         Update: {
@@ -94,6 +108,13 @@ export type Database = {
           sidebar_symbol_url?: string | null
           updated_at?: string
           updated_by?: string | null
+          whats_new_description?: string | null
+          whats_new_enabled?: boolean
+          whats_new_published_at?: string | null
+          whats_new_target_action?: string | null
+          whats_new_target_selector?: string | null
+          whats_new_target_tab?: string | null
+          whats_new_title?: string | null
           workspace_name?: string
         }
         Relationships: []
@@ -1548,6 +1569,78 @@ export type Database = {
           },
         ]
       }
+      help_changelog_entries: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string | null
+          cta_label: string | null
+          cta_target_selector: string | null
+          cta_target_tab: string | null
+          description: string
+          id: string
+          publish_as_banner: boolean
+          published_at: string
+          title: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          created_by?: string | null
+          cta_label?: string | null
+          cta_target_selector?: string | null
+          cta_target_tab?: string | null
+          description: string
+          id?: string
+          publish_as_banner?: boolean
+          published_at?: string
+          title: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          cta_label?: string | null
+          cta_target_selector?: string | null
+          cta_target_tab?: string | null
+          description?: string
+          id?: string
+          publish_as_banner?: boolean
+          published_at?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      help_faq_items: {
+        Row: {
+          answer: string
+          category: string
+          created_at: string
+          created_by: string | null
+          id: string
+          order_index: number
+          question: string
+        }
+        Insert: {
+          answer: string
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          order_index?: number
+          question: string
+        }
+        Update: {
+          answer?: string
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          order_index?: number
+          question?: string
+        }
+        Relationships: []
+      }
       instagram_connections: {
         Row: {
           access_token: string | null
@@ -2663,11 +2756,45 @@ export type Database = {
           },
         ]
       }
+      problem_reports: {
+        Row: {
+          attachment_url: string | null
+          created_at: string
+          description: string
+          element_info: Json | null
+          id: string
+          page_context: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          attachment_url?: string | null
+          created_at?: string
+          description: string
+          element_info?: Json | null
+          id?: string
+          page_context?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          attachment_url?: string | null
+          created_at?: string
+          description?: string
+          element_info?: Json | null
+          id?: string
+          page_context?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
           banner_photo_url: string | null
           created_at: string
+          dashboard_layout: Json | null
           full_name: string
           id: string
           role_title: string
@@ -2678,6 +2805,7 @@ export type Database = {
           avatar_url?: string | null
           banner_photo_url?: string | null
           created_at?: string
+          dashboard_layout?: Json | null
           full_name: string
           id?: string
           role_title: string
@@ -2688,6 +2816,7 @@ export type Database = {
           avatar_url?: string | null
           banner_photo_url?: string | null
           created_at?: string
+          dashboard_layout?: Json | null
           full_name?: string
           id?: string
           role_title?: string
@@ -4050,7 +4179,7 @@ export type Database = {
     }
     Enums: {
       access_request_status: "pending" | "approved" | "rejected"
-      app_role: "admin" | "collaborator" | "planner"
+      app_role: "admin" | "collaborator" | "planner" | "developer"
       calendar_status:
         | "em_montagem"
         | "enviado_ao_cliente"
@@ -4283,7 +4412,7 @@ export const Constants = {
   public: {
     Enums: {
       access_request_status: ["pending", "approved", "rejected"],
-      app_role: ["admin", "collaborator", "planner"],
+      app_role: ["admin", "collaborator", "planner", "developer"],
       calendar_status: [
         "em_montagem",
         "enviado_ao_cliente",

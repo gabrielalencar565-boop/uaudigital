@@ -35,6 +35,7 @@ const ProjetosPanel = lazy(() => import("@/features/projetos/ProjetosPanel").the
 const RecompensasPanel = lazy(() => import("@/features/recompensas/RecompensasPanel").then((m) => ({ default: m.RecompensasPanel })));
 const ConversasPanel = lazy(() => import("@/features/conversas/ConversasPanel").then((m) => ({ default: m.ConversasPanel })));
 const ComercialPanel = lazy(() => import("@/features/admin/comercial/ComercialPanel").then((m) => ({ default: m.ComercialPanel })));
+const AjudaPanel = lazy(() => import("@/features/ajuda/AjudaPanel").then((m) => ({ default: m.AjudaPanel })));
 
 function PanelLoadingFallback() {
   return (
@@ -85,6 +86,15 @@ const Index = () => {
     const handler = () => setTab("calendario_publicacao");
     window.addEventListener("open-calendario-publicacao", handler);
     return () => window.removeEventListener("open-calendario-publicacao", handler);
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { tab?: MainTab } | undefined;
+      if (detail?.tab) setTab(detail.tab);
+    };
+    window.addEventListener("uau:switch-tab", handler);
+    return () => window.removeEventListener("uau:switch-tab", handler);
   }, []);
 
   const form = useForm<ProfileValues>({
@@ -344,6 +354,7 @@ const Index = () => {
     if (tab === "meu_painel") return <MeuPainelPanel />;
     if (tab === "desempenho") return <PerformancePanel />;
     if (tab === "magic2") return <Magic2Panel />;
+    if (tab === "ajuda") return <AjudaPanel />;
     return <MeuPainelPanel />;
   };
 

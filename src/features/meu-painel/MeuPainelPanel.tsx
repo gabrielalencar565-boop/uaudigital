@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
-import { endOfMonth, format, getDay, subDays } from "date-fns";
-import { ListChecks, CheckCircle2, Clock, AlertTriangle, Flame, Activity, Trophy, ChevronDown } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { endOfMonth, format, getDay, addMonths, subMonths, isSameMonth } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { ListChecks, CheckCircle2, Clock, AlertTriangle, Activity, Trophy, ChevronLeft, ChevronRight, Settings2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
 
@@ -16,7 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { MeuPainelTasksGroupedCard, type MeuPainelTaskVM } from "@/features/meu-painel/components/MeuPainelTasksGroupedCard";
 import { useMyMonthlyPerformanceRank } from "@/features/meu-painel/hooks/use-my-monthly-performance-rank";
 import { MeuPainelPerformanceRankCard } from "@/features/meu-painel/components/MeuPainelPerformanceRankCard";
-import { useMyAnnualPerformanceRank } from "@/features/meu-painel/hooks/use-my-annual-performance-rank";
+import { MeuPainelMagicNumberCard } from "@/features/meu-painel/components/MeuPainelMagicNumberCard";
 import { useNow } from "@/hooks/use-now";
 import { NotesWidget } from "@/features/meu-painel/components/NotesWidget";
 import { TodayInstagramLoopWidget } from "@/features/meu-painel/components/TodayInstagramLoopWidget";
@@ -26,6 +27,7 @@ import { openTaskInCalendario } from "@/features/calendario/open-in-calendario";
 import { usePmTasks } from "@/features/gestao/hooks/use-pm-data";
 import { useQuery } from "@tanstack/react-query";
 import { ProductivityWidget } from "@/features/meu-painel/components/ProductivityWidget";
+import { WorkBreakdownWidget } from "@/features/meu-painel/components/WorkBreakdownWidget";
 import { SmartFeedbackWidget } from "@/features/meu-painel/components/SmartFeedbackWidget";
 import { DayQuickView } from "@/features/meu-painel/components/DayQuickView";
 import { BottleneckWidget } from "@/features/meu-painel/components/BottleneckWidget";
@@ -40,8 +42,10 @@ import {
   useCleaningCompletions,
   useToggleCleaningCompletion,
 } from "@/features/cleaning/hooks/use-cleaning";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useMyProfile } from "@/hooks/use-my-profile";
+import { useMyDashboardLayout, type BlockWidth, type DashboardBlockKey } from "@/features/meu-painel/hooks/use-dashboard-layout";
+import { PersonalizeDashboardDialog } from "@/features/meu-painel/components/PersonalizeDashboardDialog";
+import { getPendingMeuPainelAction, setPendingMeuPainelAction, subscribePendingMeuPainelAction } from "@/lib/pending-meu-painel-action-store";
 
 // ── Helpers ──────────────────────────────────────────────
 
@@ -119,6 +123,38 @@ const motivationalLines = [
   "Brilhar nos detalhes é o que transforma bom em memorável.",
 ];
 
+const WIDTH_GROUP_SIZE: Record<BlockWidth, number> = { full: 1, half: 2, third: 3 };
+const ROW_GRID_CLASS: Record<number, string> = {
+  2: "grid grid-cols-1 items-stretch gap-4 md:grid-cols-2",
+  3: "grid grid-cols-1 items-stretch gap-4 md:grid-cols-3",
+};
+
+// Agrupa em linhas quaisquer blocos CONSECUTIVOS com a MESMA largura definida (metade,
+// terço) — qualquer bloco pode virar meio ou terço, não só um par fixo. Um grupo incompleto
+// (ex.: só 2 blocos marcados como "terço" em sequência, sem um 3º pra fechar a linha) divide
+// a linha igualmente entre os que tem, em vez de deixar um vão vazio. Usado tanto pro painel
+// normal quanto pro modo de edição.
+function computeRows(order: DashboardBlockKey[], widths: Record<DashboardBlockKey, BlockWidth>): DashboardBlockKey[][] {
+  const rows: DashboardBlockKey[][] = [];
+  let i = 0;
+  while (i < order.length) {
+    const w = widths[order[i]] ?? "full";
+    if (w === "full") {
+      rows.push([order[i]]);
+      i += 1;
+      continue;
+    }
+    const groupSize = WIDTH_GROUP_SIZE[w];
+    const group: DashboardBlockKey[] = [];
+    while (i < order.length && group.length < groupSize && (widths[order[i]] ?? "full") === w) {
+      group.push(order[i]);
+      i += 1;
+    }
+    rows.push(group);
+  }
+  return rows;
+}
+
 // ── Main Panel ───────────────────────────────────────────
 
 export function MeuPainelPanel() {
@@ -127,6 +163,10 @@ export function MeuPainelPanel() {
 
   const [selectedPmTaskId, setSelectedPmTaskId] = useState<string | null>(null);
   const [confettiFired, setConfettiFired] = useState(false);
+  const { visibleOrder: blockOrder, widths: savedWidths } = useMyDashboardLayout();
+  const [personalizeOpen, setPersonalizeOpen] = useState(false);
+  const [highlightPersonalize, setHighlightPersonalize] = useState(false);
+  const personalizeBtnRef = useRef<HTMLButtonElement>(null);
   const today = useNow();
   const todayKey = format(today, "yyyy-MM-dd");
 
@@ -134,7 +174,6 @@ export function MeuPainelPanel() {
   const monthKey = useMemo(() => `${selected.year}-${String(selected.month).padStart(2, "0")}`, [selected.month, selected.year]);
 
   const perf = useMyMonthlyPerformanceRank({ userId: user?.id, year: selected.year, month: selected.month });
-  const perfYear = useMyAnnualPerformanceRank({ userId: user?.id, year: selected.year });
   const myProfileQ = useMyProfile();
 
   const teamMembersQ = useTeamMembers();
@@ -165,6 +204,11 @@ export function MeuPainelPanel() {
       !!t.due_date && t.due_date >= `${monthKey}-01` && t.due_date <= monthEndKey
     );
   }, [pmTasksForSummaryQ.data, user?.id, monthKey, monthEndKey]);
+
+  // ── Mês selecionado no widget "Por tipo de entrega" (independente do mês do painel) ──
+  const [breakdownMonth, setBreakdownMonth] = useState(() => new Date());
+  const breakdownIsCurrentMonth = isSameMonth(breakdownMonth, new Date());
+  const [productivityTab, setProductivityTab] = useState<"geral" | "breakdown">("geral");
 
   // ── Cleaning ──
   const cleaningSchedulesQ = useCleaningSchedules();
@@ -317,18 +361,6 @@ export function MeuPainelPanel() {
     staleTime: 60_000,
   });
 
-  // ── Streak calculation ──
-  const streak = useMemo(() => {
-    let count = 0;
-    for (let i = 0; i < 30; i++) {
-      const d = format(subDays(today, i), "yyyy-MM-dd");
-      const doneOnDay = myTasks.some((t) => t.status === "concluido" && t.completed_at && format(new Date(t.completed_at), "yyyy-MM-dd") === d);
-      if (doneOnDay) count++;
-      else if (i > 0) break; // break on first gap (skip today if nothing yet)
-    }
-    return count;
-  }, [myTasks, todayKey]);
-
   // ── Bottleneck data ──
   const pendingByStage = useMemo(() => {
     return myTasks.filter((t) => t.status !== "concluido").reduce((acc, t) => {
@@ -416,6 +448,121 @@ export function MeuPainelPanel() {
     return { id: t.id, clientName: client?.name ?? "—", stageLabel, stage: t.stage, title: t.title, dueDate: t.due_date, status: t.status, completedAt: t.completed_at ?? null };
   };
 
+  // Linhas do painel: blocos com a mesma largura definida (metade, terço) ficam lado a lado,
+  // o resto ocupa a largura toda.
+  const normalRows = useMemo(() => computeRows(blockOrder, savedWidths), [blockOrder, savedWidths]);
+
+  // Consome um pedido de "destacar o botão de personalizar" feito por outra parte do app
+  // (ex.: o aviso de novidade no topo) — rola até o botão e acende o contorno em degradê
+  // por alguns segundos, sem abrir o diálogo de personalização sozinho. Pode ter sido
+  // guardado antes deste painel existir, então checa o valor pendente já no mount e
+  // também escuta atualizações posteriores.
+  useEffect(() => {
+    const consume = (action: string | null) => {
+      if (action === "highlight_personalize") {
+        setPendingMeuPainelAction(null);
+        requestAnimationFrame(() => {
+          personalizeBtnRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        });
+        setHighlightPersonalize(true);
+        window.setTimeout(() => {
+          setHighlightPersonalize(false);
+        }, 4000);
+      }
+    };
+    consume(getPendingMeuPainelAction());
+    return subscribePendingMeuPainelAction(consume);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const renderBlockBody = (key: DashboardBlockKey): React.ReactNode => {
+    switch (key) {
+      case "metrics":
+        return (
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <MetricSparkCard label="Tarefas" value={summary.total} icon={<ListChecks className="h-5 w-5" />} tone="violet" description="Total de tarefas atribuídas a você neste mês, em qualquer etapa." onClick={() => setMetricSheet("total")} />
+            <MetricSparkCard label="Concluídas" value={summary.done} icon={<CheckCircle2 className="h-5 w-5" />} tone="emerald" description="Tarefas que você já finalizou neste mês." onClick={() => setMetricSheet("done")} />
+            <MetricSparkCard label="Pendentes" value={summary.pending} icon={<Clock className="h-5 w-5" />} tone="amber" description="Tarefas ainda em aberto, dentro do prazo." onClick={() => setMetricSheet("pending")} />
+            <MetricSparkCard label="Atrasadas" value={summary.overdue} icon={<AlertTriangle className="h-5 w-5" />} tone="red" description="Tarefas com prazo vencido que ainda não foram concluídas." onClick={() => setMetricSheet("overdue")} />
+          </div>
+        );
+      case "tasks":
+        return <MyPmTasksWidget onOpenTask={(taskId) => setSelectedPmTaskId(taskId)} />;
+      case "instagram":
+        return <TodayInstagramLoopWidget onOpenTask={(taskId) => setSelectedPmTaskId(taskId)} />;
+      case "notes":
+        return <NotesWidget />;
+      case "productivity_breakdown":
+        return (
+          <CollapsibleWidget title="Sua produtividade" icon={<Activity className="h-4 w-4 text-sidebar" />}>
+            <div className="mt-1 flex flex-wrap items-center justify-between gap-2 border-b border-border px-4">
+              <div className="flex items-center gap-5">
+                <button
+                  type="button"
+                  onClick={() => setProductivityTab("geral")}
+                  className={cn(
+                    "border-b-2 py-2.5 text-xs font-semibold uppercase tracking-wide transition",
+                    productivityTab === "geral" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  Visão geral
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setProductivityTab("breakdown")}
+                  className={cn(
+                    "border-b-2 py-2.5 text-xs font-semibold uppercase tracking-wide transition",
+                    productivityTab === "breakdown" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  Por tipo de entrega
+                </button>
+              </div>
+              {productivityTab === "breakdown" && (
+                <div className="flex shrink-0 items-center gap-1 pb-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setBreakdownMonth((d) => subMonths(d, 1))}
+                    className="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                    aria-label="Mês anterior"
+                  >
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBreakdownMonth(new Date())}
+                    disabled={breakdownIsCurrentMonth}
+                    title={breakdownIsCurrentMonth ? undefined : "Voltar pro mês atual"}
+                    className={cn("min-w-[92px] text-center text-xs font-medium text-muted-foreground", !breakdownIsCurrentMonth && "hover:text-foreground")}
+                  >
+                    {(() => {
+                      const s = format(breakdownMonth, "MMMM yyyy", { locale: ptBR });
+                      return s.charAt(0).toUpperCase() + s.slice(1);
+                    })()}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBreakdownMonth((d) => addMonths(d, 1))}
+                    className="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                    aria-label="Próximo mês"
+                  >
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+            {productivityTab === "geral" ? (
+              <ProductivityWidget tasks={myTasks} allMonthTasks={[...myTasks, ...(prevTasksQ.data ?? [])]} todayKey={todayKey} userId={user?.id} />
+            ) : (
+              <WorkBreakdownWidget allTasks={pmTasksForSummaryQ.data ?? []} month={breakdownMonth} userId={user?.id} />
+            )}
+          </CollapsibleWidget>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="space-y-5">
       {/* ── 1. HEADER + RANK (um único banner com o degradê de ponta a ponta) ── */}
@@ -447,87 +594,76 @@ export function MeuPainelPanel() {
             </div>
           )}
 
-          <div className={cn("relative z-10 flex flex-col gap-4 p-5 sm:p-6 md:flex-row md:items-center md:gap-5", bannerPhotoUrl && "sm:pl-48 md:pl-56")}>
+          <div className={cn("relative z-10 flex flex-col gap-3 p-5 sm:p-6 md:flex-row md:items-center md:gap-4", bannerPhotoUrl && "sm:pl-48 md:pl-56")}>
             <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
-              <div className="flex min-w-0 items-center gap-3.5">
+              <div className="flex min-w-0 items-center gap-3">
                 <div className={cn("relative shrink-0", bannerPhotoUrl && "sm:hidden")}>
                   <div className="absolute -inset-[3px] rounded-full" style={{ background: "linear-gradient(135deg, hsl(var(--brand-glow-6)), hsl(var(--brand-glow-7)), hsl(var(--brand-glow-5)))", opacity: 0.9, animation: "spin 6s linear infinite" }} />
-                  <UserAvatar avatarUrl={myProfile?.avatar_url} name={myProfile?.full_name} className="relative h-12 w-12 ring-2 ring-white/20" fallbackClassName="bg-white/15 text-white font-bold text-sm" />
+                  <UserAvatar avatarUrl={myProfile?.avatar_url} name={myProfile?.full_name} className="relative h-16 w-16 ring-2 ring-white/20" fallbackClassName="bg-white/15 text-white font-bold text-base" />
                 </div>
                 <div className="min-w-0">
-                  <h2 className="truncate text-lg font-semibold tracking-tight text-white drop-shadow-sm">{headerGreeting}</h2>
-                  <p className="break-words whitespace-normal text-sm text-white/70">{headerLine}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                {/* Streak badge */}
-                {streak >= 2 && (
-                  <TooltipProvider delayDuration={200}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div
-                          className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold text-white backdrop-blur-xl border border-orange-400/30 shadow-lg cursor-default"
-                          style={{ background: "rgba(251,146,60,0.2)" }}
-                        >
-                          <Flame className="h-4 w-4 text-orange-400" />
-                          <span className="tabular-nums">{streak}</span>
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom" className="text-xs z-[9999] max-w-[260px] whitespace-normal">
-                        🔥 Sequência de {streak} dias consecutivos concluindo tarefas
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                )}
-                <div className="inline-flex items-center rounded-full px-4 py-1.5 text-sm font-semibold tabular-nums text-white backdrop-blur-xl border border-white/15 shadow-lg shadow-black/10" style={{ background: "rgba(255,255,255,0.12)" }}>
-                  {format(today, "dd/MM")}
+                  <h2 className="truncate text-xl font-semibold tracking-tight text-white drop-shadow-sm">{headerGreeting}</h2>
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                    <p className="max-w-[300px] break-words whitespace-normal text-sm text-white/70">{headerLine}</p>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Pontos mensal/anual — encaixados no mesmo banner, na lateral, como chips translúcidos */}
-            <div className="grid grid-cols-2 gap-3 md:flex md:shrink-0 md:gap-3">
-              <div className="md:w-44">
-                <MeuPainelPerformanceRankCard label="Mensal" rank={perf.rank} total={perf.total} medal={perf.medal} isLoading={perf.isLoading} />
-              </div>
-              <div className="md:w-44">
-                <MeuPainelPerformanceRankCard label="Anual" rank={perfYear.rank} total={perfYear.total} medal={perfYear.medal} isLoading={perfYear.isLoading} />
+            {/* Pontos mensal + visão geral do Magic Number — encaixados no mesmo banner, na lateral, como chips translúcidos */}
+            <div className="grid grid-cols-2 gap-3 md:flex md:shrink-0 md:items-center md:gap-7">
+              <MeuPainelPerformanceRankCard label="Mensal" rank={perf.rank} total={perf.total} medal={perf.medal} isLoading={perf.isLoading} />
+              <div className="md:w-auto">
+                <MeuPainelMagicNumberCard />
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ── 3. METRIC CARDS ── */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.15s" }}>
-        <MetricSparkCard label="Tarefas" value={summary.total} icon={<ListChecks className="h-5 w-5" />} tone="violet" description="Total de tarefas atribuídas a você neste mês, em qualquer etapa." onClick={() => setMetricSheet("total")} />
-        <MetricSparkCard label="Concluídas" value={summary.done} icon={<CheckCircle2 className="h-5 w-5" />} tone="emerald" description="Tarefas que você já finalizou neste mês." onClick={() => setMetricSheet("done")} />
-        <MetricSparkCard label="Pendentes" value={summary.pending} icon={<Clock className="h-5 w-5" />} tone="amber" description="Tarefas ainda em aberto, dentro do prazo." onClick={() => setMetricSheet("pending")} />
-        <MetricSparkCard label="Atrasadas" value={summary.overdue} icon={<AlertTriangle className="h-5 w-5" />} tone="red" description="Tarefas com prazo vencido que ainda não foram concluídas." onClick={() => setMetricSheet("overdue")} />
-      </div>
-
-      {/* ── 4/6. PM TASKS + NOTES (left) alongside TODAY'S INSTAGRAM LOOP (right,
-          stretches to match the left column's combined height) ── */}
-      <div
-        className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-5 opacity-0"
-        style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.22s" }}
-      >
-        <div className="flex flex-col gap-4 md:col-span-3">
-          <MyPmTasksWidget onOpenTask={(taskId) => setSelectedPmTaskId(taskId)} />
-          <NotesWidget />
+      {/* ── BLOCOS CONFIGURÁVEIS (ordem/visibilidade/largura definidas em "Personalizar página") ── */}
+      {normalRows.map((row, idx) => (
+        <div
+          key={row.join("-")}
+          className={cn("opacity-0", ROW_GRID_CLASS[row.length])}
+          style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: `${0.15 + idx * 0.1}s` }}
+        >
+          {row.map((key) => (
+            <div key={key} className="h-full [&>*]:h-full">{renderBlockBody(key)}</div>
+          ))}
         </div>
-        <div className="md:col-span-2 self-start">
-          <TodayInstagramLoopWidget onOpenTask={(taskId) => setSelectedPmTaskId(taskId)} />
+      ))}
+
+      {/* ── Personalizar meu painel ── */}
+      <div className="flex justify-center overflow-visible pt-1">
+        <div className="relative isolate rounded-full">
+          {/* Contorno em degradê animado — só o "background-position" se move (sem
+              rotate), pra não estourar a caixa do elemento numa forma comprida como
+              essa pílula e criar rolagem horizontal na página. */}
+          <div
+            aria-hidden="true"
+            className={cn(
+              "pointer-events-none absolute -inset-[2px] -z-10 rounded-full transition-opacity duration-700",
+              highlightPersonalize ? "opacity-100" : "opacity-0",
+            )}
+            style={{
+              background: "linear-gradient(90deg, hsl(var(--brand-glow-6)), hsl(var(--brand-glow-7)), hsl(var(--brand-glow-5)), hsl(var(--brand-glow-6)))",
+              backgroundSize: "300% 100%",
+              animation: "gradientFlow 3s ease-in-out infinite",
+            }}
+          />
+          <button
+            ref={personalizeBtnRef}
+            type="button"
+            onClick={() => setPersonalizeOpen(true)}
+            className="relative flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-xs font-medium text-muted-foreground transition hover:border-foreground/20 hover:text-foreground"
+          >
+            <Settings2 className="h-3.5 w-3.5" />
+            Personalizar meu painel
+          </button>
         </div>
       </div>
-
-      {/* ── 7. PRODUCTIVITY ── */}
-      <div className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.45s" }}>
-        <CollapsibleWidget title="Sua produtividade" icon={<Activity className="h-4 w-4 text-sidebar" />}>
-          <ProductivityWidget tasks={myTasks} allMonthTasks={[...myTasks, ...(prevTasksQ.data ?? [])]} todayKey={todayKey} />
-        </CollapsibleWidget>
-      </div>
+      <PersonalizeDashboardDialog open={personalizeOpen} onOpenChange={setPersonalizeOpen} />
 
       {/* ── PM Task Dialog ── */}
       <PmTaskDetailDialogWrapper taskId={selectedPmTaskId} onClose={() => setSelectedPmTaskId(null)} isAdmin={isAdmin} />
@@ -561,26 +697,17 @@ export function MeuPainelPanel() {
 
 // ── Collapsible widget wrapper ──
 
-function CollapsibleWidget({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
-  const [open, setOpen] = useState(false);
+function CollapsibleWidget({ title, icon, headerExtra, children }: { title: string; icon: React.ReactNode; headerExtra?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-border bg-card overflow-hidden transition-all duration-300">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between gap-2 px-4 py-3 hover:bg-muted/40 transition-colors"
-      >
-        <div className="flex items-center gap-2">
-          <div className="h-7 w-7 rounded-lg bg-sidebar/20 flex items-center justify-center">{icon}</div>
-          <span className="text-sm font-semibold text-foreground">{title}</span>
+    <div className="rounded-2xl border border-border bg-card overflow-hidden">
+      <div className="w-full flex items-center justify-between gap-2 px-4 py-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="h-7 w-7 shrink-0 rounded-lg bg-sidebar/20 flex items-center justify-center">{icon}</div>
+          <span className="truncate text-sm font-semibold text-foreground">{title}</span>
         </div>
-        <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", open && "rotate-180")} />
-      </button>
-      <div
-        className="transition-all duration-300 ease-in-out overflow-hidden"
-        style={{ display: "grid", gridTemplateRows: open ? "1fr" : "0fr" }}
-      >
-        <div className="min-h-0">{children}</div>
+        {headerExtra}
       </div>
+      <div>{children}</div>
     </div>
   );
 }

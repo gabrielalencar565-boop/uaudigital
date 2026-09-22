@@ -1,7 +1,7 @@
 import { PropsWithChildren, useEffect, useMemo, useState } from "react";
 import { normalizeAvatarUrl } from "@/lib/avatar-url";
 import {
-  CalendarDays, ChevronDown, ClipboardList, DollarSign,
+  CalendarDays, ChevronDown, CircleHelp, ClipboardList, DollarSign,
   Eye, FileSpreadsheet, FolderOpen, Gift, LayoutGrid, Lock, MessagesSquare, Receipt, Settings, Target, TrendingUp, Trophy,
   UserRound, Users, Workflow, CalendarRange, PieChart, PanelLeftClose, ArrowRightLeft, Briefcase } from
   "lucide-react";
@@ -15,7 +15,9 @@ import { useOnlinePresence } from "@/hooks/use-online-presence";
 import { useTeamActivity } from "@/hooks/use-team-activity";
 import { useTaskViewersPresence } from "@/hooks/use-task-viewers";
 import { TopBar } from "@/components/layout/TopBar";
+import { TopAnnouncementBanner } from "@/components/layout/TopAnnouncementBanner";
 import { GlobalUploadTray } from "@/components/layout/GlobalUploadTray";
+import { ElementHighlightWatcher } from "@/components/layout/ElementHighlightWatcher";
 import { EditProfileDialog } from "@/features/meu-painel/components/EditProfileDialog";
 import { usePmTasks } from "@/features/gestao/hooks/use-pm-data";
 import { PmTaskDetailDialog } from "@/features/gestao/components/PmTaskDetailDialog";
@@ -53,6 +55,7 @@ export type MainTab =
 "fin_lancamentos" |
 "conversas" |
 "comercial" |
+"ajuda" |
 "configuracoes";
 
 type NavGroup = {
@@ -97,7 +100,8 @@ const NAV: NavEntry[] = [
   { key: "metas", label: "Metas", icon: TrendingUp }]
 },
   { key: "recompensas", label: "Uau XP", icon: Gift },
-  { key: "comercial", label: "Comercial", icon: Briefcase, adminOnly: true }];
+  { key: "comercial", label: "Comercial", icon: Briefcase, adminOnly: true },
+  { key: "ajuda", label: "Ajuda", icon: CircleHelp }];
 
 
 
@@ -227,7 +231,7 @@ export function UauSidebarShell({
                           className={cn(
                             "h-10 gap-3 rounded-xl text-sidebar-foreground/80 transition-colors",
                             active
-                              ? "bg-button-sheen bg-[length:200%_200%] animate-shine text-white font-semibold shadow-glow hover:brightness-90"
+                              ? "!bg-sidebar-active !text-white !font-semibold shadow-glow hover:brightness-90"
                               : "hover:bg-sidebar-accent hover:text-sidebar-foreground",
                             isRecompensas && "relative overflow-hidden",
                             collapsed && "justify-center"
@@ -270,7 +274,7 @@ export function UauSidebarShell({
                             className={cn(
                               "h-10 gap-3 rounded-xl text-sidebar-foreground/80 transition-colors flex-1",
                               hasActiveChild
-                                ? "bg-button-sheen bg-[length:200%_200%] animate-shine text-white font-semibold shadow-glow hover:brightness-90"
+                                ? "!bg-sidebar-active !text-white !font-semibold shadow-glow hover:brightness-90"
                                 : "hover:bg-sidebar-accent hover:text-sidebar-foreground",
                               collapsed && "justify-center"
                             )}>
@@ -303,7 +307,7 @@ export function UauSidebarShell({
                                   onClick={() => onTabChange(child.key)}
                                   className={cn("flex w-full items-center gap-2.5 px-2.5 py-2 text-sm text-sidebar-foreground/70 transition-colors rounded-xl",
                                   active
-                                    ? "bg-button-sheen bg-[length:200%_200%] animate-shine text-white font-medium shadow-glow hover:brightness-90"
+                                    ? "!bg-sidebar-active !text-white !font-medium shadow-glow hover:brightness-90"
                                     : "hover:bg-sidebar-accent hover:text-sidebar-foreground"
                                   )}>
                                     <child.icon className="h-4 w-4 shrink-0" />
@@ -328,7 +332,7 @@ export function UauSidebarShell({
                     className={cn(
                       "inline-flex h-10 items-center gap-3 rounded-xl px-3 text-sidebar-foreground/70 transition",
                       tab === "configuracoes"
-                        ? "bg-button-sheen bg-[length:200%_200%] animate-shine text-white font-semibold shadow-glow hover:brightness-90"
+                        ? "!bg-sidebar-active !text-white !font-semibold shadow-glow hover:brightness-90"
                         : "hover:bg-sidebar-accent hover:text-sidebar-foreground"
                     )}
                     aria-label="Configurações"
@@ -353,6 +357,7 @@ export function UauSidebarShell({
             )}>
             <div className="mx-auto w-full">
               <div className="animate-fade-in overflow-x-auto p-2 sm:p-4 lg:p-6 2xl:p-8">
+                <TopAnnouncementBanner />
                 {children}
               </div>
             </div>
@@ -367,6 +372,7 @@ export function UauSidebarShell({
         <EditProfileDialog open={editProfileOpen} onOpenChange={setEditProfileOpen} />
         <NotifTaskDialogWrapper taskId={notifTaskId} onClose={() => setNotifTaskId(null)} isAdmin={isAdmin ?? false} />
         <GlobalUploadTray />
+        <ElementHighlightWatcher />
       </div>
     </SidebarProvider>);
 

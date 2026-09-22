@@ -1363,87 +1363,14 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
             {moreDayKey ? format(new Date(`${moreDayKey}T12:00:00`), "dd/MM · EEEE", { locale: ptBR }) : "Tarefas"}
           </DialogTitle>
           <div className="max-h-[60vh] space-y-2.5 overflow-y-auto">
+            {/* Mesmo card da grade principal (renderTaskCard) — garante a etiqueta idêntica
+               (inclusive o degradê combinado tipo "REV/VDO"), não uma versão simplificada só
+               pra esse diálogo. Fecha o diálogo antes do clique abrir o detalhe da tarefa. */}
             {(moreDayKey ? tasksByDay.get(moreDayKey) ?? [] : []).map((t) => {
               const isLegacy = t.id.startsWith("legacy_");
-              const isDone = t.parent_task_id ? t.status_global === "concluido" : (t.status_global === "concluido" || t.stage_current === "entrega");
-              const assignees = getTaskAssignees(t);
-              const visibleAssignees = assignees.slice(0, 2);
-              const extraAssignees = Math.max(assignees.length - 2, 0);
-              const mainAssignee = assignees[0];
-              const clientName = clientsMap[t.client_id] ?? "—";
               return (
-                <div key={t.id} className="flex items-center gap-3 p-3 rounded-xl border border-border/30 bg-card/60 shadow-[0_1px_3px_0_hsl(var(--foreground)/0.06)] cursor-pointer hover:bg-muted/40 transition" onClick={() => { if (!isLegacy) { setMoreOpen(false); onTaskClick(t); } }}>
-                  {(() => {
-                    const periodic = t.periodic_stage_key ? periodicStages.find((p) => p.key === t.periodic_stage_key) : null;
-                    const label = t.periodic_stage_key
-                      ? (periodic?.label ?? getPeriodicStageFallbackLabel(t.periodic_stage_key)).slice(0, 3).toUpperCase()
-                      : (STAGE_ABBR[t.stage_current] ?? t.stage_current.slice(0, 4).toUpperCase());
-                    const ck = periodic?.color_key;
-                    const isHex = ck ? isHexColor(ck) : false;
-                    const periodicBgClass = periodic
-                      ? (ck && !isHex ? (TAG_COLORS.find(c => c.key === ck)?.dot ?? "bg-black") : (isHex ? "" : "bg-black"))
-                      : "";
-                    const periodicStyle = periodic && isHex ? { backgroundColor: ck! } : undefined;
-                    return (
-                      <div
-                        className={cn("inline-flex h-6 items-center rounded-md px-2.5 text-[10px] font-bold shrink-0 text-white", t.periodic_stage_key ? periodicBgClass : (STAGE_BADGE_BG[t.stage_current] ?? "bg-muted"))}
-                        style={periodicStyle}
-                      >
-                        {label}
-                      </div>
-                    );
-                  })()}
-                  {visibleAssignees.length > 0 ? (
-                    <div className="flex flex-col -space-y-1.5 shrink-0">
-                      {visibleAssignees.map((member) => (
-                        <UserAvatar
-                          key={member.id}
-                          avatarUrl={member.avatar}
-                          name={member.name}
-                          loading={!avatarsPrimed && !!member.avatar}
-                          className="h-7 w-7 shrink-0 ring-2 ring-background"
-                          fallbackClassName="text-[8px] font-bold bg-primary/10 text-primary"
-                        />
-                      ))}
-                      {extraAssignees > 0 && (
-                        <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-muted px-1 text-[9px] font-semibold text-muted-foreground ring-2 ring-background">
-                          +{extraAssignees}
-                        </span>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="h-7 w-7 shrink-0 rounded-full ring-2 ring-background bg-muted" />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">
-                      {t.periodic_stage_key
-                        ? stripPeriodicTime(t.title)
-                        : assignees.length === 1 && mainAssignee
-                          ? mainAssignee.name
-                          : assignees.length > 1
-                            ? `${assignees.length} responsáveis`
-                            : "—"}
-                    </p>
-                    <p className="truncate text-xs text-muted-foreground/60">{t.periodic_stage_key ? (getPeriodicTime(t) ?? clientName) : clientName}</p>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      type="button"
-                      className={cn("h-6 w-6 rounded-full flex items-center justify-center transition",
-                        isDone ? "bg-success text-success-foreground" : "border border-muted-foreground/25 hover:border-success hover:bg-success/10"
-                      )}
-                      title={isDone ? "Concluído" : "Marcar como concluído"}
-                      onClick={(e) => { e.stopPropagation(); }}>
-                      {isDone && <CheckCircle2 className="h-4 w-4" />}
-                    </button>
-                    <button
-                      type="button"
-                      className="h-6 w-6 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition"
-                      onClick={(e) => { e.stopPropagation(); handleDelete(t.id, e); }}
-                      title="Remover">
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
+                <div key={t.id} onClickCapture={() => { if (!isLegacy) setMoreOpen(false); }}>
+                  {renderTaskCard(t)}
                 </div>
               );
             })}

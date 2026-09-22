@@ -150,7 +150,7 @@ export function TodayInstagramLoopWidget({ onOpenTask }: Props) {
   const cardWidthPct = 100 / VISIBLE;
 
   return (
-    <Card className="flex flex-col">
+    <Card className="flex h-full flex-col">
       <CardHeader className="pb-2">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
@@ -158,11 +158,18 @@ export function TodayInstagramLoopWidget({ onOpenTask }: Props) {
           </div>
           <CardTitle className="flex-1 text-sm">Publicações no Instagram</CardTitle>
           <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">{N}</span>
-          {isToday && (
-            <span className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold text-primary">Hoje</span>
-          )}
         </div>
-        <div className="mt-2 flex items-center justify-start gap-2">
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={goToToday}
+            className={cn(
+              "shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold transition",
+              isToday ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground",
+            )}
+          >
+            Hoje
+          </button>
           <button
             type="button"
             onClick={goToPrevDay}
