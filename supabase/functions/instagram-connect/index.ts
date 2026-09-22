@@ -51,7 +51,22 @@ function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 }
 
-async function requireAdmin(req: Request) {
+// Mirrors the frontend's profiles → team_members fallback (see useMyProfile) so this check
+// stays true to whatever cargo the person actually has set, wherever it lives.
+async function hasSocialMediaRoleTitle(admin: ReturnType<typeof createClient>, userId: string): Promise<boolean> {
+  const { data: profile } = await admin.from("profiles").select("role_title").eq("user_id", userId).maybeSingle();
+  let roleTitle = profile?.role_title as string | null | undefined;
+  if (roleTitle == null) {
+    const { data: member } = await admin.from("team_members").select("role_title").eq("user_id", userId).maybeSingle();
+    roleTitle = member?.role_title as string | null | undefined;
+  }
+  return (roleTitle ?? "").trim().toLowerCase() === "social media";
+}
+
+// Connecting/disconnecting Instagram is for admins and whoever actually does the posting
+// (cargo "Social Media") — it used to be admin-only, which meant every connection had to
+// go through an admin even though Social Media is the role that owns this task day to day.
+async function requireConnectPermission(req: Request) {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) throw json({ error: "missing authorization" }, 401);
 
@@ -62,12 +77,14 @@ async function requireAdmin(req: Request) {
   if (userError || !userData?.user) throw json({ error: "invalid session" }, 401);
 
   const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-  const { data: roles } = await admin.from("user_roles").select("role").eq("user_id", userData.user.id);
-  if (!(roles ?? []).some((r: { role: string }) => r.role === "admin")) {
-    throw json({ error: "admin role required" }, 403);
+  const userId = userData.user.id as string;
+  const { data: roles } = await admin.from("user_roles").select("role").eq("user_id", userId);
+  const isAdmin = (roles ?? []).some((r: { role: string }) => r.role === "admin");
+  if (!isAdmin && !(await hasSocialMediaRoleTitle(admin, userId))) {
+    throw json({ error: "admin role or Social Media cargo required" }, 403);
   }
 
-  return { admin, userId: userData.user.id as string };
+  return { admin, userId };
 }
 
 async function graphGet(path: string, params: Record<string, string>) {
@@ -363,22 +380,16 @@ async function handleCallbackIgLogin(admin: ReturnType<typeof createClient>, bod
     }
 
     // 2. Exchange for a long-lived (~60 day) token — graph.instagram.com, not fb_exchange_token.
-    // Meta's own reference shows this as GET with query params; a prior fix (Sept 14) found
-    // GET rejected live with IGApiException code 100 and switched to POST with the same
-    // params still in the query string (empty body) — that then started failing with a
-    // different, more confusing code-100 ("Object with ID 'access_token' does not exist,
-    // cannot be loaded due to missing permissions") despite a verified-valid short-lived
-    // token carrying the right scopes (confirmed via logging above). Sending the exact same
-    // params as a form-urlencoded POST body instead — like step 1's call, which does work —
-    // to rule out the query-string shape as what Graph is actually rejecting here.
-    const longLivedRes = await fetch("https://graph.instagram.com/access_token", {
-      method: "POST",
-      body: new URLSearchParams({
-        grant_type: "ig_exchange_token",
-        client_secret: IG_LOGIN_APP_SECRET,
-        access_token: shortLivedToken,
-      }),
-    });
+    // Both POST variants (query-string params, then a form-urlencoded body) were tried here
+    // and both got rejected — the body-POST attempt's own error was explicit: "Unsupported
+    // post request", i.e. Graph is telling us this endpoint doesn't take POST at all. Back to
+    // GET with query params, exactly as Meta's own reference documents it; the code-100 seen
+    // testing GET before this round of fixes most likely had a different, unrelated cause.
+    const longLivedUrl = new URL("https://graph.instagram.com/access_token");
+    longLivedUrl.searchParams.set("grant_type", "ig_exchange_token");
+    longLivedUrl.searchParams.set("client_secret", IG_LOGIN_APP_SECRET);
+    longLivedUrl.searchParams.set("access_token", shortLivedToken);
+    const longLivedRes = await fetch(longLivedUrl.toString());
     const longLived = await longLivedRes.json();
     if (!longLivedRes.ok || longLived.error) {
       throw new Error(`falha ao gerar token de longa duração: ${JSON.stringify(longLived.error ?? longLived)}`);
@@ -474,7 +485,7 @@ Deno.serve(async (req) => {
       return await handleStatus(admin, body);
     }
 
-    const { admin, userId } = await requireAdmin(req);
+    const { admin, userId } = await requireConnectPermission(req);
 
     switch (action) {
       case "start":

@@ -40,6 +40,24 @@ function instagramErrorMessage(error: unknown): string {
   return message;
 }
 
+// supabase-js throws a FunctionsHttpError for any non-2xx response whose own `.message` is
+// always the generic "Edge Function returned a non-2xx status code" — the JSON body our edge
+// function actually returned (the real reason, e.g. "admin role required") only lives on
+// `error.context` (the raw Response), unread by default. Without this, every failure from
+// instagram-connect surfaced as that one generic toast no matter what actually went wrong.
+async function resolveFunctionError(error: unknown): Promise<string> {
+  const context = (error as { context?: Response })?.context;
+  if (context && typeof context.json === "function") {
+    try {
+      const body = await context.json();
+      if (body?.error) return body.error as string;
+    } catch {
+      // context body wasn't JSON — fall through to the generic message below.
+    }
+  }
+  return error instanceof Error ? error.message : String(error);
+}
+
 export function useConnectInstagram() {
   return useMutation({
     mutationFn: async ({ clientId }: { clientId: string }) => {
@@ -49,7 +67,7 @@ export function useConnectInstagram() {
       const { data, error } = await supabase.functions.invoke("instagram-connect", {
         body: { action: "start_ig_login", client_id: clientId },
       });
-      if (error) throw error;
+      if (error) throw new Error(await resolveFunctionError(error));
       if (data?.error) throw new Error(data.error);
       return data.url as string;
     },
@@ -64,7 +82,7 @@ export function useDisconnectInstagram() {
       const { data, error } = await supabase.functions.invoke("instagram-connect", {
         body: { action: "disconnect", client_id: clientId },
       });
-      if (error) throw error;
+      if (error) throw new Error(await resolveFunctionError(error));
       if (data?.error) throw new Error(data.error);
     },
     onSuccess: () => {
