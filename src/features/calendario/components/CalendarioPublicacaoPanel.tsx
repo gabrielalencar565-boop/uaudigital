@@ -22,6 +22,9 @@ import { toast } from "sonner";
 import { useClients, useTeamMembers } from "@/features/data/queries";
 import { useDefaultFlowWithDates, getFixedAssignee } from "@/features/gestao/components/PmStageFlowConfig";
 import { useSession } from "@/hooks/use-session";
+import { useRole } from "@/hooks/use-role";
+import { useMyProfile } from "@/hooks/use-my-profile";
+import { isSocialMediaRole } from "@/lib/role-options";
 import {
   useCalendarPublications, useCalendarsForClient, useCalendarsForCycle, useCapaTaskIds, useCoverAttachmentsById, useInstagramRiskSummary, usePublishCycle, useScheduleCyclePublications, useUnscheduleCyclePublications, useUnpublishCycle, useTaskAttachmentsMap, useTaskCompletionMap, useUpdateCalendarPublication, useUpdateCalendarShare, useUpdateCalendarStatus,
   type ClientInstagramRisk,
@@ -327,6 +330,13 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
 
   // Filtros da grade de clientes: "Meus" (responsável = eu) + status do ciclo.
   const { user } = useSession();
+  // instagram-connect is gated server-side to admins and Social Media (requireConnectPermission)
+  // — the button was rendering for every team member regardless, so anyone else clicking it got
+  // a 403 that only ever surfaced as a generic "Edge Function returned a non-2xx status code"
+  // toast. Gating it here too keeps everyone else from hitting that dead end in the first place.
+  const { isAdmin } = useRole(user?.id);
+  const myProfileQ = useMyProfile();
+  const canManageInstagram = isAdmin || isSocialMediaRole(myProfileQ.data?.role_title);
   const [onlyMine, setOnlyMine] = useState(false);
   const [activeStatusFilters, setActiveStatusFilters] = useState<Set<string>>(new Set());
   const toggleStatusFilter = (key: string) => {
@@ -810,7 +820,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                   <span className="truncate text-base font-semibold leading-tight">{c.name}</span>
                   {c.plan_name && <span className="truncate text-xs text-muted-foreground">{c.plan_name}</span>}
                 </div>
-                {(() => {
+                {canManageInstagram && (() => {
                   const igConn = igConnectionMap.get(c.id);
                   if (igConn?.status === "active") {
                     return (

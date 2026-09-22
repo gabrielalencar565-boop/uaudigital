@@ -13,3 +13,10 @@ export const ROLE_OPTIONS = [
 ] as const;
 
 export type RoleOptionValue = (typeof ROLE_OPTIONS)[number]["value"];
+
+// ConfiguracoesPanel.tsx lets role_title be typed freely (not always picked from
+// ROLE_OPTIONS above), so gating a feature on it needs to tolerate stray casing/whitespace
+// instead of a strict `=== "Social Media"`.
+export function isSocialMediaRole(roleTitle: string | null | undefined): boolean {
+  return (roleTitle ?? "").trim().toLowerCase() === "social media";
+}
