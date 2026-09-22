@@ -123,17 +123,19 @@ export function usePmAllChildTasks() {
       if (countError) throw countError;
 
       const totalPages = Math.max(1, Math.ceil((count ?? 0) / pageSize));
-      const pages = await Promise.all(
-        Array.from({ length: totalPages }, (_, i) => {
-          const from = i * pageSize;
-          return withFilters(sb.from("pm_tasks").select(PM_TASK_LIST_COLUMNS))
-            .order("created_at", { ascending: true })
-            .range(from, from + pageSize - 1);
-        }),
-      );
-
+      // Uma página de cada vez, não Promise.all — com ~9k subtarefas isso são ~9 páginas;
+      // disparadas todas juntas, é 9 conexões simultâneas só desse hook (e ele é chamado da
+      // Meu Painel, que várias pessoas abrem ao mesmo tempo ao entrar no app) — contribuiu
+      // pra uma fila de conexões travando o banco pra todo mundo (timeouts em cascata,
+      // inclusive em `has_role`, usada em toda checagem de permissão). Sequencial é mais
+      // lento pra esse hook sozinho, mas não amontoa conexões — troca certa pra um dado
+      // secundário (contadores/etiquetas), não a lista principal de tarefas.
       const allRows: PmTask[] = [];
-      for (const { data, error } of pages) {
+      for (let i = 0; i < totalPages; i++) {
+        const from = i * pageSize;
+        const { data, error } = await withFilters(sb.from("pm_tasks").select(PM_TASK_LIST_COLUMNS))
+          .order("created_at", { ascending: true })
+          .range(from, from + pageSize - 1);
         if (error) throw error;
         allRows.push(...((data ?? []) as PmTask[]));
       }

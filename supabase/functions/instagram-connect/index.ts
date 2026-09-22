@@ -351,16 +351,34 @@ async function handleCallbackIgLogin(admin: ReturnType<typeof createClient>, bod
     // Historically this endpoint (shared lineage with the old Instagram Basic Display API)
     // could wrap the payload in a `data` array — handle both shapes defensively.
     const shortLived = Array.isArray(tokenJson.data) ? tokenJson.data[0] : tokenJson;
-    const shortLivedToken = shortLived.access_token as string;
+    const shortLivedToken = shortLived.access_token as string | undefined;
+    // Step 1 can return 200 with a shape we don't recognize (no `access_token`, no `error`
+    // either) — that silently fed an empty/undefined token into step 2 before, surfacing as
+    // a confusing "Object with ID 'access_token' does not exist" from graph.instagram.com
+    // instead of pointing at the real problem. Log the actual keys (never the token value)
+    // so a future failure here is diagnosable from query_logs without guessing.
+    console.log("ig_login step1 response keys:", Object.keys(tokenJson), "shortLived keys:", Object.keys(shortLived), "hasToken:", !!shortLivedToken, "permissions:", JSON.stringify(shortLived.permissions ?? tokenJson.permissions ?? null));
+    if (!shortLivedToken) {
+      throw new Error(`token de curta duração ausente na resposta: ${JSON.stringify(tokenJson)}`);
+    }
 
     // 2. Exchange for a long-lived (~60 day) token — graph.instagram.com, not fb_exchange_token.
-    // Meta's own reference still shows this as GET, but the live API now rejects GET here
-    // with IGApiException code 100 ("Unsupported request - method type: get") — POST works.
-    const longLivedUrl = new URL("https://graph.instagram.com/access_token");
-    longLivedUrl.searchParams.set("grant_type", "ig_exchange_token");
-    longLivedUrl.searchParams.set("client_secret", IG_LOGIN_APP_SECRET);
-    longLivedUrl.searchParams.set("access_token", shortLivedToken);
-    const longLivedRes = await fetch(longLivedUrl.toString(), { method: "POST" });
+    // Meta's own reference shows this as GET with query params; a prior fix (Sept 14) found
+    // GET rejected live with IGApiException code 100 and switched to POST with the same
+    // params still in the query string (empty body) — that then started failing with a
+    // different, more confusing code-100 ("Object with ID 'access_token' does not exist,
+    // cannot be loaded due to missing permissions") despite a verified-valid short-lived
+    // token carrying the right scopes (confirmed via logging above). Sending the exact same
+    // params as a form-urlencoded POST body instead — like step 1's call, which does work —
+    // to rule out the query-string shape as what Graph is actually rejecting here.
+    const longLivedRes = await fetch("https://graph.instagram.com/access_token", {
+      method: "POST",
+      body: new URLSearchParams({
+        grant_type: "ig_exchange_token",
+        client_secret: IG_LOGIN_APP_SECRET,
+        access_token: shortLivedToken,
+      }),
+    });
     const longLived = await longLivedRes.json();
     if (!longLivedRes.ok || longLived.error) {
       throw new Error(`falha ao gerar token de longa duração: ${JSON.stringify(longLived.error ?? longLived)}`);
