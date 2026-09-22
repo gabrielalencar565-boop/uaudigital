@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, ChevronDown, ChevronRight, Flag, GitBranch, ListChecks, MessageSquare } from "lucide-react";
 import { differenceInCalendarDays, format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
@@ -44,8 +44,20 @@ interface Props {
   onOpenTask: (taskId: string) => void;
 }
 
+// Largura (em px) do próprio card a partir da qual a tabela de colunas cabe; abaixo disso
+// usa o layout empilhado (nome + prazo embaixo), senão a coluna do nome some ("...").
+const WIDE_LAYOUT_MIN_PX = 600;
+
 export function MyPmTasksWidget({ onOpenTask }: Props) {
   const { user } = useSession();
+  const [rootEl, setRootEl] = useState<HTMLDivElement | null>(null);
+  const [wide, setWide] = useState(false);
+  useEffect(() => {
+    if (!rootEl) return;
+    const ro = new ResizeObserver(([entry]) => setWide(entry.contentRect.width >= WIDE_LAYOUT_MIN_PX));
+    ro.observe(rootEl);
+    return () => ro.disconnect();
+  }, [rootEl]);
   const today = new Date();
   const todayKey = format(today, "yyyy-MM-dd");
   const currentMonthKey = format(today, "yyyy-MM");
@@ -195,7 +207,7 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
   };
 
   const renderHeader = () => (
-    <div className="hidden sm:grid grid-cols-[1fr_100px_140px_100px] gap-2 px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground border-b border-border/30">
+    <div className="hidden group-data-[wide=true]/tw:grid grid-cols-[1fr_100px_140px_100px] gap-2 px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground border-b border-border/30">
       <span>Nome</span>
       <span>Prioridade</span>
       <span>Data de vencimento</span>
@@ -222,7 +234,7 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
           className="group w-full border-b border-border/20 px-3 py-2 text-left transition hover:bg-accent/30"
         >
           {/* Mobile: stacked layout */}
-          <div className="flex sm:hidden min-w-0 items-start gap-2">
+          <div className="flex group-data-[wide=true]/tw:hidden min-w-0 items-start gap-2">
             {childCount > 0 && (
               <button
                 type="button"
@@ -258,7 +270,7 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
           </div>
 
           {/* Desktop: grid layout */}
-          <div className="hidden sm:grid grid-cols-[1fr_100px_140px_100px] items-center gap-2">
+          <div className="hidden group-data-[wide=true]/tw:grid grid-cols-[1fr_100px_140px_100px] items-center gap-2">
             <div className="flex min-w-0 items-center gap-2">
               {childCount > 0 && (
                 <button
@@ -316,7 +328,7 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
                   className="w-full px-3 py-1.5 text-left transition hover:bg-accent/30 pl-8 sm:pl-10"
                 >
                   {/* Mobile subtask */}
-                  <div className="flex sm:hidden min-w-0 items-start gap-2">
+                  <div className="flex group-data-[wide=true]/tw:hidden min-w-0 items-start gap-2">
                     <span className={cn(
                       "h-2.5 w-2.5 shrink-0 rounded-full border-2 mt-0.5",
                       subStageColor.border,
@@ -333,7 +345,7 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
                     </div>
                   </div>
                   {/* Desktop subtask */}
-                  <div className="hidden sm:grid grid-cols-[1fr_100px_140px_100px] items-center gap-2">
+                  <div className="hidden group-data-[wide=true]/tw:grid grid-cols-[1fr_100px_140px_100px] items-center gap-2">
                     <div className="flex min-w-0 items-center gap-2">
                       <span className={cn(
                         "h-2.5 w-2.5 shrink-0 rounded-full border-2",
@@ -368,7 +380,7 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
 
   if (myTasks.length === 0 && !pmTasksQ.isLoading) {
     return (
-      <Card className="rounded-2xl border border-border bg-card shadow-sm">
+      <Card className="h-full rounded-2xl border border-border bg-card shadow-sm">
         <CardHeader className="px-5 pt-4 pb-3">
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
@@ -385,7 +397,7 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
   }
 
   return (
-    <div className="space-y-3">
+    <div ref={setRootEl} data-wide={wide} className="group/tw flex flex-col gap-3">
       {/* Alert for tasks in Alterações */}
       {alteracoesParents.length > 0 && (
         <div className="rounded-2xl overflow-hidden shadow-lg" style={{ background: 'linear-gradient(135deg, #ffcc01 0%, #f5b800 100%)' }}>
@@ -471,7 +483,7 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
         </div>
       )}
 
-      <Card>
+      <Card className="flex-1">
         <CardHeader className="pb-2">
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">

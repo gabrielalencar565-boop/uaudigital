@@ -43,7 +43,7 @@ export function MeuPainelPerformanceRankCard({
 
   return (
     <div
-      className="relative flex w-full items-center gap-3 overflow-hidden rounded-2xl border px-4 py-3 backdrop-blur-xl transition-transform duration-300 hover:-translate-y-0.5"
+      className="relative flex w-full items-center gap-2.5 overflow-hidden rounded-2xl border px-3.5 py-3.5 backdrop-blur-xl transition-transform duration-300 hover:-translate-y-0.5 sm:gap-3 sm:px-5 sm:py-5 md:w-fit"
       style={{
         borderColor: style?.border ?? "rgba(255,255,255,0.15)",
         background: style?.gradient ?? "rgba(255,255,255,0.1)",
@@ -53,34 +53,34 @@ export function MeuPainelPerformanceRankCard({
     >
       <div
         className={cn(
-          "grid h-10 w-10 shrink-0 place-items-center rounded-full border",
+          "grid h-11 w-11 shrink-0 place-items-center rounded-full border sm:h-14 sm:w-14",
           style ? "border-white/40 bg-white/25" : "border-white/20 bg-white/10"
         )}
       >
         {isLoading ? (
-          <span className="text-xl leading-none text-white">…</span>
+          <span className="text-xl leading-none text-white sm:text-2xl">…</span>
         ) : icon ? (
-          <span className="text-2xl leading-none">{icon}</span>
+          <span className="text-2xl leading-none sm:text-3xl">{icon}</span>
         ) : (
-          <span className={cn("text-base font-bold leading-none tabular-nums", style?.text ?? "text-white")}>{number}º</span>
+          <span className={cn("text-base font-bold leading-none tabular-nums sm:text-xl", style?.text ?? "text-white")}>{number}º</span>
         )}
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className={cn("truncate text-[11px] font-medium uppercase tracking-wide", style ? cn("opacity-70", style.text) : "text-white/60")}>
+        <p className={cn("truncate text-[11px] font-medium uppercase tracking-wide sm:text-xs", style ? cn("opacity-70", style.text) : "text-white/60")}>
           {label}
         </p>
         <div className="flex items-baseline gap-1">
           {isLoading ? (
-            <span className={cn("text-xl font-semibold tabular-nums sm:text-2xl", style?.text ?? "text-white")}>—</span>
+            <span className={cn("text-xl font-semibold tabular-nums sm:text-3xl", style?.text ?? "text-white")}>—</span>
           ) : (
             <AnimatedNumber
               value={total ?? 0}
-              className={cn("text-xl font-semibold tracking-tight tabular-nums sm:text-2xl", style?.text ?? "text-white")}
+              className={cn("text-xl font-semibold tracking-tight tabular-nums sm:text-3xl", style?.text ?? "text-white")}
               glow={false}
             />
           )}
-          <span className={cn("text-xs", style ? cn("opacity-70", style.text) : "text-white/60")}>pts</span>
+          <span className={cn("text-xs sm:text-sm", style ? cn("opacity-70", style.text) : "text-white/60")}>pts</span>
         </div>
       </div>
     </div>

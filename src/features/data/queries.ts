@@ -199,6 +199,13 @@ export type AppSettingsRow = {
   workspace_name: string;
   login_bg_images: BgImageConfig[];
   link_preview_image_url: string | null;
+  whats_new_enabled: boolean;
+  whats_new_title: string | null;
+  whats_new_description: string | null;
+  whats_new_target_tab: string | null;
+  whats_new_target_action: string | null;
+  whats_new_target_selector: string | null;
+  whats_new_published_at: string | null;
   updated_at: string;
   updated_by: string | null;
 };
@@ -209,7 +216,7 @@ export function useAppSettings() {
     queryFn: async (): Promise<AppSettingsRow | null> => {
       const { data, error } = await supabase
         .from("app_settings")
-        .select("id, sidebar_logo_url, sidebar_logo_dark_url, sidebar_symbol_url, brand_color, workspace_name, login_bg_images, link_preview_image_url, updated_at, updated_by")
+        .select("id, sidebar_logo_url, sidebar_logo_dark_url, sidebar_symbol_url, brand_color, workspace_name, login_bg_images, link_preview_image_url, whats_new_enabled, whats_new_title, whats_new_description, whats_new_target_tab, whats_new_target_action, whats_new_target_selector, whats_new_published_at, updated_at, updated_by")
         .eq("id", 1)
         .maybeSingle();
       if (error) throw error;
@@ -222,6 +229,13 @@ export function useAppSettings() {
         brand_color: d?.brand_color ?? "#6932c9",
         login_bg_images: normalizeBgImages(d?.login_bg_images),
         link_preview_image_url: d?.link_preview_image_url ?? null,
+        whats_new_enabled: d?.whats_new_enabled ?? false,
+        whats_new_title: d?.whats_new_title ?? null,
+        whats_new_description: d?.whats_new_description ?? null,
+        whats_new_target_tab: d?.whats_new_target_tab ?? null,
+        whats_new_target_action: d?.whats_new_target_action ?? null,
+        whats_new_target_selector: d?.whats_new_target_selector ?? null,
+        whats_new_published_at: d?.whats_new_published_at ?? null,
       } as AppSettingsRow | null;
     },
   });
@@ -230,7 +244,22 @@ export function useAppSettings() {
 export function useUpdateAppSettings() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (updates: { sidebar_logo_url?: string | null; sidebar_logo_dark_url?: string | null; sidebar_symbol_url?: string | null; brand_color?: string; workspace_name?: string; login_bg_images?: BgImageConfig[]; link_preview_image_url?: string | null }) => {
+    mutationFn: async (updates: {
+      sidebar_logo_url?: string | null;
+      sidebar_logo_dark_url?: string | null;
+      sidebar_symbol_url?: string | null;
+      brand_color?: string;
+      workspace_name?: string;
+      login_bg_images?: BgImageConfig[];
+      link_preview_image_url?: string | null;
+      whats_new_enabled?: boolean;
+      whats_new_title?: string | null;
+      whats_new_description?: string | null;
+      whats_new_target_tab?: string | null;
+      whats_new_target_action?: string | null;
+      whats_new_target_selector?: string | null;
+      whats_new_published_at?: string | null;
+    }) => {
       const { data, error } = await supabase
         .from("app_settings")
         .update(updates as any)

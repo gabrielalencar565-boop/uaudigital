@@ -11,8 +11,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
 import { setPendingAppeal } from "@/lib/pending-appeal-store";
-import { isSubscribedOnThisDevice } from "@/lib/push-notifications";
-import { PushNotificationsDialog } from "@/features/configuracoes/PushNotificationsDialog";
+import { setPendingAjudaView } from "@/lib/pending-ajuda-view-store";
 
 function timeAgo(timestamp: string): string {
   const diffMs = Date.now() - new Date(timestamp).getTime();
@@ -28,7 +27,7 @@ function timeAgo(timestamp: string): string {
 type NotificationItem = {
   id: string;
   key: string; // unique key for read tracking
-  type: "mention" | "assigned" | "overdue" | "upcoming" | "appeal";
+  type: "mention" | "assigned" | "overdue" | "upcoming" | "appeal" | "problem_report";
   title: string;
   subtitle: string;
   timestamp: string;
@@ -44,9 +43,8 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
   const { user } = useSession();
   const today = new Date();
   const queryClient = useQueryClient();
-  const { isAdmin } = useRole(user?.id);
+  const { isAdmin, isDeveloper } = useRole(user?.id);
   const [popoverOpen, setPopoverOpen] = useState(false);
-  const [pushDialogOpen, setPushDialogOpen] = useState(false);
 
   const appealsQ = useQuery({
     queryKey: ["notifications_appeals_admin", user?.id],
@@ -112,12 +110,22 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
     },
   });
 
-  const pushEnabledQ = useQuery({
-    queryKey: ["push_subscribed_bell"],
-    queryFn: isSubscribedOnThisDevice,
-    staleTime: 30_000,
+  // Relatos de problema são sobre o SOFTWARE — só quem mantém a plataforma (developer) é
+  // notificado, nunca o admin de uma agência (ver problem_reports RLS / use-role.ts).
+  const problemReportsQ = useQuery({
+    queryKey: ["notifications_problem_reports", user?.id],
+    enabled: !!user?.id && isDeveloper,
+    staleTime: 0,
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("problem_reports")
+        .select("id, description, status, created_at")
+        .eq("status", "aberto")
+        .order("created_at", { ascending: false })
+        .limit(50);
+      return data ?? [];
+    },
   });
-  const pushEnabled = pushEnabledQ.data ?? false;
 
   const membersQ = useQuery({
     queryKey: ["team_members_notif"],
@@ -276,9 +284,22 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
       });
     }
 
+    if (isDeveloper) {
+      (problemReportsQ.data ?? []).forEach((r: any) => {
+        items.push({
+          id: `problem-report-${r.id}`,
+          key: `problem-report-${r.id}`,
+          type: "problem_report",
+          title: "Novo problema relatado",
+          subtitle: (r.description ?? "").substring(0, 100),
+          timestamp: r.created_at,
+        });
+      });
+    }
+
     items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     return items.filter(n => !dismissedKeys.has(n.key)).slice(0, 30);
-  }, [mentionsQ.data, assignedQ.data, appealsQ.data, appealPmTasksQ.data, isAdmin, membersMap, today, formatMentionContent, dismissedKeys]);
+  }, [mentionsQ.data, assignedQ.data, appealsQ.data, appealPmTasksQ.data, isAdmin, isDeveloper, problemReportsQ.data, membersMap, today, formatMentionContent, dismissedKeys]);
 
   const unreadCount = notifications.filter(n => !readKeys.has(n.key)).length;
 
@@ -292,6 +313,11 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
       window.dispatchEvent(new CustomEvent("open-appeal-review", {
         detail: { pmTaskId: n.taskId, userId: n.appealUserId },
       }));
+      return;
+    }
+    if (n.type === "problem_report") {
+      setPendingAjudaView("problemas_reportados");
+      window.dispatchEvent(new CustomEvent("uau:switch-tab", { detail: { tab: "ajuda" } }));
       return;
     }
     if (n.taskId && onOpenTask) {
@@ -324,22 +350,13 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
         </button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-96 rounded-xl p-0">
-        <div className="flex items-center justify-between border-b border-border/40 px-4 py-3">
-          <h3 className="text-sm font-semibold">Notificações</h3>
-          <div className="flex items-center gap-3 text-xs">
-            <button
-              type="button"
-              className={cn("flex items-center gap-1 font-medium transition", pushEnabled ? "text-lime-400 hover:text-lime-300" : "text-muted-foreground/60 hover:text-muted-foreground")}
-              onClick={() => { setPopoverOpen(false); setPushDialogOpen(true); }}
-              title="Configurar notificações push"
-            >
-              <Bell className="h-3.5 w-3.5" />
-              {pushEnabled ? "Ativadas" : "Desativadas"}
-            </button>
+        <div className="flex items-center justify-between gap-3 border-b border-border/40 px-4 py-3">
+          <h3 className="shrink-0 text-sm font-semibold">Notificações</h3>
+          <div className="flex shrink-0 items-center gap-3 text-xs">
             {unreadCount > 0 && (
               <button
                 type="button"
-                className="text-muted-foreground transition hover:text-foreground"
+                className="whitespace-nowrap text-muted-foreground transition hover:text-foreground"
                 onClick={handleMarkAllRead}
               >
                 Marcar todas como lidas
@@ -393,7 +410,6 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
           )}
         </ScrollArea>
       </PopoverContent>
-      <PushNotificationsDialog open={pushDialogOpen} onOpenChange={setPushDialogOpen} />
     </Popover>
   );
 }

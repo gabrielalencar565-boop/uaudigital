@@ -102,6 +102,9 @@ All colors MUST be HSL.
     /* Degradê reservado para pontos estratégicos: botões principais, itens ativos */
     --gradient-button: linear-gradient(135deg, hsl(263 70% 55%), hsl(266 56% 39%));
 
+    /* Item ativo da sidebar — cor sólida fixa, sem gradiente */
+    --sidebar-active: 259 57% 40%;
+
     /* Pódio (1º/2º lugar) — modo claro mantém dourado/prata metálico tradicional */
     --gradient-podium-1: linear-gradient(135deg, #F5D76E, #D4A843, #FFFBE6, #C9973E, #F5D76E);
     --gradient-podium-2: linear-gradient(135deg, #E8E8E8, #B8B8B8, #F5F5F5, #A8A8A8, #E8E8E8);
@@ -230,6 +233,9 @@ All colors MUST be HSL.
       linear-gradient(180deg, hsl(var(--background)), hsl(225 22% 5%));
     --gradient-panel: linear-gradient(135deg, hsl(253 90% 68% / 0.04), hsl(220 80% 60% / 0.03));
     --gradient-button: linear-gradient(135deg, hsl(253 90% 68%), hsl(263 70% 42%));
+
+    /* Item ativo da sidebar — cor sólida fixa, sem gradiente */
+    --sidebar-active: 259 57% 40%;
 
     /* Pódio (1º/2º lugar) — dourado/prata metálico não combina com dark premium;
        1º ganha o degradê vibrante de destaque (laranja→rosa→roxo da marca),
@@ -430,6 +436,21 @@ All colors MUST be HSL.
   0%   { background-position: 0% 50%; }
   50%  { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
+}
+
+/* Destaque genérico pra "aponte pra esse elemento" (ex.: CTA de uma atualização/aviso que
+   leva pra um elemento específico de qualquer tela, não só um botão fixo como o de
+   personalizar) — anel pulsando, funciona em cima de qualquer elemento, sem precisar saber
+   a forma dele de antemão. Ver src/lib/pending-highlight-store.ts. */
+@keyframes uauHighlightPulse {
+  0%, 100% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0.45); }
+  50% { box-shadow: 0 0 0 8px hsl(var(--primary) / 0); }
+}
+.uau-highlight-pulse {
+  animation: uauHighlightPulse 1s ease-in-out 3;
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 3px;
+  border-radius: 8px;
 }
 
 @keyframes parallaxLayer2 {
