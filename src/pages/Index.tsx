@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
 import { useRole } from "@/hooks/use-role";
+import { usePermission } from "@/hooks/use-permission";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ROLE_OPTIONS } from "@/lib/role-options";
@@ -68,6 +69,11 @@ const Index = () => {
   const [tab, setTab] = useState<MainTab>("meu_painel");
   const { user } = useSession();
   const { isAdmin } = useRole(user?.id);
+  // Quem além de admin pode ver Financeiro/Comercial é configurável em Configurações →
+  // Permissões — a leitura dos dados em si (RLS) continua restrita a admin, então liberar
+  // aqui só abre a aba; sem dado extra liberado no banco.
+  const canSeeFinanceiro = usePermission("tab_financeiro");
+  const canSeeComercial = usePermission("tab_comercial");
 
   const [hasProfile, setHasProfile] = useState<boolean | null>(null);
   const [avatarBlob, setAvatarBlob] = useState<Blob | null>(null);
@@ -313,13 +319,13 @@ const Index = () => {
     if (tab === "visao_geral_projetos") return <ProjetosPanel />;
     if (tab === "configuracoes" && isAdmin) return <AdminContainer onNavigate={(t) => setTab(t as any)} />;
     if (tab === "conversas" && isAdmin) return <ConversasPanel />;
-    if (tab === "comercial" && isAdmin) return <ComercialPanel />;
-    if (tab === "financeiro" && isAdmin) return <FinanceiroPanel />;
-    if (tab === "fin_clientes" && isAdmin) return <AdminContainer onNavigate={(t) => setTab(t as any)} />;
-    if (tab === "fin_receitas_despesas" && isAdmin) return <FinReceitasDespesasTab />;
-    if (tab === "fin_despesas_detalhadas" && isAdmin) return <FinDespesasDetalhadasTab />;
-    if (tab === "fin_lancamentos" && isAdmin) return <FinLancamentosTab />;
-    if (tab === "metas" && isAdmin) return <FinMetasTab />;
+    if (tab === "comercial" && canSeeComercial) return <ComercialPanel />;
+    if (tab === "financeiro" && canSeeFinanceiro) return <FinanceiroPanel />;
+    if (tab === "fin_clientes" && canSeeFinanceiro) return <AdminContainer onNavigate={(t) => setTab(t as any)} />;
+    if (tab === "fin_receitas_despesas" && canSeeFinanceiro) return <FinReceitasDespesasTab />;
+    if (tab === "fin_despesas_detalhadas" && canSeeFinanceiro) return <FinDespesasDetalhadasTab />;
+    if (tab === "fin_lancamentos" && canSeeFinanceiro) return <FinLancamentosTab />;
+    if (tab === "metas" && canSeeFinanceiro) return <FinMetasTab />;
     if (tab === "visao_do_dia") return <DayViewPanel />;
     if (tab === "recompensas") {
       if (isAdmin) return <RecompensasPanel />;
@@ -362,6 +368,8 @@ const Index = () => {
     <UauSidebarShell
       tab={tab}
       isAdmin={isAdmin}
+      canSeeFinanceiro={canSeeFinanceiro}
+      canSeeComercial={canSeeComercial}
       onTabChange={(next) => {
         try {
           setTab(next);

@@ -22,9 +22,7 @@ import { toast } from "sonner";
 import { useClients, useTeamMembers } from "@/features/data/queries";
 import { useDefaultFlowWithDates, getFixedAssignee } from "@/features/gestao/components/PmStageFlowConfig";
 import { useSession } from "@/hooks/use-session";
-import { useRole } from "@/hooks/use-role";
-import { useMyProfile } from "@/hooks/use-my-profile";
-import { isSocialMediaRole } from "@/lib/role-options";
+import { usePermission } from "@/hooks/use-permission";
 import {
   useCalendarPublications, useCalendarsForClient, useCalendarsForCycle, useCapaTaskIds, useCoverAttachmentsById, useInstagramRiskSummary, usePublishCycle, useScheduleCyclePublications, useUnscheduleCyclePublications, useUnpublishCycle, useTaskAttachmentsMap, useTaskCompletionMap, useUpdateCalendarPublication, useUpdateCalendarShare, useUpdateCalendarStatus,
   type ClientInstagramRisk,
@@ -330,13 +328,12 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
 
   // Filtros da grade de clientes: "Meus" (responsável = eu) + status do ciclo.
   const { user } = useSession();
-  // instagram-connect is gated server-side to admins and Social Media (requireConnectPermission)
-  // — the button was rendering for every team member regardless, so anyone else clicking it got
-  // a 403 that only ever surfaced as a generic "Edge Function returned a non-2xx status code"
-  // toast. Gating it here too keeps everyone else from hitting that dead end in the first place.
-  const { isAdmin } = useRole(user?.id);
-  const myProfileQ = useMyProfile();
-  const canManageInstagram = isAdmin || isSocialMediaRole(myProfileQ.data?.role_title);
+  // instagram-connect is gated server-side too (requireConnectPermission, admin by default plus
+  // whoever Configurações → Permissões adds under "action_instagram_connect") — the button was
+  // rendering for every team member regardless, so anyone else clicking it got a 403 that only
+  // ever surfaced as a generic "Edge Function returned a non-2xx status code" toast. Gating it
+  // here too keeps everyone else from hitting that dead end in the first place.
+  const canManageInstagram = usePermission("action_instagram_connect");
   const [onlyMine, setOnlyMine] = useState(false);
   const [activeStatusFilters, setActiveStatusFilters] = useState<Set<string>>(new Set());
   const toggleStatusFilter = (key: string) => {

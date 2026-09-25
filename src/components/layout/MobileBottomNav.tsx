@@ -56,14 +56,20 @@ interface Props {
   tab: MainTab;
   onTabChange: (t: MainTab) => void;
   isAdmin?: boolean;
+  // Mesma exceção do UauSidebarShell: Financeiro/Comercial seguem a tela de Permissões em
+  // vez de isAdmin fixo, quando informados.
+  canSeeFinanceiro?: boolean;
+  canSeeComercial?: boolean;
 }
 
-export function MobileBottomNav({ tab, onTabChange, isAdmin }: Props) {
+export function MobileBottomNav({ tab, onTabChange, isAdmin, canSeeFinanceiro, canSeeComercial }: Props) {
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
 
   const activeKey = resolveActiveBottom(tab);
 
   const filteredBottomTabs = BOTTOM_TABS.filter((t) => {
+    if (t.key === "financeiro") return canSeeFinanceiro ?? isAdmin;
+    if (t.key === "comercial") return canSeeComercial ?? isAdmin;
     if (t.adminOnly && !isAdmin) return false;
     return true;
   });

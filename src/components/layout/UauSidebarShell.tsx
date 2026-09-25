@@ -109,12 +109,23 @@ export function UauSidebarShell({
   children,
   tab,
   onTabChange,
-  isAdmin
+  isAdmin,
+  canSeeFinanceiro,
+  canSeeComercial
 
 
 
 
-}: PropsWithChildren<{tab: MainTab;onTabChange: (t: MainTab) => void;isAdmin?: boolean;}>) {
+}: PropsWithChildren<{
+  tab: MainTab;
+  onTabChange: (t: MainTab) => void;
+  isAdmin?: boolean;
+  // Financeiro/Comercial são as duas únicas entradas de nav hoje ligadas à tela de
+  // Permissões (Configurações → Permissões) em vez de fixas em isAdmin — quando omitidas,
+  // caem de volta pro comportamento antigo (admin-only).
+  canSeeFinanceiro?: boolean;
+  canSeeComercial?: boolean;
+}>) {
   const isMobile = useIsMobile();
   const [collapsed, setCollapsed] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
@@ -156,8 +167,13 @@ export function UauSidebarShell({
   setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }));
 
   const filteredNav = useMemo(
-    () => NAV.filter((e) => !e.adminOnly || isAdmin),
-    [isAdmin]
+    () =>
+      NAV.filter((e) => {
+        if (e.key === "financeiro_group") return canSeeFinanceiro ?? isAdmin;
+        if (e.key === "comercial") return canSeeComercial ?? isAdmin;
+        return !e.adminOnly || isAdmin;
+      }),
+    [isAdmin, canSeeFinanceiro, canSeeComercial]
   );
 
   const currentTabLabel = useMemo(() => {
@@ -366,7 +382,7 @@ export function UauSidebarShell({
 
         {/* Mobile bottom navigation */}
         {isMobile && (
-          <MobileBottomNav tab={tab} onTabChange={onTabChange} isAdmin={isAdmin} />
+          <MobileBottomNav tab={tab} onTabChange={onTabChange} isAdmin={isAdmin} canSeeFinanceiro={canSeeFinanceiro} canSeeComercial={canSeeComercial} />
         )}
 
         <EditProfileDialog open={editProfileOpen} onOpenChange={setEditProfileOpen} />

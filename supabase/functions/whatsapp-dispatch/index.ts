@@ -156,7 +156,9 @@ async function dispatchOne(
 // ---------------------------------------------------------------------------
 // Auth helpers
 // ---------------------------------------------------------------------------
-async function requireAdmin(req: Request): Promise<{ userId: string } | Response> {
+// `key` matches a row in feature_permissions (Configurações → Permissões) — admin always
+// passes, otherwise it's whatever role/cargo an admin configured for that key there.
+async function requireFeaturePermission(req: Request, key: string): Promise<{ userId: string } | Response> {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
     return json({ error: "unauthorized" }, 401);
@@ -167,8 +169,8 @@ async function requireAdmin(req: Request): Promise<{ userId: string } | Response
   const { data, error } = await client.auth.getUser();
   if (error || !data?.user?.id) return json({ error: "unauthorized" }, 401);
   const userId = data.user.id;
-  const { data: isAdmin } = await admin.rpc("has_role", { _user_id: userId, _role: "admin" });
-  if (!isAdmin) return json({ error: "forbidden" }, 403);
+  const { data: allowed } = await admin.rpc("has_feature_permission", { _user_id: userId, _key: key });
+  if (!allowed) return json({ error: "forbidden" }, 403);
   return { userId };
 }
 
@@ -663,7 +665,7 @@ Deno.serve(async (req) => {
 
 
     if (action === "broadcast") {
-      const auth = await requireAdmin(req);
+      const auth = await requireFeaturePermission(req, "action_whatsapp_broadcast");
       if (auth instanceof Response) return auth;
       const message = String(payload?.message ?? "").trim().slice(0, 1500);
       if (!message) return json({ error: "empty_message" }, 400);
@@ -673,7 +675,7 @@ Deno.serve(async (req) => {
     }
 
     if (action === "send") {
-      const auth = await requireAdmin(req);
+      const auth = await requireFeaturePermission(req, "action_whatsapp_send");
       if (auth instanceof Response) return auth;
       const userId = payload?.userId ? String(payload.userId) : null;
       const directPhone = payload?.phone ? String(payload.phone) : null;

@@ -1156,6 +1156,36 @@ export type Database = {
         }
         Relationships: []
       }
+      feature_permissions: {
+        Row: {
+          allowed_cargos: string[]
+          allowed_roles: Database["public"]["Enums"]["app_role"][]
+          area: string
+          key: string
+          label: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          allowed_cargos?: string[]
+          allowed_roles?: Database["public"]["Enums"]["app_role"][]
+          area: string
+          key: string
+          label: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          allowed_cargos?: string[]
+          allowed_roles?: Database["public"]["Enums"]["app_role"][]
+          area?: string
+          key?: string
+          label?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       financial_clients: {
         Row: {
           cnpj: string | null

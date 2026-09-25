@@ -2033,6 +2033,23 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
     if (subtaskIds.length === 0) return;
     const sb = supabase as any;
     await sb.from("pm_tasks").update({ assignee_id: newAssigneeId, updated_at: new Date().toISOString() }).in("id", subtaskIds);
+    // This bulk update bypasses useUpdatePmTask (one `.mutate` per id would fire N separate
+    // dialogs' worth of side effects for what's really one action), so it never went through
+    // that hook's activity-log insert — a real reassignment left literally zero trace in
+    // pm_activity_log, making it impossible to audit later who changed what. Logging it
+    // explicitly here closes that gap without changing the bulk-update shape.
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await sb.from("pm_activity_log").insert(
+        subtaskIds.map((subtaskId) => ({
+          entity_type: "task",
+          entity_id: subtaskId,
+          action: "updated",
+          metadata: { task_id: subtaskId, assignee_id: newAssigneeId, propagated_from: task.id },
+          created_by: user.id,
+        })),
+      );
+    }
     queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
     queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
   };
