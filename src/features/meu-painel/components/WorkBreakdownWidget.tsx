@@ -4,7 +4,7 @@ import { startOfMonth, endOfMonth, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { stageLabel, tagDisplay } from "@/features/gestao/pm-constants";
 import { usePeriodicStages, isPeriodicStageKey } from "@/features/gestao/hooks/use-periodic-stages";
-import { usePmAllChildTasks } from "@/features/gestao/hooks/use-pm-data";
+import { useMyChildTasks } from "@/features/gestao/hooks/use-pm-data";
 import type { PmTask } from "@/features/gestao/pm-types";
 
 interface Props {
@@ -34,7 +34,6 @@ function baseGroupLabel(task: PmTask, periodicLabels: Map<string, string>): stri
 
 export function WorkBreakdownWidget({ allTasks, month, userId }: Props) {
   const periodicStagesQ = usePeriodicStages();
-  const childrenQ = usePmAllChildTasks();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const periodicLabels = useMemo(() => {
@@ -54,6 +53,15 @@ export function WorkBreakdownWidget({ allTasks, month, userId }: Props) {
       !!t.due_date && t.due_date >= startKey && t.due_date <= endKey
     );
   }, [allTasks, userId, month]);
+
+  // Only the finished tasks' ids can have relevant children (see `relevantChildren` below) —
+  // scoping useMyChildTasks to these instead of pulling every subtask in the company (what
+  // usePmAllChildTasks did here before) is what keeps this dashboard widget cheap.
+  const doneParentIds = useMemo(
+    () => tasks.filter((t) => t.status_global === "concluido").map((t) => t.id),
+    [tasks],
+  );
+  const childrenQ = useMyChildTasks(userId, doneParentIds);
 
   const breakdown = useMemo<Bucket[]>(() => {
     const doneParents = tasks.filter((t) => t.status_global === "concluido");

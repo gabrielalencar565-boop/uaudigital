@@ -8,7 +8,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
-import { usePmTasks, usePmAllChildTasks } from "@/features/gestao/hooks/use-pm-data";
+import { usePmTasks, useMyChildTasks } from "@/features/gestao/hooks/use-pm-data";
 import { getStageCircleColor, stageLabel } from "@/features/gestao/pm-constants";
 import type { PmTask } from "@/features/gestao/pm-types";
 
@@ -63,7 +63,20 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
   const currentMonthKey = format(today, "yyyy-MM");
 
   const pmTasksQ = usePmTasks();
-  const allChildQ = usePmAllChildTasks();
+
+  // My tasks (assigned to me, including completed and overdue) — computed before the child
+  // query below so its own task ids can scope that fetch to just what this widget needs.
+  const myTasks = useMemo(() => {
+    if (!user?.id) return [];
+    return (pmTasksQ.data ?? []).filter(t =>
+      (t.assignee_id === user.id || (t.watchers ?? []).includes(user.id)) &&
+      !["cancelado"].includes(t.status_global) &&
+      !(t as any).is_draft
+    );
+  }, [pmTasksQ.data, user?.id]);
+
+  const myTaskIds = useMemo(() => myTasks.map(t => t.id), [myTasks]);
+  const allChildQ = useMyChildTasks(user?.id, myTaskIds);
 
   // Clients
   const clientsQ = useQuery({
@@ -116,16 +129,6 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
     });
     return m;
   }, [childTasksByParent]);
-
-  // My tasks (assigned to me, including completed and overdue)
-  const myTasks = useMemo(() => {
-    if (!user?.id) return [];
-    return (pmTasksQ.data ?? []).filter(t =>
-      (t.assignee_id === user.id || (t.watchers ?? []).includes(user.id)) &&
-      !["cancelado"].includes(t.status_global) &&
-      !(t as any).is_draft
-    );
-  }, [pmTasksQ.data, user?.id]);
 
   // Tasks/subtasks in "alteracoes" stage assigned to me
   const alteracoesTasks = useMemo(() => {

@@ -105,10 +105,15 @@ export function usePmChildTasks(parentId: string | null) {
   });
 }
 
-/** Fetch all child tasks (kanban progress) — colunas leves */
-export function usePmAllChildTasks() {
+/** Fetch all child tasks (kanban progress) — colunas leves.
+ * `enabled` (default true) lets a caller mounted across multiple views — like GestaoPanel,
+ * which used to run this unconditionally even for the Cronograma (Instagram calendar) view
+ * that never reads the result — skip the ~9k-row company-wide scan when the active view
+ * doesn't actually need it. */
+export function usePmAllChildTasks(enabled = true) {
   return useQuery<PmTask[]>({
     queryKey: ["pm_child_tasks_all"],
+    enabled,
     staleTime: 30_000,
     queryFn: async () => {
       const pageSize = 1000;
@@ -140,6 +145,39 @@ export function usePmAllChildTasks() {
         allRows.push(...((data ?? []) as PmTask[]));
       }
       return allRows;
+    },
+  });
+}
+
+/** Fetch only the child tasks relevant to one user: assigned to them, watching them, or a
+ * child of one of their own root tasks (for subtask counts/breakdowns on their personal
+ * dashboard). Unlike usePmAllChildTasks() — which needs the whole company-wide subtask table
+ * for the team Kanban board — this stays scoped server-side, so every user landing on "Meu
+ * Painel" (the default tab after login) doesn't each pull all ~9k subtasks in the system.
+ * Many people logging in around the same time doing that was a confirmed live incident:
+ * ~10 concurrent full-table scans (each ~1-3.5s) saturated the DB and blocked unrelated
+ * requests — even Auth checks — for everyone.
+ */
+export function useMyChildTasks(userId: string | undefined, parentTaskIds: string[]) {
+  const sortedParentIds = [...parentTaskIds].sort();
+  return useQuery<PmTask[]>({
+    queryKey: ["pm_child_tasks_mine", userId, sortedParentIds],
+    enabled: !!userId,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const orClauses = [`assignee_id.eq.${userId}`, `watchers.cs.{${userId}}`];
+      if (sortedParentIds.length > 0) {
+        orClauses.push(`parent_task_id.in.(${sortedParentIds.join(",")})`);
+      }
+      const { data, error } = await sb
+        .from("pm_tasks")
+        .select(PM_TASK_LIST_COLUMNS)
+        .not("parent_task_id", "is", null)
+        .is("deleted_at", null)
+        .or(orClauses.join(","))
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as PmTask[];
     },
   });
 }

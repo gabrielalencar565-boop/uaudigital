@@ -4,6 +4,7 @@ import { CircleHelp } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSession } from "@/hooks/use-session";
 import { useRole } from "@/hooks/use-role";
+import { usePermission } from "@/hooks/use-permission";
 import { getPendingAjudaView, setPendingAjudaView, subscribePendingAjudaView } from "@/lib/pending-ajuda-view-store";
 import { ChangelogSection } from "@/features/ajuda/components/ChangelogSection";
 import { FaqSection } from "@/features/ajuda/components/FaqSection";
@@ -15,6 +16,11 @@ type View = "atualizacoes" | "faq" | "solicitacoes";
 export function AjudaPanel() {
   const { user } = useSession();
   const { isDeveloper } = useRole(user?.id);
+  // Quem gerencia FAQ/Changelog é configurável em Configurações → Permissões (developer por
+  // padrão) — quem vê "Problemas reportados" (de todo mundo) em vez de "Minhas solicitações"
+  // continua exclusivo de developer, não faz parte desse painel de permissões.
+  const canManageFaq = usePermission("action_manage_faq");
+  const canManageChangelog = usePermission("action_manage_changelog");
   const [view, setView] = useState<View>("faq");
 
   // Consome um pedido pendente de navegação (ex: clique numa notificação de "novo problema
@@ -57,8 +63,8 @@ export function AjudaPanel() {
         </TabsList>
       </Tabs>
 
-      {view === "faq" && <FaqSection isDeveloper={isDeveloper} />}
-      {view === "atualizacoes" && <ChangelogSection isDeveloper={isDeveloper} />}
+      {view === "faq" && <FaqSection isDeveloper={canManageFaq} />}
+      {view === "atualizacoes" && <ChangelogSection isDeveloper={canManageChangelog} />}
       {view === "solicitacoes" && (isDeveloper ? <ReportedProblemsSection /> : <MyRequestsSection />)}
     </div>
   );

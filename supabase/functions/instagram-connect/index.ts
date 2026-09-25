@@ -53,20 +53,19 @@ function json(body: unknown, status = 200) {
 
 // Mirrors the frontend's profiles → team_members fallback (see useMyProfile) so this check
 // stays true to whatever cargo the person actually has set, wherever it lives.
-async function hasSocialMediaRoleTitle(admin: ReturnType<typeof createClient>, userId: string): Promise<boolean> {
+async function getRoleTitle(admin: ReturnType<typeof createClient>, userId: string): Promise<string | null> {
   const { data: profile } = await admin.from("profiles").select("role_title").eq("user_id", userId).maybeSingle();
-  let roleTitle = profile?.role_title as string | null | undefined;
-  if (roleTitle == null) {
-    const { data: member } = await admin.from("team_members").select("role_title").eq("user_id", userId).maybeSingle();
-    roleTitle = member?.role_title as string | null | undefined;
-  }
-  return (roleTitle ?? "").trim().toLowerCase() === "social media";
+  if (profile?.role_title != null) return profile.role_title as string;
+  const { data: member } = await admin.from("team_members").select("role_title").eq("user_id", userId).maybeSingle();
+  return (member?.role_title as string | undefined) ?? null;
 }
 
-// Connecting/disconnecting Instagram is for admins and whoever actually does the posting
-// (cargo "Social Media") — it used to be admin-only, which meant every connection had to
-// go through an admin even though Social Media is the role that owns this task day to day.
-async function requireConnectPermission(req: Request) {
+// Same rule as the frontend's usePermission() (src/hooks/use-permission.ts): admin always
+// passes, otherwise it's whatever role/cargo an admin configured for this key at Configurações
+// → Permissões (feature_permissions table) — no matching row defaults to admin-only, same as
+// the frontend's default, so a key that's only wired up here or only on the frontend still
+// agrees on the answer either way.
+async function requireFeaturePermission(req: Request, key: string) {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) throw json({ error: "missing authorization" }, 401);
 
@@ -79,9 +78,23 @@ async function requireConnectPermission(req: Request) {
   const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
   const userId = userData.user.id as string;
   const { data: roles } = await admin.from("user_roles").select("role").eq("user_id", userId);
-  const isAdmin = (roles ?? []).some((r: { role: string }) => r.role === "admin");
-  if (!isAdmin && !(await hasSocialMediaRoleTitle(admin, userId))) {
-    throw json({ error: "admin role or Social Media cargo required" }, 403);
+  const roleSet = new Set((roles ?? []).map((r: { role: string }) => r.role as string));
+
+  if (!roleSet.has("admin")) {
+    const { data: perm } = await admin
+      .from("feature_permissions")
+      .select("allowed_roles, allowed_cargos")
+      .eq("key", key)
+      .maybeSingle();
+    const roleMatch = (perm?.allowed_roles ?? []).some((r: string) => roleSet.has(r));
+    let cargoMatch = false;
+    if (!roleMatch && perm?.allowed_cargos?.length) {
+      const roleTitle = ((await getRoleTitle(admin, userId)) ?? "").trim().toLowerCase();
+      cargoMatch = !!roleTitle && perm.allowed_cargos.some((c: string) => c.trim().toLowerCase() === roleTitle);
+    }
+    if (!roleMatch && !cargoMatch) {
+      throw json({ error: "sem permissão para esta ação" }, 403);
+    }
   }
 
   return { admin, userId };
@@ -485,7 +498,7 @@ Deno.serve(async (req) => {
       return await handleStatus(admin, body);
     }
 
-    const { admin, userId } = await requireConnectPermission(req);
+    const { admin, userId } = await requireFeaturePermission(req, "action_instagram_connect");
 
     switch (action) {
       case "start":

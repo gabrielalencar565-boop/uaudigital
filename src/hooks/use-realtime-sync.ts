@@ -161,7 +161,15 @@ const SECONDARY_TABLES: RealtimeTable[] = [
 ];
 
 const CORE_TABLE_SET = new Set<RealtimeTable>(CORE_TABLES);
-const DEBOUNCE_MS = 500;
+// `enqueue` only schedules a new flush timer if none is already pending — during continuous
+// activity (an active task board, several people editing at once) that made this a throttle,
+// not a real debounce: every client refetches on this cadence for as long as changes keep
+// arriving. At 500ms that meant up to 2 refetches/sec/client of pm_child_tasks_all alone (the
+// single heaviest query in the app, ~900ms each) — confirmed via pg_stat_statements at ~38k
+// calls/hour, saturating the DB for everyone (including unrelated Auth checks) and making
+// Cronograma/Gestão slow to open. 3s keeps realtime collaboration feeling live (nobody notices
+// a 3s lag on a task board) while cutting refetch frequency ~6x.
+const DEBOUNCE_MS = 3000;
 
 function buildGroups(tables: RealtimeTable[]) {
   const unique = Array.from(new Set(tables));

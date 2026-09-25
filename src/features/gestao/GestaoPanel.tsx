@@ -116,7 +116,13 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
   const [agendaCursor, setAgendaCursor] = useState(() => startOfMonth(new Date()));
 
   // Data
-  const tasksQ = usePmTasks();
+  // Cronograma (Instagram calendar), Fluxos and Responsáveis don't read `allTasks`/
+  // `childTasksMap` at all — before this, every view fetched the full company-wide task list
+  // (and the ~9k-row all-subtasks scan below) unconditionally, even for the one view that
+  // never used it, making it needlessly heavy to open. See usePmAllChildTasks() for the
+  // measured cost.
+  const needsFullTaskData = !["calendario", "fluxo", "responsaveis"].includes(effectiveView);
+  const tasksQ = usePmTasks(needsFullTaskData);
   const allTasks = tasksQ.data ?? [];
   const tasks = useMemo(() => allTasks.filter((t) => !(t as any).is_draft), [allTasks]);
 
@@ -142,7 +148,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
     return clientIds;
   }, [filterAssignee, stageAssignees]);
 
-  const allChildTasksQ = usePmAllChildTasks();
+  const allChildTasksQ = usePmAllChildTasks(needsFullTaskData);
   const childTasksMap = useMemo(() => {
     const map: Record<string, PmTask[]> = {};
     (allChildTasksQ.data ?? []).forEach((t) => {
